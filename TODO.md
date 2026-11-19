@@ -160,25 +160,25 @@ Gate evidence: rejected or recollected specimens trace to the right order; dupli
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [-] S-G2-02 · Separate workflow, transmission and clinical review states with human acknowledgment (XCH-02).
   - agent: swarm-1
-  - attempts: 11
+  - attempts: 12
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g2/s_g2_02, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g2_02
   - reserved: V20
   - details:
     Implement Separate workflow, transmission and clinical review states with human acknowledgment (XCH-02) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [x] S-G2-03 · Accept, reject with reason, clarify, linked changes, cancellations and revocation (XCH-03).
-  - pr: #45
-  - attempts: 4
+- [-] S-G2-03 · Accept, reject with reason, clarify, linked changes, cancellations and revocation (XCH-03).
+  - agent: swarm-2
+  - attempts: 5
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/exchange/response, apps/api/src/test/java/com/aurevia/smartclinic/it/exchange/response
   - reserved: V21
   - details:
     Implement Accept, reject with reason, clarify, linked changes, cancellations and revocation (XCH-03) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [x] S-G2-04 · Result routing, identifier matching, reconciliation queue and correction versions (XCH-04).
-  - pr: #46
-  - attempts: 3
+- [-] S-G2-04 · Result routing, identifier matching, reconciliation queue and correction versions (XCH-04).
+  - agent: swarm-3
+  - attempts: 4
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/exchange/result, apps/api/src/test/java/com/aurevia/smartclinic/it/exchange/result
   - reserved: V22
   - details:
@@ -195,8 +195,9 @@ Gate evidence: rejected or recollected specimens trace to the right order; dupli
     Implement Critical-result verification, owner, due time, escalation attempts and read-back (XCH-05) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [ ] S-G2-06 · Patient release authorization, timed/hold policies and withdrawn releases (XCH-06).
-  - attempts: 2
+- [-] S-G2-06 · Patient release authorization, timed/hold policies and withdrawn releases (XCH-06).
+  - agent: swarm-4
+  - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/exchange/release, apps/api/src/test/java/com/aurevia/smartclinic/it/exchange/release
   - reserved: V24
   - details:
@@ -286,9 +287,9 @@ Gate evidence: confirmed patients see only authorized revisions; generic notific
     Implement Care unit directory and verified, connection-scoped patient-unit relationships (MSG-01, ARC-07) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [x] S-G3-05 · Conversation lifecycle, unread counts, staff work queue, assignment and reopen states (MSG-02).
-  - pr: #57
-  - attempts: 4
+- [-] S-G3-05 · Conversation lifecycle, unread counts, staff work queue, assignment and reopen states (MSG-02).
+  - agent: swarm-5
+  - attempts: 5
   - scope: apps/patient-mobile/src/features/conversations, apps/api/src/main/java/com/aurevia/smartclinic/messaging/conversation
   - reserved: V33
   - details:
@@ -437,36 +438,36 @@ Gate evidence: each site approves workflow, release policy, market constraints, 
     Implement Capacity targets, pilot load profile and measured performance evidence (OPS-03) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [x] S-G5-06 · Recovery targets, restore into clean environment and operational runbooks (OPS-04, OPS-05).
-  - pr: #89
-  - attempts: 3
+- [-] S-G5-06 · Recovery targets, restore into clean environment and operational runbooks (OPS-04, OPS-05).
+  - agent: swarm-6
+  - attempts: 4
   - scope: infra/s_g5_06, docs/operations/s_g5_06
   - reserved: V48
   - details:
     Implement Recovery targets, restore into clean environment and operational runbooks (OPS-04, OPS-05) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [x] S-G5-07 · Separate environments, synthetic fixtures, signed builds, migration checks and progressive rollout (OPS-06).
-  - pr: #90
-  - attempts: 1
+- [-] S-G5-07 · Separate environments, synthetic fixtures, signed builds, migration checks and progressive rollout (OPS-06).
+  - agent: swarm-7
+  - attempts: 2
   - scope: infra/s_g5_07, docs/operations/s_g5_07
   - reserved: V49
   - details:
     Implement Separate environments, synthetic fixtures, signed builds, migration checks and progressive rollout (OPS-06) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [x] S-G5-08 · Tenant export manifest, retention, legal hold, deletion and offboarding (OPS-07).
-  - pr: #91
-  - attempts: 1
+- [-] S-G5-08 · Tenant export manifest, retention, legal hold, deletion and offboarding (OPS-07).
+  - agent: swarm-8
+  - attempts: 2
   - scope: infra/s_g5_08, docs/operations/s_g5_08
   - reserved: V50
   - details:
     Implement Tenant export manifest, retention, legal hold, deletion and offboarding (OPS-07) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [x] S-G5-09 · Onboarding dataset manifest, dry run, controlled batches and authorized sign-off (OPS-08).
-  - pr: #92
-  - attempts: 1
+- [-] S-G5-09 · Onboarding dataset manifest, dry run, controlled batches and authorized sign-off (OPS-08).
+  - agent: swarm-9
+  - attempts: 2
   - scope: infra/s_g5_09, docs/operations/s_g5_09
   - reserved: V51
   - details:
@@ -515,7 +516,9 @@ Delivered inside the stories above, not scheduled separately.
     Implement Durable events, outbox, deduplication, replay and dead-letter review (ARC-05) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [ ] X-03 · Upload validation, quarantine, mediated downloads and PDF binding to immutable revisions (ARC-06).
+- [-] X-03 · Upload validation, quarantine, mediated downloads and PDF binding to immutable revisions (ARC-06).
+  - agent: swarm-10
+  - attempts: 1
   - scope: contracts/upload, apps/api/src/main/java/com/aurevia/smartclinic/api/upload
   - reserved: V56
   - details:
