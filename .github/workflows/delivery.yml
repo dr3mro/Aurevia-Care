@@ -10,11 +10,12 @@ on:
   merge_group:
 permissions:
   contents: read
-# A newer push to the same branch or pull request supersedes the older run.
-# Tag runs are never cancelled because they feed the release job.
+# Branch protection checks the exact SHA. Queue per ref instead of cancelling:
+# every pushed commit gets a verdict, while main pushes and each PR's pushes
+# stay serialized so expensive full verification cannot multiply in parallel.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref_type != 'tag' }}
+  cancel-in-progress: false
 
 jobs:
   policy:
