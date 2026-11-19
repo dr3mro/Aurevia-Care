@@ -122,8 +122,11 @@ class Xch03ServiceTest {
     }
 
     private void lockedChangePending() {
+        // A change is pending on the *accepted* revision: the linked revision lives only
+        // in the revision ledger until the recipient responds and the order version is
+        // promoted. Retrieval must keep serving this last released revision meanwhile.
         when(repository.findForUpdate(ORDER)).thenReturn(Optional.of(new ExchangeOrder(ORDER, 2,
-                "LAB-REQ-1", ExchangeState.CHANGE_PENDING, 2, NEXT_CHECKSUM, PATIENT, "clinician-a",
+                "LAB-REQ-1", ExchangeState.CHANGE_PENDING, 1, CHECKSUM, PATIENT, "clinician-a",
                 null, null, "RESULT_REVIEW", "STANDARD")));
     }
 
@@ -216,10 +219,23 @@ class Xch03ServiceTest {
         verify(repository).appendEvent(eq(ORG), anyString(), eq(ORDER), eq(3), eq("propose_change"),
                 eq("accepted"), eq("change_pending"), eq(null), eq(SENDER));
 
+        // A proposed change must not advance the released revision while it is
+        // awaiting the recipient's response (ARC-03, XCH-03).
+        verify(repository).update(eq(ORDER), eq(2), eq(ExchangeState.CHANGE_PENDING), eq(null),
+                eq(null), eq(null), eq(null), eq(null), eq(null), eq(1));
+    }
+
+    @Test
+    void aLinkedChangeRequiresAPriorAcceptance() {
+        asSender();
+        // XCH-03 scopes changes to *after* acceptance. A clarification-only order
+        // has no verified patient, permitted purpose or retained copy, so it cannot
+        // enter the change flow (which would otherwise write a NOT NULL violation).
         locked(ExchangeState.CLARIFICATION_REQUESTED, 2);
-        service.proposeChange(ORDER, 2, new ProposeChangeRequest("clarified", NEXT_CHECKSUM));
-        verify(repository, org.mockito.Mockito.times(2)).insertRevision(eq(ORG), anyString(), eq(ORDER),
-                eq(2), eq(1), eq(NEXT_CHECKSUM), anyString(), eq(SENDER));
+        assertEquals(409, assertThrows(ApiException.class, () -> service.proposeChange(ORDER, 2,
+                new ProposeChangeRequest("clarified", NEXT_CHECKSUM))).status());
+        verify(repository, never()).insertRevision(anyString(), anyString(), anyString(),
+                anyInt(), any(), anyString(), anyString(), anyString());
     }
 
     @Test
@@ -257,6 +273,54 @@ class Xch03ServiceTest {
         locked(ExchangeState.ACCEPTED, 2);
         assertEquals(409, assertThrows(ApiException.class, () -> service.changeResponse(ORDER, 2,
                 new ChangeResponseRequest("accept", null))).status());
+    }
+
+    @Test
+    void acceptingAChangePromotesTheLinkedRevisionOnlyOnRecipientResponse() {
+        lockedChangePending();
+        service.changeResponse(ORDER, 2, new ChangeResponseRequest("accept", null));
+        // The linked revision becomes current only after the recipient accepts it.
+        verify(repository).update(eq(ORDER), eq(2), eq(ExchangeState.ACCEPTED), eq(PATIENT),
+                eq("clinician-a"), eq(null), eq(null), eq("RESULT_REVIEW"), eq("STANDARD"), eq(2));
+        verify(repository).insertRetained(eq(ORG), anyString(), eq(ORDER), eq(2), eq(NEXT_CHECKSUM),
+                eq("RESULT_REVIEW"), eq("STANDARD"), eq(false), eq(ACTOR));
+    }
+
+    @Test
+    void rejectingAChangeKeepsTheAcceptedRevisionRetrievable() {
+        lockedChangePending();
+        service.changeResponse(ORDER, 2, new ChangeResponseRequest("reject", "wrong unit"));
+        // The rejected revision stays only in the ledger; retrieval still serves the
+        // last accepted, retained revision (XCH-03, ARC-03).
+        verify(repository).update(eq(ORDER), eq(2), eq(ExchangeState.REJECTED), eq(PATIENT),
+                eq("clinician-a"), eq("wrong unit"), eq(null), eq("RESULT_REVIEW"),
+                eq("STANDARD"), eq(1));
+        verify(repository, never()).insertRetained(anyString(), anyString(), anyString(), anyInt(),
+                anyString(), anyString(), anyString(), anyBoolean(), anyString());
+    }
+
+    @Test
+    void acceptingAChangeWithoutARetainedPurposeFailsClosed() {
+        // Defensive: a shell-injected accepted projection with no permitted purpose
+        // must never create a retained copy with null NOT NULL columns.
+        when(repository.findForUpdate(ORDER)).thenReturn(Optional.of(new ExchangeOrder(ORDER, 2,
+                "LAB-REQ-1", ExchangeState.CHANGE_PENDING, 1, CHECKSUM, null, null,
+                null, "Which specimen?", null, null)));
+        assertEquals(409, assertThrows(ApiException.class, () -> service.changeResponse(ORDER, 2,
+                new ChangeResponseRequest("accept", null))).status());
+        verify(repository, never()).insertRetained(anyString(), anyString(), anyString(), anyInt(),
+                anyString(), any(), any(), anyBoolean(), anyString());
+    }
+
+    @Test
+    void acceptingAChangeWithoutARetentionPolicyFailsClosed() {
+        when(repository.findForUpdate(ORDER)).thenReturn(Optional.of(new ExchangeOrder(ORDER, 2,
+                "LAB-REQ-1", ExchangeState.CHANGE_PENDING, 1, CHECKSUM, PATIENT, "clinician-a",
+                null, null, "RESULT_REVIEW", null)));
+        assertEquals(409, assertThrows(ApiException.class, () -> service.changeResponse(ORDER, 2,
+                new ChangeResponseRequest("accept", null))).status());
+        verify(repository, never()).insertRetained(anyString(), anyString(), anyString(), anyInt(),
+                anyString(), anyString(), any(), anyBoolean(), anyString());
     }
 
     @Test
@@ -420,7 +484,7 @@ class Xch03ServiceTest {
     @Test
     void changeResponseAppliesTheExistingLegalHoldToTheNewCopy() {
         when(repository.findForUpdate(ORDER)).thenReturn(Optional.of(new ExchangeOrder(ORDER, 2,
-                "LAB-REQ-1", ExchangeState.CHANGE_PENDING, 2, NEXT_CHECKSUM, PATIENT, "clinician-a",
+                "LAB-REQ-1", ExchangeState.CHANGE_PENDING, 1, CHECKSUM, PATIENT, "clinician-a",
                 null, null, "RESULT_REVIEW", "LEGAL_HOLD")));
         service.changeResponse(ORDER, 2, new ChangeResponseRequest("accept", null));
         verify(repository).insertRetained(eq(ORG), anyString(), eq(ORDER), eq(2), eq(NEXT_CHECKSUM),
