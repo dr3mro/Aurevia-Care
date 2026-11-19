@@ -26,7 +26,7 @@ MAX_ATTEMPTS = 3
 BODY_LIMIT = 8000
 # Default monthly runner-minute cap for all swarm-related workflows. The guard
 # estimates usage from finished run durations and refuses a wave near the cap.
-DEFAULT_MONTHLY_MINUTES = 1500
+DEFAULT_MONTHLY_MINUTES = 10000
 BUDGET_WORKFLOWS = ("swarm.yml", "swarm-integrator.yml", "heavy-check.yml",
                     "agent-image.yml", "swarm-images.yml", "main-repair.yml",
                     "fix-pr-watchdog.yml")
@@ -276,7 +276,10 @@ def task_id_of(branch):
 
 
 def task_text(task):
-    fields = [("Task", task["task"]), ("Requirements", task.get("requirements", "")),
+    fields = [("Task", task["task"]),
+              ("Time budget", "Finish this task within 175 minutes; do not start another task. "
+                              "A new worker will take the next one."),
+              ("Requirements", task.get("requirements", "")),
               ("Scope (stay inside these paths)", ", ".join(task["scope"])),
               ("Reserved migration version", task.get("reserved", ""))]
     head = "\n".join(f"{k}: {v}" for k, v in fields if v and v != "-")

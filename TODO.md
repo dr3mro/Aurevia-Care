@@ -205,6 +205,10 @@ Independent modules scoped to their own paths so workers cannot collide with bac
   - agent: loop
   - evidence: `main-watchdog.yml` removed; `main-repair.yml` keeps the failed-run `workflow_run` trigger; `fix-pr-watchdog.yml` triggers only on `pull_request` (`opened/synchronize/reopened/labeled`), runs the full `scripts/check.sh` with PostgreSQL/NVD, dispatches `swarm-integrator.yml` on green and `swarm.py fail()` on red. Neither workflow has a `cron:` trigger. `BUDGET_WORKFLOWS` and `docs/SWARM.md` updated. Guards red first then green: 70 swarm tests, 144 total tooling tests OK; `scripts/check.sh`, `quick-check.sh`, `docs.sh`, `gen-opencode.py --check` exit 0; both YAMLs parse with the intended triggers. Evidence source: executed tool commands; no human or clinical evidence. Live PR event not yet observed.
 
+- [x] S-FIX-WORKER-01 · Three-hour swarm worker budget with cooperative finish and automatic restart.
+  - agent: loop
+  - evidence: `swarm.yml` worker `timeout-minutes: 185` and `AGENT_TIMEOUT: 175m` (10 min slack for bundling); `task_text()` states the 175-minute deadline and that a new worker takes the next task; `DEFAULT_MONTHLY_MINUTES` raised to 10000 (≈5 full 10-worker waves). Guards red first then green: 73 swarm tests, 147 total tooling tests OK; `scripts/check.sh`, `quick-check.sh`, `docs.sh`, `gen-opencode.py --check` exit 0. Restart is the existing `next` job → `swarm.py continue`. Deadline is cooperative; the hard `timeout` still ends a runaway agent and frees the claim. Evidence source: executed tool commands; no human or clinical evidence. No live 3-hour run observed yet.
+
 ## Improvement ideas
 
 - [x] IMP-03 · Stop concurrency-cancelling swarm delivery runs. `delivery.yml` (per-ref group, `cancel-in-progress: false`), `heavy-check.yml`, `agent-image.yml` and `swarm-images.yml` now queue; `swarm.yml`, `swarm-integrator.yml`, `main-watchdog.yml` and `opencode-team.yml` already queued. README-SETUP.md updated.
