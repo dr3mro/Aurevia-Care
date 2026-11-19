@@ -717,3 +717,34 @@ Cadence and limits:
 | W5 | H+5 | `S-G3-08`, `S-G3-09`, `S-G3-10`, `S-G3-11`, `S-G3-12`, `S-G3-13`, `S-G4-01`, `S-G4-02`, `S-G4-03`, `S-G4-04` | Patient/messaging completion and G3 gate; specialty intake begins |
 | W6 | H+6 | `S-G4-05`, `S-G4-06`, `S-G4-07`, `S-G5-01`, `S-G5-02`, `S-G5-03`, `S-G5-04`, `S-G5-05`, `S-G5-06`, `S-G5-07` | Finance, G4 gate and G0-to-G5 operational foundations |
 | W7 | H+7 | `S-G5-08`, `S-G5-09`, `S-G5-10`, `S-G5-11`, `S-G5-12` | Export, onboarding, localization, queues and final G5 gate |
+
+## Audit findings
+
+- [ ] AUD-20261119-01 · Constrain patient released-revisions endpoint to the verified patient chart link
+  - attempts: 0
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/exchange/release, apps/api/src/main/java/com/aurevia/smartclinic/messaging/reports
+  - details:
+    PatientReleasedRevisionsController exposes GET /api/v1/patients/{patientId}/released-revisions and passes the path patientId straight into ReleaseService.visibleRevisions (PatientReleasedRevisionsController.java:38-40). That method only calls authorize(context, RELEASE_ACCESS_QUERY, patientId) (ReleaseService.java:333-356), which checks active membership plus a role in {clinician, tenant_admin, reception, privacy_auditor} (ReleaseActionPolicy.java:33-50); it never verifies that the authenticated subject is linked to that patientId. Any receptionist or privacy auditor can therefore enumerate released report revision IDs for any patient by supplying its UUID, while a verified patient (role 'patient') is denied 403. The correct patient-facing service ReleasedReportService, which checks a verified + active chart link and release state on every list/download (messaging/reports/ReleasedReportService.java:62-129, 143-150), has no caller in main outside its own Javadoc/test references, so PAT-02 patient self-access is unreachable at runtime. Expected fix: route the endpoint through ReleasedReportService (or add equivalent verified-link and self-only checks to ReleaseService.visibleRevisions), drop reception/privacy_auditor from the patient-scoped read policy, and add negative tests for a staff reader requesting another patient's revisions and for a patient reading their own.
+    Found by the daily audit. Synthetic fixtures only; failing tests first;
+    stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
+- [ ] AUD-20261119-02 · Verify the patient-unit connection when opening a conversation
+  - attempts: 0
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/messaging/conversations, apps/api/src/main/java/com/aurevia/smartclinic/messaging/units
+  - details:
+    ConversationService.open (ConversationService.java:76-105) accepts patientId, patientSubject, unitKey and connectionId from the JSON body. For a patient caller it only checks subject == patientSubject and repository.patientLinkActive (a patient-to-chart link); connectionId is merely format-validated at line 80 and persisted at line 99 with no check that an active PatientUnitConnection binds this patient to that unit. A verified patient can thus open a thread with any of the five units (clinic/lab/radiology/pt/pharmacy) just by naming the unitKey, violating MSG-01's requirement to validate patient, destination and context on the server at connection time and every protected action and to block arbitrary directory contact. The integration test ConversationFlowTest.java:331-343 even opens with unitKey 'lab' and a fixed 'conn-1' without proving a connection. CareUnitDirectoryService.requireActiveConnection (messaging/units/CareUnitDirectoryService.java:209-220) already implements the needed check but a repo-wide grep shows zero callers in main. Expected fix: call that check on open/reply using server-derived connection and unit identity, reject client-supplied connectionId values not bound to the caller, and add a no-connection/wrong-unit negative test.
+    Found by the daily audit. Synthetic fixtures only; failing tests first;
+    stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
+- [ ] AUD-20261119-03 · Expose required workflows through HTTP entry points instead of orphan services
+  - attempts: 0
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/messaging, apps/api/src/main/java/com/aurevia/smartclinic/therapy, apps/api/src/main/java/com/aurevia/smartclinic/radiology
+  - details:
+    Several services implementing requirements marked [x] in TODO.md have no caller anywhere in apps/api/src/main/java (grep for each class name outside its own file returns zero): AttachmentService (MSG-03 upload/quarantine/scan/publish/download), PatientAppointmentService (PAT-01), ReleasedReportService (PAT-02), G3EvidenceService, plus TherapyService (PT-01) and ImagingService (RAD-01). No controller contains a multipart/@RequestPart upload endpoint, so patient document upload and mediated retrieval cannot occur at runtime; the patient app exercises these flows only with local fixtures. JaCoCo 100% is satisfied by unit tests of these classes, so the gate does not detect that no entry point exists. Expected fix: wire thin controllers (or otherwise expose each deliverable command through a real entry point) and add an HTTP-level test per workflow, or honestly mark the corresponding TODO entries pending instead of done.
+    Found by the daily audit. Synthetic fixtures only; failing tests first;
+    stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
+- [ ] AUD-20261119-04 · Rename story-ID-named patient-mobile feature packages
+  - attempts: 0
+  - scope: apps/patient-mobile/src/features
+  - details:
+    All 12 directories under apps/patient-mobile/src/features are named s_g3_01 through s_g3_12 (story IDs), for example features/s_g3_02/credentials.ts and features/s_g3_06/attachments.test.tsx. CODING_STYLE.md requires business-domain naming and the earlier refactor already removed Java s_g* packages; this mobile remainder is called out as out of scope in .agent/pr-notes/REFACTOR-PACKAGES.md section 6 but is not a tracked TODO entry. Expected fix: agree an owner-approved domain mapping (appointments, reports, enrollment, units, conversations, attachments, instructions, acknowledgments, service-profiles, governance, flows, evidence), git mv the folders and update imports and tests.
+    Found by the daily audit. Synthetic fixtures only; failing tests first;
+    stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
