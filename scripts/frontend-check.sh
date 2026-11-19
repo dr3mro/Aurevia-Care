@@ -12,7 +12,8 @@ for module in "${modules[@]}"; do
   while IFS= read -r file; do
     sources+=("$file")
   done < <(find "$module" -type f \( -name '*.ts' -o -name '*.tsx' -o -name '*.js' -o -name '*.jsx' \) \
-    -not -path '*/node_modules/*' -not -path '*/dist/*' 2>/dev/null | sort)
+    -not -path '*/node_modules/*' -not -path '*/dist/*' -not -path '*/coverage/*' \
+    -not -path '*/build/*' -not -path '*/.expo/*' 2>/dev/null | sort)
 
   if [[ ${#sources[@]} -eq 0 ]]; then
     printf '%s: implementation pending\n' "$module"
