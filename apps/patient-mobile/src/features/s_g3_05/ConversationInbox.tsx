@@ -30,15 +30,17 @@ export function ConversationInbox({ conversations, onOpen }: ConversationInboxPr
         return (
           <Pressable
             key={conversation.id}
-            accessibilityLabel={`${conversation.unitName}: ${conversation.state}`}
+            accessibilityRole="button"
+            // Child texts are grouped into the pressable on device, so the
+            // unread count must be part of this label to be announced (UX-01).
+            accessibilityLabel={`${conversation.unitName}: ${conversation.state}`
+              + (hasUnread ? `, ${unread} unread` : '')}
             onPress={() => onOpen(conversation.id)}
             style={styles.row}
           >
             <Text style={styles.unit}>{conversation.unitName}</Text>
-            <Text accessibilityLabel={`state ${conversation.state}`}>{conversation.state}</Text>
-            {hasUnread ? (
-              <Text accessibilityLabel={`unread ${unread}`} style={styles.badge}>{unread}</Text>
-            ) : null}
+            <Text>{conversation.state}</Text>
+            {hasUnread ? <Text style={styles.badge}>{unread}</Text> : null}
           </Pressable>
         );
       })}
