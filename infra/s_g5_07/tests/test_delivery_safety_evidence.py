@@ -202,6 +202,22 @@ class EnvironmentTest(unittest.TestCase):
         report = dse.evaluate(artifact)
         self.assertIn("environments.distinct_resources", failures(report))
 
+    def test_whitespace_variant_account_is_treated_as_a_duplicate(self):
+        # Identifiers are stripped before the distinctness comparison, so an
+        # account padded with whitespace cannot alias another environment.
+        artifact = synthetic_artifact()
+        artifact["environments"]["test"]["account"] = \
+            " " + artifact["environments"]["development"]["account"] + " "
+        report = dse.evaluate(artifact)
+        self.assertIn("environments.distinct_accounts", failures(report))
+
+    def test_whitespace_variant_resource_is_treated_as_a_duplicate(self):
+        artifact = synthetic_artifact()
+        artifact["environments"]["test"]["resource"] = \
+            "\t" + artifact["environments"]["development"]["resource"] + "\n"
+        report = dse.evaluate(artifact)
+        self.assertIn("environments.distinct_resources", failures(report))
+
 
 class FixtureTest(unittest.TestCase):
     def test_fixtures_must_be_an_object(self):
