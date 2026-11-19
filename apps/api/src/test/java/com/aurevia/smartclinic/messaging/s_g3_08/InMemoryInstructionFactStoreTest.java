@@ -123,11 +123,14 @@ class InMemoryInstructionFactStoreTest {
 
         Acknowledgment ack = new Acknowledgment(ORG, INSTRUCTION, 1, "patient-1",
                 AcknowledgmentScope.RECEIPT, NOW);
-        Acknowledgment competingAck = new Acknowledgment(ORG, INSTRUCTION, 1, "patient-2",
+        Acknowledgment replay = new Acknowledgment(ORG, INSTRUCTION, 1, "patient-1",
                 AcknowledgmentScope.RECEIPT, NOW.plusSeconds(1));
+        Acknowledgment secondViewer = new Acknowledgment(ORG, INSTRUCTION, 1, "patient-2",
+                AcknowledgmentScope.RECEIPT, NOW.plusSeconds(2));
         assertEquals(ack, store.putAcknowledgmentIfAbsent(ORG, ack));
-        assertEquals(ack, store.putAcknowledgmentIfAbsent(ORG, competingAck));
-        assertEquals(List.of(ack), store.acknowledgments(ORG, INSTRUCTION, 1));
+        assertEquals(ack, store.putAcknowledgmentIfAbsent(ORG, replay));
+        assertEquals(secondViewer, store.putAcknowledgmentIfAbsent(ORG, secondViewer));
+        assertEquals(List.of(ack, secondViewer), store.acknowledgments(ORG, INSTRUCTION, 1));
         assertTrue(store.acknowledgments(ORG, INSTRUCTION, 2).isEmpty());
     }
 

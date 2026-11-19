@@ -9,9 +9,11 @@ import org.springframework.stereotype.Component;
  *
  * <p>Patient actions (first view, acknowledgment) are separated from staff
  * actions (publication, dispatch, follow-up review). A tenant administrator may
- * review and resolve follow-ups but cannot view or acknowledge on behalf of a
- * patient. The matrix is paired with fresh membership, role, verified-chart and
- * connection checks on every protected request.</p>
+ * hold the staff action permissions, but every owning-unit action still needs
+ * unit assignment as object authorization (IAM-01); without that assignment it
+ * cannot review a follow-up or view or acknowledge on behalf of a patient. The
+ * matrix is paired with fresh membership, role, verified-chart and connection
+ * checks on every protected request.</p>
  */
 @Component
 public class InstructionFactActions {
@@ -42,9 +44,7 @@ public class InstructionFactActions {
      */
     public boolean allows(String action, String role) {
         return switch (action) {
-            case PUBLISH, DISPATCH, FOLLOW_UP_RESOLVE ->
-                    OWNING_UNIT_STAFF.contains(role) || "tenant_admin".equals(role);
-            case FOLLOW_UP_LIST ->
+            case PUBLISH, DISPATCH, FOLLOW_UP_LIST, FOLLOW_UP_RESOLVE ->
                     OWNING_UNIT_STAFF.contains(role) || "tenant_admin".equals(role);
             case FIRST_VIEW, ACKNOWLEDGE -> "patient".equals(role);
             default -> false;

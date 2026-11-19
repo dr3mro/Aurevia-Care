@@ -198,7 +198,9 @@ public class InstructionFactService {
      *
      * <p>The acknowledgment is receipt-only: it is not consent, task completion
      * or a critical-result acknowledgment. A stale revision fails closed and a
-     * reused client key with a different revision conflicts.</p>
+     * reused client key with a different revision conflicts. The receipt is
+     * attributed to the authenticated patient account; several verified
+     * accounts may link to one chart (IAM-05), so each records its own fact.</p>
      *
      * @param command validated acknowledgment command
      * @return the authoritative receipt-only acknowledgment
@@ -387,7 +389,9 @@ public class InstructionFactService {
     }
 
     private Acknowledgment committedAcknowledgment(TenantContext context, String id, int revision) {
-        return store.acknowledgments(context.organizationId(), id, revision).stream().findFirst()
+        return store.acknowledgments(context.organizationId(), id, revision).stream()
+                .filter(acknowledgment -> context.subject().equals(acknowledgment.actor()))
+                .findFirst()
                 .orElseThrow(() -> deny(context, ACKNOWLEDGE, id, 409, "CONFLICT",
                         "the recorded command has no committed acknowledgment"));
     }
