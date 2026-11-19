@@ -1,207 +1,66 @@
-# S-G3-06 — PDF/JPEG/PNG attachments, sender binding, quarantine scans and clean-verdict access
-
-## Story and requirements
-
-- Story: S-G3-06 (swarm fix attempt 1 of 3), branch `swarm/S-G3-06-90`, base SHA `7cd80d6` (contains the verified Doxygen fix). This delivery commit adds the PR-notes artifact.
-- Primary requirements: **MSG-03** (attachments, explicit send, recipient shown before send, quarantine scan, clean-verdict access, sender binding, removal/replacement), **ARC-06** (validate size/type/checksum, private quarantine, unique object keys and verified object version, mediated downloads, keep clinical payloads out of logs/URLs).
-- Supporting requirements exercised by the implementation: MSG-01 / ARC-07 (connection-scoped binding), IAM-01 (fresh actor snapshot every command), ARC-02 (tenant-scoped store).
-
-## Failure being fixed (defect)
-
-The fast merge gate (`scripts/integrator-gate.sh`) failed on the merge of `main` and this branch. Relevant log tail:
-
-```
-apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_06/AttachmentContract.java:338: error: argument 'organizationId' from the argument list of com.aurevia.smartclinic.messaging.s_g3_06.AttachmentContract.Actor has multiple @param documentation sections
-... same for 'subject', 'roles', 'patientId', 'unitId'
-```
-
-This is a Doxygen error (`docs/Doxyfile`: `WARN_NO_PARAMDOC = YES`, `WARN_AS_ERROR = FAIL_ON_WARNINGS`, run by `scripts/docs.sh`). Root cause: the `Actor` record repeated its five component `@param` tags on the record declaration **and** on its compact constructor and its two static factory methods. Doxygen folds a record's compact constructor and factory methods into a single canonical-constructor documentation entity, so each component appeared in more than one `@param` documentation section. The same pattern existed on the `View` and `PublishRequest` compact constructors.
-
-## Fix
-
-Document each record component exactly once, on the record declaration, and carry **no** `@param` tags on compact constructors or static factory methods (they keep only `@return`/prose). This satisfies `WARN_NO_PARAMDOC` without producing duplicate sections. The change is present at branch HEAD commit `7cd80d6` in `apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_06/AttachmentContract.java` (`Actor`, `View`, `PublishRequest`). No further source change was needed; this attempt verifies and records the fix.
-
-## Red → green evidence (synthetic, tool-generated)
-
-- RED reproduction: a minimal synthetic record `/tmp/doxrepro/src/Repro.java` with `@param` on both the record declaration and its compact constructor/factory, checked with the repository `docs/Doxyfile` (doxygen 1.9.4), reproduced the exact failure:
-  `error: argument 'organizationId' from the argument list of repro.Repro.Actor has multiple @param documentation sections` (exit 1).
-- GREEN verification: the same minimal record with component `@param` only on the record declaration → doxygen exit 0, no warnings.
-- GREEN verification of the actual scope: a Doxyfile with `INPUT = apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_06` and `WARN_AS_ERROR = FAIL_ON_WARNINGS` over the current files → exit 0, zero warnings/errors.
-- `grep -n "@param organizationId" .../AttachmentContract.java` shows one declaration-level tag per record; no constructor/factory duplicates remain.
-
-## Exact commands run and results
-
-| Command | Result |
-|---|---|
-| `doxygen docs/Doxyfile` (focused Doxyfile, scope package only) | exit 0, 0 warnings/errors |
-| minimal synthetic duplicate-`@param` record + doxygen | exit 1, exact "multiple @param documentation sections" error (reproduction) |
-| `cd apps/api && mvn -B -Pno-security,fast test` | exit 0; 297 tests, 0 failures/errors/skipped; `AttachmentAcceptanceTest` 28 tests OK; BUILD SUCCESS |
-| `cd apps/patient-mobile && npm ci --no-audit --no-fund` | exit 0 (1272 packages) |
-| `cd apps/patient-mobile && npm run typecheck && npm run lint && npm test -- --ci --runInBand` | exit 0; tsc clean, eslint clean; Jest 1 suite / 22 tests passed |
-
-Pre-existing/environmental, out of scope (not caused by this change, not modified):
-- `python3 -I -m unittest discover -s scripts/tests -q` → 162 tests, 6 failures / 4 errors. Failures include `test_repository_pack_is_valid`, `test_committed_opencode_json_is_generated`, `test_check_mode_detects_drift` (`opencode.json is stale`), `test_agent_run.*` (environment-specific git refs) and import errors for `test_fast_tier` / `test_workflow_concurrency`. The stale `opencode.json` is the documented cloud-worker CI-profile/skip-worktree artifact; the rest are unrelated to S-G3-06.
-- Full `doxygen docs/Doxyfile` locally reports one error outside this scope: `apps/api/src/main/java/com/aurevia/smartclinic/g1/s_g1_04/TemplateService.java:23: unable to resolve link ... Actor for \link command`. Local doxygen is 1.9.4 (CI installs via apt); this is outside the declared scope and was left untouched.
-- No local `main` ref is present, so the exact "merge of main and this branch" could not be reproduced locally; the integrator's failure log above is the authoritative red evidence. The integrator runs the database and integration tests; per worker rules only the fast unit tests were run here.
-
-## Acceptance mapping (requirement → evidence)
-
-- MSG-03: validate type/magic/size/checksum (`AttachmentInputs`, `FileType`), bind upload to a server-side verified connection grant and subject (`AttachmentService.upload`), explicit send of named clean files to one recipient unit (`publish`), quarantine verdict gating (`scan`), clean-verdict-only mediated downloads (`download`), removal/replacement (`remove`), and unit inbox of published patient-supplied material (`inbox`). Evidence: `AttachmentAcceptanceTest` 28 tests (Java fast tier), patient-mobile `attachments.test.tsx` 22 tests.
-- ARC-06: private quarantine state machine, unique versioned object key, mediated handle carrying no bytes/file name/URL, and non-sensitive append-only event facts (`AttachmentContract`, `AttachmentService`, `AttachmentStore`). Evidence: same suites.
-- Doxygen/doc gate: component `@param` documented once on each record declaration; scope docs build clean (commands above).
-
-## Decisions
-
-- Keep component documentation on the record declaration; compact constructors and static factories must not repeat `@param` (Doxygen folds them into one canonical-constructor entity). This is the minimal fix that satisfies both `WARN_NO_PARAMDOC` and the no-duplicate rule.
-- No tracker, workflow, script, migration or out-of-scope source file was edited; only the declared scope was reviewed.
-
-## Evidence provenance
-
-All results are from executed tools (Doxygen 1.9.4, Maven/Surefire, npm/tsc/eslint/Jest, Python unittest) on synthetic fixtures. No real patient data, credentials or raw logs are recorded. No human participant or authorized clinical feedback was used; the only review input was the integrator's automated gate log. Database and integration checks are the integrator's responsibility and were not run here.
-
----
-
-# S-G0-08 — Emergency access and platform support access controls (IAM-06)
+# S-G4-03 — Prescription draft, versioned drug catalog, alternatives and verified allergy checks (RX-01)
 
 ## Scope honoured
 
-Only the declared scope was available for edits:
-`apps/api/src/main/java/com/aurevia/smartclinic/g0/s_g0_08`,
-`apps/api/src/test/java/com/aurevia/smartclinic/it/s_g0_08`, and reserved migration `V11`.
-No shared tracker (`TODO.md`, `MEMORY.md`, `WORKSPACE.md`, `BUGS.md`, `PROJECT.md`,
-`docs/swarm`) and no file outside that scope was edited. No push, tag or `gh` call
-was made. Synthetic fixtures only.
+- Branch `swarm/S-G4-03-99`, base/HEAD `40e1668` (worker did not create a new commit before these notes).
+- Only `apps/api/src/main/java/com/aurevia/smartclinic/g4/s_g4_03/PrescriptionContract.java` was changed.
+- Reserved migration **V43** (`db/migrations/V43__prescription_drafts.sql`) was inspected but **not modified**; no other migration version was touched.
+- No shared tracker (`TODO.md`, `MEMORY.md`, `WORKSPACE.md`, `BUGS.md`, `PROJECT.md`, `docs/swarm`) was edited. No push, tag or `gh` call. Synthetic fixtures only; no patient data or credentials.
 
 ## Requirement IDs and acceptance mapping
 
-- **IAM-06** (primary): emergency access is time-limited (1–60 min), scoped to one
-  tenant-local facility, reasoned, attributed to a qualified clinician, audited on the
-  V3 append-only chain, independently reviewable by privacy auditor / tenant admin
-  (grantee cannot review own grant), and revocable early. Platform support access is
-  **off by default** and only effective inside an approved, time-bounded (1–240 min)
-  incident window; checks return an explicit fail-closed `AccessDecision`.
-- **ARC-02 / OPS-02** (supporting): V11 tables carry `(organization_id, id)` keys and
-  forced row-level security; purpose, role, facility, actor and timestamp are recorded
-  and committed with the audit event.
-- Delivered surfaces already present in scope (unchanged by this fix attempt):
-  `AccessController` (8 endpoints under the IAM route family), `EmergencyAccessService`,
-  `SupportAccessService`, `AccessRepository`, `AccessRules`, `AccessContracts`,
-  `V11__emergency_and_support_access.sql`, `AccessUnitTest` (41 tests),
-  `AccessIntegrationTest` (8 DB tests, integrator-run).
+Primary **RX-01** (§5). Supporting **ARC-01/ARC-02/ARC-03/ARC-04**, **IAM-01**, **ADM-01**, **OPS-02**.
 
-## Reported failure — investigation and disposition
+| RX-01 acceptance | Implementation | Evidence (synthetic) |
+|---|---|---|
+| Draft with patient, medication, strength, formulation, dose, route, frequency, quantity, refills, instructions, prescriber, destination | `PrescriptionService.createDraft`/`selectMedication`, `PrescriptionContract.Draft`, `PrescriptionRepository.insertDraft`/`selectMedication`; prescriber/destination bound server-side; catalog entry key + version frozen into the draft | `PrescriptionFlowTest.fullWorkflowKeepsValidationOverrideAndAuditSeparate`, `invalidInputsAreRejected`, `versionPreconditionsAndAllergyConflictAreEnforced` (integrator-run DB suite) |
+| Market-approved versioned catalog search by generic/trade name and formulation | `DrugCatalog.search` (newest approved effective version per key only), `PrescriptionRepository.loadCatalog`, `DrugCatalogController.search`, V43 `UNIQUE(org,entry_key,version)` + approval provenance + effective window | `DrugCatalogTest` 8 tests (fast); `PrescriptionFlowTest.searchHidesUnapprovedAndFutureVersionsAndForcesRLS` (integrator) |
+| Tagged alternatives for prescriber review | `DrugCatalog.alternativesFor` → `Alternative(kind=SUGGESTION, requiresClinicianSelection=true)`; never mutates the clinician's selection | `DrugCatalogTest.alternativesAreTaggedSuggestionsAndNeverReplaceTheSelectedEntry`, `prescriberDomainTest` action matrix (fast) |
+| Check verified allergy ingredients; surface unknowns and mismatches | `AllergyChecker.check`: only `verified` assertions match; exact substance = CONFLICT, approved group = WARNING, unknown/unverified/unmappable = UNRESOLVED; no free-text name matching; absent status folds to UNKNOWN in `PrescriptionRepository.allergyAssessment` | `AllergyCheckerTest` 9 tests (fast), `PrescriptionFlowTest.allergyStatusesAreDistinctAndNeverSilentlySafe` (integrator) |
+| Keep override reason, author and matched-data snapshot | `PrescriptionService.selectMedication` → `insertOverride` on a verified exact match without a reason → 409 `ALLERGY_OVERRIDE_REQUIRED`; V43 append-only `prescription_override`, author derived from `app.actor`; deterministic `snapshot()` of catalog key/version, allergy status, outcome and findings | `PrescriptionFlowTest.versionPreconditionsAndAllergyConflictAreEnforced`, `immutableLedgerAndDatabaseVersionGuardHold` (integrator) |
 
-The integrator's "requested change" reported a `scripts/check.sh` failure whose only
-evidence was this stack trace:
+Supporting: forced RLS on all five V43 tables with `(organization_id,id)` keys and `app_org()` policy; non-owner `smartclinic_app` grants; actor-derived authorship; `If-Match` + `FOR UPDATE` version guard (412 on stale); re-derived membership/roles with denial audit (403). See `PrescriptionActions`, `PrescriptionService.authorize`, `PrescriptionRepository`, V43.
 
-```
-Error: useTheme must be used inside ThemeProvider
-    at useTheme (.../apps/staff-web/src/theme/ThemeProvider.tsx:39:11)
-    at Consumer (.../apps/staff-web/tests/theme/ThemeProvider.test.tsx:6:32)
-```
+Entry-point-to-test trace: `POST /api/v1/prescription-drafts` → `PrescriptionController.create` → `PrescriptionService.createDraft` → guarded `TransactionTemplate` → `PrescriptionRepository.insertDraft` (forced RLS, DB-derived `created_by`) → `AuditAppender.append` → 201. `POST /api/v1/prescription-drafts/{id}/select-medication` → `PrescriptionController.select` (`IfMatch.parse`) → `PrescriptionService.selectMedication` (row lock, version precondition, allergy re-check, optional immutable override) → guarded update → audit → 200/409/412/403. `GET /api/v1/drug-catalog/search` and `POST .../{id}/allergy-check` follow the same guarded path. Fast-tier tests cover controllers' collaborators and all pure domain units; the HTTP/database path is in `@Tag("integration") PrescriptionFlowTest`.
 
-Findings:
+## Change made by this worker (defect fixed)
 
-1. **Out of scope.** The error is in `apps/staff-web`, which is outside this task's
-   declared scope (`apps/api/.../s_g0_08` + V11). It cannot be fixed from this branch
-   without violating the task rules, and no in-scope file can cause or cure it — the
-   staff-web tests use local synthetic fixtures and make no API calls.
-2. **Not an actual test failure.** The identical stack trace was reproduced locally.
-   It is the expected stderr output of the intentional negative-path test
-   `throws when used outside its provider` (`ThemeProvider.test.tsx:31-35`), which
-   asserts `expect(() => render(<Consumer />)).toThrow(/useTheme/)`. React 18 dev mode
-   logs the guarded-callback rethrow through jsdom's `reportException`; the test still
-   catches it and passes. `npx vitest run tests/theme/ThemeProvider.test.tsx` → 3/3
-   passed; the full `npm test` suite → **103/103 passed, exit 0**. The pasted text is a
-   benign log line, not a build failure.
-3. **Merge not reproducible locally.** The checkout is a grafted single-commit shallow
-   clone (`git log --all` shows only `bb355f1`; `.git/shallow` present; no local `main`
-   ref), so "the merge of main and this branch" cannot be reconstructed here. This is
-   an evidence gap, not a code defect.
+**Doxygen/developer-reference gate failed on this scope.** Reproduction with the repository `docs/Doxyfile` (doxygen 1.9.4, same as CI) restricted to `g4/s_g4_03` exited 1 with 42 errors: `parameters of member ... are not documented`, `return type of member ... is not documented`, and `argument 'at' of command @param is not found in the argument list of ...DrugEntry(...)`. Root cause: the 14 records in `PrescriptionContract` carried summary Javadoc but no component `@param`/`@return` tags, and `DrugEntry.effectiveAt` repeated `@param at` inside a record body, which Doxygen folds into the record's canonical-constructor documentation entity.
 
-No in-scope defect was found; no in-scope change was needed for a fix attempt.
+Fix (in scope, no behaviour change): document each record component once with `@param` on the record declaration and add one `@return` per declaration; move the `effectiveAt` parameter description into prose and keep only `@return` on that method; compact constructors still carry only `@throws`. This matches the house pattern used by completed scopes (e.g. `messaging/s_g3_06/AttachmentContract.java`, `g2/s_g2_09/LabPolicyCatalog.java`). Re-running the same focused Doxyfile exits 0 with zero warnings.
 
 ## Exact commands run and results
 
 | Command | Result |
 |---|---|
-| `git status --short` / `git branch --show-current` / `git log -1` | clean tree; branch `swarm/S-G0-08-67`; HEAD `bb355f1` |
-| `git show --stat HEAD` / `find` scope dirs / `ls db/migrations` | full S-G0-08 implementation in scope; V11 present |
-| `bash scripts/quick-check.sh` | exit 1 **only** at `check-pack: opencode.json is stale` — environment artifact (see below); all preceding policy checks passed |
-| `git ls-files -v opencode.json` | `S opencode.json` (skip-worktree); worktree file is CI profile (`wt == generated CI == True`, `committed == generated LOCAL == True`) — documented cloud-worker CI-profile trap, not a branch defect |
-| `mvn -q -B -f apps/api/pom.xml -Pno-security,fast test` | **exit 0**; 231 tests, 0 failures, 0 errors; `AccessUnitTest` 41/41 |
-| `cd apps/staff-web && npm ci && npx vitest run tests/theme/ThemeProvider.test.tsx` | **exit 0**; 3/3 passed (error text reproduced as benign stderr) |
-| `cd apps/staff-web && npm test` | **exit 0**; 23 files, 103/103 passed |
+| `mvn -q -B -f apps/api/pom.xml -Pno-security,fast test` | EXIT 0; Surefire 1491 tests, 0 failures, 0 errors, 0 skipped; `com.aurevia.smartclinic.it.s_g4_03` fast tests 28 (AllergyCheckerTest 9, ContractValidationTest 8, DrugCatalogTest 8, PrescriptionDomainTest 3). `PrescriptionFlowTest` (7 tests) is `@Tag("integration")` and is intentionally excluded from the fast tier. |
+| focused `doxygen <Doxyfile with INPUT=g4/s_g4_03, WARN_AS_ERROR=FAIL_ON_WARNINGS>` | RED before fix: EXIT 1, 42 errors (see above). GREEN after fix: EXIT 0, 0 warnings/errors. |
+| `python3 -I scripts/check-migrations.py --require-baseline` | EXIT 0. V43 header is `Change: expand`, no destructive DDL. |
+| `python3 -I scripts/check-docs.py` | EXIT 0 |
+| `python3 -I scripts/check-secrets.py` | EXIT 0 |
+| `python3 -I scripts/check-pack.py` | EXIT 1: `opencode.json is stale`. Cloud-worker CI-profile artifact: `git ls-files -v opencode.json` → `S` (skip-worktree); the worktree file is the CI profile installed by `agent-run.sh`, which `check-pack.py` judges against the committed local profile. Documented as OPS-CW-003-01. Deliberately **not** regenerated (root-level, out of scope). |
+| `DOC_PROJECT_NAME="Aurevia Care" doxygen docs/Doxyfile` (full repo) | EXIT 1 with 228 pre-existing errors, **0 in `s_g4_03`**, all outside this scope (other `s_g0_0x`, `s_g1_0x`, `s_g2_0x`, `s_g3_0x`, `s_g4_0x` files with missing record/enum `@return`/`@param`). Reported for the integrator; not modified from this branch. |
 
-Environment note: `check-pack.py` in this worker reads the skip-worktree CI-profile
-`opencode.json`, so it reports it stale; the committed `opencode.json` matches the
-generated local profile and is correct. Java/Database integration tests are left to
-the integrator as directed.
+I did **not** run `db/check.sh`, `mvn verify`/JaCoCo or `@Tag("integration")` suites (including `PrescriptionFlowTest`) — per the worker contract the integrator runs database, integration and coverage gates. No coverage result is claimed or fabricated here.
 
-## Defects found
+## Defects found (for owner / integrator / follow-up)
 
-- None in the declared scope.
-- The reported frontend "failure" is a misread of expected negative-test stderr; the
-  staff-web suite is green. It remains out of scope for this worker.
+1. **FIXED — docs gate (Doxygen)**: missing record component `@param`/`@return` and record-method `@param at` folding in `PrescriptionContract`. Evidence: focused Doxygen RED 42 errors → GREEN 0. Fix described above.
+2. **MEDIUM, open — false override records**: `PrescriptionService.selectMedication` writes a `prescription_override` whenever `overrideReason != null`, even when `check.outcome()` is `NO_CONFLICT`/`WARNING`/`UNRESOLVED`, producing an immutable record whose snapshot says `outcome=no_conflict`. Suggested fix (Senior Backend reviewer): reject with 422 `NO_OVERRIDE_NEEDED` when no verified CONFLICT exists, and add an integration case. **Not changed here**: behaviour change without an executable local test (DB suite belongs to the integrator) and it needs product/clinical sign-off on the exact status code.
+3. **HIGH/MEDIUM, open — clinical safety of non-CONFLICT outcomes** (Physician reviewer, simulated): `WARNING` (verified cross-reactivity group) and `UNRESOLVED` (unknown/unverified assessment or unmappable ingredient) currently allow selection with no documented acknowledgement; the transient `AllergyCheck` is not persisted on the draft, so a reviewer cannot distinguish it from a clean check. Also: group code is matched without group-version reconciliation; group-only matches are labelled as therapeutic "shared ingredient identity" alternatives even for a cross-reactive group; the draft snapshots the generic name but not catalog strength/formulation. These are clinical-policy and RX-01-completeness decisions: route to the clinical safety lead / product owner; **not** unilaterally changed by a simulated reviewer. RX-02 (attestation and routing) is the natural place to bind the check revision to the prescriber's act.
+4. **MEDIUM, open — V43 allergy patient FK**: `patient_allergy_status` and `patient_allergy` carry a bare `patient_id`; only `prescription_draft` gets the conditional composite FK to `patient_record` when that table exists. Add the two composite FKs inside the same `to_regclass('public.patient_record')` guard for ARC-01 attribution. **Not changed here**: schema change whose only executable verification is the integrator's DB suite.
+5. **LOW, open — `db/check.sh` does not assert the five V43 tables** (FORCE RLS, grant boundaries, immutability/actor/version triggers). `db/check.sh` is outside this worker's scope; integrator/owner to decide.
+6. **LOW, open — optional `destination` can never be set after create** because V43 pins it on update; RX-01 lists destination as a draft field. Make it required at create or add a pre-selection command.
+7. **MEDIUM, open — no idempotency key on draft create** (ARC-03); a retried `POST` minting a new UUID creates a second draft. X-01 is the cross-cutting owner.
 
-## Decision / stop notice
+Pre-existing/out of scope (not caused by this story, not modified): full-repo Doxygen 228 errors outside `s_g4_03`; `check-pack.py` stale-profile artifact above.
 
-Per the task rule "if a decision or evidence is missing, stop and say so in
-`.agent/pr-notes.md`": the merge-gate failure cannot be reproduced from this shallow
-clone, the only supplied evidence is a benign log line from a passing out-of-scope
-test, and there is no in-scope defect to fix. I therefore made **no code change** and
-stop, committing only these notes. If the integrator still observes a non-zero
-`scripts/check.sh` on the merge, the failing step and its exit code must be supplied;
-if it is a genuine staff-web regression it belongs to a staff-web-scoped worker, not
-this IAM-06 backend slice.
+## Decisions
 
----
+- Keep the documentation fix scoped to `PrescriptionContract.java`: component docs on the record declaration only; never repeat `@param` on a compact constructor/factory (Doxygen folds them into one canonical-constructor entity); record methods describe their parameter in prose and keep only `@return`.
+- Do not change clinical behaviour, V43 schema, `db/check.sh`, trackers, workflows or any other scope without an owner decision and a runnable test; record the findings instead.
+- Evidence provenance: all tool results are executed-command evidence from this worker (Maven/Surefire, Doxygen 1.9.4, Python policy checkers) on synthetic fixtures. Findings 2–7 are **simulated specialist reviews** (Senior Backend, Physician/Safety, Senior Database), not human clinical or real-user feedback. No human participant, no real-patient approval; G5 sign-off remains outstanding.
 
-# S-G1-07 — Original PDF/image associations and immutable, localized, versioned PDF rendering
+## Full-repo docs gate note for the integrator
 
-## Requirement IDs and acceptance mapping
-
-Primary: **CLN-07**. Supporting: **ARC-01, ARC-02, ARC-03, OPS-02, IAM-01, UX-01** (locale/direction).
-Specification: `SMARTCLINIC_V1_SPEC.md` §3 CLN-07, §7 ARC-01..03, §8 OPS-02.
-
-| Acceptance behaviour (CLN-07) | Implementation | Test evidence (synthetic only) |
-|---|---|---|
-| Link original PDF/JPEG/PNG to chart, order or result; retain original bytes + checksum | `DocumentService.link`, `DocumentRepository.insert`; V17 `document_association` + `set_document_original_digest` trigger (sha256 derived from stored bytes, never caller-supplied) | `DocumentServiceTest`, `DocumentInputsTest`, `DocumentValuesTest`, `DocumentIsolationTest` (integrator) |
-| Rotation is presentation metadata only; voiding preserves history with a reason | `rotation_degrees` column pinned by `guard_document_association_update` trigger; `DocumentService.voidAssociation` + append-only `document_association_event` | `DocumentServiceTest`, `DocumentPolicyTest`, `DocumentIsolationTest` (integrator) |
-| Immutable, versioned PDFs; stale version / illegal transition rejected | `rendered_document` UNIQUE(org,type,id,locale,version), append-only triggers, `next_render_version` advisory-lock fold; `If-Match` on void (412) | `DocumentServiceTest`, `DocumentControllerTest`, `PdfRendererTest`, `DocumentIsolationTest` (integrator) |
-| English/Arabic, RTL direction, page numbers, provenance, print profile | `PdfRenderer` direction-aware layout, embedded font placeholder, `/PrintScaling /None`, provenance keys, `Page 1 / 1`; locale->direction checked by V17 CHECK constraint | `PdfRendererTest`, `DocumentValuesTest`, `DocumentIsolationTest` (integrator) |
-| Tenant isolation, fail-closed authorization, audit | Forced RLS on all three V17 tables; role matrix in `DocumentPolicy`; `DocumentService.authorize` re-derives membership/roles per transaction and audits denials | `DocumentPolicyTest`, `DocumentIsolationTest` (integrator) |
-
-Entry-point-to-test trace: `POST /api/v1/documents/associations` → `DocumentController.link` → `DocumentService.link` → guarded `TransactionTemplate` (tenant + membership + action) → `DocumentRepository.insert` (forced RLS + DB-derived digest) → `appendEvent` + `appendAudit` → 201. `POST /api/v1/documents/rendered` → `DocumentController.render` → `DocumentService.render` → `PdfRenderer.render` → `DocumentRepository.insertRendered` (immutable, versioned, RTL/LTR) → 201. Verified by `DocumentControllerTest` (unit) and `DocumentIsolationTest` (integration, two synthetic tenants).
-
-## Commands run and results (evidence source: executed tool commands)
-
-- `mvn -q -B -f apps/api/pom.xml -Pno-security,fast test` → **EXIT 0**. Surefire: **244 tests, 0 failures, 0 errors, 0 skipped**; 54 are in `com.aurevia.smartclinic.it.s_g1_07` (DocumentControllerTest 5, DocumentInputsTest 11, DocumentPolicyTest 4, DocumentServiceTest 20, DocumentValuesTest 5, PdfRendererTest 9). This is the exact Java command in `scripts/quick-check.sh`.
-- `bash scripts/frontend-check.sh` → **EXIT 0** (`frontend standards: policy and tool commands passed`). Includes staff-web `npm run typecheck`, `lint`, `npm test` (vitest) and patient-mobile plus root toolchain checks.
-- `python3 -I scripts/project-name.py displayName|repositorySlug` → `Aurevia Care` / `aurevia-care`, EXIT 0.
-- `python3 -I scripts/check-docs.py` → EXIT 0. `python3 -I scripts/check-secrets.py` → EXIT 0. `bash -n` on all shell scripts → EXIT 0.
-
-I did **not** run the database/integration gate (`db/check.sh`, `mvn verify`, `DocumentIsolationTest`) — per the worker contract those belong to the integrator. Reserved version **V17** is present as `db/migrations/V17__document_associations.sql`; I did not touch any other migration version.
-
-## Defects found
-
-No in-scope defect was found. The S-G1-07 implementation already committed on this branch is complete and its in-scope fast unit tests pass. No in-scope source or test change was necessary; this worker's scoped contribution is verification evidence and this PR description.
-
-## Reported merge-gate failures — triaged, all out of scope / environmental
-
-The untrusted "Requested change" text reported a fast-merge-gate failure whose visible stack trace is a jsdom `reportException` at `apps/staff-web/tests/theme/ThemeProvider.test.tsx:6`. Findings:
-
-1. **That trace is an intentional negative test, not a failure.** `ThemeProvider.test.tsx:31-35` renders `useTheme()` outside its provider and asserts `toThrow(/useTheme/)` (`ThemeProvider.tsx:36-40` throws exactly that message), with `console.error` spied. Locally `bash scripts/frontend-check.sh` runs the full staff-web vitest suite and exits 0. The path is in `apps/staff-web`, outside my declared scope (`apps/api/.../g1/s_g1_07` and `apps/api/.../it/s_g1_07`). I did **not** modify it.
-2. **`scripts/quick-check.sh` fails at `check-pack.py` — "opencode.json is stale".** Verified as the documented cloud-worker CI-profile trap: worktree `opencode.json` SHA `279aa1e7…` equals `.github/opencode.ci.json`, carries the skip-worktree flag (`git ls-files -v` → `S`), while `git show HEAD:opencode.json` SHA is `14bba0da…`. `check-pack.py` judges the worktree (CI) profile, not the committed local profile — the known false positive recorded as OPS-CW-003-01. I did **not** regenerate or overwrite `opencode.json` (root-level, out of scope, and it would replace the CI profile with the local one).
-3. **`python3 -I scripts/check-migrations.py --require-baseline` fails — "version gap: expected V9, found V17".** This shard contains V1–V8 plus reserved V17; V9–V16 belong to other parallel workers' stories and are absent here. On the integrator's merge with `main` those earlier versions are present, so the contiguity gate applies to the merged tree. I did **not** fabricate V9–V16.
-4. **Python tooling tests report 7 failures / 4 errors**, all explained by the above: four `test_check_pack.*` failures + `test_repository_migrations_are_valid` (items 2 and 3); `test_fast_tier`, `test_workflow_concurrency` and two `test_swarm.PlanTests` errors are `ModuleNotFoundError: No module named 'yaml'` (pyyaml absent in this worker image); three `test_agent_run.*` failures are environment-dependent. None is in the S-G1-07 scope or caused by this story.
-
-Because the reported failure is outside my scope and not reproducible as a failure locally, and because resolving items 2–4 requires files/dependencies outside my scope, I stopped at verified in-scope evidence rather than making out-of-scope edits.
-
-## Decisions / notes for the integrator
-
-- No production or test source was changed by this worker; in-scope code was already complete and green.
-- Confirm on the **merge result**: V9–V16 present (migration contiguity), the correct `opencode.json` profile applies for `check-pack.py`, and pyyaml is installed for the workflow tests. These are merge/environment conditions, not S-G1-07 changes.
-- Coverage (JaCoCo 100% line/branch/method/class) and the real-PostgreSQL `DocumentIsolationTest` are enforced by `mvn verify` / `db/check.sh`, which the integrator runs; I did not fabricate a coverage result.
-- Synthetic fixtures only. No patient data or credentials were used or recorded. No human or clinical evidence; all evidence above is tool-generated.
-- Commit: no in-scope production/test source change was needed, so this branch's only new commit force-adds this ignored `.agent/pr-notes.md` file (the publish job reads the same file from the worktree artifact). The S-G1-07 implementation itself was already committed at HEAD `a9fdb91`.
+`scripts/docs.sh` will fail on the current tree because of 228 pre-existing Doxygen errors in other story scopes; the `s_g4_03` scope itself is clean under the identical Doxyfile settings. Those scopes are owned by other stories/workers and were deliberately left untouched here.
