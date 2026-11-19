@@ -16,6 +16,7 @@ import java.util.function.Function;
  * @param minNoticeMinutes minimum notice before the slot start
  * @param maxAdvanceDays   maximum distance between today and the slot start
  * @param holdMinutes      lifetime of a temporary hold
+ * @return this record
  */
 public record BookingRules(long minNoticeMinutes, int maxAdvanceDays, int holdMinutes) {
 
