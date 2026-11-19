@@ -26,7 +26,7 @@ public class StaffService {
 
     private static final Pattern SUBJECT = Pattern.compile("[a-z0-9][a-z0-9._-]{1,63}");
     private static final int MAX_DISPLAY_NAME = 200;
-    private static final List<String> ROLES = List.of("tenant_admin", "reception");
+    private static final List<String> ROLES = List.of("tenant_admin", "reception", "privacy_auditor");
 
     private final StaffRepository repository;
     private final ActionPolicy policy;
