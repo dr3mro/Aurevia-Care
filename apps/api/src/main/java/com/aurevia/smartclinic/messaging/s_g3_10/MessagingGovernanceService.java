@@ -87,14 +87,17 @@ public class MessagingGovernanceService {
      * messaging and future attachment access" lives in
      * {@code requireMessagingAllowed} and {@code requireAttachmentAccess}, which re-check the
      * connection state and derive the outcome server-side. A caller cannot
-     * supply an outcome; failures append their own denial facts.</p>
+     * supply an outcome; failures append their own denial facts. Only workflow
+     * actions can be recorded here; governance commands are performed and
+     * audited solely by their dedicated endpoints, so they cannot be
+     * self-reported as successful through this recorder.</p>
      *
      * @param request validated action command
      * @return the appended audit fact
      * @throws ApiException on invalid input, missing context or denial
      */
     public AuditEvent recordAction(RecordActionRequest request) {
-        AuditAction action = MessagingGovernanceInputs.action(request.action());
+        AuditAction action = MessagingGovernanceInputs.workflowAction(request.action());
         String resourceId = MessagingGovernanceInputs.uuid(request.resourceId(), "resourceId");
         String unitId = MessagingGovernanceInputs.text(request.unitId(), "unitId", MAX_SCOPE_LENGTH);
         TenantContext context = requireContext();
