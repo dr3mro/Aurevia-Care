@@ -81,14 +81,16 @@ public class ConversationService {
         String topic = ConversationInputs.topic(request.topic());
         String id = ConversationInputs.newId();
         return execute(ConversationActions.CONVERSATION_OPEN, id, caller -> {
+            // Check domain authorization before any existence lookup so a
+            // patient cannot probe which patients or links exist in the tenant.
+            if (caller.patient() && !Objects.equals(caller.subject(), patientSubject)) {
+                throw notFound("conversation not found");
+            }
             if (!repository.patientExists(patientId)) {
                 throw notFound("patient not found");
             }
             if (!repository.patientLinkActive(patientSubject, patientId)) {
                 throw notFound("verified patient link not found");
-            }
-            if (caller.patient() && !Objects.equals(caller.subject(), patientSubject)) {
-                throw forbidden("a patient may only open their own conversation");
             }
             if (!caller.patient() && !actions.allowsUnit(unit, caller.role())) {
                 throw forbidden("the caller is not eligible for this care unit");
@@ -122,8 +124,10 @@ public class ConversationService {
             requireAccess(caller, current);
             requireVersion(current, expectedVersion);
             requireWritable(current);
-            if (caller.patient()
-                    && !repository.patientLinkActive(current.patientSubject(), current.patientId())) {
+            // Every reply is new messaging, from either side. MSG-02 reopens a
+            // resolved thread only while the verified relationship still permits
+            // messaging, and MSG-07 stops messaging entirely once it is revoked.
+            if (!repository.patientLinkActive(current.patientSubject(), current.patientId())) {
                 throw notFound("verified patient link not found");
             }
             SenderKind kind = caller.patient() ? SenderKind.PATIENT : SenderKind.STAFF;

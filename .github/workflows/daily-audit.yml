@@ -1,0 +1,82 @@
+name: Daily audit
+# Once a day a read-only worker audits the whole repo and writes findings as JSON.
+# A separate trusted job validates them and appends new tasks to TODO.md on main
+# for the swarm to take. The audit worker never holds a GitHub token.
+on:
+  schedule:
+    - cron: '17 7 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: daily-audit
+  cancel-in-progress: false
+jobs:
+  prep:
+    name: Prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      image: ${{ steps.image.outputs.image }}
+    steps:
+      - id: image
+        run: echo "image=ghcr.io/${GITHUB_REPOSITORY,,}-agent-1:latest" >> "$GITHUB_OUTPUT"
+  audit:
+    name: Audit the repo
+    needs: prep
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    container:
+      image: ${{ needs.prep.outputs.image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    permissions:
+      contents: read
+      packages: read
+    defaults:
+      run:
+        shell: bash
+    env:
+      MODEL: opencode-go/hy4-flash-free
+      SWARM: '1'
+      AGENT_TIMEOUT: 100m
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Run the audit (no GitHub token in this step)
+        env:
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY_1 || secrets.OPENCODE_API_KEY }}
+        run: scripts/agent-run.sh audit
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: audit-findings
+          path: .agent/audit-findings.json
+          if-no-files-found: ignore
+          retention-days: 1
+  append:
+    name: Add findings to TODO.md
+    needs: audit
+    if: always() && needs.audit.result != 'skipped'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@v8
+        continue-on-error: true
+        with:
+          name: audit-findings
+          path: findings
+      - name: Validate the findings and append new tasks
+        env:
+          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
+        run: python3 -I scripts/swarm.py add-audit-tasks --findings findings/audit-findings.json

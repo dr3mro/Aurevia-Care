@@ -5,6 +5,7 @@ import {
   EMPTY_REPLY_MESSAGE,
   markRead,
   MESSAGING_NOT_PERMITTED_MESSAGE,
+  senderLabel,
   unreadCount,
   unreadTotal,
 } from './domain';
@@ -16,7 +17,7 @@ function message(id: string, sequence: number, senderRole: SenderRole): Message 
   return {
     id,
     conversationId: 'conv-1',
-    senderId: senderRole === 'unit' ? 'unit-a' : 'patient-a',
+    senderId: senderRole === 'staff' ? 'unit-a' : 'patient-a',
     senderRole,
     body: `message ${sequence}`,
     sentAt: SENT_AT,
@@ -51,7 +52,7 @@ function reply(): ReplyInput {
 describe('MSG-02 unread derivation', () => {
   it('counts only unread unit messages beyond the read watermark', () => {
     const withUnread = conversation({
-      messages: [message('m1', 1, 'patient'), message('m2', 2, 'unit'), message('m3', 3, 'unit')],
+      messages: [message('m1', 1, 'patient'), message('m2', 2, 'staff'), message('m3', 3, 'staff')],
       lastReadSequence: 2,
     });
     expect(unreadCount(withUnread)).toBe(1);
@@ -62,21 +63,38 @@ describe('MSG-02 unread derivation', () => {
     expect(unreadCount(conversation())).toBe(0);
   });
 
+  it('uses the server senderKind wire value for unit-authored messages', () => {
+    // The API serializes unit staff as "staff" (ConversationContract.SenderKind.STAFF)
+    // and computes unread_count with sender_kind = 'staff' (V33 inbox query).
+    const fromServer = conversation({
+      messages: [message('m1', 1, 'staff'), message('m2', 2, 'patient')],
+      lastReadSequence: 0,
+    });
+    expect(unreadCount(fromServer)).toBe(1);
+  });
+
   it('sums unread counts across an inbox', () => {
     expect(unreadTotal([])).toBe(0);
-    const first = conversation({ messages: [message('m1', 1, 'unit')] });
+    const first = conversation({ messages: [message('m1', 1, 'staff')] });
     const second = conversation({
       id: 'conv-2',
-      messages: [message('m2', 1, 'patient'), message('m3', 2, 'unit')],
+      messages: [message('m2', 1, 'patient'), message('m3', 2, 'staff')],
       lastReadSequence: 2,
     });
     expect(unreadTotal([first, second])).toBe(1);
   });
 });
 
+describe('MSG-02 sender labels', () => {
+  it('maps the staff wire kind to a patient-facing unit label', () => {
+    expect(senderLabel('staff')).toBe('unit');
+    expect(senderLabel('patient')).toBe('patient');
+  });
+});
+
 describe('MSG-02 read watermark', () => {
   it('advances to the newest message without mutating the input', () => {
-    const original = conversation({ messages: [message('m1', 1, 'unit'), message('m2', 4, 'unit')] });
+    const original = conversation({ messages: [message('m1', 1, 'staff'), message('m2', 4, 'staff')] });
     const updated = markRead(original);
     expect(updated.lastReadSequence).toBe(4);
     expect(original.lastReadSequence).toBe(0);
@@ -84,7 +102,7 @@ describe('MSG-02 read watermark', () => {
   });
 
   it('never moves the watermark backwards and handles an empty thread', () => {
-    expect(markRead(conversation({ lastReadSequence: 9, messages: [message('m1', 2, 'unit')] }))
+    expect(markRead(conversation({ lastReadSequence: 9, messages: [message('m1', 2, 'staff')] }))
       .lastReadSequence).toBe(9);
     expect(markRead(conversation()).lastReadSequence).toBe(0);
   });
@@ -108,7 +126,7 @@ describe('MSG-02 apply reply', () => {
   });
 
   it('appends a patient message and reopens a resolved thread', () => {
-    const original = conversation({ state: 'resolved', messages: [message('m1', 3, 'unit')] });
+    const original = conversation({ state: 'resolved', messages: [message('m1', 3, 'staff')] });
     const updated = applyReply(original, reply());
     expect(updated.state).toBe('awaiting_staff');
     expect(updated.messages).toHaveLength(2);

@@ -34,14 +34,10 @@ public final class ServiceProfileContract {
         private final String wire;
 
         /**
-
-
-         * @param wire
-
-
+         * Bind the stable wire key for this status.
+         *
+         * @param wire lowercase key used in JSON and persisted values
          */
-
-
         ProfileStatus(String wire) {
             this.wire = wire;
         }
@@ -86,14 +82,10 @@ public final class ServiceProfileContract {
         private final String wire;
 
         /**
-
-
-         * @param wire
-
-
+         * Bind the stable wire key for this state.
+         *
+         * @param wire lowercase key used in JSON and persisted values
          */
-
-
         WorkState(String wire) {
             this.wire = wire;
         }
@@ -170,8 +162,8 @@ public final class ServiceProfileContract {
     /**
      * Availability projection computed from service hours at one instant.
      *
-     *                       or {@code null} when open or when no windows exist
-     * @return the immutable projection
+     * @return the immutable projection; {@code nextHandlingAt} is {@code null}
+     *         when the unit is open or publishes no windows
      */
     public record ServiceAvailability(boolean open, Instant nextHandlingAt, String timeZone) {
     }

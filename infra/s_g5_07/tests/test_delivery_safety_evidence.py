@@ -663,5 +663,39 @@ class PolicyManifestTest(unittest.TestCase):
                 self.assertNotIn("-----BEGIN", text)
 
 
+class RelabelledRehearsalFixtureTest(unittest.TestCase):
+    """The canonical-gate negative control for the honesty rule.
+
+    A conforming synthetic rehearsal, relabelled only by changing ``kind`` to
+    ``measured_deployment`` and giving it a neutral ``source``, must still be
+    rejected: without run provenance it is not final evidence. This fixture is
+    executed by ``check.sh`` as a gate-level complement to the unit checks.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.path = MODULE_PATH.parent / "fixtures" / "relabelled_violation_evidence.json"
+        cls.artifact = json.loads(cls.path.read_text(encoding="utf-8"))
+
+    def test_relabelled_rehearsal_fails_and_is_never_final(self):
+        report = dse.evaluate(self.artifact)
+        self.assertEqual(report["verdict"], "fail")
+        self.assertFalse(report["final_evidence"])
+        self.assertIn("provenance", failures(report))
+
+    def test_relabelling_is_the_only_breach(self):
+        # Every other control still conforms: the fixture proves that relabelling
+        # alone cannot promote a rehearsal, not that some other section is broken.
+        report = dse.evaluate(self.artifact)
+        other = [name for name in failures(report)
+                 if not name.startswith("provenance")]
+        self.assertEqual(other, [])
+
+    def test_relabelled_rehearsal_is_rejected_by_the_cli(self):
+        with contextlib.redirect_stdout(io.StringIO()):
+            code = dse.main([str(self.path)])
+        self.assertEqual(code, 1)
+
+
 if __name__ == "__main__":
     unittest.main()

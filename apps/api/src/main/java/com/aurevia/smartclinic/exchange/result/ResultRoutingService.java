@@ -343,6 +343,18 @@ public class ResultRoutingService {
                 throw new ApiException(422, "SUPERSEDES_NOT_ALLOWED",
                         "only a corrected result may supersede a prior version");
             }
+            // A repeated or reordered non-correction must resolve to the exact
+            // revision it already produced, not create a new version. Searching
+            // the whole lineage (not just the computed tip) is what prevents a
+            // duplicate final report after a correction has advanced the tip;
+            // a genuinely new finding still advances the lineage below.
+            Optional<ResultReport> replay = lineage.stream()
+                    .filter(stored -> sameContent(stored, identifiers, kind, effectiveAt, checksum))
+                    .findFirst();
+            if (replay.isPresent()) {
+                writeAudit(context, "XCH04_RESULT_REPLAY", RESOURCE_TYPE, replay.get().id(), "SUCCESS");
+                return new ImportOutcome(replay.get(), null);
+            }
             version = tip + 1;
         }
 
@@ -426,8 +438,9 @@ public class ResultRoutingService {
 
     private static boolean sameContent(ResultReport stored, ResultIdentifiers identifiers,
                                        ResultKind kind, Instant effectiveAt, String checksum) {
-        // The superseded version is already encoded in the version used as the
-        // lookup key, so the fingerprint compares only clinical payload fields.
+        // Version and supersession are lineage metadata, not clinical payload,
+        // so the fingerprint compares only fields that distinguish one finding
+        // from another - for both the whole-lineage scan and the version lookup.
         return stored.identifiers().equals(identifiers)
                 && stored.kind() == kind
                 && stored.effectiveAt().equals(effectiveAt)
@@ -488,7 +501,10 @@ public class ResultRoutingService {
     private static Instant instant(String value) {
         String text = code(value, "effectiveAt", MAX_FIELD);
         try {
-            return Instant.parse(text);
+            // PostgreSQL timestamptz keeps microseconds. Normalizing at the
+            // boundary keeps the stored value and the dedup fingerprint equal
+            // for a replay that carries sub-microsecond precision.
+            return Instant.parse(text).truncatedTo(java.time.temporal.ChronoUnit.MICROS);
         } catch (java.time.format.DateTimeParseException exception) {
             throw new ApiException(422, "INVALID_INPUT", "effectiveAt must be an ISO-8601 instant");
         }
