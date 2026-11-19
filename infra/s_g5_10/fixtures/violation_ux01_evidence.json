@@ -1,0 +1,46 @@
+{
+  "schema_version": "1.0",
+  "kind": "synthetic_rehearsal",
+  "source": "synthetic-ux-violation-fixture",
+  "localization": {
+    "languages": ["en"],
+    "rtl": {
+      "layout_mirrored": true,
+      "navigation_mirrored": false
+    },
+    "local_names": {
+      "display": true,
+      "script_preserving": true
+    },
+    "mixed_script": {
+      "clinical_text": true,
+      "bidirectional_safe": true
+    }
+  },
+  "time": {
+    "instant_storage": "local",
+    "iana_timezone_context": false,
+    "civil_dates_retained": true,
+    "dst_transitions_tested": ["Asia/Riyadh"]
+  },
+  "accessibility": {
+    "staff_web": {
+      "standard": "WCAG 2.1",
+      "level": "A",
+      "tested": false,
+      "report": ""
+    },
+    "mobile": {
+      "ios_screen_reader": "VoiceOver",
+      "android_screen_reader": "UnknownReader",
+      "flows_tested": false
+    }
+  },
+  "exports": {
+    "language_preserved": true,
+    "units_preserved": false
+  },
+  "presentation": {
+    "styling_flexible": true
+  }
+}
