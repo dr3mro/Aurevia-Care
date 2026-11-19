@@ -1,67 +1,85 @@
-# S-G2-02 — XCH-02: separate workflow, transmission and clinical review states with human acknowledgment
+# X-04 — Generated OpenAPI clients and server-side authorization for every command (PRD-06)
 
-## Scope decision (important)
+This is attempt 3 of X-04. The prior attempt delivered the same behavior under the
+story-ID paths `contracts/x_04` and `com.aurevia.smartclinic.api.x_04`. This branch
+delivers it at the canonical **business-domain** paths named by the tracker scope:
+`contracts/openapi` and `com.aurevia.smartclinic.api.authorization`. The old paths
+are not retained, so there is exactly one command catalog and one authorization
+gate. No behavior was duplicated.
 
-The story text inside the dispatch markers names `g2/s_g2_02` / `it/s_g2_02` and calls that the scope. That text is untrusted story description and conflicts with both the authoritative `TODO.md` entry (scope `apps/api/src/main/java/com/aurevia/smartclinic/exchange/task`, `apps/api/src/test/java/com/aurevia/smartclinic/it/exchangetask`) and AGENTS.md ("Name Java packages by business domain and operation, never by story, task, gate or ticket ID"). A repository-wide refactor recorded in `.agent/pr-notes/REFACTOR-PACKAGES-20261119-201815.md` already moved `g2/s_g2_02` → `exchange/task` and its tests → `it/exchangetask`. All work here stays in the authoritative business-domain scope and in the reserved migration `V20__exchange_task_states.sql` (unchanged this attempt).
+## Requirement and acceptance mapping
 
-## Requirement IDs and acceptance mapping
-
-| XCH-02 clause | Implementation (pre-existing + this attempt) | Executed evidence |
+| Requirement | Acceptance implemented | Entry point → test |
 |---|---|---|
-| Separate workflow `requested → accepted → processing → completed` with `rejected` / `cancelled` branches | `WorkflowState`, `ExchangeCommand`, `ExchangeStateMachine.next`, V20 `workflow_state` CHECK and update guard | `WorkflowStateTest`, `ExchangeStateMachineTest`, `ExchangeTaskServiceTest`, `ExchangeTaskIsolationTest.workflowPathRejectsReasonsAndIllegalTransitions` (DB, integrator) |
-| Separate transmission `pending → sent → delivered` / `failed` | `TransmissionState`, `SEND`/`DELIVER`/`FAIL`, V20 `transmission_state` CHECK and guard | `TransmissionStateTest`, `ExchangeTaskServiceTest.transmissionAcknowledgmentNeverMutatesClinicalReview`, `ExchangeTaskIsolationTest.transmissionAcknowledgmentNeverClosesAClinicalTask` (DB, integrator) |
-| Separate clinical review `unreviewed → acknowledged → action_pending → resolved` | `ClinicalReviewState`, `ACKNOWLEDGE`/`REQUEST_ACTION`/`RESOLVE`, V20 guard | `ClinicalReviewStateTest`, `ExchangeStateMachineTest.reviewChainRequiresPriorHumanAcknowledgment`, `ExchangeTaskIsolationTest.reviewChainRequiresAcknowledgmentAndIsAppendOnly` (DB, integrator) |
-| Acknowledgment by an authorized human with timestamp and revision; a transmission acknowledgment cannot close a clinical task | Clinician-only `ExchangeActionPolicy`; actor derived by V20 `xch02_actor_id()` from `app.actor`; clock/revision bound in `ExchangeStateMachine`; one-channel-per-update DB guard | `ExchangeActionPolicyTest`, `ExchangeTaskServiceTest.acknowledgeBindsClockAndRevisionAndNeverTrustsTheCallerForActor`, `ExchangeTaskIsolationTest.humanAcknowledgmentBindsContextActorClockAndRevision` (DB, integrator) |
-| Audit, append-only ledger, version precondition, tenant concealment, revocation on next request | `IfMatch`, CAS in `ExchangeTaskRepository.updateState`, forced RLS in V20, transactional `AuditAppender`, immutable transition trigger | `ExchangeTaskControllerTest`, `ExchangeTaskServiceTest`, `ExchangeTaskIsolationTest` (DB, integrator) |
-| **This attempt:** a reason is evidence of a workflow decision only and cannot be injected into a transmission or clinical-review event | `ExchangeTaskService.execute` computes `eventReason` only for the `WORKFLOW` dimension | New `ExchangeTaskServiceTest.clinicalReviewIgnoresCallerReasonInBothStateAndLedger` (red → green) and `transmissionIgnoresCallerReasonInBothStateAndLedger` (symmetric guard) |
+| PRD-06 | The generated client has no role/permission/scope argument; authority is re-derived server-side from the policy that owns each action. No diagnosis, treatment or release decision is derived here. | `CommandClientGenerator.typeScriptClient` → `CommandClientGeneratorTest.everyCommandAppearsInContractAndClient`; gate Javadoc limits in `CommandAuthorization` |
+| IAM-01, IAM-02 | `CommandAuthorization.authorize` re-invokes `MembershipResolver` on every call; deactivation, role change, unavailable membership and unknown owner deny the next request; all malformed/unauthenticated paths record a denial before answering. | `CommandAuthorization.authorize` → `CommandAuthorizationTest.membershipAndRolesAreReResolvedOnEveryCall`, `clientClaimedAuthorityNeverGrantsAPermission`, `unauthenticatedIdentitiesAreDeniedAndRecorded`, `malformedAndUnknownCommandsAreRecordedDenials`, `unavailableMembershipAndUnregisteredOwnerFailClosed` |
+| ARC-03, ARC-04 | One catalog of 24 explicit POST commands drives contract + client; every generated function requires `Idempotency-Key` and `If-Match`; 401/403/422/428 contract responses; compare-and-set stays with the owning service. | `CommandCatalog.synthetic`, `CommandClientGenerator` → `CommandAuthorizationTest.catalogIsImmutableUniqueAndUnknownCommandsFailClosed`, `CommandClientGeneratorTest.manifestCarriesDeterministicChecksumsAndEveryCommand`, `pathParametersBecomeEncodedFunctionArguments` |
+| OPS-02 | Every outcome (allow and deny, including a failed sink) is handled with tenant, subject, correlation, action, stable reason, fresh roles and an injected-clock instant; a durable sink belongs to the owning service transaction. | `CommandAuthorization.record`, `InMemoryDecisionSink` → `allowedDecisionCarriesOps02FieldsAndSkipsDisallowedRoles`, `sinkFailureFailsClosedWithAMachineReadableError`, `decisionLedgerCopiesClearsAndRejectsNull` |
 
-Supporting IDs: ARC-01 (tenant-owned `(organization_id, id)` keys), ARC-02 (forced RLS, non-owner runtime role), ARC-03/04 (versioned routes, explicit POST commands, `If-Match` 428/412/422, 401/403/404/409), OPS-02 (transactional append-only audit), PRD-06 (server-side authorization), IAM-01/02 (membership re-derived per request).
+Reserved migration **V57 is intentionally unused**: `db/migrations` is outside the
+declared scope and the migration gate permits gaps. No route, controller, table or
+migration was added.
 
-## Files changed this attempt
+## Files (all inside the declared scope)
 
-- `apps/api/src/main/java/com/aurevia/smartclinic/exchange/task/ExchangeTaskService.java` — in `execute`, the event ledger now receives a caller reason only for workflow commands; transmission and clinical-review events record `null`. The task's own `reason` was already unchanged for those dimensions, so this removes a ledger/state integrity mismatch and prevents caller text from being attributed to a clinical acknowledgment.
-- `apps/api/src/test/java/com/aurevia/smartclinic/it/exchangetask/ExchangeTaskServiceTest.java` — new clinical-review regression test plus a symmetric transmission regression test.
-- `.agent/pr-notes/S-G2-02.md` — this file.
-- No other file, shared tracker, generated config or migration was edited.
+Moved (with edits) from `contracts/x_04` / `api/x_04`:
 
-The rest of the implementation and the 39 prior S-G2-02 unit tests plus 10 DB acceptance tests were already present on branch `swarm/S-G2-02-114` (base `4f9bbeb`), inherited from earlier attempts and the package refactor; this attempt brings the S-G2-02 unit total to 41.
+- `contracts/openapi/README.md`, `contracts/openapi/check.py`
+- `contracts/openapi/generated/{openapi.yaml,client.ts,manifest.json}`
+- `apps/api/src/main/java/com/aurevia/smartclinic/api/authorization/{CommandDefinition,CommandCatalog,CommandAuthorization,InMemoryDecisionSink,CommandClientGenerator}.java`
+- `apps/api/src/test/java/com/aurevia/smartclinic/api/authorization/{CommandAuthorizationTest,CommandClientGeneratorTest}.java`
 
-## Test-first sequence (tool evidence)
-
-1. Added `clinicalReviewIgnoresCallerReasonInBothStateAndLedger` with Mockito verification that `appendEvent(..., "EXCHANGE_ACKNOWLEDGE", "unreviewed", "acknowledged", null, 1)` is called after `execute(..., ACKNOWLEDGE, "caller supplied review note")`.
-2. `mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest=ExchangeTaskServiceTest test` → **exit 1**, `Tests run: 15, Failures: 1`. Mockito showed the real call carried `"caller supplied review note"` as the event reason. Genuine red state.
-3. Added the `eventReason` guard in `ExchangeTaskService.execute`.
-4. Same targeted command → **exit 0**, 15 tests, 0 failures/errors. Green.
-5. A bounded senior-backend specialist review found no blocking issue and suggested a symmetric transmission test (LOW). Added `transmissionIgnoresCallerReasonInBothStateAndLedger`; the final clean fast run has **16** `ExchangeTaskServiceTest` tests, 0 failures.
+The only remaining literal `x_04` strings in scope are traceability prose (README
+note, OpenAPI info title, digest-domain separators in generator/check.py); no Java
+package or generated FQN uses a story ID.
 
 ## Exact commands and results (evidence source: executed tool commands)
 
 | Command | Result |
 |---|---|
-| `mvn -q -B -f apps/api/pom.xml -Pno-security,fast clean test` | **exit 0**; Surefire: 143 test classes, **1644 tests, 0 failures, 0 errors, 0 skipped**. S-G2-02 unit classes: ClinicalReviewStateTest 2, ExchangeActionPolicyTest 4, ExchangeCommandTest 3, ExchangeStateMachineTest 6, ExchangeTaskControllerTest 5, ExchangeTaskServiceTest 16, TransmissionStateTest 2, WorkflowStateTest 3 = **41**. |
-| `mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest=ExchangeTaskServiceTest test` | red 15/1 failure → green 15/0 (before the symmetric guard was added); final clean run 16/0. |
-| `mvn -q -B -f apps/api/pom.xml -Pno-security,fast jacoco:report` + `jacoco.xml` inspection | `ExchangeTaskService` 0 missed of 504 instructions, 46 branches, 100 lines, 16 methods, 1 class (100%). All other `exchange/task` production classes also 0 missed; `ExchangeTaskRepository` is exercised by the DB suite run by the integrator. |
-| `mvn -q -B -f apps/api/pom.xml -Pno-security spotbugs:check` | **exit 0** after the change. |
-| `python3 -I scripts/check-migrations.py --require-baseline` | **exit 0** (V20 still `Change: expand`). |
-| `python3 -I scripts/check-docs.py`, `python3 -I scripts/check-secrets.py` | **exit 0** each. |
-| `git diff --check` | **exit 0**. |
-| `bash scripts/quick-check.sh` | **exit 1 at the first gate**: `check-pack: opencode.json is stale: run scripts/gen-opencode.py`. Pre-existing environment/pack drift, reproduced before any edit; it stops the script before Java tests, which were therefore run directly. |
-| `python3 -I -m unittest discover -s scripts/tests -q` | 164 tests, **6 failures + 4 errors**, all pre-existing and out of scope: 3 pack failures from the stale `opencode.json`, 1 Javadoc-link failure in `Qualifier.java` (another module), 2 `test_agent_run` failures (sandbox push/gh behaviour), 4 import errors because PyYAML is absent locally. |
-| `python3 -m unittest discover -s scripts/tests -p 'test_java_conventions.py' -v` | The only failure is `test_javadoc_links_are_fully_qualified` on `Qualifier.java`, outside this scope; no `exchange/task` file was flagged. |
+| `mvn -B -f apps/api/pom.xml -Pno-security,fast test` (tests moved first, production still old package) | **RED**, exit 1: `COMPILATION ERROR`, many `cannot find symbol … com.aurevia.smartclinic.api.authorization.CommandAuthorization/CommandCatalog/...` |
+| Same command after moving production classes and updating FQNs | **GREEN**, exit 0, `Tests run: 1685, Failures: 0, Errors: 0, Skipped: 0` (12 + 7 tests in the relocated package) |
+| `mvn -B -f apps/api/pom.xml -Pno-security,fast test -Dtest=CommandAuthorizationTest` after adding the three hardening tests | **RED**, exit 1: `Tests run: 14, Failures: 2, Errors: 1` — malformed inert claim gave `NullPointerException`, inactive-membership decision had `rolesUsed=[]`, sink failure gave `IllegalStateException` |
+| Same command after the three fixes | **GREEN**, exit 0, `Tests run: 14, Failures: 0, Errors: 0, Skipped: 0` |
+| Final `mvn -B -f apps/api/pom.xml -Pno-security,fast test` | exit 0, `Tests run: 1687, Failures: 0, Errors: 0, Skipped: 0`, BUILD SUCCESS |
+| `mvn -q -B -f apps/api/pom.xml -Pno-security,fast jacoco:report` + parse `apps/api/target/site/jacoco/jacoco.xml`, package `com/aurevia/smartclinic/api/authorization` | **100%**: INSTRUCTION 0/1545, BRANCH 0/96, LINE 0/251, METHOD 0/38, CLASS 0/9 missed/covered. Every class and nested record/interface is covered. |
+| `mvn -B -f apps/api/pom.xml -Pfast -DskipTests -Djacoco.skip=true -Dspotbugs.skip=false -Dowasp.skip=true compile spotbugs:check` | Exit 1 for **5 pre-existing** findings outside scope (messaging.acknowledgment, messaging.conversations, patient.identity, prescription.rx ×2); **zero findings in `api.authorization`**. Earlier no-compile invocations analysed stale classes; the fresh-compile run is authoritative. |
+| `java -cp apps/api/target/classes com.aurevia.smartclinic.api.authorization.CommandClientGenerator contracts/openapi/generated` then `--check` | Regenerated `client.ts` header and `manifest.json` generator FQN/clientSha256; `--check` exit 0 |
+| `python3 -I contracts/openapi/check.py` | `x-04 drift check OK: 24 commands, contract and client match manifest` (exit 0) |
+| `npm ci --ignore-scripts --no-audit --no-fund`; `node_modules/.bin/prettier --check contracts/openapi/generated/client.ts`; `npm run format:check` | Prettier check and whole-repo format check both pass |
+| `python3 -I scripts/check-docs.py`; `python3 -I scripts/check-secrets.py` | Both exit 0 (moved README links retargeted and valid) |
+| `python3 -I scripts/gen-opencode.py --check` | Exit 1 — **pre-existing worker measurement artifact**, not caused by this story: `render()` equals `git show HEAD:opencode.json` and differs only from the worktree CI profile (`git ls-files -v opencode.json` → `S`, skip-worktree). No agent, skill, `opencode.json` or CI config file was touched. |
 
-## Defects found and decisions
+Database and Spring integration tests were **not** run locally: no PostgreSQL is
+reachable from this worker. Per the worker directive the integrator runs
+`scripts/check.sh` / `bash db/check.sh` on the merge result. The full JaCoCo bundle
+gate is intentionally not claimed here; the per-class figures above are the
+authoritative new-code evidence.
 
-- **Defect fixed (medium, ledger integrity):** `execute` copied a caller-supplied `reason` into transition events for the transmission and clinical-review channels even though those channels never store a reason. This let a client attribute arbitrary text to a human acknowledgment in the append-only ledger. Fixed by recording a reason only for workflow commands; covered by the new test.
-- **Decision — scope:** followed authoritative `TODO.md` + AGENTS.md business-domain paths, not the stale untrusted `s_g2_02` paths. No new package or story-ID-named class was introduced.
-- **Decision — idempotency:** command-level `Idempotency-Key` remains the cross-cutting X-01 story (`contracts/x_01`, reserved V54); duplicating it in V20 would collide with that worker. XCH-02 uses the mandated `If-Match` precondition with 409/412/422/401/403/404 semantics.
-- **Decision — no migration change:** V20 already enforces channel independence, bound review actor/revision/timestamp and the one-channel-per-update guard; the fix is in the service only.
-- **Specialist review (simulated, senior backend):** no blocking findings. It confirmed the ledger reason previously diverged from persisted state on a reachable path, that audit and V20 constraints are unaffected, that both branches of the new conditional are covered, and that no existing test asserts a non-workflow ledger reason. Its LOW finding (no transmission-specific non-null-reason test) was addressed by `transmissionIgnoresCallerReasonInBothStateAndLedger`. Its INFO observations were accepted without change: `reason(...)` still validates length for non-workflow commands even though the value is now discarded (unchanged behaviour, defensible), and a pre-existing WORKFLOW state/ledger reason divergence is outside this diff.
-- **Evidence source:** all gate results above are from executed tool commands; the review finding came from a simulated specialist, which reviewed statically and did not re-execute the checks. There was **no simulated-user exercise and no human or clinical participant evidence**. Prior-attempt simulated review findings (architect/QA/backend) are recorded in the earlier version of this file and were addressed in the inherited implementation. Real clinical approval remains a G5 gate.
+## Defects found and fixed in this story
 
-## Blockers / evidence genuinely missing (stop-and-report)
+1. **Prior attempt delivered at story-ID paths.** Relocated all production, test and contract files to the business-domain scope; no duplicate implementation remains.
+2. **Stale generated artifacts after the FQN change.** `client.ts:1` and `manifest.json` still named the old generator FQN. Regenerated from the relocated generator; `--check` and `check.py` now pass. `check.py` alone cannot detect this (it validates checksums/parity/forbidden tokens, not the generator field), so the `--check` gate is the authority.
+3. **README links to dead `api/x_04` paths.** Retargeted all three to `api/authorization`; `check-docs.py` is green. Added a note distinguishing the catalog-generated `contracts/openapi/generated/openapi.yaml` from the X-01 staff-API `contracts/openapi.yaml`.
+4. **Security review H-1 (fail-closed gap):** a null element in the inert `claimedPermissions` list threw from `List.copyOf` inside the record constructor, before `authorize()` could record a decision (unstructured 500). Fixed by filtering nulls into a local list and applying `List.copyOf`; `malformedInertClaimsCannotBypassDecisionRecording` covers it.
+5. **Security review H-2 (incomplete OPS-02 evidence):** `MEMBERSHIP_INACTIVE` recorded an empty role snapshot although fresh roles were available. Now records `member.activeRoles()`; asserted in `membershipAndRolesAreReResolvedOnEveryCall`.
+6. **Security review H-3 (undefined audit-failure semantics):** a throwing decision sink escaped as a raw runtime exception. `record()` now fails closed with `500 DECISION_NOT_RECORDED`; `sinkFailureFailsClosedWithAMachineReadableError` covers it.
+7. **SpotBugs iterations on H-1:** an initial discard-the-parameter fix triggered `IP_PARAMETER_IS_DEAD_BUT_OVERWRITTEN`; a stream/`toList()` variant triggered `EI_EXPOSE_REP` (and the first two runs analysed stale bytecode). Final local-list + `List.copyOf` form is clean on a fresh compile.
 
-1. **No local PostgreSQL** (`psql`/`pg_isready` absent, 127.0.0.1:5432 not reachable). The 10 `@Tag("integration")` tests in `ExchangeTaskIsolationTest` — forced RLS, two-tenant concealment, V20 guard triggers, actor/revision binding, revocation on next request — **were not executed here**. The integrator must run `bash apps/api/check.sh` on the exact merged SHA and record the JaCoCo ratios; that suite is the authority for `ExchangeTaskRepository` coverage.
-2. **`opencode.json` is stale at this base** under the cloud-worker profile (`git ls-files -v opencode.json` shows `S` = skip-worktree, so the checked-out file is the CI profile while the committed file is the local profile), so the fast policy gate (`quick-check.sh`, `check-pack.py`, several Python tests) fails before reaching Java. It is a shared generated file outside this story's scope; no `opencode.json` change is committed. The owner/loop must regenerate it from `scripts/gen-opencode.py` before the integrator gate can pass.
-3. **Python tooling failures** listed above are pre-existing and out of scope (missing PyYAML, stale pack, unrelated `Qualifier.java` Javadoc, sandbox `agent_run` assumptions). They were not edited.
-4. **No clinical or human participant evidence.** Clinical acknowledgment semantics were reviewed by simulated reviewers only; G5 site approval is separate.
-5. **No patient data, real identifiers or credentials** appear in any fixture or note; all subjects, organizations and order references are synthetic.
+## Decisions and explicitly deferred work
+
+- **Scope is authoritative.** My dispatch names `contracts/openapi` and `api/authorization`; that is what is delivered. The tracker's `REFACTOR-PACKAGES-02` entry still describes the earlier proposed mapping as pending owner approval — the integrator/owner owns reconciling that entry. I did not edit TODO.md, MEMORY.md, WORKSPACE.md, BUGS.md, PROJECT.md or docs/swarm.
+- **Not a global enforcement point (cross-boundary).** The gate is a reusable choke point, but no existing controller calls it and the 80+ POST mappings are not proven to match the catalog. Wiring it into owning services and a build-failing POST-mapping ↔ catalog parity test need a separate story with edits outside this scope. The README states this plainly.
+- **No build-failing drift gate in CI (reviewer F5).** Neither `CommandClientGenerator --check` nor `contracts/openapi/check.py` is invoked by `scripts/check.sh`, `apps/api/check.sh` or the Delivery policy job. Recommend a follow-on story wiring both into a build-failing gate; out of scope here (cannot edit `scripts/` or `.github/`).
+- **PRD-06 clinical decisions remain human acts.** The gate does not bind a revision checksum or replace attestation/sign-off; `ReleaseActionPolicy` naming `tenant_admin` among release deciders remains unchanged and needs clinical-owner approval before live enablement.
+- **Durable audit (deferred).** `InMemoryDecisionSink` is a synthetic reference; OPS-02 durability belongs to an `AuditAppender`-backed adapter in the owning service's transaction.
+- **Client body typing (deferred).** Bodies remain `unknown` and are validated server-side; `If-Match` and `Idempotency-Key` are already required arguments.
+
+## Evidence provenance
+
+Tool evidence: every command and result above was executed locally by this worker
+on this branch. Reviewer evidence: two bounded simulated specialists
+(`smartclinic-senior-backend`, `smartclinic-senior-spring-security`) returned
+findings F1–F5 and H-1–H-3; actionable findings were reproduced red, fixed and
+retested. No human participant, clinician or patient evidence is claimed; all
+fixtures are synthetic and contain no patient data or credentials.
