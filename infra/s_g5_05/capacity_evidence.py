@@ -11,7 +11,8 @@ Two honesty rules are enforced beyond the numbers:
   the availability figure must declare a ``calendar_month`` window.
 * A passing synthetic artifact is a rehearsal of the check, never final pilot
   evidence; ``final_evidence`` is true only for a measured pilot artifact that
-  is not itself labelled synthetic.
+  names a source, carries complete run provenance and is not itself labelled
+  synthetic.
 
 The evaluator judges an evidence artifact, not a running system. It can prove
 that supplied numbers meet OPS-03 and that the declared envelope is complete; it
@@ -23,6 +24,7 @@ Exit codes: 0 = artifact passes the OPS-03 checks, 1 = it fails a check,
 2 = unreadable input.
 """
 import json
+import math
 import sys
 from pathlib import Path
 
@@ -34,6 +36,11 @@ P95_READ_MS_MAX = 500
 P95_COMMAND_MS_MAX = 900
 RATE_TOLERANCE = 0.90
 ROUTE_CLASSES = ("read", "command")
+# A class needs a minimum share of the run for its percentile to mean anything.
+MIN_CLASS_SHARE = 0.01
+# Provenance that a measured-pilot claim must carry to be final evidence.
+MEASURED_PROVENANCE_FIELDS = ("tool", "tool_version", "command", "utc_timestamp",
+                              "environment", "source_sha")
 
 # The declared pilot profile from OPS-03. A test that used a different profile
 # did not run the specified pilot scenario, so these are exact requirements.
@@ -49,8 +56,14 @@ REQUIRED_EXCLUSIONS = ("document_transfer", "document_rendering", "external_call
 
 
 def _is_number(value):
-    """Return true for a real numeric value, excluding booleans."""
-    return isinstance(value, (int, float)) and not isinstance(value, bool)
+    """Return true for a finite real number, excluding booleans.
+
+    ``math.isfinite`` is only applied to floats: a very large int would raise
+    OverflowError if converted, yet is still a valid finite count here.
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return False
+    return not (isinstance(value, float) and not math.isfinite(value))
 
 
 def _record(checks, name, passed, detail):
@@ -61,10 +74,14 @@ def _record(checks, name, passed, detail):
 def _verdict(checks, kind):
     """Build the report from the checks and the declared evidence class."""
     failed = [check["name"] for check in checks if not check["passed"]]
-    classification = {
-        "synthetic_rehearsal": "rehearsal",
-        "measured_pilot": "measured-pilot",
-    }.get(kind, "unknown")
+    # Compare by equality instead of a dict lookup: a malformed, unhashable
+    # ``kind`` must fail closed as an unknown class, not raise TypeError.
+    if kind == "synthetic_rehearsal":
+        classification = "rehearsal"
+    elif kind == "measured_pilot":
+        classification = "measured-pilot"
+    else:
+        classification = "unknown"
     return {
         "verdict": "fail" if failed else "pass",
         "classification": classification,
@@ -169,9 +186,35 @@ def _check_latency_and_workload(results, checks):
                    * TARGET_PROFILE["duration_minutes"] * 60 * RATE_TOLERANCE)
         _record(checks, "results.sustained_rate", total >= minimum,
                 f"total={total}; minimum={minimum:g} at the declared profile")
+        _record(checks, "results.class_balance",
+                min(read, command) >= total * MIN_CLASS_SHARE,
+                f"each class needs >= {MIN_CLASS_SHARE:.0%} of {total:g} requests")
     else:
         _record(checks, "results.mixed", False,
                 "request counts must be positive numbers")
+
+
+def _check_provenance(artifact, checks):
+    """Check the provenance a measured-pilot claim must carry to be final.
+
+    Numbers alone cannot show that a load run happened. Requiring the run's tool,
+    command, time, environment and source SHA keeps ``final_evidence`` from
+    being granted to a bare self-declared artifact. This checks presence and
+    shape, not truth; human review still owns provenance verification.
+    """
+    source = artifact.get("source")
+    _record(checks, "source", isinstance(source, str) and bool(source.strip()),
+            "a measured pilot must name a non-empty source")
+    provenance = artifact.get("provenance")
+    if not isinstance(provenance, dict) or not provenance:
+        _record(checks, "provenance", False,
+                "provenance must be a non-empty JSON object")
+        return
+    for field in MEASURED_PROVENANCE_FIELDS:
+        value = provenance.get(field)
+        _record(checks, "provenance." + field,
+                isinstance(value, str) and bool(value.strip()),
+                "must be a non-empty string")
 
 
 def _check_results(results, checks):
@@ -197,9 +240,11 @@ def evaluate(artifact):
     _record(checks, "schema_version", artifact.get("schema_version") == SCHEMA_VERSION,
             f"expected {SCHEMA_VERSION}")
     _record(checks, "kind", kind in KINDS, "kind must be " + " or ".join(KINDS))
-    if kind == "measured_pilot" and "synthetic" in str(artifact.get("source", "")).lower():
-        _record(checks, "evidence_conflict", False,
-                "a measured pilot artifact cannot name a synthetic source")
+    if kind == "measured_pilot":
+        if "synthetic" in str(artifact.get("source", "")).lower():
+            _record(checks, "evidence_conflict", False,
+                    "a measured pilot artifact cannot name a synthetic source")
+        _check_provenance(artifact, checks)
     _check_profile(artifact.get("profile"), checks)
     _check_measurement(artifact.get("measurement"), checks)
     _check_results(artifact.get("results"), checks)
@@ -225,7 +270,7 @@ def main(argv=None):
         return 2
     try:
         artifact = json.loads(Path(arguments[0]).read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as error:
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
         print(f"cannot read evidence artifact: {error}", file=sys.stderr)
         return 2
     report = evaluate(artifact)
