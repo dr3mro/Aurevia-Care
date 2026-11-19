@@ -108,6 +108,10 @@ jobs:
     permissions:
       contents: read
       packages: read
+    # Container jobs default to sh (dash), which lacks pipefail.
+    defaults:
+      run:
+        shell: bash
     env:
       MODEL: ${{ matrix.model }}
       MODE: ${{ matrix.kind == 'fix' && 'fix' || 'story' }}
