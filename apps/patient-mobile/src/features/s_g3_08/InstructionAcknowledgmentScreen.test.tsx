@@ -38,7 +38,7 @@ function view(overrides: Partial<InstructionView> = {}): InstructionView {
 
 function renderScreen(
   instructions: readonly InstructionView[],
-  onFirstView: (id: string) => void,
+  onFirstView: (id: string, revision: number) => void,
   onAcknowledge: (id: string, revision: number) => void,
 ) {
   return render(
@@ -156,6 +156,54 @@ describe('MSG-05 patient acknowledgment screen', () => {
     );
     expect(tree.getByLabelText(MESSAGE_FACT_LABELS.inbox)).toBeTruthy();
     expect(tree.queryByLabelText(MESSAGE_FACT_LABELS.acknowledge(2))).toBeNull();
+  });
+
+  it('reports a first view for a new revision of the same instruction', async () => {
+    const seen: [string, number][] = [];
+    const tree = await renderScreen([view()], (id, revision) => {
+      seen.push([id, revision]);
+    }, () => undefined);
+    expect(seen).toEqual([[INSTRUCTION, 2]]);
+    await tree.rerender(
+      <InstructionAcknowledgmentScreen
+        instructions={[view({ revision: 3, latestRevision: 3 })]}
+        facts={{ [INSTRUCTION]: EMPTY }}
+        isRTL={false}
+        now={NOW}
+        onFirstView={(id, revision) => { seen.push([id, revision]); }}
+        onAcknowledge={() => undefined}
+      />,
+    );
+    expect(seen).toEqual([[INSTRUCTION, 2], [INSTRUCTION, 3]]);
+  });
+
+  it('offers no acknowledge action when the displayed revision is not the requested one', async () => {
+    const tree = await renderScreen(
+      [view({ request: { revision: 3, dueAt: DUE } })],
+      () => undefined,
+      () => undefined,
+    );
+    expect(tree.queryByLabelText(MESSAGE_FACT_LABELS.acknowledge(2))).toBeNull();
+  });
+
+  it('mirrors the container direction for RTL patients', async () => {
+    const ltr = await renderScreen([view()], () => undefined, () => undefined);
+    expect(ltr.getByLabelText(MESSAGE_FACT_LABELS.inbox).props.style).toEqual(
+      expect.arrayContaining([expect.objectContaining({ direction: 'ltr' })]),
+    );
+    const rtl = await render(
+      <InstructionAcknowledgmentScreen
+        instructions={[view()]}
+        facts={{ [INSTRUCTION]: EMPTY }}
+        isRTL
+        now={NOW}
+        onFirstView={() => undefined}
+        onAcknowledge={() => undefined}
+      />,
+    );
+    expect(rtl.getByLabelText(MESSAGE_FACT_LABELS.inbox).props.style).toEqual(
+      expect.arrayContaining([expect.objectContaining({ direction: 'rtl' })]),
+    );
   });
 
   it('maps every status to a non-clinical label', async () => {
