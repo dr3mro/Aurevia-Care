@@ -1,4 +1,4 @@
-"""Task planning, publish and merge logic for the agent swarm (CLOUDWORKERS.md).
+"""Task planning, publish and merge logic for the agent swarm (TODO.md).
 
 Every GitHub call goes through the gh CLI and every Git call through git, so
 tests replace gh() and git() with fakes. Subcommands print step outputs to
@@ -43,8 +43,12 @@ PROTECTED = [".github/*", ".opencode/*", "opencode.json", "scripts/*",
              "AGENTS.md", "check.sh", "*/check.sh", "compose.yaml", "Dockerfile"]
 # Shared trackers are written only by the integrator, one merge at a time, so
 # parallel workers never conflict on them.
-TRACKERS = ["CLOUDWORKERS.md", "PROGRESS.md", "MEMORY.md", "WORKSPACE.md", "TODO.md",
-            "BUGS.md", "PROJECT.md", "docs/swarm/*"]
+TRACKERS = ["TODO.md", "MEMORY.md", "WORKSPACE.md", "BUGS.md", "PROJECT.md", "docs/swarm/*"]
+# TODO.md marks: [ ] open, [-] taken by an agent, [x] done.
+BOXES = {"todo": " ", "taken": "-", "done": "x"}
+STATUS = {box: name for name, box in BOXES.items()}
+ENTRY = re.compile(r"^- \[([ x-])\] (\S+) · (.*)$")
+FIELD = re.compile(r"^  - ([a-z]+):[ \t]*(.*)$")
 
 
 def gh(*args, check=True):
@@ -113,42 +117,114 @@ def table_cells(line):
     return [c.strip() for c in line.strip().strip("|").split("|")]
 
 
+def split_list(value):
+    return [v for v in re.split(r"\s*,\s*|\s+", value) if v and v != "-"]
+
+
 def parse_tasks(text):
-    """Read the task table and the ### sections of CLOUDWORKERS.md."""
-    lines = text.splitlines()
-    header = next((i for i, l in enumerate(lines)
-                   if l.startswith("|") and "id" in l.lower() and "status" in l.lower()), None)
-    if header is None:
-        return []
-    names = [c.lower() for c in table_cells(lines[header])]
-    sections = {m.group(1): m.group(2).strip() for m in
-                re.finditer(r"(?ms)^### (\S+)[^\n]*\n(.*?)(?=^#{2,3} |\Z)", text)}
-    tasks = []
-    for line in lines[header + 2:]:
-        if not line.startswith("|"):
-            break
-        row = dict(zip(names, table_cells(line)))
-        row["depends"] = [d for d in re.split(r"[,\s]+", row.get("depends", "")) if d and d != "-"]
-        row["scope"] = [d for d in re.split(r"\s*,\s*", row.get("scope", "")) if d and d != "-"]
-        row["details"] = sections.get(row["id"], "")
-        tasks.append(row)
+    """Read the task entries of TODO.md.
+
+    An entry is `- [ ] ID · title` (`[-]` taken, `[x]` done) followed by indented
+    `  - key: value` fields and an optional indented `details:` body."""
+    tasks, current, body, in_details = [], None, [], False
+
+    def close():
+        if current is not None:
+            current["details"] = "\n".join(body).strip()
+            current["depends"] = split_list(current["depends"])
+            current["aliases"] = split_list(current["aliases"])
+            current["scope"] = [d for d in re.split(r"\s*,\s*", current["scope"]) if d and d != "-"]
+            tasks.append(current)
+
+    for line in text.splitlines():
+        entry = ENTRY.match(line)
+        if entry:
+            close()
+            current = {"id": entry.group(2), "task": entry.group(3), "status": STATUS[entry.group(1)],
+                       "requirements": "", "depends": "", "scope": "", "reserved": "", "aliases": "",
+                       "pr": "", "agent": "", "evidence": ""}
+            body, in_details = [], False
+        elif current is not None and line and not line.startswith(" "):
+            close()
+            current = None
+        elif current is not None:
+            field = FIELD.match(line)
+            if field and not in_details:
+                if field.group(1) == "details":
+                    in_details = True
+                elif field.group(1) in current:
+                    current[field.group(1)] = field.group(2).strip()
+            elif in_details:
+                body.append(line[4:] if line.startswith("    ") else line.strip())
+    close()
     return tasks
 
 
-def set_task_done(text, task_id, pr):
-    out = []
-    header = None
-    for line in text.splitlines():
-        if line.startswith("|") and header is None and "status" in line.lower():
-            header = [c.lower() for c in table_cells(line)]
-        elif header and line.startswith("|") and table_cells(line)[0] == task_id:
-            cells = table_cells(line)
-            cells[header.index("status")] = "done"
-            if "pr" in header:
-                cells[header.index("pr")] = f"#{pr}"
-            line = "| " + " | ".join(cells) + " |"
-        out.append(line)
-    return "\n".join(out) + "\n"
+def set_task_status(text, task_id, status, pr="", agent="", evidence=""):
+    """Change one entry's mark and its agent, pr and evidence fields. Other entries are untouched."""
+    lines = text.splitlines()
+    start = next((i for i, l in enumerate(lines)
+                  if (m := ENTRY.match(l)) and m.group(2) == task_id), None)
+    if start is None:
+        return text
+    lines[start] = f"- [{BOXES[status]}] {task_id} · {ENTRY.match(lines[start]).group(3)}"
+    end = start + 1
+    while end < len(lines) and (not lines[end] or lines[end].startswith(" ")):
+        end += 1
+    while end > start + 1 and not lines[end - 1]:
+        end -= 1
+    drop = {"agent", "pr"} | ({"evidence"} if evidence else set())
+    kept, in_details = [], False
+    for line in lines[start + 1:end]:
+        field = FIELD.match(line)
+        if field and field.group(1) == "details":
+            in_details = True
+        if field and not in_details and field.group(1) in drop:
+            continue
+        kept.append(line)
+    fresh = [f"  - {k}: {v}" for k, v in (("agent", agent if status == "taken" else ""),
+                                          ("pr", pr if status == "done" else ""),
+                                          ("evidence", evidence)) if v]
+    lines[start + 1:end] = fresh + kept
+    return "\n".join(lines) + "\n"
+
+
+def reclaim(text, prs):
+    """Release swarm claims that no pull request backs.
+
+    A claim with only a merged pull request was merged by a person, so it is done;
+    one with no pull request, or only closed ones, goes back to open."""
+    for task in parse_tasks(text):
+        if task["status"] != "taken" or not task["agent"].startswith("swarm"):
+            continue
+        mine = [p for p in prs if task_id_of(p["headRefName"]) in {task["id"], *task["aliases"]}]
+        if any(p["state"] == "OPEN" for p in mine):
+            continue
+        merged = next((p for p in mine if p["state"] == "MERGED"), None)
+        text = (set_task_status(text, task["id"], "done", pr=f"#{merged['number']}") if merged
+                else set_task_status(text, task["id"], "todo"))
+    return text
+
+
+def update_todo(edit, message, path="TODO.md", attempts=3):
+    """Apply `edit(text)` to TODO.md on main and push. Reapplied on fresh main if the push races."""
+    for attempt in range(attempts):
+        text = Path(path).read_text()
+        new = edit(text)
+        if new == text:
+            return False
+        Path(path).write_text(new)
+        git("add", path)
+        git(*IDENTITY, "commit", "-qm", message)
+        try:
+            authed_git("push", "origin", "HEAD:main")
+            return True
+        except subprocess.CalledProcessError:
+            if attempt == attempts - 1:
+                raise
+            authed_git("fetch", "origin", "main")
+            git("reset", "-q", "--hard", "origin/main")
+    return False
 
 
 def prefix(pattern):
@@ -182,7 +258,11 @@ def plan_workers(max_workers, slots, text, open_prs, repair=None):
     """Main repairs, then fixes, then ready tasks whose scope is free."""
     tasks = parse_tasks(text)
     by_id = {t["id"]: t for t in tasks}
-    plan, busy = ([repair] if repair else []), []
+    for t in tasks:
+        for alias in t["aliases"]:
+            by_id.setdefault(alias, t)
+    # Scopes of tasks other agents already took stay off limits.
+    plan, busy = ([repair] if repair else []), [t["scope"] for t in tasks if t["status"] == "taken"]
     for pr in sorted(open_prs, key=lambda p: p["number"]):
         tid = task_id_of(pr["headRefName"])
         task = by_id.get(tid)
@@ -199,9 +279,9 @@ def plan_workers(max_workers, slots, text, open_prs, repair=None):
                          "body": task_text(task),
                          "fix": clip(notes[-1] if notes else "Integration failed.")})
     in_flight = {task_id_of(p["headRefName"]) for p in open_prs}
-    done = {t["id"] for t in tasks if t.get("status", "").lower() == "done"}
+    done = {name for t in tasks if t["status"] == "done" for name in (t["id"], *t["aliases"])}
     for task in tasks:
-        if task.get("status", "").lower() != "todo" or task["id"] in in_flight:
+        if task["status"] != "todo" or not task["scope"] or task["id"] in in_flight:
             continue
         if not set(task["depends"]) <= done:
             continue
@@ -270,6 +350,10 @@ def publish(task, directory):
             gh("pr", "comment", pr, "--body",
                f"Worker {task['slot']} pushed a fix (local checks: {checks}). The integrator will retest.")
     release(task, result, 1 if pr else 0, pr)
+    if not pr and task["kind"] == "story":
+        # Nothing was published, so give the task back to the pool.
+        update_todo(lambda text: set_task_status(text, task["id"], "todo"),
+                    f"Release {task['id']}: worker published nothing")
     emit("pr", pr)
 
 
@@ -425,21 +509,16 @@ def record_merge(pr, task_id, sha, gate="scripts/quick-check.sh"):
     info = gh_json("pr", "view", str(pr), "--json", "headRefOid,body")
     if info["headRefOid"] != sha:
         raise SystemExit("the branch changed after it was tested; it will be retested")
-    cloud = Path("CLOUDWORKERS.md")
-    tasks = {t["id"]: t for t in parse_tasks(cloud.read_text())}
+    todo = Path("TODO.md")
+    tasks = {t["id"]: t for t in parse_tasks(todo.read_text())}
     title = tasks.get(task_id, {}).get("task", task_id)
-    reqs = tasks.get(task_id, {}).get("requirements", "")
     Path("docs/swarm").mkdir(parents=True, exist_ok=True)
     notes = Path(f"docs/swarm/{task_id}.md")
     notes.write_text(f"# {task_id} · {title}\n\nPR #{pr}, tested branch tip {sha}.\n\n"
                      f"{clip(info['body'])}\n")
-    cloud.write_text(set_task_done(cloud.read_text(), task_id, pr))
-    progress = Path("PROGRESS.md")
-    row = (f"| {task_id} · {title} | Done (swarm, merged) | {reqs or '-'} | PR #{pr}; integrator ran "
-           f"{gate} on the merge result (tool evidence); heavy checks run on main in heavy-check.yml; "
-           f"notes in {notes} | Merged by the integrator. Simulated review only. Next: CLOUDWORKERS.md |")
-    text = progress.read_text()
-    progress.write_text(text + ("" if text.endswith("\n") else "\n") + row + "\n")
+    evidence = (f"PR #{pr}; integrator ran {gate} on the merge result (tool evidence); heavy checks "
+                f"run on main in heavy-check.yml; notes in {notes}; simulated review only")
+    todo.write_text(set_task_status(todo.read_text(), task_id, "done", pr=f"#{pr}", evidence=evidence))
     return f"Merged to main by the integrator after {gate} passed on the merge result."
 
 
@@ -490,7 +569,7 @@ def integrate_batch(queue, gate="scripts/quick-check.sh"):
         emit("merged", 0)
         return 0
     comments = [record_merge(pr, task_id, sha, gate) for pr, task_id, sha in merged]
-    files = ["CLOUDWORKERS.md", "PROGRESS.md"] + [f"docs/swarm/{t}.md" for _, t, _ in merged]
+    files = ["TODO.md"] + [f"docs/swarm/{t}.md" for _, t, _ in merged]
     git("add", *files)
     git(*IDENTITY, "commit", "-qm", f"Integrate {len(merged)} swarm pull request(s)")
     authed_git("push", "origin", "HEAD:main")
@@ -504,7 +583,7 @@ def integrate_batch(queue, gate="scripts/quick-check.sh"):
 def finalize(pr, task_id, sha):
     """Record the merge in the shared trackers and publish main. Trusted step."""
     comment = record_merge(pr, task_id, sha)
-    git("add", "CLOUDWORKERS.md", "PROGRESS.md", f"docs/swarm/{task_id}.md")
+    git("add", "TODO.md", f"docs/swarm/{task_id}.md")
     git(*IDENTITY, "commit", "-qm", f"Record {task_id} as merged (PR #{pr})")
     authed_git("push", "origin", "HEAD:main")
     gh("pr", "comment", str(pr), "--body", comment)
@@ -527,7 +606,7 @@ def main(argv=None):
     p = sub.add_parser("plan-workers")
     p.add_argument("--max", type=int, default=10)
     p.add_argument("--slots", default=".github/swarm/slots.json")
-    p.add_argument("--file", default="CLOUDWORKERS.md")
+    p.add_argument("--file", default="TODO.md")
     p.add_argument("--repair-run", default="")
     p = sub.add_parser("repair-gate")
     p.add_argument("--run", required=True)
@@ -560,7 +639,18 @@ def main(argv=None):
         prs = gh_json("pr", "list", "--state", "open", "--label", "swarm", "--limit", "100",
                       "--json", "number,title,headRefName,isCrossRepository,labels,comments")
         repair = repair_task(a.repair_run) if a.repair_run else None
-        include = plan_workers(a.max, load_slots(a.slots), Path(a.file).read_text(), prs, repair)
+        everything = gh_json("pr", "list", "--state", "all", "--label", "swarm", "--limit", "200",
+                             "--json", "number,headRefName,state") or []
+        text = reclaim(Path(a.file).read_text(), everything)
+        include = plan_workers(a.max, load_slots(a.slots), text, prs, repair)
+        claims = {t["id"]: f"swarm-{t['slot']}" for t in include if t["kind"] == "story"}
+
+        def mark(current):
+            current = reclaim(current, everything)
+            for task_id, agent in claims.items():
+                current = set_task_status(current, task_id, "taken", agent=agent)
+            return current
+        update_todo(mark, f"Take {len(claims)} task(s) for the swarm", a.file)
         emit("matrix", json.dumps({"include": include}, separators=(",", ":")))
         emit("count", len(include))
     elif a.cmd == "release":
