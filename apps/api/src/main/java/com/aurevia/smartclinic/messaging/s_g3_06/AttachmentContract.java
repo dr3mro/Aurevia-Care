@@ -310,24 +310,17 @@ public final class AttachmentContract {
                         String patientId, String unitId) {
         /**
          * Defensively copy the role set and enforce patient/staff exclusivity.
-         *
-         * @param organizationId active organization identifier
-         * @param subject        authenticated synthetic subject
-         * @param roles          currently active role keys
-         * @param patientId      linked patient identifier, or {@code null}
-         * @param unitId         assigned unit identifier, or {@code null}
+         * Components are documented once on the record declaration; repeating
+         * them here or on the factory methods yields duplicate Doxygen sections.
          */
         public Actor {
             roles = Set.copyOf(roles);
         }
 
         /**
-         * Build a staff actor with a unit assignment.
+         * Build a staff actor with a unit assignment. Parameter semantics are
+         * documented on the record declaration.
          *
-         * @param organizationId active organization identifier
-         * @param subject        authenticated subject
-         * @param unitId         assigned care-unit identifier
-         * @param roles          active role keys
          * @return the actor snapshot
          */
         public static Actor staff(String organizationId, String subject, String unitId, String... roles) {
@@ -335,11 +328,9 @@ public final class AttachmentContract {
         }
 
         /**
-         * Build a patient actor linked to one verified chart.
+         * Build a patient actor linked to one verified chart. Parameter semantics
+         * are documented on the record declaration.
          *
-         * @param organizationId active organization identifier
-         * @param subject        authenticated subject
-         * @param patientId      verified linked patient identifier
          * @return the actor snapshot
          */
         public static Actor patient(String organizationId, String subject, String patientId) {
@@ -418,10 +409,8 @@ public final class AttachmentContract {
      */
     public record View(Attachment attachment, List<AttachmentEvent> events) {
         /**
-         * Defensively copy the fact trail.
-         *
-         * @param attachment current projection
-         * @param events     fact trail
+         * Defensively copy the fact trail. Components are documented on the
+         * record declaration, not repeated on this canonical constructor.
          */
         public View {
             events = List.copyOf(events);
@@ -484,11 +473,8 @@ public final class AttachmentContract {
     public record PublishRequest(List<String> attachmentIds, String messageId, String recipientUnitId) {
         /**
          * Defensively copy the file identifier list so a caller cannot mutate a
-         * publish command after validation (ARC-06).
-         *
-         * @param attachmentIds pending attachment identifiers
-         * @param messageId     durable client message identifier
-         * @param recipientUnitId receiving care unit identifier
+         * publish command after validation (ARC-06). Components are documented
+         * on the record declaration, not repeated on this canonical constructor.
          */
         public PublishRequest {
             attachmentIds = attachmentIds == null ? null : List.copyOf(attachmentIds);
