@@ -77,6 +77,7 @@ public final class LabPolicyCatalog {
      * @param approved      whether the named approval is present
      * @param effectiveFrom first instant at which the range applies
      * @param effectiveTo   exclusive end of the window, or {@code null} for open-ended
+     * @return the approved reference range
      */
     public record ReferenceRange(String code, String unit, BigDecimal low, BigDecimal high,
                                  int version, boolean approved, Instant effectiveFrom,
@@ -85,6 +86,14 @@ public final class LabPolicyCatalog {
         /**
          * Reject an incomplete or inverted range before it can be evaluated.
          *
+     * @param code          test identity code this range applies to
+     * @param unit          source unit this range applies to; no conversion is attempted
+     * @param low           inclusive lower bound
+     * @param high          inclusive upper bound
+     * @param version       approved configuration version of the range
+     * @param approved      whether the named approval is present
+     * @param effectiveFrom first instant at which the range applies
+     * @param effectiveTo   exclusive end of the window, or {@code null} for open-ended
          * @throws ApiException when identity, bounds, version or effective start is invalid
          */
         public ReferenceRange {
@@ -96,9 +105,8 @@ public final class LabPolicyCatalog {
         }
 
         /**
-         * Whether this range is approved and effective at the given instant.
+         * Whether this range is approved and effective at the caller-supplied instant.
          *
-         * @param at evaluation instant
          * @return {@code true} when the range may be applied
          */
         public boolean effectiveAt(Instant at) {
@@ -107,9 +115,8 @@ public final class LabPolicyCatalog {
         }
 
         /**
-         * Interpret a measured value against this range.
+         * Interpret the caller-supplied measured value against this range.
          *
-         * @param value exact measured value
          * @return the abnormal flag for the value
          */
         public AbnormalFlag flag(BigDecimal value) {
@@ -137,6 +144,7 @@ public final class LabPolicyCatalog {
      * @param queue         coverage queue that receives the result
      * @param dueAfter      time allowed before the result is overdue
      * @param escalation    approved backup contact channel
+     * @return the approved critical-result policy
      */
     public record CriticalPolicy(String code, int version, BigDecimal low, BigDecimal high,
                                  boolean approved, Instant effectiveFrom, Instant effectiveTo,
@@ -145,6 +153,17 @@ public final class LabPolicyCatalog {
         /**
          * Reject an incomplete or inverted policy before it can classify a result.
          *
+     * @param code          test identity code this policy applies to
+     * @param version       approved configuration version of the policy
+     * @param low           inclusive lower critical bound
+     * @param high          inclusive upper critical bound
+     * @param approved      whether the named approval is present
+     * @param effectiveFrom first instant at which the policy applies
+     * @param effectiveTo   exclusive end of the window, or {@code null} for open-ended
+     * @param owner         named responsible owner for escalation
+     * @param queue         coverage queue that receives the result
+     * @param dueAfter      time allowed before the result is overdue
+     * @param escalation    approved backup contact channel
          * @throws ApiException when identity, bounds, owner, due window or effective start is invalid
          */
         public CriticalPolicy {
@@ -157,9 +176,8 @@ public final class LabPolicyCatalog {
         }
 
         /**
-         * Whether this policy is approved and effective at the given instant.
+         * Whether this policy is approved and effective at the caller-supplied instant.
          *
-         * @param at evaluation instant
          * @return {@code true} when the policy may classify a result
          */
         public boolean effectiveAt(Instant at) {
@@ -168,9 +186,8 @@ public final class LabPolicyCatalog {
         }
 
         /**
-         * Decide whether a measured value meets the approved critical bounds.
+         * Decide whether the caller-supplied measured value meets the approved bounds.
          *
-         * @param value exact measured value
          * @return {@code true} when the value is at or outside a critical bound
          */
         public boolean isCritical(BigDecimal value) {
