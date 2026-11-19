@@ -4,6 +4,7 @@
 |---|---|---|
 | API endpoint or worker | apps/api and contracts | Public command, HTTP contract, database integration |
 | Schema or tenant policy | db/migrations and the affected service | Migration on realistic synthetic data, constraints, tenant isolation and concurrency |
+| Migration change-safety contract | db/migrations and `scripts/check-migrations.py` | Offline version/expand-contract gate plus the runtime `db/check.sh` apply-and-assert gate |
 | Staff workflow | apps/staff-web and generated API client | View behavior, authorization outcomes, keyboard and accessibility |
 | Patient workflow | apps/patient-mobile | iOS and Android behavior, stale states, interruptions and retries |
 | Deployment | infra and the release workflow | Image smoke, artifact digest, readiness and rollback evidence |
@@ -33,6 +34,10 @@ Build the reference with scripts/docs.sh. A module's TypeScript documentation ho
 ## S-G0-03b audit review trace
 
 `GET /api/v1/audit-events` → `AuditController.query` → guarded `TransactionTemplate` → `AuditService.query` → actor authorization (tenant_admin or privacy_auditor, active membership re-derived per request) → `AuditRepository.query` (forced RLS, bounded filters, `seq DESC` with an exclusive seq cursor and a one-row look-ahead for `nextCursor`) → `appendAudit(AUDIT_READ, SUCCESS)` in the same transaction → 200. Denials are committed as `AUDIT_READ/DENIED` rows then thrown. `AuditQueryTest` proves two-tenant concealment, stable paging and audit-of-read against real PostgreSQL.
+
+## OPS-06 migration change-safety trace
+
+`python3 -I scripts/check-migrations.py --require-baseline` → parse `db/migrations/V*.sql` filenames and leading `-- Key: value` headers → single-pass blanking of comments, strings, identifiers and dollar bodies, then statement splitting and an anchored destructive-statement scan → assert contiguous versions and that every contract has a format-valid `Forward-fix:` plus a valid earlier `Change: expand` reference. The baseline flag fails on an empty or missing migration directory. The same command runs in `scripts/check.sh`, `scripts/quick-check.sh` and the Delivery `policy` job; `db/check.sh` remains the runtime apply-and-assert gate. `scripts/tests/test_check_migrations.py` (34 synthetic cases) covers every branch and the string/statement interaction regressions. See the decision record `docs/decisions/0002-ops06-migration-change-safety.md`.
 
 ## S-G0-03 catalog trace
 
