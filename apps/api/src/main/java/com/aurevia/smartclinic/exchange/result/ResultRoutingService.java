@@ -438,8 +438,9 @@ public class ResultRoutingService {
 
     private static boolean sameContent(ResultReport stored, ResultIdentifiers identifiers,
                                        ResultKind kind, Instant effectiveAt, String checksum) {
-        // The superseded version is already encoded in the version used as the
-        // lookup key, so the fingerprint compares only clinical payload fields.
+        // Version and supersession are lineage metadata, not clinical payload,
+        // so the fingerprint compares only fields that distinguish one finding
+        // from another - for both the whole-lineage scan and the version lookup.
         return stored.identifiers().equals(identifiers)
                 && stored.kind() == kind
                 && stored.effectiveAt().equals(effectiveAt)
@@ -500,7 +501,10 @@ public class ResultRoutingService {
     private static Instant instant(String value) {
         String text = code(value, "effectiveAt", MAX_FIELD);
         try {
-            return Instant.parse(text);
+            // PostgreSQL timestamptz keeps microseconds. Normalizing at the
+            // boundary keeps the stored value and the dedup fingerprint equal
+            // for a replay that carries sub-microsecond precision.
+            return Instant.parse(text).truncatedTo(java.time.temporal.ChronoUnit.MICROS);
         } catch (java.time.format.DateTimeParseException exception) {
             throw new ApiException(422, "INVALID_INPUT", "effectiveAt must be an ISO-8601 instant");
         }

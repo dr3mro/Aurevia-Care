@@ -338,6 +338,27 @@ class ResultRoutingServiceTest {
     }
 
     @Test
+    void aReplayWithSubMicrosecondEffectiveAtResolvesToTheStoredRevision() {
+        // PostgreSQL timestamptz stores microseconds. A caller sending nanoseconds
+        // must be normalized at the trust boundary or the fingerprint misses and
+        // the replay is inserted as a duplicate version.
+        authorized("lab_verifier");
+        Instant nanos = Instant.parse("2026-11-19T12:00:00.123456789Z");
+        Instant micros = nanos.truncatedTo(java.time.temporal.ChronoUnit.MICROS);
+        ResultReport existing = new ResultReport(REPORT_1, 1, ORDER, ids(), ResultKind.FINAL,
+                null, null, "owner-a", "queue-a", micros, micros, "checksum-1");
+        when(repository.findOrder(ORDER)).thenReturn(Optional.of(order()));
+        when(repository.lineage(ORDER, SOURCE, ACCESSION)).thenReturn(List.of(existing));
+
+        ImportOutcome outcome = service.importResult(new ImportResultRequest(ORDER, PATIENT, SOURCE,
+                ACCESSION, DEST, "final", null, nanos.toString(), "checksum-1"));
+
+        assertEquals(existing, outcome.report());
+        verify(repository, never()).insertReport(any());
+        audited("XCH04_RESULT_REPLAY");
+    }
+
+    @Test
     void aNewFindingAfterAnExistingFinalAdvancesTheLineage() {
         authorized("lab_verifier");
         ResultReport first = result(1, ResultKind.FINAL, null, null);
