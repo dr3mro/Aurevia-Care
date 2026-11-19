@@ -265,7 +265,9 @@ def update_todo(edit, message, path="TODO.md", attempts=3):
             return False
         Path(path).write_text(new)
         git("add", path)
-        git(*IDENTITY, "commit", "-qm", message)
+        # [skip ci] keeps this TODO.md-only commit from triggering another
+        # swarm.yml push event (which would spawn a wave for every claim).
+        git(*IDENTITY, "commit", "-qm", f"{message} [skip ci]")
         try:
             authed_git("push", "origin", "HEAD:main")
             return True
