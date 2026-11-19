@@ -8,8 +8,8 @@ on:
   workflow_dispatch:
     inputs:
       workers:
-        description: Number of workers to start (1 to 10)
-        default: '10'
+        description: Worker cap; the wave uses fewer when fewer tasks are ready (1 to 10)
+        default: '3'
       repair_run:
         description: Failed run id on main to repair (set by the main watchdog)
         default: ''
@@ -45,10 +45,17 @@ jobs:
             CLOUDWORKERS.md
       - id: image
         run: echo "prefix=ghcr.io/${GITHUB_REPOSITORY,,}-agent" >> "$GITHUB_OUTPUT"
-      - id: plan
+      # Safety net: refuse a wave when estimated monthly runner minutes are near
+      # the cap. No wave, no worker containers, and an issue for a person.
+      - id: budget
         env:
           GH_TOKEN: ${{ github.token }}
-          WORKERS: ${{ inputs.workers || '10' }}
+        run: python3 -I scripts/swarm.py budget-gate
+      - id: plan
+        if: steps.budget.outputs.start == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WORKERS: ${{ inputs.workers || '3' }}
           REPAIR_RUN: ${{ inputs.repair_run }}
         run: |
           python3 -I scripts/swarm.py ensure-labels
@@ -89,6 +96,7 @@ jobs:
       FIX_COMMENT: ${{ matrix.fix }}
       PR_NUMBER: ${{ matrix.number }}
       AGENT_TIMEOUT: 45m
+      CHECK_SCRIPT: scripts/quick-check.sh
     steps:
       - uses: actions/checkout@v7
         with:

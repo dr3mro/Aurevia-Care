@@ -9,9 +9,14 @@ Up to 10 OpenCode workers run in parallel on GitHub-hosted runners. An orchestra
 | 1. Split | `swarm.yml` (plan) | Reads CLOUDWORKERS.md. Picks `todo` tasks whose dependencies are `done` and whose scopes do not overlap each other or open swarm PRs. Repairs and fix requests go first. One task per slot. |
 | 2. Work | `swarm.yml` (worker) | Starts the slot's prepared image, checks out the repository, runs the agent test first on branch `swarm/<ID>-<run>`, runs `scripts/check.sh`, packs the commits and exits. The container is discarded. |
 | 3. Publish | `swarm.yml` (publish) | A separate trusted job pushes the branch and opens the pull request. The worker never holds a GitHub token. |
-| 4. Integrate | `swarm-integrator.yml` | One PR at a time: merges it into current `main` locally, runs `scripts/check.sh` (unit, PostgreSQL integration, coverage, OWASP, SpotBugs, policy checks), then commits the merge to `main` and records it. No model is used. |
-| 5. Return | `swarm-integrator.yml` | On a conflict or failing check the PR gets `needs-fix` with the log tail and goes back to the pool for a worker. After 3 attempts it gets `needs-human`. |
-| 6. Repair | `main-watchdog.yml` | When Delivery fails on `main`, starts one repair worker with the failing log. While `main` is red only repair PRs merge. After 3 repairs in 24 hours it opens an issue and stops. |
+| 4. Integrate | `swarm-integrator.yml` | One job for the whole ready batch: merges each PR into local `main` one at a time, runs the fast gate `scripts/quick-check.sh` after each, then commits and pushes once. No model is used. |
+| 5. Heavy checks | `heavy-check.yml` | Runs the expensive checks (PostgreSQL integration, JaCoCo coverage, OWASP with cached NVD data, SpotBugs) once per batch on `main`, scheduled, dispatched, or after a successful integrator run. A failure wakes the watchdog. |
+| 6. Return | `swarm-integrator.yml` | On a conflict or failing fast gate the PR gets `needs-fix` with the log tail and goes back to the pool; its merge is rolled back so the rest of the batch proceeds. After 3 attempts it gets `needs-human`. |
+| 7. Repair | `main-watchdog.yml` | When Delivery or Heavy verification fails on `main`, starts one repair worker with the failing log. While `main` is red only repair PRs merge. After 3 repairs in 24 hours it opens an issue and stops. |
+
+**Two-tier checks.** The worker, integrator and PR gate run only `scripts/quick-check.sh`: policy, compile and unit tests. PostgreSQL integration, coverage, OWASP and SpotBugs run once per batch on `main` in `heavy-check.yml` with a cached NVD database, not once per PR. This removes the expensive checks from every merge and worker.
+
+**Batching.** The integrator sets up Java/Maven once, merges every ready PR in one job, pushes once, and triggers Heavy verification once. Publish is one job for all slots rather than a matrix; the worker keeps no GitHub token and only the trusted publish job holds one.
 
 ## Prepared images
 

@@ -1,0 +1,55 @@
+name: Heavy verification
+# The second check tier. Runs the expensive checks (PostgreSQL integration,
+# JaCoCo coverage, OWASP dependency analysis and SpotBugs) once per batch on
+# main, not once per swarm pull request. A failure wakes the main watchdog.
+on:
+  schedule:
+    - cron: '23 4 * * *'
+  workflow_dispatch:
+  workflow_run:
+    workflows: [Swarm integrator]
+    types: [completed]
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: heavy-verification
+  cancel-in-progress: true
+jobs:
+  heavy:
+    name: Full checks on main
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Cache OWASP NVD data
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository/org/owasp/dependency-check-data
+          key: owasp-nvd-${{ runner.os }}-${{ runner.arch }}-${{ github.sha }}
+          restore-keys: |
+            owasp-nvd-${{ runner.os }}-${{ runner.arch }}-
+      - name: Full check with cached NVD data
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+          SMARTCLINIC_PG_ADMIN: postgres
+        run: bash scripts/check.sh

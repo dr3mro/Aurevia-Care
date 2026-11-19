@@ -5,7 +5,7 @@ name: Main watchdog
 # and opens an issue for a person.
 on:
   workflow_run:
-    workflows: [Delivery]
+    workflows: [Delivery, Heavy verification]
     types: [completed]
     branches: [main]
 permissions:
