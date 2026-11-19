@@ -9,6 +9,12 @@ python3 -I delivery_safety_evidence.py fixtures/synthetic_evidence.json >/dev/nu
 if python3 -I delivery_safety_evidence.py fixtures/violation_evidence.json >/dev/null 2>&1; then
   printf 'S-G5-07: violation fixture unexpectedly passed\n' >&2
   exit 1
+else
+  violation_status=$?
+  if [ "$violation_status" -ne 1 ]; then
+    printf 'S-G5-07: violation fixture must exit 1, got %s\n' "$violation_status" >&2
+    exit 1
+  fi
 fi
 
 # The repository's authoritative change-safety gate is run for real here rather
