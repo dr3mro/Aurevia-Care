@@ -117,17 +117,6 @@ public class PatientReleaseController {
     }
 
     /**
-     * List the revision identifiers a patient may currently access (PAT-02).
-     *
-     * @param patientId tenant-local patient identifier
-     * @return currently visible revision identifiers
-     */
-    @GetMapping("/patients/{patientId}/released-revisions")
-    public List<String> visibleRevisions(@PathVariable String patientId) {
-        return service.visibleRevisions(patientId);
-    }
-
-    /**
      * Withdrawal command body.
      *
      * @param reason non-sensitive reason for retraction
