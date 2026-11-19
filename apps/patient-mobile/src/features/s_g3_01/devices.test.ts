@@ -54,6 +54,14 @@ describe('withRegisteredDevice', () => {
     expect(next.get(peerKey)).toEqual(token('dev-1', 'active'));
     expect(source.has(tenantKey('org-a', 'dev-1'))).toBe(false);
   });
+
+  it('cannot rebind a device id already owned by another patient in the same tenant', () => {
+    const source = new Map<string, DeviceToken>([
+      [tenantKey('org-a', 'dev-1'), token('dev-1', 'active', 'patient-2')],
+    ]);
+    const next = withRegisteredDevice(source, 'org-a', token('dev-1', 'active', 'patient-1'));
+    expect(next.get(tenantKey('org-a', 'dev-1'))).toEqual(token('dev-1', 'active', 'patient-2'));
+  });
 });
 
 describe('device state transitions', () => {
@@ -83,7 +91,7 @@ describe('persisted revocation and invalidation', () => {
     const source = new Map<string, DeviceToken>([
       [tenantKey('org-a', 'dev-1'), token('dev-1', 'active')],
     ]);
-    const revoked = withRevokedDevice(source, 'org-a', 'dev-1');
+    const revoked = withRevokedDevice(source, 'org-a', 'dev-1', 'patient-1');
     expect(revoked.get(tenantKey('org-a', 'dev-1'))?.state).toBe('revoked');
     expect(eligibleTokens(revoked, 'org-a', 'patient-1')).toEqual([]);
     expect(eligibleTokens(source, 'org-a', 'patient-1')).toEqual([token('dev-1', 'active')]);
@@ -93,7 +101,7 @@ describe('persisted revocation and invalidation', () => {
     const source = new Map<string, DeviceToken>([
       [tenantKey('org-a', 'dev-1'), token('dev-1', 'active')],
     ]);
-    const invalidated = withInvalidatedDevice(source, 'org-a', 'dev-1');
+    const invalidated = withInvalidatedDevice(source, 'org-a', 'dev-1', 'patient-1');
     expect(invalidated.get(tenantKey('org-a', 'dev-1'))?.state).toBe('invalid');
     expect(eligibleTokens(invalidated, 'org-a', 'patient-1')).toEqual([]);
     expect(eligibleTokens(source, 'org-a', 'patient-1')).toEqual([token('dev-1', 'active')]);
@@ -102,9 +110,22 @@ describe('persisted revocation and invalidation', () => {
   it('does not change a peer tenant or a missing device', () => {
     const peerKey = tenantKey('org-b', 'dev-1');
     const source = new Map<string, DeviceToken>([[peerKey, token('dev-1', 'active')]]);
-    const revoked = withRevokedDevice(source, 'org-a', 'dev-1');
+    const revoked = withRevokedDevice(source, 'org-a', 'dev-1', 'patient-1');
     expect(revoked.get(peerKey)).toEqual(token('dev-1', 'active'));
     expect(revoked.has(tenantKey('org-a', 'dev-1'))).toBe(false);
-    expect(withInvalidatedDevice(source, 'org-a', 'missing')).toEqual(source);
+    expect(withInvalidatedDevice(source, 'org-a', 'missing', 'patient-1')).toEqual(source);
+  });
+
+  it('never revokes or invalidates a device owned by another patient in the same tenant', () => {
+    const foreign = token('dev-2', 'active', 'patient-2');
+    const source = new Map<string, DeviceToken>([
+      [tenantKey('org-a', 'dev-1'), token('dev-1', 'active', 'patient-1')],
+      [tenantKey('org-a', 'dev-2'), foreign],
+    ]);
+    const revoked = withRevokedDevice(source, 'org-a', 'dev-2', 'patient-1');
+    const invalidated = withInvalidatedDevice(source, 'org-a', 'dev-2', 'patient-1');
+    expect(revoked.get(tenantKey('org-a', 'dev-2'))).toEqual(foreign);
+    expect(invalidated.get(tenantKey('org-a', 'dev-2'))).toEqual(foreign);
+    expect(revoked.get(tenantKey('org-a', 'dev-1'))?.state).toBe('active');
   });
 });

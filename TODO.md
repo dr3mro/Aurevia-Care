@@ -160,7 +160,7 @@ Gate evidence: rejected or recollected specimens trace to the right order; dupli
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [-] S-G2-02 · Separate workflow, transmission and clinical review states with human acknowledgment (XCH-02).
   - agent: swarm-1
-  - attempts: 12
+  - attempts: 13
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/exchange/task, apps/api/src/test/java/com/aurevia/smartclinic/it/exchangetask
   - reserved: V20
   - details:
@@ -169,7 +169,7 @@ Gate evidence: rejected or recollected specimens trace to the right order; dupli
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [-] S-G2-03 · Accept, reject with reason, clarify, linked changes, cancellations and revocation (XCH-03).
   - agent: swarm-2
-  - attempts: 5
+  - attempts: 6
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/exchange/response, apps/api/src/test/java/com/aurevia/smartclinic/it/exchange/response
   - reserved: V21
   - details:
@@ -178,7 +178,7 @@ Gate evidence: rejected or recollected specimens trace to the right order; dupli
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [-] S-G2-04 · Result routing, identifier matching, reconciliation queue and correction versions (XCH-04).
   - agent: swarm-3
-  - attempts: 4
+  - attempts: 5
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/exchange/result, apps/api/src/test/java/com/aurevia/smartclinic/it/exchange/result
   - reserved: V22
   - details:
@@ -197,7 +197,7 @@ Gate evidence: rejected or recollected specimens trace to the right order; dupli
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [-] S-G2-06 · Patient release authorization, timed/hold policies and withdrawn releases (XCH-06).
   - agent: swarm-4
-  - attempts: 3
+  - attempts: 4
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/exchange/release, apps/api/src/test/java/com/aurevia/smartclinic/it/exchange/release
   - reserved: V24
   - details:
@@ -289,7 +289,7 @@ Gate evidence: confirmed patients see only authorized revisions; generic notific
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [-] S-G3-05 · Conversation lifecycle, unread counts, staff work queue, assignment and reopen states (MSG-02).
   - agent: swarm-5
-  - attempts: 5
+  - attempts: 6
   - scope: apps/patient-mobile/src/features/conversations, apps/api/src/main/java/com/aurevia/smartclinic/messaging/conversation
   - reserved: V33
   - details:
@@ -314,26 +314,26 @@ Gate evidence: confirmed patients see only authorized revisions; generic notific
     Implement Typed patient instructions with templates, revisions, withdrawal and units (MSG-04) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [x] S-G3-08 · Publication, dispatch, first view and revision-bound acknowledgment as separate facts (MSG-05).
-  - pr: #96
-  - attempts: 3
+- [-] S-G3-08 · Publication, dispatch, first view and revision-bound acknowledgment as separate facts (MSG-05).
+  - agent: swarm-6
+  - attempts: 4
   - scope: apps/patient-mobile/src/features/s_g3_08, apps/api/src/main/java/com/aurevia/smartclinic/messaging/acknowledgment
   - reserved: V36
   - details:
     Implement Publication, dispatch, first view and revision-bound acknowledgment as separate facts (MSG-05) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [x] S-G3-09 · Service hours, response targets, named owners, backup coverage and after-hours guidance (MSG-06).
-  - pr: #97
-  - attempts: 3
+- [-] S-G3-09 · Service hours, response targets, named owners, backup coverage and after-hours guidance (MSG-06).
+  - agent: swarm-7
+  - attempts: 4
   - scope: apps/patient-mobile/src/features/s_g3_09, apps/api/src/main/java/com/aurevia/smartclinic/messaging/service
   - reserved: V37
   - details:
     Implement Service hours, response targets, named owners, backup coverage and after-hours guidance (MSG-06) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [-] S-G3-10 · Messaging audit, retention, legal hold, provenance and revocation effects (MSG-07).
-  - agent: swarm-6
+- [x] S-G3-10 · Messaging audit, retention, legal hold, provenance and revocation effects (MSG-07).
+  - pr: #98
   - attempts: 3
   - scope: apps/patient-mobile/src/features/s_g3_10, apps/api/src/main/java/com/aurevia/smartclinic/messaging/governance
   - reserved: V38
@@ -439,8 +439,8 @@ Gate evidence: each site approves workflow, release policy, market constraints, 
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [-] S-G5-06 · Recovery targets, restore into clean environment and operational runbooks (OPS-04, OPS-05).
-  - agent: swarm-6
-  - attempts: 4
+  - agent: swarm-8
+  - attempts: 5
   - scope: infra/s_g5_06, docs/operations/s_g5_06
   - reserved: V48
   - details:
@@ -448,8 +448,8 @@ Gate evidence: each site approves workflow, release policy, market constraints, 
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [-] S-G5-07 · Separate environments, synthetic fixtures, signed builds, migration checks and progressive rollout (OPS-06).
-  - agent: swarm-7
-  - attempts: 2
+  - agent: swarm-9
+  - attempts: 3
   - scope: infra/s_g5_07, docs/operations/s_g5_07
   - reserved: V49
   - details:
@@ -457,16 +457,16 @@ Gate evidence: each site approves workflow, release policy, market constraints, 
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [-] S-G5-08 · Tenant export manifest, retention, legal hold, deletion and offboarding (OPS-07).
-  - agent: swarm-8
-  - attempts: 2
+  - agent: swarm-10
+  - attempts: 3
   - scope: infra/s_g5_08, docs/operations/s_g5_08
   - reserved: V50
   - details:
     Implement Tenant export manifest, retention, legal hold, deletion and offboarding (OPS-07) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [-] S-G5-09 · Onboarding dataset manifest, dry run, controlled batches and authorized sign-off (OPS-08).
-  - agent: swarm-9
+- [x] S-G5-09 · Onboarding dataset manifest, dry run, controlled batches and authorized sign-off (OPS-08).
+  - pr: #111
   - attempts: 2
   - scope: infra/s_g5_09, docs/operations/s_g5_09
   - reserved: V51
@@ -498,8 +498,8 @@ Gate evidence: each site approves workflow, release policy, market constraints, 
 
 Delivered inside the stories above, not scheduled separately.
 
-- [-] X-01 · API versioning, idempotency, cursor pagination, correlation IDs and machine-readable errors (ARC-03, ARC-04).
-  - agent: swarm-9
+- [x] X-01 · API versioning, idempotency, cursor pagination, correlation IDs and machine-readable errors (ARC-03, ARC-04).
+  - pr: #101
   - attempts: 1
   - scope: contracts/x_01, apps/api/src/main/java/com/aurevia/smartclinic/api/x_01
   - reserved: V54
@@ -507,8 +507,8 @@ Delivered inside the stories above, not scheduled separately.
     Implement API versioning, idempotency, cursor pagination, correlation IDs and machine-readable errors (ARC-03, ARC-04) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [-] X-02 · Durable events, outbox, deduplication, replay and dead-letter review (ARC-05).
-  - agent: swarm-10
+- [x] X-02 · Durable events, outbox, deduplication, replay and dead-letter review (ARC-05).
+  - pr: #102
   - attempts: 1
   - scope: contracts/x_02, apps/api/src/main/java/com/aurevia/smartclinic/api/x_02
   - reserved: V55
@@ -516,8 +516,8 @@ Delivered inside the stories above, not scheduled separately.
     Implement Durable events, outbox, deduplication, replay and dead-letter review (ARC-05) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [-] X-03 · Upload validation, quarantine, mediated downloads and PDF binding to immutable revisions (ARC-06).
-  - agent: swarm-10
+- [x] X-03 · Upload validation, quarantine, mediated downloads and PDF binding to immutable revisions (ARC-06).
+  - pr: #112
   - attempts: 1
   - scope: contracts/upload, apps/api/src/main/java/com/aurevia/smartclinic/api/upload
   - reserved: V56
