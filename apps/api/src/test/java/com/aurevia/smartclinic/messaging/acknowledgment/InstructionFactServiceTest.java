@@ -238,6 +238,44 @@ class InstructionFactServiceTest {
     }
 
     @Test
+    void acknowledgmentIsAttributedToTheAuthenticatedAccountOnASharedChart() {
+        asStaff();
+        service.publish(publish(INSTRUCTION, PATIENT, UNIT, 1, true, NOW.toString(), true, "client-1"));
+        asPatient();
+        Acknowledgment first = service.acknowledge(new AcknowledgeCommand(INSTRUCTION, 1, "ack-first"));
+        assertEquals(SUBJECT, first.actor());
+
+        // IAM-05 permits several verified accounts to link to one chart. A
+        // second account must record its own receipt rather than receive the
+        // first account's fact with the wrong actor.
+        TenantContext.set(new TenantContext(ORG, OTHER_SUBJECT, "PATIENT_MESSAGE", CORRELATION));
+        store.linkPatient(ORG, OTHER_SUBJECT, PATIENT);
+        Acknowledgment second = service.acknowledge(new AcknowledgeCommand(INSTRUCTION, 1, "ack-second"));
+        assertEquals(OTHER_SUBJECT, second.actor());
+        assertNotEquals(first, second);
+        assertEquals(2, store.acknowledgments(ORG, INSTRUCTION, 1).size());
+        assertEquals(second, service.acknowledge(new AcknowledgeCommand(INSTRUCTION, 1, "ack-second")));
+    }
+
+    @Test
+    void tenantAdminNeedsUnitAssignmentForOwningUnitActions() {
+        asStaff();
+        service.publish(publish(INSTRUCTION, PATIENT, UNIT, 1, true, NOW.minusSeconds(1).toString(),
+                true, "client-1"));
+        TenantContext.set(new TenantContext(ORG, "tenant-admin", "PATIENT_MESSAGE", CORRELATION));
+        // Action permission and object (unit) authorization are separate (IAM-01).
+        assertEquals(403, assertThrows(ApiException.class,
+                () -> service.overdueFollowUps(UNIT)).status());
+        // An unassigned actor cannot even learn that the follow-up exists.
+        assertEquals(404, assertThrows(ApiException.class,
+                () -> service.resolveFollowUp(new ResolveCommand(INSTRUCTION, 1, "contacted"))).status());
+        store.assignStaffUnit(ORG, "tenant-admin", UNIT);
+        assertEquals(1, service.overdueFollowUps(UNIT).size());
+        assertEquals(FollowUpState.RESOLVED, service.resolveFollowUp(
+                new ResolveCommand(INSTRUCTION, 1, "contacted")).state());
+    }
+
+    @Test
     void acknowledgmentIsRejectedWhenItWasNotRequested() {
         asStaff();
         service.publish(publish(INSTRUCTION, PATIENT, UNIT, 1, false, null, false, "client-1"));
