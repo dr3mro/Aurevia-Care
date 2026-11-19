@@ -292,7 +292,12 @@ def overlaps(a, b):
 
 
 def task_id_of(branch):
-    match = re.fullmatch(r"swarm/([A-Za-z0-9]+-\d+)-[A-Za-z0-9._-]*", branch)
+    """Return the task ID from a `swarm/<slug>-<run>` branch.
+
+    IDs may contain several hyphens (S-G1-02, X-01, FIX-444, CW-001), so only
+    the trailing numeric run suffix is removed, not the last hyphen segment.
+    """
+    match = re.fullmatch(r"swarm/([A-Za-z0-9-]+)-\d+", branch)
     return match.group(1) if match else ""
 
 
