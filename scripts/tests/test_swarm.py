@@ -554,6 +554,85 @@ class WorkflowTests(unittest.TestCase):
         self.assertIn("git config --global --add safe.directory", text)
 
 
+class AuditTests(unittest.TestCase):
+    TODO = "- [x] S-1 · Existing finished story.\n  - scope: a\n"
+
+    def entries(self, findings, text=None, today="20261120"):
+        return swarm.audit_entries(findings, text or self.TODO, today)
+
+    def good(self, **over):
+        item = {"title": "Tenant check missing on export endpoint", "scope": ["apps/api/src/export"],
+                "details": "ExportController skips the tenant check.\nSee ExportController.java."}
+        return {**item, **over}
+
+    def test_valid_finding_becomes_a_todo_entry(self):
+        (entry,) = self.entries([self.good()])
+        self.assertIn("- [ ] AUD-20261120-01 · Tenant check missing on export endpoint", entry)
+        self.assertIn("  - attempts: 0\n  - scope: apps/api/src/export", entry)
+        tasks = swarm.parse_tasks(self.TODO + entry + "\n")
+        self.assertEqual(tasks[-1]["status"], "todo")
+        self.assertEqual(tasks[-1]["scope"], ["apps/api/src/export"])
+        self.assertIn("ExportController skips", tasks[-1]["details"])
+
+    def test_invalid_findings_are_dropped(self):
+        bad = [self.good(title="short"), self.good(scope=[]), self.good(scope=["/etc"]),
+               self.good(scope=["../x"]), self.good(scope=[".github/workflows"]),
+               self.good(details=""), "text", None]
+        self.assertEqual(self.entries(bad), [])
+        self.assertEqual(self.entries({"not": "a list"}), [])
+
+    def test_duplicates_of_existing_titles_are_skipped(self):
+        text = self.TODO + "- [ ] X-1 · Tenant check MISSING on export endpoint!\n  - scope: a\n"
+        self.assertEqual(self.entries([self.good()], text), [])
+
+    def test_at_most_five_new_tasks_per_audit(self):
+        items = [self.good(title=f"Distinct finding number {n} in the code") for n in range(8)]
+        self.assertEqual(len(self.entries(items)), swarm.MAX_AUDIT_NEW)
+
+    def test_no_new_tasks_while_too_many_audit_tasks_are_open(self):
+        text = self.TODO + "".join(
+            f"- [ ] AUD-2026-{n:02d} · Open audit task {n} waiting.\n  - scope: a\n"
+            for n in range(swarm.MAX_AUDIT_OPEN))
+        self.assertEqual(self.entries([self.good()], text), [])
+
+    def test_ids_do_not_collide_with_existing_ones(self):
+        text = self.TODO + "- [x] AUD-20261120-01 · Old.\n  - scope: a\n"
+        (entry,) = self.entries([self.good()], text)
+        self.assertIn("AUD-20261120-02", entry)
+
+    def test_add_audit_tasks_appends_under_one_header(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            todo, found = Path(tmp, "TODO.md"), Path(tmp, "f.json")
+            todo.write_text(self.TODO)
+            found.write_text(json.dumps([self.good()]))
+            with mock.patch.object(swarm, "git"), mock.patch.object(swarm, "authed_git"):
+                self.assertEqual(swarm.add_audit_tasks(str(found), str(todo), "20261120"), 1)
+                found.write_text(json.dumps([self.good(title="Another distinct finding here")]))
+                swarm.add_audit_tasks(str(found), str(todo), "20261121")
+            text = todo.read_text()
+            self.assertEqual(text.count(swarm.AUDIT_HEADER), 1)
+            self.assertEqual([t["id"] for t in swarm.parse_tasks(text)][-2:],
+                             ["AUD-20261120-01", "AUD-20261121-01"])
+
+    def test_missing_or_broken_findings_change_nothing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            todo = Path(tmp, "TODO.md")
+            todo.write_text(self.TODO)
+            self.assertEqual(swarm.add_audit_tasks(str(Path(tmp, "none.json")), str(todo)), 0)
+            Path(tmp, "bad.json").write_text("{nope")
+            self.assertEqual(swarm.add_audit_tasks(str(Path(tmp, "bad.json")), str(todo)), 0)
+            self.assertEqual(todo.read_text(), self.TODO)
+
+    def test_daily_workflow_is_read_only_for_the_worker(self):
+        text = (ROOT / ".github/workflows/daily-audit.yml").read_text()
+        self.assertIn("cron: '17 7 * * *'", text)
+        self.assertIn("scripts/agent-run.sh audit", text)
+        self.assertIn("swarm.py add-audit-tasks", text)
+        audit = text.split("  audit:")[1].split("  append:")[0]
+        self.assertNotIn("GH_TOKEN", audit)
+        self.assertNotIn("contents: write", audit)
+
+
 class RepairTests(unittest.TestCase):
     def test_repair_task_carries_the_failing_log(self):
         class Gh(FakeGh):

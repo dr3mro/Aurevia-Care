@@ -206,6 +206,79 @@ def parse_tasks(text):
     return tasks
 
 
+MAX_AUDIT_NEW = 5       # findings turned into tasks per daily audit
+MAX_AUDIT_OPEN = 10     # no new audit tasks while this many are still open
+AUDIT_HEADER = "## Audit findings"
+
+
+def _norm(text):
+    return re.sub(r"[^a-z0-9]+", " ", text.lower()).strip()
+
+
+def audit_entries(findings, text, today):
+    """Validate audit findings and format the new ones as TODO.md entries.
+
+    The audit worker has no token and its JSON is untrusted, so every field is
+    checked: bounded lengths, relative scope paths that are not protected files,
+    and no duplicate of an existing task title."""
+    tasks = parse_tasks(text)
+    open_audit = [t for t in tasks if t["id"].startswith("AUD-") and t["status"] != "done"]
+    room = min(MAX_AUDIT_NEW, MAX_AUDIT_OPEN - len(open_audit))
+    seen = {_norm(t["task"]) for t in tasks}
+    existing = {t["id"] for t in tasks}
+    entries, number = [], 0
+    for item in findings if isinstance(findings, list) else []:
+        if len(entries) >= room:
+            break
+        if not isinstance(item, dict):
+            continue
+        title, details, scope = item.get("title"), item.get("details"), item.get("scope")
+        if not (isinstance(title, str) and 10 <= len(title.strip()) <= 160 and "\n" not in title):
+            continue
+        if not (isinstance(details, str) and details.strip()) \
+                or not (isinstance(scope, list) and 1 <= len(scope) <= 4):
+            continue
+        if not all(isinstance(d, str) and d and not d.startswith("/") and ".." not in d
+                   and "," not in d and not protected_files([d, d.rstrip("/") + "/x"])
+                   for d in scope):
+            continue
+        if _norm(title) in seen:
+            continue
+        seen.add(_norm(title))
+        number += 1
+        while f"AUD-{today}-{number:02d}" in existing:
+            number += 1
+        body = "\n".join(f"    {line}" for line in details.strip()[:2000].splitlines() if line.strip())
+        entries.append(
+            f"- [ ] AUD-{today}-{number:02d} · {title.strip()}\n"
+            f"  - attempts: 0\n  - scope: {', '.join(scope)}\n  - details:\n{body}\n"
+            "    Found by the daily audit. Synthetic fixtures only; failing tests first;\n"
+            "    stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.")
+    return entries
+
+
+def add_audit_tasks(findings_path, path="TODO.md", today=None):
+    """Append validated audit findings to TODO.md on main for the swarm to take."""
+    today = today or datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d")
+    try:
+        findings = json.loads(Path(findings_path).read_text())
+    except (OSError, ValueError):
+        print("No usable audit findings.", file=sys.stderr)
+        return 0
+    added = []
+
+    def edit(text):
+        entries = audit_entries(findings, text, today)
+        added[:] = entries
+        if not entries:
+            return text
+        head = "" if AUDIT_HEADER in text else f"\n{AUDIT_HEADER}\n\n"
+        return text.rstrip("\n") + "\n" + head + "\n".join(entries) + "\n"
+    update_todo(edit, "Daily audit: add findings", path)
+    print(f"Added {len(added)} audit task(s).")
+    return len(added)
+
+
 def attempts_of(task):
     value = task.get("attempts", "")
     return int(value) if str(value).isdigit() else 0
@@ -749,6 +822,9 @@ def main(argv=None):
     p.add_argument("--repair-run", default="")
     p = sub.add_parser("continue")
     p.add_argument("--file", default="TODO.md")
+    p = sub.add_parser("add-audit-tasks")
+    p.add_argument("--findings", required=True)
+    p.add_argument("--file", default="TODO.md")
     p = sub.add_parser("repair-gate")
     p.add_argument("--run", required=True)
     for name in ("release", "publish"):
@@ -807,6 +883,8 @@ def main(argv=None):
         release(json.loads(a.task), a.result, a.commits)
     elif a.cmd == "publish":
         publish(json.loads(a.task), a.dir)
+    elif a.cmd == "add-audit-tasks":
+        add_audit_tasks(a.findings, a.file)
     elif a.cmd == "repair-gate":
         start, why = repair_gate(a.run)
         print(why)
