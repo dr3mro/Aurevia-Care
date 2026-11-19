@@ -1,11 +1,9 @@
-name: Main watchdog
+name: Main repair
 # Watches Delivery, Heavy verification and the image builds on main. When one
 # fails, starts one repair worker with the failing log. The fix is a pull request
-# labeled autofix that the integrator merges once the fast gate passes, then
-# Delivery runs again on main; a fix that did not work starts the next repair.
-# Repairs may change workflow, script or agent files; the fast gate still applies.
-# It stops after
-# three tries in 24 hours and opens an issue.
+# labeled autofix that fix-pr-watchdog.yml validates on a pull_request event,
+# then hands to the integrator; a fix that did not work starts the next repair.
+# It stops after three tries in 24 hours and opens an issue.
 on:
   workflow_run:
     workflows: [Delivery, Heavy verification, Agent image, Swarm slot images]
@@ -14,7 +12,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: main-watchdog
+  group: main-repair
   cancel-in-progress: false
   queue: max
 jobs:
