@@ -341,6 +341,13 @@ class RxTransmissionFlowTest {
         assertEquals("NO_ENTITLEMENT", code(post(ORG_A, "unentitled-1111", disabled + "/attest", 1,
                 "{\"note\":\"disabled\"}")));
 
+        // A clinician with no entitlement setting at all (the orElseThrow path,
+        // distinct from a setting that is present but disabled) is also denied.
+        String noSetting = newId();
+        create(ORG_A, "other-1111", noSetting, "other-1111");
+        assertEquals("NO_ENTITLEMENT", code(post(ORG_A, "other-1111", noSetting + "/attest", 1,
+                "{\"note\":\"no entitlement setting\"}")));
+
         String noChannel = newId();
         create(ORG_C, "clinician-3333", noChannel, "clinician-3333");
         post(ORG_C, "clinician-3333", noChannel + "/attest", 1, "{\"note\":\"synthetic attestation\"}");
@@ -466,6 +473,13 @@ class RxTransmissionFlowTest {
                 + "prescription_id, channel) VALUES (public.app_org(), CAST('" + sid
                 + "' AS uuid), CAST('" + id + "' AS uuid), 'E_PRESCRIBE')";
         assertThrowsSql(() -> execute(org, prescriber, replay));
+
+        // A fresh submission id for the same prescription is refused too: the
+        // ledger holds exactly one downstream submission per RX-02 record (G4).
+        String duplicate = "INSERT INTO public.rx02_submission (organization_id, submission_id, "
+                + "prescription_id, channel) VALUES (public.app_org(), gen_random_uuid(), CAST('"
+                + id + "' AS uuid), 'E_PRESCRIBE')";
+        assertThrowsSql(() -> execute(org, prescriber, duplicate));
     }
 
     // ---------- helpers ----------
