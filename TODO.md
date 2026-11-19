@@ -160,7 +160,7 @@ Gate evidence: rejected or recollected specimens trace to the right order; dupli
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [-] S-G2-02 · Separate workflow, transmission and clinical review states with human acknowledgment (XCH-02).
   - agent: swarm-1
-  - attempts: 9
+  - attempts: 10
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g2/s_g2_02, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g2_02
   - reserved: V20
   - details:
