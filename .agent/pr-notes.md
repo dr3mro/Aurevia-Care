@@ -1,4 +1,66 @@
 
+# S-G4-05 — Itemized self-pay invoices, payments, refunds, receipts and daily reconciliation (FIN-01)
+
+## Story, scope and provenance
+
+- Story S-G4-05, branch `swarm/S-G4-05-99`, base SHA `40e1668`, attempts 2 (this is the finishing worker). Worked one story only, synthetic fixtures only, no push/tag/gh, no shared tracker edited.
+- Scope honored: `apps/api/src/main/java/com/aurevia/smartclinic/g4/s_g4_05`, `apps/api/src/test/java/com/aurevia/smartclinic/it/s_g4_05`, reserved migration `V45__finance.sql` (unchanged this attempt). No file outside the scope edited.
+- Requirements: **FIN-01** (primary); supporting **ARC-01/02/03/04, OPS-02, IAM-01** (tenant-scoped finance, version preconditions, append-only audit, finance-only reads).
+
+## Delivered surface (present at base, verified this attempt)
+
+Six production classes (`FinanceContract`, `FinanceService`, `FinanceRepository`, `FinanceInputs`, `FinanceActions`, `FinanceController`), two REST route families under `/api/v1/finance`, `V45__finance.sql` (four RLS-forced, org-keyed tables; append-only items/ledger; DB-derived actor; balance/currency/transition CHECKs and triggers; tenant receipt counter), and synthetic test suites `FinanceContractTest`, `FinanceFlowTest`, plus new `FinanceServiceTest` added this attempt.
+
+## Acceptance mapping (requirement → implementation → evidence)
+
+| FIN-01 behavior | Implementation | Test evidence (synthetic) |
+|---|---|---|
+| Itemized invoice in one fixed-precision currency; draft→issued→paid/partially_paid/void | `FinanceContract.InvoiceState`, `FinanceInputs` (integer minor units, overflow-checked multiply/add), `FinanceService.create/issue/voidInvoice`, V45 `finance_invoice` + `finance_invoice_item` + `guard_finance_invoice_issue_items`/`guard_finance_invoice_update` | `FinanceContractTest` (state matrix, bounded inputs, overflow), `FinanceFlowTest.fullLifecycle…`, `invalidInputsAndPreconditions…` (integrator) |
+| Payment, refund and credit as linked immutable entries with reason and independent approval | `FinanceService.postEntry`, `approvalFailure`, `FinanceActions.APPROVE`, V45 append-only `finance_ledger_entry` + actor/currency triggers | `FinanceFlowTest.reversalsRequireReasonAndAnIndependentApprover`, `fullLifecycle…` (integrator) |
+| Transactional balance changes, reference dedup, numbered receipts | `FinanceService.execute` (tenant-guarded `TransactionTemplate`), `FinanceInputs.digest`, `FinanceRepository.findByReference`/`nextReceiptNo` + V45 `UNIQUE(org,reference)` and receipt counter | `FinanceFlowTest.fullLifecycle…`, `refundReestablishesIssuedStateAndReplayIsANoOp`, `aReusedReferenceWithADifferentPayloadIsRejected`, `aReferenceCannotMoveToAnotherInvoice`, `reconciliationIsFinanceOnlyAndStableAcrossReplay` (integrator) |
+| Daily reconciliation without clinical narrative | `FinanceRepository.reconcile` (finance-only UNION of issued face values and ledger entries), `FinanceActions.READ/RECONCILE` for finance/admin/auditor | `FinanceFlowTest.reconciliationIsFinanceOnlyAndStableAcrossReplay` with the synthetic `CLINICAL_MARKER_DO_NOT_EXPOSE` assertion (integrator) |
+| Tenant isolation, fail-closed authorization, audit | Forced RLS on all V45 tables, org-bearing FKs, `app.actor`-derived fields, fresh membership/role folds, append-only audit in the same transaction | `FinanceFlowTest.authorizationAndTenantIsolationHoldOnEveryCommand`, `FinanceServiceTest` (fast) |
+
+Entry-point-to-test trace: `POST /api/v1/finance/invoices` → `FinanceController.create` → `FinanceService.create` → guarded `TransactionTemplate` → `FinanceRepository.insertInvoice`/`insertItem` (forced RLS + actor triggers) → `AuditAppender.append` → 201. `POST …/{id}/{payments|credits|refunds}` → `FinanceController` → `FinanceService.postEntry` → `loadForUpdate` + `findByReference` + balance/approval checks → `insertEntry`/`updateInvoice`/audit. `GET /api/v1/finance/reconciliation` → `FinanceController.reconcile` → `FinanceService.reconcile` → `FinanceRepository.reconcile`.
+
+## Defects found and fixed this attempt (test-first, synthetic)
+
+Two independent bounded reviews (simulated senior Java/Spring and senior PostgreSQL specialists) plus my own review. Both reviewers independently rated Finding 1 HIGH.
+
+1. **HIGH — replay fingerprint exceeded its ledger column.** `FinanceInputs.digest` built an unbounded length-prefixed token (up to ~641 chars for the validated 500-char reason and 64-char subject) while V45 constrains `payload_digest` to `char_length BETWEEN 1 AND 128`. Any payment/credit/refund with a reason over roughly 55 characters failed the DB CHECK and surfaced as HTTP 500 for input the API itself accepts. **RED:** `FinanceContractTest.digestIsFixedLengthEvenForMaximumLengthPayloads` → `625 > 128` failure. **Fix:** canonical string is now reduced with SHA-256 to a fixed 64-char lowercase hex token via a `MessageDigestFactory` seam (repo precedent: `NoteChecksum`); updated Javadoc and the old `contains(id)` assertion; added `FinanceContractTest.digestReportsAnUnavailableDigestAlgorithmExplicitly` to cover the failure branch. **GREEN:** bounded test passes; `FinanceInputs` 100% instruction/branch/line/method/class coverage in the fast JaCoCo report. Added integrator-run `FinanceFlowTest.aLongButValidReasonPostsWithinTheLedgerDigestColumn` as the end-to-end regression.
+2. **MEDIUM — a void invoice could be re-voided**, overwriting the recorded reason and independent approver of a terminal decision. **RED:** `FinanceServiceTest.voidingAnAlreadyVoidInvoiceIsRejected` → "no exception thrown" (the re-void was accepted). **Fix:** explicit `VOID` early guard in `FinanceService.voidInvoice` returning 409 `INVALID_TRANSITION`; guard line covered in the fast JaCoCo report. The contract's self-transition semantics and the existing contract test are unchanged.
+
+## Deferred findings (documented, not changed — need owner/integrator decision)
+
+- LOW: concurrent same-reference/different-payload posts on *different* invoices can race past `findByReference` and hit the DB `UNIQUE(org,reference)` as an unhandled 500 instead of 409 (same-invoice races are serialized). Fixing inside the aborted transaction needs a savepoint or advisory lock; not introduced unverified here because no PostgreSQL is reachable in this worker and the integrator owns DB tests.
+- MEDIUM (defense-in-depth): V45 has no BEFORE INSERT trigger preventing ledger entries on draft/void invoices from a non-Java writer; Java enforces it and all CHECKs/derivation triggers are correct. A new unverified trigger was not added to the reserved migration.
+- LOW: V45 receipt counter has no monotonic BEFORE UPDATE trigger; the application only increments and `UNIQUE(org,receipt_no)` prevents silent duplicates.
+- None of these affect the FIN-01 happy path, isolation, audit or reconciliation verified above.
+
+## Exact commands run and results (evidence source: executed tools and simulated reviewers)
+
+| Command | Result |
+|---|---|
+| `mvn -B -f apps/api/pom.xml -Pno-security,fast test` (baseline) | exit 0; 1491 tests, 0 failures/errors |
+| RED `mvn ... -Dtest=FinanceContractTest test` | exit 1; `digestIsFixedLengthEvenForMaximumLengthPayloads`: fingerprint 625 > 128 |
+| RED `mvn ... -Dtest=FinanceServiceTest test` | exit 1; `voidingAnAlreadyVoidInvoiceIsRejected`: no exception thrown |
+| `mvn -B -f apps/api/pom.xml -Pno-security,fast test` (final) | exit 0; **1494 tests, 0 failures/errors/skipped**; `FinanceContractTest` 19/19, `FinanceServiceTest` 1/1 |
+| `mvn -B -q -f apps/api/pom.xml -Pno-security,fast jacoco:report` | `FinanceInputs` 0 missed on INSTRUCTION/BRANCH/LINE/METHOD/CLASS; new `FinanceService` guard lines COVERED |
+| `mvn -B -q -f apps/api/pom.xml -Pno-security -DskipTests compile spotbugs:check` | exit 0, no findings |
+| focused `doxygen` (repository `docs/Doxyfile`, scope `s_g4_05` + `docs/reference`) | exit 0, 0 warnings/errors (initial `{@link}` error fixed by using `{@code}`) |
+| `python3 -I scripts/check-migrations.py --require-baseline`, `check-docs.py`, `check-secrets.py` | all exit 0 |
+| `git status --short` | only the 4 in-scope Java files plus `.agent/pr-notes.md` changed |
+
+Out-of-scope/environmental, not caused by this change (not modified): full `doxygen docs/Doxyfile` reports 276 errors from in-progress `messaging/s_g3_09` and `s_g3_12` branches; `scripts/tests/test_java_conventions.py` fails on `PatientFlowContract.java` (S-G3-11, 1 `List.copyOf` in HEAD); `check-pack.py` reports `opencode.json is stale` (documented cloud-worker skip-worktree CI-profile trap — `git ls-files -v` → `S`). These belong to their own stories/environment. No local PostgreSQL or `psql` exists in this worker, so `db/check.sh`, `mvn verify` JaCoCo gate and `FinanceFlowTest` were left to the integrator as directed; coverage above is from the fast tier only and is not claimed for integration paths.
+
+Evidence provenance: RED/GREEN results, coverage, SpotBugs and Doxygen are from executed tool commands on synthetic fixtures; defect findings are from two simulated specialist reviews plus my own read; no human participant, clinician or real-patient evidence. No credentials, patient data or raw logs recorded.
+
+---
+
+# S-G3-06 — PDF/JPEG/PNG attachments, sender binding, quarantine scans and clean-verdict access
+=======
+
+
 # S-G4-03 — Prescription draft, versioned drug catalog, alternatives and verified allergy checks (RX-01)
 
 ## Scope honoured
