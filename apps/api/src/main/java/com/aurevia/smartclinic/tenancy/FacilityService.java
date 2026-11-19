@@ -59,7 +59,7 @@ public class FacilityService {
     }
 
     /**
-     * Create a facility in the active organization.
+     * Create a facility in the active organization with the default UTC zone.
      *
      * @param code tenant-local facility code
      * @param name display name
@@ -67,16 +67,38 @@ public class FacilityService {
      * @throws ApiException on invalid input, denied access or a duplicate code
      */
     public Facility create(String code, String name) {
+        return create(code, name, null);
+    }
+
+    /**
+     * Create a facility in the active organization.
+     *
+     * <p>An absent time zone defaults to UTC so an existing client cannot start
+     * sending wrong local wall-clock times through a half-populated record.</p>
+     *
+     * @param code     tenant-local facility code
+     * @param name     display name
+     * @param timeZone IANA time zone, or {@code null} for UTC
+     * @return the created facility
+     * @throws ApiException on invalid input, denied access or a duplicate code
+     */
+    public Facility create(String code, String name, String timeZone) {
         if (code == null || !CODE.matcher(code).matches()) {
             throw new ApiException(422, "INVALID_CODE", "code must be 2-32 uppercase letters, digits, - or _");
         }
         if (name == null || name.isBlank() || name.length() > 200) {
             throw new ApiException(422, "INVALID_NAME", "name must be 1-200 characters");
         }
+        String zone = timeZone == null ? "UTC" : timeZone;
+        try {
+            java.time.ZoneId.of(zone);
+        } catch (java.time.DateTimeException exception) {
+            throw new ApiException(422, "INVALID_TIME_ZONE", "timeZone must be an IANA zone");
+        }
         return transactions.execute(status -> {
             authorize("FACILITY_WRITE");
             TenantContext context = TenantContext.current();
-            Facility facility = new Facility(context.organizationId(), code, name);
+            Facility facility = new Facility(context.organizationId(), code, name, zone);
             try {
                 repository.insert(facility);
             } catch (DuplicateKeyException exception) {
