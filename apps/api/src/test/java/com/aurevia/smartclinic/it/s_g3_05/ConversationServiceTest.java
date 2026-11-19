@@ -469,6 +469,33 @@ class ConversationServiceTest {
     }
 
     @Test
+    void aForeignThreadIsConcealedBeforeVersionAndStateChecks() {
+        asPatient("patient-a");
+        when(repository.loadForUpdate(ID)).thenReturn(
+                Optional.of(conversation(State.AWAITING_STAFF, 2, "patient-b", "lab", null)),
+                Optional.of(conversation(State.CLOSED, 2, "patient-b", "lab", null)));
+        assertEquals(404, assertThrows(ApiException.class,
+                () -> service.reply(ID, new ReplyRequest("hello"), 1)).status());
+        assertEquals(404, assertThrows(ApiException.class,
+                () -> service.reply(ID, new ReplyRequest("hello"), 2)).status());
+    }
+
+    @Test
+    void aWrongUnitStaffMemberIsDeniedBeforeVersionCheck() {
+        asStaff("lab-a", "lab_verifier");
+        when(repository.loadForUpdate(ID)).thenReturn(
+                Optional.of(conversation(State.AWAITING_STAFF, 2, "patient-a", "clinic", null)));
+        assertEquals(403, assertThrows(ApiException.class,
+                () -> service.reply(ID, new ReplyRequest("hello"), 1)).status());
+    }
+
+    @Test
+    void aMalformedConversationIdIsRejectedBeforeAnyRepositoryCall() {
+        assertEquals(422, assertThrows(ApiException.class, () -> service.get("not-a-uuid")).status());
+        verify(repository, never()).find(any());
+    }
+
+    @Test
     void deniedMembershipIsAuditedThenRejected() {
         when(repository.hasActiveMembership("patient-a")).thenReturn(false);
         ApiException failure = assertThrows(ApiException.class, () -> service.inbox());
