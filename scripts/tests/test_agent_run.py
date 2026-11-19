@@ -160,6 +160,35 @@ class AgentRunTests(unittest.TestCase):
         self.run_cmd("resolve", FAKE_MODE="stubborn", CONFLICTED="[5]", MERGE_ATTEMPTS="2")
         self.assertEqual((self.repo / ".agent/resolve/5").read_text(), "conflict")
 
+    def adopt_setup(self):
+        self.run_cmd("implement", FAKE_MODE="commit")
+        self.assertEqual(self.run_cmd("bundle").returncode, 0)
+        self.git("switch", "-q", "main")
+        self.git("branch", "-D", "opencode/issue-5-9")
+
+    def test_adopt_rebuilds_the_agent_branch_from_its_bundle(self):
+        self.adopt_setup()
+        done = self.run_cmd("adopt")
+        self.assertEqual(done.returncode, 0, done.stderr)
+        branch = subprocess.run(["git", "branch", "--show-current"], cwd=self.repo,
+                                capture_output=True, text=True).stdout.strip()
+        self.assertEqual(branch, "opencode/issue-5-9")
+        self.assertEqual((self.repo / "feature.txt").read_text(), "work\n")
+        self.assertEqual(self.run_cmd("publish").returncode, 0)
+        self.assertIn("pr create --base main --head opencode/issue-5-9", self.gh_log.read_text())
+
+    def test_adopt_refuses_a_branch_name_the_run_was_not_meant_to_use(self):
+        self.adopt_setup()
+        for name in ("main", "evil/x", "opencode/../x", "-x"):
+            (self.repo / ".agent/branch").write_text(name)
+            self.assertNotEqual(self.run_cmd("adopt").returncode, 0, name)
+
+    def test_publish_without_any_run_files_reports_no_changes(self):
+        shutil.rmtree(self.repo / ".agent", ignore_errors=True)
+        (self.repo / ".agent").mkdir()
+        self.assertEqual(self.run_cmd("publish").returncode, 0)
+        self.assertEqual(self.outputs()["pr"], "")
+
     def test_merge_main_is_skipped_without_commits_and_when_current(self):
         self.run_cmd("implement", FAKE_MODE="none")
         self.run_cmd("fetch-main")

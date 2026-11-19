@@ -36,7 +36,7 @@ jobs:
           persist-credentials: false
           sparse-checkout: scripts
       - id: image
-        run: echo "image=ghcr.io/${GITHUB_REPOSITORY,,}-agent-1:latest" >> "$GITHUB_OUTPUT"
+        run: echo "image=ghcr.io/${GITHUB_REPOSITORY,,}-agent-3:latest" >> "$GITHUB_OUTPUT"
       - id: queue
         env:
           GH_TOKEN: ${{ github.token }}
@@ -47,7 +47,8 @@ jobs:
     needs: pick
     if: needs.pick.outputs.count != '0'
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    # Up to ten PRs, each with the full gate, so 45 minutes cut batches short.
+    timeout-minutes: 120
     outputs:
       conflicted: ${{ steps.merge.outputs.conflicted }}
     permissions:
@@ -160,7 +161,7 @@ jobs:
       - name: Merge main into each branch and fix the conflicts (no GitHub token in this step)
         timeout-minutes: 75
         env:
-          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY_1 || secrets.OPENCODE_API_KEY }}
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY_3 || secrets.OPENCODE_API_KEY }}
         run: scripts/agent-run.sh resolve
       - uses: actions/upload-artifact@v7
         if: always()

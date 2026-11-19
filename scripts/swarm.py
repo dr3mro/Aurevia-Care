@@ -762,8 +762,12 @@ def integrate_batch(queue, gate="scripts/quick-check.sh"):
             reason = (f"Merge conflict with main in {', '.join(conflicts[:10]) or 'unknown files'}; "
                       "merge main into the branch and resolve it")
             # Give the automatic resolver a few tries before the PR goes back to the workers.
-            if resolve_attempts(pr) < MAX_RESOLVE:
+            tries = resolve_attempts(pr)
+            if tries < MAX_RESOLVE:
                 conflicted.append(pr)
+                # Counted when queued, so a resolver that never runs cannot loop forever.
+                gh("pr", "comment", str(pr), "--body", f"{RESOLVE_MARK}\nMerge conflict with main; "
+                   f"automatic resolution queued ({tries + 1} of {MAX_RESOLVE}). {reason}", check=False)
             else:
                 fail(pr, reason)
             continue
@@ -841,8 +845,8 @@ def resolve_publish(directory):
         outcome = outcome_file.read_text().strip()
         info = gh_json("pr", "view", pr, "--json", "headRefName,isCrossRepository")
         branch = info["headRefName"]
-        gh("pr", "comment", pr, "--body", f"{RESOLVE_MARK}\nAutomatic conflict resolution "
-           f"({resolve_attempts(pr) + 1} of {MAX_RESOLVE}): {outcome}. {run_url()}", check=False)
+        gh("pr", "comment", pr, "--body", f"Automatic conflict resolution result: {outcome}. "
+           f"{run_url()}", check=False)
         bundle = Path(directory) / f"{pr}.bundle"
         if outcome == "merged" and bundle.exists():
             git("update-ref", "-d", f"refs/heads/resolve-{pr}", check=False)
