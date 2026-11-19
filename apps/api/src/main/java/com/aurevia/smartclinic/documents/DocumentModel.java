@@ -70,13 +70,17 @@ public record RenderedDocument(String id, int version, String subjectType, Strin
      *
      * <p>No clock or random source reaches the byte output: the same values always
      * render the same bytes. A new version or a different rotation produces a
-     * distinct artifact while the source original stays untouched.</p>
+     * distinct artifact while the source original stays untouched. When the
+     * render derives from a linked original, {@code sourceAssociationId} is the
+     * server-validated association and is stamped into the immutable PDF's
+     * provenance; caller-supplied source text alone is never the only lineage.</p>
      *
  * @return this record
  */
 public record PdfSpec(String organizationId, String subjectType, String subjectId, String locale,
                           int version, int rotationDegrees, String title, List<String> lines,
-                          String sourceSystem, String sourceId, String effectiveAt) {
+                          String sourceSystem, String sourceId, String effectiveAt,
+                          String sourceAssociationId) {
 
         /**
          * Defensively copy the content lines on construction.
