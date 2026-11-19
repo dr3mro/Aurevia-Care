@@ -84,7 +84,7 @@ jobs:
           cache: maven
       - name: Cache OWASP NVD data
         if: steps.ready.outcome == 'success'
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.m2/repository/org/owasp/dependency-check-data
           key: owasp-nvd-${{ runner.os }}-${{ runner.arch }}-${{ github.run_id }}
