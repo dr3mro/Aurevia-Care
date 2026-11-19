@@ -307,8 +307,7 @@ Gate evidence: confirmed patients see only authorized revisions; generic notific
     Implement Typed patient instructions with templates, revisions, withdrawal and units (MSG-04) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [-] S-G3-08 · Publication, dispatch, first view and revision-bound acknowledgment as separate facts (MSG-05).
-  - agent: swarm-6
+- [ ] S-G3-08 · Publication, dispatch, first view and revision-bound acknowledgment as separate facts (MSG-05).
   - attempts: 1
   - scope: apps/patient-mobile/src/features/s_g3_08, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_08
   - reserved: V36
@@ -316,8 +315,7 @@ Gate evidence: confirmed patients see only authorized revisions; generic notific
     Implement Publication, dispatch, first view and revision-bound acknowledgment as separate facts (MSG-05) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [-] S-G3-09 · Service hours, response targets, named owners, backup coverage and after-hours guidance (MSG-06).
-  - agent: swarm-7
+- [ ] S-G3-09 · Service hours, response targets, named owners, backup coverage and after-hours guidance (MSG-06).
   - attempts: 1
   - scope: apps/patient-mobile/src/features/s_g3_09, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_09
   - reserved: V37
