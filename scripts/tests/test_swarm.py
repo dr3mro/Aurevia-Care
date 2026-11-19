@@ -336,8 +336,10 @@ class PlanTests(unittest.TestCase):
     def test_worker_has_three_hour_budget_with_restart_slack(self):
         text = (ROOT / ".github/workflows/swarm.yml").read_text()
         worker = text.split("  worker:\n", 1)[1].split("  publish:\n", 1)[0]
-        self.assertIn("timeout-minutes: 185", worker)
+        # 175 min of agent work + a 35 min merge step + bundling and upload slack.
+        self.assertIn("timeout-minutes: 225", worker)
         self.assertIn("AGENT_TIMEOUT: 175m", worker)
+        self.assertIn("timeout-minutes: 35", worker)
 
     def test_task_prompt_states_the_deadline(self):
         text = swarm.task_text({"task": "T", "scope": ["apps/api"],
@@ -633,6 +635,81 @@ class AuditTests(unittest.TestCase):
         self.assertNotIn("contents: write", audit)
 
 
+class ResolveConflictTests(unittest.TestCase):
+    def view(self, comments=0, cross=False, branch="swarm/CW-001-1"):
+        return {"headRefName": branch, "isCrossRepository": cross,
+                "comments": [{"body": swarm.RESOLVE_MARK}] * comments}
+
+    def test_conflict_is_handed_to_the_resolver_not_failed(self):
+        fake = FakeGh(pr_view=self.view())
+        with mock.patch.object(swarm, "gh", fake), \
+             mock.patch.object(swarm, "guard", return_value=[]), \
+             mock.patch.object(swarm, "is_repair", return_value=False), \
+             mock.patch.object(swarm, "merge_local", return_value=(None, "CW-001", ["a.java"])), \
+             mock.patch.object(swarm, "fail") as failed, \
+             mock.patch.object(swarm, "emit") as emitted:
+            swarm.integrate_batch([5])
+        failed.assert_not_called()
+        emitted.assert_any_call("conflicted", "[5]")
+
+    def test_conflict_goes_back_to_the_workers_after_three_tries(self):
+        fake = FakeGh(pr_view=self.view(comments=swarm.MAX_RESOLVE))
+        with mock.patch.object(swarm, "gh", fake), \
+             mock.patch.object(swarm, "guard", return_value=[]), \
+             mock.patch.object(swarm, "is_repair", return_value=False), \
+             mock.patch.object(swarm, "merge_local", return_value=(None, "CW-001", ["a.java"])), \
+             mock.patch.object(swarm, "fail") as failed, \
+             mock.patch.object(swarm, "emit") as emitted:
+            swarm.integrate_batch([5])
+        self.assertTrue(failed.called)
+        emitted.assert_any_call("conflicted", "[]")
+
+    def results(self, tmp, **outcomes):
+        for pr, outcome in outcomes.items():
+            Path(tmp, pr.lstrip("pr")).write_text(outcome)
+
+    def test_resolved_branch_is_pushed_and_the_integrator_runs_again(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.results(tmp, pr5="merged")
+            fake = FakeGh(pr_view=self.view())
+            with mock.patch.object(swarm, "gh", fake), \
+                 mock.patch.object(swarm, "authed_git") as push, \
+                 mock.patch.object(swarm, "fail") as failed:
+                self.assertEqual(swarm.resolve_publish(tmp), ["5"])
+        push.assert_called_once_with("push", "origin", "resolve-5:refs/heads/swarm/CW-001-1")
+        failed.assert_not_called()
+        self.assertTrue(fake.said("workflow", "run", "swarm-integrator.yml"))
+        self.assertTrue(fake.said("pr", "comment", "5"))
+
+    def test_unresolved_conflict_is_failed_back_to_the_workers(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.results(tmp, pr5="conflict")
+            with mock.patch.object(swarm, "gh", FakeGh(pr_view=self.view())), \
+                 mock.patch.object(swarm, "authed_git") as push, \
+                 mock.patch.object(swarm, "fail") as failed:
+                self.assertEqual(swarm.resolve_publish(tmp), [])
+        push.assert_not_called()
+        self.assertEqual(failed.call_args.args[0], 5)
+
+    def test_fork_branches_are_never_pushed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.results(tmp, pr5="merged")
+            with mock.patch.object(swarm, "gh", FakeGh(pr_view=self.view(cross=True))), \
+                 mock.patch.object(swarm, "authed_git") as push, \
+                 mock.patch.object(swarm, "fail") as failed:
+                swarm.resolve_publish(tmp)
+        push.assert_not_called()
+        self.assertTrue(failed.called)
+
+    def test_integrator_workflow_resolves_conflicts_without_a_token_in_the_agent_step(self):
+        text = (ROOT / ".github/workflows/swarm-integrator.yml").read_text()
+        job = text.split("  resolve:")[1]
+        self.assertIn("agent-run.sh resolve", job)
+        self.assertIn("swarm.py resolve-publish", job)
+        step = job.split("scripts/agent-run.sh resolve")[0].rsplit("- name:", 1)[1]
+        self.assertNotIn("GH_TOKEN", step)
+
+
 class RepairTests(unittest.TestCase):
     def test_repair_task_carries_the_failing_log(self):
         class Gh(FakeGh):
@@ -766,6 +843,40 @@ class GitTests(unittest.TestCase):
         self.assertIn("Task: CW-001", create[create.index("--body") + 1])
         self.assertEqual(create[create.index("--title") + 1], "CW-001: Staff")
         self.assertNotIn("--draft", create)
+
+    def test_failed_worker_still_publishes_its_work_as_a_draft(self):
+        out, fake = self.worker_dir(result="timeout", checks="failed"), FakeGh()
+        with mock.patch.object(swarm, "gh", fake), mock.patch.object(swarm, "release_claim"):
+            swarm.publish(self.TASK, out)
+        self.assertIn("refs/heads/swarm/CW-001-1", self.run_git("ls-remote", "--heads", "origin"))
+        create = [c for c in fake.calls if c[:2] == ("pr", "create")][0]
+        self.assertIn("--draft", create)
+        body = create[create.index("--body") + 1]
+        self.assertIn("did not finish cleanly", body)
+        self.assertIn("agent result: timeout", body)
+
+    def test_unresolved_merge_conflict_publishes_a_draft(self):
+        out, fake = self.worker_dir(), FakeGh()
+        (out / "merge").write_text("conflict")
+        with mock.patch.object(swarm, "gh", fake):
+            swarm.publish(self.TASK, out)
+        create = [c for c in fake.calls if c[:2] == ("pr", "create")][0]
+        self.assertIn("--draft", create)
+        self.assertIn("unresolved conflicts", create[create.index("--body") + 1])
+
+    def test_pull_request_failure_after_push_opens_an_issue(self):
+        out = self.worker_dir()
+
+        class NoPr(FakeGh):
+            def __call__(self, *args, check=True):
+                if args[:2] == ("pr", "create"):
+                    raise subprocess.CalledProcessError(1, args)
+                return super().__call__(*args, check=check)
+        fake = NoPr()
+        with mock.patch.object(swarm, "gh", fake), mock.patch.object(swarm, "release_claim"):
+            swarm.publish(self.TASK, out)
+        self.assertIn("refs/heads/swarm/CW-001-1", self.run_git("ls-remote", "--heads", "origin"))
+        self.assertTrue(fake.said("issue", "create"))
 
     def test_publish_blocks_workflow_file_changes_and_releases_claim(self):
         out = self.worker_dir(extra={".github/workflows/x.yml": "name: x\n"})
