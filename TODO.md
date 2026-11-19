@@ -47,24 +47,27 @@ Current source state (2026-11-19T07:19Z, from `main` at `311d69a`): 7 Flyway mig
   - scope: apps/api/src/test/java/com/aurevia/smartclinic/it
   - pr: #18
 - [x] S-G0-05 · Patient registration, identity confirmation and likely-duplicate warnings (IAM-03). V7 append-only patient records, issuer-scoped MRN, normalized name search, non-linking duplicate warnings, `/api/v1/patients`; 184 tests at delivery, JaCoCo 100%, local gates green, code on `main`. Current source (2026-11-19): Surefire reports 191 Java tests, 0 failures/errors across the suite; V7 and `/api/v1/patients` present.
-- [ ] S-G0-06 · Same-tenant duplicate review and all-or-nothing chart consolidation (IAM-04).
-  - attempts: 0
+- [-] S-G0-06 · Same-tenant duplicate review and all-or-nothing chart consolidation (IAM-04).
+  - agent: swarm-1
+  - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/patient/consolidation, apps/api/src/test/java/com/aurevia/smartclinic/it/patient/consolidation
   - reserved: V9
   - details:
     Implement Same-tenant duplicate review and all-or-nothing chart consolidation (IAM-04) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [ ] S-G0-07 · Patient identity proofing, verified chart linking and unlinking (IAM-05).
-  - attempts: 0
+- [-] S-G0-07 · Patient identity proofing, verified chart linking and unlinking (IAM-05).
+  - agent: swarm-2
+  - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/patient/identity, apps/api/src/test/java/com/aurevia/smartclinic/it/patient/identity
   - reserved: V10
   - details:
     Implement Patient identity proofing, verified chart linking and unlinking (IAM-05) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [ ] S-G0-08 · Emergency access and platform support access controls (IAM-06).
-  - attempts: 0
+- [-] S-G0-08 · Emergency access and platform support access controls (IAM-06).
+  - agent: swarm-3
+  - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/authz/emergency, apps/api/src/test/java/com/aurevia/smartclinic/it/authz/emergency
   - reserved: V11
   - details:
@@ -84,16 +87,18 @@ Gate evidence: competing bookings enforce one protected slot; stale drafts canno
     Slice: facility time zone, scheduling resources (clinician/room), weekly availability windows, visit types with duration, temporary holds with expiry, transactional booking with a database-enforced single protected slot, atomic reschedule with version precondition, booked → checked in → in progress → completed plus cancelled/no-show/expired branches, weekly recurrence series (all-or-nothing) and append-only appointment history.
     Acceptance matrix: (A1) book inside availability; (A2) competing bookings yield exactly one winner and one 409 under real concurrency; (A3) room and clinician overlaps both blocked; (A4) hold occupies the slot, conversion is atomic, expiry releases it; (A5) reschedule is atomic, stale If-Match is 412, history keeps the previous slot; (A6) cancel/no-show require a reason and record actor; (A7) illegal transitions are 409; (A8) booking outside availability needs a recorded override; (A9) configured booking rules are enforced; (A10) two tenants with identical local identifiers stay isolated; (A11) a series rolls back fully on one conflict; (A12) role authorization and 401/403 outcomes; (A13) invalid input is 422.
     Out of scope for this slice: staff worklist/assignment/handoff (S-G1-02), clinical chart (S-G1-03), equipment resources and paid booking rules.
-- [ ] S-G1-02 · Identity verification, check-in, organization/facility worklist, assignment and handoff (CLN-02).
-  - attempts: 0
+- [-] S-G1-02 · Identity verification, check-in, organization/facility worklist, assignment and handoff (CLN-02).
+  - agent: swarm-4
+  - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/scheduling/checkin, apps/api/src/test/java/com/aurevia/smartclinic/it/scheduling/checkin
   - reserved: V12
   - details:
     Implement Identity verification, check-in, organization/facility worklist, assignment and handoff (CLN-02) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [ ] S-G1-03 · Longitudinal chart: problems, allergies, medications, vitals, source and verification states (CLN-03).
-  - attempts: 0
+- [-] S-G1-03 · Longitudinal chart: problems, allergies, medications, vitals, source and verification states (CLN-03).
+  - agent: swarm-5
+  - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/chart/record, apps/api/src/test/java/com/aurevia/smartclinic/it/chart/record
   - reserved: V13
   - details:
@@ -110,8 +115,9 @@ Gate evidence: competing bookings enforce one protected slot; stale drafts canno
     Implement Versioned SOAP, operative, OB/GYN, perinatal and pediatric development templates (CLN-04) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [ ] S-G1-05 · Draft to signed, amendments, signed addenda and entered-in-error with preserved originals (CLN-05).
-  - attempts: 0
+- [-] S-G1-05 · Draft to signed, amendments, signed addenda and entered-in-error with preserved originals (CLN-05).
+  - agent: swarm-6
+  - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/chart/signing, apps/api/src/test/java/com/aurevia/smartclinic/it/chart/signing
   - reserved: V15
   - details:
@@ -128,16 +134,18 @@ Gate evidence: competing bookings enforce one protected slot; stale drafts canno
     Implement Follow-up suggestions with rule explanation and care-team tasks (CLN-06) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [ ] S-G1-07 · Original PDF/image associations and immutable, localized, versioned PDF rendering (CLN-07).
-  - attempts: 0
+- [-] S-G1-07 · Original PDF/image associations and immutable, localized, versioned PDF rendering (CLN-07).
+  - agent: swarm-7
+  - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/chart/documents, apps/api/src/test/java/com/aurevia/smartclinic/it/chart/documents
   - reserved: V17
   - details:
     Implement Original PDF/image associations and immutable, localized, versioned PDF rendering (CLN-07) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [ ] S-G1-08 · Clinical dictionaries, diagnosis/procedure catalogs and RTL mixed-script operation (PRD-05, UX-01).
-  - attempts: 0
+- [-] S-G1-08 · Clinical dictionaries, diagnosis/procedure catalogs and RTL mixed-script operation (PRD-05, UX-01).
+  - agent: swarm-8
+  - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/catalog/dictionary, apps/api/src/test/java/com/aurevia/smartclinic/it/catalog/dictionary
   - reserved: V18
   - details:
@@ -150,8 +158,9 @@ Gate evidence: competing bookings enforce one protected slot; stale drafts canno
 
 Gate evidence: rejected or recollected specimens trace to the right order; duplicate and reordered events do not duplicate or overwrite final reports; unmatched results wait for review; critical results escalate on deadline with human acknowledgment, and corrections reopen review.
 
-- [ ] S-G2-01 · Order creation with authorization, snapshot, disclosure record and destination work item (XCH-01).
-  - attempts: 0
+- [-] S-G2-01 · Order creation with authorization, snapshot, disclosure record and destination work item (XCH-01).
+  - agent: swarm-9
+  - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/exchange/order, apps/api/src/test/java/com/aurevia/smartclinic/it/exchange/order
   - reserved: V19
   - details:
@@ -167,8 +176,8 @@ Gate evidence: rejected or recollected specimens trace to the right order; dupli
     Implement Separate workflow, transmission and clinical review states with human acknowledgment (XCH-02) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [-] S-G2-03 · Accept, reject with reason, clarify, linked changes, cancellations and revocation (XCH-03).
-  - agent: swarm-1
+- [x] S-G2-03 · Accept, reject with reason, clarify, linked changes, cancellations and revocation (XCH-03).
+  - pr: #122
   - attempts: 7
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/exchange/response, apps/api/src/test/java/com/aurevia/smartclinic/it/exchange/response
   - reserved: V21
@@ -525,9 +534,9 @@ Delivered inside the stories above, not scheduled separately.
     Implement Upload validation, quarantine, mediated downloads and PDF binding to immutable revisions (ARC-06) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [x] X-04 · Generated OpenAPI clients and server-side authorization for every command (PRD-06).
-  - pr: #117
-  - attempts: 1
+- [-] X-04 · Generated OpenAPI clients and server-side authorization for every command (PRD-06).
+  - agent: swarm-10
+  - attempts: 2
   - scope: contracts/openapi, apps/api/src/main/java/com/aurevia/smartclinic/api/authorization
   - reserved: V57
   - details:
