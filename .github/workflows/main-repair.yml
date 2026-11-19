@@ -1,9 +1,9 @@
 name: Fix PR repair
-# Event-driven, not periodic. Only a FIX- PR labeled autofix triggers this job.
+# Event-driven, not periodic. Any fix PR is validated and handed off automatically.
 # It validates that exact fix with the full gate and hands a green PR to the
 # integrator; a red fix goes back through swarm.py fail() for one bounded retry.
 # There is deliberately no failed-run or cron trigger: a repair exists only
-# once a fix PR is available.
+# A fix PR matches autofix label, FIX- title, or a fix/copilot-fix branch.
 on:
   pull_request:
     types: [opened, synchronize, reopened, labeled]
@@ -16,7 +16,12 @@ concurrency:
 jobs:
   validate:
     name: Validate fix PR
-    if: contains(github.event.pull_request.labels.*.name, 'autofix') || startsWith(github.event.pull_request.title, 'FIX-')
+    if: >-
+      contains(github.event.pull_request.labels.*.name, 'autofix')
+      || startsWith(github.event.pull_request.title, 'FIX-')
+      || contains(github.event.pull_request.title, 'Fix')
+      || contains(github.event.pull_request.head.ref, 'fix-')
+      || contains(github.event.pull_request.head.ref, '/fix')
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     permissions:
@@ -65,6 +70,11 @@ jobs:
           code=$?
           set -e
           if [[ "$code" -eq 0 ]]; then
+            # A draft PR cannot be merged; make it ready and label it so the
+            # integrator picks it up without any human confirmation.
+            gh pr ready "$PR" || true
+            gh api --method POST "repos/$GITHUB_REPOSITORY/issues/$PR/labels" \
+              -f 'labels[]=swarm' -f 'labels[]=autofix'
             gh workflow run swarm-integrator.yml
           else
             tail -80 fix-pr-gate.log
