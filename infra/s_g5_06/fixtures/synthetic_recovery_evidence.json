@@ -1,0 +1,59 @@
+{
+  "schema_version": "1.0",
+  "kind": "synthetic_rehearsal",
+  "source": "synthetic-restore-fixture",
+  "requirement": "OPS-04/OPS-05",
+  "targets": {
+    "rpo_minutes": 12,
+    "rto_hours": 3.5
+  },
+  "scope": [
+    "core_chart",
+    "order_data",
+    "documents",
+    "document_associations"
+  ],
+  "restore": {
+    "targets": ["database", "objects", "idp_dependencies"],
+    "clean_environment": true
+  },
+  "reconciliation": {
+    "hashes": true,
+    "source_versions": true,
+    "in_flight_deliveries": true,
+    "audit_coverage": true,
+    "completed_before_writes_reopened": true
+  },
+  "verification": {
+    "before_pilot": true,
+    "quarterly_cadence": true
+  },
+  "monitoring": {
+    "signals": [
+      "error_rates",
+      "saturation",
+      "queue_age",
+      "partner_delivery",
+      "unmatched_reports",
+      "critical_acknowledgment_time",
+      "missing_coverage",
+      "unassigned_patient_messages",
+      "response_breaches",
+      "failed_instruction_notifications",
+      "overdue_instruction_acknowledgments",
+      "rendering_failures",
+      "backup_status"
+    ]
+  },
+  "ownership": {
+    "operational_on_call_owner": "platform-oncall",
+    "site_clinical_coverage_owner": "site-medical-director"
+  },
+  "runbooks": [
+    "paper_manual_capture",
+    "patient_identification",
+    "critical_contacts",
+    "supervised_back_entry"
+  ],
+  "duplicate_prevention": true
+}
