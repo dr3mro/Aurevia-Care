@@ -12,7 +12,7 @@
         {
           "action": "shell",
           "resource": "*",
-          "effect": "ask"
+          "effect": "allow"
         },
         {
           "action": "shell",
@@ -137,7 +137,7 @@
         {
           "action": "subagent",
           "resource": "*",
-          "effect": "deny"
+          "effect": "allow"
         },
         {
           "action": "subagent",
