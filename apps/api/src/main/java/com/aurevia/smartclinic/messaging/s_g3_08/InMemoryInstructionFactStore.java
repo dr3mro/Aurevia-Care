@@ -155,8 +155,9 @@ public class InMemoryInstructionFactStore implements InstructionFactStore {
         if (instruction == null || !organizationId.equals(instruction.organizationId())) {
             throw new IllegalArgumentException("instruction must belong to the active organization");
         }
-        instructions.put(revisionKey(organizationId, instruction.id(), instruction.revision()), instruction);
-        return instruction;
+        Instruction winner = instructions.putIfAbsent(
+                revisionKey(organizationId, instruction.id(), instruction.revision()), instruction);
+        return winner == null ? instruction : winner;
     }
 
     @Override
@@ -277,6 +278,8 @@ public class InMemoryInstructionFactStore implements InstructionFactStore {
     public List<Instruction> overdueCandidates(String organizationId, Instant now) {
         return instructions.values().stream()
                 .filter(instruction -> organizationId.equals(instruction.organizationId()))
+                .filter(instruction -> latestInstruction(organizationId, instruction.id())
+                        .map(latest -> latest.revision() == instruction.revision()).orElse(false))
                 .filter(Instruction::requiresAcknowledgment)
                 .filter(instruction -> instruction.acknowledgmentDueAt() != null)
                 .filter(instruction -> instruction.acknowledgmentDueAt().isBefore(now))
