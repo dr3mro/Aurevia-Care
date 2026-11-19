@@ -585,6 +585,10 @@ Raised by the dispatch-3 run-3 verification. Address in the next authorized chan
 - [x] S-FIX-WAVE-AMP-01 · Failed workers released claims via `update_todo()`, which committed `TODO.md` with `SWARM_TOKEN`; every such push triggered another `swarm.yml` wave, producing 12 queued waves from 10 failures. Tracker-only commits now carry `[skip ci]`; stale queued waves were cancelled. Added a regression test.
   - evidence: `gh run list --workflow=swarm.yml` showed 12 pending/in-progress waves; all queued ones cancelled; 161 tooling tests OK. Evidence source: GitHub run API plus executed tool commands; no human or clinical evidence.
 
+- [-] S-FIX-TEMP-1WORKER-01 · **TEMPORARY** (revert to 10): wave `44509359962` publish failed on transient `HTTP 502 Bad Gateway` from `gh pr create` after all 10 branches pushed and 10 PRs created. Set swarm worker default to 1 and added a bounded retry (3 attempts) for 502/503/504 in `gh()`. Watch until a wave publishes successfully, then restore `default: '10'` / `inputs.workers || '10'` and the test `test_wave_defaults_to_ten_workers`.
+  - agent: loop
+  - evidence: run 44509359962 job 135527003974 log shows `gh pr create ... HTTP 502`. Retry guard tests pass; 163 tooling tests OK; `check-docs.py`/`check-secrets.py`/`gen-opencode.py --check`/`quick-check.sh` green. Evidence source: GitHub Actions log plus executed tool commands; no human or clinical evidence.
+
 ## One-week execution plan (1 wave per hour)
 
 Created 2026-11-19T08:55Z from the open entries above. Horizon: 7 days × 24 hours = 168 hourly wave slots. This plan uses 7 implementation waves; the remaining 161 hourly slots are buffer for `needs-fix` retries, fix PRs, gate re-runs and human approvals.
