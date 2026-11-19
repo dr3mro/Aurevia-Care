@@ -688,8 +688,11 @@ def integrate_batch(queue, gate="scripts/quick-check.sh"):
     git("add", *files)
     git(*IDENTITY, "commit", "-qm", f"Integrate {len(merged)} swarm pull request(s)")
     # A full gate can take many minutes; concurrent [skip ci] tracker commits
-    # can advance main meanwhile. Rebase onto the fresh main, re-gate and retry
-    # the push instead of losing the whole verified batch.
+    # can advance main meanwhile. Integrators are serialized by their
+    # concurrency group, so the only new commits are tracker-only. Move HEAD
+    # onto fresh main with --soft (keeping the already-gated tree staged),
+    # adopt the fresh shared trackers, re-apply our merge records, re-gate and
+    # retry. No commit replay means no committer identity or rebase conflicts.
     for attempt in range(3):
         try:
             authed_git("push", "origin", "HEAD:main")
@@ -698,11 +701,13 @@ def integrate_batch(queue, gate="scripts/quick-check.sh"):
             if attempt == 2:
                 raise
             authed_git("fetch", "origin", "main")
-            try:
-                git("rebase", "origin/main")
-            except subprocess.CalledProcessError:
-                git("rebase", "--abort", check=False)
-                raise
+            git("reset", "--soft", "origin/main")
+            git("checkout", "origin/main", "--", "TODO.md", "docs/swarm", check=False)
+            for pr, task_id, sha in merged:
+                record_merge(pr, task_id, sha, gate)
+            git("add", *files)
+            git(*IDENTITY, "commit", "-qm", "Integrate swarm PRs (reconciled)",
+                "--allow-empty", check=False)
             ok, log = run_gate(gate)
             if not ok:
                 raise subprocess.CalledProcessError(1, ("gate", gate), "", log)
