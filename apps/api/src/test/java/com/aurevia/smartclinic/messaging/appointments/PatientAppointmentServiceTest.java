@@ -333,6 +333,86 @@ class PatientAppointmentServiceTest {
         verify(devices, never()).save(any());
     }
 
+    // --- fail-closed link recheck on every command (ARC-02) ---
+
+    @Test
+    void confirmDeniesAnUnlinkedSubject() {
+        when(links.allows(SUBJECT, PATIENT)).thenReturn(false);
+        assertThrowsApi(403, "FORBIDDEN",
+                () -> service.confirm(SUBJECT, PATIENT, APPOINTMENT, 1, NOW));
+        verify(store, never()).find(any(), any());
+        verify(store, never()).confirm(any(), any(), org.mockito.ArgumentMatchers.anyInt(), any());
+        verify(gateway, never()).send(any(), any());
+    }
+
+    @Test
+    void statusChangeDeniesAnUnlinkedSubject() {
+        when(links.allows(SUBJECT, PATIENT)).thenReturn(false);
+        assertThrowsApi(403, "FORBIDDEN", () -> service.notifyStatusChange(
+                SUBJECT, PATIENT, APPOINTMENT, AppointmentStatus.CHECKED_IN, NOW));
+        verify(store, never()).find(any(), any());
+        verify(gateway, never()).send(any(), any());
+    }
+
+    @Test
+    void recordInvalidTokenDeniesAnUnlinkedSubject() {
+        when(links.allows(SUBJECT, PATIENT)).thenReturn(false);
+        assertThrowsApi(403, "FORBIDDEN",
+                () -> service.recordInvalidToken(SUBJECT, PATIENT, "dev-1", "provider-rejected", NOW));
+        verify(devices, never()).save(any());
+        verify(devices, never()).appendInvalidTokenLog(any(), any(), any(), any());
+    }
+
+    // --- audit attribution and idempotency ---
+
+    @Test
+    void pushAuditNamesTheActingSubjectNotTheDeviceOwner() {
+        linked();
+        when(store.find(APPOINTMENT, PATIENT)).thenReturn(Optional.of(appointment()),
+                Optional.of(appointment().confirmed(NOW, 2)));
+        when(store.confirm(APPOINTMENT, PATIENT, 1, NOW)).thenReturn(1);
+        DeviceToken otherOwner = new DeviceToken("dev-1", "synthetic-token", "other-subject",
+                PATIENT, DeviceState.ACTIVE);
+        when(devices.active(PATIENT)).thenReturn(List.of(otherOwner));
+        when(gateway.send(any(), any())).thenReturn(PushGateway.Outcome.DELIVERED);
+        service.confirm(SUBJECT, PATIENT, APPOINTMENT, 1, NOW);
+        verify(audit).append(SUBJECT, PATIENT, "PUSH_CONFIRM_SENT", "SUCCESS", NOW);
+        verify(audit, never()).append(eq("other-subject"), any(), any(), any(), any());
+    }
+
+    @Test
+    void recordInvalidTokenDoesNotLogADuplicateDisposition() {
+        linked();
+        when(devices.find("dev-1", PATIENT)).thenReturn(Optional.of(activeToken().invalidate()));
+        service.recordInvalidToken(SUBJECT, PATIENT, "dev-1", "provider-rejected", NOW);
+        verify(devices, never()).save(any());
+        verify(devices, never()).appendInvalidTokenLog(any(), any(), any(), any());
+        verify(audit).append(SUBJECT, PATIENT, "DEVICE_INVALID_TOKEN", "SUCCESS", NOW);
+    }
+
+    // --- device registration must not rebind another patient's id (IAM-05) ---
+
+    @Test
+    void registerAllowsReRegisteringTheSamePatientsDeviceId() {
+        linked();
+        DeviceToken own = new DeviceToken("dev-1", "old-token", SUBJECT, PATIENT, DeviceState.ACTIVE);
+        when(devices.findByTokenId("dev-1")).thenReturn(Optional.of(own));
+        service.registerDevice(SUBJECT, PATIENT, "dev-1", "synthetic-token", NOW);
+        verify(devices).save(new DeviceToken("dev-1", "synthetic-token", SUBJECT, PATIENT,
+                DeviceState.ACTIVE));
+    }
+
+    @Test
+    void registerRejectsADeviceIdOwnedByAnotherPatient() {
+        linked();
+        DeviceToken foreign = new DeviceToken("dev-1", "synthetic-token", "other-subject",
+                "patient-2", DeviceState.ACTIVE);
+        when(devices.findByTokenId("dev-1")).thenReturn(Optional.of(foreign));
+        assertThrowsApi(409, "DEVICE_CONFLICT",
+                () -> service.registerDevice(SUBJECT, PATIENT, "dev-1", "synthetic-token", NOW));
+        verify(devices, never()).save(any());
+    }
+
     private static void assertThrowsApi(int status, String code, Runnable action) {
         ApiException error = assertThrows(ApiException.class, action::run);
         assertEquals(status, error.status());

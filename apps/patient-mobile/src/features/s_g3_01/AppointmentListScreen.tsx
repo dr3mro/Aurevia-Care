@@ -9,6 +9,8 @@ export interface AppointmentListScreenProps {
   readonly appointments: readonly AppointmentView[];
   /** Fixed generic notice; never carries clinical detail. */
   readonly notice: GenericNotice;
+  /** Verified patient whose devices may be shown and revoked (PRD-03). */
+  readonly patientId: string;
   /** Registered devices for the active organization. */
   readonly devices: readonly DeviceToken[];
   /** Called when the patient confirms an eligible appointment. */
@@ -32,6 +34,7 @@ export interface AppointmentListScreenProps {
 export function AppointmentListScreen({
   appointments,
   notice,
+  patientId,
   devices,
   onConfirm,
   onOpenDetails,
@@ -62,7 +65,7 @@ export function AppointmentListScreen({
         ))
       )}
       {devices
-        .filter((device) => device.state === 'active')
+        .filter((device) => device.state === 'active' && device.patientId === patientId)
         .map((device) => (
           <Pressable
             key={device.id}
