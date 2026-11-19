@@ -13,8 +13,8 @@
     "scope": "server_side",
     "excluded": ["document_transfer", "document_rendering"],
     "route_class": {
-      "patients.search": "read",
-      "orders.accept": "command"
+      "patient.chart.lookup": "read",
+      "order.transition": "command"
     }
   },
   "results": {
