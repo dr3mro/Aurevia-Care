@@ -1,0 +1,130 @@
+# One swarm worker and its publish step. swarm.yml calls this once per planned
+# task, so every worker publishes its own pull request the moment it finishes
+# instead of waiting for the slowest worker of the wave. The agent job has no
+# write token; the publish job runs the trusted scripts from the default branch
+# on a fresh runner and is the only one that pushes.
+name: Swarm worker run
+on:
+  workflow_call:
+    inputs:
+      image: {type: string, required: true}
+      slot: {type: string, required: true}
+      # The planned task as JSON (the matrix entry): model, kind, id, title,
+      # body, branch, number and fix. One input keeps the interface small.
+      task: {type: string, required: true}
+permissions:
+  contents: read
+# Not the swarm's own group: the calling wave already holds it, so reusing it
+# here would wait on itself forever. One group per worker slot of this run.
+concurrency:
+  group: swarm-worker-${{ github.run_id }}-${{ inputs.slot }}
+  cancel-in-progress: false
+jobs:
+  work:
+    name: Work the task
+    runs-on: ubuntu-latest
+    # Three-hour task budget plus 10 minutes for bundling and artifact upload.
+    timeout-minutes: 225
+    container:
+      image: ${{ inputs.image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    permissions:
+      contents: read
+      packages: read
+    # Container jobs default to sh (dash), which lacks pipefail.
+    defaults:
+      run:
+        shell: bash
+    env:
+      MODEL: ${{ fromJSON(inputs.task).model }}
+      MODE: ${{ fromJSON(inputs.task).kind == 'fix' && 'fix' || 'story' }}
+      BRANCH: ${{ fromJSON(inputs.task).branch }}
+      BRANCH_PREFIX: swarm
+      SWARM: '1'
+      STORY_ID: ${{ fromJSON(inputs.task).id }}
+      STORY_TITLE: ${{ fromJSON(inputs.task).title }}
+      STORY_BODY: ${{ fromJSON(inputs.task).body }}
+      FIX_COMMENT: ${{ fromJSON(inputs.task).fix }}
+      PR_NUMBER: ${{ fromJSON(inputs.task).number }}
+      AGENT_TIMEOUT: 175m
+      CHECK_SCRIPT: scripts/quick-check.sh
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ fromJSON(inputs.task).kind == 'fix' && fromJSON(inputs.task).branch || github.event.repository.default_branch }}
+          # Full history so the branch can be merged with main after the work.
+          fetch-depth: 0
+          persist-credentials: false
+      # The read-only token is used here, before the agent has touched the
+      # workspace. The main branch can move during the run, so the merge step
+      # later fetches nothing; a newer main is picked up by the integrator.
+      - name: Fetch main
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_BRANCH: ${{ github.event.repository.default_branch }}
+        run: scripts/agent-run.sh fetch-main || true
+      - name: Work the task (no GitHub token in this step)
+        env:
+          # Prefer this slot's account, with the team key as a compatibility fallback.
+          OPENCODE_API_KEY: ${{ secrets[format('OPENCODE_API_KEY_{0}', inputs.slot)] || secrets.OPENCODE_API_KEY }}
+        run: scripts/agent-run.sh implement
+      - name: Merge main and fix conflicts (no GitHub token in this step)
+        if: always()
+        env:
+          OPENCODE_API_KEY: ${{ secrets[format('OPENCODE_API_KEY_{0}', inputs.slot)] || secrets.OPENCODE_API_KEY }}
+          BASE_BRANCH: ${{ github.event.repository.default_branch }}
+          MERGE_ATTEMPTS: '5'
+          AGENT_TIMEOUT: 20m
+        timeout-minutes: 35
+        run: scripts/agent-run.sh merge-main
+      - name: Pack the commits
+        if: always()
+        run: scripts/agent-run.sh bundle || true
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: worker-${{ inputs.slot }}
+          path: |
+            .agent/result
+            .agent/commits
+            .agent/checks
+            .agent/branch
+            .agent/merge
+            .agent/pr-notes.md
+            .agent/result.bundle
+          if-no-files-found: ignore
+          # Kept for a week so a blocked or failed publish never loses the work.
+          retention-days: 7
+  publish:
+    name: Publish result
+    needs: work
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: read
+    steps:
+      # Trusted copy of the scripts: the work job never had a token and cannot
+      # alter what runs here.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@v8
+        continue-on-error: true
+        with:
+          name: worker-${{ inputs.slot }}
+          path: results/worker-${{ inputs.slot }}
+      - name: Push the branch and open the pull request
+        env:
+          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
+          # Set only when SWARM_TOKEN exists: that token can push workflow files.
+          SWARM_WORKFLOW_PUSH: ${{ secrets.SWARM_TOKEN != '' }}
+          TASK: ${{ inputs.task }}
+          SLOT: ${{ inputs.slot }}
+          BASE_BRANCH: ${{ github.event.repository.default_branch }}
+        run: python3 -I scripts/swarm.py publish --task "$TASK" --dir "results/worker-$SLOT"
