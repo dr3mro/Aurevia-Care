@@ -12,7 +12,7 @@ on:
     inputs:
       opencode_version:
         description: OpenCode V2 CLI npm version to install (@opencode/cli)
-        default: latest
+        default: 2.3.2
 permissions:
   contents: read
   packages: write
@@ -33,7 +33,7 @@ jobs:
       - name: Build and push
         env:
           GH_TOKEN: ${{ github.token }}
-          OPENCODE_VERSION: ${{ inputs.opencode_version || 'latest' }}
+          OPENCODE_VERSION: ${{ inputs.opencode_version || '2.3.2' }}
         run: |
           image="ghcr.io/${GITHUB_REPOSITORY,,}-agent"
           cp apps/api/pom.xml .github/agent-image/pom.xml
@@ -44,3 +44,13 @@ jobs:
             --label "org.opencontainers.image.revision=$GITHUB_SHA" \
             -t "$image:latest" .github/agent-image
           docker push "$image:latest"
+          # Record the exact published artifact so a worker run is reproducible.
+          digest=$(docker buildx imagetools inspect "$image:latest" \
+            --format '{{json .Manifest}}' | jq -er .digest)
+          printf 'OpenCode CLI version: %s\nImage: %s@%s\n' \
+            "$OPENCODE_VERSION" "$image" "$digest" | tee published-image.txt
+      - uses: actions/upload-artifact@v7
+        with:
+          name: agent-image-published
+          path: published-image.txt
+          if-no-files-found: error

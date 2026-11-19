@@ -16,6 +16,9 @@ on:
   push:
     branches: [main]
     paths: [TODO.md]
+  # Safety net: restarts the loop if it ever stalls. An idle wave costs about one minute.
+  schedule:
+    - cron: '7 */3 * * *'
   # A successful prepared-image rebuild makes any wave skipped during the
   # rebuild eligible again, so no task is left unclaimed.
   workflow_run:
@@ -199,3 +202,28 @@ jobs:
             python3 -I scripts/swarm.py publish --task "$task" --dir "results/worker-$slot" || status=1
           done < <(jq -c '.include[]' <<< "$MATRIX")
           exit "$status"
+  # Keeps the loop going without a person: when work remains and no pull request
+  # is waiting (the integrator starts the next wave after it merges), start
+  # another wave. A task a worker fails three times waits for a person, so this
+  # cannot spin forever.
+  next:
+    name: Start the next wave
+    needs: [plan, publish]
+    if: always() && needs.plan.outputs.count != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      pull-requests: read
+      actions: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          persist-credentials: false
+          sparse-checkout: |
+            scripts
+            TODO.md
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 -I scripts/swarm.py continue

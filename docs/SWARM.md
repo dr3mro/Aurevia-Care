@@ -12,7 +12,10 @@ Up to 10 OpenCode workers run in parallel on GitHub-hosted runners. An orchestra
 | 4. Integrate | `swarm-integrator.yml` | One job for the whole ready batch: merges each PR into local `main` one at a time, runs the fast gate `scripts/quick-check.sh` after each, then commits and pushes once. No model is used. |
 | 5. Heavy checks | `heavy-check.yml` | Runs the expensive checks (PostgreSQL integration, JaCoCo coverage, OWASP with cached NVD data, SpotBugs) once per batch on `main`, scheduled, dispatched, or after a successful integrator run. A failure wakes the watchdog. |
 | 6. Return | `swarm-integrator.yml` | On a conflict or failing fast gate the PR gets `needs-fix` with the log tail and goes back to the pool; its merge is rolled back so the rest of the batch proceeds. After 3 attempts it gets `needs-human`. |
-| 7. Repair | `main-watchdog.yml` | When Delivery or Heavy verification fails on `main`, starts one repair worker with the failing log. While `main` is red only repair PRs merge. After 3 repairs in 24 hours it opens an issue and stops. |
+| 7. Repair | `main-watchdog.yml` | When Delivery, Heavy verification or an image build fails on `main`, starts one repair worker with the failing log. The repair PR (`FIX-`, label `autofix`) is merged by the integrator after the fast gate, and Delivery re-runs on `main`, so a fix that did not work starts the next repair. While `main` is red only repair PRs merge. After 3 repairs in 24 hours it opens an issue and stops. |
+| 8. Continue | `swarm.yml` (next), `swarm-integrator.yml` | After a wave with no PR waiting, and after every merge, the next wave starts if `TODO.md` still has ready `[ ]` tasks. A 3-hourly schedule restarts the loop if it stalls. It stops when nothing is left to do. |
+
+**Continuous loop.** Start it once (run **Agent swarm**, or push a change to `TODO.md`). It then repeats wave, publish, integrate, next wave until every task is `[x]`. A task a worker has taken 3 times without finishing keeps `attempts: 3` in `TODO.md` and waits for a person, and the monthly minute cap in `budget-gate` still applies, so the loop cannot run away.
 
 **Two-tier checks.** The worker, integrator and PR gate run only `scripts/quick-check.sh`: policy, compile and unit tests. PostgreSQL integration, coverage, OWASP and SpotBugs run once per batch on `main` in `heavy-check.yml` with a cached NVD database, not once per PR. This removes the expensive checks from every merge and worker.
 
@@ -36,7 +39,7 @@ Up to 10 OpenCode workers run in parallel on GitHub-hosted runners. An orchestra
 
 - Workers follow AGENTS.md, CODING_STYLE.md, the specification and the `.opencode` specialists, stay inside their `Scope`, and use only their `Reserved` migration version.
 - Workers do not edit shared trackers. The orchestrator marks a task `[-]` when it starts a worker, and the integrator marks it `[x]` with `pr:` and `evidence:` and writes `docs/swarm/<ID>.md` after each merge, one at a time, so TODO.md never conflicts. A worker that publishes nothing releases its task back to `[ ]`.
-- Repair pull requests (`FIX-`, label `autofix`) are opened for a person to review and merge. The integrator never merges them.
+- Repair pull requests (`FIX-`, label `autofix`) are merged by the integrator like other swarm work, but only while their diff stays out of `.github/`, `.opencode/`, `scripts/` and the other protected files; those wait for a person.
 - A pull request that changes `.github/`, `.opencode/`, `scripts/`, `opencode.json`, AGENTS.md, Dockerfile, compose or any `check.sh` is never merged automatically. It is labeled `needs-human`.
 - The integrator merges exactly the commit it tested and refuses if the branch moved.
 - A rate limit, timeout or failure ends that worker. There are no retries inside a run.
