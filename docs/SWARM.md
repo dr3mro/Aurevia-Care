@@ -20,7 +20,7 @@ Up to 10 OpenCode workers run in parallel on GitHub-hosted runners. An orchestra
 ## Setup
 
 1. Push the branch, merge it, then run **Agent image** once. **Swarm slot images** follows automatically.
-2. For each slot you use, save the repository secret `OPENCODE_API_KEY_<n>` from that slot's own OpenCode account. A slot with no secret fails fast and its task stays `todo`.
+2. For each slot you use, save the repository secret `OPENCODE_API_KEY_<n>` from that slot's own OpenCode account. If a slot-specific secret is absent, the worker falls back to `OPENCODE_API_KEY`; if neither secret exists, the task stays `todo`.
 3. Settings, Actions, General: allow Actions to create pull requests.
 4. `main` must allow the integrator to push. Either exempt the integrator from the branch rule, or save a fine-grained token with contents, pull requests and actions write as the secret `SWARM_TOKEN`. A `SWARM_TOKEN` also lets pull requests and merges trigger the Delivery workflow and the next wave.
 5. Edit CLOUDWORKERS.md and push to `main`, or run **Agent swarm** manually.
