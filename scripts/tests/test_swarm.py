@@ -268,6 +268,9 @@ class PlanTests(unittest.TestCase):
         self.assertIn("autofix", text)
         self.assertIn("scripts/check.sh", text)
         self.assertIn("swarm-integrator.yml", text)
+        self.assertIn("github.event.pull_request.head.ref", text)
+        self.assertIn("gh pr ready", text)
+        self.assertIn("api", text)
 
     def test_budget_workflows_include_single_repair_workflow(self):
         self.assertIn("main-repair.yml", swarm.BUDGET_WORKFLOWS)
