@@ -112,9 +112,9 @@ class PatientReleaseIsolationTest {
         statement.execute("SET app.current_org = '" + org + "'");
         statement.execute("SET app.actor = '" + actor + "'");
         statement.execute("INSERT INTO public.patient_record "
-                + "(organization_id, id, version, mrn, mrn_issuer, display_name, normalized_name) "
+                + "(organization_id, id, version, mrn, mrn_issuer, display_name, normalized_name, dob) "
                 + "VALUES ('" + org + "', '" + patientId + "', 1, 'MRN-" + org.substring(0, 4)
-                + "', 'SITE', 'Synthetic Patient', 'synthetic patient')");
+                + "', 'SITE', 'Synthetic Patient', 'synthetic patient', DATE '1990-05-20')");
     }
 
     private HttpHeaders headers(String subject, String organization, String correlation) {
