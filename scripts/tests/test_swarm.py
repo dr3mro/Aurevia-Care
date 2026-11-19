@@ -220,6 +220,15 @@ class WorkflowTests(unittest.TestCase):
         self.assertIn("OPENCODE_API_KEY_{0}", text)
         self.assertNotIn("OPENCODE_API_KEY:", (ROOT / ".github/agent-image/Dockerfile.slot").read_text())
 
+    def test_swarm_slot_secret_falls_back_to_team_secret(self):
+        text = (ROOT / ".github/workflows/swarm.yml").read_text()
+        self.assertIn("secrets[format('OPENCODE_API_KEY_{0}', matrix.slot)]", text)
+        self.assertIn("secrets.OPENCODE_API_KEY", text)
+
+    def test_worker_script_marks_checkout_safe(self):
+        text = (ROOT / "scripts/agent-run.sh").read_text()
+        self.assertIn("git config --global --add safe.directory", text)
+
 
 class RepairTests(unittest.TestCase):
     def test_repair_task_carries_the_failing_log(self):
