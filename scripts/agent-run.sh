@@ -15,6 +15,8 @@
 # OPENCODE_API_KEY (agent steps), GH_TOKEN (publish steps only).
 set -euo pipefail
 cd "${GITHUB_WORKSPACE:-$(dirname "$0")/..}"
+mkdir -p "$HOME"
+git config --global --add safe.directory "$PWD"
 out=.agent
 mkdir -p "$out"
 REVIEWERS=${REVIEWERS:-"smartclinic-qa-reviewer smartclinic-devsecops smartclinic-physician-reviewer"}
@@ -57,7 +59,7 @@ restore_config() {
 # burns the free-model quota or runner minutes in a retry loop.
 run_agent() {
   local agent=$1 prompt=$2 log=$3 status=0
-  timeout "${AGENT_TIMEOUT:-30m}" opencode run --agent "$agent" --model "$MODEL" \
+  timeout "${AGENT_TIMEOUT:-30m}" opencode run --auto --agent "$agent" --model "$MODEL" \
     "$prompt" 2>&1 | strip_ansi | tee "$log" >&2 || status=$?
   if [[ $status -eq 0 ]]; then echo ok
   elif [[ $status -eq 124 ]]; then echo timeout
