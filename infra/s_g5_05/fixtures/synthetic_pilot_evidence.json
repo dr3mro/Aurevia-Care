@@ -1,0 +1,34 @@
+{
+  "schema_version": "1.0",
+  "kind": "synthetic_rehearsal",
+  "source": "synthetic-load-fixture",
+  "profile": {
+    "organizations": 20,
+    "patient_charts": 100000,
+    "concurrent_staff": 200,
+    "requests_per_second": 50,
+    "duration_minutes": 30
+  },
+  "measurement": {
+    "scope": "server_side",
+    "excluded": ["document_transfer", "document_rendering", "external_calls"],
+    "route_class": {
+      "patients.search": "read",
+      "appointments.list": "read",
+      "catalogs.list": "read",
+      "audit.query": "read",
+      "appointments.book": "command",
+      "encounters.sign": "command",
+      "orders.accept": "command",
+      "results.release": "command"
+    }
+  },
+  "results": {
+    "availability": {"window": "calendar_month", "percent": 99.95},
+    "p95_read_ms": 480,
+    "p95_command_ms": 870,
+    "total_requests": 90000,
+    "read_requests": 63000,
+    "command_requests": 27000
+  }
+}
