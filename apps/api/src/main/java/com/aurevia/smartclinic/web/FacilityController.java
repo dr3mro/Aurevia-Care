@@ -16,8 +16,8 @@ import com.aurevia.smartclinic.tenancy.FacilityService;
 /**
  * Thin HTTP adapter for facility administration.
  *
- * <p>All authorization decisions live in {@link FacilityService}; this class
- * maps outcomes to status codes and headers only.</p>
+ * <p>All authorization decisions live in the facility domain service; this
+ * class maps outcomes to status codes and headers only.</p>
  */
 @RestController
 @RequestMapping("/api/v1/facilities")
