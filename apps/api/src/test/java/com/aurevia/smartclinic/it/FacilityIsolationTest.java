@@ -11,6 +11,7 @@ import java.sql.Statement;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -29,6 +30,7 @@ import com.aurevia.smartclinic.tenancy.FacilityService;
 import org.flywaydb.core.Flyway;
 
 /** G0 acceptance N1-N4, E1-E8 against a real PostgreSQL with two synthetic tenants. */
+@Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("synthetic-auth")
 class FacilityIsolationTest {

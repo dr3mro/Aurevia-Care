@@ -32,6 +32,7 @@ import javax.sql.DataSource;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -61,6 +62,7 @@ import org.flywaydb.core.Flyway;
  * synthetic: two organizations sharing the facility code {@code MAIN} and one
  * denied role.</p>
  */
+@Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/smartclinic_concurrent_it")
 @ActiveProfiles("synthetic-auth")

@@ -26,7 +26,7 @@ import com.aurevia.smartclinic.scheduling.SeriesRequest;
  * <p>Every irreversible command requires an {@code If-Match} version, which is
  * parsed here into {@code 428} or {@code 422} before the domain service compares
  * it. Authorization, availability, slot exclusivity and history all live in
- * {@link AppointmentService}.</p>
+ * {@link com.aurevia.smartclinic.scheduling.AppointmentService}.</p>
  */
 @RestController
 @RequestMapping("/api/v1/appointments")
@@ -187,6 +187,7 @@ public class AppointmentController {
      * Recorded reason for cancel and no-show.
      *
      * @param reason free-text reason required by CLN-01
+     * @return the recorded reason
      */
     public record ReasonRequest(String reason) {
     }

@@ -14,6 +14,7 @@ import java.time.Instant;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -28,6 +29,7 @@ import org.springframework.web.client.RestClient;
 import org.flywaydb.core.Flyway;
 
 /** S-G0-03b acceptance: tenant-scoped audit query with cursor paging and audit-of-read (OPS-02/ARC-03). */
+@Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/smartclinic_audit_it")
 @ActiveProfiles("synthetic-auth")

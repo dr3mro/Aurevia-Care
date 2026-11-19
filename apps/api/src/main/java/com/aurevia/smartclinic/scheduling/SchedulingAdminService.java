@@ -19,7 +19,7 @@ import com.aurevia.smartclinic.tenant.TenantContext;
  * <p>These are operational rows rather than approval-gated policy, which is why
  * they live beside the appointment tables instead of the configuration fold. The
  * booking rules that do change policy behaviour are read from the approved
- * configuration fold (see {@link BookingRules}).</p>
+ * configuration fold (see {@code BookingRules}).</p>
  *
  * <p>A denied command appends its audit event and still commits it, so the
  * denial survives; command failures roll the transaction back.</p>
