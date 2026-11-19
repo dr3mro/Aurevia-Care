@@ -40,7 +40,6 @@ function fixture(overrides: Partial<MessageFactsFixture> = {}): MessageFactsFixt
     facts: { [INSTRUCTION]: EMPTY },
     now: NOW,
     readToken: () => 'synthetic-token',
-    newId: () => 'new-id',
     ...overrides,
   };
 }
@@ -67,6 +66,15 @@ describe('MSG-05 auth-gated patient client', () => {
     await expect(client.loadInstructionAfterAuth(INSTRUCTION)).rejects.toThrow('NOT_AUTHENTICATED');
     await expect(client.markFirstView(INSTRUCTION, 2)).rejects.toThrow('NOT_AUTHENTICATED');
     await expect(client.acknowledge(INSTRUCTION, 2)).rejects.toThrow('NOT_AUTHENTICATED');
+  });
+
+  it('fails closed on an empty credential, not just a missing one', async () => {
+    const client = createMessageFactsClient(fixture({ readToken: () => '' }));
+    await expect(client.loadInstructionAfterAuth(INSTRUCTION)).rejects.toThrow('NOT_AUTHENTICATED');
+    await expect(client.markFirstView(INSTRUCTION, 2)).rejects.toThrow('NOT_AUTHENTICATED');
+    await expect(client.acknowledge(INSTRUCTION, 2)).rejects.toThrow('NOT_AUTHENTICATED');
+    expect(() => client.overdueInstructions(NOW)).toThrow('NOT_AUTHENTICATED');
+    expect(() => client.owningUnitFor(INSTRUCTION)).toThrow('NOT_AUTHENTICATED');
   });
 
   it('never caches clinical content between authenticated loads', async () => {
@@ -172,5 +180,23 @@ describe('MSG-05 auth-gated patient client', () => {
       ],
     }));
     expect(client.overdueInstructions(NOW).map((item) => item.id)).toEqual([INSTRUCTION]);
+  });
+
+  it('denies fact writes and unit lookup outside the active tenant or chart', async () => {
+    const crossTenant = createMessageFactsClient(fixture({
+      instructions: [view({ organizationId: OTHER_ORG })],
+    }));
+    await expect(crossTenant.markFirstView(INSTRUCTION, 2)).rejects.toThrow('INSTRUCTION_NOT_FOUND');
+    await expect(crossTenant.acknowledge(INSTRUCTION, 2)).rejects.toThrow('INSTRUCTION_NOT_FOUND');
+    expect(() => crossTenant.owningUnitFor(INSTRUCTION)).toThrow('INSTRUCTION_NOT_FOUND');
+    expect(crossTenant.overdueInstructions(NOW)).toEqual([]);
+
+    const otherChart = createMessageFactsClient(fixture({
+      instructions: [view({ patientId: FOREIGN })],
+    }));
+    await expect(otherChart.markFirstView(INSTRUCTION, 2)).rejects.toThrow('INSTRUCTION_NOT_FOUND');
+    await expect(otherChart.acknowledge(INSTRUCTION, 2)).rejects.toThrow('INSTRUCTION_NOT_FOUND');
+    expect(() => otherChart.owningUnitFor(INSTRUCTION)).toThrow('INSTRUCTION_NOT_FOUND');
+    expect(otherChart.overdueInstructions(NOW)).toEqual([]);
   });
 });
