@@ -398,6 +398,24 @@ class FinanceFlowTest {
     }
 
     @Test
+    void aReferenceCannotMoveToAnotherInvoice() {
+        String org = ORG_A;
+        String first = text(create(org, "finance-1111"), "/invoice/id");
+        String second = text(create(org, "finance-1111"), "/invoice/id");
+        assertEquals(HttpStatus.OK, issue(org, "finance-1111", first, 1).getStatusCode());
+        assertEquals(HttpStatus.OK, issue(org, "finance-1111", second, 1).getStatusCode());
+        assertEquals(HttpStatus.OK, postEntry(org, "finance-1111", "payments", first, 2,
+                entryBody(500L, "CROSS-INVOICE-REF", null, null)).getStatusCode());
+
+        ResponseEntity<String> clash = postEntry(org, "finance-1111", "payments", second, 2,
+                entryBody(500L, "CROSS-INVOICE-REF", null, null));
+        assertEquals(409, clash.getStatusCode().value(), clash.getBody());
+        assertEquals("REFERENCE_CONFLICT", text(clash, "/code"));
+        assertEquals("1300", text(get(org, "finance-1111", second), "/invoice/balanceMinor"),
+                "the second invoice received no money and posted no entry");
+    }
+
+    @Test
     void reversalsRequireReasonAndAnIndependentApprover() {
         String org = ORG_A;
         String id = text(create(org, "finance-1111"), "/invoice/id");

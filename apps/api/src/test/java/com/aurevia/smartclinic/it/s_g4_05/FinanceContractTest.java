@@ -17,6 +17,7 @@ import com.aurevia.smartclinic.api.ApiException;
 import com.aurevia.smartclinic.g4.s_g4_05.FinanceActions;
 import com.aurevia.smartclinic.g4.s_g4_05.FinanceContract;
 import com.aurevia.smartclinic.g4.s_g4_05.FinanceInputs;
+import com.aurevia.smartclinic.g4.s_g4_05.FinanceRepository;
 
 /**
  * Fast, database-free acceptance for the pure FIN-01 contract: invoice state
@@ -193,13 +194,40 @@ class FinanceContractTest {
     }
 
     @Test
-    void digestIsDeterministicAndTypeSensitive() {
-        String payment = FinanceInputs.digest(FinanceContract.EntryType.PAYMENT, 1000L, "USD");
-        assertEquals(payment, FinanceInputs.digest(FinanceContract.EntryType.PAYMENT, 1000L, "USD"));
-        assertNotEquals(payment, FinanceInputs.digest(FinanceContract.EntryType.REFUND, 1000L, "USD"));
-        assertNotEquals(payment, FinanceInputs.digest(FinanceContract.EntryType.PAYMENT, 999L, "USD"));
-        assertNotEquals(payment, FinanceInputs.digest(FinanceContract.EntryType.PAYMENT, 1000L, "SAR"));
-        assertEquals("payment|1000|USD", payment);
+    void digestIsDeterministicAndCoversTheWholePayload() {
+        String id = "11111111-1111-1111-1111-111111111111";
+        String other = "22222222-2222-2222-2222-222222222222";
+        String payment = FinanceInputs.digest(id, FinanceContract.EntryType.PAYMENT, 1000L, "USD", null, null);
+        assertEquals(payment,
+                FinanceInputs.digest(id, FinanceContract.EntryType.PAYMENT, 1000L, "USD", null, null));
+        assertNotEquals(payment,
+                FinanceInputs.digest(id, FinanceContract.EntryType.REFUND, 1000L, "USD", null, null));
+        assertNotEquals(payment,
+                FinanceInputs.digest(id, FinanceContract.EntryType.PAYMENT, 999L, "USD", null, null));
+        assertNotEquals(payment,
+                FinanceInputs.digest(id, FinanceContract.EntryType.PAYMENT, 1000L, "SAR", null, null));
+        assertNotEquals(payment,
+                FinanceInputs.digest(other, FinanceContract.EntryType.PAYMENT, 1000L, "USD", null, null),
+                "the same reference on another invoice is a different payload");
+        assertNotEquals(payment,
+                FinanceInputs.digest(id, FinanceContract.EntryType.PAYMENT, 1000L, "USD", "desk", null));
+        assertNotEquals(payment,
+                FinanceInputs.digest(id, FinanceContract.EntryType.PAYMENT, 1000L, "USD", null, "admin-a"));
+        assertTrue(payment.contains(id));
+        assertEquals(payment.length(), FinanceInputs.digest(
+                id, FinanceContract.EntryType.PAYMENT, 1000L, "USD", null, null).length());
+    }
+
+    @Test
+    void replayRecordValueSemanticsAreStable() {
+        String digest = "digest";
+        FinanceRepository.Replay replay = new FinanceRepository.Replay(digest, entry());
+        assertEquals(digest, replay.digest());
+        assertEquals(entry(), replay.entry());
+        assertEquals(replay, new FinanceRepository.Replay(digest, entry()));
+        assertNotEquals(replay, new FinanceRepository.Replay("other", entry()));
+        assertEquals(replay.hashCode(), new FinanceRepository.Replay(digest, entry()).hashCode());
+        assertNotNull(replay.toString());
     }
 
     @Test
