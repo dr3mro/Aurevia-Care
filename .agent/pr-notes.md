@@ -1,3 +1,4 @@
+
 # S-G3-10 — Messaging audit, retention, legal hold, provenance and revocation effects
 
 ## Requirement IDs and acceptance mapping
@@ -7,7 +8,15 @@ Specification: `SMARTCLINIC_V1_SPEC.md` §6.1 MSG-07, §7 ARC-07, §8 OPS-02/OPS
 
 | Acceptance behaviour (MSG-07) | Implementation (in scope) | Test evidence (synthetic only) |
 |---|---|---|
-| Audit opening, viewing, sending, assigning, downloading, acknowledging, filing, correcting, restricting conversations/files | `MessagingAuditContract.AuditAction` (9 workflow actions), `MessagingGovernanceService.recordAction` with server-derived outcome; denials appended via `deny` | `MessagingGovernanceServiceTest.recordActionAuditsEveryConversationAndFileAction`, `recordActionDeniesInactiveMembershipAndAuditsTheDenial`, `MessagingAuditDomainTest.everyAuditActionRoundTripsItsWireValue` |
+| Audit opening, viewing, sending, assigning, downloading, acknowledging, filing, correcting, restricting conversations/files | `MessagingAuditContract.AuditAction` (9 workflow actions), `MessagingGovernanceService.recordAction` with server-derived outcome; denials appended via `deny` | `MessagingGovernanceServiceTest.recordActionAuditsEveryConversationAndFileAction`, `recordActionDeniesInactiveMembershipAndAuditsTheDenial`, `MessagingAuditDo
+
+
+
+
+
+
+
+Test.everyAuditActionRoundTripsItsWireValue` |
 | Apply configured retention and scoped expiring exports | `RetentionPolicy`, `MessagingResource`, `retentionDecision`, `applyRetention`, `createExport` (allowlisted scope, 60–86400s TTL) | `MessagingGovernanceServiceTest.retentionDecisionDistinguishesHoldWindowAndEligibleResources`, `applyRetentionSkipsHeldAndRecentResources`, `createExportBoundsScopeAndTtl`; mobile `audit.retentionEligible` |
 | Legal holds suspend retention; release records actor/time/reason and preserves placement reason | `LegalHold` (+`active()`), `placeHold` (404/409), `releaseHold` (404/409), `isHeld` in retention decisions | `MessagingGovernanceServiceTest.placeHoldRequiresAnExistingResourceAndBlocksDuplicates`, `releaseHoldRecordsTheReleasingActorAndRejectsRepeats`, `releasedHoldPreservesPlacementReasonAndReasonIsAudited` |
 | Preserve provenance when authorized staff link messages/instructions to the chart | `ProvenanceLink`, `linkToChart` (clinician-only, verified-patient binding), read-only `provenanceLinks` mobile projection | `MessagingGovernanceServiceTest.linkToChartPreservesProvenanceAndRequiresClinicalAuthorization`, `chartLinkRequiresValidSourceTypeAndVerifiedPatientBinding`; mobile `exposes staff-filed provenance read-only...` |
@@ -47,6 +56,183 @@ Non-blocking observation for the integrator (not a spec violation, no change mad
 
 
 ---
+=======
+
+# S-G3-08 — Publication, dispatch, first view and revision-bound acknowledgment (MSG-05)
+
+## Requirement IDs and acceptance mapping
+
+Primary: **MSG-05**. Supporting: **MSG-04** (revision/withdrawal context), **MSG-01** (server-side patient/destination/context validation), **ARC-01, ARC-03, ARC-04, ARC-05, ARC-07, OPS-02, UX-01, PAT-01/02**. Specification: `SMARTCLINIC_V1_SPEC.md` §6.1 MSG-05, §7 ARC-01..07, §8 OPS-02, §1 pilot metrics.
+
+| Acceptance behaviour | Implementation | Synthetic test evidence |
+|---|---|---|
+| Publication, notification dispatch, first in-app view and explicit acknowledgment are four separate append-only facts | `InstructionFacts.FactType` (5 kinds incl. follow-up), `Publication`/`Dispatch`/`FirstView`/`Acknowledgment` records; `InstructionFactService.publish/retryDispatch/markFirstView/acknowledge` | `InstructionFactsTest`, `InstructionFactServiceTest.timelineShowsTheFourFactsAsSeparateEntries`, `facts.test.ts` (four independent slots) |
+| Acknowledgment binds to one exact revision and is receipt-only | `AcknowledgmentScope.RECEIPT`; stale revision → 409 `STALE_REVISION`; `acknowledgeRevisionBound` returns `REVISION_MISMATCH`/`SUPERSEDED` | `InstructionFactServiceTest.acknowledgmentBindsToTheExactPublishedRevision`, `facts.test.ts` revision-bound cases |
+| Generic push notification carries no clinical detail; content only after authentication | `GENERIC_NOTIFICATION_KEY=NEW_INSTRUCTION`, `Dispatch` has no contentRef; `buildGenericNotification()` fixed text; client re-reads credential for every protected command | `InstructionFactServiceTest.notificationDispatchIsAGenericSeparateFact`, `notification.test.ts`, `client.test.ts` auth tests |
+| Track overdue requested acknowledgments and route to owning unit | `overdueCandidates`, `overdueFollowUps`, `FollowUp` (ROUTED/RESOLVED), `overdueInstructions`/`owningUnitForOverdue` on mobile | `InstructionFactServiceTest.overdueRequestedAcknowledgmentRoutesToTheOwningUnit`, `facts.test.ts` overdue routing |
+| Immutable revision; idempotency; tenant isolation; fail-closed authorization/audit | `putInstruction` now `putIfAbsent` + `REVISION_CONFLICT`; monotonic revision; atomic key reservation; org-prefixed keys; per-request membership/role/connection re-check; audit on success and denial | `InstructionFactServiceTest` (11 new cases), `InMemoryInstructionFactStoreTest`, `InstructionFactsTest` |
+
+Entry-point-to-test trace: `POST /api/v1/instructions/publish` → `InstructionFactController.publish` → `InstructionFactService.publish` → `recordedClientDigest` → membership/role/unit/patient-context/monotonic validation → `reserveClientDigest` → `putInstruction` (immutable) → `putPublication` (+ optional generic `Dispatch`) → `appendAudit` → 201. `POST .../acknowledge` → `acknowledge` → published-instruction + verified-chart + active-connection + receipt-requested + current-revision checks → atomic key reserve → `putAcknowledgmentIfAbsent` → audit. `GET .../facts` → `facts` → tenant scoped timeline. `GET .../overdue-follow-ups` → scan + follow-up routing. Verified by `InstructionFactControllerTest` (unit), `InstructionFactServiceTest` (domain) and the mobile `client.test.ts`/`facts.test.ts`; the real-PostgreSQL isolation suite is the integrator's gate.
+=======
+
+# S-G3-01 — Patient appointment list, confirmation, generic push notifications and device revocation (PAT-01)
+
+## Requirement IDs and acceptance mapping
+
+Primary: **PAT-01**. Supporting: **ARC-01, ARC-02, ARC-05, OPS-02, IAM-05, UX-01**.
+Specification: `SMARTCLINIC_V1_SPEC.md` §6 PAT-01, §7 ARC-01/02/05, §8 OPS-02, §2 IAM-05, §9 G3 gate evidence ("generic notifications reveal no clinical detail").
+
+| PAT-01 acceptance behaviour | Implementation | Test evidence (synthetic only) |
+|---|---|---|
+| List appointments with facility time zone and status | `PatientAppointmentService.listAppointments` → `PatientAppointmentStore.forPatient`; mobile `appointmentView`/`sortByScheduled` | `PatientAppointmentServiceTest` (7 list cases); `appointments.test.ts`; `AppointmentListScreen.test.tsx` |
+| Confirmation only where enabled; server-recorded timestamp; version precondition | `PatientAppointment.confirmable()`, `confirm()` version check + atomic `store.confirm`, `confirmed(at, v)`; mobile `deriveConfirmation`/`confirm` | `PatientAppointmentServiceTest` (9 confirm cases); `PatientAppointmentTest`; `confirmation.test.ts` (incl. new authoritative-flag regression) |
+| Status-change push with generic text only | `notifyStatusChange` → `dispatch` → `GenericPushNotice.appointmentUpdate()` (fixed title/body/deep link, factory accepts no detail); mobile `GENERIC_NOTICE` | `GenericPushNoticeTest`; `notifications.test.ts`; service dispatch tests |
+| Detail retrieved only after authentication | mobile `detailAfterAuth` gates fetcher invocation on `AuthState.authenticated`; service re-checks verified link on every command | `notifications.test.ts`; `unlinkedSubjectIsDeniedBeforeAnyRead` etc. |
+| Log invalid device tokens (without provider token) | `recordInvalidToken` + dispatch INVALID_TOKEN branch → `appendInvalidTokenLog(tokenId, …)`; mobile `invalidateToken` returns event with no token value | `invalidTokenResponseIsLoggedAndTokenMarkedInvalid`, `confirmInvalidatesAndLogsARejectedToken`; `devices.test.ts` |
+| Support device revocation that stops future pushes | `revokeDevice` idempotent + concealed foreign token; `DeviceState.deliverable()` re-checked at dispatch; **new** mobile `withRevokedDevice`/`withInvalidatedDevice` persist state so `eligibleTokens` excludes them | `revoke*` service tests, `dispatchSkipsANonDeliverableTokenReturnedByTheStore`; new `devices.test.ts` persistence cases |
+| Verified-patient / tenant scoping | Every service command calls `authorize()` (`links.allows(subject, patientId)`) before any store call; mobile `tenantKey` NUL separator, **new** `eligibleTokens` patient filter | 403/404 denial tests; `tenancy.test.ts`; new two-patient `devices.test.ts` case |
+
+Entry-point-to-test trace: `POST confirm` (service boundary) → `PatientAppointmentService.confirm` → `authorize` (verified link) → `store.find` (404 conceal / `confirmable` / `If-Match`) → `store.confirm` (atomic version precondition) → `dispatch` → `GenericPushNotice.appointmentUpdate()` → `PushGateway.send` (INVALID_TOKEN → `save(invalidate())` + `appendInvalidTokenLog`) → `AuditSink.append` → confirmed projection. Mobile: `AppointmentListScreen` → `appointmentView` (tenant key + zone) → `deriveConfirmation` (site **and** per-appointment flag) → `confirm` (authenticated, timestamp idempotency) → `detailAfterAuth`; device list → `eligibleTokens(devices, org, patientId)` → `withRevokedDevice`/`withInvalidatedDevice`.
+
+## What this worker changed (attempt 2)
+
+The base branch already contained a complete, green S-G3-01 implementation. Three genuine PAT-01 gaps were found by simulated review and fixed **test-first** (red → green), all inside `apps/patient-mobile/src/features/s_g3_01`:
+
+1. **`eligibleTokens` had no patient dimension** (`devices.ts`). It selected every active device in the tenant, so a push for patient A could target patient B's device and the list could expose another patient's revoke control. Added a required `patientId` parameter and a `token.patientId === patientId` filter. Added a two-patient-in-one-org regression test.
+2. **`deriveConfirmation` ignored the authoritative per-appointment `confirmationEnabled` flag** (`confirmation.ts`). A caller passing `enabled = true` for a server-marked non-confirmable visit produced a Confirm affordance. Both flags are now required (stricter wins); added the regression test.
+3. **Revocation/invalidation had no persistence helper** (`devices.ts`). `revokeToken`/`invalidateToken` returned a new token but nothing wrote it back, so a wiring that used them alone left the device `active`. Added tenant-keyed `withRevokedDevice`/`withInvalidatedDevice` (no-op for a missing/foreign key) and tests proving a stored revocation/invalidation removes the device from `eligibleTokens` while the source registry is unchanged.
+
+## Red → green evidence (tool-generated)
+ main
+
+- **RED** `npx jest src/features/s_g3_01 --silent` → **EXIT 1**, 5 failures / 25 pass: patient-scope assertion failure plus `TypeError: withRevokedDevice/withInvalidatedDevice is not a function`; and `deriveConfirmation({confirmationEnabled:false}, true)` wrongly returned `pending`.
+- **RED** `npm run typecheck` → **EXIT 2**: `TS2305` missing exports, `TS2554` expected 2 arguments got 3. (Each failure is caused by the missing behaviour, not an unrelated error.)
+- **GREEN** `npx jest --coverage --collectCoverageFrom='src/features/s_g3_01/*.ts' ... src/features/s_g3_01` → **EXIT 0**, 30/30 tests, **100% statements/branches/functions/lines** for every s_g3_01 source file.
+- **GREEN** `npm run typecheck`, `npm run lint` → EXIT 0.
+
+swarm/S-G3-08-98
+- `cd apps/api && mvn -q -B -Pno-security,fast -Dtest='com.aurevia.smartclinic.messaging.s_g3_08.*Test' test` → **EXIT 0**; Surefire: **73 tests, 0 failures, 0 errors** (Service 43, Store 12, Facts 11, Controller 7).
+- `cd apps/api && mvn -q -B -Pno-security,fast test` → **EXIT 0**; full fast tier **1476 tests, 0 failures, 0 errors, 0 skipped**.
+- `cd apps/api && mvn -q -B jacoco:report` → EXIT 0; per-class report: `InstructionFactService` INSTRUCTION 1274/1274, BRANCH 76/76, LINE 198/198, METHOD 33/33, CLASS 1/1; `InMemoryInstructionFactStore` 869/869 instructions, 80/80 branches, 55/55 methods; every other class in the package 100% (interfaces have no code). No fabricated coverage; full-project JaCoCo gate belongs to the integrator's `mvn verify`.
+- `cd apps/patient-mobile && npx jest src/features/s_g3_08 --runInBand --coverage --collectCoverageFrom='src/features/s_g3_08/**/*.{ts,tsx}' --coverageThreshold='{"global":{"branches":100,"functions":100,"lines":100,"statements":100}}'` → **EXIT 0**; **42 tests, 4 suites**; 100% statements/branches/functions/lines for every logic file (`types.ts` is type-only).
+- `cd apps/patient-mobile && npm run typecheck` → EXIT 0; `npm run lint` → EXIT 0 after fixing one `Array<T>` warning; `npm test -- --runInBand` → EXIT 0, **241 tests, 25 suites**.
+- `bash scripts/frontend-check.sh` → **EXIT 0** (`frontend standards: policy and tool commands passed`, includes both modules + root typecheck/lint/prettier/tests).
+- `npx prettier --check apps/patient-mobile/src/features/s_g3_08/*.ts *.tsx` → EXIT 0.
+- RED evidence before implementation: Java `InstructionFactServiceTest` 2 failures (immutable revision, stale revision), then 7 failures + 1 error with the second batch (due date, patient unit, digest, key burn, replay 500, orphan key, two overdue cases). Mobile Jest 11 failures across 3 suites (per-revision first view, re-acknowledgment, status, instant compare, replay, screen revision/revision-mismatch/RTL-adjacent behavior, auth scoping, tenant filtering). All were caused by the missing behavior described above, then turned green by the scoped changes.
+
+I did **not** run `db/check.sh`, `mvn verify`, the real-PostgreSQL isolation suite or any `gh`/push/tag command: those belong to the integrator/branch policy for this worker.
+
+## Defects found and fixed (in scope)
+
+1. **Published revision was mutable** — `putInstruction` overwrote an existing `(org,id,revision)`; now `putIfAbsent` and a `REVISION_CONFLICT` guard so an acknowledgment can never bind to silently changed content (ARC-01/04, MSG-05).
+2. **Stale revision could be published after a newer one** — rejected with 409 `STALE_REVISION`.
+3. **Idempotency key was burned by a later business denial** and a replay of a denied command threw `NoSuchElementException` (HTTP 500) — keys are now read-then-atomically-reserved after validation; committed-fact lookups fail closed with 409 `CONFLICT`.
+4. **Non-atomic check-then-act on keys** allowed duplicate dispatch under concurrency — reservation is one atomic `putIfAbsent`; a lost race fails closed with 409 `CONFLICT` (tested with a synthetic racing store).
+5. **Publish digest omitted patient/unit** — different payloads under the same key returned the original success; digest now includes both (ARC-03).
+6. **Patient↔unit relationship was not checked on publish** — added active-connection validation (MSG-01 defense in depth).
+7. **Acknowledgment requested with no due instant silently disabled overdue routing** — now 422 `ACKNOWLEDGMENT_DUE_DATE_REQUIRED`.
+8. **Superseded revisions generated un-clearable overdue follow-ups** — excluded from detection and from the open queue.
+9. **Mobile first view was per instruction, not per revision** — a corrected revision could neither record a first view nor be displayed correctly; now keyed by `(instructionId, revision)` end to end, with a new-revision screen test.
+10. **Mobile receipt slot blocked a new requested revision** and status treated any old receipt as terminal — both are revision-aware now.
+11. **Mobile `overdueInstructions`/`owningUnitFor` skipped auth and returned cross-tenant rows** — both now require the credential and filter by active organization and verified chart.
+12. **Mobile screen offered an acknowledge button the domain always rejected** when `request.revision !== revision` — button is now withheld.
+13. **Mobile deadline comparison was lexicographic** — uses `Date.parse` so an offset timestamp cannot hide an overdue request; `reduceFact` no longer lets a replay overwrite an earlier first view or receipt.
+
+No patient data, credentials or raw logs are recorded here; all identifiers in code/tests are synthetic.
+
+## Deferred findings (not fixed here — decision/owner needed)
+
+These came from four read-only specialist reviews (simulated, not human clinical evidence) and are outside the declared scope or need a separate story:
+
+- **Withdrawal state is owned by S-G3-07/MSG-04.** This slice's synthetic `Instruction` has no state field, so a direct API call cannot observe a MSG-04 withdrawal; only the mobile projection checks `withdrawn`. A cross-store/cross-module state check needs Architect + clinical-safety sign-off before G5 launch. Flagged as **launch-relevant** by the physician reviewer.
+- **Durable storage / outbox / worker.** The in-memory adapter, local mobile fact client and lazy follow-up scan follow the pattern of sibling messaging slices (S-G3-01…07). V36 was reserved but **not created**: scope contains only the two feature paths, no `db/migrations`, and every sibling messaging story uses the synthetic adapter. A separate cross-boundary story must add tenant-keyed tables, RLS/uniqueness, atomic outbox, a scheduled overdue worker and real client API wiring. Architect/PO decision requested at integration; no durable evidence is claimed here.
+- Follow-up state is stored as one overwritten row rather than an append-only fold; timeline reads are audited as `FOLLOW_UP_LIST` and a unit-unassigned tenant admin gets 404; ARC-03/04 headers (`Idempotency-Key`, `If-Match`, 412 for stale) are not implemented on these commands. Each needs its own bounded story.
+- Arabic strings/localization remain with S-G3-11/S-G5-10 (UX-01); RTL direction is implemented and tested here.
+
+## Evidence classification and directives
+
+- Tool evidence: all command outputs and counts above, executed locally on this worker branch.
+- Reviewer evidence: bounded findings from `smartclinic-senior-backend`, `smartclinic-senior-mobile`, `smartclinic-software-architect` and `smartclinic-physician-reviewer` (simulated reviewers, no edits by them).
+- Simulated-user/human evidence: none. No clinician or patient participated; real-patient approval remains a G5 gate.
+- Branch `swarm/S-G3-08-98`; no push, tag, `gh`, tracker or docs edit was performed by this worker. Reserved migration V36 was not used.
+=======
+## All commands run and exact results (evidence source: executed tool commands)
+
+- `mvn -q -B -f apps/api/pom.xml -Pno-security,fast test` → **EXIT 0**; Surefire 1463 tests, 0 failures/errors/skipped; 42 in `messaging.s_g3_01` (AppointmentStatusTest 3, DeviceTokenTest 2, GenericPushNoticeTest 4, PatientAppointmentServiceTest 28, PatientAppointmentTest 5). Java sources unchanged by this worker.
+- `cd apps/patient-mobile && npm ci --no-audit --no-fund` → EXIT 0; `npm run typecheck` → EXIT 0; `npm run lint` → EXIT 0; `npm test -- --silent` → EXIT 0, **25 suites / 235 tests passed**.
+- `bash scripts/frontend-check.sh` → **EXIT 0** (`frontend standards: policy and tool commands passed`; includes both modules plus root typecheck/lint/prettier/vitest).
+- `python3 -I scripts/check-migrations.py --require-baseline` → EXIT 0 (gaps allowed by decision 0002; reserved V29 not needed for this in-memory slice).
+- `git diff --check` → clean; `git diff --name-only` → only the four in-scope mobile files.
+
+I did **not** run `db/check.sh`, `mvn verify`, JaCoCo, OWASP/SpotBugs or any `@Tag("integration")` suite — the worker contract assigns database/integration gates to the integrator. No coverage result was fabricated.
+
+## Defects found
+
+**Fixed in this change (in scope, simulated-review findings, tool-verified red/green):** the three items above. Evidence source for discovery: simulated Senior React Native reviewer; red/green proof from executed commands.
+
+**Reported, NOT changed — Java production/test findings (Java test directory is outside this worker's declared scope, so no test-first Java change was made):**
+- `PatientAppointmentService.java:93-99` — `confirm()` commits, dispatches and audits SUCCESS, then re-reads for the response; if that post-commit `find` returns empty it throws 404 after a successful, notified action (test `confirmConcealsAnAppointmentThatDisappearsBeforeTheResponse` codifies this). Recommended: build the response from `current.confirmed(at, expectedVersion + 1)` and drop the re-read. **Blocker for the next attempt** — needs a Java regression test.
+- `recordInvalidToken(..., String reason, ...)` writes caller-supplied text verbatim to the invalid-token log (`:177`); the dispatch path is safe (hardcoded `"INVALID_TOKEN"`). Recommend an allow-list / bounded code plus a hostile-input test.
+- `Instant at` is trusted from the caller, not an injected `Clock`, though the Javadoc claims a server timestamp. Recommend injecting `java.time.Clock`.
+- `PatientAppointmentServiceTest:209,258` use `any(GenericPushNotice.class)`; they do not assert the emitted notice equals the fixed generic template. A regression that puts clinical detail in the push would still be green at 100% coverage. Recommend an `ArgumentCaptor` assertion plus `reveals(...)` checks.
+
+**Reported, NOT changed — remaining mobile hardening (lower priority / other stories):**
+- Screen callbacks pass bare local ids while `appointmentView` computes a tenant key; after an active-org switch a stale id could be re-scoped elsewhere. Consider passing the tenant-scoped key to `onConfirm`/`onOpenDetails`.
+- `AuthState` is a bare boolean; "authenticated but link since revoked" is not exercised client-side (server re-check remains the compensating control, IAM-05).
+- `AppointmentListScreen` has no `accessibilityLabel`/`accessibilityRole` and hard-coded English strings (UX-01; owned by S-G3-11).
+- Java slice has no controller/DB adapter or HTTP reachability — explicitly declared a follow-up in `PatientAppointmentService` Javadoc; reserved V29 unused, consistent with sibling messaging stories (s_g3_02/03/04 also use in-memory stores).
+
+## Decisions / notes for the integrator
+
+- Scope honoured: only `apps/patient-mobile/src/features/s_g3_01` was edited. Reserved migration **V29 was not used** — no persistence layer exists in this slice.
+- Do **not** edit TODO.md/MEMORY.md/WORKSPACE.md/BUGS.md/PROJECT.md — this worker did not.
+- Confirm on the merge result: patient-mobile jest 235 tests, typecheck/lint, `scripts/frontend-check.sh`, Java fast tier, JaCoCo 100%, and the real-PostgreSQL gates. Add a BUGS.md entry for the Java F1 blocker above if accepted.
+- Synthetic fixtures only (`patient-1`, `patient-2`, `org-a`, `dev-1`, `synthetic-token`). No patient data or credentials used or recorded. Evidence is tool-generated for commands/red-green and simulated for reviewer findings; no clinician/patient/human evidence.
+- The worktree arrived with a stale `.agent/pr-notes.md` from S-G1-07 (recycled worker image); it was replaced with this file. The file is tracked in this repository and was committed with the scoped change (commit `5500a70`).
+=======
+
+# S-G2-07 — Trend only comparable observations with units, ranges, time and qualifiers visible
+
+Primary requirement: **XCH-07**. Supporting: **ADM-01, ARC-01, ARC-02, ARC-03, OPS-02, IAM-01**.
+Specification: `SMARTCLINIC_V1_SPEC.md` §4 XCH-07, §7 ARC-01..03, §8 OPS-02.
+Story scope: `apps/api/src/main/java/com/aurevia/smartclinic/g2/s_g2_07`, `apps/api/src/test/java/com/aurevia/smartclinic/it/s_g2_07`. Reserved migration: **V25** only.
+
+## Acceptance mapping (XCH-07)
+
+| Requirement text | Implementation | Synthetic test evidence |
+|---|---|---|
+| Trend numeric observations only when test identity, units and clinically relevant comparability are established | `TrendAnalyzer.classify` rejects non-matching test, non-matching comparability group, non-final revision, qualified numeric, qualitative and non-canonical unit; `ComparabilityRule` + effective-dated `current_trend_comparability` fold (V25) define the rule; `TrendActionPolicy`/`TrendService` enforce role separation | `TrendAnalyzerTest` (17), `TrendServiceTest` (17), `TrendControllerTest` (3), `TrendRepositoryTest` (8), `TrendMigrationContractTest` (1); `TrendingTest` (6 integration, integrator) |
+| Display source unit, reference range, time and interpretation | `TrendPoint` carries `unit`, `referenceLow/High/Unit`, `effectiveAt`, `interpretation`, `sourceSystem/Version`; `Observation` validates reference-range unit equals source unit and inverted ranges are rejected | `TrendAnalyzerTest.eachTrendPointShowsValueUnitRangeTimeInterpretationAndProvenance`, `observationValidationRejectsMissingIdentityValueTimeAndBadRanges`; `TrendRepositoryTest.observationMapperReadsEveryDisplayedColumn` |
+| Keep less-than / greater-than, qualitative and incompatible-unit results visible, never as comparable measurements | `ExcludedObservation` retains the whole `Observation` unmodified with a closed `ExclusionReason`; `TrendView.points() + excluded()` keeps every observation observable (nothing silently dropped) | `TrendAnalyzerTest.qualifiedNumericResultsAreVisibleButNotTrended`, `qualitativeResultsAreVisibleButNotTrended`, `incompatibleUnitsAreVisibleButNotTrended`, `exclusionsAreAlsoOrderedByEffectiveTimeThenId`, `viewCopiesItsListsDefensively`; `TrendingTest` asserts 3 points + 6 exclusions from 9 observations |
+| Tenant isolation, fail-closed authorization and audit | Forced RLS on both V25 tables with `(organization_id, id)` composite keys, append-only triggers, actor-forced `created_by`/`approved_by`, tenant+test advisory lock for version allocation; `TrendService.authorize` re-derives membership and roles each request and audits denials | `TrendingTest.tenantsStayIsolatedAndRolesAreEnforced` (two tenants, identical local codes/MRN, wrong-unit/wrong-role denial, revocation on next request); `TrendServiceTest` denial/audit branches |
+
+Entry-point-to-test trace: `POST /api/v1/trends/comparability` → `TrendController.define` → `TrendService.defineComparability` → guarded `TransactionTemplate` → `TrendRepository.nextComparabilityVersion` (V25 advisory lock) + `insertComparability` (forced actor) → `COMPARABILITY_DEFINE` audit → 201. `POST /api/v1/trends/observations` → `TrendController.record` → `TrendService.recordObservation` → guarded transaction → `TrendRepository.insertObservation` (forced RLS + actor) → `OBSERVATION_RECORD` audit → 201. `GET /api/v1/trends/{patientId}?testCode=…` → `TrendController.trend` → `TrendService.readTrend` → guarded transaction → `TrendRepository.findComparability`/`observationsForPatient` → `TrendAnalyzer.analyze` → `TREND_READ` audit → 200 with points + exclusions.
+
+## Defect fixed in this pass (test-first, RED → GREEN)
+
+**F1 — effective-dated fold ordered by version instead of effective date (reviewer SR-BACKEND, Medium correctness).** `defineComparability` accepts an arbitrary `effectiveFrom` on every version but V25's `current_trend_comparability` used `ORDER BY org, test_code, version DESC`. A backdated higher version would displace the rule actually in force, applying the wrong canonical unit and hiding correct-unit results as `INCOMPATIBLE_UNIT`.
+
+- **RED:** added `TrendMigrationContractTest.effectiveComparabilityOrdersByEffectiveDateBeforeVersion`; `mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest=TrendMigrationContractTest test` → EXIT 1, 1 failure (`order by c.organization_id, c.test_code, c.version desc`).
+- **GREEN:** changed V25 fold to `ORDER BY c.organization_id, c.test_code, c.effective_from DESC, c.version DESC` (version only breaks an effective-date tie); same command → EXIT 0, 1 pass.
+- **Behavioural coverage for the integrator:** added `TrendingTest.aBackdatedHigherVersionDoesNotOverrideTheLaterEffectiveRule` — defines v1 (2026-01-01, mmol/mol) then a backdated v2 (2025-01-01, %) and asserts `ruleVersion` stays v1, only the mmol/mol observation trends, and the % result stays visible as `INCOMPATIBLE_UNIT`. This exercises the real PostgreSQL fold; I could not run it locally (no PostgreSQL server/client in this worker image — connection refused on 127.0.0.1:5432).
+
+## Commands run and results (evidence: executed tool commands)
+
+- `mvn -q -B -f apps/api/pom.xml -Pno-security,fast test` → **EXIT 0**. Surefire: **1464 tests, 0 failures, 0 errors, 0 skipped** (exact Java command in `scripts/quick-check.sh`). In scope: `TrendAnalyzerTest` 17, `TrendControllerTest` 3, `TrendMigrationContractTest` 1, `TrendRepositoryTest` 8, `TrendServiceTest` 17. `TrendingTest` is `@Tag("integration")` and correctly excluded from this DB-less tier; its class compiled successfully.
+- `mvn ... -Pno-security -Dtest=TrendingTest test` (probe) → EXIT 1, `Connection refused` at 127.0.0.1:5432 — **no PostgreSQL in this worker image**. Database/integration verification is delegated to the integrator as instructed; no result was fabricated.
+- `python3 -I scripts/check-migrations.py --require-baseline` → EXIT 0 (V25 `Change: expand`, version sequence and format valid after the fold fix).
+- `python3 -I scripts/check-docs.py` → EXIT 0. `python3 -I scripts/check-secrets.py` → EXIT 0.
+- `git status --short` clean at the base commit `da4fbb4` before this change.
+
+## Findings not changed (with rationale)
+
+- **F2 — corrected/entered-in-error revisions have no lineage (reviewer SR-BACKEND, Medium).** `corrected` is classified `NON_FINAL_REVISION` and excluded, but V25 has no `supersedes_id`, so a superseded `final` can stay plotted while its correction is hidden. Cross-story dependency on **XCH-04 / S-G2-04** and **LAB-02 / S-G2-09** (correction versions, reconciliation). Adding lineage here would exceed the declared scope and duplicate another story's model; recorded for the Product Owner / architect rather than silently changing clinical semantics. The rest of XCH-07 (comparability gates, display fields, visible exclusions) is unaffected.
+- Residual risks noted by review: a single current rule is applied to all historical observations; unit comparison is exact string equality; `tenant_admin` self-approves comparability policy (clinical approval is a G5 site decision); no pagination on `observationsForPatient` (ARC-03 pagination is X-01); the `DUPLICATE_OBSERVATION` 409 catches any `DataIntegrityViolationException` (V25 has no source-revision unique constraint; cross-event dedup is ARC-05 / X-02). None blocks XCH-07's stated acceptance.
+- Pre-existing, out-of-scope: `test_java_conventions.py` reports 1 failure for `messaging/s_g3_11/PatientFlowContract.java` (S-G3-11, committed at base). Not modified.
+- I did **not** run `db/check.sh`, `mvn verify`, OWASP, SpotBugs or JaCoCo — per the worker contract these belong to the integrator. No coverage result was fabricated.
+- Synthetic fixtures only. No patient data, credentials or raw logs recorded. Evidence sources: executed tool commands; one independent simulated senior-backend review; no human or clinical evidence. Real-patient approval remains a G5 gate.
+
+
 
 # S-G3-06 — PDF/JPEG/PNG attachments, sender binding, quarantine scans and clean-verdict access
 
@@ -211,47 +397,57 @@ this IAM-06 backend slice.
 
 ## Requirement IDs and acceptance mapping
 
-Primary: **CLN-07**. Supporting: **ARC-01, ARC-02, ARC-03, OPS-02, IAM-01, UX-01** (locale/direction).
-Specification: `SMARTCLINIC_V1_SPEC.md` §3 CLN-07, §7 ARC-01..03, §8 OPS-02.
+Primary: **XCH-02**. Supporting: **ARC-01, ARC-02, ARC-03, ARC-04, IAM-01, PRD-06, OPS-02**.
+Specification: `SMARTCLINIC_V1_SPEC.md` §4 XCH-02, §2 IAM-01, §7 ARC-01..04, §8 OPS-02. Gate: G2.
 
-| Acceptance behaviour (CLN-07) | Implementation | Test evidence (synthetic only) |
+| XCH-02 acceptance behaviour | Implementation (in scope) | Test evidence (synthetic only) |
 |---|---|---|
-| Link original PDF/JPEG/PNG to chart, order or result; retain original bytes + checksum | `DocumentService.link`, `DocumentRepository.insert`; V17 `document_association` + `set_document_original_digest` trigger (sha256 derived from stored bytes, never caller-supplied) | `DocumentServiceTest`, `DocumentInputsTest`, `DocumentValuesTest`, `DocumentIsolationTest` (integrator) |
-| Rotation is presentation metadata only; voiding preserves history with a reason | `rotation_degrees` column pinned by `guard_document_association_update` trigger; `DocumentService.voidAssociation` + append-only `document_association_event` | `DocumentServiceTest`, `DocumentPolicyTest`, `DocumentIsolationTest` (integrator) |
-| Immutable, versioned PDFs; stale version / illegal transition rejected | `rendered_document` UNIQUE(org,type,id,locale,version), append-only triggers, `next_render_version` advisory-lock fold; `If-Match` on void (412) | `DocumentServiceTest`, `DocumentControllerTest`, `PdfRendererTest`, `DocumentIsolationTest` (integrator) |
-| English/Arabic, RTL direction, page numbers, provenance, print profile | `PdfRenderer` direction-aware layout, embedded font placeholder, `/PrintScaling /None`, provenance keys, `Page 1 / 1`; locale->direction checked by V17 CHECK constraint | `PdfRendererTest`, `DocumentValuesTest`, `DocumentIsolationTest` (integrator) |
-| Tenant isolation, fail-closed authorization, audit | Forced RLS on all three V17 tables; role matrix in `DocumentPolicy`; `DocumentService.authorize` re-derives membership/roles per transaction and audits denials | `DocumentPolicyTest`, `DocumentIsolationTest` (integrator) |
+| Three independent state channels: workflow `requested→accepted→processing→completed` (+ `rejected`/`cancelled`), transmission `pending→sent→delivered\|failed`, clinical review `unreviewed→acknowledged→action_pending→resolved` | `WorkflowState`, `TransmissionState`, `ClinicalReviewState` matrices; `ExchangeDimension`; `ExchangeStateMachine.next` writes exactly one channel; V20 `CHECK` constraints + `xch02_guard_task_update` mirror the matrices in SQL | `WorkflowStateTest` (3), `TransmissionStateTest` (2), `ClinicalReviewStateTest` (2), `ExchangeStateMachineTest` (6); `ExchangeTaskIsolationTest.workflowPathRejectsReasonsAndIllegalTransitions`, `transmissionAcknowledgmentNeverClosesAClinicalTask`, `reviewChainRequiresAcknowledgmentAndIsAppendOnly` (integrator) |
+| Acknowledgment by an authorized human with timestamp and revision | Clinician-only `EXCHANGE_REVIEW` in `ExchangeActionPolicy`; `Clock`-derived timestamp; `reviewedRevision = current.version()` after `If-Match` CAS; actor derived by V20 `xch02_actor_id()` from transaction-local `app.actor`, never from a request DTO | `ExchangeTaskServiceTest.acknowledgeBindsClockAndRevisionAndNeverTrustsTheCallerForActor`, `acknowledgeDeniesNonClinicianAndInactiveMembership`; `ExchangeTaskIsolationTest.humanAcknowledgmentBindsContextActorClockAndRevision` (integrator) |
+| A transmission acknowledgment cannot close a clinical task | `DELIVER`/`FAIL`/`SEND` map to `TRANSMISSION`; the state machine copies the clinical channel and its evidence unchanged; V20 restores clinical evidence columns on non-clinical writes and enforces the one-channel rule | `ExchangeStateMachineTest.aTransmissionAcknowledgmentNeverMutatesClinicalReview`; `ExchangeTaskServiceTest.transmissionAcknowledgmentNeverMutatesClinicalReview`; `ExchangeTaskIsolationTest.transmissionAcknowledgmentNeverClosesAClinicalTask` (integrator, incl. direct SQL assertion) |
+| Explicit POST commands with version precondition and machine-readable errors (ARC-03/04) | `POST /api/v1/exchange-tasks` and `/{id}/{command}`, `IfMatch.parse` (428 missing / 422 malformed / 412 stale through CAS), allowlisted `ExchangeCommand.from`, uniform `ApiException` mapping | `ExchangeTaskControllerTest` (5); `ExchangeTaskIsolationTest.authorizationPreconditionsAndTenantConcealment` (401/403/404/409/412/422/428) (integrator) |
+| Tenant isolation, fail-closed authorization, append-only ledger and audit (ARC-01/02, IAM-01, OPS-02) | `(organization_id,id)` composite keys; forced RLS on both V20 tables with `WITH CHECK`; `FOR UPDATE` + version CAS; immutable `exchange_task_transition`; `appendAudit` SUCCESS/DENIED inside the guarded transaction; membership and roles re-derived per request | `ExchangeTaskIsolationTest` two-tenant `LOCAL-1` concealment, ledger immutability attempt, audit-row assertions (integrator); `ExchangeTaskServiceTest` 403 denial audits |
 
-Entry-point-to-test trace: `POST /api/v1/documents/associations` → `DocumentController.link` → `DocumentService.link` → guarded `TransactionTemplate` (tenant + membership + action) → `DocumentRepository.insert` (forced RLS + DB-derived digest) → `appendEvent` + `appendAudit` → 201. `POST /api/v1/documents/rendered` → `DocumentController.render` → `DocumentService.render` → `PdfRenderer.render` → `DocumentRepository.insertRendered` (immutable, versioned, RTL/LTR) → 201. Verified by `DocumentControllerTest` (unit) and `DocumentIsolationTest` (integration, two synthetic tenants).
+### Entry-point-to-test trace
 
-## Commands run and results (evidence source: executed tool commands)
+`POST /api/v1/exchange-tasks` → `ExchangeTaskController.create` → `ExchangeTaskService.create` → guarded `TransactionTemplate` (`TenantGuardTransactionManager` binds `app.current_org`/`app.actor`) → `ExchangeActionPolicy.allowsCreate` → `ExchangeTaskRepository.insert` (forced RLS) → `appendEvent(CREATE)` + `appendAudit` → 201 with three initial states. Verified by `ExchangeTaskControllerTest.createReturns201WithLocationAndInitialStates` and `ExchangeTaskIsolationTest.createOpensTheThreeInitialChannelsWithOneHistoryEvent`.
 
-- `mvn -q -B -f apps/api/pom.xml -Pno-security,fast test` → **EXIT 0**. Surefire: **244 tests, 0 failures, 0 errors, 0 skipped**; 54 are in `com.aurevia.smartclinic.it.s_g1_07` (DocumentControllerTest 5, DocumentInputsTest 11, DocumentPolicyTest 4, DocumentServiceTest 20, DocumentValuesTest 5, PdfRendererTest 9). This is the exact Java command in `scripts/quick-check.sh`.
-- `bash scripts/frontend-check.sh` → **EXIT 0** (`frontend standards: policy and tool commands passed`). Includes staff-web `npm run typecheck`, `lint`, `npm test` (vitest) and patient-mobile plus root toolchain checks.
-- `python3 -I scripts/project-name.py displayName|repositorySlug` → `Aurevia Care` / `aurevia-care`, EXIT 0.
-- `python3 -I scripts/check-docs.py` → EXIT 0. `python3 -I scripts/check-secrets.py` → EXIT 0. `bash -n` on all shell scripts → EXIT 0.
+`POST /api/v1/exchange-tasks/{id}/{command}` + `If-Match` → `ExchangeTaskController.execute` → `IfMatch.parse` → `ExchangeCommand.from` → `ExchangeTaskService.execute` → authorize → `repository.loadForUpdate` (`FOR UPDATE`) → `requireVersion` → `ExchangeStateMachine.next` (one channel) → `repository.updateState` (version CAS, V20 guard) → `appendEvent` + `appendAudit` → next state. Verified by `ExchangeTaskControllerTest`, `ExchangeTaskServiceTest`, `ExchangeStateMachineTest` and the integration scenarios.
 
-I did **not** run the database/integration gate (`db/check.sh`, `mvn verify`, `DocumentIsolationTest`) — per the worker contract those belong to the integrator. Reserved version **V17** is present as `db/migrations/V17__document_associations.sql`; I did not touch any other migration version.
+`GET /api/v1/exchange-tasks/{id}` → `get` → read policy → `repository.find` + `history` → read audit → state + append-only history.
+
+## Commands run and results
+
+Evidence source for this section: **executed tool commands** (not reviewer claims).
+
+- `java -version` → `openjdk version "21.0.13" 2026-10-13 LTS` (Temurin). `mvn -version` → `Apache Maven 3.10.0`.
+- `mvn -q -B -f apps/api/pom.xml -Pno-security,fast test` → **EXIT 0**. This is the exact DB-less fast command from `scripts/quick-check.sh`. Surefire XML aggregation: **1463 tests, 0 failures, 0 errors, 0 skipped across 134 suites**. The 8 in-scope S-G2-02 suites contribute **38 tests, all green**: `ClinicalReviewStateTest` 2, `ExchangeActionPolicyTest` 4, `ExchangeCommandTest` 3, `ExchangeStateMachineTest` 6, `ExchangeTaskControllerTest` 5, `ExchangeTaskServiceTest` 13, `TransmissionStateTest` 2, `WorkflowStateTest` 3. (The exact command was re-run a second time with `>/tmp/sg2_02_fasttest.log` to capture the exit code: `FAST_TEST_EXIT=0`.)
+- `python3 -I scripts/check-migrations.py --require-baseline` → **EXIT 0**. Reserved V20 is present as `db/migrations/V20__exchange_task_states.sql` with a valid `V<n>__name.sql` name and `Change: expand`; no other migration version was touched.
+- `git check-ignore -v .agent/pr-notes.md` → not ignored (tracked file); `git ls-files --error-unmatch .agent/pr-notes.md` → tracked. `git status --short` before commit → clean.
+- Cross-checks: `IfMatch.parse` (428/422/412 semantics), JaCoCo `check` execution bound at 1.00 for INSTRUCTION/LINE/BRANCH/METHOD/CLASS and the `fast` profile's `excludedGroups=integration` were read from `apps/api/pom.xml` to confirm the gate boundary.
+
+I did **not** run the database/integration/coverage/static-security gates. Per the worker contract these belong to the integrator: `bash db/check.sh`, `mvn -q -B verify` (runs the `@Tag("integration")` `ExchangeTaskIsolationTest` on real PostgreSQL plus JaCoCo 100%, OWASP and SpotBugs), and `scripts/check.sh`. No result from those gates is claimed here.
+
+## Reviewer findings and dispositions
+
+Three independent simulated specialists reviewed the in-scope files (paths, XCH-02 acceptance and the fast-gate evidence only). All three returned **no blocking defect and no required in-scope source change**:
+
+- **Senior Java & Spring Boot** — transition correctness, transmission/clinical independence, server-side acknowledgment binding, CAS, authorization/error mapping all traceable to tests. One low-severity hardening idea: `ExchangeTaskService.reason()` bounds only presence, not length/characters, though `reason` is persisted to two `text` columns. Disposition: **non-blocking follow-up**; not changed here because it is outside the XCH-02 acceptance and the reviewer explicitly said it should not block acceptance.
+- **Software Architect** — Java↔V20 transition matrices match one-for-one; channels independent; revision/time/actor bound to the reviewed version; concurrency/RLS/ledger/audit sound. Flagged (a) no direct SQL negative test of the V20 guard rejection paths, (b) no `Idempotency-Key` (documented project deferral; XCH-02 requires only `If-Match`), (c) "revision" interpretation question, (d) DB guard cannot check role for a hypothetical direct SQL writer. Disposition: **(a) recommended to integrator/QA** as added evidence, not a source change; **(b)** out of scope by documented decision; **(c)** recorded as a decision below; **(d)** defence-in-depth only — authorization is enforced before every write.
+- **Senior Database** — V20 evidence `CHECK`, guard trigger, fail-closed `xch02_actor_id`, CAS, immutability triggers, grants and forced RLS all correct; change-safety checker not tripped. One out-of-scope observation: `db/check.sh` static table lists do not include the two new tables, so the shell gate does not assert V20 policy; the Java IT is the runtime proof. Disposition: **separate change**, not touched here.
+
+Reviewer evidence is **simulated review**, not human or clinical acceptance. No human participant was involved.
 
 ## Defects found
 
-No in-scope defect was found. The S-G1-07 implementation already committed on this branch is complete and its in-scope fast unit tests pass. No in-scope source or test change was necessary; this worker's scoped contribution is verification evidence and this PR description.
-
-## Reported merge-gate failures — triaged, all out of scope / environmental
-
-The untrusted "Requested change" text reported a fast-merge-gate failure whose visible stack trace is a jsdom `reportException` at `apps/staff-web/tests/theme/ThemeProvider.test.tsx:6`. Findings:
-
-1. **That trace is an intentional negative test, not a failure.** `ThemeProvider.test.tsx:31-35` renders `useTheme()` outside its provider and asserts `toThrow(/useTheme/)` (`ThemeProvider.tsx:36-40` throws exactly that message), with `console.error` spied. Locally `bash scripts/frontend-check.sh` runs the full staff-web vitest suite and exits 0. The path is in `apps/staff-web`, outside my declared scope (`apps/api/.../g1/s_g1_07` and `apps/api/.../it/s_g1_07`). I did **not** modify it.
-2. **`scripts/quick-check.sh` fails at `check-pack.py` — "opencode.json is stale".** Verified as the documented cloud-worker CI-profile trap: worktree `opencode.json` SHA `279aa1e7…` equals `.github/opencode.ci.json`, carries the skip-worktree flag (`git ls-files -v` → `S`), while `git show HEAD:opencode.json` SHA is `14bba0da…`. `check-pack.py` judges the worktree (CI) profile, not the committed local profile — the known false positive recorded as OPS-CW-003-01. I did **not** regenerate or overwrite `opencode.json` (root-level, out of scope, and it would replace the CI profile with the local one).
-3. **`python3 -I scripts/check-migrations.py --require-baseline` fails — "version gap: expected V9, found V17".** This shard contains V1–V8 plus reserved V17; V9–V16 belong to other parallel workers' stories and are absent here. On the integrator's merge with `main` those earlier versions are present, so the contiguity gate applies to the merged tree. I did **not** fabricate V9–V16.
-4. **Python tooling tests report 7 failures / 4 errors**, all explained by the above: four `test_check_pack.*` failures + `test_repository_migrations_are_valid` (items 2 and 3); `test_fast_tier`, `test_workflow_concurrency` and two `test_swarm.PlanTests` errors are `ModuleNotFoundError: No module named 'yaml'` (pyyaml absent in this worker image); three `test_agent_run.*` failures are environment-dependent. None is in the S-G1-07 scope or caused by this story.
-
-Because the reported failure is outside my scope and not reproducible as a failure locally, and because resolving items 2–4 requires files/dependencies outside my scope, I stopped at verified in-scope evidence rather than making out-of-scope edits.
+No reproducible in-scope defect was found. The hardening ideas and verification-gap suggestions above are recorded as follow-ups, not as accepted defects.
 
 ## Decisions / notes for the integrator
 
-- No production or test source was changed by this worker; in-scope code was already complete and green.
-- Confirm on the **merge result**: V9–V16 present (migration contiguity), the correct `opencode.json` profile applies for `check-pack.py`, and pyyaml is installed for the workflow tests. These are merge/environment conditions, not S-G1-07 changes.
-- Coverage (JaCoCo 100% line/branch/method/class) and the real-PostgreSQL `DocumentIsolationTest` are enforced by `mvn verify` / `db/check.sh`, which the integrator runs; I did not fabricate a coverage result.
-- Synthetic fixtures only. No patient data or credentials were used or recorded. No human or clinical evidence; all evidence above is tool-generated.
-- Commit: no in-scope production/test source change was needed, so this branch's only new commit force-adds this ignored `.agent/pr-notes.md` file (the publish job reads the same file from the worktree artifact). The S-G1-07 implementation itself was already committed at HEAD `a9fdb91`.
+- The complete S-G2-02 implementation (16 main files), 9 test files and the V20 migration were **already committed at this branch's base** `da4fbb4` (a prior attempt's work, reflected in the recycled `.agent/pr-notes.md`). This worker changed **no production or test source** after verification; its contribution is this PR description and the recorded executable evidence. The prior notes described S-G1-07 and were replaced.
+- **"Revision" interpretation**: XCH-02's "timestamp and revision" is implemented as the work-item optimistic version the clinician reviewed (the `If-Match` version at acknowledgment), not the immutable order snapshot revision from XCH-01. This slice is deliberately self-contained (no V19 dependency) and the choice is documented in `ExchangeStateMachine`/V20 comments. Confirm with Product/Architecture before G2 sign-off if a different meaning was intended; it does not block this story.
+- **Idempotency keys** are absent on transition routes by documented project deferral; a retry after a lost response gets 412 from the version CAS rather than the original outcome. This diverges from the literal ARC-04 sample contract but is outside XCH-02.
+- Verify on the merge result: the `@Tag("integration")` `ExchangeTaskIsolationTest` (real PostgreSQL: V20 guard, forced RLS, actor derivation, two-tenant concealment, ledger immutability), JaCoCo 100% at `verify`, OWASP/SpotBugs and `scripts/check.sh`. These are the integrator's gates, not claims of this worker.
+- Scope respected: only `apps/api/src/main/java/com/aurevia/smartclinic/g2/s_g2_02`, `apps/api/src/test/java/com/aurevia/smartclinic/it/s_g2_02` and reserved migration V20 were in scope; no shared tracker, doc, workflow, other migration or source file was edited. No push, tag or `gh` call was made.
+- Synthetic fixtures only; no patient data, credentials or raw logs were recorded. All gate results above are tool-generated; review findings are simulated; there is no human or clinical evidence.
+main
