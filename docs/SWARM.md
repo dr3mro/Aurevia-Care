@@ -49,4 +49,4 @@ Up to 10 OpenCode workers run in parallel on GitHub-hosted runners. An orchestra
 
 ## Not verified yet
 
-Written and unit tested (scripts/tests) but never run on GitHub: the image builds, the container jobs, per-slot secrets, OpenCode reading the baked slot config and auth file, pushing to protected `main`, and the integrator check timing. Start with `workers=1` and one task.
+Written and unit tested (scripts/tests) but never run on GitHub: the image builds, the container jobs, per-slot secrets, OpenCode reading the baked slot config and auth file, pushing to protected `main`, and the integrator check timing. Start the first wave with `workers=1` (a manual dispatch input); waves default to 10 workers, and each worker publishes its own pull request when it finishes.

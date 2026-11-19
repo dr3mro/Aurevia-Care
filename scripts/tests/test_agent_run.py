@@ -19,6 +19,7 @@ case "$FAKE_MODE" in
   resolve) echo merged > feature.txt; git add feature.txt; git commit -qm resolved --no-edit; echo done ;;
   markers) git add feature.txt; git commit -qm bad --no-edit; echo done ;;
   stubborn) echo nothing ;;
+  slow) sleep 5 ;;
 esac
 """
 FAKE_GH = """#!/usr/bin/env bash
@@ -246,6 +247,44 @@ class AgentRunTests(unittest.TestCase):
         self.assertFalse((self.repo / ".agent/review-b.md").exists())
         self.run_cmd("post-reviews", PR_NUMBER="7")
         self.assertIn("pr comment 7", self.gh_log.read_text())
+
+    def test_a_timed_out_segment_continues_on_the_same_branch(self):
+        self.run_cmd("implement", FAKE_MODE="slow", AGENT_TIMEOUT="1", SEGMENT="1", SEGMENTS="2")
+        out = self.outputs()
+        self.assertEqual((out["result"], out["more"]), ("timeout", "true"))
+        first = out["branch"]
+        self.run_cmd("implement", FAKE_MODE="commit", SEGMENT="2", SEGMENTS="2")
+        out = self.outputs()
+        self.assertEqual((out["result"], out["more"], out["commits"]), ("ok", "false", "1"))
+        self.assertEqual(out["branch"], first)
+        self.assertEqual((self.repo / ".agent/result").read_text(), "ok")
+
+    def test_the_last_segment_never_asks_for_another(self):
+        self.run_cmd("implement", FAKE_MODE="slow", AGENT_TIMEOUT="1", SEGMENT="2", SEGMENTS="2")
+        self.assertEqual(self.outputs()["more"], "false")
+
+    def test_a_finished_or_failed_segment_stops_the_chain(self):
+        self.run_cmd("implement", FAKE_MODE="commit", SEGMENT="1", SEGMENTS="4")
+        self.assertEqual(self.outputs()["more"], "false")
+
+    def test_a_mid_run_sync_that_cannot_merge_leaves_the_branch_and_the_verdict_alone(self):
+        self.push_to_main("feature.txt", "main version\n")
+        self.run_cmd("implement", FAKE_MODE="commit")
+        before = (self.repo / ".agent/checks").read_text()
+        self.run_cmd("fetch-main")
+        self.run_cmd("merge-main", FAKE_MODE="stubborn", MERGE_ATTEMPTS="1", SYNC_ONLY="1")
+        self.assertEqual((self.repo / ".agent/checks").read_text(), before)
+        self.assertEqual((self.repo / "feature.txt").read_text(), "work\n")
+        self.assertFalse((self.repo / ".git/MERGE_HEAD").exists())
+
+    def test_a_mid_run_sync_merges_main_without_the_full_check(self):
+        self.push_to_main("other.txt", "from main\n")
+        self.run_cmd("implement", FAKE_MODE="commit", CHECK_EXIT="0")
+        self.run_cmd("fetch-main")
+        self.run_cmd("merge-main", FAKE_MODE="none", SYNC_ONLY="1", CHECK_EXIT="1")
+        self.assertEqual(self.outputs()["merge"], "merged")
+        self.assertTrue((self.repo / "other.txt").exists())
+        self.assertEqual((self.repo / ".agent/checks").read_text(), "passed")
 
     def test_unknown_command_is_a_usage_error(self):
         self.assertEqual(self.run_cmd("bogus").returncode, 2)
