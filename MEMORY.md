@@ -1,6 +1,6 @@
 # Durable memory
 
-Current checkpoint: PROGRESS.md, S-G0-03 configuration foundation implementation and local gates; next full gate and exact-SHA CI on `main`. CW-001 worker repair is merged in PR #12. `PLAN.md` is the canonical all-story index with checkbox state; fill a checkbox only when PROGRESS.md records the evidence.
+Current checkpoint: PROGRESS.md, S-G0-03 verified in GitHub Actions on 1084ed4 (run 44455300465 green); OpenCode team workflow repaired and green on 44455455920. CW-001 worker repair merged in PR #12. `PLAN.md` is the canonical all-story index; fill a checkbox only when PROGRESS.md records the evidence.
 
 | Decision | Rationale and evidence |
 |---|---|
