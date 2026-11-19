@@ -557,6 +557,9 @@ Raised by the dispatch-3 run-3 verification. Address in the next authorized chan
 - [x] S-FIX-FLAKY-01 · `scripts/check.sh` failed intermittently: `test_publish_twice_does_not_reuse_a_stale_incoming_ref` pushed a second bundle to an already-existing branch, so within the same second the commit SHA matched (no-op, pass) and across seconds it was a non-fast-forward (fail). Second bundle now uses a distinct branch, preserving the stale-ref test deterministically.
   - evidence: isolated runs showed `check.sh` pass/fail alternating; five consecutive full `check.sh` runs exit 0 after fix; 158 tooling tests OK. Evidence source: executed tool commands; no human or clinical evidence.
 
+- [x] S-FIX-TEAM-PUSH-01 · OpenCode team's `publish` step failed when an agent changed `.github/workflows/*`: `github.token` (App) lacks workflow scope. Added `PUSH_TOKEN` in `agent-run.sh` `github_git()` (falls back to `GH_TOKEN`) and wired `secrets.SWARM_TOKEN` only to that variable, keeping `gh` CLI on the App token because a classic PAT without `read:org` breaks GraphQL calls.
+  - evidence: run 44503284412 job 135488337891 showed `remote rejected ... workflow .github/workflows/swarm.yml without workflows permission`. New test `test_push_token_overrides_gh_token_for_git_only` passes; 8 agent-run tests, 159 total tooling tests OK; `check-docs.py`/`check-secrets.py` green. Evidence source: GitHub Actions log plus executed tool commands; no human or clinical evidence.
+
 ## One-week execution plan (1 wave per hour)
 
 Created 2026-11-19T08:55Z from the open entries above. Horizon: 7 days × 24 hours = 168 hourly wave slots. This plan uses 7 implementation waves; the remaining 161 hourly slots are buffer for `needs-fix` retries, fix PRs, gate re-runs and human approvals.

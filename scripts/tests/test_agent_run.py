@@ -92,6 +92,17 @@ class AgentRunTests(unittest.TestCase):
                                  capture_output=True, text=True).stdout
         self.assertNotIn("opencode.json", changed)
 
+    def test_push_token_overrides_gh_token_for_git_only(self):
+        self.assertEqual(self.run_cmd("implement", FAKE_MODE="commit").returncode, 0)
+        # PUSH_TOKEN is used by github_git; GH_TOKEN stays for gh CLI calls.
+        done = self.run_cmd("publish", PUSH_TOKEN="pat-workflow")
+        self.assertEqual(done.returncode, 0)
+        heads = subprocess.run(["git", "ls-remote", "--heads", "origin"], cwd=self.repo,
+                               capture_output=True, text=True).stdout
+        self.assertIn("refs/heads/opencode/issue-5-9", heads)
+        log = self.gh_log.read_text()
+        self.assertIn("pr create --base main", log)
+
     def test_failing_checks_open_a_draft(self):
         self.run_cmd("implement", FAKE_MODE="commit", CHECK_EXIT="1")
         self.assertEqual(self.outputs()["checks"], "failed")

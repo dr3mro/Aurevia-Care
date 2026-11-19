@@ -28,8 +28,10 @@ emit() { # name value: expose a step output when running in Actions
 strip_ansi() { sed -E 's/\x1b\[[0-9;]*[A-Za-z]//g'; }
 
 github_git() { # git with token auth, for fetch and push only
-  local header
-  header=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 | tr -d '\n')
+  # PUSH_TOKEN can be a PAT with workflow scope (SWARM_TOKEN). GH_TOKEN stays
+  # the App token for gh CLI calls, which need read:org on classic PATs.
+  local header token=${PUSH_TOKEN:-$GH_TOKEN}
+  header=$(printf 'x-access-token:%s' "$token" | base64 | tr -d '\n')
   git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $header" "$@"
 }
 

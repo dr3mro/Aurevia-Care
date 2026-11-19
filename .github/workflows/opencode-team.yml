@@ -101,6 +101,9 @@ jobs:
         id: publish
         env:
           GH_TOKEN: ${{ github.token }}
+          # SWARM_TOKEN has the workflow scope needed to push .github/workflows/*;
+          # GH_TOKEN stays the App token for gh CLI (needs read:org).
+          PUSH_TOKEN: ${{ secrets.SWARM_TOKEN }}
           MODE: ${{ steps.target.outputs.mode }}
           PR_NUMBER: ${{ github.event.issue.number }}
         run: scripts/agent-run.sh publish
