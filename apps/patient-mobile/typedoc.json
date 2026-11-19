@@ -1,0 +1,8 @@
+{
+  "entryPoints": ["src/index.ts"],
+  "entryPointStrategy": "resolve",
+  "tsconfig": "tsconfig.json",
+  "excludePrivate": true,
+  "excludeProtected": true,
+  "excludeInternal": true
+}
