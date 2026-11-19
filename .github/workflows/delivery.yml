@@ -76,7 +76,7 @@ jobs:
           java-version: '21'
           cache: maven
       - name: Compile and unit tests
-        run: mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest='!*IsolationTest' test
+        run: mvn -q -B -f apps/api/pom.xml -Pno-security,fast test
 
   java-verify:
     name: Java and database verification

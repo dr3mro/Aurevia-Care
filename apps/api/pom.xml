@@ -167,5 +167,21 @@
         <spotbugs.skip>true</spotbugs.skip>
       </properties>
     </profile>
+    <!-- PR/swarm fast tier: PostgreSQL suites carry @Tag("integration").
+         The default build (apps/api/check.sh = mvn verify) runs every test. -->
+    <profile>
+      <id>fast</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <configuration>
+              <excludedGroups>integration</excludedGroups>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
   </profiles>
 </project>

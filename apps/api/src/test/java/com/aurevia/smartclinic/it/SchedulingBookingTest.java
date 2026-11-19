@@ -27,6 +27,7 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -54,6 +55,7 @@ import org.flywaydb.core.Flyway;
  * through a {@code Asia/Riyadh} facility (UTC+3, no daylight saving) and a UTC
  * facility so a local wall-clock window is not the same as the UTC instant.</p>
  */
+@Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/smartclinic_scheduling_it")
 @ActiveProfiles("synthetic-auth")

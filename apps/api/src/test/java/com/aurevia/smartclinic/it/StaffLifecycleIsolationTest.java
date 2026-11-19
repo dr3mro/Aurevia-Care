@@ -17,6 +17,7 @@ import java.util.List;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -31,6 +32,7 @@ import org.springframework.web.client.RestClient;
 import org.flywaydb.core.Flyway;
 
 /** S-G0-02 acceptance: invite, deactivate, immutable history, next-request denial, concealment (IAM-01/IAM-02/OPS-02). */
+@Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/smartclinic_staff_it")
 @ActiveProfiles("synthetic-auth")

@@ -21,7 +21,7 @@ import com.aurevia.smartclinic.scheduling.VisitTypeView;
  *
  * <p>Only tenant administrators may define visit durations, protected resources
  * and weekly windows; the decision and its audit event live in
- * {@link SchedulingAdminService}.</p>
+ * {@link com.aurevia.smartclinic.scheduling.SchedulingAdminService}.</p>
  */
 @RestController
 @RequestMapping("/api/v1/scheduling")
@@ -34,6 +34,8 @@ public class SchedulingAdminController {
      *
      * @param service scheduling administration service
      */
+    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
+            value = "EI_EXPOSE_REP2", justification = "Spring-managed singleton collaborator")
     public SchedulingAdminController(SchedulingAdminService service) {
         this.service = service;
     }
@@ -92,6 +94,7 @@ public class SchedulingAdminController {
      *
      * @param code            tenant-local visit type code
      * @param durationMinutes appointment length in minutes
+     * @return the visit type request
      */
     public record VisitTypeRequest(String code, Integer durationMinutes) {
     }
@@ -103,6 +106,7 @@ public class SchedulingAdminController {
      * @param kind         {@code clinician} or {@code room}
      * @param code         tenant-local resource code
      * @param displayName  display name
+     * @return the resource request
      */
     public record ResourceRequest(String facilityCode, String kind, String code, String displayName) {
     }
@@ -113,6 +117,7 @@ public class SchedulingAdminController {
      * @param weekday    ISO-8601 day of week, 1 = Monday
      * @param startLocal local window start
      * @param endLocal   local window end
+     * @return the availability request
      */
     public record AvailabilityRequest(Integer weekday, String startLocal, String endLocal) {
     }
