@@ -1,4 +1,4 @@
-package com.aurevia.smartclinic.api.x_04;
+package com.aurevia.smartclinic.api.authorization;
 
 import java.util.regex.Pattern;
 
