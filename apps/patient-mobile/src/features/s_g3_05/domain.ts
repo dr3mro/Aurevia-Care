@@ -15,8 +15,14 @@ export type ConversationState =
   | 'resolved'
   | 'closed';
 
-/** Author of a message in a patient conversation. */
-export type SenderRole = 'patient' | 'unit';
+/**
+ * Author of a message in a patient conversation.
+ *
+ * The wire values match the server's `SenderKind` in `ConversationContract`:
+ * unit-authored messages are `staff`, not `unit`. A client that re-derives
+ * unread state must use the same value as the server inbox query.
+ */
+export type SenderRole = 'patient' | 'staff';
 
 /** Active layout direction for RTL-aware rendering (UX-01). */
 export type LayoutDirection = 'ltr' | 'rtl';
@@ -94,6 +100,19 @@ function highestSequence(messages: readonly Message[]): number {
 }
 
 /**
+ * Map the server sender kind to the patient-facing author name.
+ *
+ * The wire value `staff` is rendered as `unit` so the patient sees the care
+ * unit name rather than a staff role; the raw enum key is never presented.
+ *
+ * @param role server sender kind
+ * @return localized-facing author label
+ */
+export function senderLabel(role: SenderRole): string {
+  return role === 'staff' ? 'unit' : 'patient';
+}
+
+/**
  * Count unread unit messages in a conversation.
  *
  * Only unit-authored messages beyond the patient's read watermark count;
@@ -104,7 +123,7 @@ function highestSequence(messages: readonly Message[]): number {
  */
 export function unreadCount(conversation: Conversation): number {
   return conversation.messages.filter(
-    message => message.senderRole === 'unit' && message.sequence > conversation.lastReadSequence,
+    message => message.senderRole === 'staff' && message.sequence > conversation.lastReadSequence,
   ).length;
 }
 
