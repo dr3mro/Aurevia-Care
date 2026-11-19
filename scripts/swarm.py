@@ -14,6 +14,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 MARK = "<!-- swarm-integrator -->"
@@ -57,10 +58,22 @@ FIELD = re.compile(r"^  - ([a-z]+):[ \t]*(.*)$")
 
 
 def gh(*args, check=True):
-    done = subprocess.run(["gh", *args], capture_output=True, text=True)
-    if check and done.returncode:
-        # Surface the CLI error in the trusted job log; a bare CalledProcessError
-        # hides why a label, comment or workflow dispatch was refused.
+    """Run a gh CLI command, retrying transient GitHub API failures.
+
+    A 502/503/504 during `gh pr create` is a GitHub-side blip: the branch is
+    already pushed, so a retry is safe. Permanent errors (permissions, missing
+    refs) are raised immediately with the CLI stderr visible in the job log.
+    """
+    transient = re.compile(r"\b(?:502|503|504)\b|Bad Gateway|Service Unavailable", re.I)
+    for attempt in range(3):
+        done = subprocess.run(["gh", *args], capture_output=True, text=True)
+        if not (check and done.returncode):
+            return done.stdout
+        if transient.search(done.stderr or "") and attempt < 2:
+            time.sleep(2 ** attempt)
+            continue
+        # Surface the CLI error; a bare CalledProcessError hides why a label,
+        # comment or workflow dispatch was refused.
         if done.stderr:
             print(f"gh {' '.join(str(a) for a in args[:3])}: {done.stderr.strip()}",
                   file=sys.stderr)
@@ -265,7 +278,9 @@ def update_todo(edit, message, path="TODO.md", attempts=3):
             return False
         Path(path).write_text(new)
         git("add", path)
-        git(*IDENTITY, "commit", "-qm", message)
+        # [skip ci] keeps this TODO.md-only commit from triggering another
+        # swarm.yml push event (which would spawn a wave for every claim).
+        git(*IDENTITY, "commit", "-qm", f"{message} [skip ci]")
         try:
             authed_git("push", "origin", "HEAD:main")
             return True
@@ -672,7 +687,30 @@ def integrate_batch(queue, gate="scripts/quick-check.sh"):
     files = ["TODO.md"] + [f"docs/swarm/{t}.md" for _, t, _ in merged]
     git("add", *files)
     git(*IDENTITY, "commit", "-qm", f"Integrate {len(merged)} swarm pull request(s)")
-    authed_git("push", "origin", "HEAD:main")
+    # A full gate can take many minutes; concurrent [skip ci] tracker commits
+    # can advance main meanwhile. Integrators are serialized by their
+    # concurrency group, so the only new commits are tracker-only. Move HEAD
+    # onto fresh main with --soft (keeping the already-gated tree staged),
+    # adopt the fresh shared trackers, re-apply our merge records, re-gate and
+    # retry. No commit replay means no committer identity or rebase conflicts.
+    for attempt in range(3):
+        try:
+            authed_git("push", "origin", "HEAD:main")
+            break
+        except subprocess.CalledProcessError:
+            if attempt == 2:
+                raise
+            authed_git("fetch", "origin", "main")
+            git("reset", "--soft", "origin/main")
+            git("checkout", "origin/main", "--", "TODO.md", "docs/swarm", check=False)
+            for pr, task_id, sha in merged:
+                record_merge(pr, task_id, sha, gate)
+            git("add", *files)
+            git(*IDENTITY, "commit", "-qm", "Integrate swarm PRs (reconciled)",
+                "--allow-empty", check=False)
+            ok, log = run_gate(gate)
+            if not ok:
+                raise subprocess.CalledProcessError(1, ("gate", gate), "", log)
     for (pr, _, _), comment in zip(merged, comments):
         gh("pr", "comment", str(pr), "--body", comment)
     dispatch_heavy()
