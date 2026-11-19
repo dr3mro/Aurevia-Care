@@ -12,19 +12,35 @@ permissions:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref_type != 'tag' }}
+
 jobs:
-  verify:
-    name: Verify and smoke image (${{ matrix.arch }})
+  policy:
+    name: Policy and tooling
+    timeout-minutes: 5
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Shell syntax and lint
+        run: |
+          files=(scripts/*.sh infra/bootstrap/start.sh apps/api/check.sh db/check.sh)
+          for file in "${files[@]}"; do bash -n "$file"; done
+          shellcheck "${files[@]}"
+      - name: Agent pack, docs and secret checks
+        run: |
+          python3 -I scripts/project-name.py displayName >/dev/null
+          python3 -I scripts/project-name.py repositorySlug >/dev/null
+          python3 -I scripts/check-pack.py
+          python3 -I scripts/check-docs.py
+          python3 -I scripts/check-secrets.py
+          python3 -I -m unittest discover -s scripts/tests -q
+
+  java-verify:
+    name: Java and database verification
+    needs: policy
     timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - arch: amd64
-            runner: ubuntu-24.04
-          - arch: arm64
-            runner: ubuntu-24.04-arm
-    runs-on: ${{ matrix.runner }}
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: postgres:17
@@ -39,43 +55,56 @@ jobs:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
-      - uses: actions/setup-java@v4
+      - uses: ./.github/actions/java-verify
         with:
-          distribution: temurin
-          java-version: '21'
-          cache: maven
-      - name: Resolve image version
-        id: version
-        shell: bash
-        env:
-          REF_TYPE: ${{ github.ref_type }}
-          REF_NAME: ${{ github.ref_name }}
-        run: |
-          version="sha-$GITHUB_SHA"
-          if [[ "$REF_TYPE" == tag ]]; then
-            [[ "$REF_NAME" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[A-Za-z0-9]+([.-][A-Za-z0-9]+)*)?$ ]]
-            (( ${#REF_NAME} <= 122 ))
-            version="$REF_NAME"
-          fi
-          printf 'value=%s\n' "$version" >> "$GITHUB_OUTPUT"
-      - name: Run checks and build the image
-        env:
-          VERSION: ${{ steps.version.outputs.value }}
-          SMARTCLINIC_PG_ADMIN: postgres
-          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
-        run: scripts/verify.sh "$VERSION"
-      - name: Build developer reference
-        if: matrix.arch == 'amd64'
+          pg-admin: postgres
+          nvd-api-key: ${{ secrets.NVD_API_KEY }}
+
+  docs:
+    name: Developer reference
+    needs: policy
+    timeout-minutes: 10
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Install Doxygen
         run: |
           sudo apt-get update
           sudo apt-get install -y doxygen
-          scripts/docs.sh
+      - name: Build developer reference
+        run: scripts/docs.sh
       - uses: actions/upload-artifact@v4
-        if: matrix.arch == 'amd64'
         with:
           name: developer-reference
           path: build/developer-reference/html
           if-no-files-found: error
+
+  verify:
+    name: Verify and smoke image (${{ matrix.arch }})
+    needs: [java-verify, docs]
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/resolve-version
+        id: version
+      - name: Build and smoke-test the image
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+          SMARTCLINIC_SKIP_CHECKS: '1'
+        run: scripts/verify.sh "$VERSION"
       - name: Save smoke-tested image for a release
         if: github.ref_type == 'tag'
         run: docker save smartclinic:test -o smartclinic-image.tar
@@ -84,6 +113,7 @@ jobs:
         with:
           name: smoke-tested-image-${{ matrix.arch }}
           path: smartclinic-image.tar
+
   release:
     name: Publish tagged test image and release
     if: github.ref_type == 'tag'
@@ -122,7 +152,6 @@ jobs:
             test "$(docker image inspect smartclinic:test --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')" = "$GITHUB_SHA"
             test "$(docker image inspect smartclinic:test --format '{{index .Config.Labels "org.opencontainers.image.version"}}')" = "$VERSION"
             child="$image-$arch"
-            docker tag smartclinic:test "$child"
             if docker buildx imagetools inspect "$child" >/dev/null 2>&1; then
               docker pull --platform "linux/$arch" "$child"
               test "$(docker image inspect "$child" --format '{{.Id}}')" = "$(docker image inspect smartclinic:test --format '{{.Id}}')"
