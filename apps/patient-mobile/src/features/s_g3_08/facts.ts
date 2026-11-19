@@ -18,8 +18,9 @@ export const EMPTY_FACTS: DeliveryFacts = {
  * Record the first in-app view of one revision exactly once (MSG-05).
  *
  * The view is independent of dispatch and acknowledgment: viewing an instruction
- * never records receipt. A repeat view returns the original state object, so an
- * earlier timestamp can never be overwritten.
+ * never records receipt. A repeat view of the same revision returns the original
+ * state object, so an earlier timestamp can never be overwritten. A superseding
+ * revision gets its own first-view fact because it is a different released artifact.
  *
  * @param facts current fact projection
  * @param instructionId addressed instruction
@@ -35,7 +36,7 @@ export function recordFirstViewOnce(
   viewer: string,
   occurredAt: string,
 ): DeliveryFacts {
-  if (facts.firstView !== null) {
+  if (facts.firstView !== null && facts.firstView.revision === revision) {
     return facts;
   }
   return {
@@ -77,7 +78,7 @@ export function acknowledgeRevisionBound(
   if (revision !== view.request.revision) {
     return { ok: false, reason: 'REVISION_MISMATCH' };
   }
-  if (facts.acknowledgment !== null) {
+  if (facts.acknowledgment !== null && facts.acknowledgment.revision === revision) {
     return { ok: false, reason: 'ALREADY_ACKNOWLEDGED' };
   }
   return {
@@ -112,10 +113,12 @@ export function acknowledgmentStatus(
   if (view.request === null) {
     return 'not_requested';
   }
-  if (facts.acknowledgment !== null) {
+  if (facts.acknowledgment !== null && facts.acknowledgment.revision === view.revision) {
     return 'acknowledged';
   }
-  if (now >= view.request.dueAt) {
+  // Compare instants, not ISO text: an offset or precision change must not hide
+  // an overdue request (UX-01 stores UTC instants with IANA context).
+  if (Date.parse(now) >= Date.parse(view.request.dueAt)) {
     return 'overdue';
   }
   return 'pending';
@@ -165,8 +168,11 @@ export function reduceFact(facts: DeliveryFacts, fact: DeliveryFact): DeliveryFa
     case 'dispatch':
       return { ...facts, dispatch: fact };
     case 'first_view':
-      return { ...facts, firstView: fact };
+      return recordFirstViewOnce(facts, fact.instructionId, fact.revision, fact.viewer, fact.occurredAt);
     case 'acknowledgment':
+      if (facts.acknowledgment !== null && facts.acknowledgment.revision === fact.revision) {
+        return facts;
+      }
       return { ...facts, acknowledgment: fact };
     default:
       return facts;
