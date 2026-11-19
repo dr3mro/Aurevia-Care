@@ -5,8 +5,7 @@ import java.util.List;
 /**
  * An appointment together with its append-only history.
  *
- * @param appointment current appointment projection
- * @param history     history oldest first
+ * @return this record
  */
 public record AppointmentView(Appointment appointment, List<AppointmentEvent> history) {
 

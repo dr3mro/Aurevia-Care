@@ -29,8 +29,10 @@ enforced beyond the weights summing to 1.0 and every family being class-mapped.
 Read families: patient chart lookup, appointment worklist, catalog/configuration
 reads and audit queries. Command families: appointment booking, encounter
 check-in, clinical documentation sign, order transitions, result reconciliation,
-patient release and messaging instructions. Each family names a route class used
-by the measurement envelope.
+patient release and messaging instructions. Each family's `name` is the single
+canonical route identifier: the conforming evidence artifact's `route_class`
+uses exactly these names and classes, and a unit test asserts the two agree, so
+a measured run cannot silently drop a declared command family.
 
 ## Synthetic dataset
 
