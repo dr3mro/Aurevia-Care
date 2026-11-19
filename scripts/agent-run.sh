@@ -213,6 +213,7 @@ cmd_merge_main() {
   git config user.name "github-actions[bot]"
   git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
   local base="origin/${BASE_BRANCH:-main}" max=${MERGE_ATTEMPTS:-5} attempt=0 outcome pre files result
+  local -a conflicted_files
   if [[ "$(cat "$out/commits" 2>/dev/null || echo 0)" -eq 0 ]] || ! git rev-parse -q --verify "$base" > /dev/null; then
     finish_merge skipped; return 0
   fi
@@ -225,6 +226,7 @@ cmd_merge_main() {
   while [[ "$outcome" == conflict && $attempt -lt $max ]]; do
     attempt=$((attempt + 1))
     files=$(git diff --name-only --diff-filter=U)
+    mapfile -t conflicted_files <<< "$files"
     activate_ci_config
     result=$(run_agent smartclinic-orchestrator "$(conflict_prompt "$files")" "$out/merge-$attempt.log")
     restore_config
@@ -235,7 +237,7 @@ cmd_merge_main() {
     fi
     if [[ ! -f "$(git rev-parse --git-path MERGE_HEAD)" && -z "$(git ls-files -u)" ]] \
         && git merge-base --is-ancestor "$base" HEAD \
-        && ! git grep -qE '^(<<<<<<<|>>>>>>>) ' HEAD -- $files 2> /dev/null; then
+        && ! git grep -qE '^(<<<<<<<|>>>>>>>) ' HEAD -- "${conflicted_files[@]}" 2> /dev/null; then
       outcome=merged
     else
       # Not a clean merge: start the next attempt from the original conflict.
@@ -284,6 +286,12 @@ cmd_resolve() {
     # A merge that left the checks failing is not pushed.
     if [[ "$(cat "$out/resolve/$pr")" == merged && "$(cat "$out/checks" 2> /dev/null)" == failed ]]; then
       printf 'merged but checks failed' > "$out/resolve/$pr"
+    fi
+    # The trusted job in a fresh runner receives the merge as a bundle, so the
+    # agent never shares a workspace with the push token.
+    if [[ "$(cat "$out/resolve/$pr")" == merged ]]; then
+      git bundle create "$out/resolve/$pr.bundle" "^origin/${BASE_BRANCH:-main}" "resolve-$pr" 2> /dev/null \
+        || printf 'failed' > "$out/resolve/$pr"
     fi
   done
 }
