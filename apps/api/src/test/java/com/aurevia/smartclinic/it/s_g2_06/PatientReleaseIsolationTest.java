@@ -350,6 +350,55 @@ class PatientReleaseIsolationTest {
     }
 
     @Test
+    void correctionOfReviewedHoldPublishesAnImmediatelyVisibleReplacement() throws Exception {
+        String expiry = Instant.now().plus(Duration.ofHours(2)).toString();
+        ResponseEntity<String> created = authorize("LAB-HOLD-CORRECT-011", 1, "HOLD", null,
+                "needs review", expiry, "clinician-a", ORG_A, "rel-holdcorrect-1");
+        assertEquals(HttpStatus.CREATED, created.getStatusCode(), created.getBody());
+        String id = field(created.getBody(), "id");
+        assertFalse(visible("clinician-a", ORG_A).getBody().contains("LAB-HOLD-CORRECT-011"));
+
+        ResponseEntity<String> lifted = command(id, "lift-hold", "{\"note\":\"reviewed\"}", "\"1\"",
+                "clinician-a", ORG_A, "rel-holdcorrect-2");
+        assertEquals(HttpStatus.OK, lifted.getStatusCode(), lifted.getBody());
+        assertEquals("AUTHORIZED", field(lifted.getBody(), "state"));
+
+        // Lifting advances the version to 2; correcting the now-AUTHORIZED hold must create a
+        // fresh IMMEDIATE revision. Reusing kind=HOLD with no reason/expiry would breach V24's
+        // CHECK and return 500 instead of giving the patient access to the corrected revision.
+        ResponseEntity<String> corrected = command(id, "correct",
+                "{\"correctedRevisionId\":\"LAB-HOLD-CORRECT-011B\",\"correctedRevisionVersion\":2,\"reason\":\"corrected result\"}",
+                "\"2\"", "clinician-a", ORG_A, "rel-holdcorrect-3");
+        assertEquals(HttpStatus.OK, corrected.getStatusCode(), corrected.getBody());
+        assertEquals("IMMEDIATE", field(corrected.getBody(), "kind"));
+        assertEquals("AUTHORIZED", field(corrected.getBody(), "state"));
+        assertEquals(id, field(corrected.getBody(), "supersedesId"));
+        String access = visible("clinician-a", ORG_A).getBody();
+        assertTrue(access.contains("LAB-HOLD-CORRECT-011B"));
+        assertFalse(access.contains("LAB-HOLD-CORRECT-011\""));
+        assertEquals("CORRECTED", field(get(id, "clinician-a", ORG_A).getBody(), "state"));
+    }
+
+    @Test
+    void correctionOfTimedReleaseKeepsItsEffectiveTime() throws Exception {
+        String future = Instant.now().plus(Duration.ofHours(1)).toString();
+        ResponseEntity<String> created = authorize("LAB-TIMED-CORRECT-012", 1, "TIMED", future,
+                null, null, "clinician-a", ORG_A, "rel-timedcorrect-1");
+        assertEquals(HttpStatus.CREATED, created.getStatusCode(), created.getBody());
+        String id = field(created.getBody(), "id");
+        assertFalse(visible("clinician-a", ORG_A).getBody().contains("LAB-TIMED-CORRECT-012"));
+
+        ResponseEntity<String> corrected = command(id, "correct",
+                "{\"correctedRevisionId\":\"LAB-TIMED-CORRECT-012B\",\"correctedRevisionVersion\":2,\"reason\":\"corrected result\"}",
+                "\"1\"", "clinician-a", ORG_A, "rel-timedcorrect-2");
+        assertEquals(HttpStatus.OK, corrected.getStatusCode(), corrected.getBody());
+        assertEquals("TIMED", field(corrected.getBody(), "kind"));
+        assertEquals("AUTHORIZED", field(corrected.getBody(), "state"));
+        assertFalse(visible("clinician-a", ORG_A).getBody().contains("LAB-TIMED-CORRECT-012B"));
+        assertEquals("CORRECTED", field(get(id, "clinician-a", ORG_A).getBody(), "state"));
+    }
+
+    @Test
     void identicalLocalIdentifiersStayIsolatedAcrossTenants() {
         ResponseEntity<String> created = authorize("LAB-SHARED-007", 1, "IMMEDIATE", null,
                 null, null, "clinician-a", ORG_A, "rel-create-7");

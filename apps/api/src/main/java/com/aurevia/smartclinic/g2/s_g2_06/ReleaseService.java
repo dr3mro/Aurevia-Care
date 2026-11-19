@@ -109,7 +109,10 @@ public class ReleaseService {
                         command.policyVersion(), finalKind.name(), initialState.name(), effectiveFrom,
                         finalKind == ReleaseKind.HOLD ? command.holdReason() : null, expiry, null);
             } catch (DuplicateKeyException exception) {
-                repository.appendAudit(context, ReleaseActionPolicy.AUTHORIZE, command.revisionId(), "CONFLICT");
+                // A unique violation aborts the PostgreSQL transaction. Issuing further SQL here
+                // (including a conflict audit) would fail with 25P02 and surface as a 500 instead
+                // of the documented 409. The pre-insert live-release check already audits any
+                // conflict it can detect before the insert is attempted.
                 failure.set(new ApiException(409, "CONFLICT", "an active release already exists for this revision"));
                 return null;
             }
@@ -217,10 +220,18 @@ public class ReleaseService {
             repository.insertEvent(context, id, "RELEASE_CORRECT", current.state().name(),
                     ReleaseState.CORRECTED.name(), reason);
             repository.insertNotification(context, id, "RELEASE_CORRECTED", "prior-recipients");
+            // A corrected revision inherits the original release policy. A hold that a reviewer
+            // has already lifted is converted to IMMEDIATE: the replacement carries no hold
+            // reason/expiry (V24 forbids a HOLD row without them) and needs no second review.
+            // TIMED and IMMEDIATE keep their kind and effective instant, so a correction cannot
+            // silently open access before the configured release time.
+            boolean liftedHold = current.kind() == ReleaseKind.HOLD;
+            ReleaseKind replacementKind = liftedHold ? ReleaseKind.IMMEDIATE : current.kind();
+            Instant replacementEffectiveFrom = liftedHold ? clock.instant() : current.effectiveFrom();
             String replacement = repository.insertRelease(context.organizationId(), current.patientId(),
                     correctedRevisionId, correctedRevisionVersion, context.organizationId(),
-                    current.policyVersion(), current.kind().name(), ReleaseState.AUTHORIZED.name(),
-                    clock.instant(), null, null, id);
+                    current.policyVersion(), replacementKind.name(), ReleaseState.AUTHORIZED.name(),
+                    replacementEffectiveFrom, null, null, id);
             repository.insertEvent(context, replacement, "RELEASE_AUTHORIZE", null,
                     ReleaseState.AUTHORIZED.name(), reason);
             repository.insertNotification(context, replacement, "RELEASE_AUTHORIZED", "linked-patient");
