@@ -192,8 +192,7 @@ Gate evidence: rejected or recollected specimens trace to the right order; dupli
     Implement Critical-result verification, owner, due time, escalation attempts and read-back (XCH-05) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [-] S-G2-06 · Patient release authorization, timed/hold policies and withdrawn releases (XCH-06).
-  - agent: swarm-9
+- [ ] S-G2-06 · Patient release authorization, timed/hold policies and withdrawn releases (XCH-06).
   - attempts: 2
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g2/s_g2_06, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g2_06
   - reserved: V24
@@ -262,20 +261,20 @@ Gate evidence: confirmed patients see only authorized revisions; generic notific
     Implement Released reports with revision and correction context, authorized downloads and protected local credentials (PAT-02) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [x] S-G3-03 · Privacy-safe enrollment, recovery, lockout and identity-dispute support channel (PAT-03).
-  - pr: #55
+- [-] S-G3-03 · Privacy-safe enrollment, recovery, lockout and identity-dispute support channel (PAT-03).
+  - agent: swarm-4
+  - attempts: 2
   - evidence: PR #55; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); heavy-check.yml re-verifies main after the push; notes in docs/swarm/S-G3-03.md; simulated review only
-  - attempts: 1
   - scope: apps/patient-mobile/src/features/s_g3_03, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_03
   - reserved: V31
   - details:
     Implement Privacy-safe enrollment, recovery, lockout and identity-dispute support channel (PAT-03) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [x] S-G3-04 · Care unit directory and verified, connection-scoped patient-unit relationships (MSG-01, ARC-07).
-  - pr: #56
+- [-] S-G3-04 · Care unit directory and verified, connection-scoped patient-unit relationships (MSG-01, ARC-07).
+  - agent: swarm-5
+  - attempts: 2
   - evidence: PR #56; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); heavy-check.yml re-verifies main after the push; notes in docs/swarm/S-G3-04.md; simulated review only
-  - attempts: 1
   - scope: apps/patient-mobile/src/features/s_g3_04, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_04
   - reserved: V32
   - details:
@@ -308,35 +307,45 @@ Gate evidence: confirmed patients see only authorized revisions; generic notific
     Implement Typed patient instructions with templates, revisions, withdrawal and units (MSG-04) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [ ] S-G3-08 · Publication, dispatch, first view and revision-bound acknowledgment as separate facts (MSG-05).
+- [-] S-G3-08 · Publication, dispatch, first view and revision-bound acknowledgment as separate facts (MSG-05).
+  - agent: swarm-6
+  - attempts: 1
   - scope: apps/patient-mobile/src/features/s_g3_08, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_08
   - reserved: V36
   - details:
     Implement Publication, dispatch, first view and revision-bound acknowledgment as separate facts (MSG-05) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [ ] S-G3-09 · Service hours, response targets, named owners, backup coverage and after-hours guidance (MSG-06).
+- [-] S-G3-09 · Service hours, response targets, named owners, backup coverage and after-hours guidance (MSG-06).
+  - agent: swarm-7
+  - attempts: 1
   - scope: apps/patient-mobile/src/features/s_g3_09, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_09
   - reserved: V37
   - details:
     Implement Service hours, response targets, named owners, backup coverage and after-hours guidance (MSG-06) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [ ] S-G3-10 · Messaging audit, retention, legal hold, provenance and revocation effects (MSG-07).
+- [-] S-G3-10 · Messaging audit, retention, legal hold, provenance and revocation effects (MSG-07).
+  - agent: swarm-8
+  - attempts: 1
   - scope: apps/patient-mobile/src/features/s_g3_10, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_10
   - reserved: V38
   - details:
     Implement Messaging audit, retention, legal hold, provenance and revocation effects (MSG-07) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [ ] S-G3-11 · iOS and Android patient flows with accessibility and RTL operation (PAT-01–03, MSG-01–07, UX-01).
+- [-] S-G3-11 · iOS and Android patient flows with accessibility and RTL operation (PAT-01–03, MSG-01–07, UX-01).
+  - agent: swarm-9
+  - attempts: 1
   - scope: apps/patient-mobile/src/features/s_g3_11, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_11
   - reserved: V39
   - details:
     Implement iOS and Android patient flows with accessibility and RTL operation (PAT-01–03, MSG-01–07, UX-01) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [ ] S-G3-12 · Restore, downtime, load, accessibility and audit evidence (G3).
+- [-] S-G3-12 · Restore, downtime, load, accessibility and audit evidence (G3).
+  - agent: swarm-10
+  - attempts: 1
   - scope: apps/patient-mobile/src/features/s_g3_12, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_12
   - reserved: V40
   - details:
