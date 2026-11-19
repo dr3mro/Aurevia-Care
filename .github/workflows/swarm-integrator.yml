@@ -1,7 +1,8 @@
 name: Swarm integrator
 # Integrates every ready swarm pull request in one job: merge one at a time on
-# top of main, run the fast merge gate after each, then push once. The expensive
-# checks run once per batch on main in heavy-check.yml. No model is used here.
+# top of main, run the FULL gate (scripts/check.sh with PostgreSQL and NVD) after
+# each, then push once. A PR that fails SpotBugs, coverage, Doxygen or DB policy
+# never reaches main. heavy-check.yml remains a post-merge confirmation.
 on:
   workflow_run:
     workflows: [Agent swarm]
@@ -40,13 +41,25 @@ jobs:
     needs: pick
     if: needs.pick.outputs.count != '0'
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     permissions:
       contents: write
       pull-requests: write
       actions: write
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s --health-timeout 5s --health-retries 5
     env:
       GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
+      SMARTCLINIC_PG_ADMIN: postgres
+      NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -59,13 +72,20 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
+      - name: Cache OWASP NVD data
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository/org/owasp/dependency-check-data
+          key: owasp-nvd-${{ runner.os }}-${{ runner.arch }}-${{ github.sha }}
+          restore-keys: |
+            owasp-nvd-${{ runner.os }}-${{ runner.arch }}-
       # One job for the batch. The trusted command keeps GH_TOKEN for guard,
       # merge and finalize, and strips it from the gate subprocess so agent-written
       # code never sees a token. Heavy checks run later on main in heavy-check.yml.
       - name: Merge each PR, gate, then push once
         env:
           QUEUE: ${{ needs.pick.outputs.queue }}
-          GATE: scripts/quick-check.sh
+          GATE: scripts/check.sh
         run: python3 -I scripts/swarm.py integrate-batch --queue "$QUEUE" --gate "$GATE"
       # A merge can unlock dependent tasks, so start the next wave now.
       - name: Start the next wave

@@ -192,9 +192,53 @@ class PlanTests(unittest.TestCase):
         kept = {t["id"]: t for t in swarm.parse_tasks(swarm.reclaim(text, live))}
         self.assertEqual(kept["CW-002"]["status"], "taken")
 
+    def test_reclaim_releases_needs_human_claims(self):
+        text = swarm.set_task_status(TASKS, "CW-001", "taken", agent="swarm-1")
+        prs = [{"number": 9, "headRefName": "swarm/CW-001-1", "state": "OPEN",
+                "labels": labels("swarm", "needs-human")}]
+        got = {t["id"]: t for t in swarm.parse_tasks(swarm.reclaim(text, prs))}
+        self.assertEqual(got["CW-001"]["status"], "todo")
+        self.assertEqual(got["CW-001"]["agent"], "")
+
+    def test_reclaim_keeps_active_fix_claims(self):
+        text = swarm.set_task_status(TASKS, "CW-001", "taken", agent="swarm-1")
+        prs = [{"number": 9, "headRefName": "swarm/CW-001-1", "state": "OPEN",
+                "labels": labels("swarm", "needs-fix", "fix-1")}]
+        got = {t["id"]: t for t in swarm.parse_tasks(swarm.reclaim(text, prs))}
+        self.assertEqual(got["CW-001"]["status"], "taken")
+
+    def test_release_claim_returns_task_to_open(self):
+        captured = {}
+
+        def fake(edit, message):
+            captured["text"] = edit(TASKS)
+            return True
+
+        with mock.patch.object(swarm, "update_todo", fake):
+            self.assertTrue(swarm.release_claim("CW-001", "worker failed"))
+        got = {t["id"]: t for t in swarm.parse_tasks(captured["text"])}
+        self.assertEqual(got["CW-001"]["status"], "todo")
+
     def test_scope_overlap_uses_path_prefixes(self):
         self.assertTrue(swarm.overlaps(["a/b/**"], ["a/b/c"]))
         self.assertFalse(swarm.overlaps(["a/b"], ["a/c"]))
+
+    def test_integrator_gate_is_the_full_check(self):
+        text = (ROOT / ".github/workflows/swarm-integrator.yml").read_text()
+        self.assertIn("GATE: scripts/check.sh", text)
+        self.assertIn("postgres:", text)
+        self.assertIn("SMARTCLINIC_PG_ADMIN: postgres", text)
+        self.assertNotIn("GATE: scripts/quick-check.sh", text)
+
+    def test_wave_defaults_to_ten_workers(self):
+        text = (ROOT / ".github/workflows/swarm.yml").read_text()
+        self.assertRegex(text, r"default: '10'")
+
+    def test_pr_size_guard_is_enforced(self):
+        fake = FakeGh(diff="\n".join(f"apps/api/src/F{i}.java" for i in range(16)))
+        with mock.patch.object(swarm, "gh", fake):
+            self.assertTrue(swarm.guard(9))
+        self.assertTrue(fake.said("pr", "edit", "9"))
 
     def test_committed_files_are_valid(self):
         slots = swarm.load_slots(ROOT / ".github/swarm/slots.json")

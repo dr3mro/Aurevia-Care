@@ -18,6 +18,9 @@ from pathlib import Path
 
 MARK = "<!-- swarm-integrator -->"
 MAX_FIX = 3
+# One story per worker PR: a batch this large cannot be reviewed or verified
+# as a single bounded change, and it was the source of the G1 quality failures.
+MAX_PR_FILES = 15
 # A task a swarm worker has taken this many times without finishing waits for a person.
 MAX_ATTEMPTS = 3
 BODY_LIMIT = 8000
@@ -214,12 +217,21 @@ def reclaim(text, prs):
         if task["status"] != "taken" or not task["agent"].startswith("swarm"):
             continue
         mine = [p for p in prs if task_id_of(p["headRefName"]) in {task["id"], *task["aliases"]}]
-        if any(p["state"] == "OPEN" for p in mine):
+        # An open PR still in progress keeps the claim. A needs-human PR is a
+        # failure the swarm gave up on: return the task to the open pool.
+        if any(p["state"] == "OPEN" and "needs-human" not in label_names(p) for p in mine):
             continue
         merged = next((p for p in mine if p["state"] == "MERGED"), None)
         text = (set_task_status(text, task["id"], "done", pr=f"#{merged['number']}") if merged
                 else set_task_status(text, task["id"], "todo"))
     return text
+
+
+def release_claim(task_id, reason):
+    """Return one swarm claim to the open pool. Trusted caller only."""
+    return update_todo(
+        lambda text: set_task_status(text, task_id, "todo"),
+        f"Release {task_id}: {reason}")
 
 
 def update_todo(edit, message, path="TODO.md", attempts=3):
@@ -368,10 +380,9 @@ def publish(task, directory):
             gh("pr", "comment", pr, "--body",
                f"Worker {task['slot']} pushed a fix (local checks: {checks}). The integrator will retest.")
     release(task, result, 1 if pr else 0, pr)
-    if not pr and task["kind"] == "story":
-        # Nothing was published, so give the task back to the pool.
-        update_todo(lambda text: set_task_status(text, task["id"], "todo"),
-                    f"Release {task['id']}: worker published nothing")
+    if task["kind"] == "story" and (result != "ok" or not pr):
+        # A failed worker, or one that published nothing, must not keep a claim.
+        release_claim(task["id"], f"result={result}, pr={pr or 'none'}")
     emit("pr", pr)
 
 
@@ -504,7 +515,14 @@ def guard(pr, repair=False):
     if trackers:
         fail(pr, "Shared trackers must not be edited by workers; revert " + ", ".join(trackers[:10])
              + " and put the evidence in .agent/pr-notes.md")
-    return trackers
+        return trackers
+    if len(files) > MAX_PR_FILES:
+        gh("pr", "edit", str(pr), "--add-label", "needs-human")
+        gh("pr", "comment", str(pr), "--body",
+           f"{MARK}\nThis pull request changes {len(files)} files; the limit is {MAX_PR_FILES}. "
+           "Split it into one bounded story per pull request. A person must decide how to split it.")
+        return files
+    return []
 
 
 IDENTITY = ["-c", "user.name=swarm-integrator", "-c", "user.email=swarm@users.noreply.github.com"]
@@ -538,8 +556,9 @@ def record_merge(pr, task_id, sha, gate="scripts/quick-check.sh"):
     notes = Path(f"docs/swarm/{task_id}.md")
     notes.write_text(f"# {task_id} · {title}\n\nPR #{pr}, tested branch tip {sha}.\n\n"
                      f"{clip(info['body'])}\n")
-    evidence = (f"PR #{pr}; integrator ran {gate} on the merge result (tool evidence); heavy checks "
-                f"run on main in heavy-check.yml; notes in {notes}; simulated review only")
+    evidence = (f"PR #{pr}; integrator ran {gate} on the merge result (tool evidence); "
+                f"heavy-check.yml re-verifies main after the push; notes in {notes}; "
+                "simulated review only")
     todo.write_text(set_task_status(todo.read_text(), task_id, "done", pr=f"#{pr}", evidence=evidence))
     return f"Merged to main by the integrator after {gate} passed on the merge result."
 
@@ -681,7 +700,7 @@ def main(argv=None):
                       "--json", "number,title,headRefName,isCrossRepository,labels,comments")
         repair = repair_task(a.repair_run) if a.repair_run else None
         everything = gh_json("pr", "list", "--state", "all", "--label", "swarm", "--limit", "200",
-                             "--json", "number,headRefName,state") or []
+                             "--json", "number,headRefName,state,labels") or []
         text = reclaim(Path(a.file).read_text(), everything)
         include = plan_workers(a.max, load_slots(a.slots), text, prs, repair)
         claims = {t["id"]: f"swarm-{t['slot']}" for t in include if t["kind"] == "story"}
