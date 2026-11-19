@@ -12,7 +12,8 @@ Two honesty rules are enforced:
 
 * A synthetic rehearsal proves the check works, never that a real assistive
   technology review happened. ``final_evidence`` is true only for a
-  ``measured_acceptance`` artifact that is not itself labelled synthetic.
+  ``measured_acceptance`` artifact that carries an attributable, non-blank
+  ``source`` and is not itself labelled synthetic.
 * Even a measured artifact only proves the declared envelope; it cannot prove a
   measurement really occurred or substitute for the human G5 sign-off.
 
@@ -116,6 +117,18 @@ def _check_languages(value, checks):
     detail = ("both required languages present without duplicates" if passed
               else "missing: " + ", ".join(missing) + "; duplicates: " + str(duplicates))
     _record(checks, name, passed, detail)
+
+
+def _check_source(value, checks):
+    """Check that the artifact names an attributable, non-blank source label.
+
+    A measured artifact without a source cannot be traced to an authorized
+    reviewer, so it must fail the envelope and never become final evidence.
+    The check is about provenance of the declaration, not proof that the review
+    happened; that remains a human G5 gate.
+    """
+    _record(checks, "source", _is_nonempty_string(value),
+            "source must be a non-blank string label")
 
 
 def _check_flag(value, name, checks):
@@ -248,10 +261,12 @@ def evaluate(artifact):
         _record(checks, "artifact", False, "artifact must be a JSON object")
         return _verdict(checks, None)
     kind = artifact.get("kind")
+    source = artifact.get("source")
     _record(checks, "schema_version", artifact.get("schema_version") == SCHEMA_VERSION,
             f"expected {SCHEMA_VERSION}")
     _record(checks, "kind", kind in KINDS, "kind must be " + " or ".join(KINDS))
-    if kind == "measured_acceptance" and "synthetic" in str(artifact.get("source", "")).lower():
+    _check_source(source, checks)
+    if kind == "measured_acceptance" and "synthetic" in str(source or "").lower():
         _record(checks, "evidence_conflict", False,
                 "a measured acceptance artifact cannot name a synthetic source")
     _section(artifact, "localization", checks, _check_localization)
