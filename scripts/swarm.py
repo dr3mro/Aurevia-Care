@@ -56,6 +56,9 @@ def gh(*args, check=True):
 def git(*args, check=True):
     done = subprocess.run(["git", *args], capture_output=True, text=True)
     if check and done.returncode:
+        # Surface the real git error (for example a ruleset rejection) in the
+        # trusted job log; CalledProcessError alone hides stderr from CI.
+        print(f"git {args[0] if args else ''} failed: {done.stderr.strip()}", file=sys.stderr)
         raise subprocess.CalledProcessError(done.returncode, args, done.stdout, done.stderr)
     return done.stdout
 
