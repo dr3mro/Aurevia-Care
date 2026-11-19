@@ -50,13 +50,14 @@ class Xch03ExchangeTest {
     static final String URL = "jdbc:postgresql://127.0.0.1:5432/smartclinic_xch03_it";
     static final String CHECKSUM = "a".repeat(64);
     static final String NEXT_CHECKSUM = "b".repeat(64);
-    static final int ORDER_COUNT = 6;
+    static final int ORDER_COUNT = 7;
     static final int IDX_ISOLATION = 1;
     static final int IDX_ACCEPT = 2;
     static final int IDX_CHANGE = 3;
     static final int IDX_CANCEL = 4;
     static final int IDX_REVOKE = 5;
     static final int IDX_PRECOND = 6;
+    static final int IDX_CHANGE_REJECT = 7;
     static final String ADMIN = System.getenv().getOrDefault(
             "SMARTCLINIC_PG_ADMIN", System.getProperty("user.name"));
 
@@ -366,6 +367,38 @@ class Xch03ExchangeTest {
         assertEquals("accepted", text(responded, "/state"));
         assertEquals(2, json(send(HttpMethod.GET, "/api/v1/xch03/orders/" + id,
                 null, verifier, ORG_A, null)).at("/retained").size());
+    }
+
+    @Test
+    void aRejectedChangeNeverBecomesTheRetrievableRevision() throws Exception {
+        String id = orderId(ORG_A, IDX_CHANGE_REJECT);
+        String verifier = "lab-verifier-" + suffix(ORG_A);
+        String clinician = "clinician-" + suffix(ORG_A);
+        String accept = "{\"localPatientId\":\"" + patientId(ORG_A) + "\","
+                + "\"permittedPurpose\":\"RESULT_REVIEW\",\"retentionPolicy\":\"STANDARD\"}";
+        assertEquals(HttpStatus.OK, send(HttpMethod.POST, "/api/v1/xch03/orders/" + id + "/accept",
+                accept, verifier, ORG_A, "1").getStatusCode());
+
+        assertEquals(HttpStatus.OK, send(HttpMethod.POST, "/api/v1/xch03/orders/" + id + "/propose-change",
+                "{\"changeSummary\":\"corrected unit\",\"contentChecksum\":\"" + NEXT_CHECKSUM + "\"}",
+                clinician, ORG_A, "2").getStatusCode());
+        // A pending change is only a ledger revision: retrieval keeps the accepted release.
+        assertEquals(CHECKSUM, text(send(HttpMethod.GET, "/api/v1/xch03/orders/" + id + "/retrieve",
+                null, verifier, ORG_A, null), "/contentChecksum"));
+
+        ResponseEntity<String> rejected = send(HttpMethod.POST,
+                "/api/v1/xch03/orders/" + id + "/change-response",
+                "{\"decision\":\"reject\",\"reason\":\"wrong unit\"}", verifier, ORG_A, "3");
+        assertEquals(HttpStatus.OK, rejected.getStatusCode(), rejected.getBody());
+        assertEquals("rejected", text(rejected, "/state"));
+        // The rejected revision remains in the immutable ledger but is never served.
+        assertEquals(CHECKSUM, text(send(HttpMethod.GET, "/api/v1/xch03/orders/" + id + "/retrieve",
+                null, verifier, ORG_A, null), "/contentChecksum"));
+        JsonNode view = json(send(HttpMethod.GET, "/api/v1/xch03/orders/" + id,
+                null, verifier, ORG_A, null));
+        assertEquals(2, view.at("/revisions").size());
+        assertEquals(1, view.at("/retained").size(),
+                "a rejected change must not produce a retained copy");
     }
 
     @Test

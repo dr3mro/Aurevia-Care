@@ -86,6 +86,26 @@ def synthetic_artifact(**overrides):
     return artifact
 
 
+def measured_artifact(**overrides):
+    """Build a synthetic, conforming measured-deployment artifact with provenance."""
+    artifact = synthetic_artifact(kind="measured_deployment",
+                                  source="authorized-rollout-run")
+    artifact["provenance"] = {
+        "tool": "delivery-pipeline",
+        "tool_version": "1.4.2",
+        "command": "deploy --env production",
+        "utc_timestamp": "2026-11-19T10:00:00Z",
+        "environment": "production",
+        "source_sha": "abcdef0123456789abcdef0123456789abcdef01",
+    }
+    for key, value in overrides.items():
+        if isinstance(value, dict) and isinstance(artifact.get(key), dict):
+            artifact[key].update(value)
+        else:
+            artifact[key] = value
+    return artifact
+
+
 def failures(report):
     """Return the set of failed check names in a report."""
     return set(report["failed"])
@@ -101,8 +121,7 @@ class ConformingArtifactTest(unittest.TestCase):
         self.assertTrue(all(c["passed"] for c in report["checks"]))
 
     def test_measured_deployment_kind_is_accepted_as_final_evidence(self):
-        report = dse.evaluate(synthetic_artifact(
-            kind="measured_deployment", source="authorized-rollout-run"))
+        report = dse.evaluate(measured_artifact())
         self.assertEqual(report["verdict"], "pass")
         self.assertEqual(report["classification"], "measured-deployment")
         self.assertTrue(report["final_evidence"])
@@ -131,14 +150,12 @@ class StructureTest(unittest.TestCase):
         self.assertIn("schema_version", failures(report))
 
     def test_measured_deployment_cannot_declare_a_synthetic_source(self):
-        report = dse.evaluate(synthetic_artifact(
-            kind="measured_deployment", source="SYNTHETIC-fixture"))
+        report = dse.evaluate(measured_artifact(source="SYNTHETIC-fixture"))
         self.assertIn("evidence_conflict", failures(report))
         self.assertFalse(report["final_evidence"])
 
     def test_measured_deployment_with_neutral_source_has_no_conflict(self):
-        report = dse.evaluate(synthetic_artifact(
-            kind="measured_deployment", source="authorized-rollout-run"))
+        report = dse.evaluate(measured_artifact())
         self.assertNotIn("evidence_conflict", failures(report))
 
 
@@ -199,6 +216,22 @@ class EnvironmentTest(unittest.TestCase):
         artifact = synthetic_artifact()
         artifact["environments"]["test"]["resource"] = \
             artifact["environments"]["development"]["resource"]
+        report = dse.evaluate(artifact)
+        self.assertIn("environments.distinct_resources", failures(report))
+
+    def test_whitespace_variant_account_is_treated_as_a_duplicate(self):
+        # Identifiers are stripped before the distinctness comparison, so an
+        # account padded with whitespace cannot alias another environment.
+        artifact = synthetic_artifact()
+        artifact["environments"]["test"]["account"] = \
+            " " + artifact["environments"]["development"]["account"] + " "
+        report = dse.evaluate(artifact)
+        self.assertIn("environments.distinct_accounts", failures(report))
+
+    def test_whitespace_variant_resource_is_treated_as_a_duplicate(self):
+        artifact = synthetic_artifact()
+        artifact["environments"]["test"]["resource"] = \
+            "\t" + artifact["environments"]["development"]["resource"] + "\n"
         report = dse.evaluate(artifact)
         self.assertIn("environments.distinct_resources", failures(report))
 
@@ -361,6 +394,15 @@ class RolloutTest(unittest.TestCase):
             rollout={"stages": ["canary", "full"]}))
         self.assertNotIn("rollout.stages", failures(report))
 
+    def test_whitespace_padded_duplicate_stages_are_rejected(self):
+        # Normalized comparison stops ["full ", "full"] from relabelling a
+        # single-stage big-bang release as a two-stage progressive rollout.
+        for stages in (["full ", "full"], [" full", "full "]):
+            with self.subTest(stages=stages):
+                report = dse.evaluate(synthetic_artifact(
+                    rollout={"stages": stages}))
+                self.assertIn("rollout.stages", failures(report))
+
     def test_health_monitoring_and_rollback_must_be_true(self):
         for key in ("health_gates", "monitoring", "rollback_tested"):
             for value in (False, 1, None):
@@ -393,6 +435,13 @@ class ProductionAccessTest(unittest.TestCase):
         artifact = synthetic_artifact()
         artifact["production_access"]["requester"] = \
             artifact["production_access"]["approver"]
+        report = dse.evaluate(artifact)
+        self.assertIn("production_access.separation_of_duties", failures(report))
+
+    def test_whitespace_padded_self_approval_is_rejected(self):
+        artifact = synthetic_artifact()
+        artifact["production_access"]["requester"] = \
+            artifact["production_access"]["approver"] + " "
         report = dse.evaluate(artifact)
         self.assertIn("production_access.separation_of_duties", failures(report))
 
@@ -450,8 +499,7 @@ class ReportAndCliTest(unittest.TestCase):
         failing = dse.format_report(dse.evaluate(synthetic_artifact(kind="unverified")))
         self.assertIn("[FAIL]", failing)
         self.assertIn("evidence class: unknown (final: False)", failing)
-        final = dse.format_report(dse.evaluate(synthetic_artifact(
-            kind="measured_deployment", source="authorized-rollout-run")))
+        final = dse.format_report(dse.evaluate(measured_artifact()))
         self.assertIn("final: True", final)
 
     def test_main_evaluates_a_conforming_file(self):
@@ -528,6 +576,50 @@ class ReportAndCliTest(unittest.TestCase):
             self.assertIn("cannot read", stderr.getvalue())
 
 
+class MeasuredProvenanceTest(unittest.TestCase):
+    """A measured claim needs run provenance; relabelling alone is not enough."""
+
+    def test_rehearsal_does_not_require_provenance(self):
+        report = dse.evaluate(synthetic_artifact())
+        self.assertFalse([n for n in failures(report)
+                          if n.startswith("provenance")])
+        self.assertFalse(report["final_evidence"])
+
+    def test_conforming_provenance_is_accepted(self):
+        report = dse.evaluate(measured_artifact())
+        self.assertFalse([n for n in failures(report)
+                          if n.startswith("provenance")])
+        self.assertTrue(report["final_evidence"])
+
+    def test_missing_empty_and_non_object_provenance_fail(self):
+        for value in (None, {}, [], "run-it", 7):
+            with self.subTest(value=value):
+                artifact = measured_artifact()
+                if value is None:
+                    del artifact["provenance"]
+                else:
+                    artifact["provenance"] = value
+                report = dse.evaluate(artifact)
+                self.assertIn("provenance", failures(report))
+                self.assertFalse(report["final_evidence"])
+
+    def test_each_required_field_must_be_a_non_blank_string(self):
+        for field in dse.MEASURED_PROVENANCE_FIELDS:
+            for bad in ("", "   ", None, 7):
+                with self.subTest(field=field, bad=bad):
+                    report = dse.evaluate(measured_artifact(
+                        provenance={field: bad}))
+                    self.assertIn("provenance." + field, failures(report))
+                    self.assertFalse(report["final_evidence"])
+
+    def test_a_missing_field_is_reported_by_name(self):
+        artifact = measured_artifact()
+        del artifact["provenance"]["source_sha"]
+        report = dse.evaluate(artifact)
+        self.assertIn("provenance.source_sha", failures(report))
+        self.assertFalse(report["final_evidence"])
+
+
 class PolicyManifestTest(unittest.TestCase):
     """The declared policy artifact must agree with the enforced constants."""
 
@@ -545,6 +637,8 @@ class PolicyManifestTest(unittest.TestCase):
         self.assertEqual(self.policy["migration_gate"], dse.MIGRATION_GATE)
         self.assertEqual(self.policy["rollout_strategy"], dse.ROLLOUT_STRATEGY)
         self.assertEqual(self.policy["rollout_final_stage"], dse.ROLLOUT_FINAL_STAGE)
+        self.assertEqual(self.policy["measured_provenance_fields"],
+                         list(dse.MEASURED_PROVENANCE_FIELDS))
 
     def test_synthetic_fixture_declaration_is_consistent(self):
         dataset = self.policy["dataset"]

@@ -8,6 +8,7 @@
   "migration_gate": "check-migrations --require-baseline",
   "rollout_strategy": "progressive",
   "rollout_final_stage": "full",
+  "measured_provenance_fields": ["tool", "tool_version", "command", "utc_timestamp", "environment", "source_sha"],
   "dataset": {
     "synthetic_only": true,
     "non_production_environments": ["development", "test", "staging"],
