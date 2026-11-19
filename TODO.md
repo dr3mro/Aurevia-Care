@@ -609,6 +609,22 @@ Independent modules scoped to their own paths so workers cannot collide with bac
 
 ## Improvement ideas
 
+- [ ] REFACTOR-PACKAGES-02 · Rename the remaining story-ID Java packages (`api/x_01`–`api/x_04`) to business-domain packages with no behavior change (dispatch-69).
+  - requirements: none (refactor of CODING_STYLE.md package naming)
+  - details: inventory complete, **no file moved** — dispatch-69 rule 2 requires owner approval of the mapping first. No `s_g0_*`…`s_g4_*` or `it/s_*` packages remain (earlier run: `.agent/pr-notes/REFACTOR-PACKAGES-20261119-201815.md`). Deliberately has no `scope:` so no swarm worker picks it up while it waits. Full inventory, 35-file move list, collisions, near-duplicates and every old-path reference: `.agent/pr-notes/REFACTOR-PACKAGES.md`.
+  - proposed mapping (main packages; test mirrors follow them):
+    | Old | New |
+    |---|---|
+    | `api/x_01` | `api/contract` |
+    | `api/x_02` | `events` |
+    | `api/x_03` | `documents` (merge; `DocumentInputs` → `ArtifactInputs`) |
+    | `api/x_04` | `api/authorization` |
+  - question (needs an owner decision before any `git mv`):
+    1. Is the mapping above approved?
+    2. dispatch-69 rule 3 says update every reference to the old paths, rule 5 says do not touch `contracts/`. Renaming `x_01`–`x_04` leaves `contracts/x_01/README.md`, `contracts/x_02/README.md`, `contracts/x_03/document-artifacts.md`, `contracts/x_04/README.md` and `contracts/x_04/generated/{client.ts,manifest.json}` naming dead FQNs, and `CommandClientGenerator --check` / `contracts/x_04/check.py` only stay green if the generator's `GENERATOR` literal is unchanged. Options: (A) allow the mechanical contract-reference update and regeneration (recommended); (B) leave `contracts/` untouched and keep the old identity strings, recording them as a BUGS.md entry; (C) exclude `x_04` from this refactor.
+    3. `it/patientchart/ChartEntryIntegrationTest.java:76` still points Flyway at `it/s_g1_03/migrations`, which no longer exists (the SQL is at `it/patientchart/migrations/V13__longitudinal_chart.sql` and `db/migrations` has no V13). Fixing it changes which migrations apply, so it needs a PostgreSQL run; none is available on this workstation. Fix now or record as a separate defect?
+    4. Optional: rename the test database `smartclinic_s_g1_02_it` (`CheckInWorklistIntegrationTest`) to a story-ID-free name?
+
 - [x] IMP-03 · Stop concurrency-cancelling swarm delivery runs. `delivery.yml` (per-ref group, `cancel-in-progress: false`), `heavy-check.yml`, `agent-image.yml` and `swarm-images.yml` now queue; `swarm.yml`, `swarm-integrator.yml`, `main-watchdog.yml` and `opencode-team.yml` already queued. README-SETUP.md updated.
   - evidence: `scripts/tests/test_workflow_concurrency.py` (red first: 5 failures) now green — parses every `.github/workflows/*.yml`, asserts each declares a non-empty group and `cancel-in-progress: false`, and locks delivery to a per-ref group. `scripts/quick-check.sh` exit 0, 125 tooling tests OK, all eight workflow YAMLs parse. GitHub Workflow reviewer (simulated) found that a SHA-scoped group would remove serialization and allow unbounded parallel full verification; that was reverted to a per-ref group. Its heavy-check SHA-attribution finding is deferred as IMP-04 / CW-IMP03-01. `check.sh`/`docs.sh` remain red on pre-existing G1 SpotBugs and Doxygen defects, unrelated to this change. Evidence source: tool commands plus simulated reviewer; no human or clinical evidence.
 - [ ] IMP-04 · Heavy-check SHA attribution (owner: `.github/workflows/heavy-check.yml`, `scripts/swarm.py`): queued heavy checks check out `main` at execution time, but the watchdog passes the trigger-time `headSha` to the repair worker, so a delayed run can cause a repair on the wrong commit. Pin the checkout to the trigger SHA, or record the executed SHA as a step output and prefer it in `repair_task`. Tracked as CW-IMP03-01 in BUGS.md.
