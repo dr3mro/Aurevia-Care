@@ -185,6 +185,10 @@ Independent modules scoped to their own paths so workers cannot collide with bac
 
 ## Improvement ideas
 
+- [x] IMP-03 · Stop concurrency-cancelling swarm delivery runs. `delivery.yml` (per-ref group, `cancel-in-progress: false`), `heavy-check.yml`, `agent-image.yml` and `swarm-images.yml` now queue; `swarm.yml`, `swarm-integrator.yml`, `main-watchdog.yml` and `opencode-team.yml` already queued. README-SETUP.md updated.
+  - evidence: `scripts/tests/test_workflow_concurrency.py` (red first: 5 failures) now green — parses every `.github/workflows/*.yml`, asserts each declares a non-empty group and `cancel-in-progress: false`, and locks delivery to a per-ref group. `scripts/quick-check.sh` exit 0, 125 tooling tests OK, all eight workflow YAMLs parse. GitHub Workflow reviewer (simulated) found that a SHA-scoped group would remove serialization and allow unbounded parallel full verification; that was reverted to a per-ref group. Its heavy-check SHA-attribution finding is deferred as IMP-04 / CW-IMP03-01. `check.sh`/`docs.sh` remain red on pre-existing G1 SpotBugs and Doxygen defects, unrelated to this change. Evidence source: tool commands plus simulated reviewer; no human or clinical evidence.
+- [ ] IMP-04 · Heavy-check SHA attribution (owner: `.github/workflows/heavy-check.yml`, `scripts/swarm.py`): queued heavy checks check out `main` at execution time, but the watchdog passes the trigger-time `headSha` to the repair worker, so a delayed run can cause a repair on the wrong commit. Pin the checkout to the trigger SHA, or record the executed SHA as a step output and prefer it in `repair_task`. Tracked as CW-IMP03-01 in BUGS.md.
+
 Raised by the dispatch-3 run-3 verification. Address in the next authorized change to the owning file.
 
 - [x] IMP-01 · Delivery skill note: inside a cloud worker the worktree `opencode.json` is the CI profile under `skip-worktree`, so policy checks judge that profile, not HEAD truth. Added a warning to step 1 of `.opencode/skills/smartclinic-delivery/SKILL.md` (use `git show HEAD:opencode.json` or state the profile). Closes the instruction gap behind the false OPS-CW-003-01 finding.
