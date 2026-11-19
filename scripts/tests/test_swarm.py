@@ -43,27 +43,52 @@ class FakeGh:
         return any(all(n in call for n in needle) for call in self.calls)
 
 
-TASKS = """# Cloud workers
+TASKS = """# TODO
 
 ## Tasks
 
-| ID | Task | Requirements | Depends | Scope | Reserved | Status | PR |
-|---|---|---|---|---|---|---|---|
-| CW-001 | Staff | IAM-02 | - | apps/api/staff, db/migrations | V4 | todo | |
-| CW-002 | Config | ARC-02 | - | apps/api/config | V5 | todo | |
-| CW-003 | Overlap with staff | ARC-02 | - | apps/api/staff/deep | - | todo | |
-| CW-004 | Needs staff | ARC-02 | CW-001 | apps/api/other | - | todo | |
-| CW-005 | Finished | ARC-02 | - | apps/api/old | - | done | #3 |
-| CW-006 | After finished | ARC-02 | CW-005 | apps/api/after | - | todo | |
-| CW-007 | Parked | ARC-02 | - | apps/api/parked | - | blocked | |
+- [ ] CW-001 · Staff
+  - requirements: IAM-02
+  - scope: apps/api/staff, db/migrations
+  - reserved: V4
+  - details:
+    Details for staff.
+- [ ] CW-002 · Config
+  - requirements: ARC-02
+  - scope: apps/api/config
+  - reserved: V5
+  - details:
+    Details for config.
+- [ ] CW-003 · Overlap with staff
+  - scope: apps/api/staff/deep
+- [ ] CW-004 · Needs staff
+  - depends: CW-001
+  - scope: apps/api/other
+- [x] CW-005 · Finished
+  - scope: apps/api/old
+  - pr: #3
+- [ ] CW-006 · After finished
+  - depends: CW-005
+  - scope: apps/api/after
+- [-] CW-007 · Taken by a loop agent
+  - scope: apps/api/parked
+  - agent: loop
+- [ ] S-G9-01 · A story with no scope is for the loop, not the swarm
+  - requirements: ARC-02
+"""
 
-### CW-001
+ALIASED = """# TODO
 
-Details for staff.
+## One section
 
-### CW-002
+- [x] S-G9-02 · Alias holder
+  - aliases: CW-010
 
-Details for config.
+## Another section
+
+- [ ] CW-011 · Needs the alias
+  - depends: CW-010
+  - scope: apps/api/alias
 """
 
 
@@ -103,11 +128,51 @@ class PlanTests(unittest.TestCase):
         self.assertEqual(len(self.plan(workers=1)), 1)
         self.assertEqual(len(self.plan(workers=10, slots=SLOTS[:2])), 2)
 
-    def test_marking_a_task_done_updates_only_its_row(self):
-        text = swarm.set_task_done(TASKS, "CW-002", 12)
+    def test_marking_a_task_updates_only_its_entry(self):
+        text = swarm.set_task_status(TASKS, "CW-002", "done", pr="#12", evidence="CI green")
         tasks = {t["id"]: t for t in swarm.parse_tasks(text)}
-        self.assertEqual((tasks["CW-002"]["status"], tasks["CW-002"]["pr"]), ("done", "#12"))
+        self.assertEqual((tasks["CW-002"]["status"], tasks["CW-002"]["pr"], tasks["CW-002"]["evidence"]),
+                         ("done", "#12", "CI green"))
+        self.assertEqual(tasks["CW-002"]["details"], "Details for config.")
         self.assertEqual(tasks["CW-001"]["status"], "todo")
+        self.assertEqual(swarm.set_task_status(TASKS, "NOPE-1", "done"), TASKS)
+
+    def test_taking_and_releasing_a_task_sets_and_clears_the_agent(self):
+        taken = swarm.set_task_status(TASKS, "CW-001", "taken", agent="swarm-3")
+        self.assertIn("- [-] CW-001 · Staff\n  - agent: swarm-3\n", taken)
+        task = {t["id"]: t for t in swarm.parse_tasks(taken)}["CW-001"]
+        self.assertEqual((task["status"], task["agent"], task["scope"]),
+                         ("taken", "swarm-3", ["apps/api/staff", "db/migrations"]))
+        freed = {t["id"]: t for t in swarm.parse_tasks(swarm.set_task_status(taken, "CW-001", "todo"))}
+        self.assertEqual((freed["CW-001"]["status"], freed["CW-001"]["agent"]), ("todo", ""))
+        self.assertEqual(freed["CW-001"]["details"], "Details for staff.")
+
+    def test_tasks_taken_by_other_agents_block_their_scope(self):
+        text = swarm.set_task_status(TASKS, "CW-001", "taken", agent="loop")
+        ids = [t["id"] for t in swarm.plan_workers(10, SLOTS, text, [])]
+        self.assertNotIn("CW-001", ids)
+        self.assertNotIn("CW-003", ids)
+
+    def test_an_alias_of_a_done_story_satisfies_dependencies_across_sections(self):
+        plan = swarm.plan_workers(10, SLOTS, ALIASED, [])
+        self.assertEqual([t["id"] for t in plan], ["CW-011"])
+
+    def test_stories_without_a_scope_are_never_dispatched(self):
+        self.assertNotIn("S-G9-01", [t["id"] for t in self.plan()])
+
+    def test_reclaim_frees_dead_claims_and_finishes_merged_ones(self):
+        text = swarm.set_task_status(TASKS, "CW-001", "taken", agent="swarm-1")
+        text = swarm.set_task_status(text, "CW-002", "taken", agent="swarm-2")
+        text = swarm.set_task_status(text, "CW-006", "taken", agent="loop")
+        prs = [{"number": 7, "headRefName": "swarm/CW-001-4", "state": "MERGED"},
+               {"number": 8, "headRefName": "swarm/CW-001-5", "state": "CLOSED"}]
+        got = {t["id"]: t for t in swarm.parse_tasks(swarm.reclaim(text, prs))}
+        self.assertEqual((got["CW-001"]["status"], got["CW-001"]["pr"]), ("done", "#7"))
+        self.assertEqual(got["CW-002"]["status"], "todo")
+        self.assertEqual(got["CW-006"]["status"], "taken")
+        live = [{"number": 9, "headRefName": "swarm/CW-002-1", "state": "OPEN"}]
+        kept = {t["id"]: t for t in swarm.parse_tasks(swarm.reclaim(text, live))}
+        self.assertEqual(kept["CW-002"]["status"], "taken")
 
     def test_scope_overlap_uses_path_prefixes(self):
         self.assertTrue(swarm.overlaps(["a/b/**"], ["a/b/c"]))
@@ -121,10 +186,14 @@ class PlanTests(unittest.TestCase):
         self.assertEqual((config["model"], config["autoupdate"], config["share"]),
                          (slots[1]["model"], False, "disabled"))
         self.assertNotIn("key", json.dumps(config).lower())
-        tasks = swarm.parse_tasks((ROOT / "CLOUDWORKERS.md").read_text())
-        self.assertGreaterEqual(len(tasks), 1)
-        self.assertTrue(all(t["details"] and t["scope"] for t in tasks))
-        reserved = [t["reserved"] for t in tasks if t["reserved"] != "-"]
+        tasks = swarm.parse_tasks((ROOT / "TODO.md").read_text())
+        ids = [t["id"] for t in tasks]
+        self.assertEqual(len(ids), len(set(ids)))
+        for task in tasks:
+            self.assertTrue(task["task"])
+            if task["status"] == "todo" and task["scope"]:
+                self.assertTrue(task["details"], task["id"])
+        reserved = [t["reserved"] for t in tasks if t["reserved"]]
         self.assertEqual(len(reserved), len(set(reserved)))
 
 
@@ -187,9 +256,9 @@ class IntegrationTests(unittest.TestCase):
         self.assertTrue(fake.said("needs-human"))
 
     def test_guard_sends_tracker_edits_back_to_the_worker(self):
-        fake = FakeGh(diff="apps/api/A.java\nPROGRESS.md\n", pr_view={"labels": []})
+        fake = FakeGh(diff="apps/api/A.java\nTODO.md\n", pr_view={"labels": []})
         with mock.patch.object(swarm, "gh", fake):
-            self.assertEqual(swarm.guard(9), ["PROGRESS.md"])
+            self.assertEqual(swarm.guard(9), ["TODO.md"])
         self.assertTrue(fake.said("needs-fix", "fix-1"))
         self.assertFalse(fake.said("needs-human"))
 
@@ -330,8 +399,7 @@ class GitTests(unittest.TestCase):
         self.run_git("init", "-q", "--bare", "-b", "main", str(self.origin), cwd=self.tmp)
         self.run_git("clone", "-q", str(self.origin), str(self.repo), cwd=self.tmp)
         (self.repo / "a.txt").write_text("base\n")
-        (self.repo / "CLOUDWORKERS.md").write_text(TASKS)
-        (self.repo / "PROGRESS.md").write_text("| Story |\n|---|\n| first |\n")
+        (self.repo / "TODO.md").write_text(TASKS)
         for args in (["add", "-A"], ["commit", "-qm", "init"], ["push", "-q", "origin", "main"]):
             self.run_git(*args)
         os.chdir(self.repo)
@@ -419,13 +487,46 @@ class GitTests(unittest.TestCase):
         fake = FakeGh(pr_view={"headRefOid": "abc", "body": "Task: CW-001\n\nEvidence"})
         with mock.patch.object(swarm, "gh", fake):
             swarm.finalize(9, "CW-001", "abc")
-        tasks = {t["id"]: t for t in swarm.parse_tasks((self.repo / "CLOUDWORKERS.md").read_text())}
+        tasks = {t["id"]: t for t in swarm.parse_tasks((self.repo / "TODO.md").read_text())}
         self.assertEqual((tasks["CW-001"]["status"], tasks["CW-001"]["pr"]), ("done", "#9"))
-        self.assertIn("CW-001 · Staff", (self.repo / "PROGRESS.md").read_text())
+        self.assertIn("integrator ran", tasks["CW-001"]["evidence"])
         self.assertIn("Evidence", (self.repo / "docs/swarm/CW-001.md").read_text())
         pushed = self.run_git("--git-dir", str(self.origin), "rev-parse", "main").strip()
         self.assertEqual(self.run_git("rev-parse", "HEAD").strip(), pushed)
         self.assertTrue(fake.said("workflow", "run", "heavy-check.yml"))
+
+    def origin_todo(self):
+        return self.run_git("--git-dir", str(self.origin), "show", "main:TODO.md")
+
+    def test_update_todo_commits_and_pushes_the_marks(self):
+        pushed = swarm.update_todo(lambda text: swarm.set_task_status(text, "CW-001", "taken", agent="swarm-1"),
+                                   "Take 1 task(s) for the swarm")
+        self.assertTrue(pushed)
+        task = {t["id"]: t for t in swarm.parse_tasks(self.origin_todo())}["CW-001"]
+        self.assertEqual((task["status"], task["agent"]), ("taken", "swarm-1"))
+        self.assertFalse(swarm.update_todo(lambda text: text, "nothing"))
+
+    def test_update_todo_reapplies_its_edit_when_main_moved(self):
+        other = self.tmp / "other"
+        self.run_git("clone", "-q", str(self.origin), str(other), cwd=self.tmp)
+        done = swarm.set_task_status((other / "TODO.md").read_text(), "CW-002", "done", pr="#5")
+        (other / "TODO.md").write_text(done)
+        for args in (["add", "-A"], ["commit", "-qm", "someone else"], ["push", "-q", "origin", "main"]):
+            self.run_git(*args, cwd=other)
+        swarm.update_todo(lambda text: swarm.set_task_status(text, "CW-001", "taken", agent="swarm-2"),
+                          "Take 1 task(s) for the swarm")
+        tasks = {t["id"]: t for t in swarm.parse_tasks(self.origin_todo())}
+        self.assertEqual((tasks["CW-001"]["status"], tasks["CW-002"]["status"]), ("taken", "done"))
+
+    def test_a_worker_that_published_nothing_releases_its_task(self):
+        swarm.update_todo(lambda text: swarm.set_task_status(text, "CW-001", "taken", agent="swarm-1"), "take")
+        task = {"kind": "story", "id": "CW-001", "slot": 1, "branch": "", "number": 0}
+        empty = self.tmp / "empty"
+        empty.mkdir()
+        with mock.patch.object(swarm, "gh", FakeGh()):
+            swarm.publish(task, empty)
+        got = {t["id"]: t for t in swarm.parse_tasks(self.origin_todo())}["CW-001"]
+        self.assertEqual((got["status"], got["agent"]), ("todo", ""))
 
     def test_finalize_refuses_a_branch_that_changed_after_testing(self):
         fake = FakeGh(pr_view={"headRefOid": "new", "body": ""})
@@ -436,7 +537,8 @@ class GitTests(unittest.TestCase):
         fake = FakeGh(pr_view={"headRefOid": "abc", "body": "Task: FIX-5"})
         with mock.patch.object(swarm, "gh", fake):
             swarm.finalize(11, "FIX-5", "abc")
-        self.assertIn("FIX-5", (self.repo / "PROGRESS.md").read_text())
+        self.assertIn("FIX-5", (self.repo / "docs/swarm/FIX-5.md").read_text())
+        self.assertEqual((self.repo / "TODO.md").read_text().count("[x]"), 1)
 
 
 class BudgetTests(unittest.TestCase):
@@ -490,8 +592,7 @@ class TwoTierTests(unittest.TestCase):
 
     def test_integrate_batch_pushes_once_and_dispatches_heavy(self):
         self.repo = Path(tempfile.mkdtemp())
-        for name in ("CLOUDWORKERS.md", "PROGRESS.md"):
-            (self.repo / name).write_text("| ID | Status |\n|---|---|\n")
+        (self.repo / "TODO.md").write_text("# TODO\n")
         self.addCleanup(shutil.rmtree, self.repo)
         original = Path.cwd()
         os.chdir(self.repo)

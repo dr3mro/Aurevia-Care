@@ -1,5 +1,5 @@
 name: Agent swarm
-# The orchestrator. It reads CLOUDWORKERS.md, splits the ready tasks across up to
+# The orchestrator. It reads TODO.md, splits the open tasks across up to
 # 10 worker slots, and starts one prepared container per slot. Each worker runs
 # the agent with no GitHub token on its own branch, uploads its commits, and
 # exits (the container is discarded, nothing idles). A separate trusted job
@@ -15,7 +15,7 @@ on:
         default: ''
   push:
     branches: [main]
-    paths: [CLOUDWORKERS.md]
+    paths: [TODO.md]
   # A successful prepared-image rebuild makes any wave skipped during the
   # rebuild eligible again, so no task is left unclaimed.
   workflow_run:
@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
-      contents: read
+      contents: write
       pull-requests: write
       actions: read
     outputs:
@@ -49,7 +49,7 @@ jobs:
           sparse-checkout: |
             scripts
             .github/swarm
-            CLOUDWORKERS.md
+            TODO.md
       - id: image
         run: echo "prefix=ghcr.io/${GITHUB_REPOSITORY,,}-agent" >> "$GITHUB_OUTPUT"
       # Safety net: refuse a wave when estimated monthly runner minutes are near
@@ -80,6 +80,8 @@ jobs:
           fi
           echo "Prepared images not ready (base=$base_status, slot=$slot_status/$slot_conclusion)" >&2
           echo "ready=$ready" >> "$GITHUB_OUTPUT"
+      # Marks every task it starts as [-] in TODO.md and pushes that to main
+      # (GITHUB_TOKEN pushes do not trigger another run).
       - id: plan
         if: steps.budget.outputs.start == 'true'
         env:
