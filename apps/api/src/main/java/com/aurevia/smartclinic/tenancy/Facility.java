@@ -7,6 +7,7 @@ package com.aurevia.smartclinic.tenancy;
  * @param code           tenant-local facility code
  * @param name           display name
  * @param timeZone       IANA time zone that owns availability windows and display
+ * @return this record
  */
 public record Facility(String organizationId, String code, String name, String timeZone) {
 }
