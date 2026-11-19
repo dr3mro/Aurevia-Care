@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { acknowledgmentStatus } from './facts';
+import { acknowledgmentStatus, EMPTY_FACTS } from './facts';
 import type { DeliveryFacts, InstructionView, OverdueStatus } from './types';
 
 /** Accessibility labels and patient-facing strings for MSG-05 facts. */
@@ -81,7 +81,7 @@ export function InstructionAcknowledgmentScreen({
       style={[styles.container, { direction: isRTL ? 'rtl' : 'ltr' }]}>
       {instructions.map((instruction) => {
         const current = facts[instruction.id];
-        const status = acknowledgmentStatus(instruction, current ?? EMPTY_SCREEN_FACTS, now);
+        const status = acknowledgmentStatus(instruction, current ?? EMPTY_FACTS, now);
         const acknowledged = status === 'acknowledged';
         const canAcknowledge = !acknowledged
           && status !== 'withdrawn'
@@ -112,13 +112,6 @@ export function InstructionAcknowledgmentScreen({
     </View>
   );
 }
-
-const EMPTY_SCREEN_FACTS: DeliveryFacts = {
-  publication: null,
-  dispatch: null,
-  firstView: null,
-  acknowledgment: null,
-};
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
