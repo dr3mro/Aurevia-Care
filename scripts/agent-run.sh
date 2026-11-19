@@ -24,7 +24,7 @@ mkdir -p "$out"
 if [[ "${MODE:-story}" != fix && -n "${STORY_ID:-}" ]]; then
   notes_file=".agent/pr-notes/$(printf '%s' "$STORY_ID" | tr -c 'A-Za-z0-9._-' '-').md"
 else
-  notes_file=".agent/pr-notes.md"
+  notes_file=".agent/pr-notes/fix-$(date -u +%Y%m%d-%H%M%S).md"
 fi
 REVIEWERS=${REVIEWERS:-"smartclinic-qa-reviewer smartclinic-devsecops smartclinic-physician-reviewer"}
 
