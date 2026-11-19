@@ -1,6 +1,6 @@
 # Durable memory
 
-Current checkpoint: PROGRESS.md, S-G0-02 CI and merge; next S-G0-03 on `main`. CI evidence rows and the branch-change directive are uncommitted and belong in the next scoped commit. Both this pointer and WORKSPACE.md name the same checkpoint. `PLAN.md` is the canonical all-story index with checkbox state; fill a checkbox only when PROGRESS.md records the evidence. Keep a short pointer to the last completed stage and next action in this file after each stage.
+Current checkpoint: PROGRESS.md, CW-001 GitHub Actions worker repair; fix the missing OpenCode credential fallback and container checkout ownership, with targeted tests green. Full `scripts/check.sh` cannot compile locally because this session provides Java 17 instead of the Java 21 baseline; exact-SHA CI is the remaining verification. `PLAN.md` is the canonical all-story index with checkbox state; fill a checkbox only when PROGRESS.md records the evidence.
 
 | Decision | Rationale and evidence |
 |---|---|

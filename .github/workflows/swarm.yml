@@ -93,8 +93,8 @@ jobs:
           persist-credentials: false
       - name: Work the task (no GitHub token in this step)
         env:
-          # This slot's own free account. The secret is looked up by slot number.
-          OPENCODE_API_KEY: ${{ secrets[format('OPENCODE_API_KEY_{0}', matrix.slot)] }}
+          # Prefer this slot's account, with the team key as a compatibility fallback.
+          OPENCODE_API_KEY: ${{ secrets[format('OPENCODE_API_KEY_{0}', matrix.slot)] || secrets.OPENCODE_API_KEY }}
         run: scripts/agent-run.sh implement
       - name: Pack the commits
         if: always()
