@@ -138,8 +138,7 @@ Gate evidence: competing bookings enforce one protected slot; stale drafts canno
     Implement Original PDF/image associations and immutable, localized, versioned PDF rendering (CLN-07) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [-] S-G1-08 · Clinical dictionaries, diagnosis/procedure catalogs and RTL mixed-script operation (PRD-05, UX-01).
-  - agent: swarm-10
+- [ ] S-G1-08 · Clinical dictionaries, diagnosis/procedure catalogs and RTL mixed-script operation (PRD-05, UX-01).
   - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g1/s_g1_08, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g1_08
   - reserved: V18
