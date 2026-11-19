@@ -180,6 +180,30 @@ public class IdentityProofingRepository {
     }
 
     /**
+     * Invalidate every unconsumed invitation for one account and chart.
+     *
+     * <p>An unlink or re-verification must also retire invitations that were
+     * issued for the same relationship but never redeemed; otherwise a stale
+     * token could silently restore access after a dispute. The update is
+     * scoped by subject and chart inside the tenant-guarded transaction, and
+     * the database clock supplies the consumption time. The runtime role may
+     * update invitations (V10), so no migration change is required.</p>
+     *
+     * @param subject account subject owning the invitations
+     * @param chartId patient chart identifier
+     * @return number of invitations invalidated
+     */
+    public int consumeOutstandingInvitations(String subject, String chartId) {
+        return jdbc.update("""
+                UPDATE public.account_invitation
+                   SET used_at = now()
+                 WHERE used_at IS NULL
+                   AND account_id = (SELECT id FROM public.patient_account WHERE subject = :subject)
+                   AND chart_id = CAST(:chartId AS uuid)
+                """, new MapSqlParameterSource().addValue("subject", subject).addValue("chartId", chartId));
+    }
+
+    /**
      * Append one account-to-chart link event.
      *
      * @param organizationId active organization identifier

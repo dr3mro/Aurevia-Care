@@ -44,7 +44,8 @@ public class PdfRenderer {
         String keywords = direction + " v" + spec.version() + " " + spec.subjectType()
                 + " " + spec.subjectId() + " " + spec.effectiveAt();
         String author = "org:" + spec.organizationId();
-        String provenance = "source:" + spec.sourceSystem() + "/" + spec.sourceId();
+        String provenance = "source:" + spec.sourceSystem() + "/" + spec.sourceId()
+                + (spec.sourceAssociationId() == null ? "" : " association:" + spec.sourceAssociationId());
 
         List<byte[]> objects = new ArrayList<>();
         objects.add(ascii("1 0 obj\n<< /Type /Catalog /Pages 2 0 R /ViewerPreferences "
@@ -103,17 +104,10 @@ public class PdfRenderer {
         boolean rtl = "RTL".equals(direction);
         StringBuilder content = new StringBuilder("BT\n/F1 12 Tf\n14 TL\n1 0 0 1 ");
         content.append(rtl ? "500" : "72").append(" 760 Tm\n");
-        content.append(hexText(spec.title())).append(" Tj\nT*\n");
+        content.append(hexText(visualOrder(spec.title(), rtl))).append(" Tj\nT*\n");
         for (String line : spec.lines()) {
-            String[] tokens = line.split(" ");
-            if (rtl) {
-                for (int index = tokens.length - 1; index >= 0; index--) {
-                    content.append(hexText(tokens[index])).append(" Tj ");
-                }
-            } else {
-                for (String token : tokens) {
-                    content.append(hexText(token)).append(" Tj ");
-                }
+            for (String token : visualOrder(line, rtl).split(" ")) {
+                content.append(hexText(token)).append(" Tj ");
             }
             // The logical line is retained as a comment so provenance tooling can
             // recover the original order without re-running the bidi layout.
@@ -121,6 +115,31 @@ public class PdfRenderer {
         }
         content.append(hexText("Page 1 / 1")).append(" Tj\nET\n");
         return content.toString();
+    }
+
+    /**
+     * Order a text run for visual display: RTL documents reverse the
+     * space-separated words, LTR documents keep them in logical order. The
+     * original logical string is still written to the Info dictionary and the
+     * %LOGICAL comment, so provenance and copy round-trip unchanged.
+     *
+     * @param text text in logical order
+     * @param rtl  whether the document uses right-to-left layout
+     * @return the visually ordered text
+     */
+    private static String visualOrder(String text, boolean rtl) {
+        if (!rtl) {
+            return text;
+        }
+        String[] words = text.split(" ");
+        StringBuilder ordered = new StringBuilder(text.length());
+        for (int index = words.length - 1; index >= 0; index--) {
+            if (ordered.length() > 0) {
+                ordered.append(' ');
+            }
+            ordered.append(words[index]);
+        }
+        return ordered.toString();
     }
 
     private static String hexOf(String text) {
