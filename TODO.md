@@ -128,8 +128,7 @@ Gate evidence: competing bookings enforce one protected slot; stale drafts canno
     Implement Follow-up suggestions with rule explanation and care-team tasks (CLN-06) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [-] S-G1-07 · Original PDF/image associations and immutable, localized, versioned PDF rendering (CLN-07).
-  - agent: swarm-9
+- [ ] S-G1-07 · Original PDF/image associations and immutable, localized, versioned PDF rendering (CLN-07).
   - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g1/s_g1_07, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g1_07
   - reserved: V17
@@ -246,8 +245,7 @@ Gate evidence: rejected or recollected specimens trace to the right order; dupli
 
 Gate evidence: confirmed patients see only authorized revisions; generic notifications reveal no clinical detail; withdrawn releases stop future access; messaging works on both mobile platforms including wrong-unit denial, uploads, instructions, revision-specific acknowledgment, failed uploads, notification retry and revoked connections.
 
-- [-] S-G3-01 · Patient appointment list, confirmation, generic push notifications and device revocation (PAT-01).
-  - agent: swarm-9
+- [ ] S-G3-01 · Patient appointment list, confirmation, generic push notifications and device revocation (PAT-01).
   - attempts: 1
   - scope: apps/patient-mobile/src/features/s_g3_01, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_01
   - reserved: V29
@@ -264,35 +262,45 @@ Gate evidence: confirmed patients see only authorized revisions; generic notific
     Implement Released reports with revision and correction context, authorized downloads and protected local credentials (PAT-02) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [ ] S-G3-03 · Privacy-safe enrollment, recovery, lockout and identity-dispute support channel (PAT-03).
+- [-] S-G3-03 · Privacy-safe enrollment, recovery, lockout and identity-dispute support channel (PAT-03).
+  - agent: swarm-6
+  - attempts: 1
   - scope: apps/patient-mobile/src/features/s_g3_03, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_03
   - reserved: V31
   - details:
     Implement Privacy-safe enrollment, recovery, lockout and identity-dispute support channel (PAT-03) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [ ] S-G3-04 · Care unit directory and verified, connection-scoped patient-unit relationships (MSG-01, ARC-07).
+- [-] S-G3-04 · Care unit directory and verified, connection-scoped patient-unit relationships (MSG-01, ARC-07).
+  - agent: swarm-7
+  - attempts: 1
   - scope: apps/patient-mobile/src/features/s_g3_04, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_04
   - reserved: V32
   - details:
     Implement Care unit directory and verified, connection-scoped patient-unit relationships (MSG-01, ARC-07) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [ ] S-G3-05 · Conversation lifecycle, unread counts, staff work queue, assignment and reopen states (MSG-02).
+- [-] S-G3-05 · Conversation lifecycle, unread counts, staff work queue, assignment and reopen states (MSG-02).
+  - agent: swarm-8
+  - attempts: 1
   - scope: apps/patient-mobile/src/features/s_g3_05, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_05
   - reserved: V33
   - details:
     Implement Conversation lifecycle, unread counts, staff work queue, assignment and reopen states (MSG-02) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [ ] S-G3-06 · PDF/JPEG/PNG attachments, sender binding, quarantine scans and clean-verdict access (MSG-03, ARC-06).
+- [-] S-G3-06 · PDF/JPEG/PNG attachments, sender binding, quarantine scans and clean-verdict access (MSG-03, ARC-06).
+  - agent: swarm-9
+  - attempts: 1
   - scope: apps/patient-mobile/src/features/s_g3_06, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_06
   - reserved: V34
   - details:
     Implement PDF/JPEG/PNG attachments, sender binding, quarantine scans and clean-verdict access (MSG-03, ARC-06) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [ ] S-G3-07 · Typed patient instructions with templates, revisions, withdrawal and units (MSG-04).
+- [-] S-G3-07 · Typed patient instructions with templates, revisions, withdrawal and units (MSG-04).
+  - agent: swarm-10
+  - attempts: 1
   - scope: apps/patient-mobile/src/features/s_g3_07, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_07
   - reserved: V35
   - details:
