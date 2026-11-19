@@ -1,48 +1,62 @@
-# S-G1-07 — Original PDF/image associations and immutable, localized, versioned PDF rendering
+# S-G3-08 — Publication, dispatch, first view and revision-bound acknowledgment (MSG-05)
 
 ## Requirement IDs and acceptance mapping
 
-Primary: **CLN-07**. Supporting: **ARC-01, ARC-02, ARC-03, OPS-02, IAM-01, UX-01** (locale/direction).
-Specification: `SMARTCLINIC_V1_SPEC.md` §3 CLN-07, §7 ARC-01..03, §8 OPS-02.
+Primary: **MSG-05**. Supporting: **MSG-04** (revision/withdrawal context), **MSG-01** (server-side patient/destination/context validation), **ARC-01, ARC-03, ARC-04, ARC-05, ARC-07, OPS-02, UX-01, PAT-01/02**. Specification: `SMARTCLINIC_V1_SPEC.md` §6.1 MSG-05, §7 ARC-01..07, §8 OPS-02, §1 pilot metrics.
 
-| Acceptance behaviour (CLN-07) | Implementation | Test evidence (synthetic only) |
+| Acceptance behaviour | Implementation | Synthetic test evidence |
 |---|---|---|
-| Link original PDF/JPEG/PNG to chart, order or result; retain original bytes + checksum | `DocumentService.link`, `DocumentRepository.insert`; V17 `document_association` + `set_document_original_digest` trigger (sha256 derived from stored bytes, never caller-supplied) | `DocumentServiceTest`, `DocumentInputsTest`, `DocumentValuesTest`, `DocumentIsolationTest` (integrator) |
-| Rotation is presentation metadata only; voiding preserves history with a reason | `rotation_degrees` column pinned by `guard_document_association_update` trigger; `DocumentService.voidAssociation` + append-only `document_association_event` | `DocumentServiceTest`, `DocumentPolicyTest`, `DocumentIsolationTest` (integrator) |
-| Immutable, versioned PDFs; stale version / illegal transition rejected | `rendered_document` UNIQUE(org,type,id,locale,version), append-only triggers, `next_render_version` advisory-lock fold; `If-Match` on void (412) | `DocumentServiceTest`, `DocumentControllerTest`, `PdfRendererTest`, `DocumentIsolationTest` (integrator) |
-| English/Arabic, RTL direction, page numbers, provenance, print profile | `PdfRenderer` direction-aware layout, embedded font placeholder, `/PrintScaling /None`, provenance keys, `Page 1 / 1`; locale->direction checked by V17 CHECK constraint | `PdfRendererTest`, `DocumentValuesTest`, `DocumentIsolationTest` (integrator) |
-| Tenant isolation, fail-closed authorization, audit | Forced RLS on all three V17 tables; role matrix in `DocumentPolicy`; `DocumentService.authorize` re-derives membership/roles per transaction and audits denials | `DocumentPolicyTest`, `DocumentIsolationTest` (integrator) |
+| Publication, notification dispatch, first in-app view and explicit acknowledgment are four separate append-only facts | `InstructionFacts.FactType` (5 kinds incl. follow-up), `Publication`/`Dispatch`/`FirstView`/`Acknowledgment` records; `InstructionFactService.publish/retryDispatch/markFirstView/acknowledge` | `InstructionFactsTest`, `InstructionFactServiceTest.timelineShowsTheFourFactsAsSeparateEntries`, `facts.test.ts` (four independent slots) |
+| Acknowledgment binds to one exact revision and is receipt-only | `AcknowledgmentScope.RECEIPT`; stale revision → 409 `STALE_REVISION`; `acknowledgeRevisionBound` returns `REVISION_MISMATCH`/`SUPERSEDED` | `InstructionFactServiceTest.acknowledgmentBindsToTheExactPublishedRevision`, `facts.test.ts` revision-bound cases |
+| Generic push notification carries no clinical detail; content only after authentication | `GENERIC_NOTIFICATION_KEY=NEW_INSTRUCTION`, `Dispatch` has no contentRef; `buildGenericNotification()` fixed text; client re-reads credential for every protected command | `InstructionFactServiceTest.notificationDispatchIsAGenericSeparateFact`, `notification.test.ts`, `client.test.ts` auth tests |
+| Track overdue requested acknowledgments and route to owning unit | `overdueCandidates`, `overdueFollowUps`, `FollowUp` (ROUTED/RESOLVED), `overdueInstructions`/`owningUnitForOverdue` on mobile | `InstructionFactServiceTest.overdueRequestedAcknowledgmentRoutesToTheOwningUnit`, `facts.test.ts` overdue routing |
+| Immutable revision; idempotency; tenant isolation; fail-closed authorization/audit | `putInstruction` now `putIfAbsent` + `REVISION_CONFLICT`; monotonic revision; atomic key reservation; org-prefixed keys; per-request membership/role/connection re-check; audit on success and denial | `InstructionFactServiceTest` (11 new cases), `InMemoryInstructionFactStoreTest`, `InstructionFactsTest` |
 
-Entry-point-to-test trace: `POST /api/v1/documents/associations` → `DocumentController.link` → `DocumentService.link` → guarded `TransactionTemplate` (tenant + membership + action) → `DocumentRepository.insert` (forced RLS + DB-derived digest) → `appendEvent` + `appendAudit` → 201. `POST /api/v1/documents/rendered` → `DocumentController.render` → `DocumentService.render` → `PdfRenderer.render` → `DocumentRepository.insertRendered` (immutable, versioned, RTL/LTR) → 201. Verified by `DocumentControllerTest` (unit) and `DocumentIsolationTest` (integration, two synthetic tenants).
+Entry-point-to-test trace: `POST /api/v1/instructions/publish` → `InstructionFactController.publish` → `InstructionFactService.publish` → `recordedClientDigest` → membership/role/unit/patient-context/monotonic validation → `reserveClientDigest` → `putInstruction` (immutable) → `putPublication` (+ optional generic `Dispatch`) → `appendAudit` → 201. `POST .../acknowledge` → `acknowledge` → published-instruction + verified-chart + active-connection + receipt-requested + current-revision checks → atomic key reserve → `putAcknowledgmentIfAbsent` → audit. `GET .../facts` → `facts` → tenant scoped timeline. `GET .../overdue-follow-ups` → scan + follow-up routing. Verified by `InstructionFactControllerTest` (unit), `InstructionFactServiceTest` (domain) and the mobile `client.test.ts`/`facts.test.ts`; the real-PostgreSQL isolation suite is the integrator's gate.
 
 ## Commands run and results (evidence source: executed tool commands)
 
-- `mvn -q -B -f apps/api/pom.xml -Pno-security,fast test` → **EXIT 0**. Surefire: **244 tests, 0 failures, 0 errors, 0 skipped**; 54 are in `com.aurevia.smartclinic.it.s_g1_07` (DocumentControllerTest 5, DocumentInputsTest 11, DocumentPolicyTest 4, DocumentServiceTest 20, DocumentValuesTest 5, PdfRendererTest 9). This is the exact Java command in `scripts/quick-check.sh`.
-- `bash scripts/frontend-check.sh` → **EXIT 0** (`frontend standards: policy and tool commands passed`). Includes staff-web `npm run typecheck`, `lint`, `npm test` (vitest) and patient-mobile plus root toolchain checks.
-- `python3 -I scripts/project-name.py displayName|repositorySlug` → `Aurevia Care` / `aurevia-care`, EXIT 0.
-- `python3 -I scripts/check-docs.py` → EXIT 0. `python3 -I scripts/check-secrets.py` → EXIT 0. `bash -n` on all shell scripts → EXIT 0.
+- `cd apps/api && mvn -q -B -Pno-security,fast -Dtest='com.aurevia.smartclinic.messaging.s_g3_08.*Test' test` → **EXIT 0**; Surefire: **73 tests, 0 failures, 0 errors** (Service 43, Store 12, Facts 11, Controller 7).
+- `cd apps/api && mvn -q -B -Pno-security,fast test` → **EXIT 0**; full fast tier **1476 tests, 0 failures, 0 errors, 0 skipped**.
+- `cd apps/api && mvn -q -B jacoco:report` → EXIT 0; per-class report: `InstructionFactService` INSTRUCTION 1274/1274, BRANCH 76/76, LINE 198/198, METHOD 33/33, CLASS 1/1; `InMemoryInstructionFactStore` 869/869 instructions, 80/80 branches, 55/55 methods; every other class in the package 100% (interfaces have no code). No fabricated coverage; full-project JaCoCo gate belongs to the integrator's `mvn verify`.
+- `cd apps/patient-mobile && npx jest src/features/s_g3_08 --runInBand --coverage --collectCoverageFrom='src/features/s_g3_08/**/*.{ts,tsx}' --coverageThreshold='{"global":{"branches":100,"functions":100,"lines":100,"statements":100}}'` → **EXIT 0**; **42 tests, 4 suites**; 100% statements/branches/functions/lines for every logic file (`types.ts` is type-only).
+- `cd apps/patient-mobile && npm run typecheck` → EXIT 0; `npm run lint` → EXIT 0 after fixing one `Array<T>` warning; `npm test -- --runInBand` → EXIT 0, **241 tests, 25 suites**.
+- `bash scripts/frontend-check.sh` → **EXIT 0** (`frontend standards: policy and tool commands passed`, includes both modules + root typecheck/lint/prettier/tests).
+- `npx prettier --check apps/patient-mobile/src/features/s_g3_08/*.ts *.tsx` → EXIT 0.
+- RED evidence before implementation: Java `InstructionFactServiceTest` 2 failures (immutable revision, stale revision), then 7 failures + 1 error with the second batch (due date, patient unit, digest, key burn, replay 500, orphan key, two overdue cases). Mobile Jest 11 failures across 3 suites (per-revision first view, re-acknowledgment, status, instant compare, replay, screen revision/revision-mismatch/RTL-adjacent behavior, auth scoping, tenant filtering). All were caused by the missing behavior described above, then turned green by the scoped changes.
 
-I did **not** run the database/integration gate (`db/check.sh`, `mvn verify`, `DocumentIsolationTest`) — per the worker contract those belong to the integrator. Reserved version **V17** is present as `db/migrations/V17__document_associations.sql`; I did not touch any other migration version.
+I did **not** run `db/check.sh`, `mvn verify`, the real-PostgreSQL isolation suite or any `gh`/push/tag command: those belong to the integrator/branch policy for this worker.
 
-## Defects found
+## Defects found and fixed (in scope)
 
-No in-scope defect was found. The S-G1-07 implementation already committed on this branch is complete and its in-scope fast unit tests pass. No in-scope source or test change was necessary; this worker's scoped contribution is verification evidence and this PR description.
+1. **Published revision was mutable** — `putInstruction` overwrote an existing `(org,id,revision)`; now `putIfAbsent` and a `REVISION_CONFLICT` guard so an acknowledgment can never bind to silently changed content (ARC-01/04, MSG-05).
+2. **Stale revision could be published after a newer one** — rejected with 409 `STALE_REVISION`.
+3. **Idempotency key was burned by a later business denial** and a replay of a denied command threw `NoSuchElementException` (HTTP 500) — keys are now read-then-atomically-reserved after validation; committed-fact lookups fail closed with 409 `CONFLICT`.
+4. **Non-atomic check-then-act on keys** allowed duplicate dispatch under concurrency — reservation is one atomic `putIfAbsent`; a lost race fails closed with 409 `CONFLICT` (tested with a synthetic racing store).
+5. **Publish digest omitted patient/unit** — different payloads under the same key returned the original success; digest now includes both (ARC-03).
+6. **Patient↔unit relationship was not checked on publish** — added active-connection validation (MSG-01 defense in depth).
+7. **Acknowledgment requested with no due instant silently disabled overdue routing** — now 422 `ACKNOWLEDGMENT_DUE_DATE_REQUIRED`.
+8. **Superseded revisions generated un-clearable overdue follow-ups** — excluded from detection and from the open queue.
+9. **Mobile first view was per instruction, not per revision** — a corrected revision could neither record a first view nor be displayed correctly; now keyed by `(instructionId, revision)` end to end, with a new-revision screen test.
+10. **Mobile receipt slot blocked a new requested revision** and status treated any old receipt as terminal — both are revision-aware now.
+11. **Mobile `overdueInstructions`/`owningUnitFor` skipped auth and returned cross-tenant rows** — both now require the credential and filter by active organization and verified chart.
+12. **Mobile screen offered an acknowledge button the domain always rejected** when `request.revision !== revision` — button is now withheld.
+13. **Mobile deadline comparison was lexicographic** — uses `Date.parse` so an offset timestamp cannot hide an overdue request; `reduceFact` no longer lets a replay overwrite an earlier first view or receipt.
 
-## Reported merge-gate failures — triaged, all out of scope / environmental
+No patient data, credentials or raw logs are recorded here; all identifiers in code/tests are synthetic.
 
-The untrusted "Requested change" text reported a fast-merge-gate failure whose visible stack trace is a jsdom `reportException` at `apps/staff-web/tests/theme/ThemeProvider.test.tsx:6`. Findings:
+## Deferred findings (not fixed here — decision/owner needed)
 
-1. **That trace is an intentional negative test, not a failure.** `ThemeProvider.test.tsx:31-35` renders `useTheme()` outside its provider and asserts `toThrow(/useTheme/)` (`ThemeProvider.tsx:36-40` throws exactly that message), with `console.error` spied. Locally `bash scripts/frontend-check.sh` runs the full staff-web vitest suite and exits 0. The path is in `apps/staff-web`, outside my declared scope (`apps/api/.../g1/s_g1_07` and `apps/api/.../it/s_g1_07`). I did **not** modify it.
-2. **`scripts/quick-check.sh` fails at `check-pack.py` — "opencode.json is stale".** Verified as the documented cloud-worker CI-profile trap: worktree `opencode.json` SHA `279aa1e7…` equals `.github/opencode.ci.json`, carries the skip-worktree flag (`git ls-files -v` → `S`), while `git show HEAD:opencode.json` SHA is `14bba0da…`. `check-pack.py` judges the worktree (CI) profile, not the committed local profile — the known false positive recorded as OPS-CW-003-01. I did **not** regenerate or overwrite `opencode.json` (root-level, out of scope, and it would replace the CI profile with the local one).
-3. **`python3 -I scripts/check-migrations.py --require-baseline` fails — "version gap: expected V9, found V17".** This shard contains V1–V8 plus reserved V17; V9–V16 belong to other parallel workers' stories and are absent here. On the integrator's merge with `main` those earlier versions are present, so the contiguity gate applies to the merged tree. I did **not** fabricate V9–V16.
-4. **Python tooling tests report 7 failures / 4 errors**, all explained by the above: four `test_check_pack.*` failures + `test_repository_migrations_are_valid` (items 2 and 3); `test_fast_tier`, `test_workflow_concurrency` and two `test_swarm.PlanTests` errors are `ModuleNotFoundError: No module named 'yaml'` (pyyaml absent in this worker image); three `test_agent_run.*` failures are environment-dependent. None is in the S-G1-07 scope or caused by this story.
+These came from four read-only specialist reviews (simulated, not human clinical evidence) and are outside the declared scope or need a separate story:
 
-Because the reported failure is outside my scope and not reproducible as a failure locally, and because resolving items 2–4 requires files/dependencies outside my scope, I stopped at verified in-scope evidence rather than making out-of-scope edits.
+- **Withdrawal state is owned by S-G3-07/MSG-04.** This slice's synthetic `Instruction` has no state field, so a direct API call cannot observe a MSG-04 withdrawal; only the mobile projection checks `withdrawn`. A cross-store/cross-module state check needs Architect + clinical-safety sign-off before G5 launch. Flagged as **launch-relevant** by the physician reviewer.
+- **Durable storage / outbox / worker.** The in-memory adapter, local mobile fact client and lazy follow-up scan follow the pattern of sibling messaging slices (S-G3-01…07). V36 was reserved but **not created**: scope contains only the two feature paths, no `db/migrations`, and every sibling messaging story uses the synthetic adapter. A separate cross-boundary story must add tenant-keyed tables, RLS/uniqueness, atomic outbox, a scheduled overdue worker and real client API wiring. Architect/PO decision requested at integration; no durable evidence is claimed here.
+- Follow-up state is stored as one overwritten row rather than an append-only fold; timeline reads are audited as `FOLLOW_UP_LIST` and a unit-unassigned tenant admin gets 404; ARC-03/04 headers (`Idempotency-Key`, `If-Match`, 412 for stale) are not implemented on these commands. Each needs its own bounded story.
+- Arabic strings/localization remain with S-G3-11/S-G5-10 (UX-01); RTL direction is implemented and tested here.
 
-## Decisions / notes for the integrator
+## Evidence classification and directives
 
-- No production or test source was changed by this worker; in-scope code was already complete and green.
-- Confirm on the **merge result**: V9–V16 present (migration contiguity), the correct `opencode.json` profile applies for `check-pack.py`, and pyyaml is installed for the workflow tests. These are merge/environment conditions, not S-G1-07 changes.
-- Coverage (JaCoCo 100% line/branch/method/class) and the real-PostgreSQL `DocumentIsolationTest` are enforced by `mvn verify` / `db/check.sh`, which the integrator runs; I did not fabricate a coverage result.
-- Synthetic fixtures only. No patient data or credentials were used or recorded. No human or clinical evidence; all evidence above is tool-generated.
-- Commit: no in-scope production/test source change was needed, so this branch's only new commit force-adds this ignored `.agent/pr-notes.md` file (the publish job reads the same file from the worktree artifact). The S-G1-07 implementation itself was already committed at HEAD `a9fdb91`.
+- Tool evidence: all command outputs and counts above, executed locally on this worker branch.
+- Reviewer evidence: bounded findings from `smartclinic-senior-backend`, `smartclinic-senior-mobile`, `smartclinic-software-architect` and `smartclinic-physician-reviewer` (simulated reviewers, no edits by them).
+- Simulated-user/human evidence: none. No clinician or patient participated; real-patient approval remains a G5 gate.
+- Branch `swarm/S-G3-08-98`; no push, tag, `gh`, tracker or docs edit was performed by this worker. Reserved migration V36 was not used.
