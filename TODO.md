@@ -560,6 +560,9 @@ Raised by the dispatch-3 run-3 verification. Address in the next authorized chan
 - [x] S-FIX-TEAM-PUSH-01 · OpenCode team's `publish` step failed when an agent changed `.github/workflows/*`: `github.token` (App) lacks workflow scope. Added `PUSH_TOKEN` in `agent-run.sh` `github_git()` (falls back to `GH_TOKEN`) and wired `secrets.SWARM_TOKEN` only to that variable, keeping `gh` CLI on the App token because a classic PAT without `read:org` breaks GraphQL calls.
   - evidence: run 44503284412 job 135488337891 showed `remote rejected ... workflow .github/workflows/swarm.yml without workflows permission`. New test `test_push_token_overrides_gh_token_for_git_only` passes; 8 agent-run tests, 159 total tooling tests OK; `check-docs.py`/`check-secrets.py` green. Evidence source: GitHub Actions log plus executed tool commands; no human or clinical evidence.
 
+- [x] S-FIX-BRANCH-ID-01 · All 10 swarm workers failed at publish with `refusing unexpected branch name 'swarm/S-G0-06-64'`: `task_id_of()` only recognised one-hyphen IDs (`CW-001`), while new spec stories use multi-hyphen IDs (`S-G0-06`). Fixed the parser to strip only the trailing numeric run suffix; added a regression test covering `CW-001`, `S-G0-06`, `S-G1-02`, `X-01`, `FIX-444`.
+  - evidence: user-supplied CI log named all 10 branches; local check confirms each now maps to its task ID; 160 tooling tests OK across three consecutive runs, `quick-check.sh`, `check-docs.py`, `check-secrets.py`, `gen-opencode.py --check` green. Evidence source: CI log plus executed tool commands; no human or clinical evidence.
+
 ## One-week execution plan (1 wave per hour)
 
 Created 2026-11-19T08:55Z from the open entries above. Horizon: 7 days × 24 hours = 168 hourly wave slots. This plan uses 7 implementation waves; the remaining 161 hourly slots are buffer for `needs-fix` retries, fix PRs, gate re-runs and human approvals.
