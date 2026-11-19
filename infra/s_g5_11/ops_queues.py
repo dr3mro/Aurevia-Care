@@ -23,7 +23,7 @@ Exit codes: 0 = artifact passes the ADM-02 checks, 1 = it fails a check,
 """
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
 SCHEMA_VERSION = "1.0"
@@ -52,6 +52,15 @@ REQUIRED_ACTION = {
     "escalated": "escalate",
 }
 MAX_EXPORT_TTL_SECONDS = 86400
+# The audit verb that must corroborate each declared operator action. A bare
+# audit-id reference is not enough: an unrelated event could stand in for it.
+ACTION_AUDIT_NAMES = {
+    "assign": "ASSIGN",
+    "resolve": "RESOLVE",
+    "retry": "RETRY",
+    "escalate": "ESCALATE",
+}
+EXPORT_AUDIT_NAME = "EXPORT"
 AUDIT_FIELDS = ("id", "actor", "action", "resource_id", "at", "outcome",
                 "correlation_id", "organization_id")
 AUDIT_TEXT_FIELDS = ("id", "actor", "action", "resource_id", "outcome",
@@ -82,6 +91,26 @@ def _parse_instant(value):
 def _is_instant(value):
     """Return true when the value is a timezone-aware ISO instant."""
     return _parse_instant(value) is not None
+
+
+def _same_instant(first, second):
+    """Compare two instants by value, not by their ISO string spelling."""
+    left = _parse_instant(first)
+    right = _parse_instant(second)
+    return left is not None and right is not None and left == right
+
+
+def _audit_corroborates(event, actor, action_name, at, resource_id):
+    """Check that an audit event actually describes a cited action.
+
+    ``resource_id`` is optional because an export envelope has no separate
+    identifier; its audit event is matched on actor, verb and time alone.
+    """
+    return (isinstance(event, dict)
+            and event.get("actor") == actor
+            and event.get("action") == action_name
+            and (resource_id is None or event.get("resource_id") == resource_id)
+            and _same_instant(event.get("at"), at))
 
 
 def _ttl_seconds(created_at, expires_at):
@@ -168,12 +197,12 @@ def _check_operators(operators, checks):
 
 
 def _check_audit(events, organization_id, checks):
-    """Check OPS-02 audit facts and return the set of auditable event IDs."""
+    """Check OPS-02 audit facts and return valid events indexed by their id."""
     if not isinstance(events, list) or not events:
         _record(checks, "audit_events", False, "audit_events must be a non-empty list")
-        return set()
+        return {}
     complete = True
-    ids = set()
+    by_id = {}
     duplicate = False
     for event in events:
         if not isinstance(event, dict):
@@ -189,9 +218,9 @@ def _check_audit(events, organization_id, checks):
             complete = False
         if _is_nonempty_string(event.get("id")):
             ident = event["id"]
-            if ident in ids:
+            if ident in by_id:
                 duplicate = True
-            ids.add(ident)
+            by_id[ident] = event
     complete = complete and not duplicate
     if complete:
         detail = "actor, action, resource, time, outcome, correlation and tenant recorded"
@@ -200,10 +229,10 @@ def _check_audit(events, organization_id, checks):
     else:
         detail = "an audit event is missing a required OPS-02 field"
     _record(checks, "audit_events", complete, detail)
-    return ids
+    return by_id
 
 
-def _check_items(queues, active_actors, audit_ids, checks):
+def _check_items(queues, active_actors, audit_events, checks):
     """Check work items and their operator actions across every queue."""
     structure_ok = state_ok = owner_ok = True
     actions_ok = reason_ok = actor_ok = audit_ok = True
@@ -244,13 +273,25 @@ def _check_items(queues, active_actors, audit_ids, checks):
                     actions_ok = False
                 if kind == "retry" and queue not in RETRYABLE_QUEUES:
                     actions_ok = False
-                if not _is_instant(action.get("at")):
+                action_at = action.get("at")
+                if not _is_instant(action_at):
+                    actions_ok = False
+                created_at = _parse_instant(item.get("created_at"))
+                action_instant = _parse_instant(action_at)
+                if (created_at is not None and action_instant is not None
+                        and action_instant < created_at):
                     actions_ok = False
                 if not _is_nonempty_string(action.get("reason")):
                     reason_ok = False
                 if not _is_nonempty_string(action.get("actor")) or action["actor"] not in active_actors:
                     actor_ok = False
-                if not _is_nonempty_string(action.get("audit_id")) or action["audit_id"] not in audit_ids:
+                audit_id = action.get("audit_id")
+                if not _is_nonempty_string(audit_id) or audit_id not in audit_events:
+                    audit_ok = False
+                elif not _audit_corroborates(
+                        audit_events[audit_id], action.get("actor"),
+                        ACTION_AUDIT_NAMES.get(kind) if isinstance(kind, str) else None,
+                        action_at, item["id"]):
                     audit_ok = False
     details = f"{inspected} work items inspected"
     _record(checks, "items.structure", structure_ok,
@@ -263,8 +304,8 @@ def _check_items(queues, active_actors, audit_ids, checks):
             "assigned and escalated items have an owner" if owner_ok
             else "an assigned or escalated item has no owner: " + details)
     _record(checks, "items.actions", actions_ok,
-            "actions are typed, timed and retry-scoped" if actions_ok
-            else "an item has malformed, missing or disallowed actions: " + details)
+            "actions are typed, timed, retry-scoped and never predate their item" if actions_ok
+            else "an item has malformed, missing, premature or disallowed actions: " + details)
     _record(checks, "items.reason", reason_ok,
             "every operator action carries a reason" if reason_ok
             else "an operator action has no reason: " + details)
@@ -272,12 +313,12 @@ def _check_items(queues, active_actors, audit_ids, checks):
             "every action was performed by an active authorized operator" if actor_ok
             else "an action names an inactive or unauthorized actor: " + details)
     _record(checks, "items.audit", audit_ok,
-            "every action references a recorded audit event" if audit_ok
-            else "an action references an unknown audit event: " + details)
+            "every action cites an audit event for the same actor, verb, item and time" if audit_ok
+            else "an action cites an unknown or non-corroborating audit event: " + details)
 
 
 def _check_exports(exports, organization_id, known_queues, active_actors,
-                   audit_ids, checks):
+                   audit_events, checks):
     """Check explicit scope, bounded expiry, audit and actor on every export."""
     names = ("exports.scope", "exports.expiry", "exports.audit", "exports.actor")
     if not isinstance(exports, list):
@@ -300,7 +341,10 @@ def _check_exports(exports, organization_id, known_queues, active_actors,
         if ttl is None or ttl <= 0 or ttl > MAX_EXPORT_TTL_SECONDS:
             expiry_ok = False
         audit_id = export.get("audit_id")
-        if not _is_nonempty_string(audit_id) or audit_id not in audit_ids:
+        if not _is_nonempty_string(audit_id) or audit_id not in audit_events:
+            audit_ok = False
+        elif not _audit_corroborates(audit_events[audit_id], export.get("actor"),
+                                     EXPORT_AUDIT_NAME, export.get("created_at"), None):
             audit_ok = False
         actor = export.get("actor")
         if not _is_nonempty_string(actor) or actor not in active_actors:
@@ -312,8 +356,8 @@ def _check_exports(exports, organization_id, known_queues, active_actors,
             f"every export expires within {MAX_EXPORT_TTL_SECONDS}s" if expiry_ok
             else "an export has an unbounded, missing or non-positive expiry")
     _record(checks, "exports.audit", audit_ok,
-            "every export references a recorded audit event" if audit_ok
-            else "an export has no valid audit reference")
+            "every export cites an export audit event by the same actor at creation" if audit_ok
+            else "an export has no valid, corroborating audit reference")
     _record(checks, "exports.actor", actor_ok,
             "every export was requested by an active authorized operator" if actor_ok
             else "an export names an inactive or unauthorized actor")
@@ -343,10 +387,10 @@ def evaluate(artifact):
             "a non-empty active organization is required")
     queues = _check_queues(artifact.get("queues"), checks)
     active_actors = _check_operators(artifact.get("operators"), checks)
-    audit_ids = _check_audit(artifact.get("audit_events"), organization_id, checks)
-    _check_items(queues, active_actors, audit_ids, checks)
+    audit_events = _check_audit(artifact.get("audit_events"), organization_id, checks)
+    _check_items(queues, active_actors, audit_events, checks)
     _check_exports(artifact.get("exports"), organization_id, set(queues),
-                   active_actors, audit_ids, checks)
+                   active_actors, audit_events, checks)
     return _verdict(checks, kind)
 
 

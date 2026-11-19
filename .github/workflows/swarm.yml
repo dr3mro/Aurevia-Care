@@ -9,7 +9,7 @@ on:
     inputs:
       workers:
         description: Worker cap; the wave uses fewer when fewer tasks are ready (1 to 10, default 1)
-        default: '10'
+        default: '1'
       repair_run:
         description: Failed run id on main to repair (set by the main watchdog)
         default: ''
@@ -93,7 +93,7 @@ jobs:
         if: steps.budget.outputs.start == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          WORKERS: ${{ inputs.workers || '10' }}
+          WORKERS: ${{ inputs.workers || '1' }}
           REPAIR_RUN: ${{ inputs.repair_run }}
           IMAGES_READY: ${{ steps.images.outputs.ready }}
         run: |
@@ -116,7 +116,7 @@ jobs:
     # Three-hour task budget plus 10 minutes for bundling and artifact upload.
     # The agent gets a cooperative 175-minute deadline in its prompt; the next
     # wave starts automatically after publish via the `next` job.
-    timeout-minutes: 185
+    timeout-minutes: 225
     strategy:
       max-parallel: 1
       fail-fast: false
@@ -152,13 +152,31 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ matrix.kind == 'fix' && matrix.branch || github.event.repository.default_branch }}
-          fetch-depth: 1
+          # Full history so the branch can be merged with main after the work.
+          fetch-depth: 0
           persist-credentials: false
       - name: Work the task (no GitHub token in this step)
         env:
           # Prefer this slot's account, with the team key as a compatibility fallback.
           OPENCODE_API_KEY: ${{ secrets[format('OPENCODE_API_KEY_{0}', matrix.slot)] || secrets.OPENCODE_API_KEY }}
         run: scripts/agent-run.sh implement
+      # The worker job's token is read-only; it only fetches main. The agent
+      # step above and the merge step below never see it.
+      - name: Fetch main
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_BRANCH: ${{ github.event.repository.default_branch }}
+        run: scripts/agent-run.sh fetch-main || true
+      - name: Merge main and fix conflicts (no GitHub token in this step)
+        if: always()
+        env:
+          OPENCODE_API_KEY: ${{ secrets[format('OPENCODE_API_KEY_{0}', matrix.slot)] || secrets.OPENCODE_API_KEY }}
+          BASE_BRANCH: ${{ github.event.repository.default_branch }}
+          MERGE_ATTEMPTS: '5'
+          AGENT_TIMEOUT: 20m
+        timeout-minutes: 35
+        run: scripts/agent-run.sh merge-main
       - name: Pack the commits
         if: always()
         run: scripts/agent-run.sh bundle || true
@@ -171,10 +189,12 @@ jobs:
             .agent/commits
             .agent/checks
             .agent/branch
+            .agent/merge
             .agent/pr-notes.md
             .agent/result.bundle
           if-no-files-found: ignore
-          retention-days: 1
+          # Kept for a week so a blocked or failed publish never loses the work.
+          retention-days: 7
   # One runner publishes every slot's result; ten matrix runners only added
   # startup time to a step that takes seconds.
   publish:
