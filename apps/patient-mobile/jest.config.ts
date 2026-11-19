@@ -3,7 +3,7 @@
  * React Native Testing Library and fails the build below 100% coverage of all
  * production source files (PAT-01, PAT-02, PAT-03, UX-01).
  */
-module.exports = {
+export default {
   preset: 'jest-expo',
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
   testMatch: ['<rootDir>/App.test.tsx', '<rootDir>/index.test.ts', '<rootDir>/app.config.test.ts', '<rootDir>/src/**/*.test.ts', '<rootDir>/src/**/*.test.tsx'],

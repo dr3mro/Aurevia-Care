@@ -1,19 +1,30 @@
 import tseslint from 'typescript-eslint';
 
+// The root config governs only the shared frontend tooling. Each application
+// owns its own strict lint config (apps/staff-web/eslint.config.ts,
+// apps/patient-mobile) and runs it in its own check.sh. The frontend gate calls
+// each module's lint command, so we must not double-lint app sources here.
 export default tseslint.config(
-  { ignores: ['node_modules/**', 'build/**', '**/target/**', '**/dist/**', 'coverage/**'] },
-  // JavaScript config/tooling files: base rules only, never typed rules.
+  {
+    ignores: [
+      'node_modules/**',
+      'build/**',
+      '**/target/**',
+      '**/dist/**',
+      'coverage/**',
+      'apps/**',
+    ],
+  },
   ...tseslint.configs.recommended.map((config) => ({
     ...config,
-    files: ['**/*.js', '**/*.jsx', '**/*.mjs', '**/*.cjs'],
+    files: ['frontend/**/*.ts', 'vitest.config.ts'],
   })),
-  // TypeScript application sources: strict typed linting per AGENTS.md.
   ...tseslint.configs.strictTypeChecked.map((config) => ({
     ...config,
-    files: ['**/*.ts', '**/*.tsx'],
+    files: ['frontend/**/*.ts', 'vitest.config.ts'],
   })),
   {
-    files: ['**/*.ts', '**/*.tsx'],
+    files: ['frontend/**/*.ts', 'vitest.config.ts'],
     languageOptions: {
       parserOptions: {
         projectService: true,
