@@ -228,6 +228,9 @@ public class IdentityProofingService {
                 failure.set(new ApiException(404, "LINK_NOT_FOUND", "no current link for this chart"));
                 return null;
             }
+            // Retire unspent invitations in the same transaction: a stale token
+            // must not silently re-establish access ended by this unlink.
+            repository.consumeOutstandingInvitations(subject, chartId);
             repository.insertLink(context.organizationId(), UUID.randomUUID().toString(), subject,
                     chartId, "unlinked", method, reason);
             repository.appendAudit(context, "CHART_UNLINK", chartId, "SUCCESS");
@@ -279,6 +282,9 @@ public class IdentityProofingService {
                 failure.set(new ApiException(404, "LINK_NOT_FOUND", "no current link for this chart"));
                 return null;
             }
+            // Old invitations are invalidated before the fresh one is issued, so
+            // only the new token can restore access after re-verification.
+            repository.consumeOutstandingInvitations(subject, chartId);
             repository.insertLink(context.organizationId(), UUID.randomUUID().toString(), subject,
                     chartId, "unlinked", "REVERIFICATION", reason);
             String token = newToken();
