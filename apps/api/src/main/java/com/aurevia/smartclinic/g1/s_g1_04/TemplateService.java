@@ -19,8 +19,7 @@ import com.aurevia.smartclinic.api.ApiException;
  * Each version keeps its complete field definitions, so a note validated
  * against an old version keeps the historical field meanings.</p>
  *
- * <p>Authorization is evaluated against the supplied {@link
- * com.aurevia.smartclinic.g1.s_g1_04.Actor} snapshot; the integrating caller
+ * <p>Authorization is evaluated against the supplied {@code Actor} snapshot; the integrating caller
  * must supply an actor freshly derived from active membership on every request
  * (IAM-01). Template definitions are not clinical payload, so reads are open to
  * any active role, while define, approve and audit are role gated. Each command
