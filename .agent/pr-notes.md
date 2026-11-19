@@ -1,48 +1,50 @@
-# S-G1-07 — Original PDF/image associations and immutable, localized, versioned PDF rendering
+# S-G3-09 — Service hours, response targets, named owners, backup coverage and after-hours guidance
 
 ## Requirement IDs and acceptance mapping
 
-Primary: **CLN-07**. Supporting: **ARC-01, ARC-02, ARC-03, OPS-02, IAM-01, UX-01** (locale/direction).
-Specification: `SMARTCLINIC_V1_SPEC.md` §3 CLN-07, §7 ARC-01..03, §8 OPS-02.
+Primary: **MSG-06**. Supporting: **ADM-01** (named approval, version history), **ARC-01/ARC-02/ARC-03** (tenant-owned keys, isolation, version precondition), **OPS-02** (audit, no PHI), **UX-01** (en/ar, RTL, IANA time zone).
 
-| Acceptance behaviour (CLN-07) | Implementation | Test evidence (synthetic only) |
+Specification: `SMARTCLINIC_V1_SPEC.md` §6.1 MSG-06, §6 ADM-01, §7 ARC-01..03.
+
+| MSG-06 acceptance behaviour | Implementation (in scope) | Test evidence (synthetic only) |
 |---|---|---|
-| Link original PDF/JPEG/PNG to chart, order or result; retain original bytes + checksum | `DocumentService.link`, `DocumentRepository.insert`; V17 `document_association` + `set_document_original_digest` trigger (sha256 derived from stored bytes, never caller-supplied) | `DocumentServiceTest`, `DocumentInputsTest`, `DocumentValuesTest`, `DocumentIsolationTest` (integrator) |
-| Rotation is presentation metadata only; voiding preserves history with a reason | `rotation_degrees` column pinned by `guard_document_association_update` trigger; `DocumentService.voidAssociation` + append-only `document_association_event` | `DocumentServiceTest`, `DocumentPolicyTest`, `DocumentIsolationTest` (integrator) |
-| Immutable, versioned PDFs; stale version / illegal transition rejected | `rendered_document` UNIQUE(org,type,id,locale,version), append-only triggers, `next_render_version` advisory-lock fold; `If-Match` on void (412) | `DocumentServiceTest`, `DocumentControllerTest`, `PdfRendererTest`, `DocumentIsolationTest` (integrator) |
-| English/Arabic, RTL direction, page numbers, provenance, print profile | `PdfRenderer` direction-aware layout, embedded font placeholder, `/PrintScaling /None`, provenance keys, `Page 1 / 1`; locale->direction checked by V17 CHECK constraint | `PdfRendererTest`, `DocumentValuesTest`, `DocumentIsolationTest` (integrator) |
-| Tenant isolation, fail-closed authorization, audit | Forced RLS on all three V17 tables; role matrix in `DocumentPolicy`; `DocumentService.authorize` re-derives membership/roles per transaction and audits denials | `DocumentPolicyTest`, `DocumentIsolationTest` (integrator) |
+| Each enabled unit publishes service hours, response targets, approved topics and urgent contact instructions | `ServiceProfileService.publish` + `ServiceProfileInputs` (zone/window/topic/guidance validation); `ServiceProfile` record carries `hours`, `responseTargetMinutes`, `topics`, `urgentInstructions`, `urgentChannel`, `downtimeChannel` | `ServiceProfileServiceTest`, `ServiceProfileDomainTest`, `ServiceProfileControllerTest` |
+| Published guidance is named-approved, versioned and only effective at its effective date | `ServiceProfileService.approve` (distinct named approver + version precondition); `effectiveAt`; immutable `ProfileHistory` | `ServiceProfileServiceTest`, `ServiceProfileDomainTest` |
+| Show guidance before sending; outside hours show when the unit next handles messages | `ServiceAvailability` from `ServiceHoursCalculator` (IANA zone, DST-safe, next handling instant); mobile `noticeLines` / `ServiceProfileNotice` render urgent guidance and channels first, then next-handling banner | `ServiceHoursCalculatorTest`, `ServiceProfileNotice` tests in `index.test.tsx` |
+| Require a named queue owner, backup coverage and overdue escalation | `queueOwner`, `backupCoverage`, `escalationChannel` are required validated publish fields; `urgentChannel`/`downtimeChannel` for time-sensitive care (site-approved keys, never clinical values) | `ServiceProfileDomainTest`, `ServiceProfileServiceTest` |
+| Surface backlog, unassigned work, failed notifications and overdue responses to unit supervisors | `SupervisorSnapshotCalculator.compute` + `ServiceProfileService.supervisorSnapshot` (SUPERVISOR_VIEW restricted to an assigned unit) | `SupervisorSnapshotCalculatorTest`, `ServiceProfileServiceTest` |
+| Tenant isolation, fail-closed authorization, audit | Every store call carries the organization; `authorize`/`requireUnitAccess` re-derive membership, role and unit connection per request; all reads/denials appended to `MessagingAudit` | `ServiceProfileServiceTest`, `InMemoryServiceProfileStoreTest` |
 
-Entry-point-to-test trace: `POST /api/v1/documents/associations` → `DocumentController.link` → `DocumentService.link` → guarded `TransactionTemplate` (tenant + membership + action) → `DocumentRepository.insert` (forced RLS + DB-derived digest) → `appendEvent` + `appendAudit` → 201. `POST /api/v1/documents/rendered` → `DocumentController.render` → `DocumentService.render` → `PdfRenderer.render` → `DocumentRepository.insertRendered` (immutable, versioned, RTL/LTR) → 201. Verified by `DocumentControllerTest` (unit) and `DocumentIsolationTest` (integration, two synthetic tenants).
+Entry-point-to-test trace:
+- `GET /api/v1/care-units/{unitId}/service-profile` → `ServiceProfileController.view` → `ServiceProfileService.viewProfile` → `authorize`+`requireUnitAccess` → `ServiceProfileStore.effectiveProfile` → audit → 200. Covered by `ServiceProfileControllerTest` and `ServiceProfileServiceTest`.
+- `GET .../{unitId}/availability` → `availability` → `ServiceHoursCalculator.calculate` → 200. Covered by `ServiceHoursCalculatorTest`.
+- `GET .../{unitId}/supervisor-snapshot` → `supervisorSnapshot` → `SupervisorSnapshotCalculator.compute` → 200. Covered by `SupervisorSnapshotCalculatorTest`.
+- `POST .../{unitId}/service-profiles` + `POST .../{unitId}/service-profiles/{profileId}/approve` → `publish`/`approve` (If-Match version precondition) → guarded store → audit. Covered by `ServiceProfileControllerTest` and `ServiceProfileServiceTest`.
+- Mobile: `createSyntheticServiceInfoClient.notice` → `noticeLines` → `<ServiceProfileNotice>` → testIDs asserted in `apps/patient-mobile/src/features/s_g3_09/index.test.tsx`.
 
-## Commands run and results (evidence source: executed tool commands)
+## Scope and prior state
 
-- `mvn -q -B -f apps/api/pom.xml -Pno-security,fast test` → **EXIT 0**. Surefire: **244 tests, 0 failures, 0 errors, 0 skipped**; 54 are in `com.aurevia.smartclinic.it.s_g1_07` (DocumentControllerTest 5, DocumentInputsTest 11, DocumentPolicyTest 4, DocumentServiceTest 20, DocumentValuesTest 5, PdfRendererTest 9). This is the exact Java command in `scripts/quick-check.sh`.
-- `bash scripts/frontend-check.sh` → **EXIT 0** (`frontend standards: policy and tool commands passed`). Includes staff-web `npm run typecheck`, `lint`, `npm test` (vitest) and patient-mobile plus root toolchain checks.
-- `python3 -I scripts/project-name.py displayName|repositorySlug` → `Aurevia Care` / `aurevia-care`, EXIT 0.
-- `python3 -I scripts/check-docs.py` → EXIT 0. `python3 -I scripts/check-secrets.py` → EXIT 0. `bash -n` on all shell scripts → EXIT 0.
+The complete in-scope implementation (9 Java main files, 6 Java test files, 4 mobile files) was already committed at the shard base `da4fbb4` from earlier attempts; this worker did **not** rewrite it. I reviewed every in-scope source and test file against MSG-06 and confirmed the behaviour above is implemented and covered. This worker's scoped source change is one documentation defect fix (below); the rest of the contribution is verification evidence.
 
-I did **not** run the database/integration gate (`db/check.sh`, `mvn verify`, `DocumentIsolationTest`) — per the worker contract those belong to the integrator. Reserved version **V17** is present as `db/migrations/V17__document_associations.sql`; I did not touch any other migration version.
+## Commands run and results (evidence source: executed tool commands; synthetic fixtures only)
 
-## Defects found
+- `mvn -q -B -f apps/api/pom.xml -Pno-security,fast test` → **EXIT 0** (run twice: before and after the source fix). The exact Java command in `scripts/quick-check.sh`. In-scope Surefire suites: `InMemoryServiceProfileStoreTest` 3, `ServiceHoursCalculatorTest` 13, `ServiceProfileControllerTest` 6, `ServiceProfileDomainTest` 13, `ServiceProfileServiceTest` 23, `SupervisorSnapshotCalculatorTest` 5 = **63 tests, 0 errors, 0 failures, 0 skipped**.
+- `cd apps/patient-mobile && npm ci --no-audit --no-fund` → EXIT 0 (1272 packages).
+- `npm run typecheck` → EXIT 0; `npm run lint` → EXIT 0.
+- `npm run test:coverage -- --ci` → **EXIT 0**. **230 tests / 25 suites passed.** Coverage for `s_g3_09`: `ServiceProfileNotice.tsx` 100% stmts/branch/funcs/lines, `serviceNotice.ts` 100% stmts/branch/funcs/lines (`types.ts` is interface-only, 0% like every sibling feature and excluded from behavioural coverage).
+- `python3 -I scripts/check-docs.py` → EXIT 0. `python3 -I scripts/check-secrets.py` → EXIT 0.
 
-No in-scope defect was found. The S-G1-07 implementation already committed on this branch is complete and its in-scope fast unit tests pass. No in-scope source or test change was necessary; this worker's scoped contribution is verification evidence and this PR description.
+Java JaCoCo 100% line/branch/method/class and the real-PostgreSQL/integration gate are enforced by `mvn verify` / `db/check.sh`, which the **integrator** runs; I did not run them and did not fabricate a Java coverage number.
 
-## Reported merge-gate failures — triaged, all out of scope / environmental
+## Defects found and fixed (in scope)
 
-The untrusted "Requested change" text reported a fast-merge-gate failure whose visible stack trace is a jsdom `reportException` at `apps/staff-web/tests/theme/ThemeProvider.test.tsx:6`. Findings:
+1. **Stale Javadoc `@param escalationAfterMinutes`** in `ServiceProfileContract.PublishProfileRequest` documented a record component that does not exist (overdue escalation is represented by `escalationChannel` plus the response target used by `SupervisorSnapshotCalculator`). Removed the stale tag and clarified the three `escalationChannel` `@param` descriptions to "site-approved channel key for overdue escalation". Documentation-only; no behaviour change. All fast tests re-run green after the fix.
 
-1. **That trace is an intentional negative test, not a failure.** `ThemeProvider.test.tsx:31-35` renders `useTheme()` outside its provider and asserts `toThrow(/useTheme/)` (`ThemeProvider.tsx:36-40` throws exactly that message), with `console.error` spied. Locally `bash scripts/frontend-check.sh` runs the full staff-web vitest suite and exits 0. The path is in `apps/staff-web`, outside my declared scope (`apps/api/.../g1/s_g1_07` and `apps/api/.../it/s_g1_07`). I did **not** modify it.
-2. **`scripts/quick-check.sh` fails at `check-pack.py` — "opencode.json is stale".** Verified as the documented cloud-worker CI-profile trap: worktree `opencode.json` SHA `279aa1e7…` equals `.github/opencode.ci.json`, carries the skip-worktree flag (`git ls-files -v` → `S`), while `git show HEAD:opencode.json` SHA is `14bba0da…`. `check-pack.py` judges the worktree (CI) profile, not the committed local profile — the known false positive recorded as OPS-CW-003-01. I did **not** regenerate or overwrite `opencode.json` (root-level, out of scope, and it would replace the CI profile with the local one).
-3. **`python3 -I scripts/check-migrations.py --require-baseline` fails — "version gap: expected V9, found V17".** This shard contains V1–V8 plus reserved V17; V9–V16 belong to other parallel workers' stories and are absent here. On the integrator's merge with `main` those earlier versions are present, so the contiguity gate applies to the merged tree. I did **not** fabricate V9–V16.
-4. **Python tooling tests report 7 failures / 4 errors**, all explained by the above: four `test_check_pack.*` failures + `test_repository_migrations_are_valid` (items 2 and 3); `test_fast_tier`, `test_workflow_concurrency` and two `test_swarm.PlanTests` errors are `ModuleNotFoundError: No module named 'yaml'` (pyyaml absent in this worker image); three `test_agent_run.*` failures are environment-dependent. None is in the S-G1-07 scope or caused by this story.
-
-Because the reported failure is outside my scope and not reproducible as a failure locally, and because resolving items 2–4 requires files/dependencies outside my scope, I stopped at verified in-scope evidence rather than making out-of-scope edits.
+No functional defect was found in the pre-existing implementation. No PHI, real identifiers or credentials appear in fixtures, code or these notes.
 
 ## Decisions / notes for the integrator
 
-- No production or test source was changed by this worker; in-scope code was already complete and green.
-- Confirm on the **merge result**: V9–V16 present (migration contiguity), the correct `opencode.json` profile applies for `check-pack.py`, and pyyaml is installed for the workflow tests. These are merge/environment conditions, not S-G1-07 changes.
-- Coverage (JaCoCo 100% line/branch/method/class) and the real-PostgreSQL `DocumentIsolationTest` are enforced by `mvn verify` / `db/check.sh`, which the integrator runs; I did not fabricate a coverage result.
-- Synthetic fixtures only. No patient data or credentials were used or recorded. No human or clinical evidence; all evidence above is tool-generated.
-- Commit: no in-scope production/test source change was needed, so this branch's only new commit force-adds this ignored `.agent/pr-notes.md` file (the publish job reads the same file from the worktree artifact). The S-G1-07 implementation itself was already committed at HEAD `a9fdb91`.
+- **No V37 migration.** The reserved version was not used: MSG-06 messaging stories in this slice use the tenant-scoped in-memory `ServiceProfileStore` adapter, matching siblings S-G3-02/03/04/07/08 (their reserved migrations are also absent). The store Javadoc records the G5 production gap (forced RLS, durable uniqueness, atomic outbox). Do not fabricate a migration for this story.
+- The fast checks above are green on this branch. The full `scripts/quick-check.sh` is expected to fail here for two environmental reasons unrelated to this story: (a) worktree `opencode.json` is the CI profile (SHA `279aa1e7…`, skip-worktree flag `S`, equals `.github/opencode.ci.json`) while `git show HEAD:opencode.json` is the local profile (`14bba0da…`), so `gen-opencode.py --check` reports stale — the documented OPS-CW-003-01 cloud-worker trap; I did not overwrite it; (b) `check-migrations.py --require-baseline` sees only this shard's subset of migrations, so the V9+ contiguity check fails until merged with `main`. Both resolve on the integrator's merge result.
+- I did not push, tag or call `gh`. Evidence sources are tool commands only; no simulated user, clinician or human-participant evidence was available for this slice.
+- Commit contains the scoped Javadoc fix plus the ignored `.agent/pr-notes.md` (force-added) used as the pull-request description.
