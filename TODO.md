@@ -338,8 +338,8 @@ Gate evidence: confirmed patients see only authorized revisions; generic notific
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [-] S-G3-11 · iOS and Android patient flows with accessibility and RTL operation (PAT-01–03, MSG-01–07, UX-01).
-  - agent: swarm-8
-  - attempts: 2
+  - agent: swarm-1
+  - attempts: 3
   - scope: apps/patient-mobile/src/features/s_g3_11, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_11
   - reserved: V39
   - details:
@@ -347,8 +347,8 @@ Gate evidence: confirmed patients see only authorized revisions; generic notific
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [-] S-G3-12 · Restore, downtime, load, accessibility and audit evidence (G3).
-  - agent: swarm-9
-  - attempts: 2
+  - agent: swarm-2
+  - attempts: 3
   - scope: apps/patient-mobile/src/features/s_g3_12, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_12
   - reserved: V40
   - details:
@@ -362,8 +362,8 @@ Gate evidence: confirmed patients see only authorized revisions; generic notific
 Gate evidence: wrong-patient study association refused; radiology addendum reaches referrer; PT episode produces signed discharge and referral closure; ambiguous prescription transmission reconciles without duplication; payment and refund replay reproduces balances.
 
 - [-] S-G4-01 · Imaging order intake, urgency, accession, study association, signed interpretation and addenda (RAD-01).
-  - agent: swarm-10
-  - attempts: 2
+  - agent: swarm-3
+  - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g4/s_g4_01, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g4_01
   - reserved: V41
   - details:
@@ -371,8 +371,8 @@ Gate evidence: wrong-patient study association refused; radiology addendum reach
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [-] S-G4-02 · Therapy episode, evaluation, goals, interventions, outcomes, signed progress and discharge (PT-01).
-  - agent: swarm-1
-  - attempts: 2
+  - agent: swarm-4
+  - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g4/s_g4_02, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g4_02
   - reserved: V42
   - details:
@@ -380,8 +380,8 @@ Gate evidence: wrong-patient study association refused; radiology addendum reach
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [-] S-G4-03 · Prescription draft, versioned drug catalog, alternatives and verified allergy checks (RX-01).
-  - agent: swarm-2
-  - attempts: 2
+  - agent: swarm-5
+  - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g4/s_g4_03, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g4_03
   - reserved: V43
   - details:
@@ -389,8 +389,8 @@ Gate evidence: wrong-patient study association refused; radiology addendum reach
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [-] S-G4-04 · Prescriber attestation, approved routing channel, transmission events and ambiguity reconciliation (RX-02).
-  - agent: swarm-3
-  - attempts: 2
+  - agent: swarm-6
+  - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g4/s_g4_04, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g4_04
   - reserved: V44
   - details:
@@ -398,8 +398,8 @@ Gate evidence: wrong-patient study association refused; radiology addendum reach
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [-] S-G4-05 · Itemized self-pay invoices, payments, refunds, receipts and daily reconciliation (FIN-01).
-  - agent: swarm-4
-  - attempts: 2
+  - agent: swarm-7
+  - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g4/s_g4_05, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g4_05
   - reserved: V45
   - details:
@@ -407,8 +407,8 @@ Gate evidence: wrong-patient study association refused; radiology addendum reach
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [-] S-G4-06 · Specialty role permissions and end-to-end flow evidence (PRD-06).
-  - agent: swarm-5
-  - attempts: 2
+  - agent: swarm-8
+  - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g4/s_g4_06, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g4_06
   - reserved: V46
   - details:
@@ -426,8 +426,8 @@ Gate evidence: each site approves workflow, release policy, market constraints, 
 - [ ] S-G5-03 · Result release rules, sensitive information handling and identity recovery approvals (OPS-01).
 - [ ] S-G5-04 · Laboratory, PACS and pharmacy interface contracts, credentials and outage drills (OPS-01).
 - [-] S-G5-05 · Capacity targets, pilot load profile and measured performance evidence (OPS-03).
-  - agent: swarm-6
-  - attempts: 2
+  - agent: swarm-9
+  - attempts: 3
   - scope: infra/s_g5_05, docs/operations/s_g5_05
   - reserved: V47
   - details:
@@ -435,16 +435,16 @@ Gate evidence: each site approves workflow, release policy, market constraints, 
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [-] S-G5-06 · Recovery targets, restore into clean environment and operational runbooks (OPS-04, OPS-05).
-  - agent: swarm-7
-  - attempts: 1
+  - agent: swarm-10
+  - attempts: 2
   - scope: infra/s_g5_06, docs/operations/s_g5_06
   - reserved: V48
   - details:
     Implement Recovery targets, restore into clean environment and operational runbooks (OPS-04, OPS-05) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [-] S-G5-07 · Separate environments, synthetic fixtures, signed builds, migration checks and progressive rollout (OPS-06).
-  - agent: swarm-8
+- [x] S-G5-07 · Separate environments, synthetic fixtures, signed builds, migration checks and progressive rollout (OPS-06).
+  - pr: #90
   - attempts: 1
   - scope: infra/s_g5_07, docs/operations/s_g5_07
   - reserved: V49
@@ -452,8 +452,8 @@ Gate evidence: each site approves workflow, release policy, market constraints, 
     Implement Separate environments, synthetic fixtures, signed builds, migration checks and progressive rollout (OPS-06) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [-] S-G5-08 · Tenant export manifest, retention, legal hold, deletion and offboarding (OPS-07).
-  - agent: swarm-9
+- [x] S-G5-08 · Tenant export manifest, retention, legal hold, deletion and offboarding (OPS-07).
+  - pr: #91
   - attempts: 1
   - scope: infra/s_g5_08, docs/operations/s_g5_08
   - reserved: V50
@@ -461,8 +461,8 @@ Gate evidence: each site approves workflow, release policy, market constraints, 
     Implement Tenant export manifest, retention, legal hold, deletion and offboarding (OPS-07) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [-] S-G5-09 · Onboarding dataset manifest, dry run, controlled batches and authorized sign-off (OPS-08).
-  - agent: swarm-10
+- [x] S-G5-09 · Onboarding dataset manifest, dry run, controlled batches and authorized sign-off (OPS-08).
+  - pr: #92
   - attempts: 1
   - scope: infra/s_g5_09, docs/operations/s_g5_09
   - reserved: V51
