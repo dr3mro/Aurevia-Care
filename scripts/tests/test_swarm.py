@@ -232,6 +232,11 @@ class PlanTests(unittest.TestCase):
             perms = config["jobs"][job]["permissions"]
             self.assertEqual(perms.get("issues"), "write", f"{name} {job}")
 
+    def test_labels_use_rest_not_graphql_pr_edit(self):
+        source = (ROOT / "scripts/swarm.py").read_text()
+        self.assertNotIn('"pr", "edit"', source)
+        self.assertIn('"api", "--method", "POST"', source)
+
     def test_gh_failure_surfaces_stderr(self):
         with mock.patch.object(swarm.subprocess, "run") as run:
             run.return_value = subprocess.CompletedProcess([], 1, "", "permission denied")
@@ -316,7 +321,7 @@ class PlanTests(unittest.TestCase):
         fake = FakeGh(diff="\n".join(f"apps/api/src/F{i}.java" for i in range(16)))
         with mock.patch.object(swarm, "gh", fake):
             self.assertTrue(swarm.guard(9))
-        self.assertTrue(fake.said("pr", "edit", "9"))
+        self.assertTrue(fake.said("labels[]=needs-human"))
 
     def test_committed_files_are_valid(self):
         slots = swarm.load_slots(ROOT / ".github/swarm/slots.json")
@@ -348,8 +353,8 @@ class ReleaseTests(unittest.TestCase):
         return fake
 
     def test_fix_that_pushed_nothing_returns_to_the_pool_or_a_human(self):
-        self.assertTrue(self.release(self.fix, "rate_limited").said("pr", "edit", "9", "needs-fix"))
-        self.assertTrue(self.release(self.fix, "failed").said("needs-human"))
+        self.assertTrue(self.release(self.fix, "rate_limited").said("api", "--method", "POST"))
+        self.assertTrue(self.release(self.fix, "failed").said("labels[]=needs-human"))
 
     def test_success_and_story_failures_touch_nothing(self):
         self.assertEqual(self.release(self.fix, "ok", 2).calls, [])
@@ -366,17 +371,17 @@ class FailTests(unittest.TestCase):
     def test_first_failure_asks_for_a_fix_and_dispatches_a_worker(self):
         more, fake = self.fail([])
         self.assertTrue(more)
-        self.assertTrue(fake.said("pr", "edit", "needs-fix", "fix-1"))
+        self.assertTrue(fake.said("labels[]=needs-fix") and fake.said("labels[]=fix-1"))
         self.assertTrue(fake.said("workflow", "run", "swarm.yml"))
         comment = [c for c in fake.calls if c[:2] == ("pr", "comment")][0][-1]
         self.assertIn(swarm.MARK, comment)
         self.assertNotIn("```evil", comment)
 
     def test_attempts_are_counted_and_capped(self):
-        self.assertTrue(self.fail(["fix-1"])[1].said("fix-2"))
+        self.assertTrue(self.fail(["fix-1"])[1].said("labels[]=fix-2"))
         more, fake = self.fail(["fix-1", "fix-2", "fix-3"])
         self.assertFalse(more)
-        self.assertTrue(fake.said("needs-human"))
+        self.assertTrue(fake.said("labels[]=needs-human"))
         self.assertFalse(fake.said("workflow"))
 
 
@@ -393,13 +398,13 @@ class IntegrationTests(unittest.TestCase):
         fake = FakeGh(diff="apps/api/src/A.java\n.github/workflows/x.yml\nscripts/swarm.py\n")
         with mock.patch.object(swarm, "gh", fake):
             self.assertEqual(swarm.guard(9), [".github/workflows/x.yml", "scripts/swarm.py"])
-        self.assertTrue(fake.said("needs-human"))
+        self.assertTrue(fake.said("labels[]=needs-human"))
 
     def test_repair_pr_bypasses_protected_path_guard(self):
         fake = FakeGh(diff="apps/api/src/A.java\n.github/workflows/x.yml\nscripts/swarm.py\n")
         with mock.patch.object(swarm, "gh", fake):
             self.assertEqual(swarm.guard(9, repair=True), [])
-        self.assertFalse(fake.said("needs-human"))
+        self.assertFalse(fake.said("labels[]=needs-human"))
 
     def test_is_repair_detects_autofix_label(self):
         fake = FakeGh(pr_view={"labels": labels("swarm", "autofix"), "title": "other"})
@@ -420,8 +425,8 @@ class IntegrationTests(unittest.TestCase):
         fake = FakeGh(diff="apps/api/A.java\nTODO.md\n", pr_view={"labels": []})
         with mock.patch.object(swarm, "gh", fake):
             self.assertEqual(swarm.guard(9), ["TODO.md"])
-        self.assertTrue(fake.said("needs-fix", "fix-1"))
-        self.assertFalse(fake.said("needs-human"))
+        self.assertTrue(fake.said("labels[]=fix-1"))
+        self.assertFalse(fake.said("labels[]=needs-human"))
 
     def test_guard_allows_ordinary_changes(self):
         fake = FakeGh(diff="apps/api/src/A.java\ndb/migrations/V4__x.sql\n")
@@ -436,13 +441,13 @@ class IntegrationTests(unittest.TestCase):
                            "apps/patient-mobile/check.sh\napps/patient-mobile/App.tsx\n")
         with mock.patch.object(swarm, "gh", fake):
             self.assertEqual(swarm.guard(9), ["apps/staff-web/check.sh", "apps/patient-mobile/check.sh"])
-        self.assertTrue(fake.said("needs-human"))
+        self.assertTrue(fake.said("labels[]=needs-human"))
 
     def test_guard_still_protects_repository_root_check_script(self):
         fake = FakeGh(diff="check.sh\n")
         with mock.patch.object(swarm, "gh", fake):
             self.assertEqual(swarm.guard(9), ["check.sh"])
-        self.assertTrue(fake.said("needs-human"))
+        self.assertTrue(fake.said("labels[]=needs-human"))
 
 
 class WorkflowTests(unittest.TestCase):
@@ -826,7 +831,7 @@ class TwoTierTests(unittest.TestCase):
         fake = FakeGh(diff="apps/staff-web/check.sh\n")
         with mock.patch.object(swarm, "gh", fake):
             self.assertEqual(swarm.guard(9), ["apps/staff-web/check.sh"])
-        self.assertTrue(fake.said("needs-human"))
+        self.assertTrue(fake.said("labels[]=needs-human"))
 
     def test_efficiency_doc_and_quick_script_exist(self):
         self.assertTrue((ROOT / "docs/swarm/EFFICIENCY.md").exists())
