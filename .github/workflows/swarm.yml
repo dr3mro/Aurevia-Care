@@ -155,19 +155,19 @@ jobs:
           # Full history so the branch can be merged with main after the work.
           fetch-depth: 0
           persist-credentials: false
+      # The read-only token is used here, before the agent has touched the
+      # workspace. The main branch can move during the run, so the merge step
+      # later fetches nothing; a newer main is picked up by the integrator.
+      - name: Fetch main
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_BRANCH: ${{ github.event.repository.default_branch }}
+        run: scripts/agent-run.sh fetch-main || true
       - name: Work the task (no GitHub token in this step)
         env:
           # Prefer this slot's account, with the team key as a compatibility fallback.
           OPENCODE_API_KEY: ${{ secrets[format('OPENCODE_API_KEY_{0}', matrix.slot)] || secrets.OPENCODE_API_KEY }}
         run: scripts/agent-run.sh implement
-      # The worker job's token is read-only; it only fetches main. The agent
-      # step above and the merge step below never see it.
-      - name: Fetch main
-        if: always()
-        env:
-          GH_TOKEN: ${{ github.token }}
-          BASE_BRANCH: ${{ github.event.repository.default_branch }}
-        run: scripts/agent-run.sh fetch-main || true
       - name: Merge main and fix conflicts (no GitHub token in this step)
         if: always()
         env:

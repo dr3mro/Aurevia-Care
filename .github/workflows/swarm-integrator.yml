@@ -116,8 +116,9 @@ jobs:
         run: python3 -I scripts/swarm.py continue
 
   # A PR that conflicts with main is not failed right away: the agent merges main
-  # into its branch, fixes the conflicts and the integrator runs again. After
-  # three tries the PR goes back to the workers.
+  # into its branch and fixes the conflicts, then a separate trusted job pushes
+  # the result and the integrator runs again. After three tries the PR goes back
+  # to the workers. The agent and the push token never share a runner.
   resolve:
     name: Resolve merge conflicts
     needs: [pick, integrate]
@@ -130,10 +131,7 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
     permissions:
-      contents: write
-      pull-requests: write
-      issues: write
-      actions: write
+      contents: read
       packages: read
     defaults:
       run:
@@ -152,7 +150,8 @@ jobs:
           ref: main
           fetch-depth: 0
           persist-credentials: false
-      - name: Fetch main and the conflicted branches (read-only token)
+      # The read-only token is used here, before the agent has run anything.
+      - name: Fetch main and the conflicted branches
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -163,10 +162,40 @@ jobs:
         env:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY_1 || secrets.OPENCODE_API_KEY }}
         run: scripts/agent-run.sh resolve
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: resolved-branches
+          path: .agent/resolve
+          if-no-files-found: ignore
+          retention-days: 1
+  resolve-publish:
+    name: Push resolved branches
+    needs: [pick, resolve]
+    if: always() && needs.resolve.result != 'skipped'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      actions: write
+    steps:
+      # Trusted copy of the scripts from main, in a runner the agent never touched.
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@v8
+        continue-on-error: true
+        with:
+          name: resolved-branches
+          path: resolved
       - name: Push the resolved branches or send them back
         env:
           GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
-        run: python3 -I scripts/swarm.py resolve-publish --dir .agent/resolve
+        run: python3 -I scripts/swarm.py resolve-publish --dir resolved
       # PRs sent back to the workers (needs-fix) get a fix worker right away.
       - name: Start the next wave
         if: always()
