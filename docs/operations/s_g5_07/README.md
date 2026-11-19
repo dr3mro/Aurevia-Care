@@ -30,12 +30,16 @@ No new threshold or requirement ID is introduced by this handoff.
 |---|---|---|---|
 | Contract | The literals encoded in the [evaluator](../../../infra/s_g5_07/delivery_safety_evidence.py) and the [policy manifest](../../../infra/s_g5_07/delivery-safety-policy.json) | Fidelity of the encoding and fail-closed validation | That any environment, build or rollout exists |
 | Synthetic rehearsal | A seeded artifact run by [`check.sh`](../../../infra/s_g5_07/check.sh) in this repository | That the evaluator accepts a conforming artifact and rejects breaches | Isolation of real accounts, a real signature, a real rollout or real approval |
-| Measured deployment | An authorized artifact produced outside this repository from real pipeline and cloud evidence | What the artifact *declares* about a real rollout | Independent verification of those claims or G5 clinical/operational acceptance |
+| Measured deployment | An authorized artifact produced outside this repository from real pipeline and cloud evidence, carrying run provenance | What the artifact *declares* about a real rollout | Independent verification of those claims or G5 clinical/operational acceptance |
 
-A passing synthetic artifact is explicitly labelled `final_evidence: false`.
-Even a `measured_deployment` artifact that passes is a structured claim: the
-evaluator cannot verify a signature's trust root, that scans actually ran, or
-that access expired.
+A passing synthetic artifact is explicitly labelled `final_evidence: false`. A
+`measured_deployment` artifact is not granted final evidence on a bare
+declaration: it must carry run provenance (tool, version, command, UTC time,
+environment and source SHA), matching the sibling OPS-03 evaluator. Even then a
+passing measured artifact is a structured claim: the evaluator checks the
+presence and shape of that provenance, not its truth — it cannot verify a
+signature's trust root, that scans actually ran, or that access expired.
+Relabelling a rehearsal alone cannot yield final evidence.
 
 ## Document set
 
@@ -57,9 +61,9 @@ the tests and the canonical gate.
 
 | Check | Command | Proves |
 |---|---|---|
-| Unit and fixture gate | `bash infra/s_g5_07/check.sh` | 61 synthetic unit tests pass; the conforming fixture passes, the violation fixture fails, and the real migration gate is green |
+| Unit and fixture gate | `bash infra/s_g5_07/check.sh` | 68 synthetic unit tests pass; the conforming fixture passes, the violation fixture exits exactly 1, and the real migration gate is green |
 | Unit tests alone | `python3 -I -m unittest discover -s infra/s_g5_07/tests -q` | The evaluator's enumerated branches behave as specified |
-| Line coverage | `python3 -m trace --count --coverdir /tmp/opencode/s_g5_07_cov infra/s_g5_07/tests/run_coverage.py` | All 232 executable lines of the evaluator run; stdlib `trace` is used because `coverage.py` is not installed |
+| Line coverage | `python3 -m trace --count --coverdir /tmp/opencode/s_g5_07_cov infra/s_g5_07/tests/run_coverage.py` | All 248 executable lines of the evaluator run; stdlib `trace` is used because `coverage.py` is not installed |
 | Links and requirement IDs | `python3 -I scripts/check-docs.py` | Relative links resolve and every requirement ID is defined in the specification |
 | Credential and PHI shapes | `python3 -I scripts/check-secrets.py` | No credential or patient-identifier pattern was introduced |
 
@@ -75,6 +79,9 @@ the tests and the canonical gate.
 | D6 | A synthetic rehearsal is never final evidence | A rehearsal proves the check works, not that a deployment met it |
 | D7 | Reserved migration version V49 is unused | No schema change is needed; version gaps are allowed by the repository's change-safety gate |
 | D8 | No CI/workflow or shared script was wired | Those files are outside this story's scope; the gate is self-contained and the integrator runs the repository-wide checks |
+| D9 | A `measured_deployment` claim must carry six provenance fields | Without them, changing only `kind` and `source` would grant `final_evidence` to a synthetic rehearsal; this matches the sibling OPS-03 gate (decision made after a defensive review finding) |
+| D10 | All distinctness checks compare stripped values | Account/resource identifiers, rollout stages and production-access requester/approver are normalized before comparison, so whitespace padding cannot alias two values or self-approve access |
+| D11 | The violation fixture must exit exactly 1 | Any other non-zero exit is a parse/IO regression, not a rejected artifact; the canonical gate now asserts the exact status |
 
 ## Boundaries
 
