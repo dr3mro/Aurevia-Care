@@ -171,6 +171,8 @@ public interface RadTypes {
         ADDENDUM_LINKED,
         /** A critical communication was recorded. */
         CRITICAL_COMMUNICATION,
+        /** Read-back of a critical communication was recorded as a separate fact. */
+        READ_BACK,
         /** A referrer was notified about a signed revision. */
         REFERRER_NOTIFIED;
 

@@ -224,7 +224,7 @@ public class FinanceService {
      * @param request         void command
      * @param expectedVersion version read by the caller
      * @return the void invoice
-     * @throws ApiException on denial, stale version or a posted/paid invoice
+     * @throws ApiException on denial, stale version, an already void invoice or a posted/paid invoice
      */
     public View voidInvoice(String id, VoidRequest request, int expectedVersion) {
         FinanceInputs.uuid(id, "id");
@@ -233,6 +233,11 @@ public class FinanceService {
         return execute(FinanceActions.VOID, id, sink -> {
             Invoice current = repository.loadForUpdate(id).orElseThrow(notFound());
             requireVersion(current, expectedVersion);
+            // VOID is terminal: a second void must not overwrite the recorded
+            // reason and independent approver of the original decision.
+            if (current.state() == InvoiceState.VOID) {
+                throw new ApiException(409, "INVALID_TRANSITION", "invoice is already void");
+            }
             if (!current.state().canTransitionTo(InvoiceState.VOID)) {
                 throw new ApiException(409, "INVALID_TRANSITION",
                         "only a draft or an issued unposted invoice can be voided");
