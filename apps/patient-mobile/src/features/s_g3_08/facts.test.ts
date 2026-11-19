@@ -175,6 +175,28 @@ describe('MSG-05 acknowledgment state and overdue routing', () => {
     expect(foreign.organizationId).toBe(OTHER_ORG);
     expect(foreign.patientId).toBe(PATIENT);
   });
+
+  it('removes an acknowledged instruction from overdue routing but keeps delivery facts separate', () => {
+    const receipt = acknowledgeRevisionBound(view(), EMPTY_FACTS, 2, PATIENT, NOW);
+    if (!receipt.ok) throw new Error('expected success');
+    const deliveredOnly: DeliveryFacts = {
+      publication: {
+        kind: 'publication', instructionId: INSTRUCTION, revision: 2, organizationId: ORG, occurredAt: NOW,
+      },
+      dispatch: {
+        kind: 'dispatch', instructionId: INSTRUCTION, revision: 2, genericKey: 'NEW_INSTRUCTION',
+        correlationId: 'corr', occurredAt: NOW,
+      },
+      firstView: null,
+      acknowledgment: null,
+    };
+    expect(acknowledgmentStatus(view(), deliveredOnly, DUE)).toBe('overdue');
+    expect(overdueInstructions([view()], { [INSTRUCTION]: deliveredOnly }, DUE).map((v) => v.id))
+      .toEqual([INSTRUCTION]);
+    const acknowledged: DeliveryFacts = { ...deliveredOnly, acknowledgment: receipt.fact };
+    expect(acknowledgmentStatus(view(), acknowledged, DUE)).toBe('acknowledged');
+    expect(overdueInstructions([view()], { [INSTRUCTION]: acknowledged }, DUE)).toEqual([]);
+  });
 });
 
 describe('MSG-05 fact reduction', () => {
