@@ -162,15 +162,13 @@ Independent modules scoped to their own paths so workers cannot collide with bac
   - scope: docs/design
   - details:
     Bilingual clinical design-language documentation, in `docs/design` only. No application code. Produce a maintainer-facing design system specification for the staff web and patient app: color and typography tokens, spacing scale, light/dark theming, RTL mirroring rules, local-name and mixed-script display guidance, accessible focus states and WCAG 2.2 AA patterns for forms, tables, dialogs and critical-result banners. Include a token naming contract that CW-004 and CW-005 can adopt later, with a short mapping to requirement IDs (UX-01, PRD-05). Keep every Markdown link valid and every requirement ID defined in the specification. Do NOT touch `apps/`, `db/`, `contracts/`, `.github/`, `scripts/`, root-level `check.sh`, or any shared tracker. Write the requirement IDs and decisions to `.agent/pr-notes.md`.
-- [-] CW-007 · Staff web React appointment and worklist screens (synthetic fixtures)
-  - agent: swarm-2
+- [ ] CW-007 · Staff web React appointment and worklist screens (synthetic fixtures)
   - requirements: CLN-01, CLN-02, UX-01
   - depends: CW-004
   - scope: apps/staff-web/src/features/scheduling
   - details:
     ReactJS staff-web scheduling screens, in `apps/staff-web/src/features/scheduling` only. Depends on CW-004's scaffold, so reuse its React/Vite/TS setup, component set, theme, i18n bundles and generated OpenAPI client types. Build synthetic-only screens: a day/week appointment worklist ordered by scheduled time, a booking form with protected-resource conflict hint, check-in and assignment controls, and visit-state badges (booked → checked in → in progress → completed, plus cancelled/no-show). Use local fixture data with two tenants sharing the same local IDs to prove the UI never merges tenants; no real endpoints and no clinical data. Keep strict TypeScript, accessible labels and RTL-correct layout, and 100% coverage with Vitest. Do NOT touch `apps/api`, `db/`, `contracts/`, `apps/staff-web/check.sh`, `.github/`, `scripts/`, or shared trackers. Record requirement IDs, commands, results and decisions in `.agent/pr-notes.md`.
-- [-] CW-008 · Staff web React chart and document screens (synthetic fixtures)
-  - agent: swarm-3
+- [ ] CW-008 · Staff web React chart and document screens (synthetic fixtures)
   - requirements: CLN-03, CLN-05, CLN-07, UX-01
   - depends: CW-004
   - scope: apps/staff-web/src/features/chart
