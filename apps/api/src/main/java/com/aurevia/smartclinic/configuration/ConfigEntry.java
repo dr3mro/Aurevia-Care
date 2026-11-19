@@ -12,6 +12,7 @@ package com.aurevia.smartclinic.configuration;
  * @param approvedBy    user identifier of the named approver, or {@code null}
  * @param approvedAt    approval instant, or {@code null}
  * @param note          approval note, or {@code null}
+ * @return this record
  */
 public record ConfigEntry(String key, int version, String value, String status, String effectiveFrom,
                           String createdBy, String approvedBy, String approvedAt, String note) {

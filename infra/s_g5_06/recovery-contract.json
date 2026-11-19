@@ -1,0 +1,58 @@
+{
+  "schema_version": "1.0",
+  "requirements": ["OPS-04", "OPS-05"],
+  "source": "synthetic-contract",
+  "targets": {
+    "rpo_minutes": {"max": 15, "min": 0, "unit": "minutes"},
+    "rto_hours": {"max": 4, "min_exclusive": 0, "unit": "hours"}
+  },
+  "recovery_scope": [
+    "core_chart",
+    "order_data",
+    "documents",
+    "document_associations"
+  ],
+  "restore_targets": ["database", "objects", "idp_dependencies"],
+  "reconciliation": [
+    "hashes",
+    "source_versions",
+    "in_flight_deliveries",
+    "audit_coverage",
+    "completed_before_writes_reopened"
+  ],
+  "verification": ["before_pilot", "quarterly_cadence"],
+  "monitoring_signals": [
+    "error_rates",
+    "saturation",
+    "queue_age",
+    "partner_delivery",
+    "unmatched_reports",
+    "critical_acknowledgment_time",
+    "missing_coverage",
+    "unassigned_patient_messages",
+    "response_breaches",
+    "failed_instruction_notifications",
+    "overdue_instruction_acknowledgments",
+    "rendering_failures",
+    "backup_status"
+  ],
+  "ownership_roles": [
+    "operational_on_call_owner",
+    "site_clinical_coverage_owner"
+  ],
+  "runbooks": [
+    "paper_manual_capture",
+    "patient_identification",
+    "critical_contacts",
+    "supervised_back_entry"
+  ],
+  "duplicate_prevention": true,
+  "evidence_kinds": ["synthetic_rehearsal", "conducted_drill"],
+  "synthetic_markers": ["synthetic", "fixture", "seed", "mock"],
+  "notes": [
+    "These are the specification literals and named sets from OPS-04 and OPS-05; the evaluator in recovery_evidence.py is the executable encoding.",
+    "Revocation and withdrawal reapplication is a mandatory restore-procedure gate derived from IAM-02, IAM-05 and section 11, not an additional evaluator threshold.",
+    "OPS-05 names supervised back-entry as the fourth runbook topic; downtime drills belong to the OPS-04 verification cadence and G5 gate and are allowed as an extra runbook member.",
+    "A synthetic rehearsal artifact is never final evidence; human acceptance remains a G5 gate."
+  ]
+}
