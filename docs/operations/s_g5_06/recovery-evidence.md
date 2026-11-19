@@ -35,7 +35,8 @@ pass. See [Recovery targets](recovery-targets.md) and
 | `python3 -I infra/s_g5_06/recovery_evidence.py infra/s_g5_06/fixtures/violation_recovery_evidence.json` | Evaluate the violation artifact (exit 1; prints every failed check) |
 | `bash infra/s_g5_06/check.sh` | Canonical gate: unit tests plus positive and negative fixture runs |
 | `python3 -I -m unittest discover -s infra/s_g5_06/tests -q` | Evaluator unit tests alone |
-| `python3 -I -m trace --count --coverdir /tmp/opencode/s_g5_06_cov infra/s_g5_06/tests/run_coverage.py` | Line coverage; inspect the `recovery_evidence.cover` file for `>>>>>>` marks |
+| `python3 -I infra/s_g5_06/tests/coverage_gate.py` | Build-failing coverage gate; exits 1 if any evaluator line is uncovered |
+| `python3 -I -m trace --count --missing --coverdir /tmp/opencode/s_g5_06_cov infra/s_g5_06/tests/run_coverage.py` | Line coverage; inspect the evaluator's `recovery_evidence.cover` file for `>>>>>>` marks. `--missing` is required, otherwise unexecuted lines are never annotated |
 
 Exit codes: `0` = artifact passes, `1` = it fails at least one check, `2` =
 unreadable input (bad path, malformed JSON or invalid UTF-8).
@@ -50,8 +51,10 @@ Run locally on synthetic fixtures:
   targets, the missing scope class, the missing restore target and
   `clean_environment`, two reconciliation gates, `before_pilot`, monitoring
   signals, the missing clinical owner, runbooks and `duplicate_prevention`.
-- `bash infra/s_g5_06/check.sh` exits 0; 78 unit tests pass; stdlib `trace`
-  reports no uncovered line in `recovery_evidence.py`.
+- `bash infra/s_g5_06/check.sh` exits 0; 97 unit tests pass; the build-failing
+  coverage gate reports 271 evaluator lines with no uncovered line (measured
+  with `trace --count --missing`; the CLI `__main__` guard is a `#pragma NO COVER`
+  exception exercised through `main()` in the tests).
 
 These results prove the evaluator works on synthetic data. They are not a restore
 drill and are not final evidence.
