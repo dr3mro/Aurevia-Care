@@ -55,8 +55,7 @@ Current source state (2026-11-19T07:19Z, from `main` at `311d69a`): 7 Flyway mig
     Implement Same-tenant duplicate review and all-or-nothing chart consolidation (IAM-04) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [-] S-G0-07 · Patient identity proofing, verified chart linking and unlinking (IAM-05).
-  - agent: swarm-2
+- [ ] S-G0-07 · Patient identity proofing, verified chart linking and unlinking (IAM-05).
   - attempts: 2
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g0/s_g0_07, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g0_07
   - reserved: V10
