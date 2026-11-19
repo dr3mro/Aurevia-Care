@@ -59,6 +59,11 @@ FIELD = re.compile(r"^  - ([a-z]+):[ \t]*(.*)$")
 def gh(*args, check=True):
     done = subprocess.run(["gh", *args], capture_output=True, text=True)
     if check and done.returncode:
+        # Surface the CLI error in the trusted job log; a bare CalledProcessError
+        # hides why a label, comment or workflow dispatch was refused.
+        if done.stderr:
+            print(f"gh {' '.join(str(a) for a in args[:3])}: {done.stderr.strip()}",
+                  file=sys.stderr)
         raise subprocess.CalledProcessError(done.returncode, args, done.stdout, done.stderr)
     return done.stdout
 

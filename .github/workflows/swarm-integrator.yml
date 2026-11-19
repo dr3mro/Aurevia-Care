@@ -45,6 +45,8 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      # Labels are written through the Issues API, so PR write alone is not enough.
+      issues: write
       actions: write
     services:
       postgres:
