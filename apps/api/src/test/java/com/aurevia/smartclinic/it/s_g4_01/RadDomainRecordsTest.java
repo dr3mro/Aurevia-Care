@@ -6,7 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.Instant;
+import java.util.HexFormat;
 
 import org.junit.jupiter.api.Test;
 
@@ -91,8 +94,29 @@ class RadDomainRecordsTest {
                 InterpretationKind.INITIAL, "patient-a", "study-uid", "technique", "comparison",
                 "CHANGED", "impression", "follow-up", "signer-a", "attestation", AT, "tpl-1", null)
                 .checksum());
+        assertNotEquals(first.checksum(), new Interpretation("org-a", "order-a", 1, null,
+                InterpretationKind.INITIAL, "patient-a", "study-uid", "technique", "comparison",
+                "findings", "impression", "follow-up", "signer-a", "CHANGED_ATTESTATION", AT, "tpl-1",
+                null).checksum());
         assertNotEquals(first.checksum(), interpretation("org-a", "order-a", 1, null,
                 InterpretationKind.ADDENDUM, "signer-a").checksum());
+    }
+
+    @Test
+    void checksumIsAStableFixedLengthSha256DigestOfCanonicalContent() throws Exception {
+        Interpretation revision = interpretation("org-a", "order-a", 1, null,
+                InterpretationKind.INITIAL, "signer-a");
+
+        // Known answer: SHA-256 over the documented length-prefixed canonical fields.
+        // The canonical form is independent of the production helper.
+        String canonical = "5:org-a7:order-a1:14:null7:initial9:patient-a9:study-uid"
+                + "9:technique10:comparison8:findings10:impression9:follow-up"
+                + "8:signer-a11:attestation5:tpl-10:";
+        String expected = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                .digest(canonical.getBytes(StandardCharsets.UTF_8)));
+
+        assertEquals(64, revision.checksum().length());
+        assertEquals(expected, revision.checksum());
     }
 
     @Test

@@ -25,7 +25,7 @@ No new threshold or requirement ID is introduced by this handoff.
 |---|---|---|---|
 | Target | The spec literals encoded in the [evaluator](../../../infra/s_g5_05/capacity_evidence.py) | Fidelity of the encoding and fail-closed validation | That any target was achieved |
 | Synthetic rehearsal | A seeded, synthetic artifact run by [`check.sh`](../../../infra/s_g5_05/check.sh) in this repository | That the evaluator accepts a conforming artifact and rejects breaches | Pilot capacity, latency or availability; no real request was served |
-| Pilot measured | An authorized load run and a calendar-month availability record, produced outside this repository | Actual capacity and availability under the declared profile | Clinical or operational acceptance; that remains a G5 human gate |
+| Pilot measured | An authorized load run and a calendar-month availability record, produced outside this repository, with provenance | Actual capacity and availability under the declared profile | Clinical or operational acceptance; that remains a G5 human gate. Provenance presence is checked, not its truth |
 
 A passing synthetic artifact is explicitly labelled `final_evidence: false`. The
 evaluator never promotes a rehearsal to measured evidence.
@@ -49,7 +49,7 @@ fixtures, and the unit tests.
 
 | Check | Command | Proves |
 |---|---|---|
-| Unit and fixture gate | `bash infra/s_g5_05/check.sh` | 45 synthetic unit tests pass; the conforming fixture passes and the violation fixture fails |
+| Unit and fixture gate | `bash infra/s_g5_05/check.sh` | 55 synthetic unit tests pass; the conforming fixture passes and the violation fixture fails with the exact exit code 1 and all five named breaches |
 | Unit tests alone | `python3 -I -m unittest discover -s infra/s_g5_05/tests -q` | The evaluator's enumerated branches behave as specified |
 | Line coverage | `python3 -m trace --count --coverdir /tmp/opencode/s_g5_05_cov infra/s_g5_05/tests/run_coverage.py` | Every executable line of the evaluator runs; stdlib `trace` is used because `coverage.py` is not installed |
 | Links and requirement IDs | `python3 -I scripts/check-docs.py` | Relative links resolve and every requirement ID is defined in the specification |
@@ -66,6 +66,10 @@ fixtures, and the unit tests.
 | D5 | A passing synthetic artifact is not final evidence | Rehearsal proves the check works, not that the system met the target under real load |
 | D6 | Profile values must equal the specified values exactly | A run at a different scale did not execute the specified pilot profile |
 | D7 | Reserved migration version V47 is not used | No schema change is needed; version gaps are allowed by the repository's change-safety gate |
+| D8 | A `measured_pilot` must carry non-empty tool, version, command, UTC timestamp, environment and source SHA provenance and a named source | Without it `final_evidence` is granted to a bare self-declared artifact; presence is checked, truth remains a human gate |
+| D9 | Each request class must hold at least 1% of the run | A run with one command sample would report a meaningless command p95 |
+| D10 | Non-finite numbers and unhashable `kind` values fail closed | `Infinity` and a list/dict `kind` previously passed or crashed instead of producing named failed checks |
+| D11 | The negative fixture gate requires exit code 1 and the five expected check names | Accepting any non-zero exit would let an unreadable fixture silently disable the control |
 
 ## Boundaries
 
