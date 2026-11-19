@@ -22,7 +22,7 @@ export interface InstructionAcknowledgmentScreenProps {
   readonly facts: Readonly<Record<string, DeliveryFacts>>;
   readonly isRTL: boolean;
   readonly now: string;
-  readonly onFirstView: (instructionId: string) => void;
+  readonly onFirstView: (instructionId: string, revision: number) => void;
   readonly onAcknowledge: (instructionId: string, revision: number) => void;
 }
 
@@ -66,9 +66,10 @@ export function InstructionAcknowledgmentScreen({
 
   useEffect(() => {
     for (const instruction of instructions) {
-      if (!seen.current.has(instruction.id)) {
-        seen.current.add(instruction.id);
-        onFirstView(instruction.id);
+      const revealed = `${instruction.id}|${instruction.revision}`;
+      if (!seen.current.has(revealed)) {
+        seen.current.add(revealed);
+        onFirstView(instruction.id, instruction.revision);
       }
     }
   }, [instructions, onFirstView]);
@@ -85,7 +86,8 @@ export function InstructionAcknowledgmentScreen({
         const canAcknowledge = !acknowledged
           && status !== 'withdrawn'
           && status !== 'not_requested'
-          && instruction.revision === instruction.latestRevision;
+          && instruction.revision === instruction.latestRevision
+          && instruction.request?.revision === instruction.revision;
         return (
           <View key={instruction.id} testID={`instruction-${instruction.id}`} style={styles.row}>
             <Text accessibilityRole="header">{instruction.title}</Text>
