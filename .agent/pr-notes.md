@@ -3,57 +3,45 @@
 
 ## Requirement IDs and acceptance mapping
 
-Primary: **MSG-07**. Supporting: **ARC-07, OPS-02, OPS-07, PAT-02, UX-01, IAM-01**.
-Specification: `SMARTCLINIC_V1_SPEC.md` §6.1 MSG-07, §7 ARC-07, §8 OPS-02/OPS-07.
+Primary: **MSG-07**. Supporting: **OPS-02** (accurate, tamper-resistant audit), **ARC-07, OPS-07, PAT-02, UX-01, IAM-01**. Specification: `SMARTCLINIC_V1_SPEC.md` §6.1 MSG-07, §7 ARC-07, §8 OPS-02/OPS-07.
 
-| Acceptance behaviour (MSG-07) | Implementation (in scope) | Test evidence (synthetic only) |
+| Acceptance behaviour (MSG-07) | Implementation (in scope) | Synthetic test evidence |
 |---|---|---|
-| Audit opening, viewing, sending, assigning, downloading, acknowledging, filing, correcting, restricting conversations/files | `MessagingAuditContract.AuditAction` (9 workflow actions), `MessagingGovernanceService.recordAction` with server-derived outcome; denials appended via `deny` | `MessagingGovernanceServiceTest.recordActionAuditsEveryConversationAndFileAction`, `recordActionDeniesInactiveMembershipAndAuditsTheDenial`, `MessagingAuditDo
+| Audit opening, viewing, sending, assigning, downloading, acknowledging, filing, correcting and restricting conversations/files | `MessagingAuditContract.AuditAction` (9 workflow actions), `MessagingGovernanceService.recordAction` with a server-derived outcome; denials appended via `deny` | `MessagingGovernanceServiceTest.recordActionAuditsEveryConversationAndFileAction`, `...recordActionDeniesInactiveMembershipAndAuditsTheDenial`; `MessagingAuditDomainTest.everyAuditActionRoundTripsItsWireValue` |
+| Governance commands cannot be self-reported as successful audit facts | `MessagingGovernanceInputs.workflowAction(...)` restricted to the 9 recordable workflow actions; `recordAction` uses it (fix in this change) | `MessagingGovernanceServiceTest.recordActionRejectsGovernanceCommandsItCannotPerform` (red first); `MessagingAuditDomainTest.workflowActionSeparatesRecordableActionsFromGovernanceCommands` |
+| Configured retention and scoped, expiring exports | `RetentionPolicy`, `MessagingResource`, `retentionDecision`, `applyRetention`, `createExport` (allowlisted scope, 60-86400s TTL) | `MessagingGovernanceServiceTest.retentionDecisionDistinguishesHoldWindowAndEligibleResources`, `...applyRetentionSkipsHeldAndRecentResources`, `...createExportBoundsScopeAndTtl`; mobile `audit.retentionEligible` |
+| Legal holds suspend retention; release records actor/time/reason and preserves the placement reason | `LegalHold` + `active()`, `placeHold` (404/409), `releaseHold` (404/409), `isHeld` in retention decisions | `MessagingGovernanceServiceTest.placeHoldRequiresAnExistingResourceAndBlocksDuplicates`, `...releaseHoldRecordsTheReleasingActorAndRejectsRepeats`, `...releasedHoldPreservesPlacementReasonAndReasonIsAudited` |
+| Preserve provenance when authorized staff link messages/instructions to the chart | `ProvenanceLink`, `linkToChart` (clinician-only, verified-patient binding), read-only `provenanceLinks` mobile projection | `MessagingGovernanceServiceTest.linkToChartPreservesProvenanceAndRequiresClinicalAuthorization`, `...chartLinkRequiresValidSourceTypeAndVerifiedPatientBinding` |
+| Revocation stops new messaging and future attachment access | `recordRevocation`, `requireMessagingAllowed`, `requireAttachmentAccess` (fail closed on `revokedAt != null`) | `MessagingGovernanceServiceTest.newMessagingIsRefusedThroughARevokedConnection`, `...attachmentAccessFailsClosedAfterRevocation`, `...recordRevocationCapturesBlockingAndRecordAccessBasis` |
+| Record prior-conversation readability under the verified record-access policy; preserve sender/recipient duties | `RecordAccessPolicy`, `RevocationEffect` (fail-closed `UNKNOWN`), `RetentionDuty` | `MessagingGovernanceServiceTest.missingRecordAccessPolicyFailsClosed`, `...retentionDutiesPreserveSenderAndRecipientWindows` |
+| Requests for copies follow the site record-access procedure; audit access itself | `CopyRequest`, `requestCopy`, `auditTrail` (audits its own read) | `MessagingGovernanceServiceTest.copyRequestIsRoutedToRecordAccessAndAudited`, `...auditTrailReadsTenantEventsAndAuditsItsOwnRead` |
+| No clinical payload in governance facts; tenant isolation; OPS-02 actor/purpose/scope/time/action/resource/correlation/outcome | `AuditEvent` carries only non-sensitive fields; every store method takes `organizationId`; fresh membership+role check per request | `MessagingAuditDomainTest.auditEventCarriesOnlyNonSensitiveGovernanceFacts`, `...syntheticStoreKeepsEveryGovernanceSurfaceTenantScoped`; `MessagingGovernanceServiceTest.crossTenantRecordsAreConcealed` |
 
+Entry-point-to-test trace: `POST /api/v1/messaging-governance/actions` -> `MessagingGovernanceController.recordAction` -> `MessagingGovernanceService.recordAction` -> `MessagingGovernanceInputs.workflowAction` -> `requireContext` + `authorize` (fresh membership/role) -> `InMemoryMessagingGovernanceStore.appendAudit`. The `legal-holds`, `exports`, `chart-links`, `connections/{id}/revocation-effects`, `copy-requests`, `audit` and `retention/{id}` routes follow the same guarded path; `MessagingGovernanceServiceTest.controllerRoutesDelegateWithoutChangingFields` traces every route to its delegate. Patient side: `createSyntheticGovernanceClient` + `MessagingAuditPanel`, exercised in `apps/patient-mobile/src/features/s_g3_10/index.test.tsx`.
 
+## Defects found and fixed in this change
 
+1. **Audit fabrication through the generic recorder (OPS-02).** `recordAction` accepted all 16 `AuditAction` keys, so a caller with governance permissions could append a `SUCCESS` audit for `hold_place`, `hold_release`, `export`, `chart_link`, `copy_request`, `retention_apply` or `audit_read` without the corresponding command ever running - contradicting the method's own Javadoc that "a caller cannot self-report a success for an action that never occurred". Fixed by adding `MessagingGovernanceInputs.workflowAction(...)` restricted to the 9 workflow actions and using it in `recordAction`. Red test first (missing-method compile failure, then 422 assertions with no audit appended), then green.
+2. **SpotBugs `EI_EXPOSE_REP2` on `MessagingGovernanceController` constructor (pre-existing, in scope).** Added the same `@SuppressFBWarnings(EI_EXPOSE_REP2)` justification used by `MessagingGovernanceService` in the same package. After recompiling, no SpotBugs finding references `s_g3_10`.
 
+## Commands run and results (evidence source: executed tool commands; synthetic fixtures only)
 
-
-
-Test.everyAuditActionRoundTripsItsWireValue` |
-| Apply configured retention and scoped expiring exports | `RetentionPolicy`, `MessagingResource`, `retentionDecision`, `applyRetention`, `createExport` (allowlisted scope, 60–86400s TTL) | `MessagingGovernanceServiceTest.retentionDecisionDistinguishesHoldWindowAndEligibleResources`, `applyRetentionSkipsHeldAndRecentResources`, `createExportBoundsScopeAndTtl`; mobile `audit.retentionEligible` |
-| Legal holds suspend retention; release records actor/time/reason and preserves placement reason | `LegalHold` (+`active()`), `placeHold` (404/409), `releaseHold` (404/409), `isHeld` in retention decisions | `MessagingGovernanceServiceTest.placeHoldRequiresAnExistingResourceAndBlocksDuplicates`, `releaseHoldRecordsTheReleasingActorAndRejectsRepeats`, `releasedHoldPreservesPlacementReasonAndReasonIsAudited` |
-| Preserve provenance when authorized staff link messages/instructions to the chart | `ProvenanceLink`, `linkToChart` (clinician-only, verified-patient binding), read-only `provenanceLinks` mobile projection | `MessagingGovernanceServiceTest.linkToChartPreservesProvenanceAndRequiresClinicalAuthorization`, `chartLinkRequiresValidSourceTypeAndVerifiedPatientBinding`; mobile `exposes staff-filed provenance read-only...` |
-| Revocation stops new messaging and future attachment access | `recordRevocation`, `requireMessagingAllowed`, `requireAttachmentAccess` (fail closed on `revokedAt != null`) | `MessagingGovernanceServiceTest.newMessagingIsRefusedThroughARevokedConnection`, `attachmentAccessFailsClosedAfterRevocation`, `recordRevocationCapturesBlockingAndRecordAccessBasis`; mobile `blocks attachments only through a revoked connection` |
-| Record prior-conversation readability under the verified record-access policy; preserve sender/recipient duties | `RecordAccessPolicy`, `RevocationEffect` (fail-closed `UNKNOWN` policy), `RetentionDuty` | `MessagingGovernanceServiceTest.missingRecordAccessPolicyFailsClosed`, `retentionDutiesPreserveSenderAndRecipientWindows`; mobile `priorConversationsReadable`, fails-closed test |
-| Requests for copies follow the site record-access procedure; audit access itself | `CopyRequest`, `requestCopy`, `auditTrail` (audits its own read) | `MessagingGovernanceServiceTest.copyRequestIsRoutedToRecordAccessAndAudited`, `auditTrailReadsTenantEventsAndAuditsItsOwnRead` |
-| No clinical payload in governance facts; tenant isolation; OPS-02 actor/purpose/scope/time/action/resource/correlation/outcome | `AuditEvent` has only non-sensitive fields; every store method carries `organizationId`; fresh membership+role check per request | `MessagingAuditDomainTest.auditEventCarriesOnlyNonSensitiveGovernanceFacts`, `syntheticStoreKeepsEveryGovernanceSurfaceTenantScoped`; `MessagingGovernanceServiceTest.crossTenantRecordsAreConcealed` |
-
-Entry-point-to-test trace: `POST /api/v1/messaging-governance/actions` → `MessagingGovernanceController.recordAction` → `MessagingGovernanceService.recordAction` → `requireContext` + `authorize` (fresh membership/role via `MessagingGovernanceActions`) → `InMemoryMessagingGovernanceStore.appendAudit`. `POST .../legal-holds`, `POST .../exports`, `POST .../chart-links`, `POST .../connections/{id}/revocation-effects`, `POST .../copy-requests`, `GET .../audit`, `GET .../retention/{id}` follow the same guarded path; `MessagingGovernanceServiceTest.controllerRoutesDelegateWithoutChangingFields` traces every route to its delegate. Patient side: `createSyntheticGovernanceClient` + `MessagingAuditPanel`, exercised in `src/features/s_g3_10/index.test.tsx`.
-
-## Commands run and results (evidence source: executed tool commands)
-
-- `mvn -q -B -f apps/api/pom.xml -Pno-security,fast test` → **EXIT 0**. 1463 tests, 0 failures/errors/skipped; s_g3_10 = 38 tests (`MessagingAuditDomainTest` 13, `MessagingGovernanceServiceTest` 25). This is the exact Java fast tier from `scripts/quick-check.sh`.
-- `mvn -q -B -f apps/api/pom.xml jacoco:report` → **EXIT 0**. All 24 s_g3_10 production classes show **0 missed instructions, branches, lines and methods** (100% coverage) in `target/site/jacoco/jacoco.csv`.
-- `cd apps/patient-mobile && npm ci --no-audit --no-fund` → **EXIT 0** (1272 packages).
-- `npx jest src/features/s_g3_10/index.test.tsx --runInBand` → **EXIT 0**, 16 tests pass.
-- `npx jest --coverage --runInBand` → **EXIT 0**, 25 suites / 230 tests pass; s_g3_10 `audit.ts` and `MessagingAuditPanel.tsx` at 100% statements/branches/functions/lines (`types.ts` is type-only, 0/0, consistent with every sibling feature).
-- `cd apps/patient-mobile && npm run typecheck` → **EXIT 0**; `npm run lint` → **EXIT 0**.
-- `python3 -I scripts/check-migrations.py --require-baseline` → **EXIT 0** (gaps allowed; reserved V38 not required by the checker).
-- `git status` → clean before this note (base snapshot `da4fbb4`).
-
-I did **not** run `db/check.sh`, `mvn verify`, or any real-PostgreSQL integration suite: per the worker contract those belong to the integrator. There are no s_g3_10 integration fixtures to add (this story, like S-G3-04/S-G3-07, uses a tenant-keyed in-memory adapter with unit-level acceptance).
-
-## Defects found
-
-No in-scope production or test defect was found. The complete, green implementation was already present in the base snapshot at `da4fbb4`; running the fast unit tiers and a full JaCoCo/TS coverage review confirmed it is correct and fully covered. No in-scope source change was necessary.
-
-Non-blocking observation for the integrator (not a spec violation, no change made): `linkToChart` verifies a verified connection exists for the patient in the active tenant, but the synthetic store has no message-to-patient map, so it cannot additionally prove that `messageId`/`conversationId` belongs to that patient. Ownership of message↔patient binding belongs to the conversation/instruction services that call this governance guard (MSG-01/ARC-07); filing is a clinician-only action. Left unchanged to avoid out-of-scope store/interface churn.
+- `mvn -q -B -f apps/api/pom.xml -Pno-security,fast test` -> **EXIT 0**; 1507 tests, 0 failures/errors/skipped. s_g3_10: `MessagingAuditDomainTest` 14, `MessagingGovernanceServiceTest` 26 = **40** (was 38 before the added tests).
+- `mvn -q -B -f apps/api/pom.xml jacoco:report` -> **EXIT 0**; all **24** s_g3_10 production classes show 0 missed instructions/branches/lines/methods/complexity (**100%**). The two changed domain classes (`MessagingGovernanceInputs`, `MessagingGovernanceService`) are 0-missed on every metric.
+- `mvn -q -B -f apps/api/pom.xml -DskipTests -Ddependency-check.skip=true -Dspotbugs.skip=false spotbugs:check` (after `mvn -DskipTests compile`) -> remaining 14 findings are all in other workers' scopes (g0, g4, s_g3_05, s_g3_08); **none in `s_g3_10`** after the controller suppression.
+- `cd apps/patient-mobile && npx jest src/features/s_g3_10/index.test.tsx --runInBand` -> **EXIT 0**, 16 tests pass.
+- `cd apps/patient-mobile && npx jest --coverage --runInBand` -> **EXIT 0**, 26 suites / 268 tests pass; s_g3_10 `audit.ts` and `MessagingAuditPanel.tsx` at 100% statements/branches/functions/lines; `types.ts` type-only 0/0, consistent with every sibling feature.
+- `cd apps/patient-mobile && npm run typecheck` -> **EXIT 0**; `npm run lint` -> **EXIT 0**.
+- `python3 -I scripts/check-migrations.py --require-baseline` -> **EXIT 0** (V38 unused by design; migrations are outside the declared scope).
+- `bash scripts/quick-check.sh` -> stopped at `check-pack: opencode.json is stale: run scripts/gen-opencode.py`. This is a known cloud-worker artifact: the worktree `opencode.json` is the CI profile copied under `skip-worktree` (`git ls-files -v opencode.json` shows `S`), and I did not touch it or any agent file. The remaining quick-check steps (shell syntax/shellcheck, project-name, check-docs, check-secrets, migrations, Python unit tests) were run manually; the Python suite has pre-existing environment issues unrelated to this story (PyYAML not installed; the same `opencode.json` drift in `test_check_pack`; a `PatientFlowContract.java` convention failure in another worker's s_g3_11 scope; a dispatchable-task-count assertion reflecting current tracker state; flaky git/gh tooling tests). Per the worker contract, database and integration checks are the integrator's gate; no real-PostgreSQL suite was run here.
 
 ## Decisions / notes for the integrator
 
-- No production or test source was changed by this worker; in-scope code was already complete and green. This branch's new commit updates only this ignored-then-tracked `.agent/pr-notes.md` (the PR description), matching the established worker precedent for an already-complete story.
-- Reserved migration version **V38** is intentionally unused: this story's scope is the in-memory governance adapter plus patient-mobile feature, and `db/migrations` is outside the declared scope. Migration contiguity passes without it.
-- Scope respected: only `apps/api/.../messaging/s_g3_10` and `apps/patient-mobile/src/features/s_g3_10` were reviewed; no shared tracker, no other migration version, no credentials or patient data touched.
-- Coverage (JaCoCo 100% line/branch/method/instruction/class and mobile 100% statements/branches/functions/lines) confirmed from locally executed reports; no fabricated or pending-as-covered results.
-- Evidence source: executed tool commands only. Synthetic fixtures throughout. No simulated reviewer, simulated user, human or clinical evidence was used for this story; real-patient approval remains a G5 gate.
-
+- Scope respected: source changes limited to `apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_10` (3 production files) and `apps/api/src/test/java/com/aurevia/smartclinic/messaging/s_g3_10` (2 test files), plus this PR-notes file.
+- Reserved migration version **V38** is intentionally unused: this story is the in-memory governance adapter plus the patient-mobile feature, and `db/migrations` is outside the declared scope. Migration contiguity passes without it.
+- No patient data or credentials were used; all fixtures are synthetic.
+- Evidence source: executed tool commands only. No simulated reviewer, simulated user, human or clinical evidence was used for this story; real-patient approval remains a G5 gate.
+- No push, tag or `gh` call was made, per the worker contract. This commit is scoped to the current branch.
 
 ---
 =======

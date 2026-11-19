@@ -28,6 +28,18 @@ public final class MessagingGovernanceInputs {
     private static final Set<String> EXPORT_SCOPES = Set.of(
             "conversation", "message", "instruction", "attachment", "report", "audit");
 
+    /**
+     * Actions the generic audit recorder may legitimately record. Governance
+     * commands (holds, exports, chart links, copy requests, retention, audit
+     * review) are only performed by their dedicated endpoints; accepting them
+     * through the recorder would fabricate a SUCCESS fact for work that never
+     * happened and weaken the OPS-02 audit guarantee.
+     */
+    private static final Set<AuditAction> WORKFLOW_ACTIONS = Set.of(
+            AuditAction.OPEN, AuditAction.VIEW, AuditAction.SEND, AuditAction.ASSIGN,
+            AuditAction.DOWNLOAD, AuditAction.ACKNOWLEDGE, AuditAction.FILE,
+            AuditAction.CORRECT, AuditAction.RESTRICT);
+
     private MessagingGovernanceInputs() {
     }
 
@@ -81,6 +93,26 @@ public final class MessagingGovernanceInputs {
         } catch (IllegalArgumentException exception) {
             throw new ApiException(422, "INVALID_ACTION", "unknown audit action");
         }
+    }
+
+    /**
+     * Parse an action wire key that the generic audit recorder may record.
+     *
+     * <p>Governance-command actions are deliberately excluded: each is
+     * performed and audited only by its dedicated command, so a caller of the
+     * recorder cannot self-report that a hold, export, chart link, copy
+     * request, retention run or audit review occurred (OPS-02).</p>
+     *
+     * @param value supplied action key
+     * @return the validated workflow action
+     * @throws ApiException when the key is unknown or is a governance command
+     */
+    public static AuditAction workflowAction(String value) {
+        AuditAction action = action(value);
+        if (!WORKFLOW_ACTIONS.contains(action)) {
+            throw new ApiException(422, "INVALID_ACTION", "action is not a recordable workflow action");
+        }
+        return action;
     }
 
     /**
