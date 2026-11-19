@@ -1,0 +1,35 @@
+.env
+.env.*
+node_modules/
+target/
+dist/
+coverage/
+.expo/
+*.log
+.DS_Store
+
+/build/
+
+# Tooling and editors
+__pycache__/
+*.pyc
+.venv/
+.idea/
+.vscode/
+*.tar
+
+# Credentials and infrastructure state: never commit
+*.pem
+*.key
+*.p12
+*.pfx
+*.tfstate
+*.tfstate.*
+*.tfvars
+.terraform/
+
+# Database dumps and local data can contain patient data
+*.dump
+*.bak
+*.sql.gz
+!.env.example
