@@ -33,6 +33,12 @@ public class ActionPolicy {
         }
         // A privacy auditor may review the append-only audit trail, but cannot
         // administer configuration or staff. Their clinical access is separate.
-        return "privacy_auditor".equals(role) && "AUDIT_READ".equals(action);
+        if ("privacy_auditor".equals(role)) {
+            return "AUDIT_READ".equals(action);
+        }
+        // Reception registers and searches patients; it cannot administer tenants.
+        return "reception".equals(role)
+                && ("PATIENT_REGISTER".equals(action) || "PATIENT_READ".equals(action)
+                    || "PATIENT_SEARCH".equals(action));
     }
 }

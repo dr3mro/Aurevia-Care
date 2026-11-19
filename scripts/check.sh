@@ -17,6 +17,7 @@ python3 -I scripts/check-pack.py
 python3 -I scripts/check-docs.py
 python3 -I scripts/check-secrets.py
 python3 -I -m unittest discover -s scripts/tests -q
+bash scripts/frontend-check.sh
 
 for module in apps/api apps/staff-web apps/patient-mobile; do
   if [[ -f "$module/check.sh" ]]; then

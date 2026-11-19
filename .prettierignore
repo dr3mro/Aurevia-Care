@@ -1,0 +1,13 @@
+node_modules/
+build/
+coverage/
+**/target/
+**/dist/
+.agent/
+# Repository Markdown/YAML/JSON are governed by check-docs.py and check-pack.py.
+**/*.md
+**/*.yml
+**/*.yaml
+**/*.json
+**/*.sql
+**/*.xml

@@ -20,14 +20,14 @@ Use docs/WORKFLOW.md to route routine, cross-boundary and safety-critical change
 
 Every user instruction or choice is durable input. Route it to the owning tracker in the same turn. After any completed task, write the outcome to the owning tracker so the next agent resumes without re-asking.
 
-| Input or outcome | Owner file |
-|---|---|
-| Durable directive, policy decision or approved choice | MEMORY.md (decision, rationale, date) |
+| Input or outcome                                         | Owner file                              |
+| -------------------------------------------------------- | --------------------------------------- |
+| Durable directive, policy decision or approved choice    | MEMORY.md (decision, rationale, date)   |
 | Task stage, executed commands, reviewer or test evidence | PROGRESS.md (one compact row per stage) |
-| Branch, delivery branch, commands or environment change | WORKSPACE.md |
-| Implementation decision with requirement IDs | PROJECT.md |
-| New story, acceptance change or improvement idea | TODO.md |
-| Observed, reproducible defect | BUGS.md |
+| Branch, delivery branch, commands or environment change  | WORKSPACE.md                            |
+| Implementation decision with requirement IDs             | PROJECT.md                              |
+| New story, acceptance change or improvement idea         | TODO.md                                 |
+| Observed, reproducible defect                            | BUGS.md                                 |
 
 Keep notes short and cite exact requirement IDs, paths and evidence. Record whether evidence came from a tool, reviewer, simulated user or human participant. Never store credentials, patient data or raw logs in any note.
 
@@ -39,5 +39,12 @@ Every change must meet all of the following before it is called done:
 - **Static and dependency security testing** on every change, including OWASP dependency analysis and language-appropriate static analysis. Record tool, version, command, finding count and disposition in the checkpoint.
 - **Clean code and SOLID**: one responsibility per unit, small explicit interfaces, dependency inversion at boundaries, no duplicated rules across layers, readable names and guard clauses, and a traceable entry point to a test for each behavior.
 - **Self-improvement**: when a defect, review finding or tool gap is observed, update the owning skill or agent instruction in the same change so the next run avoids it. Regenerate `opencode.json` after any agent or skill edit and commit the generated file.
+
+## Frontend standards
+
+- TypeScript only: .ts/.tsx, never .js/.jsx. tsconfig must have "strict": true, "noUncheckedIndexedAccess": true; no `any`, no `@ts-ignore`.
+- React: function components and hooks only, typed props, small single-purpose components, no business logic in JSX, data fetching via one typed API client.
+- Before finishing any task run `tsc --noEmit`, `eslint . --max-warnings=0`, `prettier --check .` and the tests, and fix every failure. Never disable a rule to pass.
+- Convert any existing .js/.jsx file you touch to TypeScript.
 
 Apply these rules in every specialist routing brief and in acceptance evidence.
