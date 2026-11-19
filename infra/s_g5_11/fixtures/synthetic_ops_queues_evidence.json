@@ -1,0 +1,243 @@
+{
+  "schema_version": "1.0",
+  "kind": "synthetic_rehearsal",
+  "source": "synthetic-ops-queue-fixture",
+  "organization_id": "org-synthetic-1",
+  "operators": [
+    {
+      "subject": "op-1",
+      "role": "tenant_admin",
+      "active": true
+    },
+    {
+      "subject": "op-2",
+      "role": "privacy_auditor",
+      "active": true
+    },
+    {
+      "subject": "clinician-1",
+      "role": "operator",
+      "active": false
+    }
+  ],
+  "audit_events": [
+    {
+      "id": "audit-1",
+      "actor": "op-1",
+      "action": "ASSIGN",
+      "resource_id": "u-1",
+      "at": "2026-11-19T09:30:00Z",
+      "outcome": "SUCCESS",
+      "correlation_id": "corr-1",
+      "organization_id": "org-synthetic-1"
+    },
+    {
+      "id": "audit-2",
+      "actor": "op-2",
+      "action": "ESCALATE",
+      "resource_id": "c-1",
+      "at": "2026-11-19T09:30:00Z",
+      "outcome": "SUCCESS",
+      "correlation_id": "corr-1",
+      "organization_id": "org-synthetic-1"
+    },
+    {
+      "id": "audit-3",
+      "actor": "op-1",
+      "action": "RETRY",
+      "resource_id": "x-1",
+      "at": "2026-11-19T09:30:00Z",
+      "outcome": "SUCCESS",
+      "correlation_id": "corr-1",
+      "organization_id": "org-synthetic-1"
+    },
+    {
+      "id": "audit-4",
+      "actor": "op-1",
+      "action": "RESOLVE",
+      "resource_id": "x-1",
+      "at": "2026-11-19T09:30:00Z",
+      "outcome": "SUCCESS",
+      "correlation_id": "corr-1",
+      "organization_id": "org-synthetic-1"
+    },
+    {
+      "id": "audit-5",
+      "actor": "op-1",
+      "action": "RETRY",
+      "resource_id": "d-1",
+      "at": "2026-11-19T09:30:00Z",
+      "outcome": "SUCCESS",
+      "correlation_id": "corr-1",
+      "organization_id": "org-synthetic-1"
+    },
+    {
+      "id": "audit-6",
+      "actor": "op-2",
+      "action": "ASSIGN",
+      "resource_id": "m-1",
+      "at": "2026-11-19T09:30:00Z",
+      "outcome": "SUCCESS",
+      "correlation_id": "corr-1",
+      "organization_id": "org-synthetic-1"
+    },
+    {
+      "id": "audit-7",
+      "actor": "op-2",
+      "action": "RESOLVE",
+      "resource_id": "a-1",
+      "at": "2026-11-19T09:30:00Z",
+      "outcome": "SUCCESS",
+      "correlation_id": "corr-1",
+      "organization_id": "org-synthetic-1"
+    },
+    {
+      "id": "audit-8",
+      "actor": "op-1",
+      "action": "EXPORT",
+      "resource_id": "export-1",
+      "at": "2026-11-19T09:30:00Z",
+      "outcome": "SUCCESS",
+      "correlation_id": "corr-1",
+      "organization_id": "org-synthetic-1"
+    }
+  ],
+  "queues": {
+    "unsigned_encounters": [
+      {
+        "id": "u-1",
+        "queue": "unsigned_encounters",
+        "created_at": "2026-11-19T09:00:00Z",
+        "state": "assigned",
+        "actions": [
+          {
+            "type": "assign",
+            "actor": "op-1",
+            "reason": "synthetic reason",
+            "at": "2026-11-19T09:30:00Z",
+            "audit_id": "audit-1"
+          }
+        ],
+        "owner": "op-1"
+      }
+    ],
+    "unreconciled_reports": [
+      {
+        "id": "r-1",
+        "queue": "unreconciled_reports",
+        "created_at": "2026-11-19T09:00:00Z",
+        "state": "open",
+        "actions": []
+      }
+    ],
+    "unacknowledged_critical_findings": [
+      {
+        "id": "c-1",
+        "queue": "unacknowledged_critical_findings",
+        "created_at": "2026-11-19T09:00:00Z",
+        "state": "escalated",
+        "actions": [
+          {
+            "type": "escalate",
+            "actor": "op-2",
+            "reason": "synthetic reason",
+            "at": "2026-11-19T09:30:00Z",
+            "audit_id": "audit-2"
+          }
+        ],
+        "owner": "op-2"
+      }
+    ],
+    "rejected_exchanges": [
+      {
+        "id": "x-1",
+        "queue": "rejected_exchanges",
+        "created_at": "2026-11-19T09:00:00Z",
+        "state": "resolved",
+        "actions": [
+          {
+            "type": "retry",
+            "actor": "op-1",
+            "reason": "synthetic reason",
+            "at": "2026-11-19T09:30:00Z",
+            "audit_id": "audit-3"
+          },
+          {
+            "type": "resolve",
+            "actor": "op-1",
+            "reason": "synthetic reason",
+            "at": "2026-11-19T09:30:00Z",
+            "audit_id": "audit-4"
+          }
+        ]
+      }
+    ],
+    "document_failures": [
+      {
+        "id": "d-1",
+        "queue": "document_failures",
+        "created_at": "2026-11-19T09:00:00Z",
+        "state": "open",
+        "actions": [
+          {
+            "type": "retry",
+            "actor": "op-1",
+            "reason": "synthetic reason",
+            "at": "2026-11-19T09:30:00Z",
+            "audit_id": "audit-5"
+          }
+        ]
+      }
+    ],
+    "missing_coverage": [
+      {
+        "id": "m-1",
+        "queue": "missing_coverage",
+        "created_at": "2026-11-19T09:00:00Z",
+        "state": "assigned",
+        "actions": [
+          {
+            "type": "assign",
+            "actor": "op-2",
+            "reason": "synthetic reason",
+            "at": "2026-11-19T09:30:00Z",
+            "audit_id": "audit-6"
+          }
+        ],
+        "owner": "op-2"
+      }
+    ],
+    "revoked_accounts": [
+      {
+        "id": "a-1",
+        "queue": "revoked_accounts",
+        "created_at": "2026-11-19T09:00:00Z",
+        "state": "resolved",
+        "actions": [
+          {
+            "type": "resolve",
+            "actor": "op-2",
+            "reason": "synthetic reason",
+            "at": "2026-11-19T09:30:00Z",
+            "audit_id": "audit-7"
+          }
+        ]
+      }
+    ]
+  },
+  "exports": [
+    {
+      "scope": {
+        "organization_id": "org-synthetic-1",
+        "queues": [
+          "unsigned_encounters",
+          "revoked_accounts"
+        ]
+      },
+      "created_at": "2026-11-19T10:00:00Z",
+      "expires_at": "2026-11-20T10:00:00Z",
+      "actor": "op-1",
+      "audit_id": "audit-8"
+    }
+  ]
+}
