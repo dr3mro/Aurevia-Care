@@ -11,6 +11,7 @@ package com.aurevia.smartclinic.scheduling;
  * @param roomCode       tenant-local room resource code, or {@code null}
  * @param startsAt       ISO-8601 instant of the slot start
  * @param overrideReason recorded reason when the slot is outside availability
+ * @return this record
  */
 public record BookingRequest(String facilityCode, String patientId, String visitType,
                              String clinicianCode, String roomCode, String startsAt,
