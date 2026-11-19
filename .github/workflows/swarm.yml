@@ -116,7 +116,9 @@ jobs:
     # wave has tasks, and a literal ${{ ... }} shows when the matrix is empty.
     name: Swarm worker
     needs: plan
-    if: needs.plan.outputs.count != '0'
+    # count is empty when the budget gate skipped the plan step; fromJSON('')
+    # on the matrix would then fail the whole run and trigger a false repair.
+    if: needs.plan.result == 'success' && fromJSON(needs.plan.outputs.count || '0') > 0
     strategy:
       # Ten slots, ten accounts: workers run side by side and each one
       # publishes its own pull request when it ends (see swarm-worker.yml).
@@ -142,7 +144,7 @@ jobs:
   next:
     name: Start the next wave
     needs: [plan, worker]
-    if: always() && needs.plan.outputs.count != '0'
+    if: always() && needs.plan.result == 'success' && fromJSON(needs.plan.outputs.count || '0') > 0
     runs-on: ubuntu-latest
     timeout-minutes: 3
     permissions:

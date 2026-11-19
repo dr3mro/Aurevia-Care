@@ -112,6 +112,9 @@ jobs:
       # alter what runs here.
       - uses: actions/checkout@v7
         with:
+          # Always the default branch, even when the wave was dispatched on
+          # another ref: this job holds the write token.
+          ref: ${{ github.event.repository.default_branch }}
           fetch-depth: 0
           persist-credentials: false
       - uses: actions/download-artifact@v8
