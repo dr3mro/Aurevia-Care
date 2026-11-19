@@ -286,6 +286,21 @@ class InstructionServiceTest {
     }
 
     @Test
+    void historyIsAscendingAndCurrentIsTheHighestRevision() {
+        fixture();
+        bind(ORG_A, "clinician-a");
+        var first = service.send(sendRequest());
+        service.replace(first.threadId(), new InstructionContract.ReplaceRequest(
+                "Updated", "New body", "en", null, List.of(), "reason"), 1);
+
+        // The store and View contracts promise ascending revision order, and
+        // the patient-side projection sorts on that same source of truth.
+        assertEquals(List.of(1, 2), store.history(first.threadId()).stream()
+                .map(InstructionContract.Revision::revision).toList());
+        assertEquals(2, store.current(first.threadId()).orElseThrow().revision());
+    }
+
+    @Test
     void listForPatientConcealsThreadsFromUnassignedUnitsAndRevokedConnections() {
         fixture();
         bind(ORG_A, "clinician-a");
