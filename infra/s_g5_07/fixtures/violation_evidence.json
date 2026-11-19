@@ -1,0 +1,48 @@
+{
+  "schema_version": "1.0",
+  "kind": "synthetic_rehearsal",
+  "source": "synthetic-violation-fixture",
+  "environments": {
+    "development": {"account": "shared-acct", "resource": "dev-rs-111"},
+    "test": {"account": "shared-acct", "resource": "test-rs-222"},
+    "staging": {"account": "stg-acct-333", "resource": "stg-rs-333"},
+    "production": {"account": "prod-acct-444", "resource": "prod-rs-444"}
+  },
+  "fixtures": {
+    "synthetic_only": false,
+    "no_real_patient_data": false,
+    "environments": ["development", "test", "production"]
+  },
+  "ci_checks": {
+    "policy": true,
+    "dependency_scan": true,
+    "secret_scan": false
+  },
+  "signed_builds": {
+    "method": "unsigned",
+    "digest": "sha256:abc",
+    "verified": "true",
+    "signer_identity": "   ",
+    "promotion_gate": "manual"
+  },
+  "migration_checks": {
+    "gate": "make migrate",
+    "expand_contract": false,
+    "forward_fix_required": true
+  },
+  "rollout": {
+    "strategy": "big-bang",
+    "stages": ["full"],
+    "health_gates": false,
+    "monitoring": false,
+    "rollback_tested": false
+  },
+  "production_access": {
+    "approval_required": false,
+    "requester": "release-manager",
+    "approver": "release-manager",
+    "audited": false,
+    "expiring": false
+  },
+  "reversible_deployments": false
+}

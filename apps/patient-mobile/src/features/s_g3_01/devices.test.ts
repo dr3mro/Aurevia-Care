@@ -1,26 +1,47 @@
 import type { DeviceToken } from './types';
-import { eligibleTokens, invalidateToken, revokeToken, withRegisteredDevice } from './devices';
+import {
+  eligibleTokens,
+  invalidateToken,
+  revokeToken,
+  withInvalidatedDevice,
+  withRegisteredDevice,
+  withRevokedDevice,
+} from './devices';
 import { tenantKey } from './tenancy';
 
-/** S-G3-01: only active devices in the active tenant receive pushes (PAT-01, ARC-02). */
-const token = (id: string, state: DeviceToken['state']): DeviceToken => ({
+/** S-G3-01: only active devices of the verified patient in the active tenant receive pushes (PAT-01, ARC-02). */
+const token = (id: string, state: DeviceToken['state'], patientId = 'patient-1'): DeviceToken => ({
   id,
-  patientId: 'patient-1',
+  patientId,
   state,
   token: `synthetic-${id}`,
 });
 
 describe('eligibleTokens', () => {
-  it('keeps only active tokens of the active organization', () => {
+  it('keeps only active tokens of the active organization for the verified patient', () => {
     const devices = new Map<string, DeviceToken>([
       [tenantKey('org-a', 'dev-1'), token('dev-1', 'active')],
       [tenantKey('org-a', 'dev-2'), token('dev-2', 'revoked')],
       [tenantKey('org-a', 'dev-3'), token('dev-3', 'invalid')],
       [tenantKey('org-b', 'dev-4'), token('dev-4', 'active')],
     ]);
-    expect(eligibleTokens(devices, 'org-a')).toEqual([token('dev-1', 'active')]);
-    expect(eligibleTokens(devices, 'org-b')).toEqual([token('dev-4', 'active')]);
-    expect(eligibleTokens(devices, 'org-c')).toEqual([]);
+    expect(eligibleTokens(devices, 'org-a', 'patient-1')).toEqual([token('dev-1', 'active')]);
+    expect(eligibleTokens(devices, 'org-b', 'patient-1')).toEqual([token('dev-4', 'active')]);
+    expect(eligibleTokens(devices, 'org-c', 'patient-1')).toEqual([]);
+  });
+
+  it('never selects another patient device inside the same organization', () => {
+    const devices = new Map<string, DeviceToken>([
+      [tenantKey('org-a', 'dev-1'), token('dev-1', 'active', 'patient-1')],
+      [tenantKey('org-a', 'dev-2'), token('dev-2', 'active', 'patient-2')],
+    ]);
+    expect(eligibleTokens(devices, 'org-a', 'patient-1')).toEqual([
+      token('dev-1', 'active', 'patient-1'),
+    ]);
+    expect(eligibleTokens(devices, 'org-a', 'patient-2')).toEqual([
+      token('dev-2', 'active', 'patient-2'),
+    ]);
+    expect(eligibleTokens(devices, 'org-a', 'patient-3')).toEqual([]);
   });
 });
 
@@ -54,5 +75,36 @@ describe('device state transitions', () => {
       at: '2026-11-19T10:00:00Z',
     });
     expect(JSON.stringify(result.event)).not.toContain('synthetic-dev-1');
+  });
+});
+
+describe('persisted revocation and invalidation', () => {
+  it('a stored revocation removes the device from dispatch eligibility', () => {
+    const source = new Map<string, DeviceToken>([
+      [tenantKey('org-a', 'dev-1'), token('dev-1', 'active')],
+    ]);
+    const revoked = withRevokedDevice(source, 'org-a', 'dev-1');
+    expect(revoked.get(tenantKey('org-a', 'dev-1'))?.state).toBe('revoked');
+    expect(eligibleTokens(revoked, 'org-a', 'patient-1')).toEqual([]);
+    expect(eligibleTokens(source, 'org-a', 'patient-1')).toEqual([token('dev-1', 'active')]);
+  });
+
+  it('a stored invalidation removes the device from dispatch eligibility', () => {
+    const source = new Map<string, DeviceToken>([
+      [tenantKey('org-a', 'dev-1'), token('dev-1', 'active')],
+    ]);
+    const invalidated = withInvalidatedDevice(source, 'org-a', 'dev-1');
+    expect(invalidated.get(tenantKey('org-a', 'dev-1'))?.state).toBe('invalid');
+    expect(eligibleTokens(invalidated, 'org-a', 'patient-1')).toEqual([]);
+    expect(eligibleTokens(source, 'org-a', 'patient-1')).toEqual([token('dev-1', 'active')]);
+  });
+
+  it('does not change a peer tenant or a missing device', () => {
+    const peerKey = tenantKey('org-b', 'dev-1');
+    const source = new Map<string, DeviceToken>([[peerKey, token('dev-1', 'active')]]);
+    const revoked = withRevokedDevice(source, 'org-a', 'dev-1');
+    expect(revoked.get(peerKey)).toEqual(token('dev-1', 'active'));
+    expect(revoked.has(tenantKey('org-a', 'dev-1'))).toBe(false);
+    expect(withInvalidatedDevice(source, 'org-a', 'missing')).toEqual(source);
   });
 });

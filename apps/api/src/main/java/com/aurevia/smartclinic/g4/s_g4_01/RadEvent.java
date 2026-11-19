@@ -24,7 +24,8 @@ import com.aurevia.smartclinic.g4.s_g4_01.RadTypes.RadEventType;
  * @param accession      issuer-scoped accession, or {@code null}
  * @param actor          authenticated subject that caused the fact
  * @param destination    referrer or recipient notified by the fact, or {@code null}
- * @param payloadDigest  digest of the immutable content the event refers to, or {@code null}
+ * @param payloadDigest  SHA-256 digest of the immutable content the event refers to, never the
+ *                       clinical narrative itself, or {@code null}
  * @param occurredAt     server time at which the fact was recorded
  */
 public record RadEvent(String organizationId, RadEventType type, String orderId, int orderVersion,
