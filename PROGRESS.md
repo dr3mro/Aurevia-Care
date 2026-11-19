@@ -27,6 +27,8 @@ For every loop stage append one compact row. Update MEMORY.md's checkpoint point
 
 | H-G0-01 · housekeeping | Local work done; CI pending workflow | OPS-06, IAM-02, G0 | `bash apps/api/check.sh`; `bash db/check.sh`; `scripts/check.sh`; `python3 -I scripts/check-docs.py`; `python3 -I scripts/check-secrets.py`; `git grep`/`git log`/`git ls-remote` (tool evidence) | Re-ran gates: surefire 44 tests, 0 failures/errors/skips; JaCoCo INSTRUCTION 655/655, LINE 136/136, BRANCH 40/40, METHOD 50/50, CLASS 13/13 = 1.0000 each (from target/site/jacoco/jacoco.csv + jacoco.xml). db/check and check.sh green. check-docs.py green. Removed the NVD key literal from BUGS.md and added a note-scan rule; `git grep` on HEAD finds no key after this commit. Reconciled stale headers/rows, TODO status, WORKSPACE/MEMORY checkpoint, Java 21 baseline, action versions, and extra shell denies. All reviewer findings are simulated/static, not human clinical evidence. No push or gh per execution rules |
 
+| H-G0-01 · plan index | Done locally | OPS-06, G0 | `python3 -I scripts/check-docs.py`; `python3 -I scripts/check-secrets.py`; `scripts/check.sh` (tool evidence) | Created PLAN.md as the canonical all-story index: 64 checkboxes across G0–G5 plus cross-cutting contracts, with S-G0-01 the only filled box and its evidence linked. TODO.md, WORKSPACE.md and MEMORY.md point to it. All three checks green |
+
 ## Blocked
 
 Resolved by user decision 2026-11-19: keep the NVD key; no rotation and no history purge. No force-push or history rewrite was performed. Residual risk: the full literal remains in published commits 589c7d4 and 57efab8; the current tree is clean and the secret is supplied only through the `NVD_API_KEY` environment variable.

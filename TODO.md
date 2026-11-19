@@ -1,6 +1,6 @@
 # SmartClinic V1 queue
 
-Check the repository against each gate before marking work ready. Split items into verifiable WIP-one slices. Gates are delivery checkpoints and may have independent slices.
+Check the repository against each gate before marking work ready. Split items into verifiable WIP-one slices. Gates are delivery checkpoints and may have independent slices. `PLAN.md` is the canonical index of every story and its done state; keep this file aligned with it.
 
 | Gate | Planned work | Acceptance focus |
 |---|---|---|
