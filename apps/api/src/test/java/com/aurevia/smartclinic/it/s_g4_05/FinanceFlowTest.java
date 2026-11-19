@@ -560,6 +560,22 @@ class FinanceFlowTest {
     }
 
     @Test
+    void aLongButValidReasonPostsWithinTheLedgerDigestColumn() {
+        String org = ORG_C;
+        String id = text(create(org, "finance-3333"), "/invoice/id");
+        assertEquals(HttpStatus.OK, issue(org, "finance-3333", id, 1).getStatusCode());
+        String reason = "documented write-off " + "x".repeat(200);
+
+        ResponseEntity<String> credited = postEntry(org, "finance-3333", "credits", id, 2,
+                entryBody(300L, "LONG-REASON-CREDIT", reason, "admin-3333"));
+
+        assertEquals(HttpStatus.OK, credited.getStatusCode(), credited.getBody());
+        assertEquals(reason, text(credited, "/entries/0/reason"),
+                "a reason within the validated length must post, not exceed the digest column");
+        assertEquals("1000", text(credited, "/invoice/balanceMinor"));
+    }
+
+    @Test
     void reconciliationIsFinanceOnlyAndStableAcrossReplay() {
         String org = ORG_D;
         String id = text(create(org, "finance-4444"), "/invoice/id");
