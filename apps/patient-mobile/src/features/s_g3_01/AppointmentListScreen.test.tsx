@@ -39,6 +39,7 @@ describe('AppointmentListScreen', () => {
       <AppointmentListScreen
         appointments={[]}
         notice={notice}
+        patientId="patient-1"
         devices={[]}
         onConfirm={recorder().fn}
         onOpenDetails={recorder().fn}
@@ -57,6 +58,7 @@ describe('AppointmentListScreen', () => {
       <AppointmentListScreen
         appointments={[pending]}
         notice={notice}
+        patientId="patient-1"
         devices={[]}
         onConfirm={confirm.fn}
         onOpenDetails={details.fn}
@@ -81,6 +83,7 @@ describe('AppointmentListScreen', () => {
       <AppointmentListScreen
         appointments={[confirmed]}
         notice={notice}
+        patientId="patient-1"
         devices={[]}
         onConfirm={recorder().fn}
         onOpenDetails={recorder().fn}
@@ -100,6 +103,7 @@ describe('AppointmentListScreen', () => {
       <AppointmentListScreen
         appointments={[unavailable]}
         notice={notice}
+        patientId="patient-1"
         devices={[]}
         onConfirm={recorder().fn}
         onOpenDetails={recorder().fn}
@@ -116,6 +120,7 @@ describe('AppointmentListScreen', () => {
       <AppointmentListScreen
         appointments={[]}
         notice={notice}
+        patientId="patient-1"
         devices={[activeDevice, { ...activeDevice, id: 'dev-2', state: 'revoked' }]}
         onConfirm={recorder().fn}
         onOpenDetails={recorder().fn}
@@ -125,5 +130,25 @@ describe('AppointmentListScreen', () => {
     await fireEvent.press(view.getByTestId('revoke-dev-1'));
     expect(revoke.calls).toEqual(['dev-1']);
     expect(view.queryByTestId('revoke-dev-2')).toBeNull();
+  });
+
+  it('never offers to revoke a device owned by another patient', async () => {
+    const revoke = recorder();
+    const foreign = { ...activeDevice, id: 'dev-2', patientId: 'patient-2' };
+    const view = await render(
+      <AppointmentListScreen
+        appointments={[]}
+        notice={notice}
+        patientId="patient-1"
+        devices={[activeDevice, foreign]}
+        onConfirm={recorder().fn}
+        onOpenDetails={recorder().fn}
+        onRevokeDevice={revoke.fn}
+      />,
+    );
+    expect(view.getByTestId('revoke-dev-1')).toBeTruthy();
+    expect(view.queryByTestId('revoke-dev-2')).toBeNull();
+    await fireEvent.press(view.getByTestId('revoke-dev-1'));
+    expect(revoke.calls).toEqual(['dev-1']);
   });
 });
