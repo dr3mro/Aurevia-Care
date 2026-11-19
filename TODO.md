@@ -554,6 +554,9 @@ Raised by the dispatch-3 run-3 verification. Address in the next authorized chan
 - [x] S-FIX-EMPTY-WAVE-01 · Swarm waves had zero workers: `plan_workers()` requires a `scope` field and all 62 open spec stories lacked one; the only two scoped tasks were at `attempts: 3`. GitHub therefore rendered the raw `${{ matrix.slot }}` for a skipped matrix job. Added distinct `scope`, `reserved: V9…V57` and `details` to 49 dispatchable stories, cleared stale attempt counters, made the worker job name static (`Swarm worker`), and added a regression test asserting at least 10 dispatchable tasks.
   - evidence: `plan_workers(10, slots, TODO.md, [])` now returns 10 story tasks (was 0); PR #31/#32 merge re-added duplicate `S-FIX-FRONTEND-01`, removed. Guards red then green: 158 tooling tests OK, `check-docs.py`/`check-secrets.py`/`gen-opencode.py --check` green, all 8 workflow YAMLs parse, `quick-check.sh` exit 0. Evidence source: executed tool commands and GitHub run API; no human or clinical evidence.
 
+- [x] S-FIX-FLAKY-01 · `scripts/check.sh` failed intermittently: `test_publish_twice_does_not_reuse_a_stale_incoming_ref` pushed a second bundle to an already-existing branch, so within the same second the commit SHA matched (no-op, pass) and across seconds it was a non-fast-forward (fail). Second bundle now uses a distinct branch, preserving the stale-ref test deterministically.
+  - evidence: isolated runs showed `check.sh` pass/fail alternating; five consecutive full `check.sh` runs exit 0 after fix; 158 tooling tests OK. Evidence source: executed tool commands; no human or clinical evidence.
+
 ## One-week execution plan (1 wave per hour)
 
 Created 2026-11-19T08:55Z from the open entries above. Horizon: 7 days × 24 hours = 168 hourly wave slots. This plan uses 7 implementation waves; the remaining 161 hourly slots are buffer for `needs-fix` retries, fix PRs, gate re-runs and human approvals.
