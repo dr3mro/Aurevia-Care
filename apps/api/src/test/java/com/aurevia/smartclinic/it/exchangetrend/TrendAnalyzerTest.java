@@ -12,6 +12,8 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
+import tools.jackson.databind.ObjectMapper;
+
 import com.aurevia.smartclinic.api.ApiException;
 import com.aurevia.smartclinic.exchange.trend.ComparabilityRule;
 import com.aurevia.smartclinic.exchange.trend.ExclusionReason;
@@ -226,6 +228,14 @@ class TrendAnalyzerTest {
         assertEquals("greater_than", Qualifier.GREATER_THAN.wire());
         assertEquals("none", Qualifier.NONE.wire());
         assertEquals(422, assertThrows(ApiException.class, () -> Qualifier.from("approx")).status());
+    }
+
+    @Test
+    void qualifierSerializesWithItsStableWireValue() throws Exception {
+        ObjectMapper json = new ObjectMapper();
+        assertEquals("\"less_than\"", json.writeValueAsString(Qualifier.LESS_THAN));
+        assertEquals("\"greater_than\"", json.writeValueAsString(Qualifier.GREATER_THAN));
+        assertEquals("\"none\"", json.writeValueAsString(Qualifier.NONE));
     }
 
     @Test
