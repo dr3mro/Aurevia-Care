@@ -5,8 +5,7 @@ import java.util.List;
 /**
  * One cursor-paginated page of audit events.
  *
- * @param events     events ordered by descending per-tenant sequence
- * @param nextCursor opaque cursor for the next page, or {@code null} at the end
+ * @return this record
  */
 public record AuditPage(List<AuditEvent> events, String nextCursor) {
 
