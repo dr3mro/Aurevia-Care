@@ -22,7 +22,7 @@ infra/s_g5_08/check.sh
                _check_scenarios / _check_phi -> named checks -> verdict
   -> python3 -I infra/s_g5_08/tenant_lifecycle_evidence.py <fixture.json>
        -> fixtures/synthetic_lifecycle_evidence.json   (must pass)
-       -> fixtures/measured_lifecycle_evidence.json    (must pass, final)
+       -> fixtures/measured_lifecycle_evidence.json    (synthetic; exercises the final-evidence path)
        -> fixtures/violation_lifecycle_evidence.json   (must fail)
 ```
 
@@ -41,7 +41,7 @@ point in one stdlib `trace` session for line-coverage evidence.
 | retention respects legal holds | `retention.legal_hold_respected`, `.backup_hold_respected` |
 | tracked deletion of active data | `retention.deletion_entries`, `.deletion_approval` |
 | approved backup expiration | `retention.backup_expiration_entries` |
-| representative scenarios tested | `scenarios`, `scenarios.no_duplicates` |
+| representative scenarios declared | `scenarios`, `scenarios.no_duplicates` (the four names are declared once each; the scenarios themselves are exercised by the `export.*`, `offboarding.*` and `disputed_access.*` check families) |
 | tenant offboarding | `offboarding.*` |
 | disputed access (supporting IAM-05) | `disputed_access.*` |
 | policy-bounded, no email/SSN-shaped fixture strings | `phi.free`, `evidence.source`, `evidence_conflict`, `kind` |
@@ -81,6 +81,19 @@ operational truth. Real acceptance stays with the named G5 owners.
   G5 site approval; no real patient data is used here.
 - A malformed or missing ledger fails closed; an empty but well-formed ledger is
   accepted as "no events" only because the artifact explicitly declares it.
+- The `scenarios` list proves only that the four **labels** are declared once.
+  It does not itself execute a record-request, export, offboarding or
+  disputed-access run: those paths are exercised synthetically by the
+  corresponding check families above, and real execution against a live tenant
+  is a named G5 human gate.
+- "As allowed by policy" for document authorizations is currently a fixed,
+  versioned-in-code tuple (`release_policy`, `record_access_request`,
+  `approved_instruction`), not a live binding to a market policy pack. Real
+  policy-pack binding remains a human G5 review item.
+- The checked-in `measured_lifecycle_evidence.json` is a **synthetic** fixture in
+  a `measured_operation` envelope. Its `final_evidence: true` assertion proves
+  only that the final-evidence code path works; CI or reviewers must never treat
+  a repository fixture as operational acceptance.
 
 ## Verification
 
