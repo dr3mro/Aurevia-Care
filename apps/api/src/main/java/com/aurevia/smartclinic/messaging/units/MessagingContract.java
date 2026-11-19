@@ -1,0 +1,217 @@
+package com.aurevia.smartclinic.messaging.units;
+
+import java.time.Instant;
+import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonValue;
+
+/**
+ * Domain contract for the MSG-01 / ARC-07 care-unit directory and patient-unit
+ * connections.
+ *
+ * <p>The types here carry no persistence or transport concerns. A connection is
+ * always bound to one verified patient, one recipient care unit and one eligible
+ * upstream relationship; it is never inferred from demographics or from a
+ * directory listing alone.</p>
+ */
+public final class MessagingContract {
+
+    private MessagingContract() {
+    }
+
+    /**
+     * The verified upstream relationship that makes a connection eligible.
+     *
+     * <p>A shared phone number, a matching name or a date of birth is never a
+     * connection context: every value here is an independently verified care or
+     * ordering relationship with a stable reference.</p>
+     */
+    public enum ConnectionContext {
+        /** An established, verified care relationship with the unit. */
+        CARE_RELATIONSHIP("care_relationship"),
+        /** An order released to the unit. */
+        ORDER("order"),
+        /** A referral accepted by the unit. */
+        REFERRAL("referral"),
+        /** A prescription routed to the unit. */
+        PRESCRIPTION("prescription"),
+        /** A single-use invitation issued by the unit for one of the above. */
+        INVITATION("invitation");
+
+        private final String wire;
+
+        /**
+         * Create a context with its stable wire key.
+         *
+         */
+        ConnectionContext(String wire) {
+            this.wire = wire;
+        }
+
+        /**
+         * Return the wire representation.
+         *
+         * @return stable lowercase context key
+         */
+        @JsonValue
+        public String wire() {
+            return wire;
+        }
+
+        /**
+         * Parse a stored or supplied context key.
+         *
+         * @return the matching context
+         * @throws IllegalArgumentException when the key is unknown
+         */
+        public static ConnectionContext from(String value) {
+            for (ConnectionContext candidate : values()) {
+                if (candidate.wire.equals(value)) {
+                    return candidate;
+                }
+            }
+            throw new IllegalArgumentException("unknown connection context: " + value);
+        }
+    }
+
+    /**
+     * Lifecycle of a patient-unit connection. Revocation stops future messaging
+     * through the connection and is the only state move.
+     */
+    public enum ConnectionState {
+        /** Active and usable for protected messaging actions. */
+        ACTIVE("active"),
+        /** Revoked; no future access is granted through this connection. */
+        REVOKED("revoked");
+
+        private final String wire;
+
+        /**
+         * Create a state with its stable wire key.
+         *
+         */
+        ConnectionState(String wire) {
+            this.wire = wire;
+        }
+
+        /**
+         * Return the wire representation.
+         *
+         * @return stable lowercase state key
+         */
+        @JsonValue
+        public String wire() {
+            return wire;
+        }
+
+        /**
+         * Parse a stored state key.
+         *
+         * @return the matching state
+         * @throws IllegalArgumentException when the key is unknown
+         */
+        public static ConnectionState from(String value) {
+            for (ConnectionState candidate : values()) {
+                if (candidate.wire.equals(value)) {
+                    return candidate;
+                }
+            }
+            throw new IllegalArgumentException("unknown connection state: " + value);
+        }
+    }
+
+    /**
+     * One staffed inbox a verified patient may connect to (MSG-01, MSG-06).
+     *
+     * @return the immutable value
+     */
+    public record CareUnit(String id, String organizationId, String facilityId, String name,
+                           List<String> topics, boolean active) {
+        /**
+         * Defensively copy the topic list.
+         *
+         */
+        public CareUnit {
+            topics = List.copyOf(topics);
+        }
+    }
+
+    /**
+     * An independently verified relationship that can authorize one connection.
+     *
+     * @return the immutable value
+     */
+    public record EligibleRelationship(String id, String organizationId, String patientId, String unitId,
+                                       ConnectionContext context, String reference, boolean active,
+                                       Instant expiresAt, boolean consumed) {
+    }
+
+    /**
+     * A verified, connection-scoped patient-unit relationship (ARC-07).
+     *
+     * @return the immutable value
+     */
+    public record PatientUnitConnection(String id, String organizationId, String patientId,
+                                        String unitId, ConnectionContext context, String contextReference,
+                                        String relationshipId, ConnectionState state, String verifiedBy,
+                                        Instant verifiedAt, Instant createdAt, Instant revokedAt) {
+    }
+
+    /**
+     * The active care units a verified patient may see in the app.
+     *
+     * @return the immutable value
+     */
+    public record UnitDirectory(List<CareUnit> units) {
+        /**
+         * Defensively copy the unit list.
+         *
+         */
+        public UnitDirectory {
+            units = List.copyOf(units);
+        }
+    }
+
+    /**
+     * The connections visible for one verified patient chart.
+     *
+     * @return the immutable value
+     */
+    public record ConnectionList(List<PatientUnitConnection> connections) {
+        /**
+         * Defensively copy the connection list.
+         *
+         */
+        public ConnectionList {
+            connections = List.copyOf(connections);
+        }
+    }
+
+    /**
+     * Connection command. Organization, verifier and timestamps are derived by
+     * the server and never accepted from the client.
+     *
+     * @param patientId        verified linked chart
+     * @param unitId           recipient care unit
+     * @param context          relationship kind wire key
+     * @param contextReference verified source reference
+     * @return the immutable command
+     */
+    public record ConnectRequest(String patientId, String unitId, String context, String contextReference) {
+    }
+
+    /**
+     * One recorded, non-sensitive messaging authorization fact.
+     *
+     * @param organizationId owning organization
+     * @param subject        authenticated actor
+     * @param action         action key
+     * @param resourceId     affected resource
+     * @param outcome        {@code SUCCESS}, {@code DENIED}, {@code NOT_FOUND} or {@code CONFLICT}
+     * @param occurredAt     server timestamp
+     * @return the immutable fact
+     */
+    public record MessagingAudit(String organizationId, String subject, String action,
+                                 String resourceId, String outcome, Instant occurredAt) {
+    }
+}
