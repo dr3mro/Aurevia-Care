@@ -1,9 +1,9 @@
 package com.aurevia.smartclinic.g4.s_g4_01;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 
 import com.aurevia.smartclinic.api.ApiException;
+import com.aurevia.smartclinic.g1.s_g1_05.NoteChecksum;
 import com.aurevia.smartclinic.g4.s_g4_01.RadTypes.InterpretationKind;
 
 /**
@@ -73,14 +73,16 @@ public record Interpretation(String organizationId, String orderId, int version,
     }
 
     /**
-     * Compute a deterministic content checksum for this signed revision.
+     * Compute a deterministic SHA-256 content digest for this signed revision.
      *
      * <p>Length-prefixed fields prevent delimiter collisions between adjacent
-     * values. The checksum covers ownership, version, the clinical narrative and
-     * the signature metadata but not the signing instant, so re-rendering the
-     * same clinical content yields the same digest.</p>
+     * values. The digest covers ownership, version, the clinical narrative and
+     * the signature metadata (signer and attestation), but not the signing
+     * instant, so re-rendering the same content yields the same fixed-length
+     * digest. A cryptographic digest, rather than an encoding of the content,
+     * keeps the checksum bounded and suitable for verifying a rendered copy.</p>
      *
-     * @return the content checksum as a stable hexadecimal string
+     * @return the 64-character lower-case hexadecimal SHA-256 content digest
      */
     public String checksum() {
         StringBuilder builder = new StringBuilder();
@@ -97,14 +99,12 @@ public record Interpretation(String organizationId, String orderId, int version,
         append(builder, impression);
         append(builder, followUp);
         append(builder, signer);
+        append(builder, attestation);
         append(builder, templateVersion);
         append(builder, reason);
-        byte[] bytes = builder.toString().getBytes(StandardCharsets.UTF_8);
-        StringBuilder hex = new StringBuilder();
-        for (byte value : bytes) {
-            hex.append(String.format(java.util.Locale.ROOT, "%02x", value & 0xff));
-        }
-        return hex.toString();
+        // Intentional reuse of the g1.s_g1_05 SHA-256 utility: keep one digest rule
+        // rather than adding a fourth local copy; no clinical rule crosses packages.
+        return NoteChecksum.sha256(builder.toString());
     }
 
     private static void append(StringBuilder builder, String value) {
