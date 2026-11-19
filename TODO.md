@@ -209,6 +209,10 @@ Independent modules scoped to their own paths so workers cannot collide with bac
   - agent: loop
   - evidence: `swarm.yml` worker `timeout-minutes: 185` and `AGENT_TIMEOUT: 175m` (10 min slack for bundling); `task_text()` states the 175-minute deadline and that a new worker takes the next task; `DEFAULT_MONTHLY_MINUTES` raised to 10000 (≈5 full 10-worker waves). Guards red first then green: 73 swarm tests, 147 total tooling tests OK; `scripts/check.sh`, `quick-check.sh`, `docs.sh`, `gen-opencode.py --check` exit 0. Restart is the existing `next` job → `swarm.py continue`. Deadline is cooperative; the hard `timeout` still ends a runaway agent and frees the claim. Evidence source: executed tool commands; no human or clinical evidence. No live 3-hour run observed yet.
 
+- [x] S-FIX-PUBLISH-01 · Fix swarm publish failure on workflow-file changes: grant `workflows: write` to the publish and integrator jobs, and recreate the local `swarm-incoming` ref before each bundle fetch.
+  - agent: loop
+  - evidence: observed failure from `swarm/CW-007-40` — GitHub App refused `.github/workflows/agent-image.yml` without `workflows` permission, then a second bundle hit non-fast-forward on `swarm-incoming`. Guards red first then green: 77 swarm tests, 151 total tooling tests OK, including a test that publishes two bundles from one checkout. `check.sh`, `quick-check.sh`, `docs.sh`, `gen-opencode.py --check` exit 0. No `SWARM_TOKEN` secret exists, so the fallback `github.token` is the App token that needs the scope. The failed task's `[-]` claim will be freed by `reclaim()` on the next wave because no PR was opened. Evidence source: observed CI error plus executed tool commands; no human or clinical evidence.
+
 ## Improvement ideas
 
 - [x] IMP-03 · Stop concurrency-cancelling swarm delivery runs. `delivery.yml` (per-ref group, `cancel-in-progress: false`), `heavy-check.yml`, `agent-image.yml` and `swarm-images.yml` now queue; `swarm.yml`, `swarm-integrator.yml`, `main-watchdog.yml` and `opencode-team.yml` already queued. README-SETUP.md updated.

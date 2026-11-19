@@ -267,6 +267,15 @@ class PlanTests(unittest.TestCase):
     def test_monthly_cap_allows_long_waves(self):
         self.assertGreaterEqual(swarm.DEFAULT_MONTHLY_MINUTES, 10 * 185 * 5)
 
+    def test_publish_can_push_workflow_files(self):
+        text = (ROOT / ".github/workflows/swarm.yml").read_text()
+        publish = text.split("  publish:\n", 1)[1].split("  next:\n", 1)[0]
+        self.assertIn("workflows: write", publish)
+
+    def test_integrator_can_merge_workflow_files(self):
+        text = (ROOT / ".github/workflows/swarm-integrator.yml").read_text()
+        self.assertIn("workflows: write", text)
+
     def test_fallback_wave_runs_hourly(self):
         text = (ROOT / ".github/workflows/swarm.yml").read_text()
         self.assertIn("cron: '7 * * * *'", text)
@@ -568,6 +577,18 @@ class GitTests(unittest.TestCase):
         self.assertIn("Task: CW-001", create[create.index("--body") + 1])
         self.assertEqual(create[create.index("--title") + 1], "CW-001: Staff")
         self.assertNotIn("--draft", create)
+
+    def test_publish_twice_does_not_reuse_a_stale_incoming_ref(self):
+        with mock.patch.object(swarm, "gh", FakeGh()):
+            first = self.worker_dir()
+            swarm.publish(self.TASK, first)
+            # A second slot publishes from a different bundle into the same
+            # trusted checkout; the local ref must be recreated, not reused.
+            shutil.rmtree(self.tmp / "work")
+            shutil.rmtree(first)
+            second = self.worker_dir()
+            swarm.publish(self.TASK, second)
+        self.assertIn("refs/heads/swarm/CW-001-1", self.run_git("ls-remote", "--heads", "origin"))
 
     def test_failed_local_checks_open_a_draft(self):
         out, fake = self.worker_dir(checks="failed"), FakeGh()
