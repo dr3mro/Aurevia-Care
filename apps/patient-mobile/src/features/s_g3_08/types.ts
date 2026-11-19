@@ -114,7 +114,6 @@ export interface MessageFactsFixture {
   readonly facts: Readonly<Record<string, DeliveryFacts>>;
   readonly now: string;
   readonly readToken: () => string | null;
-  readonly newId: () => string;
 }
 
 /** Typed boundary for authenticated MSG-05 patient commands. */
