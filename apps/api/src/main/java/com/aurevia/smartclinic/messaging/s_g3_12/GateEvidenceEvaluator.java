@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import com.aurevia.smartclinic.messaging.s_g3_12.GateEvidenceContract.AccessibilityCheck;
@@ -81,12 +82,16 @@ public final class GateEvidenceEvaluator {
             failures.add("INCOMPLETE_REPLAY");
         }
 
-        long recoveryPointMinutes = Duration.between(snapshot.capturedAt(), now).toMinutes();
-        if (recoveryPointMinutes > RPO_MAX_MINUTES) {
+        Duration recoveryPoint = Duration.between(snapshot.capturedAt(), now);
+        long recoveryPointMinutes = recoveryPoint.toMinutes();
+        // Compare full durations: toMinutes() truncates, so a 15m59s point or a
+        // 4h59m restore would otherwise be accepted as within the limit.
+        if (recoveryPoint.compareTo(Duration.ofMinutes(RPO_MAX_MINUTES)) > 0) {
             failures.add("RPO_EXCEEDED");
         }
-        long recoveryTimeMinutes = Duration.between(restore.startedAt(), restore.completedAt()).toMinutes();
-        if (recoveryTimeMinutes > RTO_MAX_MINUTES) {
+        Duration recoveryTime = Duration.between(restore.startedAt(), restore.completedAt());
+        long recoveryTimeMinutes = recoveryTime.toMinutes();
+        if (recoveryTime.compareTo(Duration.ofMinutes(RTO_MAX_MINUTES)) > 0) {
             failures.add("RTO_EXCEEDED");
         }
         if (snapshot.capturedAt().isAfter(now)) {
@@ -137,6 +142,13 @@ public final class GateEvidenceEvaluator {
         Set<String> effectKeys = new HashSet<>();
         for (IdempotentCommand effect : effects) {
             effectKeys.add(effect.key());
+            // ARC-05/ARC-03: the same key must carry the original payload. A
+            // replay effect whose key matches but whose digest differs is a
+            // conflicting command, not a successful idempotent recovery.
+            if (commandsByKey.containsKey(effect.key())
+                    && !Objects.equals(commandsByKey.get(effect.key()), effect.digest())) {
+                failures.add("DIGEST_MISMATCH");
+            }
         }
         if (effects.size() != effectKeys.size()) {
             failures.add("DUPLICATE_EFFECT");
