@@ -228,19 +228,30 @@ public final class FinanceInputs {
     }
 
     /**
-     * Build the exact-match replay fingerprint of a ledger entry payload. Only
-     * the validated type, minor-unit amount and currency take part, so a repeat
-     * with identical inputs is recognized while any differing input is a
-     * conflict. This is a canonical comparison token, not a lossy hash: an exact
-     * string comparison cannot collide and silently accept a different payload.
+     * Build the exact-match replay fingerprint of a ledger entry command. The
+     * invoice, entry type, minor-unit amount, currency and every optional field
+     * take part, so the same reference on a different invoice or any differing
+     * payload is a conflict rather than a silent no-op replay. Variable text is
+     * length-prefixed so no combination of field values can forge a collision.
+     * This is a canonical comparison token, not a lossy hash: an exact string
+     * comparison cannot silently accept a different payload.
      *
-     * @param type     entry type
-     * @param amount   magnitude in minor units
-     * @param currency invoice currency snapshot
+     * @param invoiceId       owning invoice, part of the durable business key
+     * @param type            entry type
+     * @param amount          magnitude in minor units
+     * @param currency        invoice currency snapshot
+     * @param reason          recorded reason, or {@code null}
+     * @param approverSubject approving subject, or {@code null}
      * @return canonical finite-length fingerprint
      */
-    public static String digest(FinanceContract.EntryType type, long amount, String currency) {
-        return type.wire() + "|" + amount + "|" + currency;
+    public static String digest(String invoiceId, FinanceContract.EntryType type, long amount,
+                                String currency, String reason, String approverSubject) {
+        return invoiceId + "|" + type.wire() + "|" + amount + "|" + currency
+                + "|" + field(reason) + "|" + field(approverSubject);
+    }
+
+    private static String field(String value) {
+        return value == null ? "-" : value.length() + ":" + value;
     }
 
     /**
