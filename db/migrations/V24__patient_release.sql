@@ -2,8 +2,9 @@
 -- Change: expand
 -- Patient release authorization, timed/hold policies and withdrawn releases.
 --
--- One live authorization is kept per (organization, patient, immutable revision)
--- by a partial unique index. The current row carries only mutable state/version;
+-- At most one authorization may ever exist per (organization, patient, immutable
+-- revision) by a unique index over all states. The current row carries only mutable
+-- state/version;
 -- every decision appends to release_event and release_notification, and audit is
 -- appended by the service in the same transaction. Withdrawal and correction move
 -- the live row to a terminal state, so future access checks fail closed while
@@ -51,11 +52,11 @@ CREATE TABLE public.patient_release (
         REFERENCES public.patient_release(organization_id, id)
 );
 
--- Business uniqueness survives process loss: a concurrent duplicate authorization
--- for the same live revision fails here, not only in the domain service.
-CREATE UNIQUE INDEX patient_release_live_revision_uq
-    ON public.patient_release (organization_id, patient_id, revision_id)
-    WHERE state IN ('HELD', 'AUTHORIZED');
+-- One-way revision identity survives process loss: at most one release may ever exist
+-- for a (tenant, patient, immutable revision), including terminal rows. A withdrawn or
+-- corrected revision therefore cannot be re-published by a concurrent insert.
+CREATE UNIQUE INDEX patient_release_revision_uq
+    ON public.patient_release (organization_id, patient_id, revision_id);
 CREATE INDEX patient_release_patient_idx
     ON public.patient_release (organization_id, patient_id, state);
 
@@ -211,7 +212,7 @@ BEGIN
         RAISE EXCEPTION 'release version must advance by exactly one' USING ERRCODE = '23514';
     END IF;
     IF NEW.state <> OLD.state AND NOT (
-            (OLD.state = 'HELD'       AND NEW.state IN ('AUTHORIZED', 'WITHDRAWN', 'CORRECTED'))
+            (OLD.state = 'HELD'       AND NEW.state IN ('AUTHORIZED', 'WITHDRAWN'))
          OR (OLD.state = 'AUTHORIZED' AND NEW.state IN ('WITHDRAWN', 'CORRECTED'))) THEN
         RAISE EXCEPTION 'illegal release transition % -> %', OLD.state, NEW.state
             USING ERRCODE = '23514';

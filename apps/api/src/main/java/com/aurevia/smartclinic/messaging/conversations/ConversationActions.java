@@ -44,9 +44,10 @@ public class ConversationActions {
             CONVERSATION_OPEN, CONVERSATION_REPLY, CONVERSATION_READ, WORK_QUEUE_READ,
             WORK_ASSIGN, WORK_TRANSFER, WORK_RESOLVE, WORK_CLOSE);
 
-    private static final Set<String> ADMIN_ACTIONS = Set.of(
-            CONVERSATION_OPEN, CONVERSATION_REPLY, CONVERSATION_READ,
-            WORK_QUEUE_READ, WORK_ASSIGN, WORK_TRANSFER, WORK_RESOLVE, WORK_CLOSE);
+    // IAM-02: tenant administration carries no clinical authority. An admin may
+    // see the operational queue (ADM-02) but cannot open, reply to or write a
+    // patient work item; clinical access requires a separate clinical role.
+    private static final Set<String> ADMIN_ACTIONS = Set.of(WORK_QUEUE_READ);
 
     /** Staff roles that may run care-unit work items. */
     public static final Set<String> STAFF_ROLES = Set.of(
@@ -80,9 +81,11 @@ public class ConversationActions {
     /**
      * Decide whether a role is eligible to work in a care unit.
      *
-     * <p>Administrators and auditors may read any unit's queue but hold no
-     * work-item write action, so unit capability is meaningful only for staff
-     * roles. A cross-unit assignment or transfer is therefore impossible.</p>
+     * <p>An administrator may read any unit's queue but holds no work-item
+     * write action, so unit capability is meaningful only for staff roles. A
+     * cross-unit assignment or transfer is therefore impossible. An auditor
+     * holds no messaging action at all; its {@code true} result here is unused
+     * and fails closed at the {@code allows} action check.</p>
      *
      * @param unit care-unit key
      * @param role role key active in the current organization

@@ -136,19 +136,22 @@ public class ReleaseRepository {
     }
 
     /**
-     * Find a live authorization for one patient and report revision.
+     * Find any release for one patient and report revision, including terminal rows.
+     *
+     * <p>A revision identifier is one-way: once withdrawn or corrected it must never be
+     * released again. Callers therefore reject on any existing row, not only on a live one,
+     * so a retracted or superseded result cannot be silently re-published.</p>
      *
      * @param patientId  tenant-local patient identifier
      * @param revisionId immutable report revision identifier
-     * @return the live release when one exists, otherwise empty
+     * @return the release when one exists in any state, otherwise empty
      */
-    public Optional<PatientRelease> findActiveByPatientAndRevision(String patientId, String revisionId) {
+    public Optional<PatientRelease> findAnyByPatientAndRevision(String patientId, String revisionId) {
         return jdbc.query("""
                 SELECT
                 """ + COLUMNS + """
                   FROM public.patient_release
                  WHERE patient_id = CAST(:patientId AS uuid) AND revision_id = :revisionId
-                   AND state IN ('HELD', 'AUTHORIZED')
                 """, new MapSqlParameterSource().addValue("patientId", patientId)
                 .addValue("revisionId", revisionId), RELEASE_MAPPER).stream().findFirst();
     }

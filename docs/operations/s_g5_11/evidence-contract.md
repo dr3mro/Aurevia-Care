@@ -41,8 +41,24 @@ the verdict is `pass` only when every check passes.
 | `audit_events` | OPS-02 fields, tenant match and timezone-aware instants |
 | `items.structure` | Work-item id, queue tag and creation instant |
 | `items.state`, `items.owner` | Known state, justified non-open state, owner when assigned or escalated |
-| `items.actions`, `items.reason`, `items.actor`, `items.audit` | Typed and correctly scoped actions with reason, active authorized actor and existing audit reference |
-| `exports.scope`, `exports.expiry`, `exports.audit`, `exports.actor` | Explicit tenant/queue scope, bounded positive TTL, audit reference and authorized actor |
+| `items.actions`, `items.reason`, `items.actor` | Typed and correctly scoped actions with reason, active authorized actor and a time not earlier than the item's creation |
+| `items.audit` | Every action cites an audit event that corroborates its actor, verb, work item and time |
+| `exports.scope`, `exports.expiry`, `exports.audit`, `exports.actor` | Explicit tenant/queue scope, bounded positive TTL, an export audit event by the same actor at creation, and an authorized actor |
+
+## Evidence integrity rules
+
+An audit id alone is not proof: a cited event must describe the very action that
+cites it. For an action, the event's `actor`, verb (`ASSIGN`, `RESOLVE`, `RETRY`,
+`ESCALATE`), `resource_id` and instant must match the action's actor, type, work
+item and time. Instants are compared by value, so `Z` and `+00:00` spellings of
+the same moment agree. An export cites an `EXPORT` event by the same actor at the
+export's `created_at` instant; an export has no separate resource id to compare.
+An action also cannot be timestamped before its work item was created — an
+operator cannot act on an item that did not yet exist. Both rules fail closed and
+are reported under `items.audit`, `exports.audit` and `items.actions`. Export
+expiry is checked only as a bounded positive window at declaration; the offline
+evaluator has no clock, so elapsed windows are an operational check, not a
+failed check here.
 
 ## Commands and results observed here
 
@@ -65,13 +81,14 @@ ADM-02 operational queues: FAIL
   [FAIL] items.state: an item has an invalid state or no matching state action: 6 work items inspected
   [FAIL] items.reason: an operator action has no reason: 6 work items inspected
   [FAIL] items.actor: an action names an inactive or unauthorized actor: 6 work items inspected
+  [FAIL] items.audit: an action cites an unknown or non-corroborating audit event: 6 work items inspected
   [FAIL] exports.expiry: an export has an unbounded, missing or non-positive expiry
 exit 1
 ```
 
 ```
 $ bash infra/s_g5_11/check.sh
-Ran 93 tests in 0.012s
+Ran 103 tests in 0.009s
 OK
 S-G5-11: ADM-02 evaluator unit tests and fixture checks passed
 exit 0
@@ -80,7 +97,7 @@ exit 0
 Line coverage of the evaluator is 100% under stdlib `trace`
 (`python3 -m trace --count --coverdir <dir> infra/s_g5_11/tests/run_coverage.py`,
 no executable line uncovered); branch coverage is by exhaustive enumeration of
-every conditional in the 93 unit tests, because `coverage.py` is not installed. Evidence source: executed tool commands in this repository.
+every conditional in the 103 unit tests, because `coverage.py` is not installed. Evidence source: executed tool commands in this repository.
 
 ## What the evaluator proves — and what it cannot
 
