@@ -29,7 +29,7 @@ import com.aurevia.smartclinic.messaging.acknowledgment.InstructionFacts.Publica
  * routing can be exercised deterministically without a database. It is not the
  * authoritative store: a production adapter must persist these append-only
  * facts under forced tenant row-level security with unique constraints on first
- * view, acknowledgment and idempotency keys. Every method takes the active
+ * view and acknowledgment per viewer and on idempotency keys. Every method takes the active
  * organization and never merges rows across tenants.</p>
  */
 @Repository
@@ -228,16 +228,24 @@ public class InMemoryInstructionFactStore implements InstructionFactStore {
 
     @Override
     public Acknowledgment putAcknowledgmentIfAbsent(String organizationId, Acknowledgment acknowledgment) {
-        String composite = revisionKey(organizationId, acknowledgment.instructionId(),
-                acknowledgment.revision());
+        // IAM-05 permits several verified accounts on one chart: dedupe per
+        // acknowledging subject so a replay returns its own receipt, never the
+        // first caller's fact with the wrong actor.
+        String composite = key(organizationId, acknowledgment.instructionId() + "|"
+                + acknowledgment.revision() + "|" + acknowledgment.actor());
         Acknowledgment winner = acknowledgments.putIfAbsent(composite, acknowledgment);
         return winner == null ? acknowledgment : winner;
     }
 
     @Override
     public List<Acknowledgment> acknowledgments(String organizationId, String instructionId, int revision) {
-        Acknowledgment found = acknowledgments.get(revisionKey(organizationId, instructionId, revision));
-        return found == null ? List.of() : List.of(found);
+        String prefix = key(organizationId, instructionId + "|" + revision + "|");
+        return acknowledgments.entrySet().stream()
+                .filter(entry -> entry.getKey().startsWith(prefix))
+                .map(Map.Entry::getValue)
+                .sorted(Comparator.comparing(Acknowledgment::occurredAt)
+                        .thenComparing(Acknowledgment::actor))
+                .toList();
     }
 
     @Override
@@ -283,8 +291,8 @@ public class InMemoryInstructionFactStore implements InstructionFactStore {
                 .filter(Instruction::requiresAcknowledgment)
                 .filter(instruction -> instruction.acknowledgmentDueAt() != null)
                 .filter(instruction -> instruction.acknowledgmentDueAt().isBefore(now))
-                .filter(instruction -> acknowledgments.get(revisionKey(organizationId,
-                        instruction.id(), instruction.revision())) == null)
+                .filter(instruction -> acknowledgments(organizationId,
+                        instruction.id(), instruction.revision()).isEmpty())
                 .filter(instruction -> followUps.get(revisionKey(organizationId,
                         instruction.id(), instruction.revision())) == null)
                 .toList();
