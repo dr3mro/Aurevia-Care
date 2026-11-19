@@ -339,15 +339,15 @@ Gate evidence: confirmed patients see only authorized revisions; generic notific
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [-] S-G3-11 · iOS and Android patient flows with accessibility and RTL operation (PAT-01–03, MSG-01–07, UX-01).
   - agent: swarm-1
-  - attempts: 3
+  - attempts: 4
   - scope: apps/patient-mobile/src/features/s_g3_11, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_11
   - reserved: V39
   - details:
     Implement iOS and Android patient flows with accessibility and RTL operation (PAT-01–03, MSG-01–07, UX-01) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [-] S-G3-12 · Restore, downtime, load, accessibility and audit evidence (G3).
-  - agent: swarm-2
+- [x] S-G3-12 · Restore, downtime, load, accessibility and audit evidence (G3).
+  - pr: #81
   - attempts: 3
   - scope: apps/patient-mobile/src/features/s_g3_12, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_12
   - reserved: V40
@@ -361,8 +361,8 @@ Gate evidence: confirmed patients see only authorized revisions; generic notific
 
 Gate evidence: wrong-patient study association refused; radiology addendum reaches referrer; PT episode produces signed discharge and referral closure; ambiguous prescription transmission reconciles without duplication; payment and refund replay reproduces balances.
 
-- [-] S-G4-01 · Imaging order intake, urgency, accession, study association, signed interpretation and addenda (RAD-01).
-  - agent: swarm-3
+- [x] S-G4-01 · Imaging order intake, urgency, accession, study association, signed interpretation and addenda (RAD-01).
+  - pr: #82
   - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g4/s_g4_01, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g4_01
   - reserved: V41
@@ -370,8 +370,8 @@ Gate evidence: wrong-patient study association refused; radiology addendum reach
     Implement Imaging order intake, urgency, accession, study association, signed interpretation and addenda (RAD-01) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [-] S-G4-02 · Therapy episode, evaluation, goals, interventions, outcomes, signed progress and discharge (PT-01).
-  - agent: swarm-4
+- [x] S-G4-02 · Therapy episode, evaluation, goals, interventions, outcomes, signed progress and discharge (PT-01).
+  - pr: #83
   - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g4/s_g4_02, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g4_02
   - reserved: V42
@@ -379,8 +379,8 @@ Gate evidence: wrong-patient study association refused; radiology addendum reach
     Implement Therapy episode, evaluation, goals, interventions, outcomes, signed progress and discharge (PT-01) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [-] S-G4-03 · Prescription draft, versioned drug catalog, alternatives and verified allergy checks (RX-01).
-  - agent: swarm-5
+- [x] S-G4-03 · Prescription draft, versioned drug catalog, alternatives and verified allergy checks (RX-01).
+  - pr: #84
   - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g4/s_g4_03, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g4_03
   - reserved: V43
@@ -388,8 +388,8 @@ Gate evidence: wrong-patient study association refused; radiology addendum reach
     Implement Prescription draft, versioned drug catalog, alternatives and verified allergy checks (RX-01) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [-] S-G4-04 · Prescriber attestation, approved routing channel, transmission events and ambiguity reconciliation (RX-02).
-  - agent: swarm-6
+- [x] S-G4-04 · Prescriber attestation, approved routing channel, transmission events and ambiguity reconciliation (RX-02).
+  - pr: #85
   - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g4/s_g4_04, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g4_04
   - reserved: V44
@@ -397,8 +397,8 @@ Gate evidence: wrong-patient study association refused; radiology addendum reach
     Implement Prescriber attestation, approved routing channel, transmission events and ambiguity reconciliation (RX-02) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [-] S-G4-05 · Itemized self-pay invoices, payments, refunds, receipts and daily reconciliation (FIN-01).
-  - agent: swarm-7
+- [x] S-G4-05 · Itemized self-pay invoices, payments, refunds, receipts and daily reconciliation (FIN-01).
+  - pr: #86
   - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g4/s_g4_05, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g4_05
   - reserved: V45
@@ -406,8 +406,8 @@ Gate evidence: wrong-patient study association refused; radiology addendum reach
     Implement Itemized self-pay invoices, payments, refunds, receipts and daily reconciliation (FIN-01) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [-] S-G4-06 · Specialty role permissions and end-to-end flow evidence (PRD-06).
-  - agent: swarm-8
+- [x] S-G4-06 · Specialty role permissions and end-to-end flow evidence (PRD-06).
+  - pr: #87
   - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g4/s_g4_06, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g4_06
   - reserved: V46
@@ -425,8 +425,8 @@ Gate evidence: each site approves workflow, release policy, market constraints, 
 - [ ] S-G5-02 · Clinical templates, code sets, interpreting privileges and result escalation approvals (ADM-01).
 - [ ] S-G5-03 · Result release rules, sensitive information handling and identity recovery approvals (OPS-01).
 - [ ] S-G5-04 · Laboratory, PACS and pharmacy interface contracts, credentials and outage drills (OPS-01).
-- [-] S-G5-05 · Capacity targets, pilot load profile and measured performance evidence (OPS-03).
-  - agent: swarm-9
+- [x] S-G5-05 · Capacity targets, pilot load profile and measured performance evidence (OPS-03).
+  - pr: #88
   - attempts: 3
   - scope: infra/s_g5_05, docs/operations/s_g5_05
   - reserved: V47
@@ -434,8 +434,8 @@ Gate evidence: each site approves workflow, release policy, market constraints, 
     Implement Capacity targets, pilot load profile and measured performance evidence (OPS-03) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [-] S-G5-06 · Recovery targets, restore into clean environment and operational runbooks (OPS-04, OPS-05).
-  - agent: swarm-10
+- [x] S-G5-06 · Recovery targets, restore into clean environment and operational runbooks (OPS-04, OPS-05).
+  - pr: #89
   - attempts: 2
   - scope: infra/s_g5_06, docs/operations/s_g5_06
   - reserved: V48
