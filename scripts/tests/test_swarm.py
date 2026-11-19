@@ -651,6 +651,8 @@ class ResolveConflictTests(unittest.TestCase):
             swarm.integrate_batch([5])
         failed.assert_not_called()
         emitted.assert_any_call("conflicted", "[5]")
+        queued = [c for c in fake.calls if c[:2] == ("pr", "comment")]
+        self.assertTrue(any(swarm.RESOLVE_MARK in part for c in queued for part in c))
 
     def test_conflict_goes_back_to_the_workers_after_three_tries(self):
         fake = FakeGh(pr_view=self.view(comments=swarm.MAX_RESOLVE))
@@ -728,6 +730,17 @@ class ResolveConflictTests(unittest.TestCase):
         self.assertNotIn("agent-run.sh resolve", publish)
         step = resolve.split("scripts/agent-run.sh resolve")[0].rsplit("- name:", 1)[1]
         self.assertNotIn("GH_TOKEN", step)
+
+    def test_opencode_team_agent_job_has_no_write_token_and_publishes_elsewhere(self):
+        text = (ROOT / ".github/workflows/opencode-team.yml").read_text()
+        story = text.split("\n  story:\n    name:")[1].split("\n  publish:\n")[0]
+        publish = text.split("\n  publish:\n")[1]
+        self.assertIn("contents: read", story)
+        for secret in ("github.token", "SWARM_TOKEN", "contents: write"):
+            self.assertNotIn(secret, story)
+        self.assertNotIn("agent-run.sh implement", publish)
+        self.assertIn("agent-run.sh adopt", publish)
+        self.assertIn("ref: ${{ github.event.repository.default_branch }}", publish)
 
     def test_swarm_worker_uses_its_token_only_before_the_agent_runs(self):
         text = (ROOT / ".github/workflows/swarm.yml").read_text()

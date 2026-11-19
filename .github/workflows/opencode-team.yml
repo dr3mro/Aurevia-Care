@@ -34,44 +34,21 @@ jobs:
     timeout-minutes: 2
     outputs:
       image: ${{ steps.image.outputs.name }}
+      ref: ${{ steps.target.outputs.ref }}
+      mode: ${{ steps.target.outputs.mode }}
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
       - id: image
         run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}-agent:latest" >> "$GITHUB_OUTPUT"
-  story:
-    name: Implement and review
-    needs: plan
-    runs-on: ubuntu-latest
-    timeout-minutes: 75
-    container:
-      image: ${{ needs.plan.outputs.image }}
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-    permissions:
-      contents: write
-      pull-requests: write
-      issues: write
-      packages: read
-    # Container jobs default to sh (dash), which lacks pipefail.
-    defaults:
-      run:
-        shell: bash
-    env:
-      MODEL: ${{ vars.OPENCODE_MODEL || 'opencode/deepseek-v4.1-flash-free' }}
-      BASE_BRANCH: ${{ github.event.repository.default_branch }}
-      ISSUE_NUMBER: ${{ github.event.issue.number }}
-      STORY_TITLE: ${{ github.event.issue.title || inputs.story }}
-      STORY_BODY: ${{ github.event.issue.body }}
-      STORY_ID: ${{ github.event.issue.number && format('issue-{0}', github.event.issue.number) || format('dispatch-{0}', github.run_number) }}
-      FIX_COMMENT: ${{ github.event_name == 'issue_comment' && github.event.comment.body || '' }}
-    steps:
       # A /oc comment on a pull request means "fix this branch". Same-repository
       # branches only, so a fork can never run code with this job's permissions.
       - name: Resolve target branch
         id: target
-        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          BASE_BRANCH: ${{ github.event.repository.default_branch }}
           IS_PR: ${{ github.event.issue.pull_request != null }}
           NUMBER: ${{ github.event.issue.number }}
         run: |
@@ -84,19 +61,107 @@ jobs:
           else
             printf 'ref=%s\nmode=story\n' "$BASE_BRANCH" >> "$GITHUB_OUTPUT"
           fi
+  # The agent runs here with no write token and no push step: it only leaves a
+  # bundle behind. A separate job in a fresh runner publishes it, so agent-edited
+  # scripts can never run next to a token.
+  story:
+    name: Implement and review
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    container:
+      image: ${{ needs.plan.outputs.image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    permissions:
+      contents: read
+      packages: read
+    # Container jobs default to sh (dash), which lacks pipefail.
+    defaults:
+      run:
+        shell: bash
+    env:
+      MODEL: ${{ vars.OPENCODE_MODEL || 'opencode-go/hy4-flash-free' }}
+      BASE_BRANCH: ${{ github.event.repository.default_branch }}
+      ISSUE_NUMBER: ${{ github.event.issue.number }}
+      STORY_TITLE: ${{ github.event.issue.title || inputs.story }}
+      STORY_BODY: ${{ github.event.issue.body }}
+      STORY_ID: ${{ github.event.issue.number && format('issue-{0}', github.event.issue.number) || format('dispatch-{0}', github.run_number) }}
+      FIX_COMMENT: ${{ github.event_name == 'issue_comment' && github.event.comment.body || '' }}
+    steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ steps.target.outputs.ref }}
-          fetch-depth: 1
+          ref: ${{ needs.plan.outputs.ref }}
+          fetch-depth: 0
           persist-credentials: false
       - name: Implement the story (no GitHub token in this step)
         id: implement
         env:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
-          MODE: ${{ steps.target.outputs.mode }}
-          BRANCH: ${{ steps.target.outputs.ref }}
+          MODE: ${{ needs.plan.outputs.mode }}
+          BRANCH: ${{ needs.plan.outputs.ref }}
           PR_NUMBER: ${{ github.event.issue.number }}
         run: scripts/agent-run.sh implement
+      - name: Review as QA, DevSecOps and physician (no GitHub token)
+        # Skipped on a rate limit or when nothing was changed, which keeps free
+        # model quota for the next story.
+        if: steps.implement.outputs.commits != '0' && steps.implement.outputs.result == 'ok'
+        env:
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+        run: scripts/agent-run.sh review
+      - name: Pack the commits
+        if: always()
+        run: scripts/agent-run.sh bundle || true
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: team-run
+          path: |
+            .agent/result
+            .agent/commits
+            .agent/checks
+            .agent/branch
+            .agent/base-sha
+            .agent/result.bundle
+            .agent/review-*.md
+          if-no-files-found: ignore
+          retention-days: 7
+  publish:
+    name: Publish and post reviews
+    needs: [plan, story]
+    if: always() && needs.story.result != 'skipped'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    env:
+      BASE_BRANCH: ${{ github.event.repository.default_branch }}
+      ISSUE_NUMBER: ${{ github.event.issue.number }}
+      STORY_TITLE: ${{ github.event.issue.title || inputs.story }}
+      STORY_ID: ${{ github.event.issue.number && format('issue-{0}', github.event.issue.number) || format('dispatch-{0}', github.run_number) }}
+      MODE: ${{ needs.plan.outputs.mode }}
+      BRANCH: ${{ needs.plan.outputs.ref }}
+      PR_NUMBER: ${{ github.event.issue.number }}
+    steps:
+      # Trusted copy of the scripts from the default branch, in a runner the
+      # agent never touched. Never check out the agent's branch here.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@v8
+        continue-on-error: true
+        with:
+          name: team-run
+          path: .agent
+      - name: Rebuild the agent's branch from its bundle
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/agent-run.sh adopt
       - name: Publish the branch and open the pull request
         id: publish
         env:
@@ -104,18 +169,9 @@ jobs:
           # SWARM_TOKEN has the workflow scope needed to push .github/workflows/*;
           # GH_TOKEN stays the App token for gh CLI (needs read:org).
           PUSH_TOKEN: ${{ secrets.SWARM_TOKEN }}
-          MODE: ${{ steps.target.outputs.mode }}
-          PR_NUMBER: ${{ github.event.issue.number }}
         run: scripts/agent-run.sh publish
-      - name: Review as QA, DevSecOps and physician (no GitHub token)
-        # Skipped on a rate limit or when nothing was changed, which keeps free
-        # model quota for the next story.
-        if: steps.publish.outputs.pr != '' && steps.implement.outputs.result == 'ok'
-        env:
-          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
-        run: scripts/agent-run.sh review
       - name: Post the reviews
-        if: steps.publish.outputs.pr != '' && steps.implement.outputs.result == 'ok'
+        if: steps.publish.outputs.pr != ''
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ steps.publish.outputs.pr }}
