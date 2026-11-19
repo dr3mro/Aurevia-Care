@@ -72,6 +72,10 @@ For one-container testing use `docker run --rm -p 127.0.0.1:8080:8080 ghcr.io/<o
 
 See [docs/TEAM-ACTIONS.md](docs/TEAM-ACTIONS.md) for the prepared-image workflow that runs OpenCode agents from labeled issues.
 
+## Agent swarm
+
+See [docs/SWARM.md](docs/SWARM.md) for the 10-worker swarm driven by CLOUDWORKERS.md, its integrator and the main watchdog.
+
 ## Browse and maintain the code
 
 Install Doxygen, then run `scripts/docs.sh`. Open `build/developer-reference/html/index.html` in your browser. It links to the maintainer guide, Java packages, class and file references, source pages and staff and mobile TypeScript references. GitHub Actions builds the site and makes it available as the `developer-reference` artifact. Download and extract the artifact before opening the index.
