@@ -222,7 +222,7 @@ public final class PatientAccessService {
      */
     public PatientAccount recover(Actor actor, RecoverRequest request) {
         authorize(actor, EnrollmentActions.RECOVERY_REDEEM, RESOURCE_ACCOUNT);
-        PatientAccount account = requireAccount(actor, uuid(request.accountId(), "accountId"));
+        PatientAccount account = requireOwnedAccount(actor, uuid(request.accountId(), "accountId"));
         requireUsable(account);
         AccessToken token = store.token(actor.organizationId(), text(request.code(), "code", 128))
                 .orElseThrow(() -> notFound("recovery code not found"));
@@ -297,7 +297,7 @@ public final class PatientAccessService {
         if (request.action() == null) {
             throw invalid("INVALID_ACTION", "a sensitive action is required");
         }
-        PatientAccount account = requireAccount(actor, uuid(request.accountId(), "accountId"));
+        PatientAccount account = requireOwnedAccount(actor, uuid(request.accountId(), "accountId"));
         requireUsable(account);
         AccessToken token = store.token(actor.organizationId(), text(request.token(), "token", 128))
                 .orElseThrow(() -> unauthorized("STALE_REAUTH", "renewed authentication is required"));
@@ -353,7 +353,7 @@ public final class PatientAccessService {
      */
     public AccessDecision checkChartAccess(Actor actor, String accountId, String chartId) {
         authorize(actor, EnrollmentActions.ACCESS_CHART, RESOURCE_ACCOUNT);
-        PatientAccount account = requireAccount(actor, uuid(accountId, "accountId"));
+        PatientAccount account = requireOwnedAccount(actor, uuid(accountId, "accountId"));
         String chart = uuid(chartId, "chartId");
         if (account.state() == AccountState.LOCKED || !account.linkedChartIds().contains(chart)) {
             audit(actor, EventType.ACCESS_DENIED, chart, "denied", "link_inactive");
@@ -483,6 +483,30 @@ public final class PatientAccessService {
 
     private PatientAccount requireAccount(Actor actor, String accountId) {
         return store.account(actor.organizationId(), accountId).orElseThrow(() -> notFound("account not found"));
+    }
+
+    /**
+     * Load an account for a patient self-service command.
+     *
+     * <p>Role authorization and token subject binding are not object
+     * authorization: without this guard a patient holding a valid token could
+     * pass a peer patient's account identifier in the same tenant. Conceal the
+     * account with 404, as for a cross-tenant lookup (PRD-03, IAM-01, ARC-04).
+     * Staff commands that legitimately act on another subject's account keep
+     * using {@code requireAccount}.</p>
+     *
+     * @param actor     authenticated patient
+     * @param accountId tenant-local account identifier
+     * @return the account owned by that patient
+     * @throws ApiException when the account is absent or belongs to another subject
+     */
+    private PatientAccount requireOwnedAccount(Actor actor, String accountId) {
+        PatientAccount account = requireAccount(actor, accountId);
+        if (!actor.subject().equals(account.subject())) {
+            audit(actor, EventType.ACCESS_DENIED, accountId, "denied", "not_owner");
+            throw notFound("account not found");
+        }
+        return account;
     }
 
     private SupportCase requireCase(Actor actor, String caseId) {
