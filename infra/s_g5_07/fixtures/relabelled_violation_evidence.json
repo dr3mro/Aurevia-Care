@@ -1,0 +1,48 @@
+{
+  "schema_version": "1.0",
+  "kind": "measured_deployment",
+  "source": "authorized-rollout-run",
+  "environments": {
+    "development": {"account": "dev-acct-111", "resource": "dev-rs-111"},
+    "test": {"account": "test-acct-222", "resource": "test-rs-222"},
+    "staging": {"account": "stg-acct-333", "resource": "stg-rs-333"},
+    "production": {"account": "prod-acct-444", "resource": "prod-rs-444"}
+  },
+  "fixtures": {
+    "synthetic_only": true,
+    "no_real_patient_data": true,
+    "environments": ["development", "test", "staging"]
+  },
+  "ci_checks": {
+    "policy": true,
+    "dependency_scan": true,
+    "secret_scan": true
+  },
+  "signed_builds": {
+    "method": "cosign",
+    "digest": "sha256:ab12cd34ab12cd34ab12cd34ab12cd34ab12cd34ab12cd34ab12cd34ab12cd34",
+    "verified": true,
+    "signer_identity": "ci-signer-release",
+    "promotion_gate": "signature_verified"
+  },
+  "migration_checks": {
+    "gate": "check-migrations --require-baseline",
+    "expand_contract": true,
+    "forward_fix_required": true
+  },
+  "rollout": {
+    "strategy": "progressive",
+    "stages": ["internal", "canary", "partial", "full"],
+    "health_gates": true,
+    "monitoring": true,
+    "rollback_tested": true
+  },
+  "production_access": {
+    "approval_required": true,
+    "requester": "deployment-bot",
+    "approver": "release-manager",
+    "audited": true,
+    "expiring": true
+  },
+  "reversible_deployments": true
+}

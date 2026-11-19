@@ -336,8 +336,10 @@ class PlanTests(unittest.TestCase):
     def test_worker_has_three_hour_budget_with_restart_slack(self):
         text = (ROOT / ".github/workflows/swarm.yml").read_text()
         worker = text.split("  worker:\n", 1)[1].split("  publish:\n", 1)[0]
-        self.assertIn("timeout-minutes: 185", worker)
+        # 175 min of agent work + a 35 min merge step + bundling and upload slack.
+        self.assertIn("timeout-minutes: 225", worker)
         self.assertIn("AGENT_TIMEOUT: 175m", worker)
+        self.assertIn("timeout-minutes: 35", worker)
 
     def test_task_prompt_states_the_deadline(self):
         text = swarm.task_text({"task": "T", "scope": ["apps/api"],
@@ -385,10 +387,11 @@ class PlanTests(unittest.TestCase):
         self.assertIn("for attempt in 1 2 3", text)
         self.assertIn("apt install attempt", text)
 
-    def test_wave_defaults_to_ten_workers(self):
+    def test_wave_defaults_to_one_worker(self):
         text = (ROOT / ".github/workflows/swarm.yml").read_text()
-        self.assertRegex(text, r"default: '10'")
-        self.assertIn("inputs.workers || '10'", text)
+        self.assertRegex(text, r"default: '1'")
+        self.assertIn("inputs.workers || '1'", text)
+        self.assertIn("max-parallel: 1", text)
 
     def test_pr_size_guard_is_enforced(self):
         fake = FakeGh(diff="\n".join(f"apps/api/src/F{i}.java" for i in range(16)))
@@ -553,6 +556,160 @@ class WorkflowTests(unittest.TestCase):
         self.assertIn("git config --global --add safe.directory", text)
 
 
+class AuditTests(unittest.TestCase):
+    TODO = "- [x] S-1 · Existing finished story.\n  - scope: a\n"
+
+    def entries(self, findings, text=None, today="20261120"):
+        return swarm.audit_entries(findings, text or self.TODO, today)
+
+    def good(self, **over):
+        item = {"title": "Tenant check missing on export endpoint", "scope": ["apps/api/src/export"],
+                "details": "ExportController skips the tenant check.\nSee ExportController.java."}
+        return {**item, **over}
+
+    def test_valid_finding_becomes_a_todo_entry(self):
+        (entry,) = self.entries([self.good()])
+        self.assertIn("- [ ] AUD-20261120-01 · Tenant check missing on export endpoint", entry)
+        self.assertIn("  - attempts: 0\n  - scope: apps/api/src/export", entry)
+        tasks = swarm.parse_tasks(self.TODO + entry + "\n")
+        self.assertEqual(tasks[-1]["status"], "todo")
+        self.assertEqual(tasks[-1]["scope"], ["apps/api/src/export"])
+        self.assertIn("ExportController skips", tasks[-1]["details"])
+
+    def test_invalid_findings_are_dropped(self):
+        bad = [self.good(title="short"), self.good(scope=[]), self.good(scope=["/etc"]),
+               self.good(scope=["../x"]), self.good(scope=[".github/workflows"]),
+               self.good(details=""), "text", None]
+        self.assertEqual(self.entries(bad), [])
+        self.assertEqual(self.entries({"not": "a list"}), [])
+
+    def test_duplicates_of_existing_titles_are_skipped(self):
+        text = self.TODO + "- [ ] X-1 · Tenant check MISSING on export endpoint!\n  - scope: a\n"
+        self.assertEqual(self.entries([self.good()], text), [])
+
+    def test_at_most_five_new_tasks_per_audit(self):
+        items = [self.good(title=f"Distinct finding number {n} in the code") for n in range(8)]
+        self.assertEqual(len(self.entries(items)), swarm.MAX_AUDIT_NEW)
+
+    def test_no_new_tasks_while_too_many_audit_tasks_are_open(self):
+        text = self.TODO + "".join(
+            f"- [ ] AUD-2026-{n:02d} · Open audit task {n} waiting.\n  - scope: a\n"
+            for n in range(swarm.MAX_AUDIT_OPEN))
+        self.assertEqual(self.entries([self.good()], text), [])
+
+    def test_ids_do_not_collide_with_existing_ones(self):
+        text = self.TODO + "- [x] AUD-20261120-01 · Old.\n  - scope: a\n"
+        (entry,) = self.entries([self.good()], text)
+        self.assertIn("AUD-20261120-02", entry)
+
+    def test_add_audit_tasks_appends_under_one_header(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            todo, found = Path(tmp, "TODO.md"), Path(tmp, "f.json")
+            todo.write_text(self.TODO)
+            found.write_text(json.dumps([self.good()]))
+            with mock.patch.object(swarm, "git"), mock.patch.object(swarm, "authed_git"):
+                self.assertEqual(swarm.add_audit_tasks(str(found), str(todo), "20261120"), 1)
+                found.write_text(json.dumps([self.good(title="Another distinct finding here")]))
+                swarm.add_audit_tasks(str(found), str(todo), "20261121")
+            text = todo.read_text()
+            self.assertEqual(text.count(swarm.AUDIT_HEADER), 1)
+            self.assertEqual([t["id"] for t in swarm.parse_tasks(text)][-2:],
+                             ["AUD-20261120-01", "AUD-20261121-01"])
+
+    def test_missing_or_broken_findings_change_nothing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            todo = Path(tmp, "TODO.md")
+            todo.write_text(self.TODO)
+            self.assertEqual(swarm.add_audit_tasks(str(Path(tmp, "none.json")), str(todo)), 0)
+            Path(tmp, "bad.json").write_text("{nope")
+            self.assertEqual(swarm.add_audit_tasks(str(Path(tmp, "bad.json")), str(todo)), 0)
+            self.assertEqual(todo.read_text(), self.TODO)
+
+    def test_daily_workflow_is_read_only_for_the_worker(self):
+        text = (ROOT / ".github/workflows/daily-audit.yml").read_text()
+        self.assertIn("cron: '17 7 * * *'", text)
+        self.assertIn("scripts/agent-run.sh audit", text)
+        self.assertIn("swarm.py add-audit-tasks", text)
+        audit = text.split("  audit:")[1].split("  append:")[0]
+        self.assertNotIn("GH_TOKEN", audit)
+        self.assertNotIn("contents: write", audit)
+
+
+class ResolveConflictTests(unittest.TestCase):
+    def view(self, comments=0, cross=False, branch="swarm/CW-001-1"):
+        return {"headRefName": branch, "isCrossRepository": cross,
+                "comments": [{"body": swarm.RESOLVE_MARK}] * comments}
+
+    def test_conflict_is_handed_to_the_resolver_not_failed(self):
+        fake = FakeGh(pr_view=self.view())
+        with mock.patch.object(swarm, "gh", fake), \
+             mock.patch.object(swarm, "guard", return_value=[]), \
+             mock.patch.object(swarm, "is_repair", return_value=False), \
+             mock.patch.object(swarm, "merge_local", return_value=(None, "CW-001", ["a.java"])), \
+             mock.patch.object(swarm, "fail") as failed, \
+             mock.patch.object(swarm, "emit") as emitted:
+            swarm.integrate_batch([5])
+        failed.assert_not_called()
+        emitted.assert_any_call("conflicted", "[5]")
+
+    def test_conflict_goes_back_to_the_workers_after_three_tries(self):
+        fake = FakeGh(pr_view=self.view(comments=swarm.MAX_RESOLVE))
+        with mock.patch.object(swarm, "gh", fake), \
+             mock.patch.object(swarm, "guard", return_value=[]), \
+             mock.patch.object(swarm, "is_repair", return_value=False), \
+             mock.patch.object(swarm, "merge_local", return_value=(None, "CW-001", ["a.java"])), \
+             mock.patch.object(swarm, "fail") as failed, \
+             mock.patch.object(swarm, "emit") as emitted:
+            swarm.integrate_batch([5])
+        self.assertTrue(failed.called)
+        emitted.assert_any_call("conflicted", "[]")
+
+    def results(self, tmp, **outcomes):
+        for pr, outcome in outcomes.items():
+            Path(tmp, pr.lstrip("pr")).write_text(outcome)
+
+    def test_resolved_branch_is_pushed_and_the_integrator_runs_again(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.results(tmp, pr5="merged")
+            fake = FakeGh(pr_view=self.view())
+            with mock.patch.object(swarm, "gh", fake), \
+                 mock.patch.object(swarm, "authed_git") as push, \
+                 mock.patch.object(swarm, "fail") as failed:
+                self.assertEqual(swarm.resolve_publish(tmp), ["5"])
+        push.assert_called_once_with("push", "origin", "resolve-5:refs/heads/swarm/CW-001-1")
+        failed.assert_not_called()
+        self.assertTrue(fake.said("workflow", "run", "swarm-integrator.yml"))
+        self.assertTrue(fake.said("pr", "comment", "5"))
+
+    def test_unresolved_conflict_is_failed_back_to_the_workers(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.results(tmp, pr5="conflict")
+            with mock.patch.object(swarm, "gh", FakeGh(pr_view=self.view())), \
+                 mock.patch.object(swarm, "authed_git") as push, \
+                 mock.patch.object(swarm, "fail") as failed:
+                self.assertEqual(swarm.resolve_publish(tmp), [])
+        push.assert_not_called()
+        self.assertEqual(failed.call_args.args[0], 5)
+
+    def test_fork_branches_are_never_pushed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.results(tmp, pr5="merged")
+            with mock.patch.object(swarm, "gh", FakeGh(pr_view=self.view(cross=True))), \
+                 mock.patch.object(swarm, "authed_git") as push, \
+                 mock.patch.object(swarm, "fail") as failed:
+                swarm.resolve_publish(tmp)
+        push.assert_not_called()
+        self.assertTrue(failed.called)
+
+    def test_integrator_workflow_resolves_conflicts_without_a_token_in_the_agent_step(self):
+        text = (ROOT / ".github/workflows/swarm-integrator.yml").read_text()
+        job = text.split("  resolve:")[1]
+        self.assertIn("agent-run.sh resolve", job)
+        self.assertIn("swarm.py resolve-publish", job)
+        step = job.split("scripts/agent-run.sh resolve")[0].rsplit("- name:", 1)[1]
+        self.assertNotIn("GH_TOKEN", step)
+
+
 class RepairTests(unittest.TestCase):
     def test_repair_task_carries_the_failing_log(self):
         class Gh(FakeGh):
@@ -686,6 +843,40 @@ class GitTests(unittest.TestCase):
         self.assertIn("Task: CW-001", create[create.index("--body") + 1])
         self.assertEqual(create[create.index("--title") + 1], "CW-001: Staff")
         self.assertNotIn("--draft", create)
+
+    def test_failed_worker_still_publishes_its_work_as_a_draft(self):
+        out, fake = self.worker_dir(result="timeout", checks="failed"), FakeGh()
+        with mock.patch.object(swarm, "gh", fake), mock.patch.object(swarm, "release_claim"):
+            swarm.publish(self.TASK, out)
+        self.assertIn("refs/heads/swarm/CW-001-1", self.run_git("ls-remote", "--heads", "origin"))
+        create = [c for c in fake.calls if c[:2] == ("pr", "create")][0]
+        self.assertIn("--draft", create)
+        body = create[create.index("--body") + 1]
+        self.assertIn("did not finish cleanly", body)
+        self.assertIn("agent result: timeout", body)
+
+    def test_unresolved_merge_conflict_publishes_a_draft(self):
+        out, fake = self.worker_dir(), FakeGh()
+        (out / "merge").write_text("conflict")
+        with mock.patch.object(swarm, "gh", fake):
+            swarm.publish(self.TASK, out)
+        create = [c for c in fake.calls if c[:2] == ("pr", "create")][0]
+        self.assertIn("--draft", create)
+        self.assertIn("unresolved conflicts", create[create.index("--body") + 1])
+
+    def test_pull_request_failure_after_push_opens_an_issue(self):
+        out = self.worker_dir()
+
+        class NoPr(FakeGh):
+            def __call__(self, *args, check=True):
+                if args[:2] == ("pr", "create"):
+                    raise subprocess.CalledProcessError(1, args)
+                return super().__call__(*args, check=check)
+        fake = NoPr()
+        with mock.patch.object(swarm, "gh", fake), mock.patch.object(swarm, "release_claim"):
+            swarm.publish(self.TASK, out)
+        self.assertIn("refs/heads/swarm/CW-001-1", self.run_git("ls-remote", "--heads", "origin"))
+        self.assertTrue(fake.said("issue", "create"))
 
     def test_publish_blocks_workflow_file_changes_and_releases_claim(self):
         out = self.worker_dir(extra={".github/workflows/x.yml": "name: x\n"})
