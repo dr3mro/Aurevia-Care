@@ -5,8 +5,7 @@ import java.util.List;
 /**
  * Immutable version history of one configuration key in the active organization.
  *
- * @param key     tenant-local configuration key
- * @param entries all versions with their approval facts, ordered by version
+ * @return this record
  */
 public record ConfigHistory(String key, List<ConfigEntry> entries) {
 

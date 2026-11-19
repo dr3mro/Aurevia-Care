@@ -23,7 +23,10 @@ export function createMessageFactsClient(fixture: MessageFactsFixture): MessageF
   let facts: Readonly<Record<string, DeliveryFacts>> = fixture.facts;
 
   function requireAuth(): void {
-    if (fixture.readToken() === null) {
+    // A missing OR empty OS-backed credential is not authentication. Fail
+    // closed before exposing any instruction content (MSG-05, PAT-02).
+    const token = fixture.readToken();
+    if (token === null || token.length === 0) {
       throw new Error('NOT_AUTHENTICATED');
     }
   }
