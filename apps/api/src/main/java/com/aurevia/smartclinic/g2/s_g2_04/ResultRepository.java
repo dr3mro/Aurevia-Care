@@ -132,17 +132,24 @@ public class ResultRepository {
     }
 
     /**
-     * Find one revision by its source, accession and lineage version.
+     * Find one revision by its order lineage, source, accession and version.
      *
+     * <p>The order reference is part of the lookup key on purpose: two orders in
+     * the same tenant may carry an identical issuer accession, so matching only
+     * on source and accession could replay another patient's revision.</p>
+     *
+     * @param orderRef   tenant-local order identifier owning the lineage
      * @param sourceCode issuer system code
      * @param accession  issuer-scoped accession
      * @param version    lineage version
      * @return the revision when visible
      */
-    public Optional<ResultReport> findReport(String sourceCode, String accession, int version) {
+    public Optional<ResultReport> findReport(String orderRef, String sourceCode, String accession, int version) {
         return jdbc.query("SELECT " + REPORT_COLUMNS + " FROM public.xch04_report_revision "
-                        + "WHERE source_code = :sourceCode AND accession = :accession AND version = :version",
-                new MapSqlParameterSource().addValue("sourceCode", sourceCode)
+                        + "WHERE order_ref = :orderRef AND source_code = :sourceCode "
+                        + "AND accession = :accession AND version = :version",
+                new MapSqlParameterSource().addValue("orderRef", orderRef)
+                        .addValue("sourceCode", sourceCode)
                         .addValue("accession", accession).addValue("version", version),
                 REPORT_MAPPER).stream().findFirst();
     }
@@ -177,11 +184,18 @@ public class ResultRepository {
     }
 
     /**
-     * Append one immutable result revision.
+     * Append one immutable result revision, tolerating a concurrent replay.
+     *
+     * <p>The unique key makes the insert idempotent under concurrency: a second
+     * transaction racing the same (order, source, accession, version) inserts no
+     * row and returns {@code false}, so the caller can return the winning
+     * revision instead of surfacing a constraint violation.</p>
      *
      * @param report revision with server-derived times and caller-generated id
+     * @return {@code true} when this call inserted the revision, {@code false}
+     *         when a concurrent import already inserted it
      */
-    public void insertReport(ResultReport report) {
+    public boolean insertReport(ResultReport report) {
         MapSqlParameterSource parameters = new MapSqlParameterSource()
                 .addValue("id", report.id())
                 .addValue("version", report.version())
@@ -203,7 +217,7 @@ public class ResultRepository {
             parameters.addValue("supersedesVersion", report.supersedesVersion());
             parameters.addValue("previousId", report.previousId());
         }
-        jdbc.update("""
+        List<String> inserted = jdbc.query("""
                 INSERT INTO public.xch04_report_revision
                     (organization_id, id, version, order_ref, patient_id, source_code, accession,
                      destination_code, kind, supersedes_version, previous_id, owner_subject,
@@ -213,7 +227,10 @@ public class ResultRepository {
                         :kind, :supersedesVersion, CAST(:previousId AS uuid), :owner,
                         :coverageQueue, CAST(:effectiveAt AS timestamptz),
                         CAST(:receivedAt AS timestamptz), :checksum)
-                """, parameters);
+                ON CONFLICT (organization_id, order_ref, source_code, accession, version) DO NOTHING
+                RETURNING id::text
+                """, parameters, (resultSet, rowNumber) -> resultSet.getString("id"));
+        return !inserted.isEmpty();
     }
 
     /**
