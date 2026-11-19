@@ -17,6 +17,9 @@ concurrency:
 jobs:
   pick:
     name: Pick the queue
+    # Failed or cancelled waves publish no new PR; integrating on every
+    # completion made the integrator run three times per batch.
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 3
     permissions:

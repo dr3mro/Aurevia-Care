@@ -233,6 +233,9 @@ Raised by the dispatch-3 run-3 verification. Address in the next authorized chan
 - [x] S-FIX-SWARM-TOKEN-01 · Use the added `SWARM_TOKEN` secret for workflow-file pushes: publish sets `SWARM_WORKFLOW_PUSH` when the secret exists, and `publish()` allows `.github/workflows/*` changes only with that flag.
   - evidence: `gh api repos/dr3mro/Aurevia-Care/actions/secrets` lists `SWARM_TOKEN` updated 2026-11-19T09:26:24Z. Guards red first then green: 77 swarm tests, 151 total tooling tests OK; all 8 workflow YAMLs parse. Evidence source: GitHub API plus executed tool commands; no human or clinical evidence.
 
+- [x] S-FIX-INTEGRATOR-01 · Run the integrator only for successful swarm waves. Failed/cancelled waves publish no PR, but `workflow_run: completed` still triggered three runs per batch. Added a `pick` job guard plus regression test.
+  - evidence: `gh run list --workflow=swarm-integrator.yml` showed two failure-triggered runs (`44496897170`, `44496943529`) and one success-triggered run (`44496999654`) within 41 seconds. Guards red then green: 81 swarm tests, 155 total tooling tests OK; all 8 workflow YAMLs parse. Evidence source: GitHub run API plus executed tool commands; no human or clinical evidence.
+
 ## One-week execution plan (1 wave per hour)
 
 Created 2026-11-19T08:55Z from the open entries above. Horizon: 7 days × 24 hours = 168 hourly wave slots. This plan uses 7 implementation waves; the remaining 161 hourly slots are buffer for `needs-fix` retries, fix PRs, gate re-runs and human approvals.
