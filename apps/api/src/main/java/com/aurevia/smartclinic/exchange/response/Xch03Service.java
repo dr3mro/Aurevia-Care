@@ -11,10 +11,12 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.aurevia.smartclinic.api.ApiException;
+import com.aurevia.smartclinic.api.SqlFailureTranslator;
 import com.aurevia.smartclinic.audit.AuditAppender;
 import com.aurevia.smartclinic.tenant.TenantContext;
 
@@ -363,18 +365,26 @@ public class Xch03Service {
             if (current.version() != version) {
                 throw stale();
             }
-            Decision next = decision.apply(current);
-            int updated = repository.update(id, version, next.state(), next.localPatientId(),
-                    next.assignee(), next.reason(), next.question(), next.permittedPurpose(),
-                    next.retentionPolicy(), next.revision());
-            if (updated == 0) {
-                throw stale();
+            try {
+                Decision next = decision.apply(current);
+                int updated = repository.update(id, version, next.state(), next.localPatientId(),
+                        next.assignee(), next.reason(), next.question(), next.permittedPurpose(),
+                        next.retentionPolicy(), next.revision());
+                if (updated == 0) {
+                    throw stale();
+                }
+                repository.appendEvent(context.organizationId(), Xch03Inputs.newId(), id, version + 1,
+                        eventAction, current.state().wire(), next.state().wire(),
+                        next.reason(), context.subject());
+                audit.append(context, action, action, RESOURCE_TYPE, SCOPE, id, "SUCCESS");
+                return repository.find(id).orElseThrow();
+            } catch (DataIntegrityViolationException exception) {
+                // A locally verified patient association and every ledger reference are
+                // enforced by tenant-scoped database constraints. An unresolvable reference
+                // is concealed as not found; any other integrity refusal is a conflict —
+                // never an unhandled 500 (XCH-03, ARC-03, ARC-04).
+                throw SqlFailureTranslator.translate(exception);
             }
-            repository.appendEvent(context.organizationId(), Xch03Inputs.newId(), id, version + 1,
-                    eventAction, current.state().wire(), next.state().wire(),
-                    next.reason(), context.subject());
-            audit.append(context, action, action, RESOURCE_TYPE, SCOPE, id, "SUCCESS");
-            return repository.find(id).orElseThrow();
         });
         if (denial.get() != null) {
             throw denial.get();

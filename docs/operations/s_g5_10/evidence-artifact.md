@@ -12,16 +12,21 @@ pass.
 
 | Section | Fields |
 |---|---|
-| Envelope | `schema_version` (`1.0`), `kind` (`synthetic_rehearsal` or `measured_acceptance`), `source` (a label) |
+| Envelope | `schema_version` (`1.0`), `kind` (`synthetic_rehearsal` or `measured_acceptance`), `source` (a non-blank string label, required for attribution) |
 | `localization` | `languages`, `rtl`, `local_names`, `mixed_script` — see [Localization and RTL](localization-and-rtl.md) |
 | `time` | `instant_storage`, `iana_timezone_context`, `civil_dates_retained`, `dst_transitions_tested` — see [Time zones and civil dates](time-and-timezones.md) |
 | `accessibility` | `staff_web`, `mobile` — see [Accessibility and screen readers](accessibility-and-screen-readers.md) |
 | `exports` | `language_preserved`, `units_preserved` — both boolean `true` |
 | `presentation` | `styling_flexible` — boolean `true` |
 
-An artifact whose `kind` is `measured_acceptance` but whose `source` contains the
-word "synthetic" is rejected as a conflict. Every check is collected before a
-verdict is returned, so one report lists all breaches.
+`source` must be a non-blank string for every artifact, so a "measured" result
+can always be traced to the party that produced it. An artifact whose `kind` is
+`measured_acceptance` but whose `source` contains the word "synthetic" is
+rejected as a conflict. Together these rules stop an unattributable or
+self-labelled-synthetic artifact from being promoted to `final_evidence`: a
+measured artifact with a missing, blank or non-string source fails the envelope
+and is never final. Every check is collected before a verdict is returned, so
+one report lists all breaches.
 
 ## Exports and presentation
 
@@ -36,7 +41,7 @@ light/dark presentation must be expressible without duplicating content.
 
 | Command | Result in this repository |
 |---|---|
-| `python3 -I -m unittest discover -s infra/s_g5_10/tests -q` | 51 tests, 0 failures, 0 errors |
+| `python3 -I -m unittest discover -s infra/s_g5_10/tests -q` | 54 tests, 0 failures, 0 errors |
 | `bash infra/s_g5_10/check-ux01.sh` | exit 0; conforming fixture passes, violation fixture fails with exit code 1 and a FAIL marker |
 | `python3 -I infra/s_g5_10/ux01_evidence.py infra/s_g5_10/fixtures/synthetic_ux01_evidence.json` | verdict `PASS`, class `rehearsal`, `final_evidence` false |
 | `python3 -I infra/s_g5_10/ux01_evidence.py infra/s_g5_10/fixtures/violation_ux01_evidence.json` | verdict `FAIL`, exit 1, eight failing checks |
@@ -45,7 +50,7 @@ light/dark presentation must be expressible without duplicating content.
 `coverage.py` is not installed in this environment, so line coverage is measured
 with the standard-library `trace` tool with `--missing`. The CLI bootstrap line
 is executed by `test_module_entry_point_runs_main`, so it is not an exclusion.
-Branch coverage has no mechanical measure here; the 51 tests exhaustively
+Branch coverage has no mechanical measure here; the 54 tests exhaustively
 enumerate the evaluator's branches, including malformed and hostile JSON.
 No uncovered or pending-as-covered result is claimed.
 

@@ -162,12 +162,15 @@ class ConversationServiceTest {
     }
 
     @Test
-    void openRejectsPatientBindingAnotherSubject() {
+    void openConcealsAnotherSubjectWithoutProbingPatientExistence() {
         asPatient("patient-a");
-        when(repository.patientExists(PATIENT_ID)).thenReturn(true);
-        when(repository.patientLinkActive("patient-b", PATIENT_ID)).thenReturn(true);
-        assertEquals(403, assertThrows(ApiException.class,
-                () -> service.open(new OpenRequest(PATIENT_ID, "patient-b", "lab", "conn-1", null))).status());
+        ApiException failure = assertThrows(ApiException.class,
+                () -> service.open(new OpenRequest(PATIENT_ID, "patient-b", "lab", "conn-1", null)));
+        assertEquals(404, failure.status());
+        assertEquals("NOT_FOUND", failure.code());
+        verify(repository, never()).patientExists(any());
+        verify(repository, never()).patientLinkActive(any(), any());
+        verify(repository, never()).insertConversation(any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -199,6 +202,7 @@ class ConversationServiceTest {
     void staffReplyAppendsMessageAndMovesToAwaitingPatient() {
         asStaff("lab-a", "lab_verifier");
         when(repository.loadForUpdate(ID)).thenReturn(Optional.of(conversation(State.AWAITING_STAFF, 1, "patient-a", "lab", null)));
+        when(repository.patientLinkActive("patient-a", PATIENT_ID)).thenReturn(true);
         when(repository.nextSequence(ID)).thenReturn(3);
         stubView(State.AWAITING_PATIENT, 2, List.of());
 
@@ -206,6 +210,36 @@ class ConversationServiceTest {
 
         assertEquals(State.AWAITING_PATIENT, view.conversation().state());
         verify(repository).insertMessage(ID, 3, "staff", "lab-a", "lab_verifier", "please arrive early");
+    }
+
+    @Test
+    void staffReplyCannotReopenAResolvedThreadWhenTheVerifiedLinkIsRevoked() {
+        asStaff("lab-a", "lab_verifier");
+        when(repository.loadForUpdate(ID)).thenReturn(Optional.of(conversation(State.RESOLVED, 2, "patient-a", "lab", null)));
+        when(repository.patientLinkActive("patient-a", PATIENT_ID)).thenReturn(false);
+
+        ApiException failure = assertThrows(ApiException.class,
+                () -> service.reply(ID, new ReplyRequest("hello"), 2));
+
+        assertEquals(404, failure.status());
+        assertEquals("NOT_FOUND", failure.code());
+        verify(repository, never()).insertMessage(any(), anyInt(), any(), any(), any(), any());
+        verify(repository, never()).updateState(any(), anyInt(), any());
+        verify(repository, never()).appendEvent(any(), anyInt(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void staffReplyReopensAResolvedThreadWhenTheVerifiedLinkIsActive() {
+        asStaff("lab-a", "lab_verifier");
+        when(repository.loadForUpdate(ID)).thenReturn(Optional.of(conversation(State.RESOLVED, 2, "patient-a", "lab", null)));
+        when(repository.patientLinkActive("patient-a", PATIENT_ID)).thenReturn(true);
+        when(repository.nextSequence(ID)).thenReturn(3);
+        stubView(State.AWAITING_PATIENT, 3, List.of());
+
+        service.reply(ID, new ReplyRequest("one more answer"), 2);
+
+        verify(repository).appendEvent(eq(ID), eq(3), eq("reopened"), eq("lab-a"),
+                eq("resolved"), eq("awaiting_patient"), any());
     }
 
     @Test
@@ -466,6 +500,20 @@ class ConversationServiceTest {
                 .thenReturn(List.of());
         assertEquals(0, service.workQueue().entries().size());
         verify(repository).workQueue(List.of("clinic", "lab", "radiology", "pt", "pharmacy"));
+    }
+
+    @Test
+    void tenantAdminCannotWriteAWorkItem() {
+        asStaff("admin-a", "tenant_admin");
+        ApiException assignFailure = assertThrows(ApiException.class,
+                () -> service.assign(ID, new AssignRequest("lab-b", "cover"), 1));
+        assertEquals(403, assignFailure.status());
+        ApiException replyFailure = assertThrows(ApiException.class,
+                () -> service.reply(ID, new ReplyRequest("hello"), 1));
+        assertEquals(403, replyFailure.status());
+        verify(repository, never()).loadForUpdate(any());
+        verify(audit).append(any(), eq("WORK_ASSIGN"), eq("WORK_ASSIGN"),
+                eq("CONVERSATION"), eq("CONVERSATION"), eq(ID), eq("DENIED"));
     }
 
     @Test

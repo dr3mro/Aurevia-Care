@@ -16,6 +16,9 @@ case "$FAKE_MODE" in
   dirty) echo work > feature.txt; echo done ;;
   edit) echo more >> feature.txt; echo findings ;;
   none) echo nothing ;;
+  resolve) echo merged > feature.txt; git add feature.txt; git commit -qm resolved --no-edit; echo done ;;
+  markers) git add feature.txt; git commit -qm bad --no-edit; echo done ;;
+  stubborn) echo nothing ;;
 esac
 """
 FAKE_GH = """#!/usr/bin/env bash
@@ -83,6 +86,84 @@ class AgentRunTests(unittest.TestCase):
         heads = subprocess.run(["git", "ls-remote", "--heads", "origin"], cwd=self.repo,
                                capture_output=True, text=True).stdout
         self.assertIn("refs/heads/opencode/issue-5-9", heads)
+
+    def push_to_main(self, name, text):
+        other = self.tmp / "other"
+        if not other.exists():
+            subprocess.run(["git", "clone", "-q", str(self.tmp / "origin.git"), str(other)],
+                           check=True, capture_output=True)
+        (other / name).write_text(text)
+        for args in (("add", name), ("commit", "-qm", f"main {name}"), ("push", "-q", "origin", "main")):
+            subprocess.run(["git", *args], cwd=other, check=True, capture_output=True, env=self.env)
+
+    def merge_main(self, mode, **env):
+        self.run_cmd("implement", FAKE_MODE="commit")
+        self.before = subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.repo,
+                                     capture_output=True, text=True).stdout
+        self.assertEqual(self.run_cmd("fetch-main").returncode, 0)
+        return self.run_cmd("merge-main", FAKE_MODE=mode, MERGE_ATTEMPTS="2", **env)
+
+    def test_merge_main_without_conflicts_merges_and_rechecks(self):
+        self.push_to_main("other.txt", "from main\n")
+        self.assertEqual(self.merge_main("none").returncode, 0)
+        self.assertEqual(self.outputs()["merge"], "merged")
+        self.assertTrue((self.repo / "other.txt").exists())
+        self.assertTrue((self.repo / "feature.txt").exists())
+        self.assertEqual((self.repo / ".agent/checks").read_text(), "passed")
+
+    def test_merge_main_has_the_agent_fix_conflicts(self):
+        self.push_to_main("feature.txt", "main version\n")
+        self.assertEqual(self.merge_main("resolve").returncode, 0)
+        self.assertEqual(self.outputs()["merge"], "merged")
+        self.assertEqual((self.repo / "feature.txt").read_text(), "merged\n")
+        status = subprocess.run(["git", "status", "--porcelain"], cwd=self.repo,
+                                capture_output=True, text=True).stdout
+        self.assertEqual(status.strip(), "")
+        self.assertTrue((self.repo / ".git/MERGE_HEAD").exists() is False)
+
+    def test_unresolved_conflict_is_rolled_back_after_the_attempt_limit(self):
+        self.push_to_main("feature.txt", "main version\n")
+        self.assertEqual(self.merge_main("stubborn").returncode, 0)
+        self.assertEqual(self.outputs()["merge"], "conflict")
+        after = subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.repo, capture_output=True,
+                               text=True)
+        self.assertEqual(after.stdout, self.before)
+        self.assertEqual((self.repo / "feature.txt").read_text(), "work\n")
+        self.assertFalse((self.repo / ".git/MERGE_HEAD").exists())
+
+    def test_committed_conflict_markers_are_not_accepted(self):
+        self.push_to_main("feature.txt", "main version\n")
+        self.merge_main("markers")
+        self.assertEqual(self.outputs()["merge"], "conflict")
+        self.assertNotIn("<<<<<<<", (self.repo / "feature.txt").read_text())
+
+    def test_resolve_merges_main_into_a_conflicted_pr_branch(self):
+        self.run_cmd("implement", FAKE_MODE="commit")
+        self.git("branch", "pr-5")
+        self.git("switch", "-q", "main")
+        self.push_to_main("feature.txt", "main version\n")
+        self.assertEqual(self.run_cmd("fetch-main").returncode, 0)
+        done = self.run_cmd("resolve", FAKE_MODE="resolve", CONFLICTED="[5]", MERGE_ATTEMPTS="2")
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual((self.repo / ".agent/resolve/5").read_text(), "merged")
+        shown = subprocess.run(["git", "show", "resolve-5:feature.txt"], cwd=self.repo,
+                               capture_output=True, text=True).stdout
+        self.assertEqual(shown, "merged\n")
+
+    def test_resolve_reports_an_unresolvable_conflict(self):
+        self.run_cmd("implement", FAKE_MODE="commit")
+        self.git("branch", "pr-5")
+        self.git("switch", "-q", "main")
+        self.push_to_main("feature.txt", "main version\n")
+        self.run_cmd("fetch-main")
+        self.run_cmd("resolve", FAKE_MODE="stubborn", CONFLICTED="[5]", MERGE_ATTEMPTS="2")
+        self.assertEqual((self.repo / ".agent/resolve/5").read_text(), "conflict")
+
+    def test_merge_main_is_skipped_without_commits_and_when_current(self):
+        self.run_cmd("implement", FAKE_MODE="none")
+        self.run_cmd("fetch-main")
+        self.run_cmd("merge-main", FAKE_MODE="none")
+        self.assertEqual(self.outputs()["merge"], "skipped")
 
     def test_agent_runs_with_ci_profile_and_real_config_is_restored(self):
         self.run_cmd("implement", FAKE_MODE="edit")
