@@ -370,7 +370,7 @@ public class FinanceRepository {
                        SUM(refund_minor)::bigint AS refund_minor,
                        SUM(credit_minor)::bigint AS credit_minor,
                        SUM(payment_minor - refund_minor - credit_minor)::bigint AS net_minor,
-                       SUM(entry_count)::int AS entry_count
+                       SUM(entry_count)::bigint AS entry_count
                   FROM (
                     SELECT to_char(issued_at AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS day, currency,
                            total_minor AS issued_minor, 0::bigint AS payment_minor,

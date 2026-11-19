@@ -220,8 +220,8 @@ class FinanceContractTest {
                 FinanceActions.REFUND, List.of("finance"),
                 FinanceActions.VOID, List.of("finance"),
                 FinanceActions.APPROVE, List.of("finance", "tenant_admin"),
-                FinanceActions.READ, List.of("finance", "tenant_admin"),
-                FinanceActions.RECONCILE, List.of("finance", "tenant_admin"));
+                FinanceActions.READ, List.of("finance", "tenant_admin", "privacy_auditor"),
+                FinanceActions.RECONCILE, List.of("finance", "tenant_admin", "privacy_auditor"));
         List<String> roles = List.of("finance", "tenant_admin", "clinician", "reception", "privacy_auditor");
         for (Map.Entry<String, List<String>> entry : allowed.entrySet()) {
             for (String role : roles) {
