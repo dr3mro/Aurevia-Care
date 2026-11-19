@@ -14,6 +14,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 MARK = "<!-- swarm-integrator -->"
@@ -57,10 +58,22 @@ FIELD = re.compile(r"^  - ([a-z]+):[ \t]*(.*)$")
 
 
 def gh(*args, check=True):
-    done = subprocess.run(["gh", *args], capture_output=True, text=True)
-    if check and done.returncode:
-        # Surface the CLI error in the trusted job log; a bare CalledProcessError
-        # hides why a label, comment or workflow dispatch was refused.
+    """Run a gh CLI command, retrying transient GitHub API failures.
+
+    A 502/503/504 during `gh pr create` is a GitHub-side blip: the branch is
+    already pushed, so a retry is safe. Permanent errors (permissions, missing
+    refs) are raised immediately with the CLI stderr visible in the job log.
+    """
+    transient = re.compile(r"\b(?:502|503|504)\b|Bad Gateway|Service Unavailable", re.I)
+    for attempt in range(3):
+        done = subprocess.run(["gh", *args], capture_output=True, text=True)
+        if not (check and done.returncode):
+            return done.stdout
+        if transient.search(done.stderr or "") and attempt < 2:
+            time.sleep(2 ** attempt)
+            continue
+        # Surface the CLI error; a bare CalledProcessError hides why a label,
+        # comment or workflow dispatch was refused.
         if done.stderr:
             print(f"gh {' '.join(str(a) for a in args[:3])}: {done.stderr.strip()}",
                   file=sys.stderr)
