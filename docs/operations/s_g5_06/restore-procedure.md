@@ -72,13 +72,13 @@ the individual checks later passed.
 - Use idempotency keys scoped to tenant, caller and command with a request
   digest. A replay with the same key and payload returns the original outcome
   subject to current authorization; a different payload with the same key is a
-  conflict.
+  conflict (ARC-03).
 - Keep durable business uniqueness for external clinical actions even when a
   retry key has expired, so a re-applied command cannot create a second order,
-  result, release or payment entry.
+  result, release or payment entry (ARC-03).
 - Deduplicate external events by immutable event ID inside the sender/type
   namespace, and use per-aggregate version to reject or hold out-of-order
-  changes.
+  changes (ARC-05).
 - On supervised back-entry from paper or manual capture, preserve original
   timestamps and actor, and reconcile against entries already committed before
   the outage. This runbook is in [Operational runbooks](operational-runbooks.md).
