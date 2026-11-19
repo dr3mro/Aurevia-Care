@@ -205,8 +205,8 @@ Gate evidence: rejected or recollected specimens trace to the right order; dupli
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [-] S-G2-07 · Trending only comparable observations with units, ranges, time and qualifiers visible (XCH-07).
-  - agent: swarm-2
-  - attempts: 4
+  - agent: swarm-1
+  - attempts: 5
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/exchange/trend, apps/api/src/test/java/com/aurevia/smartclinic/it/exchangetrend
   - reserved: V25
   - details:
@@ -249,8 +249,8 @@ Gate evidence: rejected or recollected specimens trace to the right order; dupli
 Gate evidence: confirmed patients see only authorized revisions; generic notifications reveal no clinical detail; withdrawn releases stop future access; messaging works on both mobile platforms including wrong-unit denial, uploads, instructions, revision-specific acknowledgment, failed uploads, notification retry and revoked connections.
 
 - [-] S-G3-01 · Patient appointment list, confirmation, generic push notifications and device revocation (PAT-01).
-  - agent: swarm-3
-  - attempts: 3
+  - agent: swarm-2
+  - attempts: 4
   - scope: apps/patient-mobile/src/features/s_g3_01, apps/api/src/main/java/com/aurevia/smartclinic/messaging/appointments
   - reserved: V29
   - details:
@@ -314,8 +314,8 @@ Gate evidence: confirmed patients see only authorized revisions; generic notific
     Implement Typed patient instructions with templates, revisions, withdrawal and units (MSG-04) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [-] S-G3-08 · Publication, dispatch, first view and revision-bound acknowledgment as separate facts (MSG-05).
-  - agent: swarm-4
+- [x] S-G3-08 · Publication, dispatch, first view and revision-bound acknowledgment as separate facts (MSG-05).
+  - pr: #96
   - attempts: 3
   - scope: apps/patient-mobile/src/features/s_g3_08, apps/api/src/main/java/com/aurevia/smartclinic/messaging/acknowledgment
   - reserved: V36
@@ -323,8 +323,8 @@ Gate evidence: confirmed patients see only authorized revisions; generic notific
     Implement Publication, dispatch, first view and revision-bound acknowledgment as separate facts (MSG-05) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [-] S-G3-09 · Service hours, response targets, named owners, backup coverage and after-hours guidance (MSG-06).
-  - agent: swarm-5
+- [x] S-G3-09 · Service hours, response targets, named owners, backup coverage and after-hours guidance (MSG-06).
+  - pr: #97
   - attempts: 3
   - scope: apps/patient-mobile/src/features/s_g3_09, apps/api/src/main/java/com/aurevia/smartclinic/messaging/service
   - reserved: V37
@@ -475,8 +475,8 @@ Gate evidence: each site approves workflow, release policy, market constraints, 
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [-] S-G5-10 · English and Arabic, RTL, time zones, WCAG 2.2 AA and native screen-reader flows (UX-01).
-  - agent: swarm-7
-  - attempts: 1
+  - agent: swarm-3
+  - attempts: 2
   - scope: infra/s_g5_10, docs/operations/s_g5_10
   - reserved: V52
   - details:
@@ -484,8 +484,8 @@ Gate evidence: each site approves workflow, release policy, market constraints, 
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [-] S-G5-11 · Operational queues for unsigned work, unmatched reports, critical findings, failures and revoked accounts (ADM-02).
-  - agent: swarm-8
-  - attempts: 1
+  - agent: swarm-4
+  - attempts: 2
   - scope: infra/s_g5_11, docs/operations/s_g5_11
   - reserved: V53
   - details:
@@ -525,7 +525,9 @@ Delivered inside the stories above, not scheduled separately.
     Implement Upload validation, quarantine, mediated downloads and PDF binding to immutable revisions (ARC-06) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [ ] X-04 · Generated OpenAPI clients and server-side authorization for every command (PRD-06).
+- [-] X-04 · Generated OpenAPI clients and server-side authorization for every command (PRD-06).
+  - agent: swarm-5
+  - attempts: 1
   - scope: contracts/openapi, apps/api/src/main/java/com/aurevia/smartclinic/api/authorization
   - reserved: V57
   - details:
@@ -558,13 +560,17 @@ Independent modules scoped to their own paths so workers cannot collide with bac
   - scope: apps/staff-web/src/features/scheduling
   - details:
     ReactJS staff-web scheduling screens, in `apps/staff-web/src/features/scheduling` only. Depends on CW-004's scaffold, so reuse its React/Vite/TS setup, component set, theme, i18n bundles and generated OpenAPI client types. Build synthetic-only screens: a day/week appointment worklist ordered by scheduled time, a booking form with protected-resource conflict hint, check-in and assignment controls, and visit-state badges (booked → checked in → in progress → completed, plus cancelled/no-show). Use local fixture data with two tenants sharing the same local IDs to prove the UI never merges tenants; no real endpoints and no clinical data. Keep strict TypeScript, accessible labels and RTL-correct layout, and 100% coverage with Vitest. Do NOT touch `apps/api`, `db/`, `contracts/`, `apps/staff-web/check.sh`, `.github/`, `scripts/`, or shared trackers. Record requirement IDs, commands, results and decisions in `.agent/pr-notes/<story-id>.md`.
-- [ ] CW-008 · Staff web React chart and document screens (synthetic fixtures)
+- [-] CW-008 · Staff web React chart and document screens (synthetic fixtures)
+  - agent: swarm-6
+  - attempts: 1
   - requirements: CLN-03, CLN-05, CLN-07, UX-01
   - depends: CW-004
   - scope: apps/staff-web/src/features/chart
   - details:
     ReactJS staff-web chart and document screens, in `apps/staff-web/src/features/chart` only. Depends on CW-004's scaffold. Build synthetic-only screens: a longitudinal chart view (problems, allergies, medications, vitals with units), a SOAP note draft with draft/signed states and an entered-in-error banner, and a document list showing PDF/image associations with version and language. Never allow editing a signed revision in the UI; show read-only state and an amendment action instead. Use local fixtures with two tenants sharing local IDs; no real endpoints or patient data. Strict TypeScript, accessible labels, RTL-correct layout and 100% Vitest coverage. Do NOT touch `apps/api`, `db/`, `contracts/`, `apps/staff-web/check.sh`, `.github/`, `scripts/`, or shared trackers. Record evidence in `.agent/pr-notes/<story-id>.md`.
-- [ ] CW-009 · Staff web React audit and access-review screens (synthetic fixtures)
+- [-] CW-009 · Staff web React audit and access-review screens (synthetic fixtures)
+  - agent: swarm-7
+  - attempts: 1
   - requirements: ADM-02, OPS-02, UX-01
   - depends: CW-004
   - scope: apps/staff-web/src/features/admin
