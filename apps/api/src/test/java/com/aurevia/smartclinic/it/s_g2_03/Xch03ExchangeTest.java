@@ -50,6 +50,13 @@ class Xch03ExchangeTest {
     static final String URL = "jdbc:postgresql://127.0.0.1:5432/smartclinic_xch03_it";
     static final String CHECKSUM = "a".repeat(64);
     static final String NEXT_CHECKSUM = "b".repeat(64);
+    static final int ORDER_COUNT = 6;
+    static final int IDX_ISOLATION = 1;
+    static final int IDX_ACCEPT = 2;
+    static final int IDX_CHANGE = 3;
+    static final int IDX_CANCEL = 4;
+    static final int IDX_REVOKE = 5;
+    static final int IDX_PRECOND = 6;
     static final String ADMIN = System.getenv().getOrDefault(
             "SMARTCLINIC_PG_ADMIN", System.getProperty("user.name"));
 
@@ -103,7 +110,9 @@ class Xch03ExchangeTest {
         statement.execute("SET app.actor = 'admin-" + shortName + "'");
         statement.execute("INSERT INTO public.organization (organization_id, display_name) "
                 + "VALUES ('" + org + "', 'Synthetic " + shortName + "')");
-        for (String member : new String[] {"lab-verifier", "clinician", "reception", "auditor", "admin"}) {
+        // The grantor identity must exist before the first role assignment:
+        // V4's trigger resolves granted_by from app.actor in the active tenant.
+        for (String member : new String[] {"admin", "lab-verifier", "clinician", "reception", "auditor"}) {
             String subject = member + "-" + shortName;
             String role = switch (member) {
                 case "lab-verifier" -> "lab_verifier";
@@ -127,25 +136,30 @@ class Xch03ExchangeTest {
                 + "(organization_id, version, mrn, mrn_issuer, display_name, normalized_name, dob) "
                 + "VALUES ('" + org + "', 1, 'MRN-1', 'CLINIC', 'Synthetic Patient', 'synthetic patient', "
                 + "'1990-05-20')");
-        statement.execute("INSERT INTO public.xch03_order "
-                + "(organization_id, id, order_code, state, revision, content_checksum, created_by) "
-                + "VALUES ('" + org + "', '" + orderId(org) + "', 'LAB-REQ-1', 'requested', 1, '" + CHECKSUM
-                + "', (SELECT id FROM public.user_identity WHERE subject = 'admin-" + shortName + "'))");
-        statement.execute("SET app.actor = 'admin-" + shortName + "'");
-        statement.execute("INSERT INTO public.xch03_revision "
-                + "(organization_id, id, order_id, revision, previous_revision, content_checksum) "
-                + "VALUES ('" + org + "', gen_random_uuid(), '" + orderId(org)
-                + "', 1, NULL, '" + CHECKSUM + "')");
-        statement.execute("INSERT INTO public.xch03_event "
-                + "(organization_id, id, order_id, order_version, action, from_state, to_state) "
-                + "VALUES ('" + org + "', gen_random_uuid(), '" + orderId(org)
-                + "', 1, 'received', NULL, 'requested')");
+        // Each test owns a distinct order: the ledgers are append-only, so a
+        // shared order would leak advanced versions and states between tests.
+        for (int index = 1; index <= ORDER_COUNT; index++) {
+            statement.execute("INSERT INTO public.xch03_order "
+                    + "(organization_id, id, order_code, state, revision, content_checksum, created_by) "
+                    + "VALUES ('" + org + "', '" + orderId(org, index) + "', 'LAB-REQ-" + index
+                    + "', 'requested', 1, '" + CHECKSUM
+                    + "', (SELECT id FROM public.user_identity WHERE subject = 'admin-" + shortName + "'))");
+            statement.execute("SET app.actor = 'admin-" + shortName + "'");
+            statement.execute("INSERT INTO public.xch03_revision "
+                    + "(organization_id, id, order_id, revision, previous_revision, content_checksum) "
+                    + "VALUES ('" + org + "', gen_random_uuid(), '" + orderId(org, index)
+                    + "', 1, NULL, '" + CHECKSUM + "')");
+            statement.execute("INSERT INTO public.xch03_event "
+                    + "(organization_id, id, order_id, order_version, action, from_state, to_state) "
+                    + "VALUES ('" + org + "', gen_random_uuid(), '" + orderId(org, index)
+                    + "', 1, 'received', NULL, 'requested')");
+        }
     }
 
-    /** Both tenants use the same opaque order id: RLS is the only separator. */
-    private static String orderId(String org) {
-        return ORG_A.equals(org) ? "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
-                : "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
+    /** Both tenants use the same local order codes and id suffix: RLS is the only separator. */
+    private static String orderId(String org, int index) {
+        String suffix = String.format("%012d", index);
+        return (ORG_A.equals(org) ? "aaaaaaaa-aaaa-aaaa-aaaa-" : "bbbbbbbb-bbbb-bbbb-bbbb-") + suffix;
     }
 
     private static String patientId(String org) {
@@ -162,6 +176,28 @@ class Xch03ExchangeTest {
             }
         } catch (Exception exception) {
             throw new IllegalStateException("cannot read synthetic patient", exception);
+        }
+    }
+
+    /** The opaque identity id that the actor trigger writes into the ledgers. */
+    private static String identityId(String org, String subject) {
+        try (Connection connection = DriverManager.getConnection(URL, "smartclinic_migrate", "")) {
+            connection.setAutoCommit(false);
+            bind(connection, org, "admin");
+            try (PreparedStatement statement = connection.prepareStatement(
+                    "SELECT id::text FROM public.user_identity "
+                            + "WHERE organization_id = CAST(? AS uuid) AND subject = ?")) {
+                statement.setString(1, org);
+                statement.setString(2, subject);
+                try (ResultSet result = statement.executeQuery()) {
+                    assertTrue(result.next(), "missing synthetic identity " + subject);
+                    return result.getString(1);
+                }
+            } finally {
+                connection.rollback();
+            }
+        } catch (Exception exception) {
+            throw new IllegalStateException("cannot read synthetic identity", exception);
         }
     }
 
@@ -237,31 +273,31 @@ class Xch03ExchangeTest {
     void tenantsWithIdenticalOrderCodesStayIsolated() throws Exception {
         String subjectA = "lab-verifier-" + suffix(ORG_A);
         String subjectB = "lab-verifier-" + suffix(ORG_B);
+        String own = "/api/v1/xch03/orders/" + orderId(ORG_A, IDX_ISOLATION);
+        String peer = "/api/v1/xch03/orders/" + orderId(ORG_B, IDX_ISOLATION);
         assertEquals(HttpStatus.NOT_FOUND, send(HttpMethod.GET,
-                "/api/v1/xch03/orders/" + orderId(ORG_B), null, subjectA, ORG_A, null).getStatusCode(),
+                peer, null, subjectA, ORG_A, null).getStatusCode(),
                 "tenant A cannot read tenant B's order even though the local code is identical");
-        assertEquals(HttpStatus.OK, send(HttpMethod.GET, "/api/v1/xch03/orders/" + orderId(ORG_A),
+        assertEquals(HttpStatus.OK, send(HttpMethod.GET, own,
                 null, subjectA, ORG_A, null).getStatusCode(), "tenant A can read its own order");
 
-        ResponseEntity<String> concealed = send(HttpMethod.POST,
-                "/api/v1/xch03/orders/" + orderId(ORG_B) + "/reject",
+        ResponseEntity<String> concealed = send(HttpMethod.POST, peer + "/reject",
                 "{\"reason\":\"wrong tenant\"}", subjectA, ORG_A, "1");
         assertEquals(HttpStatus.NOT_FOUND, concealed.getStatusCode(), concealed.getBody());
 
         String accept = "{\"localPatientId\":\"" + patientId(ORG_A) + "\","
                 + "\"permittedPurpose\":\"RESULT_REVIEW\",\"retentionPolicy\":\"STANDARD\"}";
-        assertEquals(HttpStatus.OK, send(HttpMethod.POST,
-                "/api/v1/xch03/orders/" + orderId(ORG_A) + "/accept", accept, subjectA, ORG_A, "1")
+        assertEquals(HttpStatus.OK, send(HttpMethod.POST, own + "/accept", accept, subjectA, ORG_A, "1")
                 .getStatusCode());
-        assertEquals("requested", text(send(HttpMethod.GET,
-                "/api/v1/xch03/orders/" + orderId(ORG_B), null, subjectB, ORG_B, null), "/order/state"));
+        assertEquals("requested", text(send(HttpMethod.GET, peer, null, subjectB, ORG_B, null),
+                "/order/state"));
         assertEquals(1L, scalar(ORG_A, "SELECT count(*) FROM public.xch03_order WHERE order_code = 'LAB-REQ-1'"));
         assertEquals(1L, scalar(ORG_B, "SELECT count(*) FROM public.xch03_order WHERE order_code = 'LAB-REQ-1'"));
     }
 
     @Test
     void acceptRejectClarifyAndRetainPurposeWithAppendOnlyHistory() throws Exception {
-        String id = orderId(ORG_A);
+        String id = orderId(ORG_A, IDX_ACCEPT);
         String subject = "lab-verifier-" + suffix(ORG_A);
         String accept = "{\"localPatientId\":\"" + patientId(ORG_A) + "\",\"assignee\":\"clinician-1111\","
                 + "\"permittedPurpose\":\"RESULT_REVIEW\",\"retentionPolicy\":\"LEGAL_HOLD\"}";
@@ -276,26 +312,28 @@ class Xch03ExchangeTest {
         assertEquals("RESULT_REVIEW", view.at("/retained/0/permittedPurpose").asText());
         assertEquals("LEGAL_HOLD", view.at("/retained/0/retentionPolicy").asText());
         assertTrue(view.at("/retained/0/legalHold").asBoolean());
-        assertEquals("lab-verifier-1111", view.at("/retained/0/actorId").asText());
+        assertEquals(identityId(ORG_A, "lab-verifier-" + suffix(ORG_A)),
+                view.at("/retained/0/actorId").asText(),
+                "the retained actor is the authenticated user's opaque id, not its subject");
         assertEquals(2, view.at("/history").size());
 
         ResponseEntity<String> clarified = send(HttpMethod.POST,
-                "/api/v1/xch03/orders/" + orderId(ORG_B) + "/clarify",
+                "/api/v1/xch03/orders/" + orderId(ORG_B, IDX_ACCEPT) + "/clarify",
                 "{\"question\":\"Which specimen?\"}", "lab-verifier-" + suffix(ORG_B), ORG_B, "1");
         assertEquals(HttpStatus.OK, clarified.getStatusCode(), clarified.getBody());
         assertEquals("clarification_requested", text(clarified, "/state"));
 
         ResponseEntity<String> rejected = send(HttpMethod.POST,
-                "/api/v1/xch03/orders/" + orderId(ORG_B) + "/reject",
+                "/api/v1/xch03/orders/" + orderId(ORG_B, IDX_ACCEPT) + "/reject",
                 "{\"reason\":\"duplicate order\"}", "lab-verifier-" + suffix(ORG_B), ORG_B, "2");
         assertEquals(HttpStatus.CONFLICT, rejected.getStatusCode(),
                 "a clarified order must not be rejected from the requested branch");
-        assertEquals("1", auditCount(ORG_A, "EXCHANGE_ACCEPT", id));
+        assertEquals(1L, auditCount(ORG_A, "EXCHANGE_ACCEPT", id));
     }
 
     @Test
     void linkedChangeNeedsRecipientResponseAndNeverRewritesTheAcceptedSnapshot() throws Exception {
-        String id = orderId(ORG_A);
+        String id = orderId(ORG_A, IDX_CHANGE);
         String verifier = "lab-verifier-" + suffix(ORG_A);
         String clinician = "clinician-" + suffix(ORG_A);
         String accept = "{\"localPatientId\":\"" + patientId(ORG_A) + "\","
@@ -314,6 +352,8 @@ class Xch03ExchangeTest {
                 null, verifier, ORG_A, null)).at("/revisions");
         assertEquals(2, revisions.size());
         assertEquals(1, revisions.at("/0/revision").asInt());
+        assertTrue(revisions.at("/0/previousRevision").isNull(),
+                "the first released revision has no predecessor");
         assertEquals(2, revisions.at("/1/revision").asInt());
         assertEquals(1, revisions.at("/1/previousRevision").asInt());
         assertEquals(CHECKSUM, revisions.at("/0/contentChecksum").asText(),
@@ -330,7 +370,7 @@ class Xch03ExchangeTest {
 
     @Test
     void cancellationIsARequestUntilTheRecipientResponds() throws Exception {
-        String id = orderId(ORG_A);
+        String id = orderId(ORG_A, IDX_CANCEL);
         String verifier = "lab-verifier-" + suffix(ORG_A);
         String clinician = "clinician-" + suffix(ORG_A);
         String accept = "{\"localPatientId\":\"" + patientId(ORG_A) + "\","
@@ -362,7 +402,7 @@ class Xch03ExchangeTest {
 
     @Test
     void revocationBlocksRetrievalAndRecordsDownstreamNotification() throws Exception {
-        String id = orderId(ORG_B);
+        String id = orderId(ORG_B, IDX_REVOKE);
         String verifier = "lab-verifier-" + suffix(ORG_B);
         String clinician = "clinician-" + suffix(ORG_B);
         String accept = "{\"localPatientId\":\"" + patientId(ORG_B) + "\","
@@ -389,13 +429,13 @@ class Xch03ExchangeTest {
         assertEquals("evt-xch03-1", view.at("/notifications/0/eventId").asText());
         assertEquals("partner-lab", view.at("/notifications/0/target").asText());
         assertEquals("NOTIFIED", view.at("/notifications/0/outcome").asText());
-        assertEquals("1", auditCount(ORG_B, "EXCHANGE_REVOKE", id));
+        assertEquals(1L, auditCount(ORG_B, "EXCHANGE_REVOKE", id));
     }
 
     @Test
     void versionPreconditionsAuthorizationAndInputValidationAreEnforced() throws Exception {
         // checked exceptions from the JDBC assertions are declared on this method
-        String id = orderId(ORG_A);
+        String id = orderId(ORG_A, IDX_PRECOND);
         String verifier = "lab-verifier-" + suffix(ORG_A);
         assertEquals(428, send(HttpMethod.POST, "/api/v1/xch03/orders/" + id + "/reject",
                 "{\"reason\":\"why\"}", verifier, ORG_A, null).getStatusCode().value());
