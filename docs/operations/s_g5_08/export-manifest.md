@@ -27,7 +27,9 @@ Every record must carry:
   (`export.record_provenance`);
 - a non-empty `documents` list, each with a non-blank id, a lowercase sha256
   checksum and a `policy_version` equal to the manifest's
-  (`export.documents`);
+  (`export.documents`). Document ids must be unique within the record: a
+  duplicate id with different bytes leaves the manifest ambiguous about which
+  authorized copy was exported and fails `export.documents`;
 - a non-empty `audit` history of entries with a positive integer `seq`, an
   `action` and an `outcome`, whose `seq` values are strictly increasing and
   unique (`export.audit_history`). A duplicate or out-of-order sequence is
@@ -35,8 +37,11 @@ Every record must carry:
   are canonical: surrounding whitespace is rejected.
 
 A document's `authorization` must be one of `release_policy`,
-`record_access_request` or `approved_instruction` ("as allowed by policy"):
+`record_access_request` or `approved_instruction`:
 `export.document_authorizations`. Any other value, including a blank one, fails.
+This tuple is a fixed, versioned-in-code stand-in for a market policy pack, not
+a live policy binding; confirming a document was actually allowed by the
+approved policy is a named human G5 review item.
 
 ## Isolation and honesty
 
