@@ -29,8 +29,12 @@ LABELS = {
 }
 # Changes here could widen the agents' own permissions or the merge gate, so
 # they are never merged automatically.
+# Only the repository's own check entry point is protected: it defines the gate every
+# worker must pass. Per-module check.sh files (apps/<module>/check.sh, db/check.sh) are
+# the canonical test entry points that new modules are required to add, so they must
+# remain auto-mergeable. fnmatch's '*' crosses '/', so use the literal root path here.
 PROTECTED = [".github/*", ".opencode/*", "opencode.json", "scripts/*",
-             "AGENTS.md", "*/check.sh", "compose.yaml", "Dockerfile"]
+             "AGENTS.md", "check.sh", "compose.yaml", "Dockerfile"]
 # Shared trackers are written only by the integrator, one merge at a time, so
 # parallel workers never conflict on them.
 TRACKERS = ["CLOUDWORKERS.md", "PROGRESS.md", "MEMORY.md", "WORKSPACE.md", "TODO.md",
