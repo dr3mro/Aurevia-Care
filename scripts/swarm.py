@@ -10,7 +10,9 @@ import base64
 import datetime
 import fnmatch
 import json
+import math
 import os
+import random
 import re
 import subprocess
 import sys
@@ -342,7 +344,7 @@ def release_claim(task_id, reason):
         f"Release {task_id}: {reason}")
 
 
-def update_todo(edit, message, path="TODO.md", attempts=3):
+def update_todo(edit, message, path="TODO.md", attempts=8):
     """Apply `edit(text)` to TODO.md on main and push. Reapplied on fresh main if the push races."""
     for attempt in range(attempts):
         text = Path(path).read_text()
@@ -360,6 +362,8 @@ def update_todo(edit, message, path="TODO.md", attempts=3):
         except subprocess.CalledProcessError:
             if attempt == attempts - 1:
                 raise
+            # Ten workers can finish together and all push TODO.md: spread the retries.
+            time.sleep(random.uniform(1, 4))
             authed_git("fetch", "origin", "main")
             git("reset", "-q", "--hard", "origin/main")
     return False
@@ -597,6 +601,33 @@ def repair_task(run_id):
             "title": f"Repair main: {run['name']} failed", "body": clip(body), "fix": ""}
 
 
+WORKER_MINUTES = 190  # one worker: 175 min of agent work, merge, bundle and publish
+
+
+def run_job_minutes(run_id):
+    """Billed minutes of one run: every job rounds up to whole minutes.
+
+    Parallel workers bill side by side, so wall time alone would undercount a
+    wave of ten by a factor of ten. Returns None when the API call fails."""
+    out = gh("api", f"repos/{repo_slug()}/actions/runs/{run_id}/jobs?per_page=100", "--paginate",
+             "--jq", '.jobs[] | select(.started_at and .completed_at) | [.started_at, .completed_at] | @tsv',
+             check=False)
+    if not out.strip():
+        return None
+    total = 0.0
+    for line in out.splitlines():
+        a, b = line.split("\t")
+        seconds = (datetime.datetime.fromisoformat(b.replace("Z", "+00:00"))
+                   - datetime.datetime.fromisoformat(a.replace("Z", "+00:00"))).total_seconds()
+        total += max(1, math.ceil(seconds / 60))
+    return total
+
+
+def affordable_workers(used, cap=DEFAULT_MONTHLY_MINUTES):
+    """How many full-length workers fit under 90 percent of the monthly cap (at least one)."""
+    return max(1, int((cap * 0.9 - used) // WORKER_MINUTES))
+
+
 def monthly_minutes(now=None):
     """Estimate billed minutes this month from finished swarm workflow runs.
 
@@ -608,20 +639,22 @@ def monthly_minutes(now=None):
     total = 0.0
     for workflow in BUDGET_WORKFLOWS:
         runs = gh_json("run", "list", "--workflow", workflow, "--status", "completed",
-                       "--limit", "100", "--json", "createdAt,updatedAt") or []
+                       "--limit", "100", "--json", "createdAt,updatedAt,databaseId") or []
         for run in runs:
             start = datetime.datetime.fromisoformat(run["createdAt"].replace("Z", "+00:00"))
             if start < month_start:
                 continue
             end = datetime.datetime.fromisoformat(run["updatedAt"].replace("Z", "+00:00"))
             minutes = max(1.0, (end - start).total_seconds() / 60.0)
+            if workflow == "swarm.yml" and run.get("databaseId"):
+                minutes = max(minutes, run_job_minutes(run["databaseId"]) or 0)
             total += minutes
     return total
 
 
-def budget_gate(cap=DEFAULT_MONTHLY_MINUTES, now=None):
+def budget_gate(cap=DEFAULT_MONTHLY_MINUTES, now=None, used=None):
     """Refuse a wave when estimated monthly minutes are near the cap."""
-    used = monthly_minutes(now)
+    used = monthly_minutes(now) if used is None else used
     if used < cap * 0.9:
         return True, f"Estimated monthly swarm minutes {used:.0f} of {cap}: starting."
     gh("issue", "create", "--title", "Swarm monthly Actions budget near its cap",
@@ -977,9 +1010,12 @@ def main(argv=None):
         emit("queue", json.dumps(queue))
         emit("count", len(queue))
     elif a.cmd == "budget-gate":
-        allowed, why = budget_gate(a.cap)
+        used = monthly_minutes()
+        allowed, why = budget_gate(a.cap, used=used)
         print(why)
         emit("start", "true" if allowed else "false")
+        # A wave never starts more workers than the remaining budget can pay for.
+        emit("workers", affordable_workers(used, a.cap))
     elif a.cmd == "integrate-batch":
         integrate_batch(json.loads(a.queue), a.gate)
     elif a.cmd == "resolve-publish":
