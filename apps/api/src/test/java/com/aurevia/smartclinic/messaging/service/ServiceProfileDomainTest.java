@@ -131,6 +131,20 @@ class ServiceProfileDomainTest {
     }
 
     @Test
+    void versionAllowsZeroForAnInitialPublishButRejectsInvalidValues() {
+        assertEquals(0, ServiceProfileInputs.version(0, "expectedVersion"));
+        assertEquals(7, ServiceProfileInputs.version(7L, "expectedVersion"));
+        assertEquals(Integer.MAX_VALUE,
+                ServiceProfileInputs.version((long) Integer.MAX_VALUE, "expectedVersion"));
+        assertEquals(422, assertThrows(ApiException.class,
+                () -> ServiceProfileInputs.version(null, "expectedVersion")).status());
+        assertEquals(422, assertThrows(ApiException.class,
+                () -> ServiceProfileInputs.version(-1, "expectedVersion")).status());
+        assertEquals(422, assertThrows(ApiException.class,
+                () -> ServiceProfileInputs.version((long) Integer.MAX_VALUE + 1, "expectedVersion")).status());
+    }
+
+    @Test
     void nonEmptyListsRejectNullEmptyOversizedAndBlankEntries() {
         assertEquals(List.of("a", "b"), ServiceProfileInputs.list(List.of(" a ", "b"), "topics", 5, 16));
         assertEquals(422, assertThrows(ApiException.class,
