@@ -76,4 +76,14 @@ describe('confirm', () => {
       reason: 'NOT_ELIGIBLE',
     });
   });
+
+  it('never discloses a recorded timestamp or eligibility without authentication', () => {
+    expect(
+      confirm({ kind: 'confirmed', confirmedAt: '2026-11-19T10:00:00Z' }, false, 'later'),
+    ).toEqual({ kind: 'error', reason: 'UNAUTHENTICATED' });
+    expect(confirm({ kind: 'unavailable', confirmedAt: null }, false, 'later')).toEqual({
+      kind: 'error',
+      reason: 'UNAUTHENTICATED',
+    });
+  });
 });
