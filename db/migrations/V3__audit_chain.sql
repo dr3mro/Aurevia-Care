@@ -20,9 +20,13 @@ AS $$
 DECLARE v_prev bytea;
 BEGIN
     PERFORM pg_advisory_xact_lock(hashtextextended(NEW.organization_id::text, 0));
-    IF NEW.seq IS NULL THEN
-        SELECT coalesce(max(seq), 0) + 1 INTO NEW.seq
-          FROM public.audit_event WHERE organization_id = NEW.organization_id;
+    -- The sequence is owned by this trigger, never by the caller.
+    NEW.seq := NULL;
+    SELECT coalesce(max(seq), 0) + 1 INTO NEW.seq
+      FROM public.audit_event WHERE organization_id = NEW.organization_id;
+    IF NEW.actor_id IS NULL THEN
+        SELECT id INTO NEW.actor_id FROM public.user_identity
+         WHERE subject = NULLIF(current_setting('app.actor', true), '');
     END IF;
     SELECT row_hash INTO v_prev
       FROM public.audit_event
@@ -53,7 +57,7 @@ CREATE TRIGGER audit_event_no_update_delete
 
 CREATE OR REPLACE FUNCTION public.audit_verify_chain(p_organization_id uuid)
 RETURNS TABLE(check_seq bigint, ok boolean, note text)
-LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog
+LANGUAGE plpgsql SET search_path = pg_catalog
 AS $$
 DECLARE
     v_prev bytea := decode(repeat('00', 32), 'hex');
@@ -61,7 +65,11 @@ DECLARE
     r record;
     v_expected bytea;
 BEGIN
-    PERFORM set_config('app.current_org', p_organization_id::text, true);
+    -- Never change the caller's tenant context; cross-tenant verification is denied.
+    IF p_organization_id IS DISTINCT FROM public.app_org() THEN
+        RAISE EXCEPTION 'audit verification requires the active tenant context'
+            USING ERRCODE = '42501';
+    END IF;
     FOR r IN SELECT * FROM public.audit_event
               WHERE organization_id = p_organization_id ORDER BY seq
     LOOP
