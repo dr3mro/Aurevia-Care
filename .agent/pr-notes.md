@@ -1,85 +1,82 @@
-# S-G3-01 — Patient appointment list, confirmation, generic push notifications and device revocation (PAT-01)
+# S-G3-09 — Service hours, response targets, named owners, backup coverage and after-hours guidance (MSG-06)
 
-Worker branch: `swarm/S-G3-01-113`, forked from the single squashed snapshot commit `d79a776`. The orchestrator had already marked the task `[-]` in TODO.md; this worker did **not** edit TODO.md, MEMORY.md, WORKSPACE.md, BUGS.md, PROJECT.md or `docs/swarm`. No push, tag, `gh` or force-push was performed. All fixtures are synthetic (`org-a`/`org-b`, `patient-1`/`patient-2`, `synthetic-token`); no patient data or credentials appear in code, tests or this note.
+## Requirement IDs
 
-## Scope and naming decision
+- **MSG-06** (primary): each enabled care unit publishes service hours, response target, topics and urgent contact instructions; these are shown before sending; a named queue owner, backup coverage and overdue escalation are required; outside hours the next handling time is shown; backlog, unassigned work, failed notifications and overdue responses are surfaced to supervisors; approved urgent and downtime channels are used for time-sensitive care.
+- Supporting: **ADM-01** (named approval, effective dates, version history), **UX-01** (en/ar guidance, RTL layout, IANA zone display), **ARC-02** (tenant-scoped reads/writes), **ARC-03/ARC-04** (version precondition, 401/403/404/409/412/422 semantics), **OPS-02** (audit of views and denials; no PHI-shaped copy), **PAT-01** (generic, non-clinical display before sending).
 
-- Story text names the API path `messaging/s_g3_01`, but CODING_STYLE.md forbids Java packages named after a story/task ID, and `TODO.md` + `.agent/pr-notes/REFACTOR-PACKAGES.md` record the canonical mapping `messaging/s_g3_01 → messaging/appointments` (all G3 siblings use `messaging/reports`, `messaging/units`, …). The API code therefore lives in `apps/api/src/main/java/com/aurevia/smartclinic/messaging/appointments/`.
-- Companion unit tests mirror that package under `apps/api/src/test/java/com/aurevia/smartclinic/messaging/appointments/`, exactly as the G3 sibling stories do. No other test path was touched.
-- Mobile code is in `apps/patient-mobile/src/features/s_g3_01/`.
-- **No V29 migration was created.** Reserved V29 is unused, matching every other G3 messaging slice (reports V30, enrollment V31, units V32, …), because this slice has no persistence adapter yet.
-- 10 changed files total (9 code/test + this note), below the swarm's 15-file guard.
+## Scope actually used
 
-## Requirement and acceptance mapping
+- API production: `apps/api/src/main/java/com/aurevia/smartclinic/messaging/service` (package `com.aurevia.smartclinic.messaging.service`).
+- API tests: the matching test package `apps/api/src/test/java/com/aurevia/smartclinic/messaging/service`.
+- Mobile: `apps/patient-mobile/src/features/s_g3_09`.
 
-| ID | Behaviour | Where |
+**Naming decision:** the untrusted story text listed the API path as `messaging/s_g3_09`, but TODO.md (authoritative) scopes it to `messaging/service` and AGENTS.md/CODING_STYLE.md forbid story-ID package names. The business-domain `service` package was used. No reserved V37 migration was needed: this slice uses a tenant-scoped in-memory store (same pattern as the other G3 messaging stories), so V37 stays unused and no other migration version was touched.
+
+## Acceptance mapping
+
+| ID | Acceptance | Evidence |
 |---|---|---|
-| PAT-01 | List appointments with facility time zone and status | `PatientAppointmentService.listAppointments`, `PatientAppointment`, `AppointmentStatus`, mobile `appointmentView`, `sortByScheduled`, `AppointmentListScreen` |
-| PAT-01 | Confirm only where enabled; record a server timestamp | `PatientAppointmentService.confirm` (server-owned `confirmationEnabled`, `If-Match`-style version precondition, `Instant at`), mobile `deriveConfirmation` / `confirm` |
-| PAT-01 | Status-change push with generic text; detail only after auth | `GenericPushNotice` (fixed template, no input, no resource id in deep link), `GenericPushNotice.reveals`, mobile `GENERIC_NOTICE`, `detailAfterAuth` |
-| PAT-01 | Log invalid device tokens; support revocation | `recordInvalidToken`, `revokeDevice` (idempotent), `DeviceTokenStore.appendInvalidTokenLog`, mobile `invalidateToken` / `withInvalidatedDevice` / `withRevokedDevice` |
-| PRD-03 / IAM-05 | Self-access only; one patient cannot touch another patient's device | new patient-ownership guards (see fixes below), verified-link recheck on every command |
-| ARC-01 / ARC-02 | Tenant-scoped keys, verified link re-derived per command, fail closed | `authorize` at the top of all six commands; mobile `tenantKey` with NUL separator and tenant-prefix filtering |
-| ARC-05 / OPS-02 | Generic notices, no PHI in push/audit/log, audit of allow and deny | fixed notice factory, provider token never passed to `AuditSink`, audit `DENIED` rows, bounded reason on invalid-token log |
-| UX-01 | IANA zone retained and shown; RTL/localization is a separate story | `facilityTimeZone` reaches the screen; localized labels and RTL are deliberately deferred to S-G3-11 (see Decisions) |
+| A1 | Versioned service profile publishes hours, target, topics, owner, backup, escalation, urgent/downtime channels | `ServiceProfileContract.ServiceProfile`, `ServiceProfileService.publish` + tests |
+| A2 | Nothing effective without a named, distinct approver and a reached effective date | `ServiceProfileService.approve`, `aDraftOrFutureDatedProfileIsNeverServed`, `approvalRequiresADifferentApproverAndAnUnapprovedDraft` |
+| A3 | Zone-aware open/closed and next absolute handling instant, incl. midnight wrap and DST | `ServiceHoursCalculator` + 13 `ServiceHoursCalculatorTest` cases |
+| A4 | Patient sees a unit only through an active connection to that exact unit; revoked link fails closed | `requireUnitAccess`, `aPatientWithoutAnActiveConnectionToThatUnitIsConcealed`, `aCrossTenantActiveConnectionCannotResurrectARevokedLocalConnection` |
+| A5 | Cross-tenant unit with identical local id concealed (404); inactive membership denied (403) | `aCrossTenantUnitIsConcealedEvenWithTheSameLocalIdentifier`, `anInactiveMembershipFailsClosedOnTheNextRequest` |
+| A6 | Stale publish/approve → 412; already approved → 409; unknown → 404; bad input → 422 | `ServiceProfileServiceTest` + `ServiceProfileDomainTest` |
+| A7 | New unit can publish its first profile with `expectedVersion = 0` (defect fixed here) | `aBrandNewUnitCanPublishItsFirstProfileWithVersionZero`, `versionAllowsZeroForAnInitialPublishButRejectsInvalidValues` |
+| A8 | Supervisor sees backlog, unassigned, failed notifications and overdue responses; patient cannot | `SupervisorSnapshotCalculator` + 5 calculator cases + `aSupervisorSeesDerivedCountersOnlyForAnAssignedUnit`, `aPatientCannotReadTheSupervisorSnapshot` |
+| A9 | Every view and denial is audited; guidance copy rejects PHI-shaped digit runs | `ServiceProfileService.deny/audit`, `urgentInstructionsRequireSupportedLanguagesAndSafeNonSensitiveCopy` |
+| A10 | Patient notice shows hours/target/topics/owner/backup/escalation/urgent+after-hours guidance before acknowledgement, en/ar and RTL | `ServiceProfileNotice.tsx`, `serviceNotice.ts`, 12 `index.test.tsx` cases |
+| A11 | No service-hours arithmetic or device clock on the device; absolute UTC instants formatted in facility zone | `formatFacilityInstant`, `noticeLines` |
 
-## Test-first log (red → green)
+## Work done in this worker
 
-All new behaviour was written as a failing test before production code:
+The baseline already contained the full MSG-06 slice (prior attempts) with unit tests. I verified it, then fixed one real defect test-first:
 
-1. **Cross-patient device mutation (mobile).** Red: `npm run typecheck` → `TS2554: Expected 3 arguments, but got 4` at `devices.test.ts` (new `withRevokedDevice(..., patientId)` / `withInvalidatedDevice(..., patientId)` calls) and `TS2322: Property 'patientId' does not exist` at six `AppointmentListScreen` renders. Green after adding the ownership parameter and screen filter.
-2. **Confirmation disclosed an existing timestamp unauthenticated (mobile).** Red: `npx jest --runInBand --silent confirmation` → `1 failed, 9 passed`; expected `UNAUTHENTICATED`, received `idempotent` with `confirmedAt`. Green after the early auth guard.
-3. **Backend security/audit fixes.** Red: `mvn -B -f apps/api/pom.xml -Pno-security,fast -Dtest=PatientAppointmentServiceTest test` → `COMPILATION ERROR … cannot find symbol: method findByTokenId(String)`. Green after adding the port method and its guards.
-4. **Coverage regression from the new registration branch.** First green run showed JaCoCo `BRANCH missed=1` at `PatientAppointmentService.java:139` (same-patient re-registration). A new red/green test (`registerAllowsReRegisteringTheSamePatientsDeviceId`) restored 100%.
+- **Defect S-G3-09-D1 (first publish impossible).** `ServiceProfileService.publish` validated `expectedVersion` with the *minute* validator (`ServiceProfileInputs.minutes`, min 1), so a brand-new unit (whose `latestVersion` is 0) could never pass the precondition: `expectedVersion = 0` returned `422 expectedVersion must be 1-2147483647 minutes`, and `null` was also rejected. Red test `aBrandNewUnitCanPublishItsFirstProfileWithVersionZero` reproduced it (`ApiException` at `ServiceProfileServiceTest.java:180`). Fix: added `ServiceProfileInputs.version(Number, String)` accepting 0…`Integer.MAX_VALUE` and used it in `publish`; `null`, negative and above-int values still yield structured 422. No other version semantics changed. This is a functional gap against MSG-06 ("each enabled unit must publish service hours …"), not a cosmetic issue.
+- **Documentation cleanup.** Replaced two malformed enum-constructor Javadoc blocks (blank lines with empty `@param wire`) and a truncated `ServiceAvailability` `@return` description in `ServiceProfileContract.java` with valid TSDoc/Javadoc-style text, so Doxygen's `WARN_IF_DOC_ERROR` has nothing to report from this slice.
 
-## Fixes applied (defects found and closed)
+## Exact commands and results (tool evidence)
 
-1. **High — cross-patient device revocation/invalidation (mobile).** `withDeviceState` keyed only by organization, so any valid local device id in the tenant could be revoked or invalidated regardless of owner, and `AppointmentListScreen` rendered a revoke control for every active device in the organization. Added a `patientId` ownership guard to `withDeviceState`/`withRevokedDevice`/`withInvalidatedDevice`, added a required `patientId` screen prop and filtered the rendered devices. Negative tests added for wrong-patient revoke/invalidate and for the screen control.
-2. **Medium — cross-patient device-id rebinding (API + mobile).** `registerDevice` was an unscoped insert-or-replace and `withRegisteredDevice` overwrote an existing key, so a colliding `tokenId` could be rebound to another patient in the same tenant, stripping the displaced patient of revoke/invalidate access. Added `DeviceTokenStore.findByTokenId`, a 409 `DEVICE_CONFLICT` guard, and the equivalent mobile guard; positive same-patient re-registration stays allowed.
-3. **Medium — fail-closed link recheck unverified on half the commands.** Added explicit 403/`FORBIDDEN` denial tests for `confirm`, `notifyStatusChange` and `recordInvalidToken`, each asserting no store write, gateway send or device write. Production already called `authorize()` on every command; these are regression tests that would catch its removal (line coverage alone would not).
-4. **Medium — confirmation auth gap (mobile).** `confirm()` consulted `authenticated` only on the `pending` branch, so an unauthenticated replay of a `confirmed` state disclosed the stored timestamp. Authentication is now required on every branch.
-5. **Low — wrong audit actor on push events.** `dispatch` audited `token.subject()` (the device owner) rather than the authenticated caller. Now threads the acting `subject` into `dispatch`; a test uses a different device owner to pin the correct actor.
-6. **Low — duplicate invalid-token log rows.** `recordInvalidToken` unconditionally saved and logged a repeated provider disposition. It is now idempotent for an already-INVALID device while still auditing the retry.
-
-## Exact commands and results
-
-Executed locally in `/__w/Aurevia-Care/Aurevia-Care`, JDK 21.0.13, Maven 3.10.0, Node 22.23.5, Python 3.11, on branch `swarm/S-G3-01-113`.
+All commands run from `/__w/Aurevia-Care/Aurevia-Care`, branch `swarm/S-G3-09-114`.
 
 | Command | Result |
 |---|---|
-| `mvn -B -f apps/api/pom.xml -Pno-security,fast -Dtest=PatientAppointmentServiceTest test` (after fixes) | **34 tests, 0 failures/errors, BUILD SUCCESS** |
-| `mvn -B -f apps/api/pom.xml -Pno-security,fast test jacoco:report` | **1552 tests, 0 failures/errors, exit 0** |
-| JaCoCo report parsing of `apps/api/target/site/jacoco/jacoco.xml`, package `messaging/appointments` | INSTRUCTION 0 missed / 674 covered; BRANCH 0 / 54; LINE 0 / 102; COMPLEXITY 0 / 59; METHOD 0 / 32; CLASS 0 / 7 → **100%** |
-| `npm run typecheck` (apps/patient-mobile) | exit 0 |
-| `npm run lint` (apps/patient-mobile) | exit 0 |
-| `npm run test:coverage -- --ci` (apps/patient-mobile) | **26 suites, 275 tests passed; all files 100% statements/branches/functions/lines** |
-| `bash apps/patient-mobile/check.sh` | exit 0 (canonical module gate) |
-| `bash scripts/frontend-check.sh` | exit 0 — "frontend standards: policy and tool commands passed" (includes Prettier and root Vitest) |
-| `python3 -I scripts/check-docs.py`, `python3 -I scripts/check-secrets.py`, `python3 -I scripts/check-migrations.py --require-baseline`, `python3 -I scripts/project-name.py displayName` / `repositorySlug` | exit 0; "Aurevia Care" / "aurevia-care" |
-| `python3 -I -m unittest discover -s scripts/tests -p 'test_java_conventions.py' -q` | 2 tests OK |
+| `mvn -q -B -f apps/api/pom.xml -Pno-security,fast test -Dtest=ServiceProfileServiceTest` (before fix) | **RED**: 24 tests, 1 error — `aBrandNewUnitCanPublishItsFirstProfileWithVersionZero … ApiException: expectedVersion must be 1-2147483647 minutes` |
+| `mvn -q -B -f apps/api/pom.xml -Pno-security,fast test` (after fix) | **GREEN**, exit 0. Service package: 65 tests, 0 failures/errors (`InMemoryServiceProfileStoreTest` 3, `ServiceHoursCalculatorTest` 13, `ServiceProfileControllerTest` 6, `ServiceProfileDomainTest` 14, `ServiceProfileServiceTest` 24, `SupervisorSnapshotCalculatorTest` 5) |
+| `mvn -q -B -f apps/api/pom.xml -Pno-security,fast clean test jacoco:report` | exit 0; JaCoCo XML for `com/aurevia/smartclinic/messaging/service`: INSTRUCTION 2272/2272, BRANCH 183/183, LINE 373/373, METHOD 100/100, CLASS 18/18 — **100%** (no missed counters) |
+| `mvn -q -B -f apps/api/pom.xml -Pno-security,fast test-compile` | exit 0 |
+| `cd apps/patient-mobile && npm ci --no-audit --no-fund` | exit 0 |
+| `cd apps/patient-mobile && npm run typecheck` | exit 0 |
+| `cd apps/patient-mobile && npm run lint` | exit 0 |
+| `cd apps/patient-mobile && npx jest src/features/s_g3_09 --coverage --collectCoverageFrom='src/features/s_g3_09/**/*.{ts,tsx}'` | exit 0; 1 suite, 12 tests; `serviceNotice.ts` and `ServiceProfileNotice.tsx` 100% statements/branches/functions/lines (`types.ts` is interfaces only) |
+| `cd apps/patient-mobile && npm test` | exit 0; 26 suites, 278 tests |
+| `python3 -I scripts/check-docs.py` | exit 0 |
+| `python3 -I scripts/check-secrets.py` | exit 0 |
+| `python3 -I scripts/check-migrations.py --require-baseline` | exit 0 (no new migration) |
+| `python3 -I -m unittest discover -s scripts/tests -q` | local exit 1 — see "environment caveats" below; the failing cases are pre-existing/out-of-scope |
 
-### Commands that did not pass, with cause
+Evidence source for all of the above: **executed tool commands** on synthetic fixtures. No reviewer, simulated user or human participant evidence was used for acceptance; no patient data or credentials were used.
 
-- `bash scripts/quick-check.sh` stops at `check-pack: opencode.json is stale: run scripts/gen-opencode.py`. This is a **worker-harness artifact**: `git ls-files -v opencode.json` reports `S` (skip-worktree), and the delivery skill documents that `agent-run.sh` copies the CI profile over the worktree file; `check-pack.py` therefore judges a stale profile. `git diff HEAD -- opencode.json` is empty and the file was not touched. The Java and policy steps of quick-check were run directly instead.
-- `python3 -I -m unittest discover -s scripts/tests -q`: 164 tests, 10 not passing. Three `test_check_pack` failures are the same stale `opencode.json` artifact; two loader errors (`test_fast_tier`, `test_workflow_concurrency`) and `test_swarm` / `test_agent_run` failures assert live harness/repository state (e.g. `assertGreaterEqual(len(dispatchable), 10)` saw 9). None is in the touched scope and none was caused by this change.
-- `mvn -q -B -f apps/api/pom.xml -Pfast -Dspotbugs.skip=false -Dowasp.skip=true spotbugs:check`: exit 1 with **6 pre-existing Medium findings, all outside this scope** (`messaging.conversations.ConversationRepository:180`, `messaging.governance.MessagingGovernanceController:48`, `patient.identity.IdentityProofingService:314`, `prescription.rx.RxController:47`, `prescription.rx.RxRepository:309`). **Zero findings in `messaging.appointments`.** Not fixed: AGENTS.md requires staying inside the declared scope and preserving unrelated work.
-- `bash scripts/check.sh` / `scripts/docs.sh` / DB integration tests: not run by this worker. Doxygen, shellcheck and Docker are absent in this checkout, and the user assigned database and integration tests to the integrator.
+## Environment caveats (not introduced by this story)
 
-## Review evidence and dispositions
+- `python3 -I -m unittest discover -s scripts/tests -q` reports 6 failures / 4 errors locally, none touching this slice: `test_fast_tier` and `test_workflow_concurrency` cannot import `yaml` (PyYAML not installed in this worker image); `test_check_pack` cases fail because `opencode.json` is a stale CI profile copied under `skip-worktree` (`gen-opencode.py --check` and `check-pack.py` therefore judge that profile, per the delivery skill); `test_agent_run`/`test_swarm` cases depend on git refs absent in this shallow single-commit snapshot; `test_javadoc_links_are_fully_qualified` fails on a pre-existing `{@link #from(String)}` in `exchange/trend/Qualifier.java` (another story's package, outside this scope). The in-scope convention test `test_list_bearing_records_copy_on_store_and_read` passes.
+- `Doxygen` is not installed in this worker image, so `scripts/docs.sh` could not be run locally; its inputs (`check-docs.py`) pass and the changed Javadoc was cleaned to avoid `WARN_IF_DOC_ERROR`.
+- Per the worker contract, **database and integration tests were not run here**; the integrator runs `scripts/check.sh` / `integrator-gate.sh` on the merge result.
 
-Three bounded, read-only specialist reviews were commissioned (senior backend, senior mobile, independent QA). All findings were reviewer analysis of source; none involved a simulated user, clinician or human participant.
+## Entry-point-to-test trace
 
-- Fixed: mobile cross-patient revocation and screen exposure; mobile registration rebinding (QA F2); mobile confirmation auth (mobile finding 2); backend registration rebinding and its coverage gap; backend fail-closed denial tests (backend F1, QA F4); backend audit actor (backend F3); backend invalid-token idempotency (backend F5).
-- Deferred with rationale:
-  - **QA F1 (blocker for G3 gate evidence, not a code defect in scope):** this slice is a pure domain kernel. The five collaborators are interfaces with no implementations, there is no controller/HTTP adapter, no V29 schema and no real push gateway, so none of the seven PAT-01 behaviours is reachable from an authenticated request at runtime. This is the deliberate pre-wiring pattern of every G3 messaging slice and is explicitly documented in `PatientAppointmentService` and `PushGateway`. **This worker cannot produce system-boundary evidence inside the declared scope; the integrator and the follow-on wiring/API stories must supply it before G3 acceptance.** Flagged here as required per the stop-and-report instruction.
-  - **Backend F2 (push outbox/dedup):** synchronous dispatch has no durable outbox and no client dedup key. Deferred to cross-cutting story X-02 (durable events, outbox, dedup, replay); the slice has no persistence adapter yet.
-  - **Backend F4 (status cross-check):** `notifyStatusChange` uses the supplied enum only for the audit action key; a wrong status would mislabel an audit event but cannot change generic push text. Low impact, deferred.
-  - **Mobile findings 3 and 5:** localized status/RTL labels and a screen-level timestamp assertion are owned by S-G3-11 (iOS/Android flows, accessibility and RTL). The pure `confirm` timestamp path is covered by unit tests.
-  - **Mobile finding 4 (bare local id in detail callback):** the authenticated app re-scopes through the server's tenant context and `detailAfterAuth` takes an opaque reference; changing the callback payload is a wiring decision for the integration story.
-  - **Unconstrained `recordInvalidToken.reason`:** the parameter is documented as an internal non-sensitive disposition code and is bounded on the mobile client; HTTP-level boundary validation belongs to the future adapter (X-01/X-04), not this domain kernel.
+- `GET /api/v1/care-units/{unitId}/service-profile` → `ServiceProfileController.view` → `ServiceProfileService.viewProfile` → `TenantContext` + `ServiceProfileActions` + `ServiceProfileStore.hasActiveMembership/activeRoles/hasConnectedChart` → `effectiveProfile` (approved + effective) → `MessagingAudit` → `ServiceProfileServiceTest.aConnectedPatientViewsOnlyTheEffectiveApprovedProfileOfThatUnit`.
+- `GET …/availability` → `ServiceProfileService.availability` → `ServiceHoursCalculator.calculate` → `ServiceProfileServiceTest.availabilityIsServedFromThePublishedHoursAndReturnsTheNextHandlingInstant` and `ServiceHoursCalculatorTest`.
+- `POST …/service-profiles` → `ServiceProfileController.publish` (`withUnit` overrides body unit id) → `ServiceProfileInputs.version/windows/zone/…` → `ServiceProfileService.publish` → `ServiceProfileServiceTest.aBrandNewUnitCanPublishItsFirstProfileWithVersionZero`; HTTP 422/404/412/409 denials in `ServiceProfileDomainTest` and `ServiceProfileServiceTest`.
+- `GET …/supervisor-snapshot` → `ServiceProfileService.supervisorSnapshot` → `SupervisorSnapshotCalculator.compute` → `SupervisorSnapshotCalculatorTest` and `ServiceProfileServiceTest.aSupervisorSeesDerivedCountersOnlyForAnAssignedUnit`.
+- Patient app: `ServiceProfileNotice` + `createSyntheticServiceInfoClient.notice` → `serviceNotice.noticeLines` → `apps/patient-mobile/src/features/s_g3_09/index.test.tsx`.
 
-## Evidence provenance
+## Files changed (all inside the declared scope)
 
-- Gate results, counts and coverage numbers: **executed tool commands** run by this worker (Maven, npm, Jest, JaCoCo XML, Python policy scripts).
-- Defects and dispositions: **three simulated specialist reviewers**; no simulated-user, clinician or human-participant evidence is claimed.
-- No real-patient or G5 launch evidence exists or is implied.
+- `apps/api/src/main/java/com/aurevia/smartclinic/messaging/service/ServiceProfileInputs.java`
+- `apps/api/src/main/java/com/aurevia/smartclinic/messaging/service/ServiceProfileService.java`
+- `apps/api/src/main/java/com/aurevia/smartclinic/messaging/service/ServiceProfileContract.java`
+- `apps/api/src/test/java/com/aurevia/smartclinic/messaging/service/ServiceProfileDomainTest.java`
+- `apps/api/src/test/java/com/aurevia/smartclinic/messaging/service/ServiceProfileServiceTest.java`
+- `.agent/pr-notes/S-G3-09.md` (this file)
