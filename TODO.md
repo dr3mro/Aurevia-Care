@@ -49,7 +49,7 @@ Current source state (2026-11-19T07:19Z, from `main` at `311d69a`): 7 Flyway mig
 - [x] S-G0-05 · Patient registration, identity confirmation and likely-duplicate warnings (IAM-03). V7 append-only patient records, issuer-scoped MRN, normalized name search, non-linking duplicate warnings, `/api/v1/patients`; 184 tests at delivery, JaCoCo 100%, local gates green, code on `main`. Current source (2026-11-19): Surefire reports 191 Java tests, 0 failures/errors across the suite; V7 and `/api/v1/patients` present.
 - [-] S-G0-06 · Same-tenant duplicate review and all-or-nothing chart consolidation (IAM-04).
   - agent: swarm-1
-  - attempts: 1
+  - attempts: 2
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g0/s_g0_06, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g0_06
   - reserved: V9
   - details:
@@ -58,7 +58,7 @@ Current source state (2026-11-19T07:19Z, from `main` at `311d69a`): 7 Flyway mig
     stay inside the declared scope; record results in .agent/pr-notes.md.
 - [-] S-G0-07 · Patient identity proofing, verified chart linking and unlinking (IAM-05).
   - agent: swarm-2
-  - attempts: 1
+  - attempts: 2
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g0/s_g0_07, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g0_07
   - reserved: V10
   - details:
@@ -67,7 +67,7 @@ Current source state (2026-11-19T07:19Z, from `main` at `311d69a`): 7 Flyway mig
     stay inside the declared scope; record results in .agent/pr-notes.md.
 - [-] S-G0-08 · Emergency access and platform support access controls (IAM-06).
   - agent: swarm-3
-  - attempts: 1
+  - attempts: 2
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g0/s_g0_08, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g0_08
   - reserved: V11
   - details:
@@ -89,7 +89,7 @@ Gate evidence: competing bookings enforce one protected slot; stale drafts canno
     Out of scope for this slice: staff worklist/assignment/handoff (S-G1-02), clinical chart (S-G1-03), equipment resources and paid booking rules.
 - [-] S-G1-02 · Identity verification, check-in, organization/facility worklist, assignment and handoff (CLN-02).
   - agent: swarm-4
-  - attempts: 1
+  - attempts: 2
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g1/s_g1_02, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g1_02
   - reserved: V12
   - details:
@@ -98,7 +98,7 @@ Gate evidence: competing bookings enforce one protected slot; stale drafts canno
     stay inside the declared scope; record results in .agent/pr-notes.md.
 - [-] S-G1-03 · Longitudinal chart: problems, allergies, medications, vitals, source and verification states (CLN-03).
   - agent: swarm-5
-  - attempts: 1
+  - attempts: 2
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g1/s_g1_03, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g1_03
   - reserved: V13
   - details:
@@ -107,7 +107,7 @@ Gate evidence: competing bookings enforce one protected slot; stale drafts canno
     stay inside the declared scope; record results in .agent/pr-notes.md.
 - [-] S-G1-04 · Versioned SOAP, operative, OB/GYN, perinatal and pediatric development templates (CLN-04).
   - agent: swarm-6
-  - attempts: 1
+  - attempts: 2
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g1/s_g1_04, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g1_04
   - reserved: V14
   - details:
@@ -116,7 +116,7 @@ Gate evidence: competing bookings enforce one protected slot; stale drafts canno
     stay inside the declared scope; record results in .agent/pr-notes.md.
 - [-] S-G1-05 · Draft to signed, amendments, signed addenda and entered-in-error with preserved originals (CLN-05).
   - agent: swarm-7
-  - attempts: 1
+  - attempts: 2
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g1/s_g1_05, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g1_05
   - reserved: V15
   - details:
@@ -125,7 +125,7 @@ Gate evidence: competing bookings enforce one protected slot; stale drafts canno
     stay inside the declared scope; record results in .agent/pr-notes.md.
 - [-] S-G1-06 · Follow-up suggestions with rule explanation and care-team tasks (CLN-06).
   - agent: swarm-8
-  - attempts: 1
+  - attempts: 2
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g1/s_g1_06, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g1_06
   - reserved: V16
   - details:
@@ -134,7 +134,7 @@ Gate evidence: competing bookings enforce one protected slot; stale drafts canno
     stay inside the declared scope; record results in .agent/pr-notes.md.
 - [-] S-G1-07 · Original PDF/image associations and immutable, localized, versioned PDF rendering (CLN-07).
   - agent: swarm-9
-  - attempts: 1
+  - attempts: 2
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g1/s_g1_07, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g1_07
   - reserved: V17
   - details:
@@ -143,7 +143,7 @@ Gate evidence: competing bookings enforce one protected slot; stale drafts canno
     stay inside the declared scope; record results in .agent/pr-notes.md.
 - [-] S-G1-08 · Clinical dictionaries, diagnosis/procedure catalogs and RTL mixed-script operation (PRD-05, UX-01).
   - agent: swarm-10
-  - attempts: 1
+  - attempts: 2
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g1/s_g1_08, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g1_08
   - reserved: V18
   - details:
