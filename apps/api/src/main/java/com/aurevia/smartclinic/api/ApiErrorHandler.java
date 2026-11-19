@@ -80,6 +80,7 @@ public class ApiErrorHandler {
      * @param code          stable error code
      * @param message       non-sensitive detail
      * @param correlationId request correlation identifier
+     * @return the immutable error body
      */
     public record ErrorBody(String code, String message, String correlationId) {
     }

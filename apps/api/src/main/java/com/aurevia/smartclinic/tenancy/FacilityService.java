@@ -10,7 +10,12 @@ import com.aurevia.smartclinic.api.ApiException;
 import com.aurevia.smartclinic.authz.ActionPolicy;
 import com.aurevia.smartclinic.tenant.TenantContext;
 
-/** Enforces membership, permission and audit invariants inside one transaction. */
+/**
+ * Enforces membership, permission and audit invariants inside one transaction.
+ *
+ * <p>Authorization is re-evaluated on every protected request so revocation is
+ * effective on the next call without token or session expiry.</p>
+ */
 @Service
 public class FacilityService {
 
@@ -20,6 +25,13 @@ public class FacilityService {
     private final ActionPolicy policy;
     private final TransactionTemplate transactions;
 
+    /**
+     * Create the service.
+     *
+     * @param repository   RLS-bounded repository
+     * @param policy       action policy
+     * @param transactions tenant-guarded transaction template
+     */
     @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
             value = "EI_EXPOSE_REP2", justification = "Spring-managed singleton collaborators")
     public FacilityService(FacilityRepository repository, ActionPolicy policy,
@@ -29,6 +41,13 @@ public class FacilityService {
         this.transactions = transactions;
     }
 
+    /**
+     * Read a facility in the active organization.
+     *
+     * @param code tenant-local facility code
+     * @return the visible facility
+     * @throws ApiException when authorization fails or the facility is not visible
+     */
     public Facility get(String code) {
         return transactions.execute(status -> {
             authorize("FACILITY_READ");
@@ -39,6 +58,14 @@ public class FacilityService {
         });
     }
 
+    /**
+     * Create a facility in the active organization.
+     *
+     * @param code tenant-local facility code
+     * @param name display name
+     * @return the created facility
+     * @throws ApiException on invalid input, denied access or a duplicate code
+     */
     public Facility create(String code, String name) {
         if (code == null || !CODE.matcher(code).matches()) {
             throw new ApiException(422, "INVALID_CODE", "code must be 2-32 uppercase letters, digits, - or _");
@@ -60,6 +87,12 @@ public class FacilityService {
         });
     }
 
+    /**
+     * Re-check membership and action permission inside the current transaction.
+     *
+     * @param action action key to authorize
+     * @throws ApiException when membership or permission is missing
+     */
     private void authorize(String action) {
         TenantContext context = TenantContext.current();
         if (!repository.hasActiveMembership(context.subject())) {
