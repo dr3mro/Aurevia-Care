@@ -301,12 +301,12 @@ class RepairTests(unittest.TestCase):
                for n in range(5)]
         self.assertTrue(self.gate(prs)[0])
 
-    def test_red_main_admits_only_repair_pull_requests(self):
+    def test_repair_pull_requests_are_left_for_a_person(self):
         prs = [{"number": 1, "title": "CW-001: a", "labels": labels("swarm"), "isCrossRepository": False},
                {"number": 2, "title": "FIX-5: b", "labels": labels("swarm"), "isCrossRepository": False}]
         with mock.patch.object(swarm, "gh", FakeGh(prs=prs)):
-            self.assertEqual(swarm.plan_integration(red=True), [2])
-            self.assertEqual(swarm.plan_integration(red=False), [1, 2])
+            self.assertEqual(swarm.plan_integration(red=True), [])
+            self.assertEqual(swarm.plan_integration(red=False), [1])
 
     def test_main_is_red_reads_the_latest_finished_run(self):
         for conclusion, expected in (("failure", True), ("success", False), (None, False)):
