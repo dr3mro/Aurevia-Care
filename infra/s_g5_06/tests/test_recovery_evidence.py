@@ -131,6 +131,14 @@ class StructureTest(unittest.TestCase):
             kind="conducted_drill", source="restore-drill-2026-11-19"))
         self.assertNotIn("evidence_conflict", failures(report))
 
+    def test_conducted_drill_with_blank_source_is_not_final_evidence(self):
+        for source in ("", "   ", None, 7):
+            with self.subTest(source=source):
+                report = re.evaluate(synthetic_artifact(
+                    kind="conducted_drill", source=source))
+                self.assertIn("source", failures(report))
+                self.assertFalse(report["final_evidence"])
+
     def test_conducted_drill_rejects_other_synthetic_markers(self):
         for marker in ("fixture", "seed", "mock"):
             with self.subTest(marker=marker):
@@ -212,6 +220,10 @@ class TargetsTest(unittest.TestCase):
 
     def test_rto_must_be_numeric(self):
         report = re.evaluate(synthetic_artifact(targets={"rto_hours": "3"}))
+        self.assertIn("targets.rto_hours", failures(report))
+
+    def test_rto_zero_is_rejected(self):
+        report = re.evaluate(synthetic_artifact(targets={"rto_hours": 0}))
         self.assertIn("targets.rto_hours", failures(report))
 
 
@@ -448,10 +460,17 @@ class ContractConsistencyTest(unittest.TestCase):
     def test_contract_matches_evaluator_constants(self):
         path = MODULE_PATH.parent / "recovery-contract.json"
         contract = json.loads(path.read_text(encoding="utf-8"))
+        self.assertEqual(contract["schema_version"], re.SCHEMA_VERSION)
         self.assertEqual(contract["targets"]["rpo_minutes"]["max"],
                          re.RPO_MAX_MINUTES)
+        self.assertEqual(contract["targets"]["rpo_minutes"]["min"], 0)
         self.assertEqual(contract["targets"]["rto_hours"]["max"],
                          re.RTO_MAX_HOURS)
+        self.assertEqual(contract["targets"]["rto_hours"]["min_exclusive"], 0)
+        self.assertEqual(set(contract["verification"]),
+                         set(re.REQUIRED_VERIFICATION_FLAGS))
+        self.assertEqual(set(contract["ownership_roles"]),
+                         set(re.REQUIRED_OWNERSHIP_ROLES))
         self.assertEqual(set(contract["recovery_scope"]), set(re.REQUIRED_SCOPE))
         self.assertEqual(set(contract["restore_targets"]),
                          set(re.REQUIRED_RESTORE_TARGETS))

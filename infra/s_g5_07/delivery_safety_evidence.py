@@ -35,6 +35,10 @@ MIGRATION_GATE = "check-migrations --require-baseline"
 ROLLOUT_STRATEGY = "progressive"
 ROLLOUT_FINAL_STAGE = "full"
 DIGEST_PATTERN = re.compile(r"sha256:[0-9a-fA-F]{64}\Z")
+# A measured deployment cannot be granted final_evidence on a bare declaration:
+# it must name the run tool, version, command, time, environment and source SHA.
+MEASURED_PROVENANCE_FIELDS = ("tool", "tool_version", "command",
+                              "utc_timestamp", "environment", "source_sha")
 
 
 def _reject_constant(value):
@@ -204,11 +208,15 @@ def _check_rollout(rollout, checks):
                   "strategy must be progressive")
     stages = rollout.get("stages")
     if isinstance(stages, list):
+        valid_strings = all(isinstance(item, str) and bool(item.strip())
+                            for item in stages)
+        # Compare normalized names so whitespace-padded duplicates cannot masquerade
+        # as two distinct stages (which would allow a big-bang release to be relabelled).
+        normalized = [item.strip() for item in stages] if valid_strings else []
         passed = (len(stages) >= 2
-                  and all(isinstance(item, str) and bool(item.strip())
-                          for item in stages)
-                  and len(set(stages)) == len(stages)
-                  and stages[-1] == ROLLOUT_FINAL_STAGE)
+                  and valid_strings
+                  and len(set(normalized)) == len(normalized)
+                  and normalized[-1] == ROLLOUT_FINAL_STAGE)
         detail = ("ordered distinct stages ending in full" if passed
                   else "stages must be two or more distinct names ending in full")
     else:
@@ -236,7 +244,7 @@ def _check_production_access(pa, checks):
     approver = pa.get("approver")
     separation = (isinstance(requester, str) and bool(requester.strip())
                   and isinstance(approver, str) and bool(approver.strip())
-                  and requester != approver)
+                  and requester.strip() != approver.strip())
     _record(checks, "production_access.separation_of_duties", separation,
             "distinct requester and approver" if separation
             else "requester and approver must be distinct non-empty strings")
@@ -244,6 +252,27 @@ def _check_production_access(pa, checks):
                   "audit declared", "audited must be true")
     _require_true(checks, "production_access.expiring", pa.get("expiring"),
                   "expiry declared", "expiring must be true")
+
+
+def _check_provenance(artifact, checks):
+    """Check the provenance a measured-deployment claim must carry to be final.
+
+    A bare declaration can be relabelled from a synthetic rehearsal to a measured
+    deployment. Requiring the run's tool, version, command, time, environment and
+    source SHA keeps ``final_evidence`` from being granted by relabelling alone.
+    This checks presence and shape, not truth; human and cloud review still own
+    provenance verification.
+    """
+    provenance = artifact.get("provenance")
+    if not isinstance(provenance, dict) or not provenance:
+        _record(checks, "provenance", False,
+                "provenance must be a non-empty JSON object")
+        return
+    for field in MEASURED_PROVENANCE_FIELDS:
+        value = provenance.get(field)
+        _record(checks, "provenance." + field,
+                isinstance(value, str) and bool(value.strip()),
+                "must be a non-empty string")
 
 
 def evaluate(artifact):
@@ -263,9 +292,11 @@ def evaluate(artifact):
     _require_string(checks, "source", artifact.get("source"),
                     "source declared", "source must be a non-blank string")
     source = str(artifact.get("source", "")).lower()
-    if kind == "measured_deployment" and "synthetic" in source:
-        _record(checks, "evidence_conflict", False,
-                "a measured deployment artifact cannot name a synthetic source")
+    if kind == "measured_deployment":
+        if "synthetic" in source:
+            _record(checks, "evidence_conflict", False,
+                    "a measured deployment artifact cannot name a synthetic source")
+        _check_provenance(artifact, checks)
     _check_environments(artifact.get("environments"), checks)
     _check_fixtures(artifact.get("fixtures"), checks)
     _check_ci_checks(artifact.get("ci_checks"), checks)

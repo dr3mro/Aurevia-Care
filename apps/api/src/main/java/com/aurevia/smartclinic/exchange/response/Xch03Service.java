@@ -126,7 +126,10 @@ public class Xch03Service {
 
     /**
      * Propose a change after acceptance as a new immutable linked revision. The
-     * accepted snapshot is never rewritten and the recipient must respond.
+     * accepted snapshot is never rewritten and the recipient must respond. The
+     * proposed revision lives only in the revision ledger until that response:
+     * retrieval keeps serving the last accepted revision in the meantime, so a
+     * rejected change can never serve unretained content (XCH-03, ARC-03).
      *
      * @param id      order identifier
      * @param version version read by the caller
@@ -138,21 +141,24 @@ public class Xch03Service {
         String summary = Xch03Inputs.text(request.changeSummary(), "changeSummary", MAX_REASON, true);
         String checksum = Xch03Inputs.checksum(request.contentChecksum());
         return run(id, version, Xch03ActionPolicy.EXCHANGE_PROPOSE_CHANGE, "propose_change", current -> {
-            if (current.state() != ExchangeState.ACCEPTED
-                    && current.state() != ExchangeState.CLARIFICATION_REQUESTED) {
-                throw invalidTransition();
-            }
+            // XCH-03 scopes changes to *after* acceptance: only an accepted order has
+            // a verified patient, permitted purpose and retained recipient copy.
+            requireState(current, ExchangeState.ACCEPTED);
             int next = current.revision() + 1;
             TenantContext context = TenantContext.current();
             repository.insertRevision(context.organizationId(), Xch03Inputs.newId(), current.id(),
                     next, current.revision(), checksum, summary, context.subject());
             return new Decision(ExchangeState.CHANGE_PENDING, current.localPatientId(), current.assignee(),
-                    null, current.question(), current.permittedPurpose(), current.retentionPolicy(), next);
+                    null, current.question(), current.permittedPurpose(), current.retentionPolicy(),
+                    current.revision());
         });
     }
 
     /**
-     * Record the recipient response to a linked change.
+     * Record the recipient response to a linked change. Accepting promotes the
+     * linked revision to current and retains it under the purpose captured at the
+     * original acceptance; rejecting leaves the accepted revision current so no
+     * unretained content is ever served through retrieval (XCH-03, ARC-03).
      *
      * @param id      order identifier
      * @param version version read by the caller
@@ -173,16 +179,20 @@ public class Xch03Service {
                         reason, current.question(), current.permittedPurpose(),
                         current.retentionPolicy(), current.revision());
             }
+            String purpose = current.permittedPurpose();
+            String retention = current.retentionPolicy();
+            if (purpose == null || retention == null) {
+                throw invalidTransition();
+            }
+            int next = current.revision() + 1;
             TenantContext context = TenantContext.current();
-            Revision revision = repository.currentRevision(current.id(), current.revision())
+            Revision revision = repository.currentRevision(current.id(), next)
                     .orElseThrow(() -> new ApiException(404, "NOT_FOUND", "released revision not found"));
             repository.insertRetained(context.organizationId(), Xch03Inputs.newId(), current.id(),
-                    current.revision(), revision.contentChecksum(), current.permittedPurpose(),
-                    current.retentionPolicy(), "LEGAL_HOLD".equals(current.retentionPolicy()),
-                    context.subject());
+                    next, revision.contentChecksum(), purpose, retention,
+                    "LEGAL_HOLD".equals(retention), context.subject());
             return new Decision(ExchangeState.ACCEPTED, current.localPatientId(), current.assignee(),
-                    null, current.question(), current.permittedPurpose(), current.retentionPolicy(),
-                    current.revision());
+                    null, current.question(), purpose, retention, next);
         });
     }
 
