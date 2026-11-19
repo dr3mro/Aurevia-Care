@@ -242,10 +242,12 @@ class ExchangeTaskIsolationTest {
         assertEquals(1, task.get("version").asInt());
         assertEquals(1, view.get("history").size());
 
-        try (Connection connection = DriverManager.getConnection(URL, "smartclinic_app", "");
+        // The owner keeps UPDATE privilege but FORCE RLS still binds it to the
+        // active tenant, so this exercises reject_immutable_mutation() itself
+        // rather than the runtime role's missing privilege.
+        try (Connection connection = DriverManager.getConnection(URL, "smartclinic_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
-            statement.execute("SET app.actor = 'clinician-a'");
             assertThrows(java.sql.SQLException.class, () -> statement.execute(
                     "UPDATE public.exchange_task_transition SET to_state = 'requested' "
                             + "WHERE task_id = '" + READ + "'"));
