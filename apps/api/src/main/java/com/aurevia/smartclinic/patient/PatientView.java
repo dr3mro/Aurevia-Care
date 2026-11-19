@@ -5,8 +5,7 @@ import java.util.List;
 /**
  * A patient together with synthetic likely-duplicate candidates (IAM-03).
  *
- * @param patient     the effective patient
- * @param duplicates  candidates sharing normalized name and DOB; never auto-linked
+ * @return this record
  */
 public record PatientView(Patient patient, List<Patient> duplicates) {
 
