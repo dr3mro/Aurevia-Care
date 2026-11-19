@@ -1,15 +1,13 @@
 name: Heavy verification
 # The second check tier. Runs the expensive checks (PostgreSQL integration,
 # JaCoCo coverage, OWASP dependency analysis and SpotBugs) once per batch on
-# main, not once per swarm pull request. A failure wakes the main watchdog.
+# main, not once per swarm pull request. The integrator dispatches it only when
+# it merged something (a workflow_run trigger also ran it after empty batches), and
+# a failure starts a repair worker through failed-run-repair.yml.
 on:
   schedule:
     - cron: '23 4 * * *'
   workflow_dispatch:
-  workflow_run:
-    workflows: [Swarm integrator]
-    types: [completed]
-    branches: [main]
 permissions:
   contents: read
 # Queue: cancelling a batch's heavy check leaves its main commit unverified and
@@ -21,7 +19,6 @@ concurrency:
 jobs:
   heavy:
     name: Full checks on main
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     services:

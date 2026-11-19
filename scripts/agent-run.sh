@@ -10,6 +10,7 @@
 #   bundle         pack the new commits into .agent/result.bundle (swarm)
 #   fetch-main     fetch the base branch (needs a read token; swarm)
 #   merge-main     merge the base branch into the work, fixing conflicts with the agent (swarm)
+#   adopt          rebuild the agent's branch from its bundle in the trusted job (team)
 #   fetch-prs      fetch conflicted pull requests listed in CONFLICTED (integrator)
 #   resolve        merge main into each fetched PR branch, agent fixing conflicts (integrator)
 #   audit          read-only audit of the whole repo; writes .agent/audit-findings.json
@@ -332,11 +333,30 @@ cmd_review() {
   done
 }
 
+# adopt: the agent ran in another job and left a bundle. Rebuild its branch in
+# this trusted checkout, refusing any branch name the run was not meant to use.
+cmd_adopt() {
+  : "${GH_TOKEN:?GH_TOKEN is required}"
+  local branch
+  [[ -f "$out/result.bundle" ]] || return 0
+  branch=$(cat "$out/branch")
+  [[ "$branch" =~ ^[A-Za-z0-9._/-]+$ && "$branch" != -* && "$branch" != *..* ]] || { echo "bad branch name" >&2; return 1; }
+  if [[ "${MODE:-story}" == fix ]]; then
+    [[ "$branch" == "${BRANCH:?BRANCH is required in fix mode}" ]] || { echo "unexpected branch" >&2; return 1; }
+    github_git fetch -q origin "$branch"
+  else
+    [[ "$branch" == "${BRANCH_PREFIX:-opencode}"/* ]] || { echo "unexpected branch" >&2; return 1; }
+  fi
+  git fetch -q "$out/result.bundle" HEAD:refs/heads/incoming
+  git switch -q -C "$branch" incoming
+}
+
 cmd_publish() {
   : "${GH_TOKEN:?GH_TOKEN is required}"
   local branch result commits checks note
-  branch=$(cat "$out/branch"); result=$(cat "$out/result"); checks=$(cat "$out/checks")
-  commits=$(git rev-list --count "$(cat "$out/base-sha")..HEAD")
+  branch=$(cat "$out/branch" 2> /dev/null || echo "") ; result=$(cat "$out/result" 2> /dev/null || echo failed)
+  checks=$(cat "$out/checks" 2> /dev/null || echo skipped)
+  commits=$(cat "$out/commits" 2> /dev/null || echo 0)
   target=${ISSUE_NUMBER:-${PR_NUMBER:-}}
   if [[ "$commits" -eq 0 ]]; then
     note="OpenCode run ended with result '${result}' and made no changes. Re-run from the Actions tab or comment /oc to try again."
@@ -382,8 +402,9 @@ case "${1:-}" in
   bundle) cmd_bundle ;;
   audit) cmd_audit ;;
   fetch-main) cmd_fetch_main ;;
+  adopt) cmd_adopt ;;
   fetch-prs) cmd_fetch_prs ;;
   resolve) cmd_resolve ;;
   merge-main) cmd_merge_main ;;
-  *) printf 'usage: %s implement|review|publish|post-reviews|bundle|audit|fetch-main|merge-main|fetch-prs|resolve\n' "$0" >&2; exit 2 ;;
+  *) printf 'usage: %s implement|review|publish|post-reviews|bundle|audit|fetch-main|merge-main|adopt|fetch-prs|resolve\n' "$0" >&2; exit 2 ;;
 esac
