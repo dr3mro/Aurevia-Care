@@ -52,7 +52,7 @@ class GeneratorTests(unittest.TestCase):
         rules = gen.build(["smartclinic-orchestrator"])["agents"][
             "smartclinic-orchestrator"]["permissions"]
         shell = [r for r in rules if r["action"] == "shell"]
-        self.assertEqual(shell[0]["effect"], "ask")
+        self.assertEqual(shell[0]["effect"], "allow")
         self.assertLess(max(i for i, r in enumerate(shell) if r["effect"] == "allow"),
                         min(i for i, r in enumerate(shell) if r["effect"] == "deny"))
 
