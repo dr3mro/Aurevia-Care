@@ -270,7 +270,7 @@ class PlanTests(unittest.TestCase):
 
     def test_integrator_gate_is_the_full_check(self):
         text = (ROOT / ".github/workflows/swarm-integrator.yml").read_text()
-        self.assertIn("GATE: scripts/check.sh", text)
+        self.assertIn("GATE: scripts/integrator-gate.sh", text)
         self.assertIn("postgres:", text)
         self.assertIn("SMARTCLINIC_PG_ADMIN: postgres", text)
         self.assertNotIn("GATE: scripts/quick-check.sh", text)
@@ -362,6 +362,14 @@ class PlanTests(unittest.TestCase):
         text = (ROOT / ".github/workflows/swarm.yml").read_text()
         self.assertIn("cron: '7 * * * *'", text)
         self.assertNotIn("cron: '7 */3 * * *'", text)
+
+    def test_integrator_gate_runs_full_check_and_docs(self):
+        script = (ROOT / "scripts/integrator-gate.sh").read_text()
+        self.assertIn("bash scripts/check.sh", script)
+        self.assertIn("bash scripts/docs.sh", script)
+        workflow = (ROOT / ".github/workflows/swarm-integrator.yml").read_text()
+        self.assertIn("GATE: scripts/integrator-gate.sh", workflow)
+        self.assertIn("Install Doxygen", workflow)
 
     def test_doxygen_install_retries_apt_mirror_failures(self):
         text = (ROOT / ".github/workflows/delivery.yml").read_text()
@@ -921,11 +929,12 @@ class TwoTierTests(unittest.TestCase):
             count = swarm.integrate_batch([1], "scripts/quick-check.sh")
         self.assertEqual(count, 1)
         self.assertEqual(push_attempts["n"], 2)
-        self.assertTrue(authedmock.call_args_list and
-                        any(c.args[:2] == ("fetch", "origin") for c in authedmock.call_args_list))
+        self.assertTrue(any(c.args[:2] == ("fetch", "origin") for c in authedmock.call_args_list))
         self.assertGreaterEqual(gate.call_count, 2)
+        self.assertTrue(any(c.args[:3] == ("reset", "--soft", "origin/main")
+                            for c in gitmock.call_args_list))
 
-    def test_integrate_batch_aborts_rebase_on_conflict(self):
+    def test_integrate_batch_restores_trackers_on_retry(self):
         self.repo = Path(tempfile.mkdtemp())
         (self.repo / "TODO.md").write_text("# TODO\n")
         self.addCleanup(shutil.rmtree, self.repo)
@@ -950,8 +959,6 @@ class TwoTierTests(unittest.TestCase):
             return ""
 
         def gitmock(*args, check=True):
-            if args[0] == "rebase" and args[1] == "origin/main":
-                raise subprocess.CalledProcessError(1, args, "", "CONFLICT")
             return ""
 
         with mock.patch.object(swarm, "gh", Gh()), \
@@ -962,7 +969,10 @@ class TwoTierTests(unittest.TestCase):
              mock.patch.object(swarm, "authed_git", side_effect=authed):
             with self.assertRaises(subprocess.CalledProcessError):
                 swarm.integrate_batch([1], "scripts/quick-check.sh")
-        self.assertTrue(any(c.args[:2] == ("rebase", "--abort") for c in gitcalls.call_args_list))
+        # Reconciliation adopts the fresh trackers rather than rebasing.
+        self.assertTrue(any(c.args[:3] == ("checkout", "origin/main", "--")
+                            for c in gitcalls.call_args_list))
+        self.assertFalse(any(c.args[0] == "rebase" for c in gitcalls.call_args_list))
 
     def test_guard_still_blocks_module_check_scripts(self):
         fake = FakeGh(diff="apps/staff-web/check.sh\n")
