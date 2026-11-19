@@ -249,7 +249,8 @@ public class DocumentService {
             }
             int version = repository.nextRenderVersion(subjectType, subjectId, locale);
             PdfSpec spec = new PdfSpec(context.organizationId(), subjectType, subjectId, locale,
-                    version, rotation, title, lines, sourceSystem, sourceId, effectiveAt);
+                    version, rotation, title, lines, sourceSystem, sourceId, effectiveAt,
+                    sourceAssociationId);
             byte[] bytes = renderer.render(spec);
             String id = DocumentInputs.newId();
             try {
