@@ -53,17 +53,18 @@ public class FacilityController {
      */
     @PostMapping
     public ResponseEntity<Facility> create(@RequestBody CreateRequest request) {
-        Facility created = service.create(request.code(), request.name());
+        Facility created = service.create(request.code(), request.name(), request.timeZone());
         return ResponseEntity.created(URI.create("/api/v1/facilities/" + created.code())).body(created);
     }
 
     /**
      * Request body for facility creation; no organization field is accepted.
      *
-     * @param code tenant-local facility code
-     * @param name display name
+     * @param code     tenant-local facility code
+     * @param name     display name
+     * @param timeZone IANA time zone, or {@code null} for UTC
      * @return the immutable create request
      */
-    public record CreateRequest(String code, String name) {
+    public record CreateRequest(String code, String name, String timeZone) {
     }
 }
