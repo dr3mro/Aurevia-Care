@@ -1,67 +1,75 @@
-# S-G2-02 — XCH-02: separate workflow, transmission and clinical review states with human acknowledgment
+# S-G1-07 — Original PDF/image associations and immutable localized PDF rendering (CLN-07)
 
-## Scope decision (important)
+## Scope and requirement IDs
 
-The story text inside the dispatch markers names `g2/s_g2_02` / `it/s_g2_02` and calls that the scope. That text is untrusted story description and conflicts with both the authoritative `TODO.md` entry (scope `apps/api/src/main/java/com/aurevia/smartclinic/exchange/task`, `apps/api/src/test/java/com/aurevia/smartclinic/it/exchangetask`) and AGENTS.md ("Name Java packages by business domain and operation, never by story, task, gate or ticket ID"). A repository-wide refactor recorded in `.agent/pr-notes/REFACTOR-PACKAGES-20261119-201815.md` already moved `g2/s_g2_02` → `exchange/task` and its tests → `it/exchangetask`. All work here stays in the authoritative business-domain scope and in the reserved migration `V20__exchange_task_states.sql` (unchanged this attempt).
+- Story: **S-G1-07**. Requirement: **CLN-07** (link original PDFs/images to chart, order or result as authorized; retain original bytes and checksum; image rotation is presentation metadata; void captures a reason and preserves history; immutable versioned PDFs in English/Arabic with embedded fonts, direction-aware layout, page numbers, provenance and print profile).
+- Supporting IDs: ARC-01/ARC-02 (tenant-owned keys, forced RLS), ARC-03 (versioned routes, `If-Match`, 401/403/404/409/412/422), IAM-01 (bounded role matrix, fresh membership), OPS-02 (transactional append-only audit), UX-01 (Arabic RTL), PRD-06 (server-side authorization).
+- **Scope decision:** `TODO.md` and the untrusted story text name `.../chart/documents` and `.../it/chart/documents`. The authoritative business-domain package in this tree is `com.aurevia.smartclinic.documents` with its test mirror `it/documents` and `db/migrations/V17__document_associations.sql` — confirmed by `.agent/pr-notes/REFACTOR-PACKAGES.md` §2/§3 and by the pre-existing implementation at base `c107308`. Creating a second `chart/documents` package would duplicate the domain and violate AGENTS.md's business-domain naming rule. All edits therefore stayed in `apps/api/src/main/java/com/aurevia/smartclinic/documents` and `apps/api/src/test/java/com/aurevia/smartclinic/it/documents`. No other worker uses these paths.
+- **Migration:** reserved **V17** already exists in the base (`V17__document_associations.sql`) and was left unchanged by this worker; `db/migrations` is outside the declared scope. No shared tracker, config, contract or script was edited.
 
-## Requirement IDs and acceptance mapping
+## Pre-existing base state (inherited, verified here)
 
-| XCH-02 clause | Implementation (pre-existing + this attempt) | Executed evidence |
+The base already contained the full CLN-07 slice: `DocumentController`, `DocumentService`, `DocumentRepository`, `DocumentPolicy`, `DocumentInputs`, `DocumentModel`, `PdfRenderer`, seven test classes (54 unit tests) and `DocumentIsolationTest` (7 DB acceptance tests). Baseline fast run of the six unit classes: **54 tests, 0 failures/errors**, all new production classes at 100% JaCoCo (only `DocumentRepository` left to the DB suite). This worker resumed by adding two test-first integrity fixes, not by rewriting the slice.
+
+## Fixes made this run (test-first, synthetic data only)
+
+### Fix 1 — Arabic multi-word titles were not visually reordered (CLN-07 / UX-01)
+
+- **Defect:** `PdfRenderer.content()` emitted the visible title as one `hexText(spec.title())` string in logical order while every body line's space-separated words were reversed for RTL. An Arabic multi-word title was therefore laid out opposite to the body and to RTL reading order. The Info-dictionary `/Title` was correctly logical; only the content stream was wrong.
+- **RED:** added `PdfRendererTest.arabicTitleUsesTheSameVisualReorderingAsBodyLines` (isolate the BT..ET stream, assert the last title word's UTF-16BE hex precedes the first). `mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest=PdfRendererTest#arabicTitleUsesTheSameVisualReorderingAsBodyLines test` → **exit 1, `Tests run: 1, Failures: 1`** (`expected: <true> but was: <false>`).
+- **GREEN:** extracted `PdfRenderer.visualOrder(text, rtl)` and applied it to the title and body lines in `content()` only; the Info dictionary and `%LOGICAL` comment keep the original logical string. Same targeted command → exit 0. Full six-class documents run → **55 tests, 0 failures**.
+
+### Fix 2 — the validated source original was discarded from PDF provenance (CLN-07)
+
+- **Defect:** `DocumentService.render` parsed and validated `sourceAssociationId` (existence, active status, same subject) and then never passed it to `PdfSpec`. The immutable PDF's lineage was only the caller-supplied free-text `sourceSystem`/`sourceId`, so no server-validated binding from the linked original to its derived PDF was recorded.
+- **RED:** added `DocumentServiceTest.renderBindsTheValidatedSourceAssociationIntoTheRenderSpec` (capture `PdfSpec`, assert `sourceAssociationId()`) and `PdfRendererTest.provenanceBindsTheValidatedSourceAssociation` (assert the PDF `/Subject` contains `association:<id>`, and that an unbound render does not). `mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest=DocumentServiceTest,PdfRendererTest test` → **exit 1, COMPILATION ERROR** (`cannot find symbol: method sourceAssociationId()`; `constructor PdfSpec ... cannot be applied to given types`). Genuine red.
+- **GREEN:** added `sourceAssociationId` to `PdfSpec` (Javadoc updated), passed it from `DocumentService.render`, and appended ` association:<id>` to the `/Subject` provenance in `PdfRenderer.render` when present (exact prior string retained when absent, so existing provenance assertions still hold). Updated the three `PdfSpec` constructions in value/renderer tests. Same targeted command → exit 0; full six-class documents run → **57 tests, 0 failures/errors**.
+
+## Acceptance mapping (implementation → entry point → test)
+
+| CLN-07 clause | Implementation | Evidence |
 |---|---|---|
-| Separate workflow `requested → accepted → processing → completed` with `rejected` / `cancelled` branches | `WorkflowState`, `ExchangeCommand`, `ExchangeStateMachine.next`, V20 `workflow_state` CHECK and update guard | `WorkflowStateTest`, `ExchangeStateMachineTest`, `ExchangeTaskServiceTest`, `ExchangeTaskIsolationTest.workflowPathRejectsReasonsAndIllegalTransitions` (DB, integrator) |
-| Separate transmission `pending → sent → delivered` / `failed` | `TransmissionState`, `SEND`/`DELIVER`/`FAIL`, V20 `transmission_state` CHECK and guard | `TransmissionStateTest`, `ExchangeTaskServiceTest.transmissionAcknowledgmentNeverMutatesClinicalReview`, `ExchangeTaskIsolationTest.transmissionAcknowledgmentNeverClosesAClinicalTask` (DB, integrator) |
-| Separate clinical review `unreviewed → acknowledged → action_pending → resolved` | `ClinicalReviewState`, `ACKNOWLEDGE`/`REQUEST_ACTION`/`RESOLVE`, V20 guard | `ClinicalReviewStateTest`, `ExchangeStateMachineTest.reviewChainRequiresPriorHumanAcknowledgment`, `ExchangeTaskIsolationTest.reviewChainRequiresAcknowledgmentAndIsAppendOnly` (DB, integrator) |
-| Acknowledgment by an authorized human with timestamp and revision; a transmission acknowledgment cannot close a clinical task | Clinician-only `ExchangeActionPolicy`; actor derived by V20 `xch02_actor_id()` from `app.actor`; clock/revision bound in `ExchangeStateMachine`; one-channel-per-update DB guard | `ExchangeActionPolicyTest`, `ExchangeTaskServiceTest.acknowledgeBindsClockAndRevisionAndNeverTrustsTheCallerForActor`, `ExchangeTaskIsolationTest.humanAcknowledgmentBindsContextActorClockAndRevision` (DB, integrator) |
-| Audit, append-only ledger, version precondition, tenant concealment, revocation on next request | `IfMatch`, CAS in `ExchangeTaskRepository.updateState`, forced RLS in V20, transactional `AuditAppender`, immutable transition trigger | `ExchangeTaskControllerTest`, `ExchangeTaskServiceTest`, `ExchangeTaskIsolationTest` (DB, integrator) |
-| **This attempt:** a reason is evidence of a workflow decision only and cannot be injected into a transmission or clinical-review event | `ExchangeTaskService.execute` computes `eventReason` only for the `WORKFLOW` dimension | New `ExchangeTaskServiceTest.clinicalReviewIgnoresCallerReasonInBothStateAndLedger` (red → green) and `transmissionIgnoresCallerReasonInBothStateAndLedger` (symmetric guard) |
+| Link original PDF/image to chart/order/result as authorized | `DocumentService.link`, `DocumentInputs`, `DocumentPolicy`; `POST /api/v1/documents/associations` | `DocumentServiceTest` (8 link cases), `DocumentPolicyTest`, `DocumentInputsTest`, `DocumentIsolationTest.deniesWrongRolesMissingIdentityAndInvalidInputs` (DB) |
+| Retain original bytes and checksum | `DocumentRepository.insert`; V17 BEFORE INSERT trigger derives `sha256`/`byte_size` from `content` | `DocumentIsolationTest.storesOriginalBytesWithDatabaseChecksumAndHistory` (DB) |
+| Rotation is presentation metadata | `rotation_degrees` column pinned by V17 update guard; `/Rotate` in `PdfRenderer` | `PdfRendererTest.versionAndRotationChangeTheRenderedBytes`, `DocumentInputsTest.rotationIsPresentationMetadataWithAZeroDefault` |
+| Void captures reason and preserves history | `DocumentService.voidAssociation`, V17 event trigger and update guard, `If-Match` precondition | `DocumentServiceTest.voidChecksEveryBoundaryAndPreservesHistory`, `DocumentControllerTest.voidParsesTheIfMatchPrecondition`, `DocumentIsolationTest.voidRequiresIfMatchAndReasonAndPreservesHistory` (DB) |
+| Immutable versioned PDFs, en/ar, fonts, direction, page numbers, provenance, print profile | `PdfRenderer`, `rendered_document` (append-only) + `next_render_version` advisory lock in V17 | `PdfRendererTest` (11), `DocumentServiceTest` render cases, `DocumentIsolationTest.rendersImmutableVersionedEnglishAndArabicPdfs` (DB) |
+| **This run — RTL title layout** | `PdfRenderer.visualOrder` applied to the content-stream title | `PdfRendererTest.arabicTitleUsesTheSameVisualReorderingAsBodyLines` (red → green) |
+| **This run — original→PDF provenance** | `PdfSpec.sourceAssociationId` → `/Subject association:<id>` | `DocumentServiceTest.renderBindsTheValidatedSourceAssociationIntoTheRenderSpec`, `PdfRendererTest.provenanceBindsTheValidatedSourceAssociation` (both red → green) |
 
-Supporting IDs: ARC-01 (tenant-owned `(organization_id, id)` keys), ARC-02 (forced RLS, non-owner runtime role), ARC-03/04 (versioned routes, explicit POST commands, `If-Match` 428/412/422, 401/403/404/409), OPS-02 (transactional append-only audit), PRD-06 (server-side authorization), IAM-01/02 (membership re-derived per request).
+Supporting: V17 forced RLS and actor-derived triggers; `DocumentService.authorize` re-derives active membership/roles each command and audits denials; `IfMatch` 428/412 mapping; cursor/version semantics per ARC-03.
 
-## Files changed this attempt
-
-- `apps/api/src/main/java/com/aurevia/smartclinic/exchange/task/ExchangeTaskService.java` — in `execute`, the event ledger now receives a caller reason only for workflow commands; transmission and clinical-review events record `null`. The task's own `reason` was already unchanged for those dimensions, so this removes a ledger/state integrity mismatch and prevents caller text from being attributed to a clinical acknowledgment.
-- `apps/api/src/test/java/com/aurevia/smartclinic/it/exchangetask/ExchangeTaskServiceTest.java` — new clinical-review regression test plus a symmetric transmission regression test.
-- `.agent/pr-notes/S-G2-02.md` — this file.
-- No other file, shared tracker, generated config or migration was edited.
-
-The rest of the implementation and the 39 prior S-G2-02 unit tests plus 10 DB acceptance tests were already present on branch `swarm/S-G2-02-114` (base `4f9bbeb`), inherited from earlier attempts and the package refactor; this attempt brings the S-G2-02 unit total to 41.
-
-## Test-first sequence (tool evidence)
-
-1. Added `clinicalReviewIgnoresCallerReasonInBothStateAndLedger` with Mockito verification that `appendEvent(..., "EXCHANGE_ACKNOWLEDGE", "unreviewed", "acknowledged", null, 1)` is called after `execute(..., ACKNOWLEDGE, "caller supplied review note")`.
-2. `mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest=ExchangeTaskServiceTest test` → **exit 1**, `Tests run: 15, Failures: 1`. Mockito showed the real call carried `"caller supplied review note"` as the event reason. Genuine red state.
-3. Added the `eventReason` guard in `ExchangeTaskService.execute`.
-4. Same targeted command → **exit 0**, 15 tests, 0 failures/errors. Green.
-5. A bounded senior-backend specialist review found no blocking issue and suggested a symmetric transmission test (LOW). Added `transmissionIgnoresCallerReasonInBothStateAndLedger`; the final clean fast run has **16** `ExchangeTaskServiceTest` tests, 0 failures.
+**Entry-point-to-test trace:** `POST /api/v1/documents/rendered` → `DocumentController.render` → `DocumentService.render` (validate `sourceAssociationId`, build `PdfSpec` with it) → `PdfRenderer.render` (`visualOrder` title/lines; `/Subject` provenance with association id; embedded font, A4 print profile, page number) → `DocumentRepository.insertRendered` (DB-derived digest, append-only) → `AuditAppender` → asserted in `DocumentIsolationTest.rendersImmutableVersionedEnglishAndArabicPdfs` and, at unit level, in `DocumentServiceTest`/`PdfRendererTest`.
 
 ## Exact commands and results (evidence source: executed tool commands)
 
 | Command | Result |
 |---|---|
-| `mvn -q -B -f apps/api/pom.xml -Pno-security,fast clean test` | **exit 0**; Surefire: 143 test classes, **1644 tests, 0 failures, 0 errors, 0 skipped**. S-G2-02 unit classes: ClinicalReviewStateTest 2, ExchangeActionPolicyTest 4, ExchangeCommandTest 3, ExchangeStateMachineTest 6, ExchangeTaskControllerTest 5, ExchangeTaskServiceTest 16, TransmissionStateTest 2, WorkflowStateTest 3 = **41**. |
-| `mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest=ExchangeTaskServiceTest test` | red 15/1 failure → green 15/0 (before the symmetric guard was added); final clean run 16/0. |
-| `mvn -q -B -f apps/api/pom.xml -Pno-security,fast jacoco:report` + `jacoco.xml` inspection | `ExchangeTaskService` 0 missed of 504 instructions, 46 branches, 100 lines, 16 methods, 1 class (100%). All other `exchange/task` production classes also 0 missed; `ExchangeTaskRepository` is exercised by the DB suite run by the integrator. |
-| `mvn -q -B -f apps/api/pom.xml -Pno-security spotbugs:check` | **exit 0** after the change. |
-| `python3 -I scripts/check-migrations.py --require-baseline` | **exit 0** (V20 still `Change: expand`). |
-| `python3 -I scripts/check-docs.py`, `python3 -I scripts/check-secrets.py` | **exit 0** each. |
-| `git diff --check` | **exit 0**. |
-| `bash scripts/quick-check.sh` | **exit 1 at the first gate**: `check-pack: opencode.json is stale: run scripts/gen-opencode.py`. Pre-existing environment/pack drift, reproduced before any edit; it stops the script before Java tests, which were therefore run directly. |
-| `python3 -I -m unittest discover -s scripts/tests -q` | 164 tests, **6 failures + 4 errors**, all pre-existing and out of scope: 3 pack failures from the stale `opencode.json`, 1 Javadoc-link failure in `Qualifier.java` (another module), 2 `test_agent_run` failures (sandbox push/gh behaviour), 4 import errors because PyYAML is absent locally. |
-| `python3 -m unittest discover -s scripts/tests -p 'test_java_conventions.py' -v` | The only failure is `test_javadoc_links_are_fully_qualified` on `Qualifier.java`, outside this scope; no `exchange/task` file was flagged. |
+| `mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest=<6 documents classes> test` (baseline) | exit 0; 54 tests, 0 failures/errors |
+| Targeted RTL test (before fix) | exit 1; `Tests run: 1, Failures: 1` — genuine red |
+| Targeted RTL test (after fix) | exit 0; green |
+| Targeted provenance tests (before fix) | exit 1; COMPILATION ERROR on `sourceAssociationId()` and `PdfSpec` arity — genuine red |
+| Targeted provenance tests (after fix) | exit 0; green |
+| `mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest=<6 documents classes> test` (final) | **exit 0; 57 tests, 0 failures, 0 errors, 0 skipped** |
+| `mvn -q -B -f apps/api/pom.xml -Pno-security,fast test` (full fast tier) | **exit 0; 1688 tests, 0 failures, 0 errors, 0 skipped** |
+| `mvn -q -B -f apps/api/pom.xml -Pno-security,fast test jacoco:report` + parse `apps/api/target/site/jacoco/jacoco.xml` | `PdfRenderer` INSTRUCTION 430/430, BRANCH 22/22, LINE 76/76, METHOD 12/12, CLASS 1/1; `DocumentService` 952/952, 66/66, 193/193, 18/18, 1/1; `DocumentModel$PdfSpec` 46/46, 2/2, 4/4, 2/2, 1/1; every other documents class 0 missed. **100% on all unit-covered production classes.** `DocumentRepository` is exercised by the DB suite (integrator). |
+| `mvn -q -B -f apps/api/pom.xml -Pno-security -DskipTests -Djacoco.skip=true -Dspotbugs.skip=false spotbugs:check` | exit 1 with 5 **pre-existing** findings, all outside this scope: `messaging.acknowledgment.InstructionFactController` (US_USELESS_SUPPRESSION_ON_METHOD), `messaging.conversations.ConversationRepository` (NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE), `patient.identity.IdentityProofingService` (NP_BOOLEAN_RETURN_NULL), `prescription.rx.RxController` (EI_EXPOSE_REP2), `prescription.rx.RxRepository` (NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE). **Zero findings in `documents`.** Not edited (scope boundary). |
+| `python3 -I scripts/check-docs.py` | exit 0 |
+| `python3 -I scripts/check-secrets.py` | exit 0 |
+| `python3 -I scripts/check-migrations.py --require-baseline` | exit 0 |
+| `python3 -I -m unittest discover -s scripts/tests -p 'test_java_conventions.py' -q` | exit 0; OK (2 tests) |
+| `git diff --check` | exit 0 |
 
-## Defects found and decisions
+## Reviews, defects and decisions
 
-- **Defect fixed (medium, ledger integrity):** `execute` copied a caller-supplied `reason` into transition events for the transmission and clinical-review channels even though those channels never store a reason. This let a client attribute arbitrary text to a human acknowledgment in the append-only ledger. Fixed by recording a reason only for workflow commands; covered by the new test.
-- **Decision — scope:** followed authoritative `TODO.md` + AGENTS.md business-domain paths, not the stale untrusted `s_g2_02` paths. No new package or story-ID-named class was introduced.
-- **Decision — idempotency:** command-level `Idempotency-Key` remains the cross-cutting X-01 story (`contracts/x_01`, reserved V54); duplicating it in V20 would collide with that worker. XCH-02 uses the mandated `If-Match` precondition with 409/412/422/401/403/404 semantics.
-- **Decision — no migration change:** V20 already enforces channel independence, bound review actor/revision/timestamp and the one-channel-per-update guard; the fix is in the service only.
-- **Specialist review (simulated, senior backend):** no blocking findings. It confirmed the ledger reason previously diverged from persisted state on a reachable path, that audit and V20 constraints are unaffected, that both branches of the new conditional are covered, and that no existing test asserts a non-workflow ledger reason. Its LOW finding (no transmission-specific non-null-reason test) was addressed by `transmissionIgnoresCallerReasonInBothStateAndLedger`. Its INFO observations were accepted without change: `reason(...)` still validates length for non-workflow commands even though the value is now discarded (unchanged behaviour, defensible), and a pre-existing WORKFLOW state/ledger reason divergence is outside this diff.
-- **Evidence source:** all gate results above are from executed tool commands; the review finding came from a simulated specialist, which reviewed statically and did not re-execute the checks. There was **no simulated-user exercise and no human or clinical participant evidence**. Prior-attempt simulated review findings (architect/QA/backend) are recorded in the earlier version of this file and were addressed in the inherited implementation. Real clinical approval remains a G5 gate.
+- **Specialist reviews (simulated, read-only, no edits):** `smartclinic-ux-reviewer` confirmed Fix 1 is a genuine CLN-07/UX-01 direction-aware-layout defect, that the minimal fix is correct, that the red/green test is a valid discriminator, and that the Info-dictionary `/Title` must remain logical (it does). `smartclinic-senior-backend` independently confirmed Fix 1 and raised Fix 2 (validated source discarded) and a third item (rotation inheritance) from source reading; it did not re-run checks. Findings 1 and 2 are implemented. **Evidence source: simulated reviewers (static); all gate results above are from executed tool commands. No simulated-user exercise and no human, clinical or Arabic-speaking participant evidence.**
+- **Decision — rotation inheritance (deferred):** the backend reviewer observed that a render referencing a source association with `rotationDegrees = 90`, when the request omits rotation, emits `/Rotate 0`. Not changed: CLN-07 makes rotation *presentation metadata* of each artifact; the render request already owns an explicit, validated rotation field defaulting to 0, and silently inheriting a source scan's rotation into a clinical report is a presentation decision with possible interpretation impact. Defer to an owner/clinical decision with a test rather than change it in this bounded slice.
+- **Decision — no magic-byte validation added:** X-03/ARC-06 owns upload/scan validation; duplicating it in the CLN-07 link path would repeat rules across layers. The database still derives the checksum from the exact retained bytes, so a forged digest cannot enter the store.
+- **Decision — no new migration or controller change:** V17 already enforces tenant RLS, derived digests, append-only history, the void guard and version serialization. Both fixes are in domain code and need no schema change.
+- **Defects found and fixed this run:** (1) Arabic multi-word title rendered in logical word order; (2) validated source association dropped from render provenance. No production defect remains open in this slice.
 
-## Blockers / evidence genuinely missing (stop-and-report)
+## Blockers / evidence genuinely missing
 
-1. **No local PostgreSQL** (`psql`/`pg_isready` absent, 127.0.0.1:5432 not reachable). The 10 `@Tag("integration")` tests in `ExchangeTaskIsolationTest` — forced RLS, two-tenant concealment, V20 guard triggers, actor/revision binding, revocation on next request — **were not executed here**. The integrator must run `bash apps/api/check.sh` on the exact merged SHA and record the JaCoCo ratios; that suite is the authority for `ExchangeTaskRepository` coverage.
-2. **`opencode.json` is stale at this base** under the cloud-worker profile (`git ls-files -v opencode.json` shows `S` = skip-worktree, so the checked-out file is the CI profile while the committed file is the local profile), so the fast policy gate (`quick-check.sh`, `check-pack.py`, several Python tests) fails before reaching Java. It is a shared generated file outside this story's scope; no `opencode.json` change is committed. The owner/loop must regenerate it from `scripts/gen-opencode.py` before the integrator gate can pass.
-3. **Python tooling failures** listed above are pre-existing and out of scope (missing PyYAML, stale pack, unrelated `Qualifier.java` Javadoc, sandbox `agent_run` assumptions). They were not edited.
-4. **No clinical or human participant evidence.** Clinical acknowledgment semantics were reviewed by simulated reviewers only; G5 site approval is separate.
-5. **No patient data, real identifiers or credentials** appear in any fixture or note; all subjects, organizations and order references are synthetic.
+1. **No local PostgreSQL** (`pg_isready`/`psql` absent). The 7 `@Tag("integration")` tests in `DocumentIsolationTest` — database-derived checksum, two-tenant concealment, forced RLS, void guard, immutable en/ar renders — were **not executed here**. The integrator must run `bash apps/api/check.sh` on the exact merged SHA; that suite is the authority for `DocumentRepository` coverage.
+2. **SpotBugs exit 1** is caused by 5 pre-existing findings in packages outside this scope; they are recorded above and were not edited. The integrator's full gate should be read with that baseline in mind.
+3. **No clinical/human/patient evidence.** Real clinical approval and Arabic-language sign-off remain G5 gates. All fixtures and identifiers in this story are synthetic; no patient data, credentials, file names from real records or raw logs appear in code, tests or this note.
