@@ -1,0 +1,53 @@
+name: Java and database verification
+description: Run API tests, 100% coverage, OWASP/SpotBugs and PostgreSQL policy checks.
+
+inputs:
+  pg-admin:
+    description: Administrative PostgreSQL user for the service container
+    required: true
+  nvd-api-key:
+    description: Optional NVD API key for fresh CVE data
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: '21'
+        cache: maven
+
+    - name: Cache OWASP NVD data
+      uses: actions/cache@v4
+      with:
+        path: ~/.m2/repository/org/owasp/dependency-check-data
+        key: owasp-nvd-${{ runner.os }}-${{ runner.arch }}-${{ github.run_id }}
+        restore-keys: |
+          owasp-nvd-${{ runner.os }}-${{ runner.arch }}-
+
+    - name: API tests, coverage and static security
+      shell: bash
+      env:
+        NVD_API_KEY: ${{ inputs.nvd-api-key }}
+        SMARTCLINIC_PG_ADMIN: ${{ inputs.pg-admin }}
+      run: bash apps/api/check.sh
+
+    - name: PostgreSQL migration and policy checks
+      shell: bash
+      env:
+        SMARTCLINIC_PG_ADMIN: ${{ inputs.pg-admin }}
+      run: bash db/check.sh
+
+    - name: Upload verification reports
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: java-verification-reports
+        path: |
+          apps/api/target/site/jacoco/
+          apps/api/target/owasp/
+          apps/api/target/spotbugsXml.xml
+          apps/api/target/surefire-reports/
+        if-no-files-found: warn
