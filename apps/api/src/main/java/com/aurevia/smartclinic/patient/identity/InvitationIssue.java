@@ -11,6 +11,7 @@ package com.aurevia.smartclinic.patient.identity;
  * @param purpose   bounded purpose key
  * @param token     one-time raw token (returned only here)
  * @param expiresAt ISO instant when the invitation expires
+ * @return this record
  */
 public record InvitationIssue(String subject, String chartId, String purpose, String token, String expiresAt) {
 }

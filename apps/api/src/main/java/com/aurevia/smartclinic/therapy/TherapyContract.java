@@ -21,11 +21,9 @@ public final class TherapyContract {
     /**
      * Caller identity: active organization, subject and roles in that organization.
      *
-     * @param organizationId active organization identifier
-     * @param subject        authenticated subject
-     * @param roles          role assignments in the active organization
-     */
-    public record Actor(String organizationId, String subject, Set<String> roles) {
+ * @return this record
+ */
+public record Actor(String organizationId, String subject, Set<String> roles) {
 
         /**
          * Freeze the role set so authorization cannot change through the caller.
@@ -73,7 +71,6 @@ public final class TherapyContract {
         /**
          * Decide whether a transition is permitted.
          *
-         * @param next requested target state
          * @return {@code true} only for the two forward transitions
          */
         public boolean canTransitionTo(EpisodeState next) {
@@ -97,10 +94,6 @@ public final class TherapyContract {
     /**
      * A clinical measurement with an explicit unit and qualifier-safe value.
      *
-     * @param code       measurement code
-     * @param value      observed value, optionally a qualifier such as {@code <5}
-     * @param unit       measurement unit, required
-     * @param observedAt clinical observation time
      */
     public record Measurement(String code, String value, String unit, String observedAt) {
     }
@@ -108,29 +101,17 @@ public final class TherapyContract {
     /**
      * A therapy goal with a target and a target date.
      *
-     * @param description goal description
-     * @param target      measurable target value
-     * @param targetDate  target date (ISO-8601 civil date)
-     */
-    public record Goal(String description, String target, String targetDate) {
+ * @return this record
+ */
+public record Goal(String description, String target, String targetDate) {
     }
 
     /**
      * The immutable header of an accepted therapy episode.
      *
-     * @param id               tenant-local opaque identifier
-     * @param organizationId   owning organization
-     * @param patientId        owning patient
-     * @param referralId       local referral identifier
-     * @param referrerOrg      referring organization
-     * @param referrerSubject  referring clinician
-     * @param state            lifecycle state
-     * @param version          optimistic-concurrency version
-     * @param createdAt        system acceptance time
-     * @param receivedAt       referral received time
-     * @param clinicalQuestion referral clinical question
-     */
-    public record Episode(String id, String organizationId, String patientId, String referralId,
+ * @return this record
+ */
+public record Episode(String id, String organizationId, String patientId, String referralId,
                           String referrerOrg, String referrerSubject, EpisodeState state, int version,
                           Instant createdAt, String receivedAt, String clinicalQuestion) {
     }
@@ -138,18 +119,9 @@ public final class TherapyContract {
     /**
      * The initial evaluation: problems, baseline measurements, goals and plan.
      *
-     * @param episodeId        owning episode
-     * @param patientId        patient the evaluation belongs to
-     * @param problems         problem list
-     * @param baselines        baseline measurements with units
-     * @param goals            therapy goals
-     * @param frequencyPerWeek planned sessions per week
-     * @param durationWeeks    planned duration in weeks
-     * @param author           clinical author
-     * @param recordedAt       system recording time
-     * @param version          evaluation revision
-     */
-    public record Evaluation(String episodeId, String patientId, List<String> problems,
+ * @return this record
+ */
+public record Evaluation(String episodeId, String patientId, List<String> problems,
                              List<Measurement> baselines, List<Goal> goals, int frequencyPerWeek,
                              int durationWeeks, String author, Instant recordedAt, int version) {
 
@@ -198,14 +170,6 @@ public final class TherapyContract {
     /**
      * A versioned, approved outcome scale definition.
      *
-     * @param organizationId owning organization
-     * @param key            tenant-local scale key
-     * @param version        scale version
-     * @param description    human-readable description
-     * @param unit           required unit for readings on this version
-     * @param permittedValues allowed coded values
-     * @param approved       whether clinical governance approved this version
-     * @param approvedBy     approving subject, or {@code null}
      */
     public record OutcomeScale(String organizationId, String key, int version, String description,
                                String unit, List<String> permittedValues, boolean approved,
@@ -234,11 +198,6 @@ public final class TherapyContract {
     /**
      * An outcome reading bound to the exact scale version and unit it used.
      *
-     * @param scaleKey     scale key
-     * @param scaleVersion approved scale version
-     * @param value        recorded value
-     * @param unit         recorded unit, equal to the scale version's unit
-     * @param observedAt   clinical observation time
      */
     public record OutcomeReading(String scaleKey, int scaleVersion, String value, String unit,
                                  String observedAt) {
@@ -247,30 +206,17 @@ public final class TherapyContract {
     /**
      * One recorded therapy intervention.
      *
-     * @param description  intervention description
-     * @param performedAt  clinical time
-     * @param author       recording clinician
-     */
-    public record Intervention(String description, String performedAt, String author) {
+ * @return this record
+ */
+public record Intervention(String description, String performedAt, String author) {
     }
 
     /**
      * A session, progress or discharge note, draft until signed.
      *
-     * @param kind            note kind
-     * @param version         note revision
-     * @param patientId       patient the note belongs to
-     * @param content         note content
-     * @param author          clinical author
-     * @param effectiveAt     clinical effective time
-     * @param templateVersion template version used, or {@code null}
-     * @param signed          whether an authorized clinician signed this revision
-     * @param signedBy        signing subject, or {@code null}
-     * @param signedAt        signing instant, or {@code null}
-     * @param attestation     signer attestation, or {@code null}
-     * @param contentChecksum deterministic content fingerprint, or {@code null}
-     */
-    public record ClinicalNote(NoteKind kind, int version, String patientId, String content,
+ * @return this record
+ */
+public record ClinicalNote(NoteKind kind, int version, String patientId, String content,
                                String author, String effectiveAt, Integer templateVersion,
                                boolean signed, String signedBy, Instant signedAt, String attestation,
                                String contentChecksum) {
@@ -279,27 +225,18 @@ public final class TherapyContract {
     /**
      * An approved summary disclosed to the referring organization.
      *
-     * @param version     summary revision
-     * @param content     summary content
-     * @param referrerOrg referring organization
-     * @param referrerSubject referring clinician
-     * @param approved    whether the summary was approved before sending
-     * @param approvedBy  approving subject
-     * @param sentAt      disclosure instant
-     */
-    public record Summary(int version, String content, String referrerOrg, String referrerSubject,
+ * @return this record
+ */
+public record Summary(int version, String content, String referrerOrg, String referrerSubject,
                           boolean approved, String approvedBy, Instant sentAt) {
     }
 
     /**
      * The referrer's acknowledgment of one exact summary revision.
      *
-     * @param summaryVersion summary revision acknowledged
-     * @param receivedAt     acknowledgment time
-     * @param receivedBy     acknowledging subject
-     * @param note           acknowledgment note
-     */
-    public record ReturnAcknowledgment(int summaryVersion, String receivedAt, String receivedBy,
+ * @return this record
+ */
+public record ReturnAcknowledgment(int summaryVersion, String receivedAt, String receivedBy,
                                        String note) {
     }
 
@@ -307,15 +244,9 @@ public final class TherapyContract {
      * The complete clinical state of one episode. All collections are defensive
      * copies so callers cannot mutate the domain through a view.
      *
-     * @param episode        episode header
-     * @param evaluation     initial evaluation, or {@code null}
-     * @param interventions  recorded interventions
-     * @param readings       outcome readings
-     * @param notes          note revisions
-     * @param summary        approved summary, or {@code null}
-     * @param acknowledgment return acknowledgment, or {@code null}
-     */
-    public record TherapyAggregate(Episode episode, Evaluation evaluation,
+ * @return this record
+ */
+public record TherapyAggregate(Episode episode, Evaluation evaluation,
                                    List<Intervention> interventions, List<OutcomeReading> readings,
                                    List<ClinicalNote> notes, Summary summary,
                                    ReturnAcknowledgment acknowledgment) {
@@ -364,7 +295,6 @@ public final class TherapyContract {
         /**
          * Copy this aggregate with a new episode header.
          *
-         * @param episode replacement header
          * @return a new aggregate
          */
         public TherapyAggregate withEpisode(Episode episode) {
@@ -375,7 +305,6 @@ public final class TherapyContract {
         /**
          * Copy this aggregate with an initial evaluation.
          *
-         * @param evaluation replacement evaluation
          * @return a new aggregate
          */
         public TherapyAggregate withEvaluation(Evaluation evaluation) {
@@ -386,7 +315,6 @@ public final class TherapyContract {
         /**
          * Copy this aggregate with one more intervention.
          *
-         * @param intervention intervention to append
          * @return a new aggregate
          */
         public TherapyAggregate withIntervention(Intervention intervention) {
@@ -399,7 +327,6 @@ public final class TherapyContract {
         /**
          * Copy this aggregate with one more outcome reading.
          *
-         * @param reading reading to append
          * @return a new aggregate
          */
         public TherapyAggregate withReading(OutcomeReading reading) {
@@ -412,7 +339,6 @@ public final class TherapyContract {
         /**
          * Copy this aggregate with one more note revision.
          *
-         * @param note note revision to append
          * @return a new aggregate
          */
         public TherapyAggregate withNote(ClinicalNote note) {
@@ -425,7 +351,6 @@ public final class TherapyContract {
         /**
          * Replace the note with the given kind and revision in this aggregate.
          *
-         * @param note replacement note
          * @return a new aggregate
          */
         public TherapyAggregate replaceNote(ClinicalNote note) {
@@ -440,7 +365,6 @@ public final class TherapyContract {
         /**
          * Copy this aggregate with an approved summary.
          *
-         * @param summary replacement summary
          * @return a new aggregate
          */
         public TherapyAggregate withSummary(Summary summary) {
@@ -451,7 +375,6 @@ public final class TherapyContract {
         /**
          * Copy this aggregate with a return acknowledgment.
          *
-         * @param acknowledgment replacement acknowledgment
          * @return a new aggregate
          */
         public TherapyAggregate withAcknowledgment(ReturnAcknowledgment acknowledgment) {
@@ -463,11 +386,6 @@ public final class TherapyContract {
     /**
      * Append-only audit fact for one PT-01 command.
      *
-     * @param organizationId owning organization
-     * @param actorSubject   acting subject
-     * @param action         command action key
-     * @param resourceId     affected resource
-     * @param outcome        SUCCESS, DENIED, NOT_FOUND, CONFLICT or INVALID
      */
     public record TherapyAuditEvent(String organizationId, String actorSubject, String action,
                                     String resourceId, String outcome) {
@@ -476,27 +394,18 @@ public final class TherapyContract {
     /**
      * Command to accept a referral into a new episode.
      *
-     * @param referralId       local referral identifier
-     * @param patientId        verified patient identifier
-     * @param referrerOrg      referring organization
-     * @param referrerSubject  referring clinician
-     * @param receivedAt       referral received time
-     * @param clinicalQuestion referral clinical question
-     */
-    public record ReferralRequest(String referralId, String patientId, String referrerOrg,
+ * @return this record
+ */
+public record ReferralRequest(String referralId, String patientId, String referrerOrg,
                                   String referrerSubject, String receivedAt, String clinicalQuestion) {
     }
 
     /**
      * Command to record an initial evaluation.
      *
-     * @param problems         problem list
-     * @param baselines        baseline measurements with units
-     * @param goals            therapy goals
-     * @param frequencyPerWeek planned sessions per week
-     * @param durationWeeks    planned duration in weeks
-     */
-    public record EvaluationRequest(List<String> problems, List<Measurement> baselines,
+ * @return this record
+ */
+public record EvaluationRequest(List<String> problems, List<Measurement> baselines,
                                     List<Goal> goals, int frequencyPerWeek, int durationWeeks) {
 
         /**
@@ -544,10 +453,6 @@ public final class TherapyContract {
     /**
      * Command to define a new pending scale version.
      *
-     * @param key            tenant-local scale key
-     * @param description    human-readable description
-     * @param unit           required unit for readings
-     * @param permittedValues allowed coded values
      */
     public record ScaleRequest(String key, String description, String unit,
                                List<String> permittedValues) {
@@ -590,8 +495,9 @@ public final class TherapyContract {
      *
      * @param description intervention description
      * @param performedAt clinical time
-     */
-    public record InterventionRequest(String description, String performedAt) {
+ * @return this record
+ */
+public record InterventionRequest(String description, String performedAt) {
     }
 
     /**
@@ -601,8 +507,9 @@ public final class TherapyContract {
      * @param content        note content
      * @param effectiveAt    clinical effective time
      * @param templateVersion template version used
-     */
-    public record NoteRequest(NoteKind kind, String content, String effectiveAt,
+ * @return this record
+ */
+public record NoteRequest(NoteKind kind, String content, String effectiveAt,
                               Integer templateVersion) {
     }
 
@@ -612,8 +519,9 @@ public final class TherapyContract {
      * @param content        summary content
      * @param referrerOrg    referring organization
      * @param referrerSubject referring clinician
-     */
-    public record SummaryRequest(String content, String referrerOrg, String referrerSubject) {
+ * @return this record
+ */
+public record SummaryRequest(String content, String referrerOrg, String referrerSubject) {
     }
 
     /**
@@ -623,7 +531,8 @@ public final class TherapyContract {
      * @param receivedAt     acknowledgment time
      * @param receivedBy     acknowledging subject
      * @param note           acknowledgment note
-     */
-    public record AckRequest(int summaryVersion, String receivedAt, String receivedBy, String note) {
+ * @return this record
+ */
+public record AckRequest(int summaryVersion, String receivedAt, String receivedBy, String note) {
     }
 }

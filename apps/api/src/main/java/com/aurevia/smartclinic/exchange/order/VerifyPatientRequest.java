@@ -11,6 +11,7 @@ package com.aurevia.smartclinic.exchange.order;
  * @param localMrn       MRN the receiver verified for that local patient
  * @param mrnIssuer      issuer of the verified MRN
  * @param attestation   receiver attestation of the identity check
+ * @return this record
  */
 public record VerifyPatientRequest(String localPatientId, String localMrn, String mrnIssuer,
                                    String attestation) {

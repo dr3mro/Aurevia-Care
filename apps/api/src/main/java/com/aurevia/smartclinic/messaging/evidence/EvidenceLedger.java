@@ -11,7 +11,7 @@ import com.aurevia.smartclinic.messaging.evidence.GateEvidenceContract.LedgerEnt
  *
  * <p>Each entry commits the category, detail, verdict and evaluation instant
  * into a hash that also links to its predecessor. {@link com.aurevia.smartclinic.messaging.evidence.EvidenceLedger#verifyChain()} and
- * {@link com.aurevia.smartclinic.messaging.evidence.EvidenceLedger#verify(java.util.List)} recompute every link so an altered record, predecessor
+ * {@code verify(List)} recompute every link so an altered record, predecessor
  * or sequence is detected. The chain is in-memory and deterministic; a
  * production adapter must persist it with the same append-only guarantees.</p>
  */

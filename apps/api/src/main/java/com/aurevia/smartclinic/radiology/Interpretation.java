@@ -15,23 +15,7 @@ import com.aurevia.smartclinic.radiology.RadTypes.InterpretationKind;
  * is derived from the clinical content so a rendered or transmitted copy can be
  * verified against the revision it claims to represent.</p>
  *
- * @param organizationId   owning tenant
- * @param orderId          tenant-local imaging order identifier
- * @param version          monotonic interpretation revision version
- * @param supersedesVersion prior interpretation version, or {@code null} for the initial report
- * @param kind             initial interpretation or linked addendum
- * @param patientId        patient identifier matched at signing
- * @param studyInstanceUid external study this interpretation belongs to
- * @param technique        imaging technique documented by the interpreter
- * @param comparison       comparison studies documented by the interpreter
- * @param findings         documented findings
- * @param impression       documented impression
- * @param followUp         documented follow-up
- * @param signer           authenticated interpreting subject
- * @param attestation      signer attestation text
- * @param signedAt         server time at which the interpretation was signed
- * @param templateVersion  version of the interpretation template used
- * @param reason           required reason for an addendum, or {@code null}
+ * @return this record
  */
 public record Interpretation(String organizationId, String orderId, int version,
                              Integer supersedesVersion, InterpretationKind kind, String patientId,

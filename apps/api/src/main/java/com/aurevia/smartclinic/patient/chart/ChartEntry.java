@@ -36,6 +36,7 @@ import java.time.Instant;
  * @param dataEntryActor  subject that entered the row, from the tenant context
  * @param version         optimistic-concurrency version, starting at one
  * @param recordedAt      ingestion instant, distinct from clinical time
+ * @return this record
  */
 public record ChartEntry(
         String id,

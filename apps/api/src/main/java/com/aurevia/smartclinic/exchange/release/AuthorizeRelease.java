@@ -14,6 +14,7 @@ package com.aurevia.smartclinic.exchange.release;
  * @param effectiveFrom   UTC instant for a timed release, otherwise optional
  * @param holdReason      required reason when the kind is HOLD
  * @param holdExpiresAt   required review deadline when the kind is HOLD
+ * @return this record
  */
 public record AuthorizeRelease(
         String revisionId,

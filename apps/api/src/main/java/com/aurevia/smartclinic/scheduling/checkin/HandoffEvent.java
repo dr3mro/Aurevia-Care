@@ -12,6 +12,7 @@ import java.time.Instant;
  * @param reason      recorded transfer reason, or {@code null} on a first assignment
  * @param actor       authenticated subject that performed the action
  * @param occurredAt  instant the handoff was committed
+ * @return this record
  */
 public record HandoffEvent(String id, String itemId, String fromSubject, String toSubject,
                            String reason, String actor, Instant occurredAt) {

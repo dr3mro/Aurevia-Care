@@ -26,8 +26,6 @@ public final class LabPolicyCatalog {
     /**
      * Create a catalog from approved configuration entries.
      *
-     * @param ranges           reference ranges, in any order
-     * @param criticalPolicies critical policies, in any order
      * @throws ApiException when either collection is missing
      */
     public LabPolicyCatalog(List<ReferenceRange> ranges, List<CriticalPolicy> criticalPolicies) {
@@ -41,9 +39,6 @@ public final class LabPolicyCatalog {
     /**
      * Resolve the newest approved effective range for a test identity and unit.
      *
-     * @param code test identity code
-     * @param unit source unit, matched exactly
-     * @param at   evaluation instant
      * @return the effective range, or empty when no approved range applies
      */
     public Optional<ReferenceRange> effectiveRange(String code, String unit, Instant at) {
@@ -56,8 +51,6 @@ public final class LabPolicyCatalog {
     /**
      * Resolve the newest approved effective critical policy for a test identity.
      *
-     * @param code test identity code
-     * @param at   evaluation instant
      * @return the effective policy, or empty when no approved policy applies
      */
     public Optional<CriticalPolicy> effectiveCritical(String code, Instant at) {
@@ -69,14 +62,6 @@ public final class LabPolicyCatalog {
     /**
      * One versioned, approved reference range for a test identity and unit (LAB-02, ADM-01).
      *
-     * @param code          test identity code this range applies to
-     * @param unit          source unit this range applies to; no conversion is attempted
-     * @param low           inclusive lower bound
-     * @param high          inclusive upper bound
-     * @param version       approved configuration version of the range
-     * @param approved      whether the named approval is present
-     * @param effectiveFrom first instant at which the range applies
-     * @param effectiveTo   exclusive end of the window, or {@code null} for open-ended
      * @return the approved reference range
      */
     public record ReferenceRange(String code, String unit, BigDecimal low, BigDecimal high,
@@ -86,14 +71,6 @@ public final class LabPolicyCatalog {
         /**
          * Reject an incomplete or inverted range before it can be evaluated.
          *
-     * @param code          test identity code this range applies to
-     * @param unit          source unit this range applies to; no conversion is attempted
-     * @param low           inclusive lower bound
-     * @param high          inclusive upper bound
-     * @param version       approved configuration version of the range
-     * @param approved      whether the named approval is present
-     * @param effectiveFrom first instant at which the range applies
-     * @param effectiveTo   exclusive end of the window, or {@code null} for open-ended
          * @throws ApiException when identity, bounds, version or effective start is invalid
          */
         public ReferenceRange {
@@ -133,17 +110,6 @@ public final class LabPolicyCatalog {
     /**
      * One versioned, approved critical-result policy for a test identity (LAB-02, XCH-05).
      *
-     * @param code          test identity code this policy applies to
-     * @param version       approved configuration version of the policy
-     * @param low           inclusive lower critical bound
-     * @param high          inclusive upper critical bound
-     * @param approved      whether the named approval is present
-     * @param effectiveFrom first instant at which the policy applies
-     * @param effectiveTo   exclusive end of the window, or {@code null} for open-ended
-     * @param owner         named responsible owner for escalation
-     * @param queue         coverage queue that receives the result
-     * @param dueAfter      time allowed before the result is overdue
-     * @param escalation    approved backup contact channel
      * @return the approved critical-result policy
      */
     public record CriticalPolicy(String code, int version, BigDecimal low, BigDecimal high,
@@ -153,17 +119,6 @@ public final class LabPolicyCatalog {
         /**
          * Reject an incomplete or inverted policy before it can classify a result.
          *
-     * @param code          test identity code this policy applies to
-     * @param version       approved configuration version of the policy
-     * @param low           inclusive lower critical bound
-     * @param high          inclusive upper critical bound
-     * @param approved      whether the named approval is present
-     * @param effectiveFrom first instant at which the policy applies
-     * @param effectiveTo   exclusive end of the window, or {@code null} for open-ended
-     * @param owner         named responsible owner for escalation
-     * @param queue         coverage queue that receives the result
-     * @param dueAfter      time allowed before the result is overdue
-     * @param escalation    approved backup contact channel
          * @throws ApiException when identity, bounds, owner, due window or effective start is invalid
          */
         public CriticalPolicy {

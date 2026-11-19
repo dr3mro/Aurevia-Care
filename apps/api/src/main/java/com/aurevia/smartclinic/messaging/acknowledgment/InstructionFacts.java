@@ -35,6 +35,15 @@ public final class InstructionFacts {
 
         private final String wire;
 
+        /**
+
+
+         * @param wire
+
+
+         */
+
+
         FactType(String wire) {
             this.wire = wire;
         }
@@ -52,7 +61,6 @@ public final class InstructionFacts {
         /**
          * Parse a stored wire key.
          *
-         * @param value stored key
          * @return the matching fact type
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -76,6 +84,15 @@ public final class InstructionFacts {
 
         private final String wire;
 
+        /**
+
+
+         * @param wire
+
+
+         */
+
+
         AcknowledgmentScope(String wire) {
             this.wire = wire;
         }
@@ -93,7 +110,6 @@ public final class InstructionFacts {
         /**
          * Parse a stored wire key.
          *
-         * @param value stored key
          * @return the matching scope
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -118,6 +134,15 @@ public final class InstructionFacts {
 
         private final String wire;
 
+        /**
+
+
+         * @param wire
+
+
+         */
+
+
         FollowUpState(String wire) {
             this.wire = wire;
         }
@@ -135,7 +160,6 @@ public final class InstructionFacts {
         /**
          * Parse a stored wire key.
          *
-         * @param value stored key
          * @return the matching state
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -193,14 +217,6 @@ public final class InstructionFacts {
      * <p>The content reference is opaque; the fact layer never holds clinical
      * text. Full content is retrieved only through an authenticated read.</p>
      *
-     * @param id                    instruction identifier
-     * @param organizationId        owning organization
-     * @param patientId             verified linked chart
-     * @param unitId                single owning recipient unit
-     * @param revision              immutable revision number
-     * @param contentRef            opaque artifact reference
-     * @param requiresAcknowledgment whether the patient must acknowledge receipt
-     * @param acknowledgmentDueAt   due instant, or {@code null} when not requested
      * @return the immutable instruction
      */
     public record Instruction(String id, String organizationId, String patientId, String unitId,
@@ -211,11 +227,6 @@ public final class InstructionFacts {
     /**
      * Publication fact for one revision.
      *
-     * @param organizationId owning organization
-     * @param instructionId  published instruction
-     * @param revision       published revision
-     * @param actor          authenticated publishing staff subject
-     * @param occurredAt     server publication instant
      * @return the immutable fact
      */
     public record Publication(String organizationId, String instructionId, int revision, String actor,
@@ -230,12 +241,6 @@ public final class InstructionFacts {
      * Notification dispatch fact. Carries a generic template key only, never
      * clinical text or a content reference.
      *
-     * @param organizationId owning organization
-     * @param instructionId  addressed instruction
-     * @param revision       addressed revision
-     * @param genericKey     generic notification template key
-     * @param correlationId  request correlation identifier
-     * @param occurredAt     server dispatch instant
      * @return the immutable fact
      */
     public record Dispatch(String organizationId, String instructionId, int revision, String genericKey,
@@ -249,11 +254,6 @@ public final class InstructionFacts {
     /**
      * First in-app view fact, unique per instruction, revision and viewer.
      *
-     * @param organizationId owning organization
-     * @param instructionId  viewed instruction
-     * @param revision       viewed revision
-     * @param actor          authenticated patient subject
-     * @param occurredAt     first server view instant
      * @return the immutable fact
      */
     public record FirstView(String organizationId, String instructionId, int revision, String actor,
@@ -267,12 +267,6 @@ public final class InstructionFacts {
     /**
      * Receipt-only acknowledgment bound to one exact instruction revision.
      *
-     * @param organizationId owning organization
-     * @param instructionId  acknowledged instruction
-     * @param revision       exact acknowledged revision
-     * @param actor          authenticated patient subject
-     * @param scope          always {@link com.aurevia.smartclinic.messaging.acknowledgment.InstructionFacts.AcknowledgmentScope#RECEIPT}
-     * @param occurredAt     server acknowledgment instant
      * @return the immutable fact
      */
     public record Acknowledgment(String organizationId, String instructionId, int revision, String actor,
@@ -286,15 +280,6 @@ public final class InstructionFacts {
     /**
      * Overdue follow-up routed to the unit that owns the instruction.
      *
-     * @param organizationId owning organization
-     * @param instructionId  overdue instruction
-     * @param revision       overdue revision
-     * @param unitId         owning recipient unit
-     * @param routedAt       server detection instant
-     * @param state          follow-up lifecycle state
-     * @param resolvedBy     authorized resolver, or {@code null}
-     * @param resolvedAt     resolution instant, or {@code null}
-     * @param reason         resolution reason, or {@code null}
      * @return the immutable fact
      */
     public record FollowUp(String organizationId, String instructionId, int revision, String unitId,
@@ -316,7 +301,6 @@ public final class InstructionFacts {
         /**
          * Freeze the supplied list.
          *
-         * @param facts ordered facts
          */
         public Timeline {
             facts = List.copyOf(facts);
@@ -352,25 +336,35 @@ public final class InstructionFacts {
                             Instant occurredAt) {
     }
 
-    /** Command to publish one instruction revision. */
-    public record PublishCommand(String instructionId, String patientId, String unitId, int revision,
+    /** Command to publish one instruction revision.
+ * @return this record
+ */
+public record PublishCommand(String instructionId, String patientId, String unitId, int revision,
                                  String contentRef, boolean requiresAcknowledgment, String acknowledgmentDueAt,
                                  boolean sendNotification, String clientId) {
     }
 
-    /** Command to retry a generic notification dispatch. */
-    public record RetryCommand(String instructionId, int revision, String clientId) {
+    /** Command to retry a generic notification dispatch.
+ * @return this record
+ */
+public record RetryCommand(String instructionId, int revision, String clientId) {
     }
 
-    /** Command to record a first in-app view. */
-    public record ViewCommand(String instructionId, int revision, String clientId) {
+    /** Command to record a first in-app view.
+ * @return this record
+ */
+public record ViewCommand(String instructionId, int revision, String clientId) {
     }
 
-    /** Command to acknowledge receipt of one exact revision. */
-    public record AcknowledgeCommand(String instructionId, int revision, String clientId) {
+    /** Command to acknowledge receipt of one exact revision.
+ * @return this record
+ */
+public record AcknowledgeCommand(String instructionId, int revision, String clientId) {
     }
 
-    /** Command to resolve an overdue follow-up with a reason. */
-    public record ResolveCommand(String instructionId, int revision, String reason) {
+    /** Command to resolve an overdue follow-up with a reason.
+ * @return this record
+ */
+public record ResolveCommand(String instructionId, int revision, String reason) {
     }
 }

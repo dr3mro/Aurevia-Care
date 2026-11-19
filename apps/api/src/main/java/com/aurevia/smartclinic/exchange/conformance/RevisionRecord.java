@@ -11,6 +11,7 @@ package com.aurevia.smartclinic.exchange.conformance;
  * @param identifier   issuer-scoped identifier captured at apply time
  * @param payload      preserved synthetic content
  * @param reviewOpened whether this revision reopened clinical review
+ * @return this record
  */
 public record RevisionRecord(long revision, EventKind kind, String identifier,
                              String payload, boolean reviewOpened) {

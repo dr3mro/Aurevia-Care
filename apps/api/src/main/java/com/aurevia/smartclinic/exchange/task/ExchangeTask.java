@@ -20,6 +20,7 @@ import java.time.Instant;
  * @param reviewedAt         clock instant of the clinical review change, or {@code null}
  * @param reviewedRevision   exact version reviewed, or {@code null}
  * @param createdAt          creation instant
+ * @return this record
  */
 public record ExchangeTask(String id, int version, String orderRef,
                            WorkflowState workflowState,

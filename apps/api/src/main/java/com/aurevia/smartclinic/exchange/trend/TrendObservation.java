@@ -16,25 +16,9 @@ import com.aurevia.smartclinic.api.ApiException;
  * interpretation and the source system/version; the trend engine generates no
  * clinical interpretation of its own.</p>
  *
- * @param id                 opaque observation identifier
- * @param patientId          tenant-local patient identifier
- * @param testCode           test identity code
- * @param testDisplay        human-readable test name
- * @param comparabilityGroup assay/method group that defines clinically
  *                           comparable results
- * @param revisionStatus     {@code final}, {@code preliminary},
  *                           {@code corrected} or {@code entered_in_error}
- * @param value              numeric value, or {@code null} for a qualitative result
- * @param unit               source unit of the value
- * @param qualifier          less-than/greater-than qualifier
- * @param referenceLow       lower reference bound, or {@code null}
- * @param referenceHigh      upper reference bound, or {@code null}
- * @param referenceUnit      unit of the reference range
- * @param effectiveAt        clinical effective instant
- * @param interpretation     source interpretation, shown verbatim
- * @param qualitativeValue   coded/text result for a non-numeric observation
- * @param sourceSystem       originating system
- * @param sourceVersion      originating revision/version
+ * @return this record
  */
 public record TrendObservation(String id, String patientId, String testCode, String testDisplay,
                           String comparabilityGroup, String revisionStatus, BigDecimal value,

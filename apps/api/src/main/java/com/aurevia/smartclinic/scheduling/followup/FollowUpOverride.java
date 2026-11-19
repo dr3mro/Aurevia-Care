@@ -14,6 +14,7 @@ import java.time.LocalDate;
  * @param recordedAt      instant the override was recorded
  * @param originalDate    civil date before the override
  * @param replacementDate civil date after the override
+ * @return this record
  */
 public record FollowUpOverride(String actor, String reason, Instant recordedAt,
                                LocalDate originalDate, LocalDate replacementDate) {

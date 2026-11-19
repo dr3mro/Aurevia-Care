@@ -5,11 +5,7 @@ import java.util.List;
 /**
  * A synthetic note revision bound to one exact template version (CLN-04).
  *
- * @param kind            template family of the note
- * @param templateVersion exact version whose field definitions govern this note
- * @param patientRef      synthetic patient reference
- * @param author          clinical author subject
- * @param values          authored field values
+ * @return this record
  */
 public record TemplateNoteRevision(TemplateKind kind, int templateVersion, String patientRef, String author,
                            List<FieldValue> values) {

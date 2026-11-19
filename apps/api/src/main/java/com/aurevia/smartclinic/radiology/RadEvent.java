@@ -16,17 +16,8 @@ import com.aurevia.smartclinic.radiology.RadTypes.RadEventType;
  * deduplicate inside the sender/type namespace. This is a domain fact;
  * persistence and delivery belong to a later outbox story.</p>
  *
- * @param organizationId owning tenant
- * @param type           event type used as the dedup namespace
- * @param orderId        tenant-local imaging order identifier
- * @param orderVersion   order version that produced the event
- * @param patientId      patient identifier on the matched order
- * @param accession      issuer-scoped accession, or {@code null}
- * @param actor          authenticated subject that caused the fact
- * @param destination    referrer or recipient notified by the fact, or {@code null}
- * @param payloadDigest  SHA-256 digest of the immutable content the event refers to, never the
  *                       clinical narrative itself, or {@code null}
- * @param occurredAt     server time at which the fact was recorded
+ * @return this record
  */
 public record RadEvent(String organizationId, RadEventType type, String orderId, int orderVersion,
                        String patientId, String accession, String actor, String destination,

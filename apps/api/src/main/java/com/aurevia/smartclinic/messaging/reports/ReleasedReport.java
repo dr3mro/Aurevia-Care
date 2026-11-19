@@ -19,6 +19,7 @@ package com.aurevia.smartclinic.messaging.reports;
  * @param checksum            checksum of the rendered artifact
  * @param status              current release status of this revision
  * @param correction          correction context, or {@code null} for an original revision
+ * @return this record
  */
 public record ReleasedReport(String id, int revision, String patientId, String organizationId,
                              String issuingOrganization, String effectiveDate, String language,
@@ -40,7 +41,8 @@ public record ReleasedReport(String id, int revision, String patientId, String o
      *
      * @param supersedesRevision revision replaced by this correction
      * @param reason             non-sensitive correction reason shown to the patient
-     */
-    public record CorrectionContext(int supersedesRevision, String reason) {
+ * @return this record
+ */
+public record CorrectionContext(int supersedesRevision, String reason) {
     }
 }

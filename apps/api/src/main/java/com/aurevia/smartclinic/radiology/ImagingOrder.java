@@ -17,28 +17,7 @@ import com.aurevia.smartclinic.radiology.RadTypes.Urgency;
  * Study Instance UID and a partner workstation reference; image pixels stay
  * under partner access control.</p>
  *
- * @param organizationId       owning tenant
- * @param orderId              tenant-local opaque order identifier
- * @param patientId            patient identifier in the owning tenant
- * @param encounterId          source encounter identifier, or {@code null}
- * @param orderCode            local order code for the imaging study
- * @param urgency              recorded clinical urgency
- * @param clinicalQuestion     clinical question documented at intake
- * @param sourceActor          actor that authored the order
- * @param destination          receiving radiology destination
- * @param responsibleClinician named responsible clinician or work queue owner
- * @param workQueue            responsible work queue
- * @param referrer             clinician to notify about signed revisions
- * @param state                lifecycle state of this revision
- * @param version              monotonic revision version
- * @param scheduledAt          scheduled study time, or {@code null} before scheduling
- * @param modality             approved modality, or {@code null} before scheduling
- * @param accession            issuer-scoped accession, or {@code null} before accessioning
- * @param accessionIssuer      issuer of the accession, or {@code null}
- * @param studyInstanceUid     external DICOM Study Instance UID, or {@code null}
- * @param workstationRef       partner diagnostic workstation reference, or {@code null}
- * @param verifiedPatientId    patient identifier matched at study association, or {@code null}
- * @param verifiedAccession    accession matched at study association, or {@code null}
+ * @return this record
  */
 public record ImagingOrder(String organizationId, String orderId, String patientId, String encounterId,
                            String orderCode, Urgency urgency, String clinicalQuestion, String sourceActor,

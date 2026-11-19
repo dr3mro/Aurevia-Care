@@ -12,6 +12,7 @@ package com.aurevia.smartclinic.lab.accession;
  * @param reason          recorded reason for a rejection, otherwise {@code null}
  * @param matchedPatientId patient identity checked at collection or receipt
  * @param occurredAt      ISO-8601 event instant
+ * @return this record
  */
 public record AccessionEvent(String id, String accessionId, int accessionVersion, String action,
                              String fromState, String toState, String reason,

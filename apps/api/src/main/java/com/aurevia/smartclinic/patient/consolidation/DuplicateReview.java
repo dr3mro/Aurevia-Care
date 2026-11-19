@@ -13,6 +13,7 @@ package com.aurevia.smartclinic.patient.consolidation;
  * @param openedBySubject  authenticated subject that opened the review
  * @param version          append-only ticket version
  * @param status           folded lifecycle status
+ * @return this record
  */
 public record DuplicateReview(String id, String survivorId, String duplicateId,
                               String openedBySubject, int version, String status) {

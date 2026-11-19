@@ -31,6 +31,7 @@ package com.aurevia.smartclinic.clinical.notes;
  * @param enteredErrorActor      user that recorded entered-in-error, or {@code null}
  * @param affectedRecipients     recipient identifiers as a JSON array
  * @param createdAt              ingestion instant
+ * @return this record
  */
 public record ClinicalNoteRevision(String id, int version, NoteState state, String patientId, String encounterId,
                            String title, String content, String language, String templateCode,

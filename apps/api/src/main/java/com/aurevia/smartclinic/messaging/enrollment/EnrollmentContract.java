@@ -34,7 +34,6 @@ public final class EnrollmentContract {
         /**
          * Create a state with its stable wire key.
          *
-         * @param wire lowercase state key
          */
         AccountState(String wire) {
             this.wire = wire;
@@ -53,7 +52,6 @@ public final class EnrollmentContract {
         /**
          * Parse a stored state key.
          *
-         * @param value stored key
          * @return the matching state
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -81,7 +79,6 @@ public final class EnrollmentContract {
         /**
          * Create a state with its stable wire key.
          *
-         * @param wire lowercase state key
          */
         InvitationState(String wire) {
             this.wire = wire;
@@ -100,7 +97,6 @@ public final class EnrollmentContract {
         /**
          * Parse a stored state key.
          *
-         * @param value stored key
          * @return the matching state
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -130,7 +126,6 @@ public final class EnrollmentContract {
         /**
          * Create a support kind with its stable wire key.
          *
-         * @param wire lowercase wire key
          */
         SupportKind(String wire) {
             this.wire = wire;
@@ -149,7 +144,6 @@ public final class EnrollmentContract {
         /**
          * Parse a stored support kind.
          *
-         * @param value stored key
          * @return the matching support kind
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -179,7 +173,6 @@ public final class EnrollmentContract {
         /**
          * Create a case state with its stable wire key.
          *
-         * @param wire lowercase wire key
          */
         CaseState(String wire) {
             this.wire = wire;
@@ -198,7 +191,6 @@ public final class EnrollmentContract {
         /**
          * Decide whether a forward transition is permitted.
          *
-         * @param next requested target state
          * @return {@code true} for the two forward transitions or a no-op
          */
         public boolean canTransitionTo(CaseState next) {
@@ -211,7 +203,6 @@ public final class EnrollmentContract {
         /**
          * Parse a stored case state.
          *
-         * @param value stored key
          * @return the matching case state
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -239,7 +230,6 @@ public final class EnrollmentContract {
         /**
          * Create a sensitive action with its stable wire key.
          *
-         * @param wire lowercase wire key
          */
         SensitiveAction(String wire) {
             this.wire = wire;
@@ -258,7 +248,6 @@ public final class EnrollmentContract {
         /**
          * Parse a stored sensitive action.
          *
-         * @param value stored key
          * @return the matching sensitive action
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -313,7 +302,6 @@ public final class EnrollmentContract {
         /**
          * Create an event type with its stable wire key.
          *
-         * @param wire lowercase event key
          */
         EventType(String wire) {
             this.wire = wire;
@@ -332,7 +320,6 @@ public final class EnrollmentContract {
         /**
          * Parse a stored event key.
          *
-         * @param value stored key
          * @return the matching event type
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -353,8 +340,6 @@ public final class EnrollmentContract {
      * name or a date of birth can never link a record or an account on its own
      * (IAM-05). The site must mark the relationship as verified.</p>
      *
-     * @param relationshipId kind-specific relationship identifier
-     * @param siteVerified   whether the site verified the relationship
      * @return the immutable value
      */
     public record RelationshipRef(String relationshipId, boolean siteVerified) {
@@ -363,15 +348,6 @@ public final class EnrollmentContract {
     /**
      * A single-use, expiring enrollment invitation bound to one verified chart.
      *
-     * @param code           opaque single-use code
-     * @param organizationId active organization
-     * @param chartId        verified patient chart the invitation is bound to
-     * @param factDigest     digest of site-verified identity facts, never the facts themselves
-     * @param expiresAt      server instant after which the invitation is invalid
-     * @param state          invitation lifecycle state
-     * @param failedAttempts consecutive failed verification attempts
-     * @param issuedBy       authenticated staff subject that issued the invitation
-     * @param issuedAt       server issue instant
      * @return the immutable value
      */
     public record Invitation(String code, String organizationId, String chartId, String factDigest,
@@ -382,15 +358,6 @@ public final class EnrollmentContract {
     /**
      * A verified patient account with independently verified chart links.
      *
-     * @param id              account identifier
-     * @param organizationId  active organization
-     * @param subject         authenticated subject that owns the account
-     * @param linkedChartIds  independently verified chart links currently active
-     * @param factDigest      digest used for re-verification on recovery
-     * @param state           account lifecycle state
-     * @param failedAttempts  consecutive failed verification attempts
-     * @param contactDigest   digest of the current recovery contact, never the contact itself
-     * @param createdAt       server creation instant
      * @return the immutable value
      */
     public record PatientAccount(String id, String organizationId, String subject, Set<String> linkedChartIds,
@@ -419,12 +386,6 @@ public final class EnrollmentContract {
     /**
      * A short-lived, single-use credential for recovery or step-up re-authentication.
      *
-     * @param token          opaque token value
-     * @param organizationId active organization
-     * @param subject        subject the token is bound to
-     * @param purpose        recovery or a sensitive action
-     * @param expiresAt      server expiry instant
-     * @param used           whether the token was already redeemed
      * @return the immutable value
      */
     public record AccessToken(String token, String organizationId, String subject, String purpose,
@@ -434,14 +395,6 @@ public final class EnrollmentContract {
     /**
      * A support case for an identity dispute, accessibility need or record access request.
      *
-     * @param id             case identifier
-     * @param organizationId active organization
-     * @param patientId      subject or patient the case concerns
-     * @param kind           support purpose
-     * @param summary        non-sensitive summary
-     * @param state          case state
-     * @param assignee       named queue owner when assigned
-     * @param openedAt       server open instant
      * @return the immutable value
      */
     public record SupportCase(String id, String organizationId, String patientId, SupportKind kind,
@@ -451,14 +404,6 @@ public final class EnrollmentContract {
     /**
      * One immutable access fact.
      *
-     * @param id             event identifier
-     * @param organizationId active organization
-     * @param subject        authenticated actor
-     * @param eventType      fact type
-     * @param resourceId     local resource identifier
-     * @param outcome        recorded outcome such as success or denied
-     * @param detail         non-sensitive detail
-     * @param occurredAt     server timestamp
      * @return the immutable value
      */
     public record AccessEvent(String id, String organizationId, String subject, EventType eventType,
@@ -469,10 +414,6 @@ public final class EnrollmentContract {
      * A generic notification. The type has no clinical text field, so a patient
      * notification can never carry a chart identifier, a diagnosis or a reason.
      *
-     * @param subject        recipient subject
-     * @param organizationId active organization
-     * @param eventType      generic event template key
-     * @param occurredAt     server timestamp
      * @return the immutable value
      */
     public record GenericNotification(String subject, String organizationId, String eventType, Instant occurredAt) {
@@ -481,9 +422,6 @@ public final class EnrollmentContract {
     /**
      * The outcome of a chart access check.
      *
-     * @param allowed  whether access is currently permitted
-     * @param reason   stable reason code
-     * @param chartId  chart that was checked
      * @return the immutable value
      */
     public record AccessDecision(boolean allowed, String reason, String chartId) {
@@ -492,18 +430,12 @@ public final class EnrollmentContract {
     /**
      * An account together with its support cases and access audit trail.
      *
-     * @param account    current account projection
-     * @param cases      support cases opened by or for the patient
-     * @param events     access facts in insertion order
      * @return the immutable value
      */
     public record AccountView(PatientAccount account, List<SupportCase> cases, List<AccessEvent> events) {
         /**
          * Defensively copy both lists.
          *
-         * @param account current account projection
-         * @param cases   support cases
-         * @param events  access facts
          */
         public AccountView {
             cases = List.copyOf(cases);

@@ -18,18 +18,7 @@ import com.aurevia.smartclinic.api.ApiException;
  * never mistaken for its bound. Unknown and absent observations carry no value;
  * a true zero is an ordinary measured value.</p>
  *
- * @param code         test identity code used for reference-range and policy lookup
- * @param kind          representation of the result
- * @param presence      whether a value was measured, is unknown or was not performed
- * @param value         measured number, or {@code null} for non-numeric and non-measured results
- * @param qualifier     operator bounding a numeric result, or {@code NONE} for an exact number
- * @param unit          source unit, required on measured numeric results
- * @param textValue     free text, required on text observations
- * @param codedValue    coded result rendered as {@code system|code}, required on coded observations
- * @param method        optional method supplied by the source
- * @param abnormalFlag  interpretation recorded on the observation
- * @param instrument    instrument or source system, when supplied
- * @param verifier      actor who verified the observation, or {@code null} before verification
+ * @return this record
  */
 public record LabObservation(String code, ObservationKind kind, ObservationPresence presence,
                           BigDecimal value, Qualifier qualifier, String unit, String textValue,

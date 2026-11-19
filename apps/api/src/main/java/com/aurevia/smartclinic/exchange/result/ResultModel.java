@@ -82,11 +82,6 @@ public final class ResultModel {
     /**
      * The five issuer-scoped identifiers checked before a result is imported.
      *
-     * @param patientId    local patient identifier of the receiving organization
-     * @param sourceId     verified issuer/system that produced the result
-     * @param accessionId  issuer-scoped accession number
-     * @param destinationId receiving unit or organization identifier
-     * @param orderId      tenant-local identifier of the released order
      */
     public record ResultIdentifiers(String patientId, String sourceId, String accessionId,
                                     String destinationId, String orderId) {
@@ -99,22 +94,18 @@ public final class ResultModel {
      * expectation is registered explicitly and is isolated by a unique table
      * prefix. It carries the named owner and coverage queue used for routing.</p>
      *
-     * @param orderId    tenant-local order identifier
-     * @param identifiers the five identifiers an inbound result must reproduce
-     * @param owner      named owner responsible for the result
-     * @param coverageQueue coverage queue the result is routed to
-     */
-    public record ExpectedOrder(String orderId, ResultIdentifiers identifiers,
+ * @return this record
+ */
+public record ExpectedOrder(String orderId, ResultIdentifiers identifiers,
                                 String owner, String coverageQueue) {
     }
 
     /**
      * Result of identifier matching.
      *
-     * @param status     matched, unmatched or conflicting
-     * @param mismatches stable, ordered names of the disagreeing identifier fields
-     */
-    public record MatchDecision(MatchStatus status, List<String> mismatches) {
+ * @return this record
+ */
+public record MatchDecision(MatchStatus status, List<String> mismatches) {
 
         /**
          * Take an immutable copy of the mismatch list.
@@ -139,10 +130,6 @@ public final class ResultModel {
     /**
      * Where an imported result is routed.
      *
-     * @param owner         named owner of the result
-     * @param coverageQueue coverage queue that owns follow-up
-     * @param critical      whether this is a critical finding
-     * @param rationale     human-readable reason tied to the order and disposition
      */
     public record Routing(String owner, String coverageQueue, boolean critical, String rationale) {
     }
@@ -150,20 +137,9 @@ public final class ResultModel {
     /**
      * One immutable imported result revision.
      *
-     * @param id                opaque identifier
-     * @param version           lineage version, starting at one
-     * @param orderId           tenant-local order identifier
-     * @param identifiers       the five matched identifiers
-     * @param kind              final, corrected or critical
-     * @param supersedesVersion prior version corrected by this revision, or null
-     * @param previousId        identifier of the superseded revision, or null
-     * @param owner             named routing owner
-     * @param coverageQueue     routing coverage queue
-     * @param effectiveAt       clinical effective instant
-     * @param receivedAt        ingestion instant
-     * @param checksum          checksum of the retained synthetic payload
-     */
-    public record ResultReport(String id, int version, String orderId, ResultIdentifiers identifiers,
+ * @return this record
+ */
+public record ResultReport(String id, int version, String orderId, ResultIdentifiers identifiers,
                                ResultKind kind, Integer supersedesVersion, String previousId,
                                String owner, String coverageQueue, Instant effectiveAt,
                                Instant receivedAt, String checksum) {
@@ -172,26 +148,17 @@ public final class ResultModel {
     /**
      * Mutable review task bound to exactly one immutable revision.
      *
-     * @param reportId      identifier of the reviewed revision
-     * @param version       optimistic version of the task
-     * @param state         review state
-     * @param acknowledgedAt instant of acknowledgment, or null
-     */
-    public record Review(String reportId, int version, ReviewState state, Instant acknowledgedAt) {
+ * @return this record
+ */
+public record Review(String reportId, int version, ReviewState state, Instant acknowledgedAt) {
     }
 
     /**
      * A report waiting in the reconciliation queue.
      *
-     * @param id            opaque identifier
-     * @param identifiers   identifiers supplied by the inbound report
-     * @param reason        why it could not be imported
-     * @param mismatches    names of the disagreeing identifier fields
-     * @param detail        non-sensitive description of the conflict
-     * @param status        queue status
-     * @param createdAt     ingestion instant
-     */
-    public record ReconciliationEntry(String id, ResultIdentifiers identifiers,
+ * @return this record
+ */
+public record ReconciliationEntry(String id, ResultIdentifiers identifiers,
                                       ReconciliationReason reason, List<String> mismatches,
                                       String detail, ReconciliationStatus status, Instant createdAt) {
 
@@ -218,11 +185,6 @@ public final class ResultModel {
     /**
      * A notification that a correction reached a recipient of an earlier revision.
      *
-     * @param id                opaque identifier
-     * @param reportId          identifier of the correction revision
-     * @param recipient         owner notified from a prior revision
-     * @param supersededVersion version that the recipient had previously received
-     * @param createdAt         notification instant
      */
     public record RecipientNotification(String id, String reportId, String recipient,
                                         int supersededVersion, Instant createdAt) {
@@ -231,21 +193,17 @@ public final class ResultModel {
     /**
      * Result of an import command: exactly one of the two values is present.
      *
-     * @param report          imported revision when matching succeeded
-     * @param reconciliation  queue entry when the result was diverted
-     */
-    public record ImportOutcome(ResultReport report, ReconciliationEntry reconciliation) {
+ * @return this record
+ */
+public record ImportOutcome(ResultReport report, ReconciliationEntry reconciliation) {
     }
 
     /**
      * One result revision together with its lineage and correction notifications.
      *
-     * @param current       the requested revision
-     * @param review        review task bound to the requested revision
-     * @param lineage       all revisions of the same order, oldest first
-     * @param notifications correction notifications bound to the requested revision
-     */
-    public record ResultDetail(ResultReport current, Review review, List<ResultReport> lineage,
+ * @return this record
+ */
+public record ResultDetail(ResultReport current, Review review, List<ResultReport> lineage,
                                List<RecipientNotification> notifications) {
 
         /**

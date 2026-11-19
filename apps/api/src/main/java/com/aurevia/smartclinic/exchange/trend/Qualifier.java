@@ -23,6 +23,9 @@ public enum Qualifier {
 
     private final String wire;
 
+    /**
+     * @param wire
+     */
     Qualifier(String wire) {
         this.wire = wire;
     }

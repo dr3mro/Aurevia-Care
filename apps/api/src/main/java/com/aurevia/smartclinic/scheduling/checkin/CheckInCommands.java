@@ -12,13 +12,9 @@ public final class CheckInCommands {
     }
 
     /**
-     * @param appointmentId  appointment whose identity is being confirmed
-     * @param identifiers    identifier categories presented by the patient
-     * @param method         {@code two_identifiers} or {@code documented_alternate}
-     * @param alternateCode  named site-approved workflow code for the alternate path
-     * @param alternateReason reason the standard check was unavailable
-     */
-    public record VerifyIdentity(String appointmentId, List<String> identifiers, String method,
+ * @return this record
+ */
+public record VerifyIdentity(String appointmentId, List<String> identifiers, String method,
                                  String alternateCode, String alternateReason) {
 
         /**
@@ -49,15 +45,17 @@ public final class CheckInCommands {
     /**
      * @param toSubject subject of the active member receiving the handoff
      * @param reason    recorded reason for the transfer
-     */
-    public record Handoff(String toSubject, String reason) {
+ * @return this record
+ */
+public record Handoff(String toSubject, String reason) {
     }
 
     /**
      * @param facilityCode facility receiving the unscheduled arrival
      * @param patientId    verified patient record identifier
      * @param reason       why the arrival has no appointment
-     */
-    public record Intake(String facilityCode, String patientId, String reason) {
+ * @return this record
+ */
+public record Intake(String facilityCode, String patientId, String reason) {
     }
 }

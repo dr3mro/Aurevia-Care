@@ -25,6 +25,7 @@ import java.time.Instant;
  * @param fingerprint         fingerprint of the exact released snapshot
  * @param state               {@code awaiting_local_patient} or {@code ready}
  * @param createdAt           projection instant
+ * @return this record
  */
 public record WorkItemView(String id, String senderOrg, String destinationOrg, String orderRef,
                            String patientRef, String patientMrn, String mrnIssuer,

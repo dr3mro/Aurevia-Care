@@ -16,6 +16,7 @@ import java.time.Instant;
  * @param reason     non-sensitive reason supplied for withdrawal, correction or review
  * @param actorId    authenticated actor, derived server-side
  * @param occurredAt instant the decision was committed
+ * @return this record
  */
 public record ReleaseEvent(
         String id,

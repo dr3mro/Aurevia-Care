@@ -9,6 +9,7 @@ package com.aurevia.smartclinic.messaging.appointments;
  * @param subject  verified patient subject that registered the device
  * @param patientId patient identifier of the verified link
  * @param state    current delivery state
+ * @return this record
  */
 public record DeviceToken(String tokenId, String token, String subject, String patientId,
                           DeviceState state) {

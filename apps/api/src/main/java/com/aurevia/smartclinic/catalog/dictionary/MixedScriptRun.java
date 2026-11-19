@@ -8,9 +8,7 @@ package com.aurevia.smartclinic.catalog.dictionary;
  * control characters or markup inserted into stored content. This keeps the
  * clipboard copy identical to the stored value.</p>
  *
- * @param text        stored text, preserved exactly
- * @param languageTag content language tag of the run
- * @param direction   per-run direction instruction
+ * @return this record
  */
 public record MixedScriptRun(String text, String languageTag, RunDirection direction) {
 

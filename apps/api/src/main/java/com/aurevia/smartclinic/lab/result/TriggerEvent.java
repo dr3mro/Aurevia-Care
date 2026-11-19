@@ -18,21 +18,7 @@ import com.aurevia.smartclinic.api.ApiException;
  * namespace. This record is a domain fact; persistence and delivery belong to a
  * later outbox story.</p>
  *
- * @param organizationId owning tenant
- * @param type           event type used as the dedup namespace
- * @param reportId       tenant-local report identifier
- * @param reportVersion  version of the revision that produced the event
- * @param patientId      matched patient identifier
- * @param specimenId     matched specimen identifier
- * @param orderId        matched order identifier
- * @param owner          named responsible owner for routing or escalation
- * @param queue          coverage queue that receives the work item
- * @param effectiveAt    clinical effective time of the revision
- * @param dueAfter       allowed window before the work item is overdue, or {@code null}
- * @param escalation     approved backstop channel, or {@code null}
- * @param payloadDigest  digest of the immutable content the event refers to
- * @param occurredAt     server time at which the fact was recorded
- * @param findingCode    test identity that discriminates multiple findings of one revision, or {@code null}
+ * @return this record
  */
 public record TriggerEvent(String organizationId, TriggerType type, String reportId, int reportVersion,
                            String patientId, String specimenId, String orderId, String owner,

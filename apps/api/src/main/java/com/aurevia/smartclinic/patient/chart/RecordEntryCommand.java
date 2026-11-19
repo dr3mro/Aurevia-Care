@@ -25,6 +25,7 @@ import java.time.Instant;
  * @param value          qualitative or quantitative value, or {@code null}
  * @param unit           measurement unit, or {@code null}
  * @param clinicalAuthor clinically responsible author, or {@code null} at intake
+ * @return this record
  */
 public record RecordEntryCommand(
         String patientId,

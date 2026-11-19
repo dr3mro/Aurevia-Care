@@ -14,6 +14,7 @@ import java.time.Instant;
  * @param effectiveFrom       instant from which the authorization applies
  * @param expiresAt           instant after which the authorization no longer applies, or {@code null}
  * @param active              whether the authorization has not been revoked
+ * @return this record
  */
 public record AuthorizationView(String id, String organizationId, String orderCode,
                                 String destinationOrg, String purpose, int maxDurationMinutes,

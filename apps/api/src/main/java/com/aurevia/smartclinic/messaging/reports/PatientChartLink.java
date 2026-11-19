@@ -9,6 +9,7 @@ package com.aurevia.smartclinic.messaging.reports;
  * @param patientId opaque identifier of the linked chart
  * @param verified  whether the link completed site verification and re-verification
  * @param active    whether the link is still active (false after an unlink)
+ * @return this record
  */
 public record PatientChartLink(String patientId, boolean verified, boolean active) {
 }

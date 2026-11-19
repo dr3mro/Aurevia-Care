@@ -55,7 +55,6 @@ public final class RxContract {
         /**
          * Create a state with its stable wire key.
          *
-         * @param wire lowercase state key
          */
         State(String wire) {
             this.wire = wire;
@@ -74,7 +73,6 @@ public final class RxContract {
         /**
          * Parse a stored state key.
          *
-         * @param value stored key
          * @return the matching state
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -93,7 +91,6 @@ public final class RxContract {
          * a dispensed, rejected or cancelled prescription cannot silently move
          * to a positive clinical state.
          *
-         * @param next requested target state
          * @return {@code true} when the transition is permitted
          */
         public boolean canTransitionTo(State next) {
@@ -148,7 +145,6 @@ public final class RxContract {
         /**
          * Create an event type with its stable wire key.
          *
-         * @param wire lowercase event key
          */
         EventType(String wire) {
             this.wire = wire;
@@ -167,7 +163,6 @@ public final class RxContract {
         /**
          * Parse a stored event key.
          *
-         * @param value stored key
          * @return the matching event type
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -184,22 +179,6 @@ public final class RxContract {
     /**
      * Current, mutable projection of one prescription.
      *
-     * @param id                 identifier
-     * @param version            optimistic version
-     * @param patientId          owning patient identifier in this tenant
-     * @param medication         medication name
-     * @param strength           medication strength
-     * @param dose               dose per administration
-     * @param route              administration route
-     * @param frequency          administration frequency
-     * @param quantity           prescribed quantity
-     * @param prescriberSubject  subject of the prescribing clinician
-     * @param destinationPharmacy destination pharmacy key, or {@code null} for printable
-     * @param state              transmission state
-     * @param channel            actual routing channel, or {@code null} before routing
-     * @param submissionId       stable submission id, or {@code null} before electronic submission
-     * @param retryAllowed       whether a verified-absent partner status permits a retry
-     * @param createdAt          creation instant
      * @return the immutable value
      */
     public record Prescription(String id, int version, String patientId, String medication, String strength,
@@ -211,16 +190,6 @@ public final class RxContract {
     /**
      * One immutable fact in a prescription's transmission trail.
      *
-     * @param id                  event identifier
-     * @param prescriptionId      owning prescription
-     * @param prescriptionVersion revision the fact is bound to
-     * @param eventType           fact type
-     * @param actorId             authenticated actor resolved by the database
-     * @param channel             channel used when applicable
-     * @param submissionId        stable submission id the fact refers to
-     * @param outcome             recorded outcome such as delivered or absent
-     * @param detail              non-sensitive detail
-     * @param occurredAt          server timestamp
      * @return the immutable value
      */
     public record Event(String id, String prescriptionId, int prescriptionVersion, EventType eventType,
@@ -231,8 +200,6 @@ public final class RxContract {
     /**
      * One prescription together with its complete event trail.
      *
-     * @param prescription current projection
-     * @param events       immutable event trail in chronological order
      * @return the immutable value
      */
     public record View(Prescription prescription, List<Event> events) {

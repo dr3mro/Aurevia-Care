@@ -5,9 +5,7 @@ import java.util.Set;
 /**
  * Caller identity for a template command: active organization, subject and roles.
  *
- * @param organizationId active organization identifier
- * @param subject        authenticated subject
- * @param roles          role assignments in the active organization
+ * @return this record
  */
 public record TemplateActor(String organizationId, String subject, Set<String> roles) {
 
