@@ -27,7 +27,7 @@ public enum ReleaseState {
      */
     public boolean canTransitionTo(ReleaseState target) {
         return switch (this) {
-            case HELD -> target == AUTHORIZED || target == WITHDRAWN || target == CORRECTED;
+            case HELD -> target == AUTHORIZED || target == WITHDRAWN;
             case AUTHORIZED -> target == WITHDRAWN || target == CORRECTED;
             case WITHDRAWN, CORRECTED -> false;
         };

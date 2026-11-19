@@ -9,7 +9,7 @@ const message: Message = {
   id: 'm1',
   conversationId: 'conv-1',
   senderId: 'unit-a',
-  senderRole: 'unit',
+  senderRole: 'staff',
   body: 'Please bring your results.',
   sentAt: '2026-11-19T10:00:00Z',
   sequence: 1,

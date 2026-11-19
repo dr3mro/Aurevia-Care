@@ -193,7 +193,7 @@ class ReleaseServiceTest {
     @Test
     void authorizeRejectsDuplicateActiveRevision() {
         authorized("clinician");
-        when(repository.findActiveByPatientAndRevision(PATIENT, REVISION))
+        when(repository.findAnyByPatientAndRevision(PATIENT, REVISION))
                 .thenReturn(Optional.of(release(ReleaseState.AUTHORIZED, NOW.toString(), 1)));
         assertEquals(409, assertThrows(ApiException.class, () -> service.authorize(immediate())).status());
         verify(repository).appendAudit(TenantContext.current(), "RELEASE_AUTHORIZE", REVISION, "CONFLICT");
@@ -397,6 +397,34 @@ class ReleaseServiceTest {
     }
 
     @Test
+    void correctOfReviewedHoldWithFutureEffectiveTimeKeepsIt() {
+        // A HOLD may carry a future effective instant. Lifting it does not change that instant;
+        // correcting the lifted hold must not silently open access before the configured time.
+        authorized("clinician");
+        Instant future = NOW.plusSeconds(3600);
+        PatientRelease reviewedHold = new PatientRelease("rel-1", ORG, PATIENT, REVISION, 1, ORG, 2,
+                ReleaseKind.HOLD, ReleaseState.AUTHORIZED, future, "needs review",
+                future.plusSeconds(3600), "reviewer-1", NOW, null, 1, "author-1", NOW);
+        when(repository.findRelease("rel-1")).thenReturn(Optional.of(reviewedHold));
+        when(repository.findAnyByPatientAndRevision(PATIENT, "LAB-REV-0002")).thenReturn(Optional.empty());
+        when(repository.correct("rel-1", 1)).thenReturn(1);
+        when(repository.insertRelease(eq(ORG), eq(PATIENT), eq("LAB-REV-0002"), eq(2), eq(ORG), eq(2),
+                eq("IMMEDIATE"), eq("AUTHORIZED"), any(), isNull(), isNull(), eq("rel-1")))
+                .thenReturn("rel-2");
+        when(repository.findRelease("rel-2")).thenReturn(Optional.of(new PatientRelease("rel-2", ORG, PATIENT,
+                "LAB-REV-0002", 2, ORG, 2, ReleaseKind.IMMEDIATE, ReleaseState.AUTHORIZED, future,
+                null, null, null, null, "rel-1", 1, "author-1", NOW)));
+
+        PatientRelease result = service.correct("rel-1", 1, "LAB-REV-0002", 2, "corrected result");
+
+        ArgumentCaptor<Instant> effective = ArgumentCaptor.forClass(Instant.class);
+        verify(repository).insertRelease(eq(ORG), eq(PATIENT), eq("LAB-REV-0002"), eq(2), eq(ORG), eq(2),
+                eq("IMMEDIATE"), eq("AUTHORIZED"), effective.capture(), isNull(), isNull(), eq("rel-1"));
+        assertEquals(future, effective.getValue());
+        assertFalse(result.visibleNow(Clock.fixed(NOW, ZoneOffset.UTC)));
+    }
+
+    @Test
     void correctPreservesTimedReleasePolicy() {
         authorized("clinician");
         Instant future = NOW.plusSeconds(3600);
@@ -425,9 +453,39 @@ class ReleaseServiceTest {
     }
 
     @Test
+    void correctRejectsReplacingARevisionWithItself() {
+        // A correction must point at a different immutable revision; re-pointing at the same
+        // revision would re-authorize the very row just marked CORRECTED.
+        authorized("clinician");
+        when(repository.findRelease("rel-1"))
+                .thenReturn(Optional.of(release(ReleaseState.AUTHORIZED, NOW.toString(), 1)));
+        assertEquals(409, assertThrows(ApiException.class,
+                () -> service.correct("rel-1", 1, REVISION, 2, "why")).status());
+        verify(repository).appendAudit(TenantContext.current(), "RELEASE_CORRECT", "rel-1", "CONFLICT");
+        verify(repository, never()).correct("rel-1", 1);
+    }
+
+    @Test
     void correctRejectsBlankCorrectedRevision() {
         assertEquals(422, assertThrows(ApiException.class,
                 () -> service.correct("rel-1", 1, " ", 2, "why")).status());
+    }
+
+    @Test
+    void correctRejectsAlreadyReleasedReplacementRevisionAndAuditsConflict() {
+        // A correction onto a revision that already has a live authorization must fail closed
+        // before any CAS update, with the same audited CONFLICT outcome as authorize().
+        authorized("clinician");
+        when(repository.findRelease("rel-1"))
+                .thenReturn(Optional.of(release(ReleaseState.AUTHORIZED, NOW.toString(), 1)));
+        when(repository.findAnyByPatientAndRevision(PATIENT, "LAB-REV-0002"))
+                .thenReturn(Optional.of(release(ReleaseState.AUTHORIZED, NOW.toString(), 1)));
+        assertEquals(409, assertThrows(ApiException.class,
+                () -> service.correct("rel-1", 1, "LAB-REV-0002", 2, "why")).status());
+        verify(repository).appendAudit(TenantContext.current(), "RELEASE_CORRECT", "rel-1", "CONFLICT");
+        verify(repository, never()).correct("rel-1", 1);
+        verify(repository, never()).insertRelease(anyString(), anyString(), anyString(), anyInt(),
+                anyString(), anyInt(), anyString(), anyString(), any(), any(), any(), any());
     }
 
     @Test
