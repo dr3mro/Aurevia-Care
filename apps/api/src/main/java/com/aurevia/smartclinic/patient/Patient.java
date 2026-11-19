@@ -15,6 +15,7 @@ package com.aurevia.smartclinic.patient;
  * @param contacts          contact records as JSON
  * @param identifiers       issuer-scoped identity records as JSON
  * @param consents          consent records as JSON
+ * @return this record
  */
 public record Patient(String id, int version, String mrn, String mrnIssuer, String displayName,
                       String normalizedName, String dob, String dobUnknownReason, String language,
