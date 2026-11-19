@@ -29,11 +29,14 @@ jobs:
     outputs:
       queue: ${{ steps.queue.outputs.queue }}
       count: ${{ steps.queue.outputs.count }}
+      image: ${{ steps.image.outputs.image }}
     steps:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
           sparse-checkout: scripts
+      - id: image
+        run: echo "image=ghcr.io/${GITHUB_REPOSITORY,,}-agent-1:latest" >> "$GITHUB_OUTPUT"
       - id: queue
         env:
           GH_TOKEN: ${{ github.token }}
@@ -45,6 +48,8 @@ jobs:
     if: needs.pick.outputs.count != '0'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
+    outputs:
+      conflicted: ${{ steps.merge.outputs.conflicted }}
     permissions:
       contents: write
       pull-requests: write
@@ -100,6 +105,7 @@ jobs:
       # merge and finalize, and strips it from the gate subprocess so agent-written
       # code never sees a token. Heavy checks run later on main in heavy-check.yml.
       - name: Merge each PR, gate, then push once
+        id: merge
         env:
           QUEUE: ${{ needs.pick.outputs.queue }}
           GATE: scripts/integrator-gate.sh
@@ -107,4 +113,63 @@ jobs:
       # A merge can unlock dependent tasks, so start the next wave now.
       - name: Start the next wave
         if: always()
+        run: python3 -I scripts/swarm.py continue
+
+  # A PR that conflicts with main is not failed right away: the agent merges main
+  # into its branch, fixes the conflicts and the integrator runs again. After
+  # three tries the PR goes back to the workers.
+  resolve:
+    name: Resolve merge conflicts
+    needs: [pick, integrate]
+    if: always() && needs.integrate.outputs.conflicted != '' && needs.integrate.outputs.conflicted != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    container:
+      image: ${{ needs.pick.outputs.image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      actions: write
+      packages: read
+    defaults:
+      run:
+        shell: bash
+    env:
+      CONFLICTED: ${{ needs.integrate.outputs.conflicted }}
+      BASE_BRANCH: ${{ github.event.repository.default_branch }}
+      MODEL: opencode-go/hy4-flash-free
+      SWARM: '1'
+      CHECK_SCRIPT: scripts/quick-check.sh
+      MERGE_ATTEMPTS: '3'
+      AGENT_TIMEOUT: 20m
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Fetch main and the conflicted branches (read-only token)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          scripts/agent-run.sh fetch-main
+          scripts/agent-run.sh fetch-prs
+      - name: Merge main into each branch and fix the conflicts (no GitHub token in this step)
+        timeout-minutes: 75
+        env:
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY_1 || secrets.OPENCODE_API_KEY }}
+        run: scripts/agent-run.sh resolve
+      - name: Push the resolved branches or send them back
+        env:
+          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
+        run: python3 -I scripts/swarm.py resolve-publish --dir .agent/resolve
+      # PRs sent back to the workers (needs-fix) get a fix worker right away.
+      - name: Start the next wave
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: python3 -I scripts/swarm.py continue

@@ -61,15 +61,21 @@ fixtures, and the unit tests.
 
 | Check | Command | Proves |
 |---|---|---|
-| Unit and fixture gate | `bash infra/s_g5_06/check.sh` | 78 synthetic unit tests pass; the conforming fixture passes and the violation fixture fails |
+| Unit and fixture gate | `bash infra/s_g5_06/check.sh` | 97 synthetic unit tests pass; the build-failing coverage gate passes; the conforming fixture passes and the violation fixture fails |
 | Unit tests alone | `python3 -I -m unittest discover -s infra/s_g5_06/tests -q` | The evaluator's enumerated branches behave as specified |
-| Line coverage | `python3 -I -m trace --count --coverdir /tmp/opencode/s_g5_06_cov infra/s_g5_06/tests/run_coverage.py` | Every executable line of the evaluator runs; stdlib `trace` is used because `coverage.py` is not installed |
+| Build-failing coverage gate | `python3 -I infra/s_g5_06/tests/coverage_gate.py` | Exits 1 when any executable line of the evaluator is uncovered; wired into `check.sh` so incomplete coverage fails the build |
+| Line coverage | `python3 -I -m trace --count --missing --coverdir /tmp/opencode/s_g5_06_cov infra/s_g5_06/tests/run_coverage.py` | Every executable line of the evaluator runs; stdlib `trace` is used because `coverage.py` is not installed. `--missing` is required: without it `trace` never annotates unexecuted lines and the measurement is vacuous |
 | Links and requirement IDs | `python3 -I scripts/check-docs.py` | Relative links resolve and every requirement ID is defined in the specification |
 | Credential and PHI shapes | `python3 -I scripts/check-secrets.py` | No credential or patient-identifier pattern was introduced |
 
-Branch coverage has no mechanical measure in the standard library; the tests
-enumerate every control-flow branch, including a case that asserts an empty
-artifact fails every section check so no checker can be silently skipped.
+The CLI guard line (`sys.exit(main())`) is marked `#pragma NO COVER`: it runs
+only when the file is executed as a script, while the unit tests exercise the
+same `main()` entry point by calling it directly. Branch coverage has no
+mechanical measure in the standard library; the tests enumerate every
+control-flow branch, including a case that asserts an empty artifact fails
+every section check so no checker can be silently skipped. The coverage gate's
+own tests include a real `trace` run on a deliberately under-covered probe
+module, proving the gate detects uncovered lines rather than always passing.
 
 ## Decisions
 
