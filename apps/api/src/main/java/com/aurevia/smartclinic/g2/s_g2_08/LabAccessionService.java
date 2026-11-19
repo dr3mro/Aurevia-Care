@@ -95,7 +95,10 @@ public class LabAccessionService {
                 repository.insert(context.organizationId(), id, number, issuer, patientId, orderRef,
                         AccessionState.ACCESSIONED, null);
             } catch (DuplicateKeyException exception) {
-                // A concurrent accession can still win the unique index.
+                // A concurrent accession can still win the unique index. Audit before
+                // returning so the failed attempt survives while the row change rolls back.
+                audit.append(context, PURPOSE, LabActionPolicy.ACCESSION_CREATE, RESOURCE_TYPE,
+                        SCOPE, number, "CONFLICT");
                 failure.set(new ApiException(409, "CONFLICT", "accession number already exists for this issuer"));
                 return null;
             }
@@ -222,6 +225,8 @@ public class LabAccessionService {
                 repository.insert(context.organizationId(), newId, number, issuer, current.patientId(),
                         current.sourceOrderRef(), AccessionState.ACCESSIONED, specimenId);
             } catch (DuplicateKeyException exception) {
+                audit.append(context, PURPOSE, LabActionPolicy.SPECIMEN_RECOLLECT, RESOURCE_TYPE,
+                        SCOPE, specimenId, "CONFLICT");
                 failure.set(new ApiException(409, "CONFLICT", "accession number already exists for this issuer"));
                 return null;
             }
