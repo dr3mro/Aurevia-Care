@@ -21,6 +21,9 @@ PATTERNS = {
     "password assignment": re.compile(
         r"(?i)\b(?:password|passwd|secret|api[_-]?key)\b\s*[:=]\s*['\"][^'\"\s]{8,}['\"]"),
     "US social security number": re.compile(r"\b(?!000|666|9\d\d)\d{3}-(?!00)\d{2}-(?!0000)\d{4}\b"),
+    "hard-coded NVD credential": re.compile(
+        r"nvdApiKey(?:EnvironmentVariable)?\s*>\s*[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-"
+        r"[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"),
 }
 
 

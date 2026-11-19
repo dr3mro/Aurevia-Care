@@ -1,0 +1,91 @@
+openapi: 3.0.3
+info:
+  title: SmartClinic Staff API
+  version: 0.1.0
+  description: G0 tenant-isolated facility administration. Synthetic use only.
+servers:
+  - url: http://localhost:8081
+paths:
+  /api/v1/facilities/{code}:
+    get:
+      operationId: getFacility
+      summary: Read a facility in the active organization
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - name: code
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: The facility in the active tenant
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Facility' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: Not found or inaccessible; existence is concealed }
+  /api/v1/facilities:
+    post:
+      operationId: createFacility
+      summary: Create a facility in the active organization
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateFacility' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            Location: { schema: { type: string } }
+            X-Correlation-Id: { schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Facility' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { description: Facility code already exists in this tenant }
+        '422': { description: Invalid body, correlation id or tenant selection }
+components:
+  parameters:
+    ActiveOrganization:
+      name: X-Active-Organization
+      in: header
+      required: true
+      description: Explicit active organization UUID; membership is verified server-side.
+      schema: { type: string, format: uuid }
+    CorrelationId:
+      name: X-Correlation-Id
+      in: header
+      required: false
+      description: Generated and echoed when absent.
+      schema: { type: string }
+  responses:
+    Forbidden:
+      description: No active membership or missing action permission
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+  schemas:
+    CreateFacility:
+      type: object
+      required: [code, name]
+      additionalProperties: false
+      properties:
+        code: { type: string, pattern: '^[A-Z0-9_-]{2,32}$' }
+        name: { type: string, minLength: 1, maxLength: 200 }
+    Facility:
+      type: object
+      properties:
+        organizationId: { type: string, format: uuid }
+        code: { type: string }
+        name: { type: string }
+    Error:
+      type: object
+      properties:
+        code: { type: string }
+        message: { type: string }
+        correlationId: { type: string }

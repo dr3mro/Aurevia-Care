@@ -3,7 +3,9 @@ set -euo pipefail
 state=$(mktemp -d /tmp/smartclinic.XXXXXXXX)
 pg_pid=
 web_pid=
-# shellcheck disable=SC2329
+# The cleanup function is invoked indirectly through the EXIT trap; newer
+# ShellCheck versions misclassify its body as unreachable (SC2317).
+# shellcheck disable=SC2317,SC2329
 cleanup() {
     if [[ -n "$web_pid" ]]; then kill -TERM "$web_pid" 2>/dev/null || true; fi
     if [[ -n "$pg_pid" ]]; then kill -INT "$pg_pid" 2>/dev/null || true; fi

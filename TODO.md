@@ -13,6 +13,12 @@ Check the repository against each gate before marking work ready. Split items in
 
 Use `planned → in progress → verified → done`. Record `blocked` with reason and prerequisites whenever applicable. Record remaining acceptance IDs and evidence in PROGRESS.md. Use BUGS.md for reproducible defects.
 
+## Current story
+
+S-G0-01 · staff user of the active organization · read and write only the active tenant's configuration records and be denied on the next protected request after revocation · proves the G0 trust boundary before any clinical code · IAM-01, IAM-02, ARC-02, OPS-02 · G0 · synthetic two-tenant fixtures, real PostgreSQL and auth-derived tenant context · acceptance N1–N4 and E1–E8 recorded in PROGRESS.md · test-first HTTP integration through `GET/POST /api/v1/facilities` before the smallest passing slice · Product Owner definition; architect, Spring Security, DevSecOps and independent QA review; synthetic only · **in progress**.
+
+Follow-on G0 stories, in order: S-G0-02 staff lifecycle and immutable membership history (IAM-02, depends on S-G0-01); S-G0-03 tenant configuration, catalog, broader audit and infrastructure (ADM-01, OPS); S-G0-04 search/files/workers/export isolation and concurrent-connection tests (ARC-02, G0).
+
 ## Story template
 
 `ID · role · need · value · specification IDs · gate · dependencies · acceptance scenarios · test plan · ownership · feedback source · status`. Keep one current story. Queue improvement ideas with a reporter and rationale. Acceptance monitors and human sign-offs stay linked to the story.

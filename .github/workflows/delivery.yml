@@ -25,10 +25,25 @@ jobs:
           - arch: arm64
             runner: ubuntu-24.04-arm
     runs-on: ${{ matrix.runner }}
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s --health-timeout 5s --health-retries 5
     steps:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
       - name: Resolve image version
         id: version
         shell: bash
@@ -46,6 +61,8 @@ jobs:
       - name: Run checks and build the image
         env:
           VERSION: ${{ steps.version.outputs.value }}
+          SMARTCLINIC_PG_ADMIN: postgres
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
         run: scripts/verify.sh "$VERSION"
       - name: Build developer reference
         if: matrix.arch == 'amd64'
