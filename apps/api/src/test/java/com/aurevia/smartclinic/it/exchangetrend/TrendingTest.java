@@ -52,7 +52,16 @@ import tools.jackson.databind.ObjectMapper;
 class TrendingTest {
 
     private static final String ORG_A = "41111111-1111-1111-1111-111111111111";
-    private static final String ORG_B = "42222222-2222-2222-2222-222222222222";
+    static final String ORG_B = "42222222-2222-2222-2222-222222222222";
+
+    /* Each observation-recording scenario owns its patient. Sharing one patient
+     * lets a later scenario's rows leak into an earlier scenario's trend and
+     * makes the acceptance suite order-dependent (XCH-07). */
+    static final String MRN_TREND = "MRN-SYN-TREND";
+    static final String MRN_VERSION = "MRN-SYN-VERSION";
+    static final String MRN_ISOLATION_A = "MRN-SYN-ISOLATION-A";
+    static final String MRN_ISOLATION_B = "MRN-SYN-ISOLATION-B";
+    static final String MRN_BACKDATED = "MRN-SYN-BPD";
     private static final String URL = "jdbc:postgresql://127.0.0.1:5432/smartclinic_trending_it";
     private static final String ADMIN = System.getenv().getOrDefault(
             "SMARTCLINIC_PG_ADMIN", System.getProperty("user.name"));
@@ -87,11 +96,9 @@ class TrendingTest {
              Statement statement = connection.createStatement()) {
             seedOrganization(statement, ORG_A);
             seedOrganization(statement, ORG_B);
-            seedMember(statement, ORG_A, "clinician-a", "clinician");
-            seedMember(statement, ORG_A, "clinician-temp", "clinician");
-            seedMember(statement, ORG_A, "admin-a", "tenant_admin");
-            seedMember(statement, ORG_A, "reception-a", "reception");
-            seedMember(statement, ORG_B, "clinician-b", "clinician");
+            for (String[] member : seededMembers()) {
+                seedMember(statement, member[0], member[1], member[2]);
+            }
         }
     }
 
@@ -115,6 +122,35 @@ class TrendingTest {
                 + "(organization_id, version, mrn, mrn_issuer, display_name, normalized_name, dob) "
                 + "VALUES ('" + org + "', 1, 'MRN-SYN-1', 'CLINIC', 'Synthetic Patient', "
                 + "'synthetic patient', '1990-05-20')");
+    }
+
+    /**
+     * Synthetic members used by the acceptance scenarios, as
+     * {@code {organization, subject, role}} rows. Exposed so the database-less
+     * tier can prove every privileged actor used by a scenario is actually
+     * seeded; a missing member would otherwise only surface as a 403 in CI.
+     *
+     * @return the seeded members
+     */
+    static List<String[]> seededMembers() {
+        return List.of(
+                new String[] {ORG_A, "clinician-a", "clinician"},
+                new String[] {ORG_A, "clinician-temp", "clinician"},
+                new String[] {ORG_A, "admin-a", "tenant_admin"},
+                new String[] {ORG_A, "reception-a", "reception"},
+                new String[] {ORG_B, "clinician-b", "clinician"},
+                new String[] {ORG_B, "admin-b", "tenant_admin"});
+    }
+
+    /**
+     * MRNs of the per-scenario patients. The fast tier asserts these remain
+     * distinct so an observation recorded by one acceptance scenario cannot be
+     * read back as a point or exclusion by another (XCH-07).
+     *
+     * @return the scenario MRNs
+     */
+    static List<String> scenarioMrns() {
+        return List.of(MRN_TREND, MRN_VERSION, MRN_ISOLATION_A, MRN_ISOLATION_B, MRN_BACKDATED);
     }
 
     private static void seedMember(Statement statement, String org, String subject, String role)
@@ -284,7 +320,7 @@ class TrendingTest {
 
     @Test
     void trendsOnlyComparableObservationsAndKeepsEveryExclusionVisible() throws Exception {
-        String patient = patientId(ORG_A);
+        String patient = createPatient(ORG_A, MRN_TREND);
         assertEquals(201, send(HttpMethod.POST, "/api/v1/trends/comparability",
                 comparability("HBA1C", "mmol/mol", "LAB-HPLC", true, null), "admin-a", ORG_A)
                 .getStatusCode().value());
@@ -324,7 +360,9 @@ class TrendingTest {
         assertEquals(7.0, point.get("referenceHigh").asDouble(), 0.0001);
         assertEquals("mmol/mol", point.get("referenceUnit").asString());
         assertEquals("low", point.get("interpretation").asString());
+        assertEquals("2026-08-10T00:00:00Z", point.get("effectiveAt").asString());
         assertEquals("SYNTHETIC_LAB", point.get("sourceSystem").asString());
+        assertEquals("v1", point.get("sourceVersion").asString());
 
         assertEquals(6, view.get("excluded").size(), "no observation may disappear");
         Map<String, Integer> reasons = new HashMap<>();
@@ -332,6 +370,16 @@ class TrendingTest {
             String reason = item.get("reason").asString();
             reasons.merge(reason, 1, Integer::sum);
             assertNotNull(item.get("observation").get("effectiveAt"));
+            if ("QUALIFIED_NUMERIC".equals(reason)) {
+                assertEquals("less_than", item.get("observation").get("qualifier").asString());
+                assertEquals(3.0, item.get("observation").get("value").asDouble(), 0.0001);
+            }
+            if ("QUALITATIVE".equals(reason)) {
+                assertEquals("Negative", item.get("observation").get("qualitativeValue").asString());
+            }
+            if ("INCOMPATIBLE_UNIT".equals(reason)) {
+                assertEquals("%", item.get("observation").get("unit").asString());
+            }
         });
         assertEquals(Set.of("QUALIFIED_NUMERIC", "INCOMPATIBLE_UNIT", "QUALITATIVE",
                         "DIFFERENT_TEST", "DIFFERENT_COMPARABILITY_GROUP", "NON_FINAL_REVISION"),
@@ -343,7 +391,7 @@ class TrendingTest {
 
     @Test
     void comparabilityIsVersionedAndAFutureRuleDoesNotBecomeEffectiveEarly() throws Exception {
-        String patient = patientId(ORG_A);
+        String patient = createPatient(ORG_A, MRN_VERSION);
         ResponseEntity<String> first = send(HttpMethod.POST, "/api/v1/trends/comparability",
                 comparability("GLU", "mg/dL", "LAB-HPLC", true, "2026-01-01T00:00:00Z"),
                 "admin-a", ORG_A);
@@ -372,8 +420,8 @@ class TrendingTest {
 
     @Test
     void tenantsStayIsolatedAndRolesAreEnforced() throws Exception {
-        String patientA = patientId(ORG_A);
-        String patientB = patientId(ORG_B);
+        String patientA = createPatient(ORG_A, MRN_ISOLATION_A);
+        String patientB = createPatient(ORG_B, MRN_ISOLATION_B);
         assertEquals(201, send(HttpMethod.POST, "/api/v1/trends/comparability",
                 comparability("CREAT", "umol/L", "LAB-HPLC", true, null), "admin-a", ORG_A)
                 .getStatusCode().value());
@@ -420,7 +468,7 @@ class TrendingTest {
 
     @Test
     void aBackdatedHigherVersionDoesNotOverrideTheLaterEffectiveRule() throws Exception {
-        String patient = createPatient(ORG_A, "MRN-SYN-BPD");
+        String patient = createPatient(ORG_A, MRN_BACKDATED);
         ResponseEntity<String> first = send(HttpMethod.POST, "/api/v1/trends/comparability",
                 comparability("BPD", "mmol/mol", "LAB-HPLC", true, "2026-01-01T00:00:00Z"),
                 "admin-a", ORG_A);

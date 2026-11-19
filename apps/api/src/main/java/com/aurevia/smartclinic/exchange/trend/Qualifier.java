@@ -2,6 +2,8 @@ package com.aurevia.smartclinic.exchange.trend;
 
 import java.util.Locale;
 
+import com.fasterxml.jackson.annotation.JsonValue;
+
 import com.aurevia.smartclinic.api.ApiException;
 
 /**
@@ -53,8 +55,13 @@ public enum Qualifier {
     /**
      * Return the stable wire representation.
      *
+     * <p>Annotated so responses expose the same lower-case value the database
+     * stores and {@link #from(String)} accepts; the enum name is never leaked
+     * to API clients.</p>
+     *
      * @return {@code none}, {@code less_than} or {@code greater_than}
      */
+    @JsonValue
     public String wire() {
         return wire;
     }

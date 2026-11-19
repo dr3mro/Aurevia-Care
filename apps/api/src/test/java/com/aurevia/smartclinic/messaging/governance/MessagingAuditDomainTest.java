@@ -235,6 +235,25 @@ class MessagingAuditDomainTest {
     }
 
     @Test
+    void workflowActionSeparatesRecordableActionsFromGovernanceCommands() {
+        List<AuditAction> recordableActions = List.of(AuditAction.OPEN, AuditAction.VIEW,
+                AuditAction.SEND, AuditAction.ASSIGN, AuditAction.DOWNLOAD, AuditAction.ACKNOWLEDGE,
+                AuditAction.FILE, AuditAction.CORRECT, AuditAction.RESTRICT);
+        for (AuditAction action : AuditAction.values()) {
+            if (recordableActions.contains(action)) {
+                assertEquals(action, MessagingGovernanceInputs.workflowAction(action.wire()));
+            } else {
+                assertEquals("INVALID_ACTION", assertThrows(ApiException.class,
+                        () -> MessagingGovernanceInputs.workflowAction(action.wire())).code());
+            }
+        }
+        assertEquals("INVALID_ACTION", assertThrows(ApiException.class,
+                () -> MessagingGovernanceInputs.workflowAction("guess")).code());
+        assertEquals("INVALID_ACTION", assertThrows(ApiException.class,
+                () -> MessagingGovernanceInputs.workflowAction(null)).code());
+    }
+
+    @Test
     void syntheticStoreKeepsEveryGovernanceSurfaceTenantScoped() {
         InMemoryMessagingGovernanceStore store = new InMemoryMessagingGovernanceStore();
         store.addMember(ORG, "auditor", "privacy_auditor", true);

@@ -225,6 +225,24 @@ class DatasetTest(unittest.TestCase):
                 self.assertIn("dataset.records", failures(ob.evaluate(
                     synthetic_manifest(dataset={"records": value}))))
 
+    def test_source_ids_must_be_unique_within_the_dataset(self):
+        # The documented record shape requires a unique source id. Two records
+        # sharing one id must fail a named check, not be deduplicated silently
+        # by the batch coverage fold.
+        records = [_record("SYN-0001", "M-001", "ORG-A"),
+                   _record("SYN-0001", "M-002", "ORG-A")]
+        report = ob.evaluate(with_records(records))
+        self.assertIn("dataset.source_ids", failures(report))
+        self.assertFalse(report["commit_allowed"])
+
+    def test_blank_or_non_string_source_id_is_rejected(self):
+        for value in ("", "   ", None, 123):
+            with self.subTest(value=value):
+                manifest = synthetic_manifest()
+                manifest["dataset"]["records"][1]["source_id"] = value
+                report = ob.evaluate(manifest)
+                self.assertIn("dataset.source_ids", failures(report))
+
 
 class MappingTest(unittest.TestCase):
     def test_mapping_must_be_an_object(self):

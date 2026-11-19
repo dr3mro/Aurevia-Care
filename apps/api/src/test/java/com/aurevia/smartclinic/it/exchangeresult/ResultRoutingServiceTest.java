@@ -155,6 +155,18 @@ class ResultRoutingServiceTest {
     }
 
     @Test
+    void aConcurrentOrderRegistrationConflictIsReportedAs409() {
+        authorized("tenant_admin");
+        when(repository.findOrder(ORDER)).thenReturn(Optional.empty());
+        when(repository.insertOrder(any())).thenReturn(null);
+
+        ApiException failure = assertThrows(ApiException.class, () -> service.registerOrder(registerRequest()));
+        assertEquals(409, failure.status());
+        assertEquals("ORDER_EXISTS", failure.code());
+        audited("XCH04_ORDER_REGISTER");
+    }
+
+    @Test
     void registrationDeniesInactiveMembershipAndWrongRole() {
         when(repository.hasActiveMembership(ACTOR)).thenReturn(false);
         assertEquals(403, assertThrows(ApiException.class,
@@ -240,6 +252,7 @@ class ResultRoutingServiceTest {
         authorized("lab_verifier");
         matched();
         ResultReport prior = result(1, ResultKind.FINAL, null, null);
+        when(repository.lineage(ORDER, SOURCE, ACCESSION)).thenReturn(List.of(prior));
         when(repository.findReport(ORDER, SOURCE, ACCESSION, 1)).thenReturn(Optional.of(prior));
         when(repository.priorRecipients(ORDER)).thenReturn(List.of("owner-a", "previous-owner"));
         when(repository.findReview(REPORT_1)).thenReturn(
@@ -263,8 +276,9 @@ class ResultRoutingServiceTest {
     void correctionOfAnUnreviewedRevisionDoesNotEmitAReopenAudit() {
         authorized("lab_verifier");
         matched();
-        when(repository.findReport(ORDER, SOURCE, ACCESSION, 1))
-                .thenReturn(Optional.of(result(1, ResultKind.FINAL, null, null)));
+        ResultReport prior = result(1, ResultKind.FINAL, null, null);
+        when(repository.lineage(ORDER, SOURCE, ACCESSION)).thenReturn(List.of(prior));
+        when(repository.findReport(ORDER, SOURCE, ACCESSION, 1)).thenReturn(Optional.of(prior));
         when(repository.findReview(REPORT_1)).thenReturn(
                 Optional.of(new Review(REPORT_1, 1, ReviewState.UNREVIEWED, null)));
         service.importResult(request("corrected", 1));
@@ -291,16 +305,108 @@ class ResultRoutingServiceTest {
         authorized("lab_verifier");
         matched();
         ResultReport winner = result(1, ResultKind.FINAL, null, null);
-        when(repository.findReport(ORDER, SOURCE, ACCESSION, 1)).thenReturn(Optional.of(winner));
+        // The pre-insert replay check sees no revision; a racing transaction wins
+        // the unique key, so the post-insert lookup must return that winning row.
+        when(repository.findReport(ORDER, SOURCE, ACCESSION, 1))
+                .thenReturn(Optional.empty(), Optional.of(winner));
         when(repository.insertReport(any())).thenReturn(false);
 
         ImportOutcome outcome = service.importResult(request("final", null));
 
         assertEquals(winner, outcome.report());
         assertNull(outcome.reconciliation());
+        verify(repository).insertReport(any());
         verify(repository, never()).insertReview(anyString());
         verify(repository, never()).insertNotification(any());
         audited("XCH04_RESULT_REPLAY");
+    }
+
+    @Test
+    void aReplayWithDifferentContentIsRejectedInsteadOfSilentlyDiscarded() {
+        authorized("lab_verifier");
+        matched();
+        ResultReport stored = result(1, ResultKind.FINAL, null, null);
+        when(repository.findReport(ORDER, SOURCE, ACCESSION, 1)).thenReturn(Optional.of(stored));
+
+        ApiException differentChecksum = assertThrows(ApiException.class, () -> service.importResult(
+                new ImportResultRequest(ORDER, PATIENT, SOURCE, ACCESSION, DEST, "final", null,
+                        NOW.toString(), "different-payload")));
+        assertEquals(409, differentChecksum.status());
+        assertEquals("PAYLOAD_CONFLICT", differentChecksum.code());
+
+        ApiException differentTime = assertThrows(ApiException.class, () -> service.importResult(
+                new ImportResultRequest(ORDER, PATIENT, SOURCE, ACCESSION, DEST, "final", null,
+                        NOW.plusSeconds(1).toString(), "checksum-1")));
+        assertEquals("PAYLOAD_CONFLICT", differentTime.code());
+        audited("XCH04_RESULT_CONFLICT");
+        verify(repository, never()).insertReport(any());
+    }
+
+    @Test
+    void aConcurrentWinnerWithDifferentContentIsRejectedInsteadOfReturned() {
+        authorized("lab_verifier");
+        matched();
+        ResultReport winner = result(1, ResultKind.CRITICAL, null, null);
+        when(repository.findReport(ORDER, SOURCE, ACCESSION, 1))
+                .thenReturn(Optional.empty(), Optional.of(winner));
+        when(repository.insertReport(any())).thenReturn(false);
+
+        ApiException failure = assertThrows(ApiException.class, () -> service.importResult(request("final", null)));
+        assertEquals(409, failure.status());
+        assertEquals("PAYLOAD_CONFLICT", failure.code());
+        audited("XCH04_RESULT_CONFLICT");
+        verify(repository, never()).insertReview(anyString());
+        verify(repository, never()).insertNotification(any());
+    }
+
+    @Test
+    void aCorrectionOfAMissingTipVersionIsQueuedForReconciliation() {
+        authorized("lab_verifier");
+        ResultReport tip = result(1, ResultKind.FINAL, null, null);
+        when(repository.findOrder(ORDER)).thenReturn(Optional.of(order()));
+        when(repository.lineage(ORDER, SOURCE, ACCESSION)).thenReturn(List.of(tip));
+        when(repository.findReport(ORDER, SOURCE, ACCESSION, 1)).thenReturn(Optional.empty());
+
+        ImportOutcome outcome = service.importResult(request("corrected", 1));
+
+        assertNull(outcome.report());
+        assertEquals(ReconciliationReason.CONFLICT, outcome.reconciliation().reason());
+        assertTrue(outcome.reconciliation().detail().contains("not found"));
+        verify(repository, never()).insertReport(any());
+    }
+
+    @Test
+    void aReplayWithDifferentPatientIsRejectedInsteadOfReturned() {
+        authorized("lab_verifier");
+        matched();
+        ResultIdentifiers otherPatient = new ResultIdentifiers(
+                "99999999-9999-9999-9999-999999999999", SOURCE, ACCESSION, DEST, ORDER);
+        ResultReport foreign = new ResultReport(REPORT_1, 1, ORDER, otherPatient, ResultKind.FINAL,
+                null, null, "owner-a", "queue-a", NOW, NOW, "checksum-1");
+        when(repository.findReport(ORDER, SOURCE, ACCESSION, 1)).thenReturn(Optional.of(foreign));
+
+        ApiException failure = assertThrows(ApiException.class, () -> service.importResult(request("final", null)));
+
+        assertEquals(409, failure.status());
+        assertEquals("PAYLOAD_CONFLICT", failure.code());
+        verify(repository, never()).insertReport(any());
+    }
+
+    @Test
+    void aCorrectionThatSkipsTheCurrentLineageTipIsQueuedForReconciliation() {
+        authorized("lab_verifier");
+        ResultReport first = result(1, ResultKind.FINAL, null, null);
+        ResultReport second = result(2, ResultKind.CORRECTED, 1, REPORT_1);
+        when(repository.findOrder(ORDER)).thenReturn(Optional.of(order()));
+        when(repository.lineage(ORDER, SOURCE, ACCESSION)).thenReturn(List.of(first, second));
+        when(repository.findReport(ORDER, SOURCE, ACCESSION, 1)).thenReturn(Optional.of(first));
+
+        ImportOutcome outcome = service.importResult(request("corrected", 1));
+
+        assertNull(outcome.report());
+        assertEquals(ReconciliationReason.CONFLICT, outcome.reconciliation().reason());
+        assertEquals(List.of("supersedesVersion"), outcome.reconciliation().mismatches());
+        verify(repository, never()).insertReport(any());
     }
 
     @Test

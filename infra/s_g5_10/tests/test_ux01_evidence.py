@@ -95,6 +95,40 @@ class ConformingArtifactTest(unittest.TestCase):
         self.assertFalse(report["final_evidence"])
 
 
+class EnvelopeSourceTest(unittest.TestCase):
+    """Every artifact must carry an attributable source label.
+
+    A measured artifact without a source cannot be traced to an authorized
+    reviewer, so it must never be promoted to final evidence. This is a
+    provenance guard, not a clinical gate: it proves the declaration is
+    attributable, not that the review really happened.
+    """
+
+    def test_source_must_be_a_non_blank_string(self):
+        for source in (None, "", "   ", 7, [], {}):
+            with self.subTest(source=source):
+                report = ux.evaluate(synthetic_artifact(source=source))
+                self.assertIn("source", failures(report))
+                self.assertEqual(report["verdict"], "fail")
+
+    def test_missing_source_is_reported_without_raising(self):
+        artifact = synthetic_artifact()
+        artifact.pop("source")
+        report = ux.evaluate(artifact)
+        self.assertIn("source", failures(report))
+        self.assertFalse(report["final_evidence"])
+
+    def test_measured_acceptance_without_source_is_not_final_evidence(self):
+        for source in (None, "", "   ", 7):
+            with self.subTest(source=source):
+                artifact = synthetic_artifact(
+                    kind="measured_acceptance", source=source)
+                report = ux.evaluate(artifact)
+                self.assertIn("source", failures(report))
+                self.assertEqual(report["classification"], "measured-pilot")
+                self.assertFalse(report["final_evidence"])
+
+
 class StructureTest(unittest.TestCase):
     def test_artifact_must_be_an_object(self):
         report = ux.evaluate([])
