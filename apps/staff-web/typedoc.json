@@ -1,0 +1,13 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["src"],
+  "entryPointStrategy": "expand",
+  "tsconfig": "tsconfig.json",
+  "treatWarningsAsErrors": true,
+  "exclude": ["**/*.test.ts", "**/*.test.tsx", "src/api/generated/**", "**/*.d.ts"],
+  "excludePrivate": true,
+  "validation": {
+    "notExported": false
+  },
+  "sort": ["source-order"]
+}
