@@ -248,6 +248,65 @@ class InstructionServiceTest {
     }
 
     @Test
+    void replaceRequiresClinicianForNewFreeTextEvenWhenWithdrawIsAllowed() {
+        fixture();
+        bind(ORG_A, "clinician-a");
+        var sent = service.send(sendRequest());
+
+        // A clinical assistant may withdraw (staffSender) but must not replace
+        // content with arbitrary free text — MSG-04 clinical authorization.
+        bind(ORG_A, "assistant-a");
+        assertEquals(403, assertThrows(ApiException.class, () -> service.replace(sent.threadId(),
+                new InstructionContract.ReplaceRequest("New", "Clinical free text", "en", null,
+                        List.of(), "reason"), 1)).status());
+        // Withdrawal itself remains available to the same non-clinical role.
+        assertEquals(State.WITHDRAWN, service.withdraw(sent.threadId(),
+                new InstructionContract.WithdrawRequest("cancelled"), 1).state());
+    }
+
+    @Test
+    void existingThreadMutationRequiresUnitAssignmentAndActiveConnection() {
+        fixture();
+        bind(ORG_A, "clinician-a");
+        var sent = service.send(sendRequest());
+
+        // Withdraw permission without unit assignment cannot touch the thread.
+        store.seedMember("roaming", List.of("clinical_assistant"));
+        bind(ORG_A, "roaming");
+        assertEquals(403, assertThrows(ApiException.class, () -> service.withdraw(sent.threadId(),
+                new InstructionContract.WithdrawRequest("reason"), 1)).status());
+
+        // A deactivated connection blocks both rewrite and withdrawal (MSG-07).
+        bind(ORG_A, "clinician-a");
+        store.deactivateConnection(CONNECTION);
+        assertEquals(403, assertThrows(ApiException.class, () -> service.replace(sent.threadId(),
+                new InstructionContract.ReplaceRequest("t", "b", "en", null, List.of(), "reason"), 1)).status());
+        assertEquals(403, assertThrows(ApiException.class, () -> service.withdraw(sent.threadId(),
+                new InstructionContract.WithdrawRequest("reason"), 1)).status());
+    }
+
+    @Test
+    void clinicalGateUsesAnyActiveRoleAndRecordsAMatchingAuthorRole() {
+        fixture();
+        // The clinician subtag is not the first role in the membership fold.
+        store.seedMember("multi-role", List.of("clinical_assistant", "clinician"));
+        store.seedUnitStaff("multi-role", UNIT);
+        bind(ORG_A, "multi-role");
+        var sent = service.send(sendRequest());
+        assertEquals("clinician", sent.authorRole());
+        assertEquals(State.SENT, sent.state());
+
+        // A non-clinician can still send an approved non-clinical template.
+        bind(ORG_A, "admin-a");
+        service.defineTemplate(new InstructionContract.DefineTemplateRequest(UNIT, "nonclinical-v1",
+                Kind.COLLECTION, "Collection", "Body.", "en", false, ContextType.ORDER));
+        bind(ORG_A, "assistant-a");
+        var templated = service.send(new SendRequest(PATIENT, CONNECTION, UNIT, "nonclinical-v1", null,
+                null, null, null, null, ContextType.ORDER, "order-1", List.of()));
+        assertEquals("clinical_assistant", templated.authorRole());
+    }
+
+    @Test
     void missingContextAndCrossTenantLocalIdentifiersAreIsolated() {
         fixture();
         TenantContext.clear();

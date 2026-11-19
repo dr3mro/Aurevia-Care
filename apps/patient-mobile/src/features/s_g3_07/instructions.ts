@@ -59,16 +59,32 @@ export function isWithdrawn(instruction: PatientInstruction): boolean {
 }
 
 /**
+ * Resolve text direction from a BCP-47 language tag.
+ *
+ * Only the Arabic primary subtag maps to RTL; an explicit Latin script
+ * override (for example {@code ar-Latn}) and unrelated tags that merely begin
+ * with the letters "ar" (for example {@code arn}) stay LTR.
+ *
+ * @param language BCP-47 language tag
+ * @return the resolved direction
+ */
+function directionFor(language: string): TextDirection {
+  const subtags = language.toLowerCase().split('-');
+  return subtags[0] === 'ar' && !subtags.includes('latn') ? 'rtl' : 'ltr';
+}
+
+/**
  * Project an instruction for display with its language direction.
  *
  * @param instruction instruction to display
  * @return localized title, body and direction
  */
 export function displayInstruction(instruction: PatientInstruction): DisplayInstruction {
-  const direction: TextDirection = instruction.language.toLowerCase().startsWith('ar')
-    ? 'rtl'
-    : 'ltr';
-  return { title: instruction.title, text: instruction.text, direction };
+  return {
+    title: instruction.title,
+    text: instruction.text,
+    direction: directionFor(instruction.language),
+  };
 }
 
 /**
@@ -121,15 +137,24 @@ export function historyForThread(
 /**
  * Decide whether a secure attachment may be opened.
  *
+ * A superseded revision no longer grants access even if its state is still
+ * reported as sent by a stale projection: its attachment belongs to the linked
+ * replacement. Connection revocation is enforced server-side (this is a pure
+ * projection with no connection state).
+ *
  * @param instruction owning instruction
  * @param attachmentId attachment identifier selected by the patient
- * @return true only for a sent revision that binds the attachment
+ * @return true only for a current sent revision that binds the attachment
  */
 export function canOpenAttachment(
   instruction: PatientInstruction,
   attachmentId: string,
 ): boolean {
-  return instruction.state === 'sent' && instruction.attachmentIds.includes(attachmentId);
+  return (
+    instruction.state === 'sent' &&
+    instruction.supersededBy === null &&
+    instruction.attachmentIds.includes(attachmentId)
+  );
 }
 
 /**
