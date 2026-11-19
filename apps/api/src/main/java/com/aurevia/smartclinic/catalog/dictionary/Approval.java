@@ -6,9 +6,7 @@ package com.aurevia.smartclinic.catalog.dictionary;
  * <p>The approver is data here, not an authorization decision: real tenant and
  * governance enforcement belongs to the controller, policy and audit layers.</p>
  *
- * @param approver   identifier of the approving reviewer
- * @param approvedAt UTC instant of approval
- * @param note       optional approval note
+ * @return this record
  */
 public record Approval(String approver, String approvedAt, String note) {
 

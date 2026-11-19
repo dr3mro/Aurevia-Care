@@ -23,6 +23,7 @@ package com.aurevia.smartclinic.lab.accession;
  * @param rejectionReason       retained reason, once rejected
  * @param rejectionNotification retained notification, once rejected
  * @param replacesAccessionId   prior specimen identifier for a recollection
+ * @return this record
  */
 public record LabAccession(String id, int version, String accessionNo, String accessionIssuer,
                            String patientId, String sourceOrderRef, AccessionState state,

@@ -14,14 +14,7 @@ import java.util.regex.Pattern;
  * and {@code payload} carry the observation evidence used for XCH-07
  * comparability.</p>
  *
- * @param eventId      immutable partner event identifier
- * @param sender       partner namespace that issued the event
- * @param kind         semantic kind of the event
- * @param aggregateKey local aggregate the event belongs to
- * @param revision     per-aggregate version
- * @param identifier   issuer-scoped identifier used for matching
- * @param unit         measurement unit for observations, may be {@code null}
- * @param payload      synthetic clinical content or evidence
+ * @return this record
  */
 public record PartnerEvent(String eventId, String sender, EventKind kind, String aggregateKey,
                            long revision, String identifier, String unit, String payload) {

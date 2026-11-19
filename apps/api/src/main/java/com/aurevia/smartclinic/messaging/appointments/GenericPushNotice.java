@@ -11,6 +11,7 @@ package com.aurevia.smartclinic.messaging.appointments;
  * @param title    fixed generic title
  * @param body     fixed generic body without numbers or identifiers
  * @param deepLink fixed in-app route containing no resource identifier
+ * @return this record
  */
 public record GenericPushNotice(String title, String body, String deepLink) {
 

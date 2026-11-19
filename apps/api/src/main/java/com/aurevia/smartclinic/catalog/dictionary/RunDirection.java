@@ -16,6 +16,9 @@ public enum RunDirection {
 
     private final String attribute;
 
+    /**
+     * @param attribute
+     */
     RunDirection(String attribute) {
         this.attribute = attribute;
     }

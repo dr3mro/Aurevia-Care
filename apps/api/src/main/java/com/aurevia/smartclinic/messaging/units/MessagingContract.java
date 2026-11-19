@@ -43,7 +43,6 @@ public final class MessagingContract {
         /**
          * Create a context with its stable wire key.
          *
-         * @param wire lowercase context key
          */
         ConnectionContext(String wire) {
             this.wire = wire;
@@ -62,7 +61,6 @@ public final class MessagingContract {
         /**
          * Parse a stored or supplied context key.
          *
-         * @param value stored key
          * @return the matching context
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -91,7 +89,6 @@ public final class MessagingContract {
         /**
          * Create a state with its stable wire key.
          *
-         * @param wire lowercase state key
          */
         ConnectionState(String wire) {
             this.wire = wire;
@@ -110,7 +107,6 @@ public final class MessagingContract {
         /**
          * Parse a stored state key.
          *
-         * @param value stored key
          * @return the matching state
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -127,12 +123,6 @@ public final class MessagingContract {
     /**
      * One staffed inbox a verified patient may connect to (MSG-01, MSG-06).
      *
-     * @param id             opaque unit identifier in this tenant
-     * @param organizationId owning organization
-     * @param facilityId     facility the unit belongs to
-     * @param name           display name for the patient app
-     * @param topics         supported topic keys shown before sending
-     * @param active         whether the unit currently accepts connections
      * @return the immutable value
      */
     public record CareUnit(String id, String organizationId, String facilityId, String name,
@@ -140,12 +130,6 @@ public final class MessagingContract {
         /**
          * Defensively copy the topic list.
          *
-         * @param id             opaque unit identifier
-         * @param organizationId owning organization
-         * @param facilityId     owning facility
-         * @param name           display name
-         * @param topics         supported topics
-         * @param active         availability flag
          */
         public CareUnit {
             topics = List.copyOf(topics);
@@ -155,15 +139,6 @@ public final class MessagingContract {
     /**
      * An independently verified relationship that can authorize one connection.
      *
-     * @param id             opaque relationship identifier
-     * @param organizationId organization that verified the relationship
-     * @param patientId patient the relationship was verified for
-     * @param unitId    recipient unit the relationship was issued with
-     * @param context   verified relationship kind
-     * @param reference stable source reference (order, referral, prescription or invitation)
-     * @param active    whether the relationship is still in force
-     * @param expiresAt invitation expiry instant, or {@code null} for a standing relationship
-     * @param consumed  whether a single-use invitation was already consumed
      * @return the immutable value
      */
     public record EligibleRelationship(String id, String organizationId, String patientId, String unitId,
@@ -174,18 +149,6 @@ public final class MessagingContract {
     /**
      * A verified, connection-scoped patient-unit relationship (ARC-07).
      *
-     * @param id               opaque connection identifier
-     * @param organizationId   owning organization
-     * @param patientId        verified linked chart
-     * @param unitId           single recipient unit
-     * @param context          verified relationship kind used to connect
-     * @param contextReference source reference that was checked
-     * @param relationshipId   eligible relationship this connection was granted from
-     * @param state            current lifecycle state
-     * @param verifiedBy       authenticated subject that verified the link
-     * @param verifiedAt       server verification instant
-     * @param createdAt        server creation instant
-     * @param revokedAt        revocation instant, or {@code null} while active
      * @return the immutable value
      */
     public record PatientUnitConnection(String id, String organizationId, String patientId,
@@ -197,14 +160,12 @@ public final class MessagingContract {
     /**
      * The active care units a verified patient may see in the app.
      *
-     * @param units visible units
      * @return the immutable value
      */
     public record UnitDirectory(List<CareUnit> units) {
         /**
          * Defensively copy the unit list.
          *
-         * @param units visible units
          */
         public UnitDirectory {
             units = List.copyOf(units);
@@ -214,14 +175,12 @@ public final class MessagingContract {
     /**
      * The connections visible for one verified patient chart.
      *
-     * @param connections visible connections
      * @return the immutable value
      */
     public record ConnectionList(List<PatientUnitConnection> connections) {
         /**
          * Defensively copy the connection list.
          *
-         * @param connections visible connections
          */
         public ConnectionList {
             connections = List.copyOf(connections);

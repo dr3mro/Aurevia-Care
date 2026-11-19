@@ -23,8 +23,9 @@ public final class AccessContracts {
      * @param facilityCode   tenant-local facility code the grant is scoped to
      * @param reason         human justification for the break-glass access
      * @param durationMinutes requested lifetime in minutes, 1 to 60
-     */
-    public record EmergencyGrantRequest(String facilityCode, String reason, int durationMinutes) {
+ * @return this record
+ */
+public record EmergencyGrantRequest(String facilityCode, String reason, int durationMinutes) {
     }
 
     /**
@@ -38,8 +39,9 @@ public final class AccessContracts {
      * @param grantedAt    ISO-8601 instant the grant started
      * @param expiresAt    ISO-8601 instant the grant stops being effective
      * @param status       {@code active}, {@code revoked} or {@code reviewed}
-     */
-    public record EmergencyGrantView(String id, String subject, String facilityCode, String roleKey,
+ * @return this record
+ */
+public record EmergencyGrantView(String id, String subject, String facilityCode, String roleKey,
                                      String reason, String grantedAt, String expiresAt, String status) {
     }
 
@@ -47,16 +49,18 @@ public final class AccessContracts {
      * Command to end an emergency grant early.
      *
      * @param reason recorded reason for the early revocation
-     */
-    public record RevokeRequest(String reason) {
+ * @return this record
+ */
+public record RevokeRequest(String reason) {
     }
 
     /**
      * Command to record an independent review of an emergency grant.
      *
      * @param note reviewer's finding; the grantee cannot review their own grant
-     */
-    public record ReviewRequest(String note) {
+ * @return this record
+ */
+public record ReviewRequest(String note) {
     }
 
     /**
@@ -65,8 +69,9 @@ public final class AccessContracts {
      * @param reference       tenant-local incident reference
      * @param reason          why support access is needed
      * @param windowMinutes   lifetime of the approval window in minutes, 1 to 240
-     */
-    public record SupportIncidentRequest(String reference, String reason, int windowMinutes) {
+ * @return this record
+ */
+public record SupportIncidentRequest(String reference, String reason, int windowMinutes) {
     }
 
     /**
@@ -80,8 +85,9 @@ public final class AccessContracts {
      * @param approvedBy approver subject, or {@code null}
      * @param approvedAt ISO-8601 instant of approval, or {@code null}
      * @param expiresAt  ISO-8601 instant the approval window closes
-     */
-    public record SupportIncidentView(String reference, String subject, String reason, String status,
+ * @return this record
+ */
+public record SupportIncidentView(String reference, String subject, String reason, String status,
                                       String createdAt, String approvedBy, String approvedAt,
                                       String expiresAt) {
     }
@@ -90,8 +96,9 @@ public final class AccessContracts {
      * Command to test whether support access is currently authorized.
      *
      * @param reference tenant-local incident reference to check
-     */
-    public record SupportCheckRequest(String reference) {
+ * @return this record
+ */
+public record SupportCheckRequest(String reference) {
     }
 
     /**
@@ -99,8 +106,9 @@ public final class AccessContracts {
      *
      * @param allowed {@code true} only when every IAM-06 condition currently holds
      * @param reason  stable machine-readable reason such as {@code APPROVED_INCIDENT}
-     */
-    public record AccessDecision(boolean allowed, String reason) {
+ * @return this record
+ */
+public record AccessDecision(boolean allowed, String reason) {
     }
 
     /**
@@ -118,8 +126,9 @@ public final class AccessContracts {
      * @param reviewedBy   reviewer subject, or {@code null}
      * @param reviewedAt   review instant, or {@code null}
      * @param reviewNote   reviewer finding, or {@code null}
-     */
-    public record GrantRow(String id, String subject, String facilityCode, String purpose, String reason,
+ * @return this record
+ */
+public record GrantRow(String id, String subject, String facilityCode, String purpose, String reason,
                            String roleKey, Instant grantedAt, Instant expiresAt, Instant revokedAt,
                            String reviewedBy, Instant reviewedAt, String reviewNote) {
     }
@@ -136,8 +145,9 @@ public final class AccessContracts {
      * @param approvedAt approval instant, or {@code null}
      * @param createdAt  creation instant
      * @param expiresAt  approval-window expiry instant
-     */
-    public record IncidentRow(String id, String reference, String subject, String reason, String status,
+ * @return this record
+ */
+public record IncidentRow(String id, String reference, String subject, String reason, String status,
                               String approvedBy, Instant approvedAt, Instant createdAt, Instant expiresAt) {
     }
 }

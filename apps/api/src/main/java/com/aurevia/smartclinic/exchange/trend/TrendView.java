@@ -9,11 +9,7 @@ import java.util.List;
  * that nothing disappeared: {@code points.size() + excluded.size()} equals the
  * number of observations considered.</p>
  *
- * @param testCode    requested test identity
- * @param unit        canonical unit, or {@code null} when no rule is established
- * @param ruleVersion effective comparability rule version, or {@code 0}
- * @param points      comparable points ordered by effective time
- * @param excluded    excluded observations ordered by effective time
+ * @return this record
  */
 public record TrendView(String testCode, String unit, int ruleVersion, List<TrendPoint> points,
                         List<ExcludedObservation> excluded) {

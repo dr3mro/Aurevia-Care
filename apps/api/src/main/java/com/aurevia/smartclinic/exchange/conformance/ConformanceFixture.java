@@ -11,12 +11,7 @@ import java.util.function.Supplier;
  * a factory for a fresh receiver. It carries no patient data and no credentials;
  * all identifiers and payloads are invented for conformance rehearsal.</p>
  *
- * @param id                  stable scenario identifier
- * @param requirements        requirement IDs exercised by the scenario
- * @param description         short description of the conformance property
- * @param events              ordered synthetic partner events to replay
- * @param expectedDispositions expected outcome of each replayed event
- * @param ledger              factory for the scenario's configured receiver
+ * @return this record
  */
 public record ConformanceFixture(String id, String requirements, String description,
                                  List<PartnerEvent> events, List<Disposition> expectedDispositions,

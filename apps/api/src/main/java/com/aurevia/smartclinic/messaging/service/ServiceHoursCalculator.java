@@ -14,7 +14,7 @@ import com.aurevia.smartclinic.messaging.service.ServiceProfileContract.ServiceW
  *
  * <p>The unit's IANA zone is the only authority for wall-clock service hours.
  * Candidate starts are converted to absolute instants with
- * {@link java.time.LocalDateTime#atZone(java.time.ZoneId)}, which shifts a nonexistent spring-forward
+ * {@code LocalDateTime#atZone(ZoneId)}, which shifts a nonexistent spring-forward
  * time forward and selects the earlier offset at a fall-back overlap. These rules
  * are deterministic and documented for reviewers; the server, never the device,
  * computes the value shown to patients.</p>

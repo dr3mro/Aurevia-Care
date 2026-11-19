@@ -17,6 +17,7 @@ package com.aurevia.smartclinic.patient.consolidation;
  * @param openedBySubject  original reviewer, retained as provenance
  * @param reason           reason for the consolidation
  * @param correctionReason reason for a correction, or {@code null}
+ * @return this record
  */
 public record Consolidation(String id, String reviewId, String survivorId, String duplicateId,
                             int version, String status, String approverSubject, String openedBySubject,

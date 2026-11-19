@@ -24,6 +24,7 @@ import java.time.Instant;
  * @param interpretation     source interpretation, shown verbatim
  * @param sourceSystem       originating system
  * @param sourceVersion      originating revision/version
+ * @return this record
  */
 public record TrendPoint(String observationId, String testCode, String comparabilityGroup,
                          BigDecimal value, String unit, BigDecimal referenceLow,

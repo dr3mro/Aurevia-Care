@@ -10,11 +10,7 @@ import com.aurevia.smartclinic.api.ApiException;
  * medical director; this slice stores the mechanism and its audit trail. It
  * never invents a clinical rule.</p>
  *
- * @param testCode           test identity the rule governs
- * @param canonicalUnit      the only unit eligible for a numeric trend
- * @param comparabilityGroup assay/method group the rule governs
- * @param trendable          whether a trend is clinically permitted for this group
- * @param version            immutable, increasing policy version
+ * @return this record
  */
 public record ComparabilityRule(String testCode, String canonicalUnit, String comparabilityGroup,
                                 boolean trendable, int version) {

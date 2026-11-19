@@ -5,6 +5,7 @@ package com.aurevia.smartclinic.exchange.conformance;
  *
  * @param disposition the recorded conformance outcome
  * @param detail      short reason code such as {@code duplicate} or {@code outage}
+ * @return this record
  */
 public record ProcessingResult(Disposition disposition, String detail) {
 }

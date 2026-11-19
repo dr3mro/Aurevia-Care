@@ -42,9 +42,6 @@ public final class AttachmentContract {
         /**
          * Create a supported media type.
          *
-         * @param contentType  canonical MIME type
-         * @param extension    required file extension
-         * @param magicPrefix  lowercase hexadecimal leading-byte signature
          */
         FileType(String contentType, String extension, String magicPrefix) {
             this.contentType = contentType;
@@ -74,7 +71,6 @@ public final class AttachmentContract {
         /**
          * Check a declared content type, case-insensitively.
          *
-         * @param value declared MIME type
          * @return {@code true} when it matches this type
          */
         public boolean accepts(String value) {
@@ -84,7 +80,6 @@ public final class AttachmentContract {
         /**
          * Check that a file name carries this type's extension.
          *
-         * @param fileName normalized lowercased file name
          * @return {@code true} when the extension matches
          */
         public boolean matchesExtension(String fileName) {
@@ -94,7 +89,6 @@ public final class AttachmentContract {
         /**
          * Check that actual leading bytes match this type's signature.
          *
-         * @param magicHex lowercase hexadecimal leading bytes
          * @return {@code true} when the signature matches
          */
         public boolean matchesMagic(String magicHex) {
@@ -104,7 +98,6 @@ public final class AttachmentContract {
         /**
          * Resolve a declared content type to a supported type.
          *
-         * @param value declared MIME type
          * @return the matching type, or {@code null} when unsupported
          */
         public static FileType fromContentType(String value) {
@@ -136,7 +129,6 @@ public final class AttachmentContract {
         /**
          * Create a verdict with its stable wire key.
          *
-         * @param wire lowercase key
          */
         ScanVerdict(String wire) {
             this.wire = wire;
@@ -155,7 +147,6 @@ public final class AttachmentContract {
         /**
          * Parse a stored verdict key.
          *
-         * @param value stored key
          * @return the matching verdict
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -190,7 +181,6 @@ public final class AttachmentContract {
         /**
          * Create a state with its stable wire key.
          *
-         * @param wire lowercase key
          */
         AttachmentState(String wire) {
             this.wire = wire;
@@ -209,7 +199,6 @@ public final class AttachmentContract {
         /**
          * Decide whether a transition is permitted.
          *
-         * @param next requested target state
          * @return {@code true} for an allowed transition or an explicit no-op
          */
         public boolean canTransitionTo(AttachmentState next) {
@@ -258,7 +247,6 @@ public final class AttachmentContract {
         /**
          * Create a fact type with its stable wire key.
          *
-         * @param wire lowercase key
          */
         EventType(String wire) {
             this.wire = wire;
@@ -277,7 +265,6 @@ public final class AttachmentContract {
         /**
          * Parse a stored fact key.
          *
-         * @param value stored key
          * @return the matching fact type
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -299,11 +286,6 @@ public final class AttachmentContract {
      * A patient actor carries a linked patient identifier; a staff actor
      * carries an assigned unit identifier; exactly one of the two is present.</p>
      *
-     * @param organizationId active organization identifier
-     * @param subject        authenticated synthetic subject
-     * @param roles          currently active role keys
-     * @param patientId      linked patient identifier for a patient actor, otherwise {@code null}
-     * @param unitId         assigned care-unit identifier for a staff actor, otherwise {@code null}
      * @return the immutable identity snapshot
      */
     public record Actor(String organizationId, String subject, Set<String> roles,
@@ -341,11 +323,6 @@ public final class AttachmentContract {
     /**
      * Verified patient-unit connection that authorizes an upload (MSG-01, MSG-03).
      *
-     * @param organizationId owning organization
-     * @param connectionId   tenant-local connection identifier
-     * @param unitId         care unit that owns the conversation
-     * @param patientId      verified patient chart linked by the connection
-     * @param active         whether new messaging is currently permitted
      * @return the immutable grant
      */
     public record ConnectionGrant(String organizationId, String connectionId, String unitId,
@@ -355,24 +332,6 @@ public final class AttachmentContract {
     /**
      * Current projection of one attachment.
      *
-     * @param organizationId owning organization
-     * @param id             tenant-local attachment identifier
-     * @param version        optimistic version, advanced by every state change
-     * @param uploaderSubject authenticated subject that bound the upload
-     * @param connectionId   connection the upload is bound to
-     * @param unitId         care unit the upload is bound to
-     * @param patientId      patient chart the upload is bound to
-     * @param fileName       validated original file name
-     * @param fileType       validated media type
-     * @param sizeBytes      validated payload size
-     * @param checksum       SHA-256 checksum of the original payload
-     * @param objectKey      unique private object key
-     * @param objectVersion  immutable object-store version
-     * @param verdict        independent scanner verdict
-     * @param state          current lifecycle state
-     * @param messageId      published message identifier, once published
-     * @param recipientUnitId unit that received the published material
-     * @param createdAt      server upload instant
      * @return the immutable projection
      */
     public record Attachment(String organizationId, String id, int version, String uploaderSubject,
@@ -385,14 +344,6 @@ public final class AttachmentContract {
     /**
      * One immutable append-only fact in an attachment's trail.
      *
-     * @param id             fact identifier
-     * @param organizationId owning organization
-     * @param attachmentId   owning attachment
-     * @param eventType      fact type
-     * @param actorSubject   authenticated actor, {@code null} for system facts
-     * @param outcome        {@code success}, {@code denied}, {@code conflict} or {@code not_found}
-     * @param detail         non-sensitive detail; never payload bytes or a URL
-     * @param occurredAt     server instant
      * @return the immutable fact
      */
     public record AttachmentEvent(String id, String organizationId, String attachmentId,
@@ -403,8 +354,6 @@ public final class AttachmentContract {
     /**
      * One attachment together with its complete fact trail.
      *
-     * @param attachment current projection
-     * @param events     immutable facts in recorded order
      * @return the immutable view
      */
     public record View(Attachment attachment, List<AttachmentEvent> events) {
@@ -421,11 +370,6 @@ public final class AttachmentContract {
      * A mediated download handle. It never carries payload bytes or a public
      * URL; the caller must present it to the private object boundary (ARC-06).
      *
-     * @param objectKey     unique private object key
-     * @param objectVersion verified immutable object version
-     * @param checksum      expected checksum of the original payload
-     * @param contentType   validated media type
-     * @param sizeBytes     validated payload size
      * @return the immutable handle
      */
     public record MediatedDownload(String objectKey, int objectVersion, String checksum,
@@ -440,12 +384,6 @@ public final class AttachmentContract {
      * verified connection grant so a caller cannot rebind a draft to another
      * unit (MSG-03).</p>
      *
-     * @param connectionId verified connection identifier
-     * @param fileName     original file name
-     * @param contentType  declared MIME type
-     * @param magicHex     leading bytes as hexadecimal
-     * @param sizeBytes    payload size
-     * @param checksum     SHA-256 checksum as lowercase hexadecimal
      * @return the upload command
      */
     public record UploadRequest(String connectionId, String fileName, String contentType,
@@ -455,8 +393,6 @@ public final class AttachmentContract {
     /**
      * Scanner verdict command from the authorized quarantine scanner.
      *
-     * @param verdict {@code clean} or {@code failed}
-     * @param detail  non-sensitive scanner detail
      * @return the scan command
      */
     public record ScanRequest(String verdict, String detail) {
@@ -465,9 +401,6 @@ public final class AttachmentContract {
     /**
      * Explicit send command naming every pending file and its recipient unit.
      *
-     * @param attachmentIds   pending attachment identifiers, non-empty and distinct
-     * @param messageId       durable client message identifier
-     * @param recipientUnitId unit that must match every attachment's bound unit
      * @return the publish command
      */
     public record PublishRequest(List<String> attachmentIds, String messageId, String recipientUnitId) {

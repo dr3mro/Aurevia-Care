@@ -36,7 +36,6 @@ public final class PatientFlowContract {
         /**
          * Create a locale with its stable wire key.
          *
-         * @param wire lowercase locale key
          */
         AppLocale(String wire) {
             this.wire = wire;
@@ -73,7 +72,6 @@ public final class PatientFlowContract {
         /**
          * Parse a stored or supplied locale key.
          *
-         * @param value stored key
          * @return the matching locale
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -102,7 +100,6 @@ public final class PatientFlowContract {
         /**
          * Create a platform with its stable wire key.
          *
-         * @param wire lowercase platform key
          */
         AppPlatform(String wire) {
             this.wire = wire;
@@ -124,7 +121,6 @@ public final class PatientFlowContract {
          * <p>The iOS wording matches the OS-backed Keychain store used by the
          * patient app rather than claiming a specific hardware enclave.</p>
          *
-         * @param locale resolved application locale
          * @return localized secure-storage wording for this platform
          */
         public String secureStorageLabel(AppLocale locale) {
@@ -137,7 +133,6 @@ public final class PatientFlowContract {
         /**
          * Locale-aware, platform-correct label for the OS settings entry point.
          *
-         * @param locale resolved application locale
          * @return localized settings wording for this platform
          */
         public String settingsLabel(AppLocale locale) {
@@ -150,7 +145,6 @@ public final class PatientFlowContract {
         /**
          * Parse a stored or supplied platform key.
          *
-         * @param value stored key
          * @return the matching platform
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -190,7 +184,6 @@ public final class PatientFlowContract {
         /**
          * Create a notice kind with its stable wire key.
          *
-         * @param wire lowercase notice key
          */
         NoticeKind(String wire) {
             this.wire = wire;
@@ -209,7 +202,6 @@ public final class PatientFlowContract {
         /**
          * Approved generic text for this notice in the given locale.
          *
-         * @param locale resolved application locale
          * @return clinical-detail-free notification text
          */
         public String text(AppLocale locale) {
@@ -232,7 +224,6 @@ public final class PatientFlowContract {
         /**
          * Parse a stored or supplied notice key.
          *
-         * @param value stored key
          * @return the matching notice kind
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -249,9 +240,6 @@ public final class PatientFlowContract {
     /**
      * A client request for the server-authored presentation policy.
      *
-     * @param locale   client-supplied locale key, validated on the server
-     * @param platform client-supplied platform key, validated on the server
-     * @param timeZone IANA time-zone context retained by the server
      * @return the immutable query
      */
     public record PresentationQuery(String locale, String platform, String timeZone) {
@@ -260,18 +248,6 @@ public final class PatientFlowContract {
     /**
      * The server-authoritative presentation policy applied by the app.
      *
-     * @param organizationId       owning organization
-     * @param locale               resolved application locale
-     * @param platform             resolved patient platform
-     * @param rtl                  whether the layout is right-to-left
-     * @param direction            layout direction key
-     * @param settingsLabel        platform-correct settings wording
-     * @param secureStorageLabel   platform-correct secure-storage wording
-     * @param policyVersion        approved policy version for this locale and platform
-     * @param issuedAt             server UTC instant this policy was issued
-     * @param timeZoneContext      IANA time zone retained from the request
-     * @param accessibilityProfile accessibility conformance target
-     * @param noticeKinds          generic notice kinds approved for this tenant
      * @return the immutable value
      */
     public record FlowPresentation(String organizationId, AppLocale locale, AppPlatform platform,
@@ -282,18 +258,6 @@ public final class PatientFlowContract {
         /**
          * Defensively copy the approved-notice list.
          *
-         * @param organizationId       owning organization
-         * @param locale               resolved application locale
-         * @param platform             resolved patient platform
-         * @param rtl                  whether the layout is right-to-left
-         * @param direction            layout direction key
-         * @param settingsLabel        platform-correct settings wording
-         * @param secureStorageLabel   platform-correct secure-storage wording
-         * @param policyVersion        approved policy version
-         * @param issuedAt             server UTC instant
-         * @param timeZoneContext      IANA time zone
-         * @param accessibilityProfile accessibility conformance target
-         * @param noticeKinds          generic notice kinds approved for this tenant
          */
         public FlowPresentation {
             noticeKinds = List.copyOf(noticeKinds);

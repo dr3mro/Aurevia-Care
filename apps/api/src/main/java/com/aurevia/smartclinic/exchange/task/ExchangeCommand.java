@@ -42,6 +42,12 @@ public enum ExchangeCommand {
     private final String targetState;
     private final boolean requiresReason;
 
+    /**
+     * @param wire
+     * @param dimension
+     * @param targetState
+     * @param requiresReason
+     */
     ExchangeCommand(String wire, ExchangeDimension dimension, String targetState, boolean requiresReason) {
         this.wire = wire;
         this.dimension = dimension;

@@ -5,8 +5,7 @@ import java.util.List;
 /**
  * Outcome of validating a note against its exact template version.
  *
- * @param valid      {@code true} when no violations were found
- * @param violations machine-readable violation keys, empty when valid
+ * @return this record
  */
 public record ValidationReport(boolean valid, List<String> violations) {
 

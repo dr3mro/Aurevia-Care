@@ -5,8 +5,7 @@ import java.util.List;
 /**
  * Current XCH-02 state together with its immutable transition history.
  *
- * @param task    current state snapshot
- * @param history append-only transitions, oldest first
+ * @return this record
  */
 public record ExchangeTaskView(ExchangeTask task, List<ExchangeTaskEvent> history) {
 

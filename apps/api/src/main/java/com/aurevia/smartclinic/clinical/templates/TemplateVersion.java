@@ -5,11 +5,7 @@ import java.util.List;
 /**
  * One immutable version of a template family in a tenant (CLN-04).
  *
- * @param kind       template family
- * @param version    monotonically increasing tenant-local version number
- * @param approved   whether clinical governance has approved this version
- * @param fields     complete field definition set, preserved with this version
- * @param approvedBy governance approver subject, or {@code null} for a draft
+ * @return this record
  */
 public record TemplateVersion(TemplateKind kind, int version, boolean approved,
                               List<FieldDefinition> fields, String approvedBy) {

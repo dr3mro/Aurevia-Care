@@ -19,8 +19,9 @@ public final class AccessionCommands {
      * @param accessionIssuer organization that issued the accession number
      * @param patientId       locally verified patient record
      * @param sourceOrderRef  bounded reference to the source order or requisition
-     */
-    public record AccessionRequest(String accessionNo, String accessionIssuer,
+ * @return this record
+ */
+public record AccessionRequest(String accessionNo, String accessionIssuer,
                                    String patientId, String sourceOrderRef) {
     }
 
@@ -35,8 +36,9 @@ public final class AccessionCommands {
      * @param collector       recorded collector
      * @param collectedAt     ISO-8601 collection instant
      * @param expectedVersion version read by the caller
-     */
-    public record CollectRequest(String patientId, String accessionNo, String accessionIssuer,
+ * @return this record
+ */
+public record CollectRequest(String patientId, String accessionNo, String accessionIssuer,
                                  String specimenType, String siteCode, String collector,
                                  String collectedAt, int expectedVersion) {
     }
@@ -50,8 +52,9 @@ public final class AccessionCommands {
      * @param quality         bounded receipt quality code
      * @param receivedAt      ISO-8601 receipt instant
      * @param expectedVersion version read by the caller
-     */
-    public record ReceiveRequest(String patientId, String accessionNo, String accessionIssuer,
+ * @return this record
+ */
+public record ReceiveRequest(String patientId, String accessionNo, String accessionIssuer,
                                  String quality, String receivedAt, int expectedVersion) {
     }
 
@@ -61,8 +64,9 @@ public final class AccessionCommands {
      * @param reason          bounded rejection reason
      * @param notification    bounded notification target or channel
      * @param expectedVersion version read by the caller
-     */
-    public record RejectRequest(String reason, String notification, int expectedVersion) {
+ * @return this record
+ */
+public record RejectRequest(String reason, String notification, int expectedVersion) {
     }
 
     /**
@@ -71,7 +75,8 @@ public final class AccessionCommands {
      * @param accessionNo     new issuer-scoped accession number for the recollection
      * @param accessionIssuer issuer of the new accession number
      * @param expectedVersion version of the rejected specimen read by the caller
-     */
-    public record RecollectRequest(String accessionNo, String accessionIssuer, int expectedVersion) {
+ * @return this record
+ */
+public record RecollectRequest(String accessionNo, String accessionIssuer, int expectedVersion) {
     }
 }
