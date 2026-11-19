@@ -64,9 +64,9 @@ public record ReviewDetail(DuplicateReview review, Patient survivor, Patient dup
      * @param reference source reference of the ambiguous order, link or grant
      * @param ambiguous whether the dependency cannot be attributed confidently
      * @param resolved  whether an authorized workflow has already resolved it
- * @return this record
- */
-public record Dependency(String id, String kind, String reference,
+     * @return this record
+     */
+    public record Dependency(String id, String kind, String reference,
                              boolean ambiguous, boolean resolved) {
     }
 }
