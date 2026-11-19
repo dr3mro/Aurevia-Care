@@ -5,10 +5,7 @@ import java.util.List;
 /**
  * Current effective projection of one staff member in the active organization.
  *
- * @param subject     stable authenticated subject of the staff member
- * @param displayName human-readable display name
- * @param status      {@code active} or {@code deactivated}, from the latest membership event
- * @param roles       role keys attached to the current membership, ordered by key
+ * @return this record
  */
 public record StaffMember(String subject, String displayName, String status, List<String> roles) {
 
