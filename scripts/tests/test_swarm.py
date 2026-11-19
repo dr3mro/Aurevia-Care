@@ -252,6 +252,21 @@ class PlanTests(unittest.TestCase):
         self.assertIn("fix-pr-watchdog.yml", swarm.BUDGET_WORKFLOWS)
         self.assertNotIn("main-watchdog.yml", swarm.BUDGET_WORKFLOWS)
 
+    def test_worker_has_three_hour_budget_with_restart_slack(self):
+        text = (ROOT / ".github/workflows/swarm.yml").read_text()
+        worker = text.split("  worker:\n", 1)[1].split("  publish:\n", 1)[0]
+        self.assertIn("timeout-minutes: 185", worker)
+        self.assertIn("AGENT_TIMEOUT: 175m", worker)
+
+    def test_task_prompt_states_the_deadline(self):
+        text = swarm.task_text({"task": "T", "scope": ["apps/api"],
+                                "details": "Do the work."})
+        self.assertIn("175 minutes", text)
+        self.assertIn("new worker", text)
+
+    def test_monthly_cap_allows_long_waves(self):
+        self.assertGreaterEqual(swarm.DEFAULT_MONTHLY_MINUTES, 10 * 185 * 5)
+
     def test_wave_defaults_to_ten_workers(self):
         text = (ROOT / ".github/workflows/swarm.yml").read_text()
         self.assertRegex(text, r"default: '10'")
