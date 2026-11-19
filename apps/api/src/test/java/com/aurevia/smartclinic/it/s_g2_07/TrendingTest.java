@@ -146,6 +146,31 @@ class TrendingTest {
         }
     }
 
+    private static String createPatient(String org, String mrn) throws Exception {
+        try (Connection connection = DriverManager.getConnection(URL, "smartclinic_migrate", "")) {
+            connection.setAutoCommit(false);
+            bind(connection, org, "bootstrap-" + org.substring(2, 6));
+            try (PreparedStatement statement = connection.prepareStatement(
+                    "INSERT INTO public.patient_record "
+                    + "(organization_id, version, mrn, mrn_issuer, display_name, normalized_name, dob) "
+                    + "VALUES (CAST(? AS uuid), 1, ?, 'CLINIC', 'Synthetic Isolated Patient', "
+                    + "'synthetic isolated patient', '1990-05-20') RETURNING id::text")) {
+                statement.setString(1, org);
+                statement.setString(2, mrn);
+                statement.execute();
+                try (ResultSet result = statement.getResultSet()) {
+                    assertTrue(result.next());
+                    String id = result.getString(1);
+                    connection.commit();
+                    return id;
+                }
+            } catch (Exception exception) {
+                connection.rollback();
+                throw exception;
+            }
+        }
+    }
+
     private static void bind(Connection connection, String org, String subject) throws Exception {
         try (PreparedStatement statement = connection.prepareStatement(
                 "SELECT set_config('app.current_org', CAST(? AS text), true), "
@@ -391,6 +416,40 @@ class TrendingTest {
                 null, "clinician-temp", ORG_A).getStatusCode().value(),
                 "revocation takes effect on the next protected request");
         assertTrue(countAudit("TREND_READ", "DENIED") >= 4);
+    }
+
+    @Test
+    void aBackdatedHigherVersionDoesNotOverrideTheLaterEffectiveRule() throws Exception {
+        String patient = createPatient(ORG_A, "MRN-SYN-BPD");
+        ResponseEntity<String> first = send(HttpMethod.POST, "/api/v1/trends/comparability",
+                comparability("BPD", "mmol/mol", "LAB-HPLC", true, "2026-01-01T00:00:00Z"),
+                "admin-a", ORG_A);
+        assertEquals(201, first.getStatusCode().value(), first.getBody());
+        int originalVersion = tree(first).get("version").asInt();
+
+        ResponseEntity<String> backdated = send(HttpMethod.POST, "/api/v1/trends/comparability",
+                comparability("BPD", "%", "LAB-HPLC", true, "2025-01-01T00:00:00Z"),
+                "admin-a", ORG_A);
+        assertEquals(201, backdated.getStatusCode().value(), backdated.getBody());
+        assertTrue(tree(backdated).get("version").asInt() > originalVersion);
+
+        postObservation(patient, "BPD", "LAB-HPLC", "final", 7.0, "mmol/mol", "none", null,
+                "2026-09-10T00:00:00Z", "canonical unit");
+        postObservation(patient, "BPD", "LAB-HPLC", "final", 8.0, "%", "none", null,
+                "2026-09-11T00:00:00Z", "backdated unit");
+
+        ResponseEntity<String> response = send(HttpMethod.GET,
+                "/api/v1/trends/" + patient + "?testCode=BPD", null, "clinician-a", ORG_A);
+        assertEquals(200, response.getStatusCode().value(), response.getBody());
+        JsonNode view = tree(response);
+        assertEquals(originalVersion, view.get("ruleVersion").asInt(),
+                "the later-effective rule is current, not the backdated higher version");
+        assertEquals(1, view.get("points").size(), "only the canonical unit trends");
+        assertEquals("mmol/mol", view.get("points").get(0).get("unit").asString());
+        assertTrue(java.util.stream.StreamSupport.stream(view.get("excluded").spliterator(), false)
+                        .anyMatch(item -> "INCOMPATIBLE_UNIT".equals(item.get("reason").asString())
+                                && "%".equals(item.get("observation").get("unit").asString())),
+                "the backdated-unit result stays visible as an incompatible unit");
     }
 
     @Test
