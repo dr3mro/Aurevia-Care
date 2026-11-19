@@ -57,7 +57,7 @@ the tests and the canonical gate.
 
 | Check | Command | Proves |
 |---|---|---|
-| Unit and fixture gate | `bash infra/s_g5_07/check.sh` | 59 synthetic unit tests pass; the conforming fixture passes, the violation fixture fails, and the real migration gate is green |
+| Unit and fixture gate | `bash infra/s_g5_07/check.sh` | 61 synthetic unit tests pass; the conforming fixture passes, the violation fixture fails, and the real migration gate is green |
 | Unit tests alone | `python3 -I -m unittest discover -s infra/s_g5_07/tests -q` | The evaluator's enumerated branches behave as specified |
 | Line coverage | `python3 -m trace --count --coverdir /tmp/opencode/s_g5_07_cov infra/s_g5_07/tests/run_coverage.py` | All 232 executable lines of the evaluator run; stdlib `trace` is used because `coverage.py` is not installed |
 | Links and requirement IDs | `python3 -I scripts/check-docs.py` | Relative links resolve and every requirement ID is defined in the specification |

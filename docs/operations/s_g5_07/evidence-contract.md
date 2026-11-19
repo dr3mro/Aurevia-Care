@@ -88,7 +88,7 @@ by paired synthetic cases:
 | CLI | success, `sys.argv` path | bad usage, missing file, malformed JSON, non-UTF-8, `NaN` |
 
 Each `subTest` case above is executed by `unittest`; the full suite reports
-**59 tests, 0 failures**. The policy manifest and both fixture files are also
+**61 tests, 0 failures**. The policy manifest and both fixture files are also
 scanned for credential and PHI-shaped strings.
 
 ## Boundary
