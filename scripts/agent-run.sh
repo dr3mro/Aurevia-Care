@@ -8,6 +8,7 @@
 #   publish        push the branch and open the pull request (or comment)
 #   post-reviews   post each review as a pull request comment
 #   bundle         pack the new commits into .agent/result.bundle (swarm)
+#   audit          read-only audit of the whole repo; writes .agent/audit-findings.json
 #
 # Inputs (environment): MODEL, STORY_ID, STORY_TITLE, STORY_BODY, MODE
 # (story|fix), FIX_COMMENT, BASE_BRANCH, BRANCH, BRANCH_PREFIX, SWARM (1 for
@@ -85,8 +86,24 @@ tracker_rules() {
   fi
 }
 
+# List every Markdown file and every OpenCode skill and agent in the repo, so
+# the worker starts with the full project context instead of a partial view.
+context_index() {
+  {
+    git ls-files '*.md' ':!:**/node_modules/**'
+    git ls-files '.opencode/skills/*' '.opencode/agents/*'
+  } | sort -u > "$out/context-files.txt"
+}
+
 story_prompt() {
+  context_index
   cat <<PROMPT
+Before doing anything else, load the full project context: read every file listed in
+$out/context-files.txt (all Markdown files, plus every skill under .opencode/skills and
+every agent under .opencode/agents) completely, starting with AGENTS.md, CODING_STYLE.md,
+PROJECT.md, WORKSPACE.md, MEMORY.md, TODO.md and SMARTCLINIC_V1_SPEC.md, and load the
+skills that match the story. Then survey the existing source tree for the story's domain
+so you reuse existing code. Only after that, start the story.
 Resume SmartClinic V1 from WORKSPACE.md and TODO.md.
 Work exactly one story, test first, with synthetic data only. Commit to the
 current branch. Do not push, tag or call gh. $(tracker_rules)
@@ -144,6 +161,37 @@ cmd_implement() {
   printf '%s' "$commits" > "$out/commits"
   emit result "$result"; emit commits "$commits"; emit checks "$checks"
   emit branch "$branch"
+}
+
+audit_prompt() {
+  cat <<PROMPT
+Before doing anything else, read every file listed in $out/context-files.txt (all Markdown
+files, every skill under .opencode/skills and every agent under .opencode/agents), then
+survey the source tree. You are running the daily audit. This is READ-ONLY: do not edit,
+create (except the findings file), commit, push or call gh.
+Find the most valuable open problems: bugs, security or PHI-leak risks, missing authorization
+or tenant-isolation checks, failing or skipped tests, coverage gaps, duplicated code,
+packages or classes named after story IDs instead of business domains, code that violates
+CODING_STYLE.md, and drift between the code and SMARTCLINIC_V1_SPEC.md. Compare with TODO.md
+and do not report anything already listed there. Prefer concrete, verifiable findings with
+file paths over general advice; run the fast tests or linters if that helps confirm one.
+Write at most 5 findings, most important first, as a JSON array to $out/audit-findings.json.
+Each item: {"title": "<imperative, 10-160 chars>", "scope": ["<repo-relative directory>", ...up to 4],
+"details": "<what is wrong, evidence with file paths, and the expected fix>"}.
+Never put workflow, script or agent files in scope. Write [] when nothing is worth fixing.
+PROMPT
+}
+
+cmd_audit() {
+  configure_auth
+  context_index
+  rm -f "$out/audit-findings.json"
+  local result
+  activate_ci_config
+  result=$(run_agent smartclinic-orchestrator "$(audit_prompt)" "$out/audit.log")
+  restore_config
+  printf '%s' "$result" > "$out/result"
+  emit result "$result"
 }
 
 cmd_bundle() {
@@ -218,5 +266,6 @@ case "${1:-}" in
   publish) cmd_publish ;;
   post-reviews) cmd_post_reviews ;;
   bundle) cmd_bundle ;;
-  *) printf 'usage: %s implement|review|publish|post-reviews|bundle\n' "$0" >&2; exit 2 ;;
+  audit) cmd_audit ;;
+  *) printf 'usage: %s implement|review|publish|post-reviews|bundle|audit\n' "$0" >&2; exit 2 ;;
 esac
