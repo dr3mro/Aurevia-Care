@@ -35,8 +35,10 @@ export function deriveConfirmation(
 /**
  * Apply a confirmation attempt to a derived state.
  *
- * Only an authenticated, pending confirmation is timestamped, and an existing
- * timestamp is returned unchanged so a replay cannot move it.
+ * Authentication is required on every branch, so an unauthenticated caller
+ * learns neither an eligibility decision nor a recorded timestamp. Only a
+ * pending confirmation is timestamped, and an existing timestamp is returned
+ * unchanged so an authenticated replay cannot move it.
  *
  * @param state current derived confirmation state
  * @param authenticated whether the patient has re-authenticated
@@ -48,14 +50,17 @@ export function confirm(
   authenticated: boolean,
   at: string,
 ): ConfirmResult {
+  // No branch, including an idempotent replay, discloses a server-recorded
+  // timestamp or an eligibility decision without authentication (PAT-01).
+  if (!authenticated) {
+    return { kind: 'error', reason: 'UNAUTHENTICATED' };
+  }
   switch (state.kind) {
     case 'unavailable':
       return { kind: 'error', reason: 'NOT_ELIGIBLE' };
     case 'confirmed':
       return { kind: 'idempotent', confirmedAt: state.confirmedAt };
     case 'pending':
-      return authenticated
-        ? { kind: 'confirmed', confirmedAt: at }
-        : { kind: 'error', reason: 'UNAUTHENTICATED' };
+      return { kind: 'confirmed', confirmedAt: at };
   }
 }

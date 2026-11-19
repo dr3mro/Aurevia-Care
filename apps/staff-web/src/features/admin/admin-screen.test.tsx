@@ -1,0 +1,107 @@
+import type { ReactElement } from 'react';
+import { describe, expect, it } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { I18nProvider } from '../../i18n/I18nProvider';
+import { ThemeProvider } from '../../theme/ThemeProvider';
+import type { Locale } from '../../i18n/messages';
+import { AdminScreen } from './AdminScreen';
+import {
+  adminAnchorCivilDate,
+  adminConfigurationKey,
+  alphaOrganizationId,
+  betaOrganizationId,
+  syntheticAccessProbes,
+  syntheticAuditEvents,
+  syntheticConfigurations,
+  syntheticStaffEvents,
+} from './fixtures';
+import { adminText, proposalAnnouncement } from './messages';
+
+function wrap(ui: ReactElement, locale: Locale = 'en') {
+  return render(
+    <ThemeProvider>
+      <I18nProvider initialLocale={locale}>{ui}</I18nProvider>
+    </ThemeProvider>,
+  );
+}
+
+function screenProps(organizationId: string) {
+  return {
+    organizationId,
+    configurations: syntheticConfigurations,
+    staffEvents: syntheticStaffEvents,
+    auditEvents: syntheticAuditEvents,
+    accessProbes: syntheticAccessProbes,
+    configKey: adminConfigurationKey,
+    subject: 'synthetic.reception',
+    facilityCode: 'MAIN',
+    anchorCivilDate: adminAnchorCivilDate,
+  };
+}
+
+function alphaScreen(locale: Locale = 'en') {
+  return wrap(<AdminScreen {...screenProps(alphaOrganizationId)} />, locale);
+}
+
+describe('AdminScreen', () => {
+  it('shows only the active tenant and all three access states', () => {
+    alphaScreen();
+    expect(screen.getByRole('heading', { level: 2, name: adminText('en', 'admin') })).toBeTruthy();
+    expect(screen.getByText('Synthetic alpha revised booking rule')).toBeTruthy();
+    expect(screen.queryByText('Synthetic beta revised booking rule')).toBeNull();
+    expect(screen.getAllByText('Synthetic alpha admin A').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Synthetic beta admin B')).toBeNull();
+    expect(screen.getByText('synthetic-correlation-alpha-1')).toBeTruthy();
+    expect(screen.queryByText('synthetic-correlation-beta-1')).toBeNull();
+    expect(screen.getByText(adminText('en', 'accessPermitted'))).toBeTruthy();
+    expect(screen.getByText(adminText('en', 'accessDenied'))).toBeTruthy();
+    expect(screen.getByText(adminText('en', 'accessConcealed'))).toBeTruthy();
+    expect(screen.getByTestId('admin-status').textContent).toBe('');
+  });
+
+  it('proposes a local configuration version and announces it', () => {
+    alphaScreen();
+    fireEvent.change(screen.getByLabelText(adminText('en', 'proposedValue')), {
+      target: { value: 'Synthetic proposed value' },
+    });
+    fireEvent.change(screen.getByLabelText(adminText('en', 'effectiveFrom')), {
+      target: { value: '2026-07-01' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: adminText('en', 'propose') }));
+    expect(screen.getByText('Synthetic proposed value')).toBeTruthy();
+    expect(screen.getByTestId('admin-status').textContent).toBe(proposalAnnouncement('en', 'MAIN', 5));
+  });
+
+  it('drops prior-tenant local drafts when the active organization switches', () => {
+    const { rerender } = alphaScreen();
+    fireEvent.change(screen.getByLabelText(adminText('en', 'proposedValue')), {
+      target: { value: 'Synthetic proposed value' },
+    });
+    fireEvent.change(screen.getByLabelText(adminText('en', 'effectiveFrom')), {
+      target: { value: '2026-07-01' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: adminText('en', 'propose') }));
+    expect(screen.getByText('Synthetic proposed value')).toBeTruthy();
+
+    rerender(
+      <ThemeProvider>
+        <I18nProvider initialLocale="en">
+          <AdminScreen {...screenProps(betaOrganizationId)} />
+        </I18nProvider>
+      </ThemeProvider>,
+    );
+    expect(screen.queryByText('Synthetic proposed value')).toBeNull();
+    expect(screen.queryByText('Synthetic alpha revised booking rule')).toBeNull();
+    expect(screen.getByText('Synthetic beta revised booking rule')).toBeTruthy();
+    expect(screen.getByText(adminText('en', 'chainNotVerified'))).toBeTruthy();
+    expect(screen.getByTestId('admin-status').textContent).toBe('');
+  });
+
+  it('renders bilingual RTL copy under the Arabic locale', () => {
+    alphaScreen('ar');
+    expect(document.documentElement.dir).toBe('rtl');
+    expect(screen.getByRole('heading', { level: 2, name: adminText('ar', 'admin') })).toBeTruthy();
+    expect(screen.getByRole('table', { name: adminText('ar', 'auditEvents') })).toBeTruthy();
+    expect(screen.getByText(adminText('ar', 'chainVerified'))).toBeTruthy();
+  });
+});
