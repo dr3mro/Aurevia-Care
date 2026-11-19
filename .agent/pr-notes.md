@@ -1,64 +1,116 @@
-# S-G2-02 — XCH-02 three-channel exchange state with human acknowledgment
+# S-G2-03 — Accept/reject/clarify, linked changes, cancellations and revocation (XCH-03)
 
-## Requirement IDs and acceptance mapping
+## Requirement mapping and acceptance
+- **XCH-03**: recipient accepts with a locally verified association, rejects with a
+  durable reason, or requests clarification; a post-acceptance change creates a
+  linked immutable revision and requires a recipient response; a cancellation is a
+  request until the recipient confirms or declines; retained recipient copies carry
+  the permitted purpose and retention policy; revocation blocks future sender-hosted
+  retrieval and records a downstream notification with a durable event id.
+- **Supporting**: ARC-01 composite tenant keys, ARC-02 forced RLS and per-request
+  membership/role re-derivation, ARC-03 `If-Match` version preconditions
+  (428 missing / 422 malformed / 412 stale), ARC-04 error semantics
+  (401/403/404/409/410/412/422), ARC-05 durable notification identity, OPS-02
+  transactional append-only audit.
+- Entry-point-to-test trace: `POST /api/v1/xch03/orders/{id}/{accept,reject,clarify,
+  propose-change,change-response,request-cancellation,cancellation-response,revoke}`
+  → `Xch03Controller` (`IfMatch.parse`) → `Xch03Service.run` (re-derived authorization,
+  `SELECT … FOR UPDATE`, version CAS, one transaction) → `Xch03Repository.update` +
+  append-only ledgers → `AuditAppender`; `GET /{id}/retrieve` re-checks revocation on
+  every call. Unit trace: `Xch03ServiceTest` (Mockito) for every legal/illegal
+  transition and projection value. DB/integration trace: `Xch03ExchangeTest`
+  (real PostgreSQL, two synthetic tenants with the same local order code).
 
-| XCH-02 clause | Implementation | Evidence (test) |
-|---|---|---|
-| Separate workflow `requested→accepted→processing→completed` with rejected/cancelled branches | `WorkflowState`, `ExchangeCommand`, `ExchangeStateMachine.next`, V20 `exchange_task.workflow_state` CHECK + guard | `WorkflowStateTest`, `ExchangeStateMachineTest`, `ExchangeTaskServiceTest.workflowAdvanceAppliesLegalTransitionAndAppendsHistory`, `ExchangeTaskIsolationTest.workflowPathRejectsReasonsAndIllegalTransitions` |
-| Separate transmission `pending→sent→delivered` / `failed` | `TransmissionState`, `SEND`/`DELIVER`/`FAIL`, V20 `transmission_state` CHECK + guard | `TransmissionStateTest`, `ExchangeTaskServiceTest.transmissionAcknowledgmentNeverMutatesClinicalReview`, `ExchangeTaskIsolationTest.transmissionAcknowledgmentNeverClosesAClinicalTask` |
-| Separate clinical review `unreviewed→acknowledged→action_pending→resolved` | `ClinicalReviewState`, `ACKNOWLEDGE`/`REQUEST_ACTION`/`RESOLVE`, V20 guard | `ClinicalReviewStateTest`, `ExchangeStateMachineTest.reviewChainRequiresPriorHumanAcknowledgment`, `ExchangeTaskIsolationTest.reviewChainRequiresAcknowledgmentAndIsAppendOnly` |
-| Acknowledgment by an authorized human with timestamp and revision; a transmission acknowledgment cannot close a clinical task | Clinician-only `ExchangeActionPolicy`; actor derived by V20 `xch02_actor_id()` from `app.actor`; clock and revision bound in `ExchangeStateMachine`; one-channel-per-update DB guard | `ExchangeActionPolicyTest.clinicalReviewIsClinicianOnly`, `ExchangeTaskServiceTest.acknowledgeBindsClockAndRevisionAndNeverTrustsTheCallerForActor`, `ExchangeTaskIsolationTest.humanAcknowledgmentBindsContextActorClockAndRevision`, `...storageCannotForgeAReviewedTaskOrMoveTwoChannels` |
-| Version precondition, illegal/stale transitions, tenant isolation, audit, append-only ledger | `IfMatch`, CAS in `ExchangeTaskRepository.updateState`, forced RLS in V20, transactional `AuditAppender`, immutable transition trigger | `ExchangeTaskServiceTest.staleVersionAndLostUpdateAreConflictsWithoutHistory`, `ExchangeTaskControllerTest`, `ExchangeTaskIsolationTest.authorizationPreconditionsAndTenantConcealment`, `...readsIndependentDimensionsAndAppendOnlyHistory` |
-| Revocation effective on the next protected request (IAM-01/02) | membership re-folded per request in `ExchangeTaskService.authorize` **and** now in V20 `xch02_actor_id()` | `ExchangeTaskIsolationTest.revokedMembershipDeniesTheNextProtectedRequest` (new) |
+## Scope note (discrepancy for the integrator / human)
+- The story text, the checked-out snapshot and the reserved migration use
+  `apps/api/src/main/java/com/aurevia/smartclinic/g2/s_g2_03`,
+  `apps/api/src/test/java/com/aurevia/smartclinic/it/s_g2_03` and
+  `db/migrations/V21__xch03_order_response.sql`. Prior merged G2 stories
+  (S-G2-05/08/09/10) use the same `g2/s_g2_XX` convention.
+- TODO.md currently lists this task's `scope` as `exchange/response`, which does
+  not exist in the snapshot; the whole XCH-03 slice already lives under
+  `g2/s_g2_03`. I worked in the path containing the implementation. Human
+  confirmation of the canonical path is requested; no tracker was edited.
+- All edits are inside the story's Java paths plus this dedicated notes file.
+  V21 was **not** modified (no schema change needed).
 
-Supporting IDs: ARC-01 (tenant-owned `(organization_id, id)` keys), ARC-02 (forced RLS, non-owner role), ARC-03/04 (`/api/v1`, explicit POST commands, `If-Match` 428/412/422, 401/403/404/409), OPS-02 (transactional audit), PRD-06 (server-side authorization).
+## Defects found and fixed (test first, synthetic fixtures)
+Two independent specialist reviews (architect + senior backend, simulated review)
+converged on two concrete HIGH defects in the pre-existing implementation:
 
-## Scope and files changed
+1. **A pending or rejected linked change was served as the current release.**
+   `proposeChange` advanced `order.revision` to the proposed revision before the
+   recipient responded; `changeResponse(reject)` left it there; `retrieve` served
+   `currentRevision(order.revision)`. A rejected change therefore returned the
+   unretained, unaccepted checksum, and a pending change was already live.
+2. **A change could be accepted without any prior acceptance**, reaching
+   `insertRetained` with null purpose/policy and a 500 NOT NULL violation, because
+   `proposeChange` also allowed the `clarification_requested` state (no verified
+   patient, purpose or retained copy exists there).
 
-- Scope: `apps/api/src/main/java/com/aurevia/smartclinic/g2/s_g2_02`, `apps/api/src/test/java/com/aurevia/smartclinic/it/s_g2_02`, reserved migration `V20__exchange_task_states.sql`.
-- Hardened V20: `xch02_actor_id()` now requires active membership; new `BEFORE INSERT` trigger `xch02_a_initialize_task_channels` forces every new task into the initial channels with null clinical evidence; grants updated.
-- Added two DB acceptance tests to `ExchangeTaskIsolationTest` (forged-review/multi-channel guard and revocation-on-next-request); all fixtures synthetic.
-- No tracker, shared config, or out-of-scope file was edited.
+Fix (smallest change):
+- `proposeChange` now requires `ACCEPTED` (XCH-03 "changes after acceptance") and
+  leaves the order's released revision unchanged; the linked revision lives only
+  in the immutable revision ledger while pending.
+- `changeResponse(accept)` validates the captured purpose/policy (409 if absent),
+  retains the linked revision under that purpose and promotes the order revision
+  only on the recipient's acceptance.
+- `changeResponse(reject)` keeps the last accepted revision current, so retrieval
+  never serves unretained content. Javadoc updated at each owning method.
 
-## Exact commands run and results (evidence source: executed tool commands)
+Red/green evidence (tool): 7 new/changed unit tests in `Xch03ServiceTest` were
+red first (`Tests run: 1516, Failures: 7` — wrong promoted revision, expected 409
+for clarification-originated change, expected 409 for missing purpose, inserted
+retained copy on reject, wrong retained revision), then green after the fix.
 
-| Command | Result |
-|---|---|
-| `mvn -q -B -f apps/api/pom.xml -Pno-security,fast test` | **exit 0**. 39 unit tests in `it/s_g2_02` (2+4+3+6+5+14+2+3), 0 failures/errors; all other unit suites green. |
-| `mvn -q -B -f apps/api/pom.xml -Pno-security jacoco:report` + XML inspection | All 14 production classes in `g2/s_g2_02` fully covered by unit tests except `ExchangeTaskRepository` (0% locally) — expected, because its real JDBC code is exercised only by the `@Tag("integration")` DB suite. Integrator must run `apps/api/check.sh` for the 100% bundle gate. |
-| `python3 -I scripts/check-migrations.py --require-baseline` | exit 0 (V20 remains `Change: expand`). |
-| `python3 -I scripts/check-docs.py`, `python3 -I scripts/check-secrets.py` | exit 0. |
-| `git status --short` before edits | clean; branch `swarm/S-G2-02-112` at `ddbd816`. |
+Regression tests added: `aLinkedChangeRequiresAPriorAcceptance`,
+`acceptingAChangePromotesTheLinkedRevisionOnlyOnRecipientResponse`,
+`rejectingAChangeKeepsTheAcceptedRevisionRetrievable`,
+`acceptingAChangeWithoutARetainedPurposeFailsClosed`,
+`acceptingAChangeWithoutARetentionPolicyFailsClosed`; existing change tests were
+corrected to the accepted-revision projection. Integration test
+`aRejectedChangeNeverBecomesTheRetrievableRevision` added with a 7th synthetic
+order (ORDER_COUNT 6→7) to prove the fix end to end.
 
-## Test-first sequence
+## Out-of-scope findings (deferred, not changed here)
+- ARC-03/ARC-05 idempotency keys and replay of `revoke` / other commands belong to
+  cross-cutting stories X-01/X-02; this slice keeps correct version preconditions
+  and a durable notification `eventId`, and does not widen their contract.
+- Binding permitted purpose / retention policy to approved tenant configuration
+  belongs to ADM-01/OPS-01; the slice validates codes and reuses the purpose
+  captured at acceptance.
+- A DB-level CHECK tying `accepted` state to a non-null association/purpose is
+  optional hardening; the service now fails closed with 409 instead of a 500.
+  No migration was changed because no local PostgreSQL is available to verify it.
 
-The prior-attempt implementation and its 38 unit tests were present on the branch and already green. This attempt added the two missing DB controls **as assertions first** (`storageCannotForgeAReviewedTaskOrMoveTwoChannels`, `revokedMembershipDeniesTheNextProtectedRequest`) and then changed V20 to satisfy them. Against the pre-change V20 the forged INSERT would be stored as `resolved` and the revoked actor's direct write would succeed; both assertions therefore describe a real red state. Those two tests are `@Tag("integration")` and cannot be executed locally (no PostgreSQL), so the executed red/green for them is deferred to the integrator; the Java sources compile under the fast unit run (exit 0).
+## Commands run and results (tool evidence)
+- `mvn -q -B -f apps/api/pom.xml -Pno-security,fast test` → red baseline above,
+  then **1517 tests, 0 failures, 0 errors, 0 skipped** (57 in `it.s_g2_03`).
+  `@Tag("integration")` suites are excluded by the `fast` profile as designed.
+- JaCoCo on the fast run: `Xch03Service` 100% instruction/branch/line/method/class
+  (0 missed on all counters). `Xch03Repository` is covered by the integrator's
+  real-PostgreSQL suite, unchanged by this work.
+- `bash scripts/quick-check.sh`: `bash -n` and `check-docs`, `check-secrets`,
+  `check-migrations.py --require-baseline` passed. `check-pack` reported
+  `opencode.json is stale`.
+- `python3 -I -m unittest discover -s scripts/tests -q`: 163 tests, pre-existing
+  failures in tracker/CI-profile dependent checks (open-task count, workflow
+  permissions, committed `opencode.json`) and two unrelated Java-convention
+  checks (`G3EvidenceService.java` link, `PatientFlowContract.java` list copy).
+  None touch the files I changed; they exist on the untouched base snapshot.
+- `opencode.json` is skip-worktree (`S`) in this cloud worker and carries injected
+  deny rules (`gh *`, `git push*`, …), so `check-pack`/`gen-opencode --check` judge
+  the CI profile, not the committed file — the environment artifact noted in
+  WORKSPACE.md. I did **not** regenerate it (would rewrite a protected file
+  outside scope). These tooling failures are pre-existing and must not be
+  attributed to this story.
 
-## Review findings and dispositions (evidence source: simulated specialist reviews)
+## Not run locally
+- Database and integration tests (`apps/api/check.sh` / `scripts/check.sh` full
+  gate) — no local PostgreSQL in this worker; the integrator runs them. The new
+  integration test follows the existing `Xch03ExchangeTest` fixtures and patterns.
 
-- **ARCH-G2-02-01 (medium, architect): no `Idempotency-Key` on commands (ARC-03/04).** *Not fixed — deliberate scope boundary.* Idempotency is owned by cross-cutting story X-01 (`contracts/x_01`, reserved V54); duplicating it in V20 would collide with that worker. XCH-02 uses the mandated `If-Match` precondition with 428/412/422 and 409 semantics. Recorded as a follow-up dependency, not a claimed acceptance of ARC-04.
-- **ARCH-G2-02-02 (medium, architect): a direct INSERT could create an already-reviewed task with a chosen actor/revision.** *Fixed* by the new `xch02_a_initialize_task_channels` BEFORE INSERT trigger and covered by `storageCannotForgeAReviewedTaskOrMoveTwoChannels`.
-- **ARCH-G2-02-03 (low, architect): `xch02_actor_id()` did not verify active membership.** *Fixed* by joining `public.has_active_membership(...)` and covered by the revoked-actor SQL assertion.
-- **QA-G2-02-01 (medium, QA): revocation-on-next-request untested.** *Fixed* by `revokedMembershipDeniesTheNextProtectedRequest`.
-- **QA-G2-02-02 (medium, QA): V20 DB guard untested by raw SQL.** *Fixed* by `storageCannotForgeAReviewedTaskOrMoveTwoChannels` (two-channel and version-skip writes).
-- **BACKEND-G2-02-01 (medium, senior backend): duplicate `orderRef` had no CONFLICT audit (OPS-02).** *Fixed* in `ExchangeTaskService.create`: `DuplicateKeyException` now appends `EXCHANGE_CREATE/CONFLICT` before returning 409, matching the merged `LabAccessionService` pattern. Covered by `ExchangeTaskServiceTest.duplicateOrderReferenceIsAuditedAsConflict`.
-- **BACKEND-G2-02-02 (medium, senior backend): unbounded caller `reason`.** *Fixed*: trimmed reasons over 500 characters are 422 `INVALID_REASON`; covered in `rejectAndCancelRequireAReasonAndOnlyTheyDo`.
-- **BACKEND-G2-02-03 (low, senior backend): ledger immutability assertion tested the REVOKE, not the trigger.** *Fixed*: the raw UPDATE now runs as `smartclinic_migrate` (owner, still bound by FORCE RLS) so `reject_immutable_mutation()` actually fires.
-- **BACKEND-G2-02-04 (coverage risk, senior backend): `ExchangeTaskRepository` is covered only by the integration suite.** Expected; `apps/api/check.sh` runs it. If the integrator reports a JaCoCo shortfall, this is the class to inspect.
-- ARCH observation: no ARC-05 outbox consumer in this slice; the append-only ledger is the consumable fact log and delivery workers are XCH-05/X-02 scope. Not claimed here.
-
-The architect also confirmed positively: the three channels are independent; a delivery receipt cannot close a clinical task; version precondition and atomic state+ledger+audit commit are sound; V20 is safe against parallel workers' migrations (V19/V21/V22…, `Change: expand`).
-
-## Decisions
-
-1. Package layout follows the dispatch scope (`g2/s_g2_02`, `it/s_g2_02`) so parallel workers cannot collide; business-domain naming/reuse is a follow-up refactoring owned by the module integrator, matching the other merged G2 stories.
-2. Idempotency deferred to X-01 (see ARCH-G2-02-01).
-3. No real patient data, identifiers or credentials appear in any fixture or note; all subjects/orgs are synthetic UUIDs/labels.
-
-## Blockers / evidence genuinely missing (stop-and-report)
-
-1. **No local PostgreSQL** (`127.0.0.1:5432` closed; no `psql`/`pg_isready`). `ExchangeTaskIsolationTest` (11 tests) could not be executed here, so forced RLS, actor derivation, DB CHECK/guard triggers, tenant concealment and the 100% JaCoCo bundle gate are **unverified by execution**. The integrator must run `bash apps/api/check.sh` on the exact merged SHA and record the ratios. `ExchangeTaskService` is fully covered by unit tests (0 missed instruction/branch/line/method/class after the last change).
-2. **Doxygen unavailable locally**, so `bash scripts/docs.sh` exits with "Install Doxygen to build the developer reference." No Javadoc regression was introduced by this attempt (no production Java file changed).
-3. **Base-branch tooling gate failures, outside this story's scope** (present at `ddbd816` before my edits): `python3 -I -m unittest discover -s scripts/tests -q` reports 5 failures + 4 errors — `test_open_spec_tasks_are_dispatchable` (fewer than 10 open dispatchable tasks remain in TODO.md), `test_java_conventions` on `G3EvidenceService.java` and `PatientFlowContract.java`, two `test_agent_run` cases, and two `ModuleNotFoundError: yaml` import errors (PyYAML absent locally). These are not caused by S-G2-02 and were not edited. If they persist on the delivery branch they will block every PR at the integrator gate and need an owner fix.
-4. **Cloud-worker `opencode.json` artifact**: the worktree copy is the CI profile under `skip-worktree`, so `check-pack.py`/`gen-opencode.py --check` fail until regenerated from `scripts/gen-opencode.py`. With the committed local profile restored both checks exit 0. This is an environment profile effect, not a story defect, and no `opencode.json` change is committed.
-5. **No clinical or human participant evidence.** Clinical acknowledgment semantics were reviewed by simulated reviewers only; G5 site approval remains a separate human gate.
+## Evidence source
+Maven/Surefire and JaCoCo tool output; two simulated specialist reviewers found
+the defects (no human or clinical evidence); DB verification is delegated to the
+integrator. No patient data or credentials were used — all fixtures synthetic.
