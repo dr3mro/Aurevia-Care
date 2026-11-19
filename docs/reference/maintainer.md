@@ -33,3 +33,7 @@ Build the reference with scripts/docs.sh. A module's TypeScript documentation ho
 ## S-G0-03b audit review trace
 
 `GET /api/v1/audit-events` → `AuditController.query` → guarded `TransactionTemplate` → `AuditService.query` → actor authorization (tenant_admin or privacy_auditor, active membership re-derived per request) → `AuditRepository.query` (forced RLS, bounded filters, `seq DESC` with an exclusive seq cursor and a one-row look-ahead for `nextCursor`) → `appendAudit(AUDIT_READ, SUCCESS)` in the same transaction → 200. Denials are committed as `AUDIT_READ/DENIED` rows then thrown. `AuditQueryTest` proves two-tenant concealment, stable paging and audit-of-read against real PostgreSQL.
+
+## S-G0-03 catalog trace
+
+`POST /api/v1/catalogs/{family}/entries` → `CatalogController.define` → `CatalogService.define` (bounded family/code) → `ConfigurationService.create` with key `catalog.<family>.<code>` → append-only V5 entry + `CONFIG_CREATE` audit. `POST .../{code}/versions/{version}/approve` delegates to `ConfigurationService.approve`, appending the named approval that makes the version effective. `GET /api/v1/catalogs/{family}[/entries/{code}]` → guarded transaction → actor authorization → V6 `effective_catalog_family()` / V5 `effective_config()` fold (approved entries within their effective window) → `CATALOG_LIST`/`CATALOG_READ` audit. Cross-tenant codes are concealed; a peer tenant with the same code is invisible under forced RLS. `CatalogIsolationTest` exercises the routes against real PostgreSQL.

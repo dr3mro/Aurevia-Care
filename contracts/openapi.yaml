@@ -131,6 +131,82 @@ paths:
               schema: { $ref: '#/components/schemas/ConfigHistory' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { description: Key not visible; existence is concealed }
+  /api/v1/catalogs/{family}:
+    get:
+      operationId: listCatalogFamily
+      summary: List effective approved entries in a tenant catalog family
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - { name: family, in: path, required: true, schema: { type: string, pattern: '^[a-z][a-z0-9_]{1,31}$' } }
+      responses:
+        '200':
+          description: Effective catalog entries
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/CatalogEntry' } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/v1/catalogs/{family}/entries/{code}:
+    get:
+      operationId: getCatalogEntry
+      summary: Read the effective approved version of one catalog entry
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - { name: family, in: path, required: true, schema: { type: string } }
+        - { name: code, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: The effective catalog entry
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CatalogEntry' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: Not found, not effective or concealed }
+  /api/v1/catalogs/{family}/entries:
+    post:
+      operationId: defineCatalogEntry
+      summary: Append a pending catalog entry version
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - { name: family, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DefineCatalogEntry' }
+      responses:
+        '200':
+          description: Pending draft appended
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConfigEntry' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { description: Invalid family, code, value or effective date }
+  /api/v1/catalogs/{family}/entries/{code}/versions/{version}/approve:
+    post:
+      operationId: approveCatalogEntry
+      summary: Append a named approval for a catalog entry version
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - { name: family, in: path, required: true, schema: { type: string } }
+        - { name: code, in: path, required: true, schema: { type: string } }
+        - { name: version, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApproveConfiguration' }
+      responses:
+        '200':
+          description: Approved entry
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConfigEntry' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: Entry not found or concealed }
   /api/v1/audit-events:
     get:
       operationId: queryAuditEvents
@@ -352,6 +428,25 @@ components:
         entries:
           type: array
           items: { $ref: '#/components/schemas/ConfigEntry' }
+    DefineCatalogEntry:
+      type: object
+      required: [code, value]
+      additionalProperties: false
+      properties:
+        code: { type: string, pattern: '^[A-Za-z0-9][A-Za-z0-9_.:-]{1,63}$' }
+        value: { type: string, minLength: 1, maxLength: 4000 }
+        effectiveFrom: { type: string, format: date-time }
+    CatalogEntry:
+      type: object
+      properties:
+        family: { type: string }
+        code: { type: string }
+        version: { type: integer }
+        value: { type: string }
+        effectiveFrom: { type: string, format: date-time }
+        approvedBy: { type: string, format: uuid }
+        approvedAt: { type: string, format: date-time }
+        note: { type: string, nullable: true }
     AuditEvent:
       type: object
       properties:
