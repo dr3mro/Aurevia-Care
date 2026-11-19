@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0",
+  "requirement": "OPS-06",
+  "source": "synthetic-policy-declaration",
+  "environments": ["development", "test", "staging", "production"],
+  "ci_checks": ["policy", "dependency_scan", "secret_scan"],
+  "signing_methods": ["cosign", "sigstore", "in-toto"],
+  "migration_gate": "check-migrations --require-baseline",
+  "rollout_strategy": "progressive",
+  "rollout_final_stage": "full",
+  "dataset": {
+    "synthetic_only": true,
+    "non_production_environments": ["development", "test", "staging"],
+    "seed": 20261119
+  }
+}
