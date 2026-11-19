@@ -22,7 +22,13 @@ class PdfRendererTest {
     private static PdfSpec spec(String locale, int version, int rotation, String title, List<String> lines) {
         return new PdfSpec("11111111-1111-1111-1111-111111111111", "chart",
                 "22222222-2222-2222-2222-222222222222", locale, version, rotation,
-                title, lines, "SYNTHETIC-LAB", "REQ-1", "2026-11-19T10:00:00Z");
+                title, lines, "SYNTHETIC-LAB", "REQ-1", "2026-11-19T10:00:00Z", null);
+    }
+
+    private static PdfSpec specWithSource(String sourceAssociationId) {
+        return new PdfSpec("11111111-1111-1111-1111-111111111111", "chart",
+                "22222222-2222-2222-2222-222222222222", "en", 1, 0, "Title", List.of("line"),
+                "SYNTHETIC-LAB", "REQ-1", "2026-11-19T10:00:00Z", sourceAssociationId);
     }
 
     private static String utf16Hex(String text) {
@@ -83,6 +89,19 @@ class PdfRendererTest {
     }
 
     @Test
+    void arabicTitleUsesTheSameVisualReorderingAsBodyLines() {
+        String first = "\u0627\u0644\u062a\u0642\u0631\u064a\u0631";
+        String last = "\u0627\u0644\u0637\u0628\u064a";
+        byte[] pdf = RENDERER.render(spec("ar", 1, 0, first + " " + last, List.of("line")));
+        String text = asAscii(pdf);
+        int begin = text.indexOf("BT\n");
+        int end = text.indexOf("ET\n", begin);
+        String contentStream = text.substring(begin, end);
+        assertTrue(contentStream.indexOf(utf16Hex(last)) < contentStream.indexOf(utf16Hex(first)),
+                "an Arabic title must follow RTL visual order like body lines");
+    }
+
+    @Test
     void englishIsLeftToRightAndDiffersFromArabic() {
         byte[] english = RENDERER.render(spec("en", 1, 0, "Summary", List.of("one two")));
         byte[] arabic = RENDERER.render(spec("ar", 1, 0, "Summary", List.of("one two")));
@@ -91,6 +110,15 @@ class PdfRendererTest {
         assertFalse(java.util.Arrays.equals(english, arabic));
         assertTrue(asAscii(english).indexOf(utf16Hex("one"))
                 < asAscii(english).indexOf(utf16Hex("two")), "LTR keeps logical word order");
+    }
+
+    @Test
+    void provenanceBindsTheValidatedSourceAssociation() {
+        String sourceId = "33333333-3333-3333-3333-333333333333";
+        String text = asAscii(RENDERER.render(specWithSource(sourceId)));
+        assertTrue(text.contains("/Subject <" + utf16Hex("source:SYNTHETIC-LAB/REQ-1 association:" + sourceId) + ">"));
+        assertFalse(asAscii(RENDERER.render(spec("en", 1, 0, "Title", List.of("line"))))
+                .contains("association:"), "an unbound render keeps free-text provenance only");
     }
 
     @Test
