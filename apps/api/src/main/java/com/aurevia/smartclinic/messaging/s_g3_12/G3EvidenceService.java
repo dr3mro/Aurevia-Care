@@ -16,17 +16,21 @@ import com.aurevia.smartclinic.messaging.s_g3_12.GateEvidenceContract.Verdict;
  *
  * <p>This service is the public entry point for the G3 evidence slice: it
  * evaluates all five categories, appends each immutable record to a
- * tamper-evident ledger in the same operation, and returns a report whose
- * verdict is PASS only when every category passes and the chain verifies. The
- * organization is validated but never inferred from the fixture bodies, so an
- * evidence report cannot be attributed to a different tenant by a client.</p>
+ * tamper-evident ledger, and returns a report whose verdict is PASS only when
+ * every category in that call passes. The ledger is rebuilt for every call, so
+ * a report never carries records or a verdict from an earlier evaluation. The
+ * organization is validated as nonblank and recorded verbatim; it is never
+ * inferred from the fixture bodies. A caller-supplied organization must still
+ * be bound to the authenticated tenant by the transport boundary, which is
+ * outside this slice.</p>
  */
 @Service
 public class G3EvidenceService {
 
     private final GateEvidenceEvaluator evaluator = new GateEvidenceEvaluator();
-    private final EvidenceLedger ledger;
+    private final EvidenceHash hash;
     private final Clock clock;
+    private EvidenceLedger ledger;
 
     /**
      * Create the service with a deterministic hasher and clock.
@@ -35,6 +39,7 @@ public class G3EvidenceService {
      * @param clock injected clock for the report's generation instant
      */
     public G3EvidenceService(EvidenceHash hash, Clock clock) {
+        this.hash = hash;
         this.ledger = new EvidenceLedger(hash);
         this.clock = clock;
     }
@@ -47,31 +52,39 @@ public class G3EvidenceService {
      * @return the immutable composite report
      * @throws ApiException when the organization identifier is missing or blank
      */
-    public GateEvidenceReport produce(String organizationId, EvidenceInput input) {
+    public synchronized GateEvidenceReport produce(String organizationId, EvidenceInput input) {
         if (organizationId == null || organizationId.isBlank()) {
             throw new ApiException(422, "INVALID_ORGANIZATION", "organizationId must be a nonblank identifier");
         }
+        // The bean is a singleton: build a fresh chain per call so one report never
+        // carries another call's records or a stale/cumulative verdict.
+        EvidenceLedger current = new EvidenceLedger(hash);
         EvidenceRecord restore = evaluator.evaluateRestore(input.snapshot(), input.journal(),
                 input.restore(), clock.instant());
         EvidenceRecord downtime = evaluator.evaluateDowntime(input.runbook(), input.commands(), input.effects());
         EvidenceRecord load = evaluator.evaluateLoad(input.profile(), input.samples(), input.availability());
         EvidenceRecord accessibility = evaluator.evaluateAccessibility(input.accessibility());
-        EvidenceRecord audit = evaluator.evaluateAudit(input.audit(), ledger.verifyChain());
-        for (EvidenceRecord record : List.of(restore, downtime, load, accessibility, audit)) {
-            ledger.append(record);
+        for (EvidenceRecord record : List.of(restore, downtime, load, accessibility)) {
+            current.append(record);
         }
-        Verdict verdict = ledger.entries().stream()
+        // Verify the chain built for this report before the audit record attests to it.
+        EvidenceRecord audit = evaluator.evaluateAudit(input.audit(), current.verifyChain());
+        current.append(audit);
+        Verdict verdict = current.entries().stream()
                 .allMatch(entry -> entry.record().verdict() == Verdict.PASS)
                 ? Verdict.PASS : Verdict.FAIL;
-        return new GateEvidenceReport(organizationId, ledger.entries().stream()
+        this.ledger = current;
+        return new GateEvidenceReport(organizationId, current.entries().stream()
                 .map(entry -> entry.record()).toList(),
-                ledger.entries().get(ledger.entries().size() - 1).hash(), verdict, clock.instant());
+                current.entries().get(current.entries().size() - 1).hash(), verdict, clock.instant());
     }
 
     /**
-     * Expose the append-only ledger for independent chain verification.
+     * Expose the ledger built by the most recent {@link #produce(String, EvidenceInput)}
+     * call for independent chain verification. Each call builds a fresh chain,
+     * so this exposes only the latest report's records, never accumulated history.
      *
-     * @return the evidence ledger
+     * @return the most recently produced evidence ledger
      */
     @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
             value = "EI_EXPOSE_REP", justification = "Evidence ledger is the owned domain aggregate")
