@@ -113,7 +113,7 @@ These are delivered inside the stories above, not separately scheduled.
 | Story | Verified evidence | Merge / CI |
 |---|---|---|
 | S-G0-01 | `PROGRESS.md` G0-01 rows; 44 tests, JaCoCo 100% on instruction/line/branch/method/class; `db/check.sh` policy assertions | CI https://github.com/dr3mro/Aurevia-Care/actions/runs/44442227258 on `f9bc461`; merged `e1dc7cd` |
-| S-G0-02 | `PROGRESS.md` S-G0-02 rows; 81 tests, JaCoCo 100%; `db/check.sh` append-only and fold assertions; `scripts/check.sh` and `scripts/docs.sh` green | Local commit and CI pending |
+| S-G0-02 | `PROGRESS.md` S-G0-02 rows; 81 tests, JaCoCo 100%; `db/check.sh` append-only and fold assertions; `scripts/check.sh` and `scripts/docs.sh` green | Green CI https://github.com/dr3mro/Aurevia-Care/actions/runs/44447432253 on `ea15d6c`; merged in `8d015b5`, main run 44448021668 attempt 2 green |
 
 Simulated review findings are evidence of review activity, not clinical or human pilot acceptance. Real-patient approval remains a G5 gate.
 

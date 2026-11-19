@@ -1,6 +1,6 @@
 # Durable memory
 
-Current checkpoint: PROGRESS.md, S-G0-02 implementation and specialist/gate review; next commit, push and exact-SHA CI. Both this pointer and WORKSPACE.md name the same checkpoint. `PLAN.md` is the canonical all-story index with checkbox state; fill a checkbox only when PROGRESS.md records the evidence. Keep a short pointer to the last completed stage and next action in this file after each stage.
+Current checkpoint: PROGRESS.md, S-G0-02 CI and merge; next S-G0-03 on `main`. CI evidence rows and the branch-change directive are uncommitted and belong in the next scoped commit. Both this pointer and WORKSPACE.md name the same checkpoint. `PLAN.md` is the canonical all-story index with checkbox state; fill a checkbox only when PROGRESS.md records the evidence. Keep a short pointer to the last completed stage and next action in this file after each stage.
 
 | Decision | Rationale and evidence |
 |---|---|
@@ -15,5 +15,6 @@ Current checkpoint: PROGRESS.md, S-G0-02 implementation and specialist/gate revi
 | User directive (2026-11-19): CI must use small dependent, reusable, cacheable units | delivery.yml split into policy → java/database + docs → per-arch image smoke → release; reusable composite actions in .github/actions; Maven and OWASP NVD caches; image job skips already-run checks via SMARTCLINIC_SKIP_CHECKS |
 | User decision (2026-11-19): keep the exposed NVD key; no rotation and no history purge | Key remains valid in the repository secret store and is supplied only via `NVD_API_KEY` at runtime. It is absent from the current tree. The full literal remains in published commits 589c7d4 and 57efab8; removing it requires a public history rewrite and force-push, which the execution rules and generator hard denies prohibit, so it was not attempted. The short prefix was redacted from BUGS.md and a note-scan rule added |
 | Orchestrator decision (2026-11-19), S-G0-02 scope (IAM-01/IAM-02/OPS-02) | Zero-staleness permission checks at request time; deactivation is the in-scope permission change with immediate effect; arbitrary role reassignment and permission-matrix edits deferred to S-G0-03; bounded G0 roles are `tenant_admin` (allows) and `reception` (denied); effective dates recorded AND enforced via valid_from/valid_to gating; cross-tenant/nonexistent staff concealed with 404; `tenant_admin` may invite/deactivate, self-deactivation allowed; staff audit purpose is `STAFF_ADMIN`; concurrency stress deferred to S-G0-04. Decision recorded in PROJECT.md |
+| User directive (2026-11-19): work from `main`; delete the `delivery/g0` branch | The delivery branch is retired after S-G0-02 was merged. All future scoped commits and Git operations use `main`; PR and required-check rules still apply. Recorded in WORKSPACE.md |
 
 Add durable decisions only. Reference exact IDs, files and evidence paths. Avoid copying logs, specifications or stage histories.
