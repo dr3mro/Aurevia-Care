@@ -92,8 +92,7 @@ Gate evidence: competing bookings enforce one protected slot; stale drafts canno
     Implement Identity verification, check-in, organization/facility worklist, assignment and handoff (CLN-02) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [-] S-G1-03 · Longitudinal chart: problems, allergies, medications, vitals, source and verification states (CLN-03).
-  - agent: swarm-5
+- [ ] S-G1-03 · Longitudinal chart: problems, allergies, medications, vitals, source and verification states (CLN-03).
   - attempts: 2
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g1/s_g1_03, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g1_03
   - reserved: V13
