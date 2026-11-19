@@ -73,14 +73,9 @@ public class FacilityRepository {
      * @return {@code true} when an active membership is visible
      */
     public boolean hasActiveMembership(String subject) {
-        Integer count = jdbc.queryForObject("""
-                SELECT count(*) FROM public.membership m
-                JOIN public.user_identity u
-                  ON u.organization_id = m.organization_id AND u.id = m.user_id
-                WHERE u.subject = :subject AND m.status = 'active'
-                  AND m.valid_from <= now() AND (m.valid_to IS NULL OR m.valid_to > now())
-                """, Map.of("subject", subject), Integer.class);
-        return java.util.Optional.ofNullable(count).orElse(0) > 0;
+        Boolean active = jdbc.queryForObject(
+                "SELECT public.has_active_membership(:subject)", Map.of("subject", subject), Boolean.class);
+        return Boolean.TRUE.equals(active);
     }
 
     /**
@@ -90,16 +85,8 @@ public class FacilityRepository {
      * @return distinct role keys with active membership and assignment windows
      */
     public List<String> activeRoles(String subject) {
-        return jdbc.queryForList("""
-                SELECT DISTINCT ra.role_key FROM public.role_assignment ra
-                JOIN public.membership m
-                  ON m.organization_id = ra.organization_id AND m.id = ra.membership_id
-                JOIN public.user_identity u
-                  ON u.organization_id = m.organization_id AND u.id = m.user_id
-                WHERE u.subject = :subject AND m.status = 'active'
-                  AND m.valid_from <= now() AND (m.valid_to IS NULL OR m.valid_to > now())
-                  AND ra.valid_from <= now() AND (ra.valid_to IS NULL OR ra.valid_to > now())
-                """, Map.of("subject", subject), String.class);
+        return jdbc.queryForList(
+                "SELECT role_key FROM public.active_roles(:subject)", Map.of("subject", subject), String.class);
     }
 
     /**
