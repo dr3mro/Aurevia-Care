@@ -17,6 +17,7 @@ permissions:
 concurrency:
   group: opencode-team
   cancel-in-progress: false
+  queue: max
 jobs:
   plan:
     name: Decide whether to run

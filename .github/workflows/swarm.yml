@@ -31,6 +31,9 @@ permissions:
 concurrency:
   group: agent-swarm
   cancel-in-progress: false
+  # Keep every queued wave: a newer queued request must not supersede an older
+  # one, and the running wave is never cancelled.
+  queue: max
 jobs:
   plan:
     name: Plan the wave
