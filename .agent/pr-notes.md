@@ -64,4 +64,4 @@ I did **not** run `db/check.sh`, `mvn verify`, JaCoCo, OWASP/SpotBugs or any `@T
 - Do **not** edit TODO.md/MEMORY.md/WORKSPACE.md/BUGS.md/PROJECT.md — this worker did not.
 - Confirm on the merge result: patient-mobile jest 235 tests, typecheck/lint, `scripts/frontend-check.sh`, Java fast tier, JaCoCo 100%, and the real-PostgreSQL gates. Add a BUGS.md entry for the Java F1 blocker above if accepted.
 - Synthetic fixtures only (`patient-1`, `patient-2`, `org-a`, `dev-1`, `synthetic-token`). No patient data or credentials used or recorded. Evidence is tool-generated for commands/red-green and simulated for reviewer findings; no clinician/patient/human evidence.
-- The worktree arrived with a stale `.agent/pr-notes.md` from S-G1-07 (recycled worker image); it was replaced with this file. This file is gitignored and must be force-added (`git add -f .agent/pr-notes.md`) alongside the scoped commit.
+- The worktree arrived with a stale `.agent/pr-notes.md` from S-G1-07 (recycled worker image); it was replaced with this file. The file is tracked in this repository and was committed with the scoped change (commit `5500a70`).
