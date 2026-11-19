@@ -2,9 +2,11 @@ name: Delivery
 on:
   workflow_dispatch:
   pull_request:
+    paths-ignore: ['docs/**', '**/*.md']
   push:
     branches: ['**']
     tags: ['v*']
+    paths-ignore: ['docs/**', '**/*.md']
   merge_group:
 permissions:
   contents: read

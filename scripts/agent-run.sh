@@ -115,8 +115,16 @@ cmd_implement() {
   fi
   local commits checks=skipped
   commits=$(git rev-list --count "$(cat "$out/base-sha")..HEAD")
-  if [[ "$commits" -gt 0 ]]; then
-    if scripts/check.sh > "$out/check.log" 2>&1; then checks=passed; else checks=failed; fi
+  # A rate limit or timeout ends this worker now: do not spend runner minutes on
+  # the full check. The trusted publish job still sees the commit count.
+  if [[ "$result" == rate_limited || "$result" == timeout ]]; then
+    printf '%s\n' "Worker stopped early: $result; no check run" >> "$out/check.log"
+  elif [[ "$commits" -gt 0 ]]; then
+    # The worker runs only the fast check. The integrator repeats it on the merge
+    # result and heavy-check.yml runs OWASP, SpotBugs, coverage and PostgreSQL once
+    # per batch on main, so the agent never pays for the expensive checks.
+    gate=${CHECK_SCRIPT:-scripts/check.sh}
+    if bash "$gate" > "$out/check.log" 2>&1; then checks=passed; else checks=failed; fi
   fi
   printf '%s' "$result" > "$out/result"
   printf '%s' "$checks" > "$out/checks"
