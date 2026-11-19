@@ -15,7 +15,7 @@ content problems. Each check has a stable name:
 
 | Group | Named checks |
 |---|---|
-| Structure | `artifact`, `schema_version`, `kind`, `evidence_conflict` |
+| Structure | `artifact`, `schema_version`, `kind`, `source`, `evidence_conflict` |
 | Environments | `environments`, `environments.names`, `environments.<name>`, `environments.distinct_accounts`, `environments.distinct_resources` |
 | Fixtures | `fixtures`, `fixtures.synthetic_only`, `fixtures.no_real_patient_data`, `fixtures.environments` |
 | CI | `ci_checks`, `ci_checks.policy`, `ci_checks.dependency_scan`, `ci_checks.secret_scan` |
@@ -65,7 +65,7 @@ python3 -m trace --count --coverdir /tmp/opencode/s_g5_07_cov \
 grep '^>>>>>>' /tmp/opencode/s_g5_07_cov/*delivery_safety_evidence*.cover
 ```
 
-The result is **230 executable lines, 0 uncovered** (100% line coverage of the
+The result is **232 executable lines, 0 uncovered** (100% line coverage of the
 evaluator). `trace` does not measure branches, so every conditional is exercised
 by paired synthetic cases:
 
@@ -73,6 +73,7 @@ by paired synthetic cases:
 |---|---|---|
 | artifact is an object | conforming artifact | `evaluate([])` |
 | kind known / unknown / unhashable | both known kinds | `unverified` and a list value |
+| source is a non-blank string | conforming source | blank, whitespace, non-string and list values |
 | evidence conflict | `measured_deployment` + neutral source | `measured_deployment` + synthetic source |
 | environments object / names / entry type / field type / distinctness | conforming four | wrong names, non-object entry, blank account, null resource, duplicate account, duplicate resource |
 | fixtures object / flags / list shape | conforming flags and list | wrong flags, missing/extra/duplicate/non-string members, non-list |
@@ -87,7 +88,8 @@ by paired synthetic cases:
 | CLI | success, `sys.argv` path | bad usage, missing file, malformed JSON, non-UTF-8, `NaN` |
 
 Each `subTest` case above is executed by `unittest`; the full suite reports
-**56 tests, 0 failures**.
+**59 tests, 0 failures**. The policy manifest and both fixture files are also
+scanned for credential and PHI-shaped strings.
 
 ## Boundary
 

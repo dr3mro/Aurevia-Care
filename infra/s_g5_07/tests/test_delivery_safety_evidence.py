@@ -142,6 +142,20 @@ class StructureTest(unittest.TestCase):
         self.assertNotIn("evidence_conflict", failures(report))
 
 
+class SourceTest(unittest.TestCase):
+    def test_source_must_be_a_non_blank_string(self):
+        for value in ("", "   ", 7, None, []):
+            with self.subTest(value=value):
+                report = dse.evaluate(synthetic_artifact(source=value))
+                self.assertIn("source", failures(report))
+
+    def test_blank_source_never_yields_final_evidence(self):
+        report = dse.evaluate(synthetic_artifact(
+            kind="measured_deployment", source=""))
+        self.assertFalse(report["final_evidence"])
+        self.assertIn("source", failures(report))
+
+
 class EnvironmentTest(unittest.TestCase):
     def test_environments_must_be_an_object(self):
         report = dse.evaluate(synthetic_artifact(environments=[]))
@@ -539,11 +553,20 @@ class PolicyManifestTest(unittest.TestCase):
                          set(dse.NON_PRODUCTION_ENVIRONMENTS))
         self.assertNotIn("production", dataset["non_production_environments"])
 
-    def test_fixture_text_contains_no_phi_or_credential_shapes(self):
+    def test_policy_text_contains_no_phi_or_credential_shapes(self):
         text = json.dumps(self.policy)
         self.assertIsNone(re.search(r"[\w.+-]+@[\w-]+\.[\w.]+", text))
         self.assertIsNone(re.search(r"\b\d{3}-\d{2}-\d{4}\b", text))
         self.assertNotIn("-----BEGIN", text)
+
+    def test_fixture_files_contain_no_phi_or_credential_shapes(self):
+        for name in ("synthetic_evidence.json", "violation_evidence.json"):
+            with self.subTest(name=name):
+                text = (MODULE_PATH.parent / "fixtures" / name).read_text(
+                    encoding="utf-8")
+                self.assertIsNone(re.search(r"[\w.+-]+@[\w-]+\.[\w.]+", text))
+                self.assertIsNone(re.search(r"\b\d{3}-\d{2}-\d{4}\b", text))
+                self.assertNotIn("-----BEGIN", text)
 
 
 if __name__ == "__main__":

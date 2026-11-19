@@ -57,9 +57,9 @@ the tests and the canonical gate.
 
 | Check | Command | Proves |
 |---|---|---|
-| Unit and fixture gate | `bash infra/s_g5_07/check.sh` | 56 synthetic unit tests pass; the conforming fixture passes, the violation fixture fails, and the real migration gate is green |
+| Unit and fixture gate | `bash infra/s_g5_07/check.sh` | 59 synthetic unit tests pass; the conforming fixture passes, the violation fixture fails, and the real migration gate is green |
 | Unit tests alone | `python3 -I -m unittest discover -s infra/s_g5_07/tests -q` | The evaluator's enumerated branches behave as specified |
-| Line coverage | `python3 -m trace --count --coverdir /tmp/opencode/s_g5_07_cov infra/s_g5_07/tests/run_coverage.py` | All 230 executable lines of the evaluator run; stdlib `trace` is used because `coverage.py` is not installed |
+| Line coverage | `python3 -m trace --count --coverdir /tmp/opencode/s_g5_07_cov infra/s_g5_07/tests/run_coverage.py` | All 232 executable lines of the evaluator run; stdlib `trace` is used because `coverage.py` is not installed |
 | Links and requirement IDs | `python3 -I scripts/check-docs.py` | Relative links resolve and every requirement ID is defined in the specification |
 | Credential and PHI shapes | `python3 -I scripts/check-secrets.py` | No credential or patient-identifier pattern was introduced |
 
@@ -70,7 +70,7 @@ the tests and the canonical gate.
 | D1 | The evaluator judges structure, not reality | Decision 0002 rejected a self-attesting environment manifest as vacuous; the checks are fail-closed on form, and real verification stays a cloud/human gate |
 | D2 | Environment names and identifiers use exact allowlists and distinctness | Aliases (`prod`, `qa`) or a shared account would defeat separation; exact string equality prevents case/whitespace conflation |
 | D3 | Booleans must be the literal `true` | `1`, `"true"` and other truthy values are rejected, so a weakened control cannot pass by type confusion |
-| D4 | The migration gate must name the existing checker | `scripts/check-migrations.py --require-baseline` is the authoritative offline gate; a different command string fails the check |
+| D4 | The migration gate must name the existing checker | The artifact carries the label token `check-migrations --require-baseline`; the authoritative offline command `python3 -I scripts/check-migrations.py --require-baseline` is executed by the canonical gate, not inferred from the artifact |
 | D5 | Production access requires a requester distinct from the approver | Separation of duties is the minimum control behind "audited approval" |
 | D6 | A synthetic rehearsal is never final evidence | A rehearsal proves the check works, not that a deployment met it |
 | D7 | Reserved migration version V49 is unused | No schema change is needed; version gaps are allowed by the repository's change-safety gate |
