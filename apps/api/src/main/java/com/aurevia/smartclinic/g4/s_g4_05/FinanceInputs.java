@@ -1,5 +1,9 @@
 package com.aurevia.smartclinic.g4.s_g4_05;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.Locale;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -15,6 +19,7 @@ import com.aurevia.smartclinic.api.ApiException;
  */
 public final class FinanceInputs {
 
+    private static final HexFormat HEX = HexFormat.of();
     private static final Pattern UUID_PATTERN = Pattern.compile(
             "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
     private static final Pattern SUBJECT = Pattern.compile("[a-z0-9][a-z0-9-]{1,63}");
@@ -228,13 +233,15 @@ public final class FinanceInputs {
     }
 
     /**
-     * Build the exact-match replay fingerprint of a ledger entry command. The
-     * invoice, entry type, minor-unit amount, currency and every optional field
-     * take part, so the same reference on a different invoice or any differing
-     * payload is a conflict rather than a silent no-op replay. Variable text is
-     * length-prefixed so no combination of field values can forge a collision.
-     * This is a canonical comparison token, not a lossy hash: an exact string
-     * comparison cannot silently accept a different payload.
+     * Build the replay fingerprint of a ledger entry command. The invoice, entry
+     * type, minor-unit amount, currency and every optional field take part, so
+     * the same reference on a different invoice or any differing payload is a
+     * conflict rather than a silent no-op replay. Variable text is length-prefixed
+     * and the whole canonical string is reduced to a 128-bit SHA-256 fingerprint,
+     * so the token is fixed-width and fits the ledger storage column regardless
+     * of how long an allowed reason or subject is. The database
+     * {@code UNIQUE (organization_id, reference)} constraint remains the durable
+     * business key; this fingerprint detects a different payload reusing a key.
      *
      * @param invoiceId       owning invoice, part of the durable business key
      * @param type            entry type
@@ -242,16 +249,62 @@ public final class FinanceInputs {
      * @param currency        invoice currency snapshot
      * @param reason          recorded reason, or {@code null}
      * @param approverSubject approving subject, or {@code null}
-     * @return canonical finite-length fingerprint
+     * @return 64 lowercase hex characters
+     * @throws ApiException when the platform does not provide SHA-256
      */
     public static String digest(String invoiceId, FinanceContract.EntryType type, long amount,
                                 String currency, String reason, String approverSubject) {
-        return invoiceId + "|" + type.wire() + "|" + amount + "|" + currency
+        return digest(invoiceId, type, amount, currency, reason, approverSubject,
+                MessageDigest::getInstance);
+    }
+
+    /**
+     * Build a replay fingerprint with an explicit digest factory.
+     *
+     * <p>The factory is a seam for a deterministic failure test; production
+     * callers use the six-argument {@code digest} overload.</p>
+     *
+     * @param invoiceId       owning invoice, part of the durable business key
+     * @param type            entry type
+     * @param amount          magnitude in minor units
+     * @param currency        invoice currency snapshot
+     * @param reason          recorded reason, or {@code null}
+     * @param approverSubject approving subject, or {@code null}
+     * @param factory         digest factory keyed by algorithm name
+     * @return 64 lowercase hex characters
+     * @throws ApiException when the factory cannot provide SHA-256
+     */
+    public static String digest(String invoiceId, FinanceContract.EntryType type, long amount,
+                                String currency, String reason, String approverSubject,
+                                MessageDigestFactory factory) {
+        String canonical = invoiceId + "|" + type.wire() + "|" + amount + "|" + currency
                 + "|" + field(reason) + "|" + field(approverSubject);
+        try {
+            byte[] bytes = factory.create("SHA-256").digest(canonical.getBytes(StandardCharsets.UTF_8));
+            return HEX.formatHex(bytes);
+        } catch (NoSuchAlgorithmException exception) {
+            throw new ApiException(500, "DIGEST_UNAVAILABLE", "SHA-256 is required for finance replay dedup");
+        }
     }
 
     private static String field(String value) {
         return value == null ? "-" : value.length() + ":" + value;
+    }
+
+    /**
+     * Creates a message digest for a named algorithm.
+     */
+    @FunctionalInterface
+    public interface MessageDigestFactory {
+
+        /**
+         * Create a digest.
+         *
+         * @param algorithm JCA algorithm name
+         * @return a fresh digest
+         * @throws NoSuchAlgorithmException when the algorithm is unavailable
+         */
+        MessageDigest create(String algorithm) throws NoSuchAlgorithmException;
     }
 
     /**

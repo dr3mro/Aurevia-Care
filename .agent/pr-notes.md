@@ -1,4 +1,5 @@
 
+
 # S-G4-01 — Imaging order intake, urgency, accession, study association, signed interpretation and addenda (RAD-01)
 
 ## Requirement IDs and acceptance mapping
@@ -24,6 +25,128 @@ Evidence source labels: **tool** = command executed by this worker; **reviewer**
 
 Baseline (before this worker's edits) — tool:
 - `mvn -q -B -f apps/api/pom.xml -Pno-security,fast test` → EXIT 0; 1463 tests, 0 failures/errors. The pre-existing in-scope kernel was complete and already at 100% coverage.
+=======
+
+# S-G4-04 — Prescriber attestation, approved routing channel, transmission events and ambiguity reconciliation (RX-02)
+
+## Story, scope and requirements
+
+- Story: S-G4-04 (swarm worker, this branch), reserved migration **V44** only.
+- Inherited a prior-attempt implementation in the declared scope; reviewed it, found and fixed two CI-gating defects and one defense-in-depth gap, and added two synthetic tests. No tracker, workflow, script, agent/skill or out-of-scope file was edited. No push, tag or `gh` call was made.
+- Primary: **RX-02** (prescriber attestation and market entitlement; approved electronic or locally printable channel; separate submitted / delivery-confirmed / pharmacy accept/reject / clarification / renewal / cancellation facts; dispensing evidence distinct from acceptance; stable submission IDs; verify partner status before retrying an ambiguous transmission). G4 gate: an ambiguous transmission reconciles **without a duplicate send**.
+- Supporting: **IAM-01** (fresh membership/role re-derivation each command, domain authorization for the resource), **ARC-01/ARC-02** (tenant-owned composite keys, forced RLS, non-owner runtime role), **ARC-03/ARC-04** (version precondition via `If-Match`, machine-readable errors), **ARC-05** (append-only fact ledger committed atomically with state and audit), **OPS-02** (transactional, append-only audit of successes and authorization denials).
+
+## Acceptance mapping (requirement → entry point → evidence)
+
+- RX-02 attestation + entitlement: `POST /api/v1/prescriptions/{id}/attest` → `RxController.attest` → `RxService.attest` → `requirePrescriber` + `requireEntitlement` (approved `rx02.market` and `rx02.entitlement.<subject>` config fold). `RxTransmissionFlowTest.authorizationEntitlementAndChannelPoliciesFailClosed` proves wrong-actor, no-policy, disabled-entitlement, missing-entitlement and stale-version denials.
+- RX-02 channel + actual-channel recording: `transmit` parses `E_PRESCRIBE` / `PRINTABLE_LOCAL`, checks `rx02.approved_channels`, stamps `channel` once (immutable in V44). Tests cover both channels, unapproved/missing channel policy and the printable path that never becomes electronically delivered.
+- RX-02 separate facts + dispensing≠acceptance: append-only `rx02_event` ledger and distinct `EventType` values; `electronicWorkflowTracksEveryFactSeparately` asserts the exact six-event order and that acceptance does not create dispensing evidence.
+- RX-02 stable submission IDs + ambiguity: `rx02_submission` keyed by stable `submission_id`, `ON CONFLICT DO NOTHING`; `verifyPartnerStatus` sets `retry_allowed` only for `absent`; `retry` reuses the same id with a bounded attempt count. `ambiguousRetryIsBlockedUntilPartnerStatusIsVerifiedAbsent` and `retryAttemptsAreBoundedAndReuseOneSubmission` assert one submission row despite repeated send facts; G4 no-duplicate is additionally enforced by a new DB uniqueness constraint (below).
+- ARC-02 isolation: four synthetic tenants share identical local subject/prescription ids; `tenantIsolationConcealsIdenticalLocalIdentifiers` asserts cross-tenant 404 concealment.
+- ARC-05/OPS-02: state change, fact append and audit append commit in one tenant-guarded transaction; `authorize` commits `DENIED` audit rows for membership/role failures.
+
+## Defects found and fixed in this attempt
+
+1. **CI docs gate (blocker):** `RxContract.View` compact constructor repeated `@param prescription` / `@param events` already present on the record declaration. Doxygen (`WARN_NO_PARAMDOC=YES`, `WARN_AS_ERROR=FAIL_ON_WARNINGS`) folds compact-constructor docs into the record's canonical constructor and fails on duplicate parameter sections — the exact failure previously fixed in S-G3-06. Fix: keep component documentation once on the record declaration; the compact constructor keeps prose only.
+2. **JaCoCo 100% METHOD gate (blocker risk):** the `orElseThrow` lambda for a *missing* entitlement setting in `RxService.requireEntitlement` was never invoked (the existing `NO_ENTITLEMENT` case has a setting present but `"disabled"`, hitting the `if` branch). JaCoCo treats lambdas as methods under the enforced 1.00 METHOD ratio. Fix: added a synthetic test with a clinician who has no entitlement setting at all.
+3. **G4 no-duplicate defense in depth:** `rx02_submission` had only `PRIMARY KEY (org, submission_id)`, so a direct insert with a fresh id for the same prescription was accepted, and the V44 header overstated the guard. Fix: added `UNIQUE (organization_id, prescription_id)` (one downstream submission per RX-02 record), rewrote the header to state accurately what is enforced where, and added a negative DB test that inserts a fresh submission id for the same prescription and expects rejection.
+
+## Exact commands run and results (all on synthetic data)
+
+| Command | Result |
+|---|---|
+| `cd apps/api && mvn -q -B -Pno-security,fast test` | exit 0; 1491 tests, 0 failures/errors/skipped; `RxContractTest` 12/12 OK; test sources including `RxTransmissionFlowTest` compile (exit 0) |
+| `python3 -I scripts/check-migrations.py --require-baseline` | exit 0 (V44 change-safety gate still green after edit) |
+| `python3 -I scripts/check-docs.py` | exit 0 |
+| `python3 -I scripts/check-secrets.py` | exit 0 |
+| `python3 -I -m unittest discover -s scripts/tests -p 'test_check_migrations.py' -q` | exit 0; 35 tests OK |
+| `python3 -I -m unittest discover -s scripts/tests -p 'test_java_conventions.py' -q` | 2 tests, 1 **pre-existing, out-of-scope** failure: `PatientFlowContract.java` (messaging s_g3_11) has a `List<`-bearing record with only one `List.copyOf`; not touched (outside this task's scope). The fully-qualified-`{@link}` test passed. |
+| `bash scripts/frontend-check.sh` | exit 0 |
+| `git status --short` | only the three in-scope files above are modified |
+
+Doxygen is not installed in this worker, so `scripts/docs.sh` could not be executed locally; the Doxygen fix follows the verified S-G3-06 convention. PostgreSQL/`psql` is not installed here, so the integration suite and `db/check.sh` were not run locally — per worker rules the integrator runs database and integration tests.
+
+## Decisions and reviewed-but-declined findings
+
+- A senior-backend review confirmed all RX-02 clauses, the Java/SQL state-machine alignment (all 11 states) and the observable G4 no-duplicate guarantee. Its MAJOR "audit every business denial" suggestion was **declined**: this service already follows the repo-wide convention (identical to sibling RX-01 `PrescriptionService`) of committing `DENIED` audits for membership/role authorization, while state, version and input failures throw. Diverging would be inconsistent and unverifiable without a local DB.
+- A MAJOR suggestion to add a `retry_allowed` column guard to the V44 trigger was **not implemented**: both `verifyPartnerStatus(present)` and `retry` perform an `ambiguous → submitted` transition ending with `retry_allowed = false`, so a naive trigger guard would block the legitimate partner-holds-the-prescription reconciliation path. The verified-absent gate remains enforced in the domain service and evidenced by the append-only `partner_status_verified` event ledger; the one-submission-row-per-prescription constraint now backs the no-duplicate guarantee at the DB layer.
+- Low-risk hardening noted but not changed: `create` defers authoritative prescriber binding to `attest` (CLN-03 allows a distinct data-entry actor); no `Idempotency-Key` (stable submission id + `If-Match` CAS already prevents duplicate downstream sends).
+=======
+
+=======
+# S-G4-05 — Itemized self-pay invoices, payments, refunds, receipts and daily reconciliation (FIN-01)
+
+## Story, scope and provenance
+
+- Story S-G4-05, branch `swarm/S-G4-05-99`, base SHA `40e1668`, attempts 2 (this is the finishing worker). Worked one story only, synthetic fixtures only, no push/tag/gh, no shared tracker edited.
+- Scope honored: `apps/api/src/main/java/com/aurevia/smartclinic/g4/s_g4_05`, `apps/api/src/test/java/com/aurevia/smartclinic/it/s_g4_05`, reserved migration `V45__finance.sql` (unchanged this attempt). No file outside the scope edited.
+- Requirements: **FIN-01** (primary); supporting **ARC-01/02/03/04, OPS-02, IAM-01** (tenant-scoped finance, version preconditions, append-only audit, finance-only reads).
+
+## Delivered surface (present at base, verified this attempt)
+
+Six production classes (`FinanceContract`, `FinanceService`, `FinanceRepository`, `FinanceInputs`, `FinanceActions`, `FinanceController`), two REST route families under `/api/v1/finance`, `V45__finance.sql` (four RLS-forced, org-keyed tables; append-only items/ledger; DB-derived actor; balance/currency/transition CHECKs and triggers; tenant receipt counter), and synthetic test suites `FinanceContractTest`, `FinanceFlowTest`, plus new `FinanceServiceTest` added this attempt.
+
+## Acceptance mapping (requirement → implementation → evidence)
+
+| FIN-01 behavior | Implementation | Test evidence (synthetic) |
+|---|---|---|
+| Itemized invoice in one fixed-precision currency; draft→issued→paid/partially_paid/void | `FinanceContract.InvoiceState`, `FinanceInputs` (integer minor units, overflow-checked multiply/add), `FinanceService.create/issue/voidInvoice`, V45 `finance_invoice` + `finance_invoice_item` + `guard_finance_invoice_issue_items`/`guard_finance_invoice_update` | `FinanceContractTest` (state matrix, bounded inputs, overflow), `FinanceFlowTest.fullLifecycle…`, `invalidInputsAndPreconditions…` (integrator) |
+| Payment, refund and credit as linked immutable entries with reason and independent approval | `FinanceService.postEntry`, `approvalFailure`, `FinanceActions.APPROVE`, V45 append-only `finance_ledger_entry` + actor/currency triggers | `FinanceFlowTest.reversalsRequireReasonAndAnIndependentApprover`, `fullLifecycle…` (integrator) |
+| Transactional balance changes, reference dedup, numbered receipts | `FinanceService.execute` (tenant-guarded `TransactionTemplate`), `FinanceInputs.digest`, `FinanceRepository.findByReference`/`nextReceiptNo` + V45 `UNIQUE(org,reference)` and receipt counter | `FinanceFlowTest.fullLifecycle…`, `refundReestablishesIssuedStateAndReplayIsANoOp`, `aReusedReferenceWithADifferentPayloadIsRejected`, `aReferenceCannotMoveToAnotherInvoice`, `reconciliationIsFinanceOnlyAndStableAcrossReplay` (integrator) |
+| Daily reconciliation without clinical narrative | `FinanceRepository.reconcile` (finance-only UNION of issued face values and ledger entries), `FinanceActions.READ/RECONCILE` for finance/admin/auditor | `FinanceFlowTest.reconciliationIsFinanceOnlyAndStableAcrossReplay` with the synthetic `CLINICAL_MARKER_DO_NOT_EXPOSE` assertion (integrator) |
+| Tenant isolation, fail-closed authorization, audit | Forced RLS on all V45 tables, org-bearing FKs, `app.actor`-derived fields, fresh membership/role folds, append-only audit in the same transaction | `FinanceFlowTest.authorizationAndTenantIsolationHoldOnEveryCommand`, `FinanceServiceTest` (fast) |
+
+Entry-point-to-test trace: `POST /api/v1/finance/invoices` → `FinanceController.create` → `FinanceService.create` → guarded `TransactionTemplate` → `FinanceRepository.insertInvoice`/`insertItem` (forced RLS + actor triggers) → `AuditAppender.append` → 201. `POST …/{id}/{payments|credits|refunds}` → `FinanceController` → `FinanceService.postEntry` → `loadForUpdate` + `findByReference` + balance/approval checks → `insertEntry`/`updateInvoice`/audit. `GET /api/v1/finance/reconciliation` → `FinanceController.reconcile` → `FinanceService.reconcile` → `FinanceRepository.reconcile`.
+
+## Defects found and fixed this attempt (test-first, synthetic)
+
+Two independent bounded reviews (simulated senior Java/Spring and senior PostgreSQL specialists) plus my own review. Both reviewers independently rated Finding 1 HIGH.
+
+1. **HIGH — replay fingerprint exceeded its ledger column.** `FinanceInputs.digest` built an unbounded length-prefixed token (up to ~641 chars for the validated 500-char reason and 64-char subject) while V45 constrains `payload_digest` to `char_length BETWEEN 1 AND 128`. Any payment/credit/refund with a reason over roughly 55 characters failed the DB CHECK and surfaced as HTTP 500 for input the API itself accepts. **RED:** `FinanceContractTest.digestIsFixedLengthEvenForMaximumLengthPayloads` → `625 > 128` failure. **Fix:** canonical string is now reduced with SHA-256 to a fixed 64-char lowercase hex token via a `MessageDigestFactory` seam (repo precedent: `NoteChecksum`); updated Javadoc and the old `contains(id)` assertion; added `FinanceContractTest.digestReportsAnUnavailableDigestAlgorithmExplicitly` to cover the failure branch. **GREEN:** bounded test passes; `FinanceInputs` 100% instruction/branch/line/method/class coverage in the fast JaCoCo report. Added integrator-run `FinanceFlowTest.aLongButValidReasonPostsWithinTheLedgerDigestColumn` as the end-to-end regression.
+2. **MEDIUM — a void invoice could be re-voided**, overwriting the recorded reason and independent approver of a terminal decision. **RED:** `FinanceServiceTest.voidingAnAlreadyVoidInvoiceIsRejected` → "no exception thrown" (the re-void was accepted). **Fix:** explicit `VOID` early guard in `FinanceService.voidInvoice` returning 409 `INVALID_TRANSITION`; guard line covered in the fast JaCoCo report. The contract's self-transition semantics and the existing contract test are unchanged.
+
+## Deferred findings (documented, not changed — need owner/integrator decision)
+
+- LOW: concurrent same-reference/different-payload posts on *different* invoices can race past `findByReference` and hit the DB `UNIQUE(org,reference)` as an unhandled 500 instead of 409 (same-invoice races are serialized). Fixing inside the aborted transaction needs a savepoint or advisory lock; not introduced unverified here because no PostgreSQL is reachable in this worker and the integrator owns DB tests.
+- MEDIUM (defense-in-depth): V45 has no BEFORE INSERT trigger preventing ledger entries on draft/void invoices from a non-Java writer; Java enforces it and all CHECKs/derivation triggers are correct. A new unverified trigger was not added to the reserved migration.
+- LOW: V45 receipt counter has no monotonic BEFORE UPDATE trigger; the application only increments and `UNIQUE(org,receipt_no)` prevents silent duplicates.
+- None of these affect the FIN-01 happy path, isolation, audit or reconciliation verified above.
+
+## Exact commands run and results (evidence source: executed tools and simulated reviewers)
+
+| Command | Result |
+|---|---|
+| `mvn -B -f apps/api/pom.xml -Pno-security,fast test` (baseline) | exit 0; 1491 tests, 0 failures/errors |
+| RED `mvn ... -Dtest=FinanceContractTest test` | exit 1; `digestIsFixedLengthEvenForMaximumLengthPayloads`: fingerprint 625 > 128 |
+| RED `mvn ... -Dtest=FinanceServiceTest test` | exit 1; `voidingAnAlreadyVoidInvoiceIsRejected`: no exception thrown |
+| `mvn -B -f apps/api/pom.xml -Pno-security,fast test` (final) | exit 0; **1494 tests, 0 failures/errors/skipped**; `FinanceContractTest` 19/19, `FinanceServiceTest` 1/1 |
+| `mvn -B -q -f apps/api/pom.xml -Pno-security,fast jacoco:report` | `FinanceInputs` 0 missed on INSTRUCTION/BRANCH/LINE/METHOD/CLASS; new `FinanceService` guard lines COVERED |
+| `mvn -B -q -f apps/api/pom.xml -Pno-security -DskipTests compile spotbugs:check` | exit 0, no findings |
+| focused `doxygen` (repository `docs/Doxyfile`, scope `s_g4_05` + `docs/reference`) | exit 0, 0 warnings/errors (initial `{@link}` error fixed by using `{@code}`) |
+| `python3 -I scripts/check-migrations.py --require-baseline`, `check-docs.py`, `check-secrets.py` | all exit 0 |
+| `git status --short` | only the 4 in-scope Java files plus `.agent/pr-notes.md` changed |
+
+Out-of-scope/environmental, not caused by this change (not modified): full `doxygen docs/Doxyfile` reports 276 errors from in-progress `messaging/s_g3_09` and `s_g3_12` branches; `scripts/tests/test_java_conventions.py` fails on `PatientFlowContract.java` (S-G3-11, 1 `List.copyOf` in HEAD); `check-pack.py` reports `opencode.json is stale` (documented cloud-worker skip-worktree CI-profile trap — `git ls-files -v` → `S`). These belong to their own stories/environment. No local PostgreSQL or `psql` exists in this worker, so `db/check.sh`, `mvn verify` JaCoCo gate and `FinanceFlowTest` were left to the integrator as directed; coverage above is from the fast tier only and is not claimed for integration paths.
+
+Evidence provenance: RED/GREEN results, coverage, SpotBugs and Doxygen are from executed tool commands on synthetic fixtures; defect findings are from two simulated specialist reviews plus my own read; no human participant, clinician or real-patient evidence. No credentials, patient data or raw logs recorded.
+
+---
+
+# S-G3-06 — PDF/JPEG/PNG attachments, sender binding, quarantine scans and clean-verdict access
+=======
+
+
+# S-G4-03 — Prescription draft, versioned drug catalog, alternatives and verified allergy checks (RX-01)
+
+## Scope honoured
+
+- Branch `swarm/S-G4-03-99`, base/HEAD `40e1668` (worker did not create a new commit before these notes).
+- Only `apps/api/src/main/java/com/aurevia/smartclinic/g4/s_g4_03/PrescriptionContract.java` was changed.
+- Reserved migration **V43** (`db/migrations/V43__prescription_drafts.sql`) was inspected but **not modified**; no other migration version was touched.
+- No shared tracker (`TODO.md`, `MEMORY.md`, `WORKSPACE.md`, `BUGS.md`, `PROJECT.md`, `docs/swarm`) was edited. No push, tag or `gh` call. Synthetic fixtures only; no patient data or credentials.
+=======
+
+
 =======
 
 # S-G3-12 — Restore, downtime, load, accessibility and audit evidence (G3)
@@ -355,131 +478,135 @@ Entry-point-to-test trace: `POST /api/v1/trends/comparability` → `TrendControl
 
 # S-G3-06 — PDF/JPEG/PNG attachments, sender binding, quarantine scans and clean-verdict access
 
+
 ## Story and requirements
 
-- Story: S-G3-06 (swarm fix attempt 1 of 3), branch `swarm/S-G3-06-90`, base SHA `7cd80d6` (contains the verified Doxygen fix). This delivery commit adds the PR-notes artifact.
-- Primary requirements: **MSG-03** (attachments, explicit send, recipient shown before send, quarantine scan, clean-verdict access, sender binding, removal/replacement), **ARC-06** (validate size/type/checksum, private quarantine, unique object keys and verified object version, mediated downloads, keep clinical payloads out of logs/URLs).
-- Supporting requirements exercised by the implementation: MSG-01 / ARC-07 (connection-scoped binding), IAM-01 (fresh actor snapshot every command), ARC-02 (tenant-scoped store).
+- Story: S-G4-02, branch `swarm/S-G4-02-99`, base SHA `40e1668`. Resumption of a prior attempt (TODO `attempts: 2`); the domain implementation was already present in the base commit. This pass verifies it, closes two integrator-blocking defects, and records evidence.
+- Primary requirement: **PT-01** (therapy episode: evaluation, problems, baseline measurements, goals, planned frequency/duration, interventions, outcomes, versioned scales with units, signed session/progress/discharge notes, approved summary to referrer, return acknowledgment).
+- Gate evidence: **G4** — "PT episode produces signed discharge and referral closure".
+- Supporting requirements exercised: IAM-01 (fresh actor snapshot, server-side authorization on every command), ARC-01 (tenant-owned opaque IDs, versions, provenance), ARC-02 (tenant-scoped store), ARC-03 (version precondition → 412, machine-readable errors), OPS-02 (append-only audit facts with actor, action, resource, outcome).
+- Scope honored: only `apps/api/src/main/java/com/aurevia/smartclinic/g4/s_g4_02` and `apps/api/src/test/java/com/aurevia/smartclinic/it/s_g4_02`. No shared tracker, workflow, script, migration or out-of-scope source was edited. Reserved migration **V42** was not needed: this slice is a tenant-scoped domain service over an in-memory store (no schema change); `scripts/check-migrations.py` permits version gaps.
 
-## Failure being fixed (defect)
+## Acceptance mapping (requirement → code → evidence)
 
-The fast merge gate (`scripts/integrator-gate.sh`) failed on the merge of `main` and this branch. Relevant log tail:
+| PT-01 behavior | Production entry point | Test evidence |
+|---|---|---|
+| Accept referral into an episode | `TherapyService.acceptReferral` → tenant-scoped `Episode` | `TherapyEpisodeFlowTest.acceptsReferralIntoAnActiveOwnedEpisode` |
+| Evaluation: problems, baselines with units, goals, frequency/duration | `TherapyService.recordEvaluation` → `Evaluation` | `TherapyEpisodeFlowTest.recordsEvaluationWithProblemsBaselinesGoalsAndPlan`; `TherapyCoverageTest.validationGuardsRejectNullAndBlankMembers` |
+| Interventions | `TherapyService.recordIntervention` | `TherapyEpisodeFlowTest.recordsInterventionAndSignsSessionAndProgressNotes` |
+| Versioned outcome scales, stored units, approved readings | `defineOutcomeScale` / `approveOutcomeScale` / `recordOutcome` | `OutcomeScaleTest.readingRequiresAnApprovedScaleAndMatchingUnitAndPermittedValue`; `OutcomeScaleTest.readingsBindTheExactScaleVersionAndUnitForTrending` |
+| Progress notes (signed) | `recordNote(PROGRESS)` / `signNote` | `TherapyEpisodeFlowTest.recordsInterventionAndSignsSessionAndProgressNotes` |
+| Discharge closes the episode | `signNote(DISCHARGE)` → `DISCHARGED` | `TherapyEpisodeFlowTest.signsDischargeTransitionsEpisodeAndSendsApprovedSummaryWithReturnAcknowledgment`; `TherapySafetyTest.dischargeRequiresSignedEvaluationAndASignedSession`; `TherapyCoverageTest.closedEpisodeCannotSignALeftoverDraft` |
+| Signer attestation, checksum, signed-note immutability | `TherapyService.signNote` | `TherapySafetyTest.signedNotesAreImmutableAndCannotBeSignedTwice` |
+| Approved summary to verified referrer | `TherapyService.sendSummary` | `TherapyCoverageTest.summaryRejectsAnUnverifiedRecipient`; `TherapyCoverageTest.replacementSummaryClearsPriorAcknowledgment` |
+| Revision-bound return acknowledgment (referral closure) | `TherapyService.acknowledgeReturn` | `TherapySafetyTest.returnAcknowledgmentMustBindTheExactSentSummaryRevision`; `TherapyCoverageTest.acknowledgmentMustNameTheVerifiedReferrer` |
+| Tenant isolation, role authorization, append-only audit | `InMemoryTherapyStore`, `TherapyService.authorize/audit`, `auditTrail` | `TherapySafetyTest.identicalLocalIdentifiersInTwoTenantsStayIsolated`; `TherapyEpisodeFlowTest.auditTrailRecordsActorAndOutcomePerCommandAndIsAppendOnly` |
+| Command DTO defensive copies + 422 validation for null lists | `EvaluationRequest` / `ScaleRequest` compact constructors | `TherapyCoverageTest.commandRecordsCopyListsAndPreserveNull` (new, red→green) |
 
-```
-apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_06/AttachmentContract.java:338: error: argument 'organizationId' from the argument list of com.aurevia.smartclinic.messaging.s_g3_06.AttachmentContract.Actor has multiple @param documentation sections
-... same for 'subject', 'roles', 'patientId', 'unitId'
-```
+**Entry-point-to-test trace:** command → `TherapyService.<command>(Actor, …)` → `authorize` (fresh actor roles, 403) → guarded `InMemoryTherapyStore.find` (404) → `requireVersion` (412) / `requirePatient` (422) / `requireState` (409) → `store.save` → `appendAudit(SUCCESS)` → value record. Each arrow is exercised by the tests above, including the failure paths (`TherapyCoverageTest.guardFailuresAreAudited`).
 
-This is a Doxygen error (`docs/Doxyfile`: `WARN_NO_PARAMDOC = YES`, `WARN_AS_ERROR = FAIL_ON_WARNINGS`, run by `scripts/docs.sh`). Root cause: the `Actor` record repeated its five component `@param` tags on the record declaration **and** on its compact constructor and its two static factory methods. Doxygen folds a record's compact constructor and factory methods into a single canonical-constructor documentation entity, so each component appeared in more than one `@param` documentation section. The same pattern existed on the `View` and `PublishRequest` compact constructors.
+## Defects found and fixed (this pass)
 
-## Fix
+1. **DEF-1 (integrator-blocking, SpotBugs):** `EvaluationRequest` and `ScaleRequest` exposed caller-owned mutable lists — 9 `EI_EXPOSE_REP` / `EI_EXPOSE_REP2` findings in `TherapyContract.java`. Fixed with null-preserving `List.copyOf` in the compact constructors and overridden accessors. Null is deliberately preserved so the service still returns a structured 422 for an omitted list (existing validation tests depend on this).
+2. **DEF-2 (integrator-blocking, docs gate):** `TherapyContract.Actor.of()` repeated the record's component `@param` tags on a static factory. Doxygen folds a record's factory methods into the canonical constructor entity, producing "multiple @param documentation sections" (same root cause as the merged S-G3-06 fix). Removed those `@param` tags; component semantics remain on the record declaration.
+3. **DEF-3 (clinical integrity, reviewer PT-H3 / F2):** signed-note `contentChecksum` was a 32-bit Java `hashCode` (8 hex chars, trivially collidable), mislabelled "content fingerprint" and short of CLN-05's content-checksum requirement. Replaced with the platform's SHA-256 helper `NoteChecksum.sha256(...)` (64 lowercase hex chars) over the NUL-joined bound fields (kind, revision, patient, content, effective time, author, template version, signer, attestation, signed time). Red test `signedNoteChecksumIsSha256` (asserted 64 hex chars) failed before, passed after. Cross-story import is established here (s_g3_09 → s_g3_04) and avoids duplicating crypto.
+4. **DEF-4 (authorization, reviewer F1):** `authorize()` had no case for `ACTION_READ`, which fell through to `default -> null` and skipped role checking — any active role (e.g. finance, reception) could read the full signed clinical aggregate. Split into `ACTION_READ_EPISODE` (PT clinician/coordinator) and `ACTION_READ_SCALE` (admin, governance, PT clinician), replaced the switch with a declarative `ACTION_ROLES` policy map whose `getOrDefault(action, Set.of())` fails closed with no unreachable branch, and added red test `wrongActiveRoleCannotReadClinicalAggregateOrScales`. The service class Javadoc now accurately claims every command is authorized.
 
-Document each record component exactly once, on the record declaration, and carry **no** `@param` tags on compact constructors or static factory methods (they keep only `@return`/prose). This satisfies `WARN_NO_PARAMDOC` without producing duplicate sections. The change is present at branch HEAD commit `7cd80d6` in `apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_06/AttachmentContract.java` (`Actor`, `View`, `PublishRequest`). No further source change was needed; this attempt verifies and records the fix.
-
-## Red → green evidence (synthetic, tool-generated)
-
-- RED reproduction: a minimal synthetic record `/tmp/doxrepro/src/Repro.java` with `@param` on both the record declaration and its compact constructor/factory, checked with the repository `docs/Doxyfile` (doxygen 1.9.4), reproduced the exact failure:
-  `error: argument 'organizationId' from the argument list of repro.Repro.Actor has multiple @param documentation sections` (exit 1).
-- GREEN verification: the same minimal record with component `@param` only on the record declaration → doxygen exit 0, no warnings.
-- GREEN verification of the actual scope: a Doxyfile with `INPUT = apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_06` and `WARN_AS_ERROR = FAIL_ON_WARNINGS` over the current files → exit 0, zero warnings/errors.
-- `grep -n "@param organizationId" .../AttachmentContract.java` shows one declaration-level tag per record; no constructor/factory duplicates remain.
+DEF-3 and DEF-4 change integrity/authorization semantics but no external contract; all prior tests still pass.
 
 ## Exact commands run and results
 
 | Command | Result |
 |---|---|
-| `doxygen docs/Doxyfile` (focused Doxyfile, scope package only) | exit 0, 0 warnings/errors |
-| minimal synthetic duplicate-`@param` record + doxygen | exit 1, exact "multiple @param documentation sections" error (reproduction) |
-| `cd apps/api && mvn -B -Pno-security,fast test` | exit 0; 297 tests, 0 failures/errors/skipped; `AttachmentAcceptanceTest` 28 tests OK; BUILD SUCCESS |
-| `cd apps/patient-mobile && npm ci --no-audit --no-fund` | exit 0 (1272 packages) |
-| `cd apps/patient-mobile && npm run typecheck && npm run lint && npm test -- --ci --runInBand` | exit 0; tsc clean, eslint clean; Jest 1 suite / 22 tests passed |
+| `cd apps/api && mvn -B -Pno-security,fast test` (baseline) | 1491 tests, 0 failures/errors/skipped, BUILD SUCCESS |
+| `mvn -B -Pno-security,fast -Dtest=TherapyCoverageTest test` (RED, before DEF-1 fix) | 15 tests, 1 failure: `commandRecordsCopyListsAndPreserveNull` expected `<[p1]>` but was `<[]>`; BUILD FAILURE |
+| `mvn -B -Pno-security,fast -Dtest=TherapyCoverageTest test` (GREEN, after fix) | 15 tests, 0 failures/errors, BUILD SUCCESS |
+| `cd apps/api && mvn -B -Pno-security,fast test` (final) | **1494 tests, 0 failures/errors/skipped, BUILD SUCCESS** (40 tests in s_g4_02: 5 + 15 + 6 + 14) |
+| `cd apps/api && mvn -q -B jacoco:report` → parse `target/site/jacoco/jacoco.csv` for package `com.aurevia.smartclinic.g4.s_g4_02` | **MISSED = 0, COVERED = 3480** across instruction/branch/line/complexity/method; i.e. 100% coverage of every s_g4_02 class from the fast tier |
+| `cd apps/api && mvn -B -DskipTests -Dspotbugs.skip=false com.github.spotbugs:spotbugs-maven-plugin:4.10.5.0:check` (before) | 14 bugs; 9 in s_g4_02 (DEF-1) |
+| same command (after) | 6 bugs, **0 in s_g4_02** |
+| `python3 -I -m unittest discover -s scripts/tests -p 'test_java_conventions.py' -q` | 2 tests, 1 failure: `record='PatientFlowContract.java'` (s_g3_11, out of scope); `test_javadoc_links_are_fully_qualified` PASS |
+| `bash scripts/quick-check.sh` | exit 1 at first gate: `check-pack: opencode.json is stale: run scripts/gen-opencode.py` — documented cloud-worker `skip-worktree` CI profile artifact (`git ls-files -v opencode.json` → `S`); not caused by this change |
 
-Pre-existing/environmental, out of scope (not caused by this change, not modified):
-- `python3 -I -m unittest discover -s scripts/tests -q` → 162 tests, 6 failures / 4 errors. Failures include `test_repository_pack_is_valid`, `test_committed_opencode_json_is_generated`, `test_check_mode_detects_drift` (`opencode.json is stale`), `test_agent_run.*` (environment-specific git refs) and import errors for `test_fast_tier` / `test_workflow_concurrency`. The stale `opencode.json` is the documented cloud-worker CI-profile/skip-worktree artifact; the rest are unrelated to S-G3-06.
-- Full `doxygen docs/Doxyfile` locally reports one error outside this scope: `apps/api/src/main/java/com/aurevia/smartclinic/g1/s_g1_04/TemplateService.java:23: unable to resolve link ... Actor for \link command`. Local doxygen is 1.9.4 (CI installs via apt); this is outside the declared scope and was left untouched.
-- No local `main` ref is present, so the exact "merge of main and this branch" could not be reproduced locally; the integrator's failure log above is the authoritative red evidence. The integrator runs the database and integration tests; per worker rules only the fast unit tests were run here.
+## Out-of-scope, pre-existing failures (observed, not modified)
 
-## Acceptance mapping (requirement → evidence)
-
-- MSG-03: validate type/magic/size/checksum (`AttachmentInputs`, `FileType`), bind upload to a server-side verified connection grant and subject (`AttachmentService.upload`), explicit send of named clean files to one recipient unit (`publish`), quarantine verdict gating (`scan`), clean-verdict-only mediated downloads (`download`), removal/replacement (`remove`), and unit inbox of published patient-supplied material (`inbox`). Evidence: `AttachmentAcceptanceTest` 28 tests (Java fast tier), patient-mobile `attachments.test.tsx` 22 tests.
-- ARC-06: private quarantine state machine, unique versioned object key, mediated handle carrying no bytes/file name/URL, and non-sensitive append-only event facts (`AttachmentContract`, `AttachmentService`, `AttachmentStore`). Evidence: same suites.
-- Doxygen/doc gate: component `@param` documented once on each record declaration; scope docs build clean (commands above).
+- `apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_11/PatientFlowContract.java` — Java-conventions defensive-copy guard (owned by S-G3-11).
+- SpotBugs: `g0.s_g0_07` (1), `g4.s_g4_04` (2), `messaging.s_g3_05` (1), `messaging.s_g3_08` (1), `messaging.s_g3_10` (1) — other stories.
+- Stale skip-worktree `opencode.json` in this cloud worker.
+- The full `docs.sh` / Doxygen gate could not be run locally: `doxygen` is not installed and `apt-get install doxygen` failed ("Unable to locate package"). DEF-2 was fixed from the documented known-good convention and merged precedent (S-G3-06); a local Doxygen run remains an evidence gap.
 
 ## Decisions
 
+
+- Keep request DTOs null-preserving: the service owns structured 422 validation for missing lists; the records only freeze non-null caller lists.
+- No `@param` tags on record compact constructors or static factory methods; components are documented once on the record declaration (Doxygen merge rule). Instance `with*` copy methods keep their `@param` (regular methods, not constructor entities; merged G1 precedent).
+- Reserved V42 migration intentionally unused — no schema/Flyway change in this domain-only slice; scope forbids `db/migrations` edits.
+
+## Specialist reviews (simulated, read-only)
+=======
 - Keep component documentation on the record declaration; compact constructors and static factories must not repeat `@param` (Doxygen folds them into one canonical-constructor entity). This is the minimal fix that satisfies both `WARN_NO_PARAMDOC` and the no-duplicate rule.
 - No tracker, workflow, script, migration or out-of-scope source file was edited; only the declared scope was reviewed.
 
-## Evidence provenance
 
-All results are from executed tools (Doxygen 1.9.4, Maven/Surefire, npm/tsc/eslint/Jest, Python unittest) on synthetic fixtures. No real patient data, credentials or raw logs are recorded. No human participant or authorized clinical feedback was used; the only review input was the integrator's automated gate log. Database and integration checks are the integrator's responsibility and were not run here.
 
----
 
-# S-G0-08 — Emergency access and platform support access controls (IAM-06)
-
-## Scope honoured
-
-Only the declared scope was available for edits:
-`apps/api/src/main/java/com/aurevia/smartclinic/g0/s_g0_08`,
-`apps/api/src/test/java/com/aurevia/smartclinic/it/s_g0_08`, and reserved migration `V11`.
-No shared tracker (`TODO.md`, `MEMORY.md`, `WORKSPACE.md`, `BUGS.md`, `PROJECT.md`,
-`docs/swarm`) and no file outside that scope was edited. No push, tag or `gh` call
-was made. Synthetic fixtures only.
-
+Results are from executed local tools (Maven/Surefire, Python offline guards, git) on synthetic fixtures, plus two simulated reviewer reports (senior backend, test engineer). The independent test-coverage review enumerated every method, constructor, lambda and branch in the seven production files and confirmed the line-446 entitlement lambda was the only slice-specific gap (resolved by the added test), with no other uncovered production code. No real patient data, credentials or raw logs are recorded. No human or authorized clinical feedback was used. Database, integration, JaCoCo-100%, SpotBugs, OWASP and Doxygen gates are the integrator's responsibility and were not run in this worker.
+=======
 ## Requirement IDs and acceptance mapping
 
-- **IAM-06** (primary): emergency access is time-limited (1–60 min), scoped to one
-  tenant-local facility, reasoned, attributed to a qualified clinician, audited on the
-  V3 append-only chain, independently reviewable by privacy auditor / tenant admin
-  (grantee cannot review own grant), and revocable early. Platform support access is
-  **off by default** and only effective inside an approved, time-bounded (1–240 min)
-  incident window; checks return an explicit fail-closed `AccessDecision`.
-- **ARC-02 / OPS-02** (supporting): V11 tables carry `(organization_id, id)` keys and
-  forced row-level security; purpose, role, facility, actor and timestamp are recorded
-  and committed with the audit event.
-- Delivered surfaces already present in scope (unchanged by this fix attempt):
-  `AccessController` (8 endpoints under the IAM route family), `EmergencyAccessService`,
-  `SupportAccessService`, `AccessRepository`, `AccessRules`, `AccessContracts`,
-  `V11__emergency_and_support_access.sql`, `AccessUnitTest` (41 tests),
-  `AccessIntegrationTest` (8 DB tests, integrator-run).
+Primary **RX-01** (§5). Supporting **ARC-01/ARC-02/ARC-03/ARC-04**, **IAM-01**, **ADM-01**, **OPS-02**.
 
-## Reported failure — investigation and disposition
+| RX-01 acceptance | Implementation | Evidence (synthetic) |
+|---|---|---|
+| Draft with patient, medication, strength, formulation, dose, route, frequency, quantity, refills, instructions, prescriber, destination | `PrescriptionService.createDraft`/`selectMedication`, `PrescriptionContract.Draft`, `PrescriptionRepository.insertDraft`/`selectMedication`; prescriber/destination bound server-side; catalog entry key + version frozen into the draft | `PrescriptionFlowTest.fullWorkflowKeepsValidationOverrideAndAuditSeparate`, `invalidInputsAreRejected`, `versionPreconditionsAndAllergyConflictAreEnforced` (integrator-run DB suite) |
+| Market-approved versioned catalog search by generic/trade name and formulation | `DrugCatalog.search` (newest approved effective version per key only), `PrescriptionRepository.loadCatalog`, `DrugCatalogController.search`, V43 `UNIQUE(org,entry_key,version)` + approval provenance + effective window | `DrugCatalogTest` 8 tests (fast); `PrescriptionFlowTest.searchHidesUnapprovedAndFutureVersionsAndForcesRLS` (integrator) |
+| Tagged alternatives for prescriber review | `DrugCatalog.alternativesFor` → `Alternative(kind=SUGGESTION, requiresClinicianSelection=true)`; never mutates the clinician's selection | `DrugCatalogTest.alternativesAreTaggedSuggestionsAndNeverReplaceTheSelectedEntry`, `prescriberDomainTest` action matrix (fast) |
+| Check verified allergy ingredients; surface unknowns and mismatches | `AllergyChecker.check`: only `verified` assertions match; exact substance = CONFLICT, approved group = WARNING, unknown/unverified/unmappable = UNRESOLVED; no free-text name matching; absent status folds to UNKNOWN in `PrescriptionRepository.allergyAssessment` | `AllergyCheckerTest` 9 tests (fast), `PrescriptionFlowTest.allergyStatusesAreDistinctAndNeverSilentlySafe` (integrator) |
+| Keep override reason, author and matched-data snapshot | `PrescriptionService.selectMedication` → `insertOverride` on a verified exact match without a reason → 409 `ALLERGY_OVERRIDE_REQUIRED`; V43 append-only `prescription_override`, author derived from `app.actor`; deterministic `snapshot()` of catalog key/version, allergy status, outcome and findings | `PrescriptionFlowTest.versionPreconditionsAndAllergyConflictAreEnforced`, `immutableLedgerAndDatabaseVersionGuardHold` (integrator) |
 
-The integrator's "requested change" reported a `scripts/check.sh` failure whose only
-evidence was this stack trace:
+Supporting: forced RLS on all five V43 tables with `(organization_id,id)` keys and `app_org()` policy; non-owner `smartclinic_app` grants; actor-derived authorship; `If-Match` + `FOR UPDATE` version guard (412 on stale); re-derived membership/roles with denial audit (403). See `PrescriptionActions`, `PrescriptionService.authorize`, `PrescriptionRepository`, V43.
 
-```
-Error: useTheme must be used inside ThemeProvider
-    at useTheme (.../apps/staff-web/src/theme/ThemeProvider.tsx:39:11)
-    at Consumer (.../apps/staff-web/tests/theme/ThemeProvider.test.tsx:6:32)
-```
+Entry-point-to-test trace: `POST /api/v1/prescription-drafts` → `PrescriptionController.create` → `PrescriptionService.createDraft` → guarded `TransactionTemplate` → `PrescriptionRepository.insertDraft` (forced RLS, DB-derived `created_by`) → `AuditAppender.append` → 201. `POST /api/v1/prescription-drafts/{id}/select-medication` → `PrescriptionController.select` (`IfMatch.parse`) → `PrescriptionService.selectMedication` (row lock, version precondition, allergy re-check, optional immutable override) → guarded update → audit → 200/409/412/403. `GET /api/v1/drug-catalog/search` and `POST .../{id}/allergy-check` follow the same guarded path. Fast-tier tests cover controllers' collaborators and all pure domain units; the HTTP/database path is in `@Tag("integration") PrescriptionFlowTest`.
 
-Findings:
+## Change made by this worker (defect fixed)
 
-1. **Out of scope.** The error is in `apps/staff-web`, which is outside this task's
-   declared scope (`apps/api/.../s_g0_08` + V11). It cannot be fixed from this branch
-   without violating the task rules, and no in-scope file can cause or cure it — the
-   staff-web tests use local synthetic fixtures and make no API calls.
-2. **Not an actual test failure.** The identical stack trace was reproduced locally.
-   It is the expected stderr output of the intentional negative-path test
-   `throws when used outside its provider` (`ThemeProvider.test.tsx:31-35`), which
-   asserts `expect(() => render(<Consumer />)).toThrow(/useTheme/)`. React 18 dev mode
-   logs the guarded-callback rethrow through jsdom's `reportException`; the test still
-   catches it and passes. `npx vitest run tests/theme/ThemeProvider.test.tsx` → 3/3
-   passed; the full `npm test` suite → **103/103 passed, exit 0**. The pasted text is a
-   benign log line, not a build failure.
-3. **Merge not reproducible locally.** The checkout is a grafted single-commit shallow
-   clone (`git log --all` shows only `bb355f1`; `.git/shallow` present; no local `main`
-   ref), so "the merge of main and this branch" cannot be reconstructed here. This is
-   an evidence gap, not a code defect.
+**Doxygen/developer-reference gate failed on this scope.** Reproduction with the repository `docs/Doxyfile` (doxygen 1.9.4, same as CI) restricted to `g4/s_g4_03` exited 1 with 42 errors: `parameters of member ... are not documented`, `return type of member ... is not documented`, and `argument 'at' of command @param is not found in the argument list of ...DrugEntry(...)`. Root cause: the 14 records in `PrescriptionContract` carried summary Javadoc but no component `@param`/`@return` tags, and `DrugEntry.effectiveAt` repeated `@param at` inside a record body, which Doxygen folds into the record's canonical-constructor documentation entity.
 
-No in-scope defect was found; no in-scope change was needed for a fix attempt.
+Fix (in scope, no behaviour change): document each record component once with `@param` on the record declaration and add one `@return` per declaration; move the `effectiveAt` parameter description into prose and keep only `@return` on that method; compact constructors still carry only `@throws`. This matches the house pattern used by completed scopes (e.g. `messaging/s_g3_06/AttachmentContract.java`, `g2/s_g2_09/LabPolicyCatalog.java`). Re-running the same focused Doxyfile exits 0 with zero warnings.
 
 ## Exact commands run and results
 
 | Command | Result |
 |---|---|
+
+| `mvn -q -B -f apps/api/pom.xml -Pno-security,fast test` | EXIT 0; Surefire 1491 tests, 0 failures, 0 errors, 0 skipped; `com.aurevia.smartclinic.it.s_g4_03` fast tests 28 (AllergyCheckerTest 9, ContractValidationTest 8, DrugCatalogTest 8, PrescriptionDomainTest 3). `PrescriptionFlowTest` (7 tests) is `@Tag("integration")` and is intentionally excluded from the fast tier. |
+| focused `doxygen <Doxyfile with INPUT=g4/s_g4_03, WARN_AS_ERROR=FAIL_ON_WARNINGS>` | RED before fix: EXIT 1, 42 errors (see above). GREEN after fix: EXIT 0, 0 warnings/errors. |
+| `python3 -I scripts/check-migrations.py --require-baseline` | EXIT 0. V43 header is `Change: expand`, no destructive DDL. |
+| `python3 -I scripts/check-docs.py` | EXIT 0 |
+| `python3 -I scripts/check-secrets.py` | EXIT 0 |
+| `python3 -I scripts/check-pack.py` | EXIT 1: `opencode.json is stale`. Cloud-worker CI-profile artifact: `git ls-files -v opencode.json` → `S` (skip-worktree); the worktree file is the CI profile installed by `agent-run.sh`, which `check-pack.py` judges against the committed local profile. Documented as OPS-CW-003-01. Deliberately **not** regenerated (root-level, out of scope). |
+| `DOC_PROJECT_NAME="Aurevia Care" doxygen docs/Doxyfile` (full repo) | EXIT 1 with 228 pre-existing errors, **0 in `s_g4_03`**, all outside this scope (other `s_g0_0x`, `s_g1_0x`, `s_g2_0x`, `s_g3_0x`, `s_g4_0x` files with missing record/enum `@return`/`@param`). Reported for the integrator; not modified from this branch. |
+
+I did **not** run `db/check.sh`, `mvn verify`/JaCoCo or `@Tag("integration")` suites (including `PrescriptionFlowTest`) — per the worker contract the integrator runs database, integration and coverage gates. No coverage result is claimed or fabricated here.
+
+## Defects found (for owner / integrator / follow-up)
+
+1. **FIXED — docs gate (Doxygen)**: missing record component `@param`/`@return` and record-method `@param at` folding in `PrescriptionContract`. Evidence: focused Doxygen RED 42 errors → GREEN 0. Fix described above.
+2. **MEDIUM, open — false override records**: `PrescriptionService.selectMedication` writes a `prescription_override` whenever `overrideReason != null`, even when `check.outcome()` is `NO_CONFLICT`/`WARNING`/`UNRESOLVED`, producing an immutable record whose snapshot says `outcome=no_conflict`. Suggested fix (Senior Backend reviewer): reject with 422 `NO_OVERRIDE_NEEDED` when no verified CONFLICT exists, and add an integration case. **Not changed here**: behaviour change without an executable local test (DB suite belongs to the integrator) and it needs product/clinical sign-off on the exact status code.
+3. **HIGH/MEDIUM, open — clinical safety of non-CONFLICT outcomes** (Physician reviewer, simulated): `WARNING` (verified cross-reactivity group) and `UNRESOLVED` (unknown/unverified assessment or unmappable ingredient) currently allow selection with no documented acknowledgement; the transient `AllergyCheck` is not persisted on the draft, so a reviewer cannot distinguish it from a clean check. Also: group code is matched without group-version reconciliation; group-only matches are labelled as therapeutic "shared ingredient identity" alternatives even for a cross-reactive group; the draft snapshots the generic name but not catalog strength/formulation. These are clinical-policy and RX-01-completeness decisions: route to the clinical safety lead / product owner; **not** unilaterally changed by a simulated reviewer. RX-02 (attestation and routing) is the natural place to bind the check revision to the prescriber's act.
+4. **MEDIUM, open — V43 allergy patient FK**: `patient_allergy_status` and `patient_allergy` carry a bare `patient_id`; only `prescription_draft` gets the conditional composite FK to `patient_record` when that table exists. Add the two composite FKs inside the same `to_regclass('public.patient_record')` guard for ARC-01 attribution. **Not changed here**: schema change whose only executable verification is the integrator's DB suite.
+5. **LOW, open — `db/check.sh` does not assert the five V43 tables** (FORCE RLS, grant boundaries, immutability/actor/version triggers). `db/check.sh` is outside this worker's scope; integrator/owner to decide.
+6. **LOW, open — optional `destination` can never be set after create** because V43 pins it on update; RX-01 lists destination as a draft field. Make it required at create or add a pre-selection command.
+7. **MEDIUM, open — no idempotency key on draft create** (ARC-03); a retried `POST` minting a new UUID creates a second draft. X-01 is the cross-cutting owner.
+
+Pre-existing/out of scope (not caused by this story, not modified): full-repo Doxygen 228 errors outside `s_g4_03`; `check-pack.py` stale-profile artifact above.
+
+## Decisions
+
+- Keep the documentation fix scoped to `PrescriptionContract.java`: component docs on the record declaration only; never repeat `@param` on a compact constructor/factory (Doxygen folds them into one canonical-constructor entity); record methods describe their parameter in prose and keep only `@return`.
+- Do not change clinical behaviour, V43 schema, `db/check.sh`, trackers, workflows or any other scope without an owner decision and a runnable test; record the findings instead.
+- Evidence provenance: all tool results are executed-command evidence from this worker (Maven/Surefire, Doxygen 1.9.4, Python policy checkers) on synthetic fixtures. Findings 2–7 are **simulated specialist reviews** (Senior Backend, Physician/Safety, Senior Database), not human clinical or real-user feedback. No human participant, no real-patient approval; G5 sign-off remains outstanding.
+=======
 | `git status --short` / `git branch --show-current` / `git log -1` | clean tree; branch `swarm/S-G0-08-67`; HEAD `bb355f1` |
 | `git show --stat HEAD` / `find` scope dirs / `ls db/migrations` | full S-G0-08 implementation in scope; V11 present |
 | `bash scripts/quick-check.sh` | exit 1 **only** at `check-pack: opencode.json is stale` — environment artifact (see below); all preceding policy checks passed |
@@ -553,21 +680,29 @@ corresponding production behaviour).
 - The reported frontend "failure" is a misread of expected negative-test stderr; the
   staff-web suite is green. It remains out of scope for this worker.
 
-## Decision / stop notice
 
-Per the task rule "if a decision or evidence is missing, stop and say so in
-`.agent/pr-notes.md`": the merge-gate failure cannot be reproduced from this shallow
-clone, the only supplied evidence is a benign log line from a passing out-of-scope
-test, and there is no in-scope defect to fix. I therefore made **no code change** and
-stop, committing only these notes. If the integrator still observes a non-zero
-`scripts/check.sh` on the merge, the failing step and its exit code must be supplied;
-if it is a genuine staff-web regression it belongs to a staff-web-scoped worker, not
-this IAM-06 backend slice.
+- **Senior backend (bounded review):** confirmed the DEF-1 fix correct with no residual SpotBugs/Doxygen issue; found F1 (fail-open READ, fixed as DEF-4) and F2 (weak checksum, fixed as DEF-3). Noted informational concerns: audit append is not transactional with state in the in-memory store; return-acknowledgment origin is asserted by a caller-supplied string, not verified through a cross-org identity.
+- **Physician / clinical safety (bounded review):** core state machine accepted as synthetic slice evidence — evaluation gates treatment, signed non-discharge note gates discharge, discharge is terminal, signed notes immutable, readings bind approved scale version + unit, replacement summary clears the old acknowledgment, two-tenant value isolation. Flagged PT-H3 (fixed as DEF-3) and the following limitations that need surfaces outside this domain-only slice.
 
----
+## Routed limitations (not fixed here — need controller/DB/exchange surfaces, outside declared scope)
 
-# S-G1-07 — Original PDF/image associations and immutable, localized, versioned PDF rendering
+These are real gaps for **live enablement**, not defects in this synthetic domain slice. None is represented as verified; each needs its own story and qualified site sign-off.
 
+- **PT-H1 / F1-secondary — return-acknowledgment provenance:** `acknowledgeReturn` checks a caller-supplied `receivedBy` against the stored referrer string; it does not authenticate the external referrer. With no REST controller or cross-org exchange channel in scope, G4 "referral closure" is **not** claimed from this slice. Owner: Product Owner + clinical safety lead + architect (XCH partner identity).
+- **PT-H2 — summary disclosure:** `sendSummary` is self-approved and free-text with no content snapshot/checksum/purpose/release-policy version and no verified referrer identity (the `referrerOrg/Subject` strings are captured unverified at acceptance). Owner: clinical safety lead + privacy owner.
+- **PT-H4 — atomic version precondition:** `requireVersion` and `InMemoryTherapyStore.save` are separate operations, so two concurrent commands can both pass the check and the last blind put can lose a clinical fact. Real atomicity belongs to a transactional `UPDATE ... WHERE version = ?` in the durable store; the in-memory store is synthetic scaffolding. Owner: senior backend + database specialist (integration story).
+- **PT-H5 — acceptance-time verification:** `acceptReferral` does not verify the patient exists or that the referrer is an authorized party (no registry in scope). Explicit patient-binding overloads exist on the patient-bearing commands but the common overloads rely on the episode patient. Owner: clinical safety + IAM/architecture.
+- **PT-H6 — discharge does not enforce closure:** summary send and acknowledgment are independent optional commands; the state model does not require them for referral closure. Owner: product + clinical safety.
+- **L1/L2/L3/L4 —** clinical timestamps are non-blank strings rather than parsed instants with zone context; `templateVersion` is optional on signed notes; empty baselines/goals are allowed; in-memory audit has no hash chain and some validation failures are unaudited. Owner: relevant domain + integration stories.
+- **Architectural context:** no controller, PostgreSQL/Flyway/RLS, OIDC/membership enforcement, or durable audit exists in this module. Tenant isolation was proven at the value layer only; it is not a substitute for the G0 forced-RLS guarantee. All of the above must be re-evaluated when this slice is wired to real persistence and identity.
+
+
+## Evidence provenance
+
+- Tool-generated: Maven/Surefire (fast tier, 1492 tests), JaCoCo CSV (100% scope coverage), SpotBugs 4.10.5.0 (before/after), Python unittest (Java conventions guard), `git ls-files` / `git status`.
+- Simulated reviewers: bounded read-only reviews from the senior-backend and physician-clinical-safety specialists (see appended findings below, if any).
+- No DB/integration tests were run locally: per worker rules the integrator runs the database and integration suites. No human or authorized clinical participant feedback; all fixtures are synthetic. No patient data, credentials or raw logs are recorded.
+=======
 ## Requirement IDs and acceptance mapping
 
 
@@ -685,8 +820,12 @@ Reviewer evidence is **simulated review**, not human or clinical acceptance. No 
 
 No reproducible in-scope defect was found. The hardening ideas and verification-gap suggestions above are recorded as follow-ups, not as accepted defects.
 
-## Decisions / notes for the integrator
 
+## Full-repo docs gate note for the integrator
+
+
+`scripts/docs.sh` will fail on the current tree because of 228 pre-existing Doxygen errors in other story scopes; the `s_g4_03` scope itself is clean under the identical Doxyfile settings. Those scopes are owned by other stories/workers and were deliberately left untouched here.
+=======
 - The complete S-G2-02 implementation (16 main files), 9 test files and the V20 migration were **already committed at this branch's base** `da4fbb4` (a prior attempt's work, reflected in the recycled `.agent/pr-notes.md`). This worker changed **no production or test source** after verification; its contribution is this PR description and the recorded executable evidence. The prior notes described S-G1-07 and were replaced.
 - **"Revision" interpretation**: XCH-02's "timestamp and revision" is implemented as the work-item optimistic version the clinician reviewed (the `If-Match` version at acknowledgment), not the immutable order snapshot revision from XCH-01. This slice is deliberately self-contained (no V19 dependency) and the choice is documented in `ExchangeStateMachine`/V20 comments. Confirm with Product/Architecture before G2 sign-off if a different meaning was intended; it does not block this story.
 - **Idempotency keys** are absent on transition routes by documented project deferral; a retry after a lost response gets 412 from the version CAS rather than the original outcome. This diverges from the literal ARC-04 sample contract but is outside XCH-02.
@@ -694,6 +833,5 @@ No reproducible in-scope defect was found. The hardening ideas and verification-
 - Scope respected: only `apps/api/src/main/java/com/aurevia/smartclinic/g2/s_g2_02`, `apps/api/src/test/java/com/aurevia/smartclinic/it/s_g2_02` and reserved migration V20 were in scope; no shared tracker, doc, workflow, other migration or source file was edited. No push, tag or `gh` call was made.
 - Synthetic fixtures only; no patient data, credentials or raw logs were recorded. All gate results above are tool-generated; review findings are simulated; there is no human or clinical evidence.
 main
-
 
 
