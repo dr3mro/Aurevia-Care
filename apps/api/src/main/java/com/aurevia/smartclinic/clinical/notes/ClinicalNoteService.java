@@ -337,7 +337,7 @@ public class ClinicalNoteService {
         AtomicReference<ApiException> failure = new AtomicReference<>();
         NoteView view = transactions.execute(status -> {
             TenantContext context = TenantContext.current();
-            ApiException denial = authorize(context, READ, "READ");
+            ApiException denial = authorize(context, READ, id);
             if (denial != null) {
                 failure.set(denial);
                 return null;

@@ -169,12 +169,18 @@ class ClinicalNoteServiceTest {
         assertEquals(422, assertThrows(ApiException.class,
                 () -> NoteInputs.version(0)).status());
         assertEquals(3, NoteInputs.version(3));
-        assertEquals(NOW.toString(), NoteInputs.instantOrNow(NOW.toString(), Clock.fixed(
-                Instant.parse("2020-01-01T00:00:00Z"), ZoneOffset.UTC).instant()));
+        assertEquals(NOW.toString(), NoteInputs.instantOrNow(NOW.toString(), NOW));
         assertEquals("2020-01-01T00:00:00Z", NoteInputs.instantOrNow(null, Clock.fixed(
                 Instant.parse("2020-01-01T00:00:00Z"), ZoneOffset.UTC).instant()));
         assertEquals(422, assertThrows(ApiException.class,
                 () -> NoteInputs.instantOrNow("yesterday", NOW)).status());
+        // A future effective instant can never be signed because V15 requires
+        // signed_at >= effective_at; reject it at the trust boundary instead of
+        // letting the irreversible sign command fail with an unhandled 500 (A14).
+        ApiException futureEffective = assertThrows(ApiException.class,
+                () -> NoteInputs.instantOrNow(NOW.plusSeconds(3600).toString(), NOW));
+        assertEquals(422, futureEffective.status());
+        assertEquals("INVALID_EFFECTIVE_AT", futureEffective.code());
         assertEquals("[]", NoteInputs.recipients(null));
         assertEquals("[]", NoteInputs.recipients("   "));
         assertEquals("[\"lab-a\"]", NoteInputs.recipients("[\"lab-a\"]"));
@@ -217,6 +223,18 @@ class ClinicalNoteServiceTest {
                 PATIENT, null, "Title", "Content", "en", "SOAP", 1, "author-a", null)).status());
         verify(audit).append(any(), anyString(), anyString(), anyString(), anyString(),
                 anyString(), eq("CONFLICT"));
+    }
+
+    @Test
+    void createDraftRejectsFutureEffectiveAtBeforeAnyWrite() {
+        authorized();
+        when(repository.patientExists(PATIENT)).thenReturn(true);
+        ApiException failure = assertThrows(ApiException.class, () -> service.createDraft(
+                PATIENT, null, "Title", "Content", "en", "SOAP", 1, "author-a",
+                NOW.plusSeconds(3600).toString()));
+        assertEquals(422, failure.status());
+        assertEquals("INVALID_EFFECTIVE_AT", failure.code());
+        verify(repository, never()).insert(any(), any(), any());
     }
 
     @Test
@@ -421,6 +439,16 @@ class ClinicalNoteServiceTest {
         assertThrows(UnsupportedOperationException.class, () -> view.history().clear());
         verify(audit).append(any(), anyString(), eq(ClinicalNoteService.READ),
                 anyString(), anyString(), anyString(), eq("SUCCESS"));
+    }
+
+    @Test
+    void readDenialAuditsTheRequestedNoteId() {
+        when(repository.hasActiveMembership(ACTOR)).thenReturn(false);
+        assertEquals(403, assertThrows(ApiException.class, () -> service.get(NOTE)).status());
+        // OPS-02 requires the audited resource id even on a committed denial.
+        verify(audit).append(eq(TenantContext.current()), eq(ClinicalNoteService.PURPOSE),
+                eq(ClinicalNoteService.READ), eq(ClinicalNoteService.RESOURCE_TYPE),
+                eq(ClinicalNoteService.SCOPE), eq(NOTE), eq("DENIED"));
     }
 
     @Test
