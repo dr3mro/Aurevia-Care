@@ -20,6 +20,7 @@ describe('module delivery hooks', () => {
     const docs = read('docs.sh');
     expect(docs).toContain('--options typedoc.json');
     expect(docs).toContain('index.html');
+    expect(docs).toContain('npm ci --no-audit --no-fund');
     expect(read('typedoc.json')).toContain('"treatWarningsAsErrors": true');
   });
 

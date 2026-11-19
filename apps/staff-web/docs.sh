@@ -12,8 +12,7 @@ if [[ -z "$out" || "$out" != /* ]]; then
 fi
 
 if [[ ! -x node_modules/.bin/typedoc ]]; then
-  printf 'docs.sh: dependencies missing; run npm ci in apps/staff-web\n' >&2
-  exit 1
+  npm ci --no-audit --no-fund
 fi
 
 mkdir -p "$out"
