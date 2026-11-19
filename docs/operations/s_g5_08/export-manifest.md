@@ -29,7 +29,10 @@ Every record must carry:
   checksum and a `policy_version` equal to the manifest's
   (`export.documents`);
 - a non-empty `audit` history of entries with a positive integer `seq`, an
-  `action` and an `outcome` (`export.audit_history`).
+  `action` and an `outcome`, whose `seq` values are strictly increasing and
+  unique (`export.audit_history`). A duplicate or out-of-order sequence is
+  rejected because it defeats the append-only tamper evidence. All identifiers
+  are canonical: surrounding whitespace is rejected.
 
 A document's `authorization` must be one of `release_policy`,
 `record_access_request` or `approved_instruction` ("as allowed by policy"):
@@ -38,10 +41,19 @@ A document's `authorization` must be one of `release_policy`,
 ## Isolation and honesty
 
 The manifest organization must equal the artifact organization, and the
-offboarding organization must match too, so two tenants sharing local record
-identifiers cannot be merged in one artifact (supporting ARC-02). A `measured`
-or executed export may not name a synthetic source. Every artifact is scanned
-for email- and SSN-shaped strings; a hit fails `phi.free`.
+offboarding organization must match too, so a single artifact cannot claim two
+active tenants at its envelope (supporting ARC-02). **This is an envelope check
+only**: records carry no per-record tenant field, so a record from another
+tenant with an identical local id cannot be detected here. Cross-tenant record
+isolation is proved by the database and API gates, not by this evaluator.
+
+Every artifact must name a non-blank `source` (`evidence.source`); a
+`measured_operation` may not name a synthetic source (`evidence_conflict`).
+Both fields are self-declared and are a best-effort heuristics check, not proof
+that the run occurred. Every artifact is scanned for email- and SSN-shaped
+strings; a hit fails `phi.free`. The scan covers those two shapes only — names,
+phones, MRNs, addresses and credentials are out of scope for this gate and are
+handled by the repository's separate secret scanner and G5 record review.
 
 ## What this check cannot prove
 
