@@ -12,12 +12,13 @@ An evidence artifact is a JSON object with these fields:
 |---|---|
 | `schema_version` | `"1.0"`; an unsupported version fails closed |
 | `kind` | `synthetic_rehearsal` or `measured_pilot`; anything else fails closed |
-| `source` | Label of the run; a measured pilot may not name a synthetic source |
+| `source` | Label of the run; required and non-empty for a measured pilot, and a measured pilot may not name a synthetic source |
+| `provenance` | Required for a measured pilot: non-empty `tool`, `tool_version`, `command`, `utc_timestamp`, `environment`, `source_sha` strings |
 | `profile` | The five exact OPS-03 profile values |
-| `measurement` | `scope`, the exact `excluded` list and the `route_class` allowlist |
+| `measurement` | `scope`, the exact `excluded` list and the `route_class` allowlist, whose route names are the declared workload families |
 | `results.availability` | `window: "calendar_month"` and `percent` |
 | `results.p95_read_ms`, `results.p95_command_ms` | Server-side latency percentiles in milliseconds |
-| `results.total_requests`, `read_requests`, `command_requests` | Request counts proving a sustained mixed run |
+| `results.total_requests`, `read_requests`, `command_requests` | Finite, positive counts proving a sustained mixed run, with each class at least 1% of the total |
 
 The [conforming fixture](../../../infra/s_g5_05/fixtures/synthetic_pilot_evidence.json)
 is a complete example. The [violation fixture](../../../infra/s_g5_05/fixtures/violation_pilot_evidence.json)
@@ -42,11 +43,18 @@ exit 0
 
 The violation fixture exits 1 and reports `measurement.excluded`,
 `availability.window`, both p95 breaches and `results.sustained_rate` as failures.
-Line coverage of the evaluator is 100% under stdlib `trace`
-(`python3 -m trace --count --coverdir <dir> infra/s_g5_05/tests/run_coverage.py`,
-155 executable lines, none uncovered); branch coverage is by exhaustive
-enumeration of every conditional in the 45 unit tests, since `coverage.py` is not
-installed. Evidence source: executed tool commands in this repository.
+`bash infra/s_g5_05/check.sh` requires that exact exit code and all five named
+breaches, so an unreadable fixture (exit 2) cannot silently pass the negative
+control.
+
+Line coverage of the evaluator is complete under stdlib `trace`
+(`python3 -m trace --count --coverdir <dir> infra/s_g5_05/tests/run_coverage.py`):
+no line of `capacity_evidence.py` carries the unexecuted `>>>>>>` marker across
+55 unit tests. The runner imports the module, so the `if __name__ == "__main__"`
+body is not part of the traced execution; that CLI path is exercised by the
+fixture runs in `check.sh`. Branch coverage is by exhaustive enumeration of
+every conditional in the unit tests, since `coverage.py` is not installed.
+Evidence source: executed tool commands in this repository.
 
 ## What the evaluator proves — and what it cannot
 
@@ -61,8 +69,9 @@ Accordingly:
 - `kind: synthetic_rehearsal` yields `final_evidence: false` even when every check
   passes. It demonstrates the harness, not capacity.
 - `kind: measured_pilot` yields `final_evidence: true` only when every check
-  passes and the source is not synthetic — but that flag records what the
-  artifact *claims*, not an independent verification.
+  passes, a non-empty source and complete provenance are present, and the source
+  is not synthetic. That flag records what the artifact *claims* and the shape
+  of its provenance — not an independent verification that the run happened.
 
 ## Remaining gate
 
@@ -71,8 +80,10 @@ repository (Docker is unavailable locally and the container stack is a bootstrap
 fixture). This story therefore does **not** claim that OPS-03 is satisfied. The
 open work is:
 
-1. Run the 30-minute profile against an authorized environment with the tool,
-   version, command, UTC timestamp, environment and source SHA recorded.
+1. Run the 30-minute profile against an authorized environment and record the
+   tool, version, command, UTC timestamp, environment and source SHA in the
+   artifact's `provenance` object; the evaluator requires their presence but a
+   human owner must verify they are true.
 2. Produce the separate calendar-month availability measurement.
 3. Compare, revise the assumptions where observation disagrees, and record the
    measured artifact together with an engineering and operations sign-off for
