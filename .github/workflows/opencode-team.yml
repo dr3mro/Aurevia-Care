@@ -78,7 +78,7 @@ jobs:
           else
             printf 'ref=%s\nmode=story\n' "$BASE_BRANCH" >> "$GITHUB_OUTPUT"
           fi
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ steps.target.outputs.ref }}
           fetch-depth: 1
