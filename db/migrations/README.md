@@ -14,9 +14,9 @@ Run `bash ../check.sh` from `db/` against a local PostgreSQL to apply the migrat
 
 ## Change-safety gate (OPS-06)
 
-`python3 -I scripts/check-migrations.py --require-baseline` runs in `scripts/check.sh`, `scripts/quick-check.sh` and the Delivery policy job. The baseline flag means an empty or missing migration directory fails rather than silently disabling the gate. It enforces version ordering and expand/contract discipline before any database is needed:
+`python3 -I scripts/check-migrations.py --require-baseline` runs in `scripts/check.sh`, `scripts/quick-check.sh` and the Delivery policy job. The baseline flag means an empty or missing migration directory fails rather than silently disabling the gate. It enforces unique version numbers and expand/contract discipline before any database is needed:
 
-- A filename must match `V<n>__name.sql`; versions must be unique and contiguous from `V1`.
+- A filename must match `V<n>__name.sql` and versions must be unique. Gaps are allowed: each parallel worker owns a reserved version (V9…V57) and merges independently, and Flyway applies by version order.
 - A statement-start destructive DDL must declare `Change: contract`. The detected forms are `DROP` of TABLE, VIEW, MATERIALIZED VIEW, INDEX, TYPE, SEQUENCE, SCHEMA, FUNCTION, PROCEDURE, POLICY, TRIGGER, DATABASE, ROLE, COLUMN or CONSTRAINT; `DELETE FROM`; `TRUNCATE [TABLE]`; and `ALTER TABLE … DROP COLUMN|CONSTRAINT`. Matching is done after comments, strings, quoted identifiers and dollar-quoted bodies are blanked and statements are split on semicolons.
 - `Change` is restricted to `expand` or `contract` when present.
 - A contract must declare `Forward-fix:` as a `V<n>__name.sql` reference (the follow-up that restores the removed capability; it may not exist yet) and `Requires-expand: V<n>` where the referenced version exists, is earlier, and declares `Change: expand`.
