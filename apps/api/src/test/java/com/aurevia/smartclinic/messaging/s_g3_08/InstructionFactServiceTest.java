@@ -381,6 +381,7 @@ class InstructionFactServiceTest {
     @Test
     void otherPatientsInstructionIsConcealed() {
         asStaff();
+        store.addConnection(ORG, OTHER_PATIENT, UNIT, true);
         service.publish(publish(OTHER_INSTRUCTION, OTHER_PATIENT, UNIT, 1, true, NOW.toString(),
                 true, "client-1"));
         asPatient();
@@ -533,6 +534,173 @@ class InstructionFactServiceTest {
         assertEquals(1, service.overdueFollowUps(UNIT).size());
     }
 
+    @Test
+    void aPublishedRevisionIsImmutableEvenWithADifferentClientKey() {
+        asStaff();
+        service.publish(publish(INSTRUCTION, PATIENT, UNIT, 1, false, null, false, "client-1"));
+        ApiException conflict = assertThrows(ApiException.class,
+                () -> service.publish(new PublishCommand(INSTRUCTION, PATIENT, UNIT, 1,
+                        "artifact-altered", false, null, false, "client-2")));
+        assertEquals(409, conflict.status());
+        assertEquals("REVISION_CONFLICT", conflict.code());
+        assertEquals("artifact-1",
+                store.instruction(ORG, INSTRUCTION, 1).orElseThrow().contentRef());
+        assertEquals(1, store.publications(ORG, INSTRUCTION, 1).size());
+    }
+
+    @Test
+    void publishingARevisionOlderThanTheLatestIsRejected() {
+        asStaff();
+        service.publish(publish(INSTRUCTION, PATIENT, UNIT, 2, false, null, false, "client-2"));
+        ApiException stale = assertThrows(ApiException.class,
+                () -> service.publish(publish(INSTRUCTION, PATIENT, UNIT, 1, false, null, false,
+                        "client-1")));
+        assertEquals(409, stale.status());
+        assertEquals("STALE_REVISION", stale.code());
+        assertTrue(store.instruction(ORG, INSTRUCTION, 1).isEmpty());
+    }
+
+    @Test
+    void requestedAcknowledgmentRequiresADueInstant() {
+        asStaff();
+        ApiException error = assertThrows(ApiException.class,
+                () -> service.publish(publish(INSTRUCTION, PATIENT, UNIT, 1, true, null, false,
+                        "client-1")));
+        assertEquals(422, error.status());
+        assertEquals("ACKNOWLEDGMENT_DUE_DATE_REQUIRED", error.code());
+    }
+
+    @Test
+    void publishRequiresAnActivePatientUnitConnection() {
+        asStaff();
+        store.addConnection(ORG, PATIENT, UNIT, false);
+        ApiException error = assertThrows(ApiException.class,
+                () -> service.publish(publish(INSTRUCTION, PATIENT, UNIT, 1, false, null, false,
+                        "client-1")));
+        assertEquals(403, error.status());
+        assertEquals("FORBIDDEN", error.code());
+    }
+
+    @Test
+    void anIdempotencyKeyCannotReuseAnotherPatientOrUnit() {
+        asStaff();
+        service.publish(publish(INSTRUCTION, PATIENT, UNIT, 1, false, null, false, "client-1"));
+        store.linkPatient(ORG, "other-account", OTHER_PATIENT);
+        store.addConnection(ORG, OTHER_PATIENT, UNIT, true);
+        ApiException changedPatient = assertThrows(ApiException.class,
+                () -> service.publish(publish(INSTRUCTION, OTHER_PATIENT, UNIT, 1, false, null,
+                        false, "client-1")));
+        assertEquals(409, changedPatient.status());
+        assertEquals("IDEMPOTENCY_CONFLICT", changedPatient.code());
+        store.assignStaffUnit(ORG, STAFF, OTHER_UNIT);
+        store.addConnection(ORG, PATIENT, OTHER_UNIT, true);
+        ApiException changedUnit = assertThrows(ApiException.class,
+                () -> service.publish(publish(INSTRUCTION, PATIENT, OTHER_UNIT, 1, false, null,
+                        false, "client-1")));
+        assertEquals(409, changedUnit.status());
+        assertEquals("IDEMPOTENCY_CONFLICT", changedUnit.code());
+    }
+
+    @Test
+    void aBusinessDenialDoesNotBurnTheIdempotencyKey() {
+        asStaff();
+        service.publish(publish(INSTRUCTION, PATIENT, UNIT, 1, false, null, false, "client-1"));
+        store.linkPatient(ORG, "other-account", OTHER_PATIENT);
+        store.addConnection(ORG, OTHER_PATIENT, UNIT, true);
+        assertEquals(409, assertThrows(ApiException.class,
+                () -> service.publish(publish(INSTRUCTION, OTHER_PATIENT, UNIT, 2, false, null,
+                        false, "client-2"))).status());
+        Publication retry = service.publish(publish(INSTRUCTION, PATIENT, UNIT, 2, false, null,
+                false, "client-2"));
+        assertEquals(2, retry.revision());
+    }
+
+    @Test
+    void replayingADeniedAcknowledgmentFailsClosedWithAConflict() {
+        asStaff();
+        service.publish(publish(INSTRUCTION, PATIENT, UNIT, 1, true, NOW.toString(), true, "client-1"));
+        service.publish(publish(INSTRUCTION, PATIENT, UNIT, 2, true, NOW.toString(), true, "client-2"));
+        asPatient();
+        assertEquals(409, assertThrows(ApiException.class,
+                () -> service.acknowledge(new AcknowledgeCommand(INSTRUCTION, 1, "ack-stale"))).status());
+        ApiException replay = assertThrows(ApiException.class,
+                () -> service.acknowledge(new AcknowledgeCommand(INSTRUCTION, 1, "ack-stale")));
+        assertEquals(409, replay.status());
+        assertEquals("STALE_REVISION", replay.code());
+    }
+
+    @Test
+    void aLostIdempotencyReservationFailsClosedWithoutWritingAFact() {
+        RaceStore raceStore = new RaceStore();
+        InstructionFactService raceService = new InstructionFactService(raceStore,
+                new InstructionFactActions(), Clock.fixed(NOW, ZoneOffset.UTC));
+        raceStore.addMember(ORG, STAFF, "lab_collector", true);
+        raceStore.assignStaffUnit(ORG, STAFF, UNIT);
+        raceStore.addConnection(ORG, PATIENT, UNIT, true);
+        asStaff();
+        ApiException error = assertThrows(ApiException.class,
+                () -> raceService.publish(publish(INSTRUCTION, PATIENT, UNIT, 1, false, null,
+                        false, "client-race")));
+        assertEquals(409, error.status());
+        assertEquals("CONFLICT", error.code());
+        assertTrue(raceStore.publications(ORG, INSTRUCTION, 1).isEmpty());
+    }
+
+    @Test
+    void aRecordedKeyWithoutItsFactFailsClosedWithAConflictInsteadOfAServerError() {
+        asStaff();
+        service.publish(publish(INSTRUCTION, PATIENT, UNIT, 1, true, NOW.toString(), true, "client-1"));
+        store.putClientDigest(ORG, SUBJECT, "ACKNOWLEDGE", "orphan-key", INSTRUCTION + "|1");
+        asPatient();
+        ApiException error = assertThrows(ApiException.class,
+                () -> service.acknowledge(new AcknowledgeCommand(INSTRUCTION, 1, "orphan-key")));
+        assertEquals(409, error.status());
+        assertEquals("CONFLICT", error.code());
+    }
+
+    @Test
+    void aRecordedPublishKeyWithoutItsFactFailsClosedWithAConflict() {
+        asStaff();
+        store.putClientDigest(ORG, STAFF, "PUBLISH", "orphan-publish",
+                INSTRUCTION + "|" + PATIENT + "|" + UNIT + "|1|artifact-1|false|null|false");
+        ApiException error = assertThrows(ApiException.class,
+                () -> service.publish(publish(INSTRUCTION, PATIENT, UNIT, 1, false, null,
+                        false, "orphan-publish")));
+        assertEquals(409, error.status());
+        assertEquals("CONFLICT", error.code());
+    }
+
+    @Test
+    void aRecordedDispatchKeyWithoutItsFactFailsClosedWithAConflict() {
+        asStaff();
+        service.publish(publish(INSTRUCTION, PATIENT, UNIT, 1, false, null, false, "client-1"));
+        store.putClientDigest(ORG, STAFF, "DISPATCH", "orphan-dispatch", INSTRUCTION + "|1");
+        ApiException error = assertThrows(ApiException.class,
+                () -> service.retryDispatch(new RetryCommand(INSTRUCTION, 1, "orphan-dispatch")));
+        assertEquals(409, error.status());
+        assertEquals("CONFLICT", error.code());
+    }
+
+    @Test
+    void supersededRevisionIsNotDetectedOrRoutedAsOverdue() {
+        asStaff();
+        service.publish(publish(INSTRUCTION, PATIENT, UNIT, 1, true, NOW.minusSeconds(1).toString(),
+                true, "client-1"));
+        service.publish(publish(INSTRUCTION, PATIENT, UNIT, 2, false, null, false, "client-2"));
+        assertTrue(store.overdueCandidates(ORG, NOW).isEmpty());
+        assertTrue(service.overdueFollowUps(UNIT).isEmpty());
+    }
+
+    @Test
+    void aSupersededRevisionWithAnExistingFollowUpIsNotRoutedAgain() {
+        asStaff();
+        service.publish(publish(INSTRUCTION, PATIENT, UNIT, 1, true, NOW.minusSeconds(1).toString(),
+                true, "client-1"));
+        assertEquals(1, service.overdueFollowUps(UNIT).size());
+        service.publish(publish(INSTRUCTION, PATIENT, UNIT, 2, false, null, false, "client-2"));
+        assertTrue(service.overdueFollowUps(UNIT).isEmpty());
+    }
+
     private AuditFact lastAudit() {
         List<AuditFact> events = store.auditEvents(ORG);
         return events.get(events.size() - 1);
@@ -552,6 +720,15 @@ class InstructionFactServiceTest {
 
     private void seedInstruction(Instruction instruction) {
         store.putInstruction(instruction.organizationId(), instruction);
+    }
+
+    /** Synthetic store that loses an idempotency reservation race. */
+    private static final class RaceStore extends InMemoryInstructionFactStore {
+        @Override
+        public boolean putClientDigest(String organizationId, String subject, String action,
+                                       String clientId, String digest) {
+            return false;
+        }
     }
 
     private static Instruction rev(int revision, boolean requiresAck, Instant dueAt) {

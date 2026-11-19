@@ -73,11 +73,12 @@ public interface InstructionFactStore {
     boolean isStaffAssignedToUnit(String organizationId, String subject, String unitId);
 
     /**
-     * Store one instruction revision.
+     * Store one immutable instruction revision, returning the original on a
+     * duplicate so a caller can detect an attempt to alter published content.
      *
      * @param organizationId active organization
      * @param instruction    instruction to store
-     * @return the stored instruction
+     * @return the authoritative stored instruction, never a replacement
      */
     Instruction putInstruction(String organizationId, Instruction instruction);
 
