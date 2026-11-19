@@ -24,7 +24,9 @@ import com.aurevia.smartclinic.tenant.TenantContext;
 @Service
 public class ConfigurationService {
 
-    private static final Pattern KEY = Pattern.compile("[a-z][a-z0-9._-]{2,63}");
+    // Keys begin with a lowercase namespace (for example "catalog.") and may
+    // contain uppercase tenant-local codes such as a diagnosis code R51.
+    private static final Pattern KEY = Pattern.compile("[a-z][A-Za-z0-9._:-]{2,63}");
     private static final int MAX_VALUE = 4000;
 
     private final ConfigurationRepository repository;
