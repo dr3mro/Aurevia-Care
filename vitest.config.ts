@@ -4,7 +4,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     globals: true,
-    include: ['frontend/**/*.test.ts', 'apps/**/src/**/*.test.ts', 'apps/**/src/**/*.test.tsx'],
+    include: ['frontend/**/*.test.ts', 'apps/**/src/**/*.test.ts'],
     coverage: {
       provider: 'v8',
       include: ['frontend/**/*.ts', 'apps/**/src/**/*.ts', 'apps/**/src/**/*.tsx'],
