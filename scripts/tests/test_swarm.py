@@ -319,6 +319,15 @@ class PlanTests(unittest.TestCase):
         self.assertIn("gh pr ready", text)
         self.assertIn("api", text)
 
+    def test_any_failed_main_run_starts_a_repair_worker(self):
+        text = (ROOT / ".github/workflows/failed-run-repair.yml").read_text()
+        self.assertIn("workflow_run:", text)
+        self.assertIn("conclusion == 'failure'", text)
+        self.assertIn("swarm.py repair-gate", text)
+        self.assertIn("-f repair_run=", text)
+        for name in ("Delivery", "Heavy verification", "Swarm integrator", "Agent swarm"):
+            self.assertIn(f"- {name}", text)
+
     def test_budget_workflows_include_single_repair_workflow(self):
         self.assertIn("main-repair.yml", swarm.BUDGET_WORKFLOWS)
         self.assertNotIn("fix-pr-watchdog.yml", swarm.BUDGET_WORKFLOWS)

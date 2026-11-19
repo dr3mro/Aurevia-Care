@@ -49,23 +49,34 @@ The evaluator therefore rejects an availability figure whose window is the load
 run. A conforming artifact may carry a synthetic monthly figure to exercise the
 check; only an authorized measurement can supply real evidence.
 
-## Derived figures — not requirements
+## Derived figures — not new targets
 
 These are arithmetic consequences of the profile, shown for planning only. They
-are **not** targets and are not enforced by the evaluator.
+are **not** specification targets. Two of them are nevertheless *enforced as
+consistency checks*, because a run that violates them did not execute the
+declared scenario:
 
-- At 50 requests/second for 30 minutes, a steady-state run contains 90,000
-  requests. The evaluator allows a 10% ramp tolerance, so at least 81,000 are
-  required, split exactly between read and command counts.
-- 0.25 requests/second per concurrently active staff member (50 / 200).
-- 5,000 charts per organization on average (100,000 / 20).
+- At 50 requests/second for 30 minutes, the literal steady-state total is
+  90,000 requests. A declared 10% load-generator ramp allowance lowers the
+  **enforced floor** to 81,000 (`results.sustained_rate`); a run below that floor
+  fails. This is a measurement allowance, not a relaxation of the 50 rps and
+  30-minute profile values, which are both checked exactly in `profile`.
+- Each class must hold at least 1% of the run (`results.class_balance`) so the
+  reported p95 is computed over a meaningful sample.
+- 0.25 requests/second per concurrently active staff member (50 / 200) and
+  5,000 charts per organization on average (100,000 / 20) are planning figures
+  only and are not enforced.
 - A 99.9% monthly availability target corresponds to roughly 43.2 minutes of
-  error budget in a 30-day month.
+  error budget in a 30-day month; the window is checked, the budget is not.
 
 ## Fail-closed behaviour
 
 An artifact that is not an object, declares an unsupported schema version or
 kind, omits a section, or misstates any value is reported with named failing
-checks rather than raising or defaulting to a pass. A synthetic source combined
-with `kind: measured_pilot` is explicitly rejected as a conflict. The exit code
-is 0 only when every check passes; see [Performance evidence](performance-evidence.md).
+checks rather than raising or defaulting to a pass. A non-finite number (NaN or
+Infinity) is not a valid measurement, and an unhashable `kind` is classified as
+unknown rather than crashing the report. A synthetic source combined with
+`kind: measured_pilot` is explicitly rejected as a conflict, and such a claim
+must also carry a named source and the provenance fields listed in
+[Performance evidence](performance-evidence.md). The exit code is 0 only when
+every check passes; see [Performance evidence](performance-evidence.md).
