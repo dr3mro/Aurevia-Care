@@ -387,6 +387,35 @@ class ResultRoutingIntegrationTest {
     }
 
     @Test
+    void aReorderedFinalAfterACorrectionDoesNotDuplicateOrOverwrite() throws Exception {
+        assertEquals(HttpStatus.CREATED, register(ORG_A, "admin-a",
+                orderBody("ORD-RO", patientA, "SRC-RO", "ACC-RO", "verifier-a", "queue-a"))
+                .getStatusCode());
+        ResponseEntity<String> original = importResult(ORG_A, "verifier-a",
+                resultBody("ORD-RO", "SRC-RO", "ACC-RO", "final", null));
+        assertEquals(HttpStatus.CREATED, original.getStatusCode(), original.getBody());
+        String firstId = text(original, "/id");
+
+        ResponseEntity<String> corrected = importResult(ORG_A, "verifier-a",
+                resultBody("ORD-RO", "SRC-RO", "ACC-RO", "corrected", 1));
+        assertEquals(HttpStatus.CREATED, corrected.getStatusCode(), corrected.getBody());
+        String secondId = text(corrected, "/id");
+        assertFalse(firstId.equals(secondId));
+
+        // Re-deliver the original final after the correction advanced the tip.
+        ResponseEntity<String> reordered = importResult(ORG_A, "verifier-a",
+                resultBody("ORD-RO", "SRC-RO", "ACC-RO", "final", null));
+        assertEquals(HttpStatus.CREATED, reordered.getStatusCode(), reordered.getBody());
+        assertEquals(firstId, text(reordered, "/id"),
+                "a reordered final must resolve to its stored revision");
+        assertEquals(2, count(ORG_A, "SELECT count(*) FROM public.xch04_report_revision "
+                + "WHERE accession = 'ACC-RO'"), "no duplicate revision may be inserted");
+        assertEquals("unreviewed", text(send(HttpMethod.GET, RESULTS + "/" + secondId, null,
+                "clinician-a", ORG_A), "/review/state"),
+                "the correction's review task must not be overwritten by the replay");
+    }
+
+    @Test
     void authorizationAndTenantIsolationFailClosed() {
         assertEquals(HttpStatus.UNAUTHORIZED, importResult(ORG_A, null,
                 resultBody("ORD-R6", "SRC-6", "ACC-R6", "final", null)).getStatusCode());
