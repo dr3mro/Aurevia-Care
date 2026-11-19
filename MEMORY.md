@@ -1,6 +1,6 @@
 # Durable memory
 
-Current checkpoint: PROGRESS.md, CW-001 GitHub Actions worker repair; fix the missing OpenCode credential fallback and container checkout ownership, with targeted tests green. Full `scripts/check.sh` cannot compile locally because this session provides Java 17 instead of the Java 21 baseline; exact-SHA CI is the remaining verification. `PLAN.md` is the canonical all-story index with checkbox state; fill a checkbox only when PROGRESS.md records the evidence.
+Current checkpoint: PROGRESS.md, S-G0-03 configuration foundation implementation and local gates; next full gate and exact-SHA CI on `main`. CW-001 worker repair is merged in PR #12. `PLAN.md` is the canonical all-story index with checkbox state; fill a checkbox only when PROGRESS.md records the evidence.
 
 | Decision | Rationale and evidence |
 |---|---|
