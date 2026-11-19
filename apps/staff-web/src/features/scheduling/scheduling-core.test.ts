@@ -1,4 +1,6 @@
 import { readFileSync, readdirSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
   IllegalVisitTransition,
@@ -289,7 +291,7 @@ describe('synthetic fixtures and localized labels', () => {
 
 describe('RTL-safe layout', () => {
   it('uses logical styling properties in every feature component', () => {
-    const featureDir = 'src/features/scheduling';
+    const featureDir = resolve(dirname(fileURLToPath(import.meta.url)));
     const componentFiles = readdirSync(featureDir).filter(
       (name) => name.endsWith('.tsx') && !name.includes('.test.'),
     );
