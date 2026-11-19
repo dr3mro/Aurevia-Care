@@ -217,17 +217,15 @@ def check(root=ROOT, require_baseline=False):
         records.append((path, version, text, header(text)))
         versions.append(version)
 
+    # Duplicate versions are unsafe: Flyway cannot tell two migrations apart.
+    # Gaps are expected: each parallel worker owns a reserved version (V9..V57)
+    # and merges independently, so a branch or main can legitimately skip
+    # numbers. Flyway applies by version order, not by contiguous sequence.
     seen = set()
     for version in versions:
         if version in seen:
             errors.append(f"duplicate migration version V{version}")
         seen.add(version)
-    expected = 1
-    for version in sorted(seen):
-        if version != expected:
-            errors.append(f"migration version gap: expected V{expected}, found V{version}")
-            break
-        expected = version + 1
 
     # Keyed by path so duplicate versions still validate each file's own SQL.
     headers = {}

@@ -151,10 +151,20 @@ class SequenceTest(MigrationFixture):
         self.assertTrue(any("duplicate" in e for e in errors))
         self.assertTrue(any("V1__a.sql" in e and "contract" in e for e in errors))
 
-    def test_gapped_version_is_reported(self):
+    def test_gapped_versions_are_allowed(self):
+        # Parallel workers own reserved versions (V9..V57), so a branch or a
+        # merge of several workers legitimately has gaps. Flyway applies by
+        # version order; only duplicate versions are unsafe.
         write(self.root, "V1__a.sql", "SELECT 1;\n")
         write(self.root, "V3__b.sql", "SELECT 2;\n")
-        self.assertTrue(any("gap" in e for e in self.errors()))
+        write(self.root, "V18__c.sql", "SELECT 3;\n")
+        self.assertEqual(self.errors(), [])
+
+    def test_duplicate_version_is_an_error_even_with_gaps(self):
+        write(self.root, "V1__a.sql", "SELECT 1;\n")
+        write(self.root, "V18__a.sql", "SELECT 2;\n")
+        write(self.root, "V18__b.sql", "SELECT 3;\n")
+        self.assertTrue(any("duplicate" in e for e in self.errors()))
 
     def test_clean_expand_migration_passes(self):
         write(self.root, "V1__expand.sql", "-- Change: expand\nCREATE TABLE t (id int);\n")

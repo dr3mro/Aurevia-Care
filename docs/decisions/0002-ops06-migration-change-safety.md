@@ -12,7 +12,7 @@ OPS-06 requires migration checks beyond the CI migration gate and support for re
 
 Add one deterministic, synthetic checker, `scripts/check-migrations.py`, invoked with `--require-baseline` from `scripts/check.sh`, `scripts/quick-check.sh` and the Delivery `policy` job:
 
-- migration filenames must be `V<n>__name.sql` with unique, contiguous versions from `V1`; an empty or missing migration directory fails under `--require-baseline`;
+- migration filenames must be `V<n>__name.sql` with unique versions (gaps are allowed because parallel workers own reserved versions and Flyway applies by version order); an empty or missing migration directory fails under `--require-baseline`;
 - statement-start destructive DDL requires `Change: contract`. Before matching, a single left-to-right pass blanks comments, strings, quoted identifiers and dollar-quoted bodies, then statements are split on semicolons and whitespace collapsed. This catches same-line, split-line and multi-statement forms while ignoring the TRUNCATE/DELETE tokens in V4/V5/V7 triggers, `REVOKE` grants and literals;
 - `Change` is restricted to `expand` or `contract` when present;
 - a contract requires `Forward-fix: V<n>__name.sql` (format-checked; the file may not exist yet, since it is a future commitment) and `Requires-expand: V<n>` pointing at an existing, earlier migration whose header declares `Change: expand`;
