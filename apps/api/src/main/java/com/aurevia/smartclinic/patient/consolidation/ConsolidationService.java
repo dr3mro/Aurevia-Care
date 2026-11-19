@@ -164,6 +164,9 @@ public class ConsolidationService {
             try {
                 repository.insertReview(context.organizationId(), survivorId, duplicateId, context.subject());
             } catch (DuplicateKeyException exception) {
+                // The unique violation aborts the database transaction; make the
+                // rollback explicit instead of relying on COMMIT becoming a no-op.
+                status.setRollbackOnly();
                 failure.set(new ApiException(409, "CONFLICT", "review already exists"));
                 return null;
             }
@@ -245,6 +248,14 @@ public class ConsolidationService {
                         "ambiguous orders, links or grants must be resolved first"));
                 return null;
             }
+            // The first visibility check ran before the pair lock. Under concurrency a
+            // competing approval can commit while we waited, so re-read under the lock
+            // and refuse a second consolidation of the same review.
+            if (repository.findCurrentConsolidation(reviewId).isPresent()) {
+                repository.appendAudit(context, "CONSOLIDATE", reviewId, "CONFLICT");
+                failure.set(new ApiException(409, "CONFLICT", "review already consolidated"));
+                return null;
+            }
             String associationId = repository.newId();
             String consolidationId = repository.newId();
             try {
@@ -305,15 +316,28 @@ public class ConsolidationService {
                 failure.set(new ApiException(409, "CONFLICT", "consolidation already corrected"));
                 return null;
             }
+            if (repository.lockPair(current.survivorId(), current.duplicateId()) != 2) {
+                repository.appendAudit(context, "CONSOLIDATION_CORRECT", reviewId, "CONFLICT");
+                failure.set(new ApiException(409, "CONFLICT", "both patient records must be locked"));
+                return null;
+            }
+            // Mirror consolidate: read the patient only after the pair lock so the
+            // association records the version current under the lock, not a snapshot
+            // that a concurrent patient edit could have invalidated.
             Patient duplicate = repository.findPatient(current.duplicateId()).orElse(null);
             if (duplicate == null) {
                 repository.appendAudit(context, "CONSOLIDATION_CORRECT", reviewId, "NOT_FOUND");
                 failure.set(new ApiException(404, "NOT_FOUND", "patient not found"));
                 return null;
             }
-            if (repository.lockPair(current.survivorId(), current.duplicateId()) != 2) {
+            // Guard the support workflow against a racing correction. The status check
+            // above read a snapshot taken before the pair lock; the append-only history
+            // cannot be changed, but a second CORRECTED revision can be appended by a
+            // concurrent caller that passed the same stale check. Re-read under lock.
+            Consolidation locked = repository.findCurrentConsolidation(reviewId).orElse(current);
+            if (!"CONSOLIDATED".equals(locked.status())) {
                 repository.appendAudit(context, "CONSOLIDATION_CORRECT", reviewId, "CONFLICT");
-                failure.set(new ApiException(409, "CONFLICT", "both patient records must be locked"));
+                failure.set(new ApiException(409, "CONFLICT", "consolidation already corrected"));
                 return null;
             }
             String associationId = repository.newId();
