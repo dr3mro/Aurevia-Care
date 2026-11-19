@@ -4,7 +4,7 @@
 FROM eclipse-temurin:21-jdk AS jdk
 FROM maven:3-eclipse-temurin-21 AS maven
 FROM node:22-bookworm-slim
-ARG OPENCODE_VERSION=latest
+ARG OPENCODE_VERSION=2.3.2
 COPY --from=jdk /opt/java/openjdk /opt/java/openjdk
 COPY --from=maven /usr/share/maven /usr/share/maven
 ENV JAVA_HOME=/opt/java/openjdk \

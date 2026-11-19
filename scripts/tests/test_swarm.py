@@ -157,6 +157,24 @@ class PlanTests(unittest.TestCase):
         plan = swarm.plan_workers(10, SLOTS, ALIASED, [])
         self.assertEqual([t["id"] for t in plan], ["CW-011"])
 
+    def test_each_claim_counts_an_attempt_and_the_third_stops_the_retries(self):
+        text = TASKS
+        for tries in (1, 2, 3):
+            text = swarm.set_task_status(text, "CW-001", "taken", agent="swarm-1")
+            task = {t["id"]: t for t in swarm.parse_tasks(text)}["CW-001"]
+            self.assertEqual(task["attempts"], str(tries))
+            text = swarm.set_task_status(text, "CW-001", "todo")
+        self.assertNotIn("CW-001", [t["id"] for t in swarm.plan_workers(10, SLOTS, text, [])])
+        self.assertIn("  - attempts: 3\n", text)
+
+    def test_continue_starts_a_wave_only_when_work_is_ready_and_nothing_waits(self):
+        self.assertTrue(swarm.continue_swarm(TASKS, []))
+        self.assertFalse(swarm.continue_swarm(ALIASED.replace("[ ] CW-011", "[x] CW-011"), []))
+        waiting = [pr(7, "swarm/CW-001-4", "swarm")]
+        self.assertFalse(swarm.continue_swarm(TASKS, waiting))
+        blocked = [pr(7, "swarm/CW-001-4", "swarm", "needs-human")]
+        self.assertTrue(swarm.continue_swarm(TASKS, blocked))
+
     def test_stories_without_a_scope_are_never_dispatched(self):
         self.assertNotIn("S-G9-01", [t["id"] for t in self.plan()])
 
@@ -370,12 +388,12 @@ class RepairTests(unittest.TestCase):
                for n in range(5)]
         self.assertTrue(self.gate(prs)[0])
 
-    def test_repair_pull_requests_are_left_for_a_person(self):
+    def test_red_main_admits_only_repair_pull_requests(self):
         prs = [{"number": 1, "title": "CW-001: a", "labels": labels("swarm"), "isCrossRepository": False},
                {"number": 2, "title": "FIX-5: b", "labels": labels("swarm"), "isCrossRepository": False}]
         with mock.patch.object(swarm, "gh", FakeGh(prs=prs)):
-            self.assertEqual(swarm.plan_integration(red=True), [])
-            self.assertEqual(swarm.plan_integration(red=False), [1])
+            self.assertEqual(swarm.plan_integration(red=True), [2])
+            self.assertEqual(swarm.plan_integration(red=False), [1, 2])
 
     def test_main_is_red_reads_the_latest_finished_run(self):
         for conclusion, expected in (("failure", True), ("success", False), (None, False)):
