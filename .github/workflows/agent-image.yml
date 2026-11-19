@@ -1,10 +1,11 @@
 name: Agent image
-# Builds the prepared runner image only when it changes, on demand, and once a
-# month to pick up OpenCode and OS updates. Agent runs never build it.
+# Builds the prepared base image only when it changes, on demand, and once a
+# month to pick up OpenCode and OS updates. Worker runs never build it. The slot
+# images in swarm-images.yml are layered on top of this one.
 on:
   push:
     branches: [main]
-    paths: ['.github/agent-image/**', '.github/workflows/agent-image.yml']
+    paths: ['.github/agent-image/Dockerfile', '.github/workflows/agent-image.yml', 'apps/api/pom.xml']
   schedule:
     - cron: '17 4 1 * *'
   workflow_dispatch:
@@ -21,18 +22,21 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-          sparse-checkout: .github/agent-image
+          sparse-checkout: |
+            .github/agent-image
+            apps/api/pom.xml
       - name: Build and push
         env:
           GH_TOKEN: ${{ github.token }}
           OPENCODE_VERSION: ${{ inputs.opencode_version || 'latest' }}
         run: |
           image="ghcr.io/${GITHUB_REPOSITORY,,}-agent"
+          cp apps/api/pom.xml .github/agent-image/pom.xml
           printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
           docker build --pull -f .github/agent-image/Dockerfile \
             --build-arg "OPENCODE_VERSION=$OPENCODE_VERSION" \

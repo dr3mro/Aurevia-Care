@@ -1,0 +1,146 @@
+name: Agent swarm
+# The orchestrator. It reads CLOUDWORKERS.md, splits the ready tasks across up to
+# 10 worker slots, and starts one prepared container per slot. Each worker runs
+# the agent with no GitHub token on its own branch, uploads its commits, and
+# exits (the container is discarded, nothing idles). A separate trusted job
+# pushes the branch and opens the pull request. The integrator merges later.
+on:
+  workflow_dispatch:
+    inputs:
+      workers:
+        description: Number of workers to start (1 to 10)
+        default: '10'
+      repair_run:
+        description: Failed run id on main to repair (set by the main watchdog)
+        default: ''
+  push:
+    branches: [main]
+    paths: [CLOUDWORKERS.md]
+permissions:
+  contents: read
+# Waves queue: one wave plans and starts at a time so a task is never started twice.
+concurrency:
+  group: agent-swarm
+  cancel-in-progress: false
+jobs:
+  plan:
+    name: Plan the wave
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+      actions: read
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      count: ${{ steps.plan.outputs.count }}
+      image_prefix: ${{ steps.image.outputs.prefix }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            scripts
+            .github/swarm
+            CLOUDWORKERS.md
+      - id: image
+        run: echo "prefix=ghcr.io/${GITHUB_REPOSITORY,,}-agent" >> "$GITHUB_OUTPUT"
+      - id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WORKERS: ${{ inputs.workers || '10' }}
+          REPAIR_RUN: ${{ inputs.repair_run }}
+        run: |
+          python3 -I scripts/swarm.py ensure-labels
+          python3 -I scripts/swarm.py plan-workers --max "$WORKERS" --repair-run "$REPAIR_RUN"
+  worker:
+    name: Worker ${{ matrix.slot }} · ${{ matrix.id }}
+    needs: plan
+    if: needs.plan.outputs.count != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      max-parallel: 10
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    # The slot's prepared image: toolchain, dependencies and this slot's own
+    # OpenCode setup are already inside, so the job starts working immediately.
+    container:
+      image: ${{ needs.plan.outputs.image_prefix }}-${{ matrix.slot }}:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    permissions:
+      contents: read
+      packages: read
+    env:
+      MODEL: ${{ matrix.model }}
+      MODE: ${{ matrix.kind == 'fix' && 'fix' || 'story' }}
+      BRANCH: ${{ matrix.branch }}
+      BRANCH_PREFIX: swarm
+      SWARM: '1'
+      STORY_ID: ${{ matrix.id }}
+      STORY_TITLE: ${{ matrix.title }}
+      STORY_BODY: ${{ matrix.body }}
+      FIX_COMMENT: ${{ matrix.fix }}
+      PR_NUMBER: ${{ matrix.number }}
+      AGENT_TIMEOUT: 45m
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ matrix.kind == 'fix' && matrix.branch || github.event.repository.default_branch }}
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Work the task (no GitHub token in this step)
+        env:
+          # This slot's own free account. The secret is looked up by slot number.
+          OPENCODE_API_KEY: ${{ secrets[format('OPENCODE_API_KEY_{0}', matrix.slot)] }}
+        run: scripts/agent-run.sh implement
+      - name: Pack the commits
+        if: always()
+        run: scripts/agent-run.sh bundle || true
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: worker-${{ matrix.slot }}
+          path: |
+            .agent/result
+            .agent/commits
+            .agent/checks
+            .agent/branch
+            .agent/pr-notes.md
+            .agent/result.bundle
+          if-no-files-found: ignore
+          retention-days: 1
+  publish:
+    name: Publish slot ${{ matrix.slot }}
+    needs: [plan, worker]
+    if: always() && needs.plan.outputs.count != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      max-parallel: 10
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: read
+    steps:
+      # Trusted copy of the scripts: the worker job never had a token and cannot
+      # alter what runs here.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@v8
+        continue-on-error: true
+        with:
+          name: worker-${{ matrix.slot }}
+          path: result
+      - name: Push the branch and open the pull request
+        env:
+          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
+          TASK: ${{ toJSON(matrix) }}
+          BASE_BRANCH: ${{ github.event.repository.default_branch }}
+        run: python3 -I scripts/swarm.py publish --task "$TASK" --dir result
