@@ -16,6 +16,7 @@ permissions:
 concurrency:
   group: main-watchdog
   cancel-in-progress: false
+  queue: max
 jobs:
   repair:
     name: Start a repair
