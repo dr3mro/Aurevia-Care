@@ -1,0 +1,15 @@
+{
+  "comment": "One entry per worker slot. Each slot gets its own prepared image (ghcr.io/<repo>-agent-<slot>) with this model and config baked in, and its own free account through the repository secret OPENCODE_API_KEY_<slot>. Credentials are never baked into images.",
+  "slots": [
+    {"slot": 1, "model": "opencode/deepseek-v4.1-flash-free", "config": {}},
+    {"slot": 2, "model": "opencode/hy4-flash-free", "config": {}},
+    {"slot": 3, "model": "opencode/mimo-v2.6-flash-free", "config": {}},
+    {"slot": 4, "model": "opencode/deepseek-v4.1-flash-free", "config": {}},
+    {"slot": 5, "model": "opencode/hy4-flash-free", "config": {}},
+    {"slot": 6, "model": "opencode/mimo-v2.6-flash-free", "config": {}},
+    {"slot": 7, "model": "opencode/deepseek-v4.1-flash-free", "config": {}},
+    {"slot": 8, "model": "opencode/hy4-flash-free", "config": {}},
+    {"slot": 9, "model": "opencode/mimo-v2.6-flash-free", "config": {}},
+    {"slot": 10, "model": "opencode/deepseek-v4.1-flash-free", "config": {}}
+  ]
+}
