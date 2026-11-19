@@ -14,6 +14,9 @@ Columns: `Scope` lists comma-separated path prefixes the worker may change. `Res
 | CW-004 | Staff web foundation: Vite/React/TS scaffold, design system and generated client | PRD-06, UX-01, ARC-03 | - | apps/staff-web | - | todo | |
 | CW-005 | Patient mobile foundation: Expo/React Native/TS scaffold and accessible shell | PAT-01, PAT-02, PAT-03, UX-01 | - | apps/patient-mobile | - | todo | |
 | CW-006 | Bilingual clinical design language and token contract documentation | UX-01, PRD-05 | - | docs/design | - | todo | |
+| CW-007 | Staff web React appointment and worklist screens (synthetic fixtures) | CLN-01, CLN-02, UX-01 | CW-004 | apps/staff-web/src/features/scheduling | - | todo | |
+| CW-008 | Staff web React chart and document screens (synthetic fixtures) | CLN-03, CLN-05, CLN-07, UX-01 | CW-004 | apps/staff-web/src/features/chart | - | todo | |
+| CW-009 | Staff web React audit and access-review screens (synthetic fixtures) | ADM-02, OPS-02, UX-01 | CW-004 | apps/staff-web/src/features/admin | - | todo | |
 
 ### Reconciliation (2026-11-19)
 
@@ -42,3 +45,15 @@ Frontend foundation for the patient mobile app, in `apps/patient-mobile` only. S
 ### CW-006
 
 Bilingual clinical design-language documentation, in `docs/design` only. No application code. Produce a maintainer-facing design system specification for the staff web and patient app: color and typography tokens, spacing scale, light/dark theming, RTL mirroring rules, local-name and mixed-script display guidance, accessible focus states and WCAG 2.2 AA patterns for forms, tables, dialogs and critical-result banners. Include a token naming contract that CW-004 and CW-005 can adopt later, with a short mapping to requirement IDs (UX-01, PRD-05). Keep every Markdown link valid and every requirement ID defined in the specification. Do NOT touch `apps/`, `db/`, `contracts/`, `.github/`, `scripts/`, root-level `check.sh`, or any shared tracker. Write the requirement IDs and decisions to `.agent/pr-notes.md`.
+
+### CW-007
+
+ReactJS staff-web scheduling screens, in `apps/staff-web/src/features/scheduling` only. Depends on CW-004's scaffold, so reuse its React/Vite/TS setup, component set, theme, i18n bundles and generated OpenAPI client types. Build synthetic-only screens: a day/week appointment worklist ordered by scheduled time, a booking form with protected-resource conflict hint, check-in and assignment controls, and visit-state badges (booked → checked in → in progress → completed, plus cancelled/no-show). Use local fixture data with two tenants sharing the same local IDs to prove the UI never merges tenants; no real endpoints and no clinical data. Keep strict TypeScript, accessible labels and RTL-correct layout, and 100% coverage with Vitest. Do NOT touch `apps/api`, `db/`, `contracts/`, `apps/staff-web/check.sh`, `.github/`, `scripts/`, or shared trackers. Record requirement IDs, commands, results and decisions in `.agent/pr-notes.md`.
+
+### CW-008
+
+ReactJS staff-web chart and document screens, in `apps/staff-web/src/features/chart` only. Depends on CW-004's scaffold. Build synthetic-only screens: a longitudinal chart view (problems, allergies, medications, vitals with units), a SOAP note draft with draft/signed states and an entered-in-error banner, and a document list showing PDF/image associations with version and language. Never allow editing a signed revision in the UI; show read-only state and an amendment action instead. Use local fixtures with two tenants sharing local IDs; no real endpoints or patient data. Strict TypeScript, accessible labels, RTL-correct layout and 100% Vitest coverage. Do NOT touch `apps/api`, `db/`, `contracts/`, `apps/staff-web/check.sh`, `.github/`, `scripts/`, or shared trackers. Record evidence in `.agent/pr-notes.md`.
+
+### CW-009
+
+ReactJS staff-web administration and audit screens, in `apps/staff-web/src/features/admin` only. Depends on CW-004's scaffold. Build synthetic-only screens: an organization/facility configuration editor with version and effective-date display, a staff membership and role-grant history view (grantor, effective dates, deactivation shown as append-only events), and an audit-event list with actor, purpose, scope, correlation ID, outcome and a chain-verified badge. Show permission-denied and concealment states from local fixtures; no real endpoints, credentials or patient data. Strict TypeScript, accessible labels, RTL-correct layout and 100% Vitest coverage. Do NOT touch `apps/api`, `db/`, `contracts/`, `apps/staff-web/check.sh`, `.github/`, `scripts/`, or shared trackers. Record evidence in `.agent/pr-notes.md`.
