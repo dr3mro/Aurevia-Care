@@ -42,7 +42,7 @@ final class VersionStore<T> {
      * @param entries version entries
      * @param author  defining actor
      * @return the allocated version number
-     * @throws IllegalArgumentException on invalid input or duplicate entry codes
+     * @throws IllegalArgumentException on invalid input, a null entry or duplicate entry codes
      */
     int define(String key, List<T> entries, String author) {
         requireKey(key);
@@ -54,6 +54,9 @@ final class VersionStore<T> {
         }
         Set<String> seen = new HashSet<>();
         for (T entry : entries) {
+            if (entry == null) {
+                throw new IllegalArgumentException("entry must not be null");
+            }
             if (!seen.add(identity.apply(entry))) {
                 throw new IllegalArgumentException("duplicate entry code");
             }

@@ -1,4 +1,4 @@
-package com.aurevia.smartclinic.api.x_04;
+package com.aurevia.smartclinic.api.authorization;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -9,18 +9,19 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
 import com.aurevia.smartclinic.api.ApiException;
-import com.aurevia.smartclinic.api.x_04.CommandAuthorization.ActionRule;
-import com.aurevia.smartclinic.api.x_04.CommandAuthorization.CommandRequest;
-import com.aurevia.smartclinic.api.x_04.CommandAuthorization.Decision;
-import com.aurevia.smartclinic.api.x_04.CommandAuthorization.MemberContext;
-import com.aurevia.smartclinic.api.x_04.CommandAuthorization.MembershipResolver;
-import com.aurevia.smartclinic.api.x_04.CommandAuthorization.ServerIdentity;
+import com.aurevia.smartclinic.api.authorization.CommandAuthorization.ActionRule;
+import com.aurevia.smartclinic.api.authorization.CommandAuthorization.CommandRequest;
+import com.aurevia.smartclinic.api.authorization.CommandAuthorization.Decision;
+import com.aurevia.smartclinic.api.authorization.CommandAuthorization.MemberContext;
+import com.aurevia.smartclinic.api.authorization.CommandAuthorization.MembershipResolver;
+import com.aurevia.smartclinic.api.authorization.CommandAuthorization.ServerIdentity;
 
 /** PRD-06/IAM-01 server-side command authorization: fail closed, ignore client claims, own each policy. */
 class CommandAuthorizationTest {
@@ -164,7 +165,9 @@ class CommandAuthorizationTest {
         resolver.active = false;
         ApiException inactive = assertThrows(ApiException.class,
                 () -> authorization.authorize(request("verifyIdentity"), id(ORG, "reception-1")));
-        assertEquals("MEMBERSHIP_INACTIVE", sink.decisions().get(sink.decisions().size() - 1).reasonCode());
+        Decision inactiveDecision = sink.decisions().get(sink.decisions().size() - 1);
+        assertEquals("MEMBERSHIP_INACTIVE", inactiveDecision.reasonCode());
+        assertEquals(List.of("reception"), inactiveDecision.rolesUsed());
 
         resolver.active = true;
         resolver.roles = List.of("lab_verifier");
@@ -318,5 +321,37 @@ class CommandAuthorizationTest {
         assertThrows(UnsupportedOperationException.class, () -> sink.decisions().clear());
         sink.clear();
         assertTrue(sink.decisions().isEmpty());
+    }
+
+    @Test
+    void malformedInertClaimsCannotBypassDecisionRecording() {
+        CommandRequest malformed = new CommandRequest("createFacility", "tenant_admin",
+                Arrays.asList("FACILITY_WRITE", null));
+        assertEquals(List.of("FACILITY_WRITE"), malformed.claimedPermissions());
+        assertThrows(UnsupportedOperationException.class, () -> malformed.claimedPermissions().add("x"));
+        Resolver resolver = new Resolver();
+        resolver.roles = List.of("tenant_admin");
+        InMemoryDecisionSink sink = new InMemoryDecisionSink();
+        CommandAuthorization authorization =
+                CommandAuthorization.synthetic(CommandCatalog.synthetic(), resolver, sink, CLOCK);
+        Decision decision = authorization.authorize(malformed, id(ORG, "admin-1"));
+        assertTrue(decision.allowed());
+        assertEquals(1, sink.decisions().size());
+        assertEquals("ALLOWED", sink.decisions().get(0).reasonCode());
+    }
+
+    @Test
+    void sinkFailureFailsClosedWithAMachineReadableError() {
+        CommandAuthorization.DecisionSink broken = decision -> {
+            throw new IllegalStateException("sink unavailable");
+        };
+        Resolver resolver = new Resolver();
+        resolver.roles = List.of("tenant_admin");
+        CommandAuthorization authorization =
+                CommandAuthorization.synthetic(CommandCatalog.synthetic(), resolver, broken, CLOCK);
+        ApiException failure = assertThrows(ApiException.class,
+                () -> authorization.authorize(request("createFacility"), id(ORG, "admin-1")));
+        assertEquals(500, failure.status());
+        assertEquals("DECISION_NOT_RECORDED", failure.code());
     }
 }
