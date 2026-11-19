@@ -14,6 +14,7 @@ package com.aurevia.smartclinic.audit;
  * @param correlationId request correlation identifier
  * @param outcome       success, denied, not-found or conflict outcome
  * @param seq           per-tenant monotonic sequence used for cursor paging
+ * @return this record
  */
 public record AuditEvent(String id, String occurredAt, String actorId, String action, String resourceType,
                          String resourceId, String purpose, String scope, String correlationId,

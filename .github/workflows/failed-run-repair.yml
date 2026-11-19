@@ -1,0 +1,45 @@
+name: Failed run repair
+# When any pipeline workflow fails on main, start a swarm worker that reads the
+# failed logs and tries to fix it. swarm.py repair-gate keeps it bounded: one
+# repair PR at a time and at most three attempts per day, then an issue for a
+# person. The swarm plans the repair ahead of every TODO.md task.
+on:
+  workflow_run:
+    workflows:
+      - Delivery
+      - Heavy verification
+      - Swarm integrator
+      - Agent swarm
+      - Agent image
+      - Swarm slot images
+      - Fix PR repair
+    types: [completed]
+    branches: [main]
+permissions:
+  contents: read
+  pull-requests: read
+  issues: write
+  actions: write
+concurrency:
+  group: failed-run-repair
+  cancel-in-progress: false
+  queue: max
+jobs:
+  repair:
+    name: Start a repair worker
+    if: github.event.workflow_run.conclusion == 'failure'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
+      RUN_ID: ${{ github.event.workflow_run.id }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          sparse-checkout: scripts
+      - id: gate
+        run: python3 -I scripts/swarm.py repair-gate --run "$RUN_ID"
+      - name: Start the swarm with this run as the repair task
+        if: steps.gate.outputs.start == 'true'
+        run: gh workflow run swarm.yml --ref main -f repair_run="$RUN_ID"
