@@ -12,9 +12,11 @@ on:
     branches: [main]
 permissions:
   contents: read
+# Queue: cancelling a batch's heavy check leaves its main commit unverified and
+# can make the watchdog repair the wrong SHA.
 concurrency:
   group: heavy-verification
-  cancel-in-progress: true
+  cancel-in-progress: false
 jobs:
   heavy:
     name: Full checks on main

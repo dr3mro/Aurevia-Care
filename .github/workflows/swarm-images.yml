@@ -15,9 +15,10 @@ on:
 permissions:
   contents: read
   packages: write
+# Queue: a cancelled slot-image publish leaves workers on a stale base.
 concurrency:
   group: swarm-images
-  cancel-in-progress: true
+  cancel-in-progress: false
 jobs:
   build:
     name: Slot images
