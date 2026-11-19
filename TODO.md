@@ -160,7 +160,7 @@ Gate evidence: rejected or recollected specimens trace to the right order; dupli
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [-] S-G2-02 · Separate workflow, transmission and clinical review states with human acknowledgment (XCH-02).
   - agent: swarm-1
-  - attempts: 7
+  - attempts: 8
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g2/s_g2_02, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g2_02
   - reserved: V20
   - details:
@@ -169,15 +169,16 @@ Gate evidence: rejected or recollected specimens trace to the right order; dupli
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [-] S-G2-03 · Accept, reject with reason, clarify, linked changes, cancellations and revocation (XCH-03).
   - agent: swarm-2
-  - attempts: 3
+  - attempts: 4
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/exchange/response, apps/api/src/test/java/com/aurevia/smartclinic/it/exchange/response
   - reserved: V21
   - details:
     Implement Accept, reject with reason, clarify, linked changes, cancellations and revocation (XCH-03) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [ ] S-G2-04 · Result routing, identifier matching, reconciliation queue and correction versions (XCH-04).
-  - attempts: 2
+- [-] S-G2-04 · Result routing, identifier matching, reconciliation queue and correction versions (XCH-04).
+  - agent: swarm-3
+  - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/exchange/result, apps/api/src/test/java/com/aurevia/smartclinic/it/exchange/result
   - reserved: V22
   - details:
@@ -286,8 +287,8 @@ Gate evidence: confirmed patients see only authorized revisions; generic notific
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [-] S-G3-05 · Conversation lifecycle, unread counts, staff work queue, assignment and reopen states (MSG-02).
-  - agent: swarm-3
-  - attempts: 3
+  - agent: swarm-4
+  - attempts: 4
   - scope: apps/patient-mobile/src/features/conversations, apps/api/src/main/java/com/aurevia/smartclinic/messaging/conversation
   - reserved: V33
   - details:
@@ -340,8 +341,8 @@ Gate evidence: confirmed patients see only authorized revisions; generic notific
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [-] S-G3-11 · iOS and Android patient flows with accessibility and RTL operation (PAT-01–03, MSG-01–07, UX-01).
-  - agent: swarm-4
-  - attempts: 9
+  - agent: swarm-5
+  - attempts: 10
   - scope: apps/patient-mobile/src/features/s_g3_11, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_11
   - reserved: V39
   - details:
@@ -349,8 +350,8 @@ Gate evidence: confirmed patients see only authorized revisions; generic notific
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [-] S-G3-12 · Restore, downtime, load, accessibility and audit evidence (G3).
-  - agent: swarm-5
-  - attempts: 7
+  - agent: swarm-6
+  - attempts: 8
   - scope: apps/patient-mobile/src/features/s_g3_12, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_12
   - reserved: V40
   - details:
@@ -364,8 +365,8 @@ Gate evidence: confirmed patients see only authorized revisions; generic notific
 Gate evidence: wrong-patient study association refused; radiology addendum reaches referrer; PT episode produces signed discharge and referral closure; ambiguous prescription transmission reconciles without duplication; payment and refund replay reproduces balances.
 
 - [-] S-G4-01 · Imaging order intake, urgency, accession, study association, signed interpretation and addenda (RAD-01).
-  - agent: swarm-6
-  - attempts: 7
+  - agent: swarm-7
+  - attempts: 8
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g4/s_g4_01, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g4_01
   - reserved: V41
   - details:
@@ -373,8 +374,8 @@ Gate evidence: wrong-patient study association refused; radiology addendum reach
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [-] S-G4-02 · Therapy episode, evaluation, goals, interventions, outcomes, signed progress and discharge (PT-01).
-  - agent: swarm-7
-  - attempts: 7
+  - agent: swarm-8
+  - attempts: 8
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g4/s_g4_02, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g4_02
   - reserved: V42
   - details:
@@ -382,8 +383,8 @@ Gate evidence: wrong-patient study association refused; radiology addendum reach
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [-] S-G4-03 · Prescription draft, versioned drug catalog, alternatives and verified allergy checks (RX-01).
-  - agent: swarm-8
-  - attempts: 7
+  - agent: swarm-9
+  - attempts: 8
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g4/s_g4_03, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g4_03
   - reserved: V43
   - details:
@@ -391,16 +392,16 @@ Gate evidence: wrong-patient study association refused; radiology addendum reach
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [-] S-G4-04 · Prescriber attestation, approved routing channel, transmission events and ambiguity reconciliation (RX-02).
-  - agent: swarm-9
-  - attempts: 7
+  - agent: swarm-10
+  - attempts: 8
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g4/s_g4_04, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g4_04
   - reserved: V44
   - details:
     Implement Prescriber attestation, approved routing channel, transmission events and ambiguity reconciliation (RX-02) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [-] S-G4-05 · Itemized self-pay invoices, payments, refunds, receipts and daily reconciliation (FIN-01).
-  - agent: swarm-10
+- [x] S-G4-05 · Itemized self-pay invoices, payments, refunds, receipts and daily reconciliation (FIN-01).
+  - pr: #86
   - attempts: 7
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g4/s_g4_05, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g4_05
   - reserved: V45
