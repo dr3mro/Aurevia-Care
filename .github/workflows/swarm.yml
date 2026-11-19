@@ -106,7 +106,10 @@ jobs:
           python3 -I scripts/swarm.py ensure-labels
           python3 -I scripts/swarm.py plan-workers --max "$WORKERS" --repair-run "$REPAIR_RUN"
   worker:
-    name: Worker ${{ matrix.slot }} · ${{ matrix.id }}
+    # GitHub renders matrix values in this name when the wave has tasks; a
+    # literal ${{ ... }} only appears when the matrix is empty (job skipped).
+    # Keep the name static so an empty wave does not look like broken YAML.
+    name: Swarm worker
     needs: plan
     if: needs.plan.outputs.count != '0'
     runs-on: ubuntu-latest

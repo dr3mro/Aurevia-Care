@@ -48,8 +48,26 @@ Current source state (2026-11-19T07:19Z, from `main` at `311d69a`): 7 Flyway mig
   - pr: #18
 - [x] S-G0-05 · Patient registration, identity confirmation and likely-duplicate warnings (IAM-03). V7 append-only patient records, issuer-scoped MRN, normalized name search, non-linking duplicate warnings, `/api/v1/patients`; 184 tests at delivery, JaCoCo 100%, local gates green, code on `main`. Current source (2026-11-19): Surefire reports 191 Java tests, 0 failures/errors across the suite; V7 and `/api/v1/patients` present.
 - [ ] S-G0-06 · Same-tenant duplicate review and all-or-nothing chart consolidation (IAM-04).
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/g0/s_g0_06, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g0_06
+  - reserved: V9
+  - details:
+    Implement Same-tenant duplicate review and all-or-nothing chart consolidation (IAM-04) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G0-07 · Patient identity proofing, verified chart linking and unlinking (IAM-05).
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/g0/s_g0_07, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g0_07
+  - reserved: V10
+  - details:
+    Implement Patient identity proofing, verified chart linking and unlinking (IAM-05) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G0-08 · Emergency access and platform support access controls (IAM-06).
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/g0/s_g0_08, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g0_08
+  - reserved: V11
+  - details:
+    Implement Emergency access and platform support access controls (IAM-06) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 
 ## G1 — clinic
 
@@ -64,12 +82,54 @@ Gate evidence: competing bookings enforce one protected slot; stale drafts canno
     Acceptance matrix: (A1) book inside availability; (A2) competing bookings yield exactly one winner and one 409 under real concurrency; (A3) room and clinician overlaps both blocked; (A4) hold occupies the slot, conversion is atomic, expiry releases it; (A5) reschedule is atomic, stale If-Match is 412, history keeps the previous slot; (A6) cancel/no-show require a reason and record actor; (A7) illegal transitions are 409; (A8) booking outside availability needs a recorded override; (A9) configured booking rules are enforced; (A10) two tenants with identical local identifiers stay isolated; (A11) a series rolls back fully on one conflict; (A12) role authorization and 401/403 outcomes; (A13) invalid input is 422.
     Out of scope for this slice: staff worklist/assignment/handoff (S-G1-02), clinical chart (S-G1-03), equipment resources and paid booking rules.
 - [ ] S-G1-02 · Identity verification, check-in, organization/facility worklist, assignment and handoff (CLN-02).
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/g1/s_g1_02, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g1_02
+  - reserved: V12
+  - details:
+    Implement Identity verification, check-in, organization/facility worklist, assignment and handoff (CLN-02) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G1-03 · Longitudinal chart: problems, allergies, medications, vitals, source and verification states (CLN-03).
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/g1/s_g1_03, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g1_03
+  - reserved: V13
+  - details:
+    Implement Longitudinal chart: problems, allergies, medications, vitals, source and verification states (CLN-03) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G1-04 · Versioned SOAP, operative, OB/GYN, perinatal and pediatric development templates (CLN-04).
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/g1/s_g1_04, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g1_04
+  - reserved: V14
+  - details:
+    Implement Versioned SOAP, operative, OB/GYN, perinatal and pediatric development templates (CLN-04) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G1-05 · Draft to signed, amendments, signed addenda and entered-in-error with preserved originals (CLN-05).
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/g1/s_g1_05, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g1_05
+  - reserved: V15
+  - details:
+    Implement Draft to signed, amendments, signed addenda and entered-in-error with preserved originals (CLN-05) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G1-06 · Follow-up suggestions with rule explanation and care-team tasks (CLN-06).
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/g1/s_g1_06, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g1_06
+  - reserved: V16
+  - details:
+    Implement Follow-up suggestions with rule explanation and care-team tasks (CLN-06) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G1-07 · Original PDF/image associations and immutable, localized, versioned PDF rendering (CLN-07).
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/g1/s_g1_07, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g1_07
+  - reserved: V17
+  - details:
+    Implement Original PDF/image associations and immutable, localized, versioned PDF rendering (CLN-07) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G1-08 · Clinical dictionaries, diagnosis/procedure catalogs and RTL mixed-script operation (PRD-05, UX-01).
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/g1/s_g1_08, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g1_08
+  - reserved: V18
+  - details:
+    Implement Clinical dictionaries, diagnosis/procedure catalogs and RTL mixed-script operation (PRD-05, UX-01) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G1-09 · G1 gate evidence and Product Owner acceptance (G1).
 
 ## G2 — labs and exchange
@@ -77,15 +137,75 @@ Gate evidence: competing bookings enforce one protected slot; stale drafts canno
 Gate evidence: rejected or recollected specimens trace to the right order; duplicate and reordered events do not duplicate or overwrite final reports; unmatched results wait for review; critical results escalate on deadline with human acknowledgment, and corrections reopen review.
 
 - [ ] S-G2-01 · Order creation with authorization, snapshot, disclosure record and destination work item (XCH-01).
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/g2/s_g2_01, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g2_01
+  - reserved: V19
+  - details:
+    Implement Order creation with authorization, snapshot, disclosure record and destination work item (XCH-01) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G2-02 · Separate workflow, transmission and clinical review states with human acknowledgment (XCH-02).
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/g2/s_g2_02, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g2_02
+  - reserved: V20
+  - details:
+    Implement Separate workflow, transmission and clinical review states with human acknowledgment (XCH-02) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G2-03 · Accept, reject with reason, clarify, linked changes, cancellations and revocation (XCH-03).
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/g2/s_g2_03, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g2_03
+  - reserved: V21
+  - details:
+    Implement Accept, reject with reason, clarify, linked changes, cancellations and revocation (XCH-03) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G2-04 · Result routing, identifier matching, reconciliation queue and correction versions (XCH-04).
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/g2/s_g2_04, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g2_04
+  - reserved: V22
+  - details:
+    Implement Result routing, identifier matching, reconciliation queue and correction versions (XCH-04) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G2-05 · Critical-result verification, owner, due time, escalation attempts and read-back (XCH-05).
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/g2/s_g2_05, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g2_05
+  - reserved: V23
+  - details:
+    Implement Critical-result verification, owner, due time, escalation attempts and read-back (XCH-05) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G2-06 · Patient release authorization, timed/hold policies and withdrawn releases (XCH-06).
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/g2/s_g2_06, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g2_06
+  - reserved: V24
+  - details:
+    Implement Patient release authorization, timed/hold policies and withdrawn releases (XCH-06) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G2-07 · Trending only comparable observations with units, ranges, time and qualifiers visible (XCH-07).
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/g2/s_g2_07, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g2_07
+  - reserved: V25
+  - details:
+    Implement Trending only comparable observations with units, ranges, time and qualifiers visible (XCH-07) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G2-08 · Requisition accession, specimen identification, rejection and linked recollection (LAB-01).
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/g2/s_g2_08, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g2_08
+  - reserved: V26
+  - details:
+    Implement Requisition accession, specimen identification, rejection and linked recollection (LAB-01) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G2-09 · Numeric, qualified, text and coded observations, verification states and issued revisions (LAB-02).
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/g2/s_g2_09, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g2_09
+  - reserved: V27
+  - details:
+    Implement Numeric, qualified, text and coded observations, verification states and issued revisions (LAB-02) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G2-10 · Synthetic partner conformance fixtures including duplicates, corrections and partial outages (XCH-01–07, LAB-01, LAB-02).
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/g2/s_g2_10, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g2_10
+  - reserved: V28
+  - details:
+    Implement Synthetic partner conformance fixtures including duplicates, corrections and partial outages (XCH-01–07, LAB-01, LAB-02) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G2-11 · G2 gate evidence and Product Owner acceptance (G2).
 
 ## G3 — patient and operations
@@ -93,17 +213,89 @@ Gate evidence: rejected or recollected specimens trace to the right order; dupli
 Gate evidence: confirmed patients see only authorized revisions; generic notifications reveal no clinical detail; withdrawn releases stop future access; messaging works on both mobile platforms including wrong-unit denial, uploads, instructions, revision-specific acknowledgment, failed uploads, notification retry and revoked connections.
 
 - [ ] S-G3-01 · Patient appointment list, confirmation, generic push notifications and device revocation (PAT-01).
+  - scope: apps/patient-mobile/src/features/s_g3_01, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_01
+  - reserved: V29
+  - details:
+    Implement Patient appointment list, confirmation, generic push notifications and device revocation (PAT-01) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G3-02 · Released reports with revision and correction context, authorized downloads and protected local credentials (PAT-02).
+  - scope: apps/patient-mobile/src/features/s_g3_02, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_02
+  - reserved: V30
+  - details:
+    Implement Released reports with revision and correction context, authorized downloads and protected local credentials (PAT-02) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G3-03 · Privacy-safe enrollment, recovery, lockout and identity-dispute support channel (PAT-03).
+  - scope: apps/patient-mobile/src/features/s_g3_03, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_03
+  - reserved: V31
+  - details:
+    Implement Privacy-safe enrollment, recovery, lockout and identity-dispute support channel (PAT-03) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G3-04 · Care unit directory and verified, connection-scoped patient-unit relationships (MSG-01, ARC-07).
+  - scope: apps/patient-mobile/src/features/s_g3_04, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_04
+  - reserved: V32
+  - details:
+    Implement Care unit directory and verified, connection-scoped patient-unit relationships (MSG-01, ARC-07) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G3-05 · Conversation lifecycle, unread counts, staff work queue, assignment and reopen states (MSG-02).
+  - scope: apps/patient-mobile/src/features/s_g3_05, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_05
+  - reserved: V33
+  - details:
+    Implement Conversation lifecycle, unread counts, staff work queue, assignment and reopen states (MSG-02) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G3-06 · PDF/JPEG/PNG attachments, sender binding, quarantine scans and clean-verdict access (MSG-03, ARC-06).
+  - scope: apps/patient-mobile/src/features/s_g3_06, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_06
+  - reserved: V34
+  - details:
+    Implement PDF/JPEG/PNG attachments, sender binding, quarantine scans and clean-verdict access (MSG-03, ARC-06) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G3-07 · Typed patient instructions with templates, revisions, withdrawal and units (MSG-04).
+  - scope: apps/patient-mobile/src/features/s_g3_07, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_07
+  - reserved: V35
+  - details:
+    Implement Typed patient instructions with templates, revisions, withdrawal and units (MSG-04) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G3-08 · Publication, dispatch, first view and revision-bound acknowledgment as separate facts (MSG-05).
+  - scope: apps/patient-mobile/src/features/s_g3_08, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_08
+  - reserved: V36
+  - details:
+    Implement Publication, dispatch, first view and revision-bound acknowledgment as separate facts (MSG-05) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G3-09 · Service hours, response targets, named owners, backup coverage and after-hours guidance (MSG-06).
+  - scope: apps/patient-mobile/src/features/s_g3_09, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_09
+  - reserved: V37
+  - details:
+    Implement Service hours, response targets, named owners, backup coverage and after-hours guidance (MSG-06) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G3-10 · Messaging audit, retention, legal hold, provenance and revocation effects (MSG-07).
+  - scope: apps/patient-mobile/src/features/s_g3_10, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_10
+  - reserved: V38
+  - details:
+    Implement Messaging audit, retention, legal hold, provenance and revocation effects (MSG-07) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G3-11 · iOS and Android patient flows with accessibility and RTL operation (PAT-01–03, MSG-01–07, UX-01).
+  - scope: apps/patient-mobile/src/features/s_g3_11, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_11
+  - reserved: V39
+  - details:
+    Implement iOS and Android patient flows with accessibility and RTL operation (PAT-01–03, MSG-01–07, UX-01) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G3-12 · Restore, downtime, load, accessibility and audit evidence (G3).
+  - scope: apps/patient-mobile/src/features/s_g3_12, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_12
+  - reserved: V40
+  - details:
+    Implement Restore, downtime, load, accessibility and audit evidence (G3) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G3-13 · G3 gate evidence and Product Owner acceptance (G3).
 
 ## G4 — specialty and finance
@@ -111,11 +303,47 @@ Gate evidence: confirmed patients see only authorized revisions; generic notific
 Gate evidence: wrong-patient study association refused; radiology addendum reaches referrer; PT episode produces signed discharge and referral closure; ambiguous prescription transmission reconciles without duplication; payment and refund replay reproduces balances.
 
 - [ ] S-G4-01 · Imaging order intake, urgency, accession, study association, signed interpretation and addenda (RAD-01).
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/g4/s_g4_01, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g4_01
+  - reserved: V41
+  - details:
+    Implement Imaging order intake, urgency, accession, study association, signed interpretation and addenda (RAD-01) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G4-02 · Therapy episode, evaluation, goals, interventions, outcomes, signed progress and discharge (PT-01).
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/g4/s_g4_02, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g4_02
+  - reserved: V42
+  - details:
+    Implement Therapy episode, evaluation, goals, interventions, outcomes, signed progress and discharge (PT-01) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G4-03 · Prescription draft, versioned drug catalog, alternatives and verified allergy checks (RX-01).
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/g4/s_g4_03, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g4_03
+  - reserved: V43
+  - details:
+    Implement Prescription draft, versioned drug catalog, alternatives and verified allergy checks (RX-01) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G4-04 · Prescriber attestation, approved routing channel, transmission events and ambiguity reconciliation (RX-02).
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/g4/s_g4_04, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g4_04
+  - reserved: V44
+  - details:
+    Implement Prescriber attestation, approved routing channel, transmission events and ambiguity reconciliation (RX-02) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G4-05 · Itemized self-pay invoices, payments, refunds, receipts and daily reconciliation (FIN-01).
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/g4/s_g4_05, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g4_05
+  - reserved: V45
+  - details:
+    Implement Itemized self-pay invoices, payments, refunds, receipts and daily reconciliation (FIN-01) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G4-06 · Specialty role permissions and end-to-end flow evidence (PRD-06).
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/g4/s_g4_06, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g4_06
+  - reserved: V46
+  - details:
+    Implement Specialty role permissions and end-to-end flow evidence (PRD-06) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G4-07 · G4 gate evidence and Product Owner acceptance (G4).
 
 ## G5 — launch and operations
@@ -127,12 +355,54 @@ Gate evidence: each site approves workflow, release policy, market constraints, 
 - [ ] S-G5-03 · Result release rules, sensitive information handling and identity recovery approvals (OPS-01).
 - [ ] S-G5-04 · Laboratory, PACS and pharmacy interface contracts, credentials and outage drills (OPS-01).
 - [ ] S-G5-05 · Capacity targets, pilot load profile and measured performance evidence (OPS-03).
+  - scope: infra/s_g5_05, docs/operations/s_g5_05
+  - reserved: V47
+  - details:
+    Implement Capacity targets, pilot load profile and measured performance evidence (OPS-03) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G5-06 · Recovery targets, restore into clean environment and operational runbooks (OPS-04, OPS-05).
+  - scope: infra/s_g5_06, docs/operations/s_g5_06
+  - reserved: V48
+  - details:
+    Implement Recovery targets, restore into clean environment and operational runbooks (OPS-04, OPS-05) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G5-07 · Separate environments, synthetic fixtures, signed builds, migration checks and progressive rollout (OPS-06).
+  - scope: infra/s_g5_07, docs/operations/s_g5_07
+  - reserved: V49
+  - details:
+    Implement Separate environments, synthetic fixtures, signed builds, migration checks and progressive rollout (OPS-06) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G5-08 · Tenant export manifest, retention, legal hold, deletion and offboarding (OPS-07).
+  - scope: infra/s_g5_08, docs/operations/s_g5_08
+  - reserved: V50
+  - details:
+    Implement Tenant export manifest, retention, legal hold, deletion and offboarding (OPS-07) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G5-09 · Onboarding dataset manifest, dry run, controlled batches and authorized sign-off (OPS-08).
+  - scope: infra/s_g5_09, docs/operations/s_g5_09
+  - reserved: V51
+  - details:
+    Implement Onboarding dataset manifest, dry run, controlled batches and authorized sign-off (OPS-08) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G5-10 · English and Arabic, RTL, time zones, WCAG 2.2 AA and native screen-reader flows (UX-01).
+  - scope: infra/s_g5_10, docs/operations/s_g5_10
+  - reserved: V52
+  - details:
+    Implement English and Arabic, RTL, time zones, WCAG 2.2 AA and native screen-reader flows (UX-01) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G5-11 · Operational queues for unsigned work, unmatched reports, critical findings, failures and revoked accounts (ADM-02).
+  - scope: infra/s_g5_11, docs/operations/s_g5_11
+  - reserved: V53
+  - details:
+    Implement Operational queues for unsigned work, unmatched reports, critical findings, failures and revoked accounts (ADM-02) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G5-12 · Per-site launch approvals and final G5 acceptance (G5).
 
 ## Cross-cutting contracts
@@ -140,9 +410,33 @@ Gate evidence: each site approves workflow, release policy, market constraints, 
 Delivered inside the stories above, not scheduled separately.
 
 - [ ] X-01 · API versioning, idempotency, cursor pagination, correlation IDs and machine-readable errors (ARC-03, ARC-04).
+  - scope: contracts/x_01, apps/api/src/main/java/com/aurevia/smartclinic/api/x_01
+  - reserved: V54
+  - details:
+    Implement API versioning, idempotency, cursor pagination, correlation IDs and machine-readable errors (ARC-03, ARC-04) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] X-02 · Durable events, outbox, deduplication, replay and dead-letter review (ARC-05).
+  - scope: contracts/x_02, apps/api/src/main/java/com/aurevia/smartclinic/api/x_02
+  - reserved: V55
+  - details:
+    Implement Durable events, outbox, deduplication, replay and dead-letter review (ARC-05) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] X-03 · Upload validation, quarantine, mediated downloads and PDF binding to immutable revisions (ARC-06).
+  - scope: contracts/x_03, apps/api/src/main/java/com/aurevia/smartclinic/api/x_03
+  - reserved: V56
+  - details:
+    Implement Upload validation, quarantine, mediated downloads and PDF binding to immutable revisions (ARC-06) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] X-04 · Generated OpenAPI clients and server-side authorization for every command (PRD-06).
+  - scope: contracts/x_04, apps/api/src/main/java/com/aurevia/smartclinic/api/x_04
+  - reserved: V57
+  - details:
+    Implement Generated OpenAPI clients and server-side authorization for every command (PRD-06) against SMARTCLINIC_V1_SPEC.md.
+    Synthetic fixtures only; failing tests first; 100% coverage;
+    stay inside the declared scope; record results in .agent/pr-notes.md.
 
 ## Frontend and design foundations (swarm tasks)
 
@@ -164,21 +458,18 @@ Independent modules scoped to their own paths so workers cannot collide with bac
     Bilingual clinical design-language documentation, in `docs/design` only. No application code. Produce a maintainer-facing design system specification for the staff web and patient app: color and typography tokens, spacing scale, light/dark theming, RTL mirroring rules, local-name and mixed-script display guidance, accessible focus states and WCAG 2.2 AA patterns for forms, tables, dialogs and critical-result banners. Include a token naming contract that CW-004 and CW-005 can adopt later, with a short mapping to requirement IDs (UX-01, PRD-05). Keep every Markdown link valid and every requirement ID defined in the specification. Do NOT touch `apps/`, `db/`, `contracts/`, `.github/`, `scripts/`, root-level `check.sh`, or any shared tracker. Write the requirement IDs and decisions to `.agent/pr-notes.md`.
 - [x] CW-007 · Staff web React appointment and worklist screens (synthetic fixtures)
   - pr: #30
-  - attempts: 3
   - requirements: CLN-01, CLN-02, UX-01
   - depends: CW-004
   - scope: apps/staff-web/src/features/scheduling
   - details:
     ReactJS staff-web scheduling screens, in `apps/staff-web/src/features/scheduling` only. Depends on CW-004's scaffold, so reuse its React/Vite/TS setup, component set, theme, i18n bundles and generated OpenAPI client types. Build synthetic-only screens: a day/week appointment worklist ordered by scheduled time, a booking form with protected-resource conflict hint, check-in and assignment controls, and visit-state badges (booked → checked in → in progress → completed, plus cancelled/no-show). Use local fixture data with two tenants sharing the same local IDs to prove the UI never merges tenants; no real endpoints and no clinical data. Keep strict TypeScript, accessible labels and RTL-correct layout, and 100% coverage with Vitest. Do NOT touch `apps/api`, `db/`, `contracts/`, `apps/staff-web/check.sh`, `.github/`, `scripts/`, or shared trackers. Record requirement IDs, commands, results and decisions in `.agent/pr-notes.md`.
 - [ ] CW-008 · Staff web React chart and document screens (synthetic fixtures)
-  - attempts: 3
   - requirements: CLN-03, CLN-05, CLN-07, UX-01
   - depends: CW-004
   - scope: apps/staff-web/src/features/chart
   - details:
     ReactJS staff-web chart and document screens, in `apps/staff-web/src/features/chart` only. Depends on CW-004's scaffold. Build synthetic-only screens: a longitudinal chart view (problems, allergies, medications, vitals with units), a SOAP note draft with draft/signed states and an entered-in-error banner, and a document list showing PDF/image associations with version and language. Never allow editing a signed revision in the UI; show read-only state and an amendment action instead. Use local fixtures with two tenants sharing local IDs; no real endpoints or patient data. Strict TypeScript, accessible labels, RTL-correct layout and 100% Vitest coverage. Do NOT touch `apps/api`, `db/`, `contracts/`, `apps/staff-web/check.sh`, `.github/`, `scripts/`, or shared trackers. Record evidence in `.agent/pr-notes.md`.
 - [ ] CW-009 · Staff web React audit and access-review screens (synthetic fixtures)
-  - attempts: 3
   - requirements: ADM-02, OPS-02, UX-01
   - depends: CW-004
   - scope: apps/staff-web/src/features/admin
@@ -240,8 +531,8 @@ Raised by the dispatch-3 run-3 verification. Address in the next authorized chan
 - [x] S-FIX-INTEGRATOR-01 · Run the integrator only for successful swarm waves. Failed/cancelled waves publish no PR, but `workflow_run: completed` still triggered three runs per batch. Added a `pick` job guard plus regression test.
   - evidence: `gh run list --workflow=swarm-integrator.yml` showed two failure-triggered runs (`44496897170`, `44496943529`) and one success-triggered run (`44496999654`) within 41 seconds. Guards red then green: 81 swarm tests, 155 total tooling tests OK; all 8 workflow YAMLs parse. Evidence source: GitHub run API plus executed tool commands; no human or clinical evidence.
 
-- [x] S-FIX-FRONTEND-01 · Root frontend gate failed: `tsc` lacked Node types for a staff-web test using `node:fs`, and root `vitest` ran app tests in Node instead of the module's jsdom setup. Added `@types/node` to root tooling, enabled it in `tsconfig.json`, and scoped root `vitest` to `frontend/` tooling tests only.
-  - evidence: CI log showed TS2307 `node:fs`, TS7006 implicit `any`, then 21 jsdom `document is not defined` failures. `bash scripts/frontend-check.sh` exit 0 after fix (root typecheck/lint/format/test green, both module gates green). Evidence source: CI log plus executed tool commands; no human or clinical evidence.
+- [x] S-FIX-EMPTY-WAVE-01 · Swarm waves had zero workers: `plan_workers()` requires a `scope` field and all 62 open spec stories lacked one; the only two scoped tasks were at `attempts: 3`. GitHub therefore rendered the raw `${{ matrix.slot }}` for a skipped matrix job. Added distinct `scope`, `reserved: V9…V57` and `details` to 49 dispatchable stories, cleared stale attempt counters, made the worker job name static (`Swarm worker`), and added a regression test asserting at least 10 dispatchable tasks.
+  - evidence: `plan_workers(10, slots, TODO.md, [])` now returns 10 story tasks (was 0); PR #31/#32 merge re-added duplicate `S-FIX-FRONTEND-01`, removed. Guards red then green: 158 tooling tests OK, `check-docs.py`/`check-secrets.py`/`gen-opencode.py --check` green, all 8 workflow YAMLs parse, `quick-check.sh` exit 0. Evidence source: executed tool commands and GitHub run API; no human or clinical evidence.
 
 ## One-week execution plan (1 wave per hour)
 

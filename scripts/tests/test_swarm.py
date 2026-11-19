@@ -257,6 +257,18 @@ class PlanTests(unittest.TestCase):
         self.assertIn("SMARTCLINIC_PG_ADMIN: postgres", text)
         self.assertNotIn("GATE: scripts/quick-check.sh", text)
 
+    def test_open_spec_tasks_are_dispatchable(self):
+        tasks = swarm.parse_tasks((ROOT / "TODO.md").read_text())
+        dispatchable = [t for t in tasks
+                        if t["status"] == "todo" and t["scope"] and t["details"]
+                        and swarm.attempts_of(t) < swarm.MAX_ATTEMPTS]
+        self.assertGreaterEqual(len(dispatchable), 10)
+
+    def test_worker_name_is_static_not_matrix_expression(self):
+        text = (ROOT / ".github/workflows/swarm.yml").read_text()
+        self.assertIn("name: Swarm worker", text)
+        self.assertNotIn("Worker ${{ matrix.slot }}", text)
+
     def test_repair_watches_fix_prs_only(self):
         workflows = ROOT / ".github/workflows"
         self.assertFalse((workflows / "main-watchdog.yml").exists())
