@@ -237,9 +237,11 @@ class Xch03ExchangeTest {
     void tenantsWithIdenticalOrderCodesStayIsolated() throws Exception {
         String subjectA = "lab-verifier-" + suffix(ORG_A);
         String subjectB = "lab-verifier-" + suffix(ORG_B);
-        assertEquals(HttpStatus.OK, send(HttpMethod.GET, "/api/v1/xch03/orders/" + orderId(ORG_B),
-                null, subjectA, ORG_A, null).getStatusCode(),
-                "tenant A must read only its own order with the same local code");
+        assertEquals(HttpStatus.NOT_FOUND, send(HttpMethod.GET,
+                "/api/v1/xch03/orders/" + orderId(ORG_B), null, subjectA, ORG_A, null).getStatusCode(),
+                "tenant A cannot read tenant B's order even though the local code is identical");
+        assertEquals(HttpStatus.OK, send(HttpMethod.GET, "/api/v1/xch03/orders/" + orderId(ORG_A),
+                null, subjectA, ORG_A, null).getStatusCode(), "tenant A can read its own order");
 
         ResponseEntity<String> concealed = send(HttpMethod.POST,
                 "/api/v1/xch03/orders/" + orderId(ORG_B) + "/reject",
