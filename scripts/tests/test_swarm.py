@@ -207,7 +207,7 @@ class WorkflowTests(unittest.TestCase):
         for path in (ROOT / ".github/workflows").glob("*.yml"):
             calls |= set(re.findall(r"scripts/swarm\.py (?:-I )?([a-z-]+)", path.read_text()))
             calls |= set(re.findall(r"swarm\.py ([a-z-]+)", path.read_text()))
-        self.assertTrue({"plan-workers", "publish", "guard", "merge-local", "finalize", "fail",
+        self.assertTrue({"plan-workers", "publish", "budget-gate", "integrate-batch",
                          "repair-gate", "plan-integration", "slot-config", "slot-matrix",
                          "ensure-labels"} <= calls)
         for command in calls:
@@ -401,7 +401,7 @@ class GitTests(unittest.TestCase):
         self.assertIn("Evidence", (self.repo / "docs/swarm/CW-001.md").read_text())
         pushed = self.run_git("--git-dir", str(self.origin), "rev-parse", "main").strip()
         self.assertEqual(self.run_git("rev-parse", "HEAD").strip(), pushed)
-        self.assertTrue(fake.said("workflow", "run", "delivery.yml"))
+        self.assertTrue(fake.said("workflow", "run", "heavy-check.yml"))
 
     def test_finalize_refuses_a_branch_that_changed_after_testing(self):
         fake = FakeGh(pr_view={"headRefOid": "new", "body": ""})
@@ -413,6 +413,106 @@ class GitTests(unittest.TestCase):
         with mock.patch.object(swarm, "gh", fake):
             swarm.finalize(11, "FIX-5", "abc")
         self.assertIn("FIX-5", (self.repo / "PROGRESS.md").read_text())
+
+
+class BudgetTests(unittest.TestCase):
+    def test_monthly_minutes_sum_only_this_months_runs(self):
+        now = datetime.datetime(2026, 11, 19, 12, 0, tzinfo=datetime.timezone.utc)
+        runs = [{"createdAt": "2026-11-02T00:00:00Z", "updatedAt": "2026-11-02T00:02:00Z"},
+                {"createdAt": "2026-10-30T00:00:00Z", "updatedAt": "2026-10-30T01:00:00Z"},
+                {"createdAt": "2026-11-18T00:00:00Z", "updatedAt": "2026-11-18T00:00:20Z"}]
+        class Gh(FakeGh):
+            def __call__(self, *args, check=True):
+                self.calls.append(args)
+                if args[:2] == ("run", "list") and "--json" in args:
+                    return json.dumps(runs)
+                return ""
+        with mock.patch.object(swarm, "gh", Gh()):
+            minutes = swarm.monthly_minutes(now)
+        # 2 min + max(1 min, 20s) = 3 min per workflow, October ignored,
+        # six workflows queried = 18 billed minutes this month.
+        self.assertEqual(minutes, 18.0)
+
+    def test_budget_gate_allows_well_under_cap(self):
+        with mock.patch.object(swarm, "monthly_minutes", return_value=100):
+            allowed, why = swarm.budget_gate(1500)
+        self.assertTrue(allowed)
+        self.assertIn("starting", why)
+
+    def test_budget_gate_refuses_and_opens_an_issue_near_cap(self):
+        class Gh(FakeGh):
+            def __call__(self, *args, check=True):
+                self.calls.append(args)
+                return ""
+        with mock.patch.object(swarm, "monthly_minutes", return_value=1400), \
+             mock.patch.object(swarm, "gh", Gh()) as fake:
+            allowed, why = swarm.budget_gate(1500)
+        self.assertFalse(allowed)
+        self.assertIn("pausing", why)
+        self.assertTrue(fake.said("issue", "create"))
+
+
+class TwoTierTests(unittest.TestCase):
+    def test_run_gate_uses_a_token_free_environment(self):
+        with mock.patch.dict(os.environ, {"GH_TOKEN": "secret", "GITHUB_TOKEN": "secret"}), \
+             mock.patch.object(swarm.subprocess, "run") as run:
+            run.return_value = subprocess.CompletedProcess([], 0, "ok", "")
+            ok, log = swarm.run_gate("scripts/quick-check.sh")
+        self.assertTrue(ok)
+        self.assertEqual(log, "ok")
+        env = run.call_args.kwargs["env"]
+        self.assertNotIn("GH_TOKEN", env)
+        self.assertNotIn("GITHUB_TOKEN", env)
+
+    def test_integrate_batch_pushes_once_and_dispatches_heavy(self):
+        self.repo = Path(tempfile.mkdtemp())
+        for name in ("CLOUDWORKERS.md", "PROGRESS.md"):
+            (self.repo / name).write_text("| ID | Status |\n|---|---|\n")
+        self.addCleanup(shutil.rmtree, self.repo)
+        original = Path.cwd()
+        os.chdir(self.repo)
+        self.addCleanup(os.chdir, original)
+
+        class Gh(FakeGh):
+            def __init__(self):
+                super().__init__(pr_view={"headRefOid": "abc", "body": "Task: CW-001"})
+            def __call__(self, *args, check=True):
+                if args[:2] == ("pr", "view") and "--json" in args and "headRefOid" in args:
+                    self.calls.append(args)
+                    return json.dumps({"headRefOid": "abc"})
+                if args[:2] == ("pr", "diff"):
+                    self.calls.append(args)
+                    return "apps/api/A.java\n"
+                if args[:2] == ("pr", "view") and "--jq" in args:
+                    self.calls.append(args)
+                    return ""
+                if args[:2] == ("pr", "list"):
+                    self.calls.append(args)
+                    return json.dumps([])
+                return super().__call__(*args, check=check)
+        with mock.patch.object(swarm, "gh", Gh()) as fake, \
+             mock.patch.object(swarm, "guard", return_value=[]), \
+             mock.patch.object(swarm, "merge_local", return_value=("abc", "CW-001", [])), \
+             mock.patch.object(swarm, "run_gate", return_value=(True, "ok")), \
+             mock.patch.object(swarm, "git"), mock.patch.object(swarm, "authed_git"):
+            count = swarm.integrate_batch([1, 2], "scripts/quick-check.sh")
+        self.assertEqual(count, 2)
+        pushes = [c for c in fake.calls if c[:2] == ("workflow", "run")
+                  and c[2] == "heavy-check.yml"]
+        self.assertEqual(len(pushes), 1)
+
+    def test_guard_still_blocks_module_check_scripts(self):
+        fake = FakeGh(diff="apps/staff-web/check.sh\n")
+        with mock.patch.object(swarm, "gh", fake):
+            self.assertEqual(swarm.guard(9), ["apps/staff-web/check.sh"])
+        self.assertTrue(fake.said("needs-human"))
+
+    def test_efficiency_doc_and_quick_script_exist(self):
+        self.assertTrue((ROOT / "docs/swarm/EFFICIENCY.md").exists())
+        self.assertTrue((ROOT / "scripts/quick-check.sh").exists())
+        heavy = (ROOT / ".github/workflows/heavy-check.yml").read_text()
+        self.assertIn("owasp-nvd", heavy)
+        self.assertIn("check.sh", heavy)
 
 
 if __name__ == "__main__":

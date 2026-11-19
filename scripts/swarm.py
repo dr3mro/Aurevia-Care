@@ -19,6 +19,11 @@ from pathlib import Path
 MARK = "<!-- swarm-integrator -->"
 MAX_FIX = 3
 BODY_LIMIT = 8000
+# Default monthly runner-minute cap for all swarm-related workflows. The guard
+# estimates usage from finished run durations and refuses a wave near the cap.
+DEFAULT_MONTHLY_MINUTES = 1500
+BUDGET_WORKFLOWS = ("swarm.yml", "swarm-integrator.yml", "heavy-check.yml",
+                    "agent-image.yml", "swarm-images.yml", "main-watchdog.yml")
 BRANCH = re.compile(r"swarm/[A-Za-z0-9._-]+")
 LABELS = {
     "swarm": ("1d76db", "Pull request opened by a swarm worker"),
@@ -313,6 +318,40 @@ def repair_task(run_id):
             "title": f"Repair main: {run['name']} failed", "body": clip(body), "fix": ""}
 
 
+def monthly_minutes(now=None):
+    """Estimate billed minutes this month from finished swarm workflow runs.
+
+    GitHub bills each job as whole minutes with a one-minute minimum; run-level
+    start/end times are the closest available proxy. This is an estimate, not a
+    billing figure, and is used only for a conservative safety guard."""
+    now = now or datetime.datetime.now(datetime.timezone.utc)
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    total = 0.0
+    for workflow in BUDGET_WORKFLOWS:
+        runs = gh_json("run", "list", "--workflow", workflow, "--status", "completed",
+                       "--limit", "100", "--json", "createdAt,updatedAt") or []
+        for run in runs:
+            start = datetime.datetime.fromisoformat(run["createdAt"].replace("Z", "+00:00"))
+            if start < month_start:
+                continue
+            end = datetime.datetime.fromisoformat(run["updatedAt"].replace("Z", "+00:00"))
+            minutes = max(1.0, (end - start).total_seconds() / 60.0)
+            total += minutes
+    return total
+
+
+def budget_gate(cap=DEFAULT_MONTHLY_MINUTES, now=None):
+    """Refuse a wave when estimated monthly minutes are near the cap."""
+    used = monthly_minutes(now)
+    if used < cap * 0.9:
+        return True, f"Estimated monthly swarm minutes {used:.0f} of {cap}: starting."
+    gh("issue", "create", "--title", "Swarm monthly Actions budget near its cap",
+       "--body", (f"{MARK}\nEstimated swarm minutes this month: {used:.0f} of {cap}. "
+                  "Waves are paused until the cap resets; a person may raise the cap "
+                  "or stop the swarm. No new wave was started."), check=False)
+    return False, f"Estimated monthly swarm minutes {used:.0f} of {cap}: pausing waves."
+
+
 def repair_gate(run_id, now=None):
     """Decide whether to start a repair. Stops after three tries in a day."""
     prs = gh_json("pr", "list", "--state", "all", "--label", "swarm", "--limit", "100",
@@ -367,8 +406,8 @@ def merge_local(pr):
     return git("rev-parse", f"pr-{pr}").strip(), task_id_of(info["headRefName"]), []
 
 
-def finalize(pr, task_id, sha):
-    """Record the merge in the shared trackers and publish main. Trusted step."""
+def record_merge(pr, task_id, sha, gate="scripts/quick-check.sh"):
+    """Record one already-gated merge in the shared trackers. No commit or push."""
     info = gh_json("pr", "view", str(pr), "--json", "headRefOid,body")
     if info["headRefOid"] != sha:
         raise SystemExit("the branch changed after it was tested; it will be retested")
@@ -383,16 +422,79 @@ def finalize(pr, task_id, sha):
     cloud.write_text(set_task_done(cloud.read_text(), task_id, pr))
     progress = Path("PROGRESS.md")
     row = (f"| {task_id} · {title} | Done (swarm, merged) | {reqs or '-'} | PR #{pr}; integrator ran "
-           f"scripts/check.sh on the merge result (tool evidence); notes in {notes} | Merged by the "
-           f"integrator. Simulated review only. Next: CLOUDWORKERS.md |")
+           f"{gate} on the merge result (tool evidence); heavy checks run on main in heavy-check.yml; "
+           f"notes in {notes} | Merged by the integrator. Simulated review only. Next: CLOUDWORKERS.md |")
     text = progress.read_text()
     progress.write_text(text + ("" if text.endswith("\n") else "\n") + row + "\n")
-    git("add", "CLOUDWORKERS.md", "PROGRESS.md", str(notes))
+    return f"Merged to main by the integrator after {gate} passed on the merge result."
+
+
+def dispatch_heavy():
+    """Trigger the once-per-batch heavy verification on main."""
+    gh("workflow", "run", "heavy-check.yml", "--ref", "main", check=False)
+
+
+def run_gate(gate):
+    """Run the fast gate on the current merge. Returns (ok, log tail)."""
+    # Agent-written code is already merged locally at this point. Strip every
+    # credential from the gate subprocess so it cannot read or leak a token.
+    env = {k: v for k, v in os.environ.items()
+           if k not in ("GH_TOKEN", "GITHUB_TOKEN", "SWARM_TOKEN")}
+    done = subprocess.run(["bash", gate], capture_output=True, text=True, env=env)
+    log = (done.stdout + "\n" + done.stderr).strip()
+    return done.returncode == 0, log
+
+
+def integrate_batch(queue, gate="scripts/quick-check.sh"):
+    """Merge every ready PR in one job, gate each, then push main once.
+
+    One cache/Java setup serves the whole batch. A PR whose gate fails is sent
+    back to the workers and its merge is rolled back before the next PR, so a
+    bad PR never blocks the others. Returns the number of merged PRs."""
+    merged = []
+    for pr in queue:
+        blocked = guard(pr)
+        if blocked:
+            continue
+        sha, task_id, conflicts = merge_local(pr)
+        if sha is None:
+            fail(pr, f"Merge conflict with main in {', '.join(conflicts[:10]) or 'unknown files'}; "
+                     "merge main into the branch and resolve it")
+            continue
+        head = gh_json("pr", "view", str(pr), "--json", "headRefOid")["headRefOid"]
+        if head != sha:
+            fail(pr, "the branch changed after planning; it will be retested")
+            git("merge", "--abort", check=False)
+            continue
+        ok, log = run_gate(gate)
+        if not ok:
+            fail(pr, f"Fast merge gate ({gate}) failed on the merge of main and this branch", log)
+            git("reset", "--hard", "HEAD~1", check=False)
+            continue
+        merged.append((pr, task_id, sha))
+    if not merged:
+        emit("merged", 0)
+        return 0
+    comments = [record_merge(pr, task_id, sha, gate) for pr, task_id, sha in merged]
+    files = ["CLOUDWORKERS.md", "PROGRESS.md"] + [f"docs/swarm/{t}.md" for _, t, _ in merged]
+    git("add", *files)
+    git(*IDENTITY, "commit", "-qm", f"Integrate {len(merged)} swarm pull request(s)")
+    authed_git("push", "origin", "HEAD:main")
+    for (pr, _, _), comment in zip(merged, comments):
+        gh("pr", "comment", str(pr), "--body", comment)
+    dispatch_heavy()
+    emit("merged", len(merged))
+    return len(merged)
+
+
+def finalize(pr, task_id, sha):
+    """Record the merge in the shared trackers and publish main. Trusted step."""
+    comment = record_merge(pr, task_id, sha)
+    git("add", "CLOUDWORKERS.md", "PROGRESS.md", f"docs/swarm/{task_id}.md")
     git(*IDENTITY, "commit", "-qm", f"Record {task_id} as merged (PR #{pr})")
     authed_git("push", "origin", "HEAD:main")
-    gh("pr", "comment", str(pr), "--body",
-       f"Merged to main by the integrator after the full check passed on the merge result.")
-    gh("workflow", "run", "delivery.yml", "--ref", "main", check=False)
+    gh("pr", "comment", str(pr), "--body", comment)
+    dispatch_heavy()
 
 
 def main(argv=None):
@@ -400,6 +502,11 @@ def main(argv=None):
     sub = parser.add_subparsers(dest="cmd", required=True)
     for name in ("ensure-labels", "plan-integration", "slot-matrix"):
         sub.add_parser(name)
+    p = sub.add_parser("budget-gate")
+    p.add_argument("--cap", type=int, default=DEFAULT_MONTHLY_MINUTES)
+    p = sub.add_parser("integrate-batch")
+    p.add_argument("--queue", required=True, help="JSON array of pull request numbers")
+    p.add_argument("--gate", default="scripts/quick-check.sh")
     p = sub.add_parser("slot-config")
     p.add_argument("--slot", type=int, required=True)
     p.add_argument("--slots", default=".github/swarm/slots.json")
@@ -454,6 +561,12 @@ def main(argv=None):
         queue = plan_integration(main_is_red())
         emit("queue", json.dumps(queue))
         emit("count", len(queue))
+    elif a.cmd == "budget-gate":
+        allowed, why = budget_gate(a.cap)
+        print(why)
+        emit("start", "true" if allowed else "false")
+    elif a.cmd == "integrate-batch":
+        integrate_batch(json.loads(a.queue), a.gate)
     elif a.cmd == "guard":
         emit("blocked", "true" if guard(a.pr) else "false")
     elif a.cmd == "merge-local":
