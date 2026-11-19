@@ -113,8 +113,7 @@
         <configuration>
           <skip>${owasp.skip}</skip>
           <failBuildOnCVSS>7</failBuildOnCVSS>
-          <nvdApiKeyEnvironmentVariable
-          >2424C98D-9AB1-49ED-B655-ED7A082AE4A4</nvdApiKeyEnvironmentVariable>
+          <nvdApiKeyEnvironmentVariable>NVD_API_KEY</nvdApiKeyEnvironmentVariable>
           <ossindexAnalyzerEnabled>false</ossindexAnalyzerEnabled>
           <outputDirectory>${project.build.directory}/owasp</outputDirectory>
         </configuration>
