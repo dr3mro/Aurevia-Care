@@ -162,8 +162,8 @@ Independent modules scoped to their own paths so workers cannot collide with bac
   - scope: docs/design
   - details:
     Bilingual clinical design-language documentation, in `docs/design` only. No application code. Produce a maintainer-facing design system specification for the staff web and patient app: color and typography tokens, spacing scale, light/dark theming, RTL mirroring rules, local-name and mixed-script display guidance, accessible focus states and WCAG 2.2 AA patterns for forms, tables, dialogs and critical-result banners. Include a token naming contract that CW-004 and CW-005 can adopt later, with a short mapping to requirement IDs (UX-01, PRD-05). Keep every Markdown link valid and every requirement ID defined in the specification. Do NOT touch `apps/`, `db/`, `contracts/`, `.github/`, `scripts/`, root-level `check.sh`, or any shared tracker. Write the requirement IDs and decisions to `.agent/pr-notes.md`.
-- [-] CW-007 · Staff web React appointment and worklist screens (synthetic fixtures)
-  - agent: swarm-1
+- [x] CW-007 · Staff web React appointment and worklist screens (synthetic fixtures)
+  - pr: #30
   - attempts: 3
   - requirements: CLN-01, CLN-02, UX-01
   - depends: CW-004
