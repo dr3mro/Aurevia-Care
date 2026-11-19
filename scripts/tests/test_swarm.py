@@ -237,6 +237,24 @@ class PlanTests(unittest.TestCase):
         self.assertNotIn('"pr", "edit"', source)
         self.assertIn('"api", "--method", "POST"', source)
 
+    def test_gh_retries_transient_api_errors(self):
+        responses = [
+            subprocess.CompletedProcess([], 1, "", "HTTP 502: 502 Bad Gateway"),
+            subprocess.CompletedProcess([], 0, "ok", ""),
+        ]
+        with mock.patch.object(swarm.subprocess, "run", side_effect=responses) as run, \
+             mock.patch.object(swarm.time, "sleep"):
+            self.assertEqual(swarm.gh("pr", "create"), "ok")
+        self.assertEqual(run.call_count, 2)
+
+    def test_gh_does_not_retry_permanent_errors(self):
+        with mock.patch.object(swarm.subprocess, "run",
+                               return_value=subprocess.CompletedProcess(
+                                   [], 1, "", "permission denied")) as run, \
+             self.assertRaises(subprocess.CalledProcessError):
+            swarm.gh("pr", "create")
+        self.assertEqual(run.call_count, 1)
+
     def test_gh_failure_surfaces_stderr(self):
         with mock.patch.object(swarm.subprocess, "run") as run:
             run.return_value = subprocess.CompletedProcess([], 1, "", "permission denied")
@@ -345,9 +363,11 @@ class PlanTests(unittest.TestCase):
         self.assertIn("cron: '7 * * * *'", text)
         self.assertNotIn("cron: '7 */3 * * *'", text)
 
-    def test_wave_defaults_to_ten_workers(self):
+    def test_wave_defaults_to_one_worker_temporarily(self):
+        # TEMPORARY: revert to '10' after a wave publishes successfully.
         text = (ROOT / ".github/workflows/swarm.yml").read_text()
-        self.assertRegex(text, r"default: '10'")
+        self.assertRegex(text, r"default: '1'")
+        self.assertIn("inputs.workers || '1'", text)
 
     def test_pr_size_guard_is_enforced(self):
         fake = FakeGh(diff="\n".join(f"apps/api/src/F{i}.java" for i in range(16)))
