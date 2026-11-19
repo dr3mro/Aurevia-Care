@@ -1,10 +1,10 @@
-package com.aurevia.smartclinic.api.x_04;
+package com.aurevia.smartclinic.api.authorization;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import com.aurevia.smartclinic.api.x_04.CommandAuthorization.Decision;
+import com.aurevia.smartclinic.api.authorization.CommandAuthorization.Decision;
 
 /**
  * Synthetic, process-local decision ledger used by unit tests and local rehearsal.
