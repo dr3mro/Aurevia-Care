@@ -7,6 +7,7 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -76,7 +77,17 @@ public class ExchangeTaskService {
                 return null;
             }
             String id = UUID.randomUUID().toString();
-            repository.insert(context.organizationId(), id, orderRef);
+            try {
+                repository.insert(context.organizationId(), id, orderRef);
+            } catch (DuplicateKeyException exception) {
+                // A competing create can win the unique order reference. Audit the
+                // failed sensitive mutation before returning while the row rolls back.
+                audit.append(context, CREATE_ACTION, CREATE_ACTION, RESOURCE_TYPE, SCOPE,
+                        orderRef, "CONFLICT");
+                failure.set(new ApiException(409, "CONFLICT",
+                        "an exchange task already exists for this order"));
+                return null;
+            }
             repository.appendEvent(id, 1, ExchangeDimension.WORKFLOW, CREATE_ACTION,
                     null, INITIAL_WORKFLOW, null, null);
             audit.append(context, CREATE_ACTION, CREATE_ACTION, RESOURCE_TYPE, SCOPE, id, "SUCCESS");
@@ -208,6 +219,9 @@ public class ExchangeTaskService {
         String normalized = value == null || value.isBlank() ? null : value.trim();
         if (command.requiresReason() && normalized == null) {
             throw new ApiException(422, "REASON_REQUIRED", "a reason is required for this transition");
+        }
+        if (normalized != null && normalized.length() > 500) {
+            throw new ApiException(422, "INVALID_REASON", "reason must be at most 500 characters");
         }
         return normalized;
     }

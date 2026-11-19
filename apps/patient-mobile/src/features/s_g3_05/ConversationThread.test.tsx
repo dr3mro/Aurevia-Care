@@ -38,7 +38,7 @@ describe('ConversationThread', () => {
     expect(view.getByLabelText('conversation thread')).toBeTruthy();
     expect(view.getByLabelText('unit Synthetic Lab')).toBeTruthy();
     expect(view.getByLabelText('state awaiting_staff')).toBeTruthy();
-    expect(view.getByLabelText('message 1 from unit')).toBeTruthy();
+    expect(view.getByLabelText('unit said: Please bring your results.')).toBeTruthy();
 
     const input = view.getByLabelText('reply input');
     await act(async () => {
@@ -49,6 +49,26 @@ describe('ConversationThread', () => {
     });
     expect(onSend).toHaveBeenCalledTimes(1);
     expect(onSend).toHaveBeenCalledWith('conv-1', 'one more question');
+    await view.unmount();
+  });
+
+  it('exposes the message body to screen readers', async () => {
+    const view = await render(<ConversationThread conversation={conversation()} onSend={jest.fn()} />);
+    expect(view.getByLabelText('unit said: Please bring your results.')).toBeTruthy();
+    await view.unmount();
+  });
+
+  it('does not send a blank or whitespace-only reply', async () => {
+    const onSend = jest.fn();
+    const view = await render(<ConversationThread conversation={conversation()} onSend={onSend} />);
+    const input = view.getByLabelText('reply input');
+    await act(async () => {
+      fireEvent.changeText(input, '   ');
+    });
+    await act(async () => {
+      fireEvent.press(view.getByLabelText('send reply'));
+    });
+    expect(onSend).not.toHaveBeenCalled();
     await view.unmount();
   });
 
