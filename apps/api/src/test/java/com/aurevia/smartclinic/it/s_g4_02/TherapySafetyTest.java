@@ -82,6 +82,19 @@ class TherapySafetyTest {
     }
 
     @Test
+    void wrongActiveRoleCannotReadClinicalAggregateOrScales() {
+        Episode episode = accept(ptA, "REF-1", PATIENT_A);
+        assertEquals(403, status(() -> service.get(Actor.of(ORG_A, "fin", "finance"), episode.id())));
+        assertEquals(403, status(() -> service.get(
+                Actor.of(ORG_A, "rec", "reception"), episode.id())));
+        assertEquals(403, status(() -> service.versions(
+                Actor.of(ORG_A, "rec", "reception"), "koos")));
+        // Legitimate clinical and governance readers still succeed.
+        assertNotNull(service.get(ptA, episode.id()));
+        assertNotNull(service.versions(Actor.of(ORG_A, "admin", TherapyService.TENANT_ADMIN), "koos"));
+    }
+
+    @Test
     void wrongPatientIsRejectedAtEveryPatientBearingCommand() {
         Episode episode = acceptAndEvaluate();
         int version = episode.version();
@@ -133,6 +146,19 @@ class TherapySafetyTest {
                 .stream().allMatch(e -> ORG_A.equals(e.organizationId())));
         assertTrue(service.auditTrail(Actor.of(ORG_B, "aud", TherapyService.PRIVACY_AUDITOR))
                 .stream().allMatch(e -> ORG_B.equals(e.organizationId())));
+    }
+
+    @Test
+    void signedNoteChecksumIsSha256() {
+        Episode episode = acceptAndEvaluate();
+        int version = service.get(ptA, episode.id()).episode().version();
+        service.recordNote(ptA, episode.id(), new NoteRequest(
+                NoteKind.SESSION, "session", "2026-11-19T10:00:00Z", 1), version);
+        version = service.get(ptA, episode.id()).episode().version();
+        ClinicalNote signed = service.signNote(ptA, episode.id(), NoteKind.SESSION, 1,
+                "attest", version);
+        assertTrue(signed.contentChecksum().matches("[0-9a-f]{64}"),
+                "signed-note checksum must be a SHA-256 hex digest");
     }
 
     @Test
