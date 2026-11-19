@@ -28,8 +28,7 @@ BODY_LIMIT = 8000
 # estimates usage from finished run durations and refuses a wave near the cap.
 DEFAULT_MONTHLY_MINUTES = 10000
 BUDGET_WORKFLOWS = ("swarm.yml", "swarm-integrator.yml", "heavy-check.yml",
-                    "agent-image.yml", "swarm-images.yml", "main-repair.yml",
-                    "fix-pr-watchdog.yml")
+                    "agent-image.yml", "swarm-images.yml", "main-repair.yml")
 BRANCH = re.compile(r"swarm/[A-Za-z0-9._-]+")
 LABELS = {
     "swarm": ("1d76db", "Pull request opened by a swarm worker"),
@@ -366,6 +365,17 @@ def publish(task, directory):
         # local ref so a second bundle cannot fail as a non-fast-forward.
         git("update-ref", "-d", "refs/heads/swarm-incoming", check=False)
         git("fetch", str(bundle), "HEAD:refs/heads/swarm-incoming")
+        changed = git("diff", "--name-only", "HEAD", "refs/heads/swarm-incoming").split()
+        # GITHUB_TOKEN is a GitHub App installation token and cannot create or
+        # update .github/workflows/*; there is no `workflows` permissions scope.
+        # Fail closed instead of crashing the publish loop for every later slot.
+        if any(f.startswith(".github/workflows/") for f in changed):
+            if task["kind"] == "story":
+                release_claim(task["id"], "worker changed workflow files; use SWARM_TOKEN with workflow scope")
+            print(f"publish: {task['id']} changed .github/workflows/*; not pushing "
+                  "(GitHub App token cannot update workflow files)", file=sys.stderr)
+            emit("blocked", "workflow-files")
+            return
         authed_git("push", "origin", f"swarm-incoming:refs/heads/{branch}")
         checks = read(directory / "checks", "skipped")
         if task["kind"] == "story":
