@@ -273,6 +273,27 @@ class IntegrationTests(unittest.TestCase):
             self.assertEqual(swarm.guard(9), [".github/workflows/x.yml", "scripts/swarm.py"])
         self.assertTrue(fake.said("needs-human"))
 
+    def test_repair_pr_bypasses_protected_path_guard(self):
+        fake = FakeGh(diff="apps/api/src/A.java\n.github/workflows/x.yml\nscripts/swarm.py\n")
+        with mock.patch.object(swarm, "gh", fake):
+            self.assertEqual(swarm.guard(9, repair=True), [])
+        self.assertFalse(fake.said("needs-human"))
+
+    def test_is_repair_detects_autofix_label(self):
+        fake = FakeGh(pr_view={"labels": labels("swarm", "autofix"), "title": "other"})
+        with mock.patch.object(swarm, "gh", fake):
+            self.assertTrue(swarm.is_repair(9))
+
+    def test_is_repair_detects_fix_title(self):
+        fake = FakeGh(pr_view={"labels": labels("swarm"), "title": "FIX-444: Repair main"})
+        with mock.patch.object(swarm, "gh", fake):
+            self.assertTrue(swarm.is_repair(9))
+
+    def test_is_repair_false_for_ordinary_story(self):
+        fake = FakeGh(pr_view={"labels": labels("swarm"), "title": "CW-001: Staff"})
+        with mock.patch.object(swarm, "gh", fake):
+            self.assertFalse(swarm.is_repair(9))
+
     def test_guard_sends_tracker_edits_back_to_the_worker(self):
         fake = FakeGh(diff="apps/api/A.java\nTODO.md\n", pr_view={"labels": []})
         with mock.patch.object(swarm, "gh", fake):
