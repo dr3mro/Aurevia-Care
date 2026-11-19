@@ -385,10 +385,11 @@ class PlanTests(unittest.TestCase):
         self.assertIn("for attempt in 1 2 3", text)
         self.assertIn("apt install attempt", text)
 
-    def test_wave_defaults_to_ten_workers(self):
+    def test_wave_defaults_to_one_worker(self):
         text = (ROOT / ".github/workflows/swarm.yml").read_text()
-        self.assertRegex(text, r"default: '10'")
-        self.assertIn("inputs.workers || '10'", text)
+        self.assertRegex(text, r"default: '1'")
+        self.assertIn("inputs.workers || '1'", text)
+        self.assertIn("max-parallel: 1", text)
 
     def test_pr_size_guard_is_enforced(self):
         fake = FakeGh(diff="\n".join(f"apps/api/src/F{i}.java" for i in range(16)))
