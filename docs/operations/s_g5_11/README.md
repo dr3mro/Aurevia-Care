@@ -58,7 +58,7 @@ fixtures, and the unit tests.
 
 | Check | Command | Proves |
 |---|---|---|
-| Unit and fixture gate | `bash infra/s_g5_11/check.sh` | 93 synthetic unit tests pass; the conforming fixture passes and the violation fixture fails |
+| Unit and fixture gate | `bash infra/s_g5_11/check.sh` | 103 synthetic unit tests pass; the conforming fixture passes and the violation fixture fails |
 | Unit tests alone | `python3 -I -m unittest discover -s infra/s_g5_11/tests -q` | The evaluator's enumerated branches behave as specified |
 | Line coverage | `python3 -m trace --count --coverdir /tmp/opencode/s_g5_11_cov infra/s_g5_11/tests/run_coverage.py` | Every executable line of the evaluator runs; stdlib `trace` is used because `coverage.py` is not installed |
 | Links and requirement IDs | `python3 -I scripts/check-docs.py` | Relative links resolve and every requirement ID is defined in the specification |
@@ -73,10 +73,12 @@ fixtures, and the unit tests.
 | D3 | Every action requires a non-empty reason and an active authorized actor; operator subjects and audit ids must be unique | "with reason" is explicit in ADM-02; IAM-01/02 require the permission to be re-derived, so a revoked operator cannot act on the next request, and a duplicate identity must not re-authorize them or forge an audit reference |
 | D4 | `retry` is allowed only on `rejected_exchanges` and `document_failures` | A declared assumption, not a spec literal; retrying a clinical review or a coverage gap would destroy its audit trail. Site alignment is an open item |
 | D5 | The operator-role allowlist is `tenant_admin`, `privacy_auditor`, `operator` | A declared assumption; site role names must be mapped to it before live enablement |
-| D6 | Export TTL is bounded to 86,400 seconds | ADM-02 requires expiry; an unbounded or expired export cannot be revoked and must fail closed |
+| D6 | Export TTL is checked as a positive window no longer than 86,400 seconds | ADM-02 requires an expiry; a missing, non-positive or unbounded window fails closed. The offline evaluator has no clock, so it cannot say whether a bounded window has since elapsed — that is an operational check |
 | D7 | Exports require explicit tenant and queue scope plus an audit reference | ADM-02 requires explicit scope and audit; a broad export would leak operational history |
 | D8 | A passing synthetic artifact is not final evidence | Rehearsal proves the check works, not that a site staffed its queues |
 | D9 | Reserved migration version V53 is not used | No schema change is needed; version gaps are allowed by the repository's change-safety gate |
+| D10 | An audit reference must corroborate the citing action's actor, verb, item and time (and an export's actor, verb and creation time) | An id alone can point at an unrelated event, so a snapshot could claim operator action without a matching audit fact (OPS-02) |
+| D11 | An action cannot predate its work item's creation instant | An operator cannot act on an item before it exists; a backdated action would fake a timely response |
 
 ## Boundaries
 
