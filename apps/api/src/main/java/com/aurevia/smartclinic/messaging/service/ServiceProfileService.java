@@ -134,8 +134,7 @@ public class ServiceProfileService {
         if (!store.unitExists(context.organizationId(), unit)) {
             throw deny(context, ServiceProfileActions.PROFILE_PUBLISH, unit, 404, "NOT_FOUND", "unit not found");
         }
-        int expected = ServiceProfileInputs.minutes(request.expectedVersion() == null ? null
-                : request.expectedVersion().longValue(), "expectedVersion", Integer.MAX_VALUE);
+        int expected = ServiceProfileInputs.version(request.expectedVersion(), "expectedVersion");
         int current = store.latestVersion(context.organizationId(), unit);
         if (expected != current) {
             throw deny(context, ServiceProfileActions.PROFILE_PUBLISH, unit, 412, "STALE_VERSION",

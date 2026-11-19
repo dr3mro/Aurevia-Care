@@ -36,14 +36,10 @@ public final class InstructionFacts {
         private final String wire;
 
         /**
-
-
-         * @param wire
-
-
+         * Create a fact type with its stable wire key.
+         *
+         * @param wire lowercase key used on the wire and in stored facts
          */
-
-
         FactType(String wire) {
             this.wire = wire;
         }
@@ -85,14 +81,10 @@ public final class InstructionFacts {
         private final String wire;
 
         /**
-
-
-         * @param wire
-
-
+         * Create an acknowledgment scope with its stable wire key.
+         *
+         * @param wire key used on the wire and in stored facts
          */
-
-
         AcknowledgmentScope(String wire) {
             this.wire = wire;
         }
@@ -135,14 +127,10 @@ public final class InstructionFacts {
         private final String wire;
 
         /**
-
-
-         * @param wire
-
-
+         * Create a follow-up state with its stable wire key.
+         *
+         * @param wire lowercase key used on the wire and in stored facts
          */
-
-
         FollowUpState(String wire) {
             this.wire = wire;
         }
@@ -336,35 +324,48 @@ public final class InstructionFacts {
                             Instant occurredAt) {
     }
 
-    /** Command to publish one instruction revision.
- * @return this record
- */
-public record PublishCommand(String instructionId, String patientId, String unitId, int revision,
+    /**
+     * Command to publish one immutable instruction revision.
+     *
+     * <p>The content reference is opaque and the due instant is required when a
+     * receipt acknowledgment is requested, so an overdue follow-up can be routed.</p>
+     *
+     * @return the publish command
+     */
+    public record PublishCommand(String instructionId, String patientId, String unitId, int revision,
                                  String contentRef, boolean requiresAcknowledgment, String acknowledgmentDueAt,
                                  boolean sendNotification, String clientId) {
     }
 
-    /** Command to retry a generic notification dispatch.
- * @return this record
- */
-public record RetryCommand(String instructionId, int revision, String clientId) {
+    /**
+     * Command to retry a generic notification dispatch for one revision.
+     *
+     * @return the dispatch retry command
+     */
+    public record RetryCommand(String instructionId, int revision, String clientId) {
     }
 
-    /** Command to record a first in-app view.
- * @return this record
- */
-public record ViewCommand(String instructionId, int revision, String clientId) {
+    /**
+     * Command to record a first in-app view of one revision.
+     *
+     * @return the first-view command
+     */
+    public record ViewCommand(String instructionId, int revision, String clientId) {
     }
 
-    /** Command to acknowledge receipt of one exact revision.
- * @return this record
- */
-public record AcknowledgeCommand(String instructionId, int revision, String clientId) {
+    /**
+     * Command to acknowledge receipt of one exact revision.
+     *
+     * @return the acknowledgment command
+     */
+    public record AcknowledgeCommand(String instructionId, int revision, String clientId) {
     }
 
-    /** Command to resolve an overdue follow-up with a reason.
- * @return this record
- */
-public record ResolveCommand(String instructionId, int revision, String reason) {
+    /**
+     * Command to resolve an overdue follow-up with a recorded reason.
+     *
+     * @return the follow-up resolution command
+     */
+    public record ResolveCommand(String instructionId, int revision, String reason) {
     }
 }
