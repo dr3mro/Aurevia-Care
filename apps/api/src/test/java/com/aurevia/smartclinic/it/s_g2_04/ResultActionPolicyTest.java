@@ -21,9 +21,10 @@ class ResultActionPolicyTest {
     }
 
     @Test
-    void laboratoryVerifiersAndAdministratorsImportResults() {
+    void onlyLaboratoryVerifiersImportClinicalResultContent() {
         assertTrue(policy.allows(ResultActionPolicy.RESULT_IMPORT, "lab_verifier"));
-        assertTrue(policy.allows(ResultActionPolicy.RESULT_IMPORT, "tenant_admin"));
+        assertFalse(policy.allows(ResultActionPolicy.RESULT_IMPORT, "tenant_admin"),
+                "administrators configure and audit but hold no clinical import permission");
         assertFalse(policy.allows(ResultActionPolicy.RESULT_IMPORT, "clinician"));
         assertFalse(policy.allows(ResultActionPolicy.RESULT_IMPORT, "privacy_auditor"));
         assertFalse(policy.allows(ResultActionPolicy.RESULT_IMPORT, "reception"));
