@@ -87,7 +87,7 @@ public class AppointmentService {
      *
      * @param request booking command
      * @return the held appointment with its expiry
-     * @throws ApiException on the same boundaries as {@link #book(BookingRequest)}
+     * @throws ApiException on the same boundaries as {@code book(BookingRequest)}
      */
     public Appointment hold(BookingRequest request) {
         return create(request, AppointmentState.HELD);

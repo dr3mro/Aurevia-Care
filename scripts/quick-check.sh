@@ -19,8 +19,8 @@ python3 -I scripts/check-migrations.py --require-baseline
 python3 -I -m unittest discover -s scripts/tests -q
 
 # Compile and unit tests only. The no-security profile skips OWASP and SpotBugs;
-# the test phase does not run JaCoCo's verify-phase coverage check, and the
-# *IsolationTest integration tests need PostgreSQL, so they are excluded here.
-mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest='!*IsolationTest' test
+# the fast profile excludes @Tag("integration") suites that need PostgreSQL.
+# New DB tests must carry the tag to stay out of this DB-less gate.
+mvn -q -B -f apps/api/pom.xml -Pno-security,fast test
 
 printf 'quick check: policy, compile and unit tests passed\n'
