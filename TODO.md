@@ -150,8 +150,7 @@ Gate evidence: competing bookings enforce one protected slot; stale drafts canno
 
 Gate evidence: rejected or recollected specimens trace to the right order; duplicate and reordered events do not duplicate or overwrite final reports; unmatched results wait for review; critical results escalate on deadline with human acknowledgment, and corrections reopen review.
 
-- [-] S-G2-01 · Order creation with authorization, snapshot, disclosure record and destination work item (XCH-01).
-  - agent: swarm-4
+- [ ] S-G2-01 · Order creation with authorization, snapshot, disclosure record and destination work item (XCH-01).
   - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g2/s_g2_01, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g2_01
   - reserved: V19
@@ -285,8 +284,7 @@ Gate evidence: confirmed patients see only authorized revisions; generic notific
     Implement Care unit directory and verified, connection-scoped patient-unit relationships (MSG-01, ARC-07) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [-] S-G3-05 · Conversation lifecycle, unread counts, staff work queue, assignment and reopen states (MSG-02).
-  - agent: swarm-8
+- [ ] S-G3-05 · Conversation lifecycle, unread counts, staff work queue, assignment and reopen states (MSG-02).
   - attempts: 1
   - scope: apps/patient-mobile/src/features/s_g3_05, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_05
   - reserved: V33
