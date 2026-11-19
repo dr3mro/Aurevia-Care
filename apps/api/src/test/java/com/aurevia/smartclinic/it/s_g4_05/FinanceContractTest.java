@@ -213,9 +213,38 @@ class FinanceContractTest {
                 FinanceInputs.digest(id, FinanceContract.EntryType.PAYMENT, 1000L, "USD", "desk", null));
         assertNotEquals(payment,
                 FinanceInputs.digest(id, FinanceContract.EntryType.PAYMENT, 1000L, "USD", null, "admin-a"));
-        assertTrue(payment.contains(id));
+        assertEquals(64, payment.length());
         assertEquals(payment.length(), FinanceInputs.digest(
                 id, FinanceContract.EntryType.PAYMENT, 1000L, "USD", null, null).length());
+    }
+
+    @Test
+    void digestReportsAnUnavailableDigestAlgorithmExplicitly() {
+        ApiException failure = assertThrows(ApiException.class, () -> FinanceInputs.digest(
+                "11111111-1111-1111-1111-111111111111", FinanceContract.EntryType.PAYMENT, 100L,
+                "USD", null, null, algorithm -> {
+                    throw new java.security.NoSuchAlgorithmException("synthetic absence");
+                }));
+        assertEquals(500, failure.status());
+        assertEquals("DIGEST_UNAVAILABLE", failure.code());
+    }
+
+    @Test
+    void digestIsFixedLengthEvenForMaximumLengthPayloads() {
+        String id = "11111111-1111-1111-1111-111111111111";
+        String reason = "r".repeat(500);
+        String approver = "a".repeat(64);
+        String digest = FinanceInputs.digest(id, FinanceContract.EntryType.REFUND, 1300L, "USD",
+                reason, approver);
+        assertTrue(digest.length() <= 128,
+                "the replay fingerprint must fit its ledger storage column, was " + digest.length());
+        assertEquals(64, digest.length(), "a name-based digest has a fixed 128-bit width");
+        assertTrue(digest.chars().allMatch(character -> (character >= '0' && character <= '9')
+                || (character >= 'a' && character <= 'f')), "the fingerprint is lowercase hex");
+        assertEquals(digest, FinanceInputs.digest(id, FinanceContract.EntryType.REFUND, 1300L, "USD",
+                reason, approver));
+        assertNotEquals(digest, FinanceInputs.digest(id, FinanceContract.EntryType.REFUND, 1301L, "USD",
+                reason, approver), "a differing payload must still produce a different fingerprint");
     }
 
     @Test
