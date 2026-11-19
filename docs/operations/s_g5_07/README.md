@@ -39,7 +39,10 @@ environment and source SHA), matching the sibling OPS-03 evaluator. Even then a
 passing measured artifact is a structured claim: the evaluator checks the
 presence and shape of that provenance, not its truth — it cannot verify a
 signature's trust root, that scans actually ran, or that access expired.
-Relabelling a rehearsal alone cannot yield final evidence.
+Relabelling a rehearsal alone cannot yield final evidence: the canonical gate
+runs a dedicated negative fixture that changes only `kind` and `source` on the
+conforming rehearsal and asserts the artifact is still rejected (exit 1) because
+it carries no run provenance.
 
 ## Document set
 
@@ -53,15 +56,16 @@ Relabelling a rehearsal alone cannot yield final evidence.
 Executable material lives in `infra/s_g5_07`: the
 [evaluator](../../../infra/s_g5_07/delivery_safety_evidence.py), the
 [policy manifest](../../../infra/s_g5_07/delivery-safety-policy.json), the
-[conforming](../../../infra/s_g5_07/fixtures/synthetic_evidence.json) and
-[violation](../../../infra/s_g5_07/fixtures/violation_evidence.json) fixtures,
-the tests and the canonical gate.
+[conforming](../../../infra/s_g5_07/fixtures/synthetic_evidence.json),
+[violation](../../../infra/s_g5_07/fixtures/violation_evidence.json) and
+[relabelled-rehearsal](../../../infra/s_g5_07/fixtures/relabelled_violation_evidence.json)
+fixtures, the tests and the canonical gate.
 
 ## Verification
 
 | Check | Command | Proves |
 |---|---|---|
-| Unit and fixture gate | `bash infra/s_g5_07/check.sh` | 68 synthetic unit tests pass; the conforming fixture passes, the violation fixture exits exactly 1, and the real migration gate is green |
+| Unit and fixture gate | `bash infra/s_g5_07/check.sh` | 71 synthetic unit tests pass; the conforming fixture passes, both negative fixtures exit exactly 1, and the real migration gate is green |
 | Unit tests alone | `python3 -I -m unittest discover -s infra/s_g5_07/tests -q` | The evaluator's enumerated branches behave as specified |
 | Line coverage | `python3 -m trace --count --coverdir /tmp/opencode/s_g5_07_cov infra/s_g5_07/tests/run_coverage.py` | All 248 executable lines of the evaluator run; stdlib `trace` is used because `coverage.py` is not installed |
 | Links and requirement IDs | `python3 -I scripts/check-docs.py` | Relative links resolve and every requirement ID is defined in the specification |
@@ -82,6 +86,7 @@ the tests and the canonical gate.
 | D9 | A `measured_deployment` claim must carry six provenance fields | Without them, changing only `kind` and `source` would grant `final_evidence` to a synthetic rehearsal; this matches the sibling OPS-03 gate (decision made after a defensive review finding) |
 | D10 | All distinctness checks compare stripped values | Account/resource identifiers, rollout stages and production-access requester/approver are normalized before comparison, so whitespace padding cannot alias two values or self-approve access |
 | D11 | The violation fixture must exit exactly 1 | Any other non-zero exit is a parse/IO regression, not a rejected artifact; the canonical gate now asserts the exact status |
+| D12 | A relabelled-rehearsal negative fixture is enforced by the canonical gate | A rehearsal that changes only `kind` and `source` must still be rejected for missing provenance; proving this at gate level (not just in unit tests) guards the honesty rule against future weakening |
 
 ## Boundaries
 

@@ -126,6 +126,28 @@ public final class ServiceProfileInputs {
     }
 
     /**
+     * Validate a non-negative version precondition. Zero means "no published
+     * version yet" and is the only valid precondition for a unit's first publish;
+     * reuse of a minute validator here would make every new unit unpublishable.
+     *
+     * @param value supplied value, possibly absent
+     * @param field field name used in the error code
+     * @return the validated version
+     * @throws ApiException when absent, negative or above the int range
+     */
+    public static int version(Number value, String field) {
+        if (value == null) {
+            throw new ApiException(422, "INVALID_" + field.toUpperCase(Locale.ROOT), field + " is required");
+        }
+        long parsed = value.longValue();
+        if (parsed < 0 || parsed > Integer.MAX_VALUE) {
+            throw new ApiException(422, "INVALID_" + field.toUpperCase(Locale.ROOT),
+                    field + " must be 0-" + Integer.MAX_VALUE);
+        }
+        return (int) parsed;
+    }
+
+    /**
      * Validate a bounded list of non-blank text values.
      *
      * @param values    supplied list
