@@ -25,7 +25,8 @@ what this repository cannot prove. The approved clause itself is in the
 | OPS-05 | Monitor error rates, saturation, queue age, partner delivery, unmatched reports, critical acknowledgment time, missing coverage, unassigned patient messages, response breaches, failed instruction notifications, overdue instruction acknowledgments, rendering failures and backup status; define operational on-call and site clinical coverage owners; downtime and recovery runbooks for paper/manual capture, patient identification, critical contacts and supervised back-entry; prevent duplicates when recovering | [Operational runbooks](operational-runbooks.md) |
 
 No new threshold or requirement ID is introduced by this handoff. Cross-references
-to other requirement IDs (for example IAM-02, ARC-05 or XCH-05) point at the
+to other requirement IDs (ARC-03 in the duplicate-prevention procedure, ARC-05 in
+the event-deduplication rules, plus IAM-02, IAM-05 and XCH-05) point at the
 specification's existing clauses and do not create new acceptance values.
 
 ## Three evidence tiers
