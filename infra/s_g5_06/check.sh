@@ -4,6 +4,8 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 python3 -I -m unittest discover -s tests -q
+# Build-failing 100% line-coverage gate for the evaluator (stdlib trace).
+python3 -I tests/coverage_gate.py
 python3 -I recovery_evidence.py fixtures/synthetic_recovery_evidence.json >/dev/null
 
 if python3 -I recovery_evidence.py fixtures/violation_recovery_evidence.json >/dev/null 2>&1; then
