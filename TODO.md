@@ -211,6 +211,10 @@ Independent modules scoped to their own paths so workers cannot collide with bac
   - agent: loop
   - evidence: observed failure from `swarm/CW-007-40`/`CW-007-41` — GitHub App refused `.github/workflows/*`, then later slots hit non-fast-forward on `swarm-incoming`. `workflows: write` is NOT a valid GitHub Actions permission scope and made both workflows invalid, so it was removed. Final fix: `publish()` deletes the local `swarm-incoming` ref before each bundle and detects workflow-file changes, releases the claim and skips the push instead of crashing. Guards red first then green: 76 swarm tests, 150 total tooling tests OK; all 8 workflow YAMLs parse; `check.sh`, `quick-check.sh`, `docs.sh`, `gen-opencode.py --check` exit 0. No `SWARM_TOKEN` secret exists; a person must apply workflow changes or supply a token with workflow scope. Evidence source: observed CI errors plus executed tool commands; no human or clinical evidence.
 
+- [x] S-FIX-FRONTEND-01 · Restore the Frontend standards gate after scheduling tests added Node filesystem imports.
+  - agent: loop
+  - evidence: reproduced check run 135471273322 locally (`npm run typecheck` failed TS2307/TS7006); added `@types/node@22.19.0` and `"node"` to root `tsconfig.json`; made the scheduling RTL test resolve its feature directory by `import.meta.url`; root Vitest excludes React `.tsx` tests owned by staff-web; `bash scripts/frontend-check.sh` exit 0 with staff-web 103 tests, patient-mobile 0 tests, root 23 tests. Evidence source: local CI gate and GitHub Actions job log 135471273322.
+
 ## Improvement ideas
 
 - [x] IMP-03 · Stop concurrency-cancelling swarm delivery runs. `delivery.yml` (per-ref group, `cancel-in-progress: false`), `heavy-check.yml`, `agent-image.yml` and `swarm-images.yml` now queue; `swarm.yml`, `swarm-integrator.yml`, `main-watchdog.yml` and `opencode-team.yml` already queued. README-SETUP.md updated.
