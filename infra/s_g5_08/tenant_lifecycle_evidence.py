@@ -96,14 +96,24 @@ def _valid_provenance(record):
 
 
 def _valid_documents(record, policy_version):
-    """Return true when every attached document is checksummed and policy-bound."""
+    """Return true when every attached document is checksummed and policy-bound.
+
+    Document ids must also be unique within the record: a duplicate id with
+    different bytes would leave the manifest ambiguous about which authorized
+    copy was exported. The uniqueness fold runs only after every entry has been
+    structurally validated, so an unhashable id can never reach ``set``.
+    """
     documents = record.get("documents") if isinstance(record, dict) else None
-    return (isinstance(documents, list) and bool(documents)
-            and all(isinstance(document, dict)
-                    and _nonempty_str(document.get("id"))
-                    and _valid_checksum(document.get("checksum"))
-                    and document.get("policy_version") == policy_version
-                    for document in documents))
+    if not (isinstance(documents, list) and bool(documents)):
+        return False
+    if not all(isinstance(document, dict)
+               and _nonempty_str(document.get("id"))
+               and _valid_checksum(document.get("checksum"))
+               and document.get("policy_version") == policy_version
+               for document in documents):
+        return False
+    ids = [document["id"] for document in documents]
+    return len(ids) == len(set(ids))
 
 
 def _valid_authorizations(record):
@@ -119,7 +129,9 @@ def _valid_audit(record):
     """Return true for a well-formed audit history with strictly increasing seq.
 
     Audit is append-only: a duplicate or out-of-order sequence defeats tamper
-    evidence, so the sequence numbers must ascend without gaps in the ordering.
+    evidence, so the sequence numbers must be strictly increasing. Gaps are not
+    checked here — an append-only log may legitimately have no row for every
+    integer — so this is ordering, not contiguity, evidence.
     """
     audit = record.get("audit") if isinstance(record, dict) else None
     if not (isinstance(audit, list) and bool(audit)):

@@ -206,6 +206,79 @@ def parse_tasks(text):
     return tasks
 
 
+MAX_AUDIT_NEW = 5       # findings turned into tasks per daily audit
+MAX_AUDIT_OPEN = 10     # no new audit tasks while this many are still open
+AUDIT_HEADER = "## Audit findings"
+
+
+def _norm(text):
+    return re.sub(r"[^a-z0-9]+", " ", text.lower()).strip()
+
+
+def audit_entries(findings, text, today):
+    """Validate audit findings and format the new ones as TODO.md entries.
+
+    The audit worker has no token and its JSON is untrusted, so every field is
+    checked: bounded lengths, relative scope paths that are not protected files,
+    and no duplicate of an existing task title."""
+    tasks = parse_tasks(text)
+    open_audit = [t for t in tasks if t["id"].startswith("AUD-") and t["status"] != "done"]
+    room = min(MAX_AUDIT_NEW, MAX_AUDIT_OPEN - len(open_audit))
+    seen = {_norm(t["task"]) for t in tasks}
+    existing = {t["id"] for t in tasks}
+    entries, number = [], 0
+    for item in findings if isinstance(findings, list) else []:
+        if len(entries) >= room:
+            break
+        if not isinstance(item, dict):
+            continue
+        title, details, scope = item.get("title"), item.get("details"), item.get("scope")
+        if not (isinstance(title, str) and 10 <= len(title.strip()) <= 160 and "\n" not in title):
+            continue
+        if not (isinstance(details, str) and details.strip()) \
+                or not (isinstance(scope, list) and 1 <= len(scope) <= 4):
+            continue
+        if not all(isinstance(d, str) and d and not d.startswith("/") and ".." not in d
+                   and "," not in d and not protected_files([d, d.rstrip("/") + "/x"])
+                   for d in scope):
+            continue
+        if _norm(title) in seen:
+            continue
+        seen.add(_norm(title))
+        number += 1
+        while f"AUD-{today}-{number:02d}" in existing:
+            number += 1
+        body = "\n".join(f"    {line}" for line in details.strip()[:2000].splitlines() if line.strip())
+        entries.append(
+            f"- [ ] AUD-{today}-{number:02d} · {title.strip()}\n"
+            f"  - attempts: 0\n  - scope: {', '.join(scope)}\n  - details:\n{body}\n"
+            "    Found by the daily audit. Synthetic fixtures only; failing tests first;\n"
+            "    stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.")
+    return entries
+
+
+def add_audit_tasks(findings_path, path="TODO.md", today=None):
+    """Append validated audit findings to TODO.md on main for the swarm to take."""
+    today = today or datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d")
+    try:
+        findings = json.loads(Path(findings_path).read_text())
+    except (OSError, ValueError):
+        print("No usable audit findings.", file=sys.stderr)
+        return 0
+    added = []
+
+    def edit(text):
+        entries = audit_entries(findings, text, today)
+        added[:] = entries
+        if not entries:
+            return text
+        head = "" if AUDIT_HEADER in text else f"\n{AUDIT_HEADER}\n\n"
+        return text.rstrip("\n") + "\n" + head + "\n".join(entries) + "\n"
+    update_todo(edit, "Daily audit: add findings", path)
+    print(f"Added {len(added)} audit task(s).")
+    return len(added)
+
+
 def attempts_of(task):
     value = task.get("attempts", "")
     return int(value) if str(value).isdigit() else 0
@@ -420,20 +493,40 @@ def publish(task, directory):
             return
         authed_git("push", "origin", f"swarm-incoming:refs/heads/{branch}")
         checks = read(directory / "checks", "skipped")
+        merged = read(directory / "merge", "skipped")
+        # Work is always published, even when the worker did not finish: a
+        # draft pull request keeps it reviewable and lets a fix worker continue.
+        incomplete = result != "ok" or checks != "passed" or merged == "conflict"
         if task["kind"] == "story":
             notes = read(directory / "pr-notes.md", "No notes were written.")
-            body = (f"Task: {task['id']}\n\nSwarm worker {task['slot']}. Local checks: {checks}. "
+            status = ""
+            if incomplete:
+                why = [f"agent result: {result}", f"local checks: {checks}"]
+                if merged == "conflict":
+                    why.append("merge with main left unresolved conflicts")
+                status = ("**Draft: the worker did not finish cleanly** (" + "; ".join(why) +
+                          "). Its work is saved here so nothing is lost; a fix worker or a "
+                          "person continues from this branch.\n\n")
+            body = (f"{status}Task: {task['id']}\n\nSwarm worker {task['slot']}. Local checks: {checks}. "
                     f"Agent result: {result}.\n\n{clip(notes)}")
             repair = task["id"].startswith("FIX-")
             if repair:
                 body = ("**Automatic repair of a failed run on main.** The integrator merges it "
                         "once the fast gate passes, including changes to workflow, script or agent "
                         "files.\n\n" + body)
-            gh("pr", "create", "--base", os.environ.get("BASE_BRANCH", "main"), "--head", branch,
-               "--title", f"{task['id']}: {task['title']}", "--body", body, "--label", "swarm",
-               *(["--label", "autofix"] if repair else []),
-               *(["--draft"] if checks != "passed" and not repair else []))
-            pr = gh("pr", "view", branch, "--json", "number", "--jq", ".number").strip()
+            try:
+                gh("pr", "create", "--base", os.environ.get("BASE_BRANCH", "main"), "--head", branch,
+                   "--title", f"{task['id']}: {task['title']}", "--body", body, "--label", "swarm",
+                   *(["--label", "autofix"] if repair else []),
+                   *(["--draft"] if incomplete and not repair else []))
+                pr = gh("pr", "view", branch, "--json", "number", "--jq", ".number").strip()
+            except subprocess.CalledProcessError:
+                # The branch is pushed, so the work is safe; make sure a person can find it.
+                gh("issue", "create", "--title", f"{task['id']}: worker branch pushed without a pull request",
+                   "--body", f"{MARK}\nBranch `{branch}` holds the worker's commits (result: {result}, "
+                             f"checks: {checks}) but the pull request could not be opened. "
+                             f"Open one from the branch. {run_url()}", check=False)
+                pr = ""
         else:
             pr = str(task["number"])
             gh("pr", "comment", pr, "--body",
@@ -659,15 +752,20 @@ def integrate_batch(queue, gate="scripts/quick-check.sh"):
     One cache/Java setup serves the whole batch. A PR whose gate fails is sent
     back to the workers and its merge is rolled back before the next PR, so a
     bad PR never blocks the others. Returns the number of merged PRs."""
-    merged = []
+    merged, conflicted = [], []
     for pr in queue:
         blocked = guard(pr, is_repair(pr))
         if blocked:
             continue
         sha, task_id, conflicts = merge_local(pr)
         if sha is None:
-            fail(pr, f"Merge conflict with main in {', '.join(conflicts[:10]) or 'unknown files'}; "
-                     "merge main into the branch and resolve it")
+            reason = (f"Merge conflict with main in {', '.join(conflicts[:10]) or 'unknown files'}; "
+                      "merge main into the branch and resolve it")
+            # Give the automatic resolver a few tries before the PR goes back to the workers.
+            if resolve_attempts(pr) < MAX_RESOLVE:
+                conflicted.append(pr)
+            else:
+                fail(pr, reason)
             continue
         head = gh_json("pr", "view", str(pr), "--json", "headRefOid")["headRefOid"]
         if head != sha:
@@ -680,6 +778,7 @@ def integrate_batch(queue, gate="scripts/quick-check.sh"):
             git("reset", "--hard", "HEAD~1", check=False)
             continue
         merged.append((pr, task_id, sha))
+    emit("conflicted", json.dumps(conflicted))
     if not merged:
         emit("merged", 0)
         return 0
@@ -719,6 +818,48 @@ def integrate_batch(queue, gate="scripts/quick-check.sh"):
     return len(merged)
 
 
+MAX_RESOLVE = 3
+RESOLVE_MARK = "<!-- swarm-auto-resolve -->"
+
+
+def resolve_attempts(pr):
+    """How many times the automatic conflict resolver already tried this PR."""
+    info = gh_json("pr", "view", str(pr), "--json", "comments") or {}
+    return sum(RESOLVE_MARK in c.get("body", "") for c in info.get("comments", []))
+
+
+def resolve_publish(directory):
+    """Push every conflict resolution that worked and send the rest back to the workers.
+
+    Trusted step: `directory/<pr>` holds the outcome the token-less resolver wrote
+    and the local branch `resolve-<pr>` holds its merge. Returns pushed PR numbers."""
+    pushed, failed = [], []
+    for outcome_file in sorted(Path(directory).glob("*")):
+        pr = outcome_file.name
+        if not pr.isdigit():
+            continue
+        outcome = outcome_file.read_text().strip()
+        info = gh_json("pr", "view", pr, "--json", "headRefName,isCrossRepository")
+        branch = info["headRefName"]
+        gh("pr", "comment", pr, "--body", f"{RESOLVE_MARK}\nAutomatic conflict resolution "
+           f"({resolve_attempts(pr) + 1} of {MAX_RESOLVE}): {outcome}. {run_url()}", check=False)
+        if outcome == "merged" and not info["isCrossRepository"] and BRANCH.fullmatch(branch):
+            try:
+                authed_git("push", "origin", f"resolve-{pr}:refs/heads/{branch}")
+                pushed.append(pr)
+                continue
+            except subprocess.CalledProcessError:
+                outcome = "the branch moved while the conflict was being resolved"
+        failed.append(pr)
+        fail(int(pr), f"Merge conflict with main could not be resolved automatically ({outcome})")
+    if pushed:
+        # The resolved branches are mergeable now: run the integrator again.
+        gh("workflow", "run", "swarm-integrator.yml", "--ref", "main", check=False)
+    emit("pushed", json.dumps(pushed))
+    emit("failed", json.dumps(failed))
+    return pushed
+
+
 def finalize(pr, task_id, sha):
     """Record the merge in the shared trackers and publish main. Trusted step."""
     comment = record_merge(pr, task_id, sha)
@@ -739,6 +880,8 @@ def main(argv=None):
     p = sub.add_parser("integrate-batch")
     p.add_argument("--queue", required=True, help="JSON array of pull request numbers")
     p.add_argument("--gate", default="scripts/quick-check.sh")
+    p = sub.add_parser("resolve-publish")
+    p.add_argument("--dir", required=True)
     p = sub.add_parser("slot-config")
     p.add_argument("--slot", type=int, required=True)
     p.add_argument("--slots", default=".github/swarm/slots.json")
@@ -748,6 +891,9 @@ def main(argv=None):
     p.add_argument("--file", default="TODO.md")
     p.add_argument("--repair-run", default="")
     p = sub.add_parser("continue")
+    p.add_argument("--file", default="TODO.md")
+    p = sub.add_parser("add-audit-tasks")
+    p.add_argument("--findings", required=True)
     p.add_argument("--file", default="TODO.md")
     p = sub.add_parser("repair-gate")
     p.add_argument("--run", required=True)
@@ -807,6 +953,8 @@ def main(argv=None):
         release(json.loads(a.task), a.result, a.commits)
     elif a.cmd == "publish":
         publish(json.loads(a.task), a.dir)
+    elif a.cmd == "add-audit-tasks":
+        add_audit_tasks(a.findings, a.file)
     elif a.cmd == "repair-gate":
         start, why = repair_gate(a.run)
         print(why)
@@ -821,6 +969,8 @@ def main(argv=None):
         emit("start", "true" if allowed else "false")
     elif a.cmd == "integrate-batch":
         integrate_batch(json.loads(a.queue), a.gate)
+    elif a.cmd == "resolve-publish":
+        resolve_publish(a.dir)
     elif a.cmd == "guard":
         emit("blocked", "true" if guard(a.pr, a.repair) else "false")
     elif a.cmd == "merge-local":
