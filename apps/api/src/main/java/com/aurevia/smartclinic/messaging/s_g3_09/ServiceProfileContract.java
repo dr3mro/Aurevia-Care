@@ -223,7 +223,7 @@ public final class ServiceProfileContract {
          * @param urgentInstructions  urgent guidance
          * @param queueOwner          named queue owner
          * @param backupCoverage      named backups
-         * @param escalationChannel   escalation key
+         * @param escalationChannel   site-approved channel key for overdue escalation
          * @param urgentChannel       urgent channel key
          * @param downtimeChannel     downtime channel key
          * @param createdBy           publisher subject
@@ -316,10 +316,9 @@ public final class ServiceProfileContract {
      * @param timeZone                IANA zone identifier
      * @param windows                 service windows as {@code DAY|HH:mm|HH:mm}
      * @param responseTargetMinutes   first-response target
-     * @param escalationAfterMinutes  elapsed minutes before overdue escalation
      * @param queueOwner              named queue owner
      * @param backupCoverage          named backups
-     * @param escalationChannel       site-approved escalation key
+     * @param escalationChannel       site-approved channel key used for overdue escalation
      * @param urgentChannel           site-approved urgent channel key
      * @param downtimeChannel         site-approved downtime channel key
      * @param topics                  approved topic keys
@@ -344,7 +343,7 @@ public final class ServiceProfileContract {
          * @param responseTargetMinutes   response target
          * @param queueOwner              queue owner
          * @param backupCoverage          backups
-         * @param escalationChannel       escalation key
+         * @param escalationChannel       site-approved channel key for overdue escalation
          * @param urgentChannel           urgent channel key
          * @param downtimeChannel         downtime channel key
          * @param topics                  topics
