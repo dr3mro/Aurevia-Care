@@ -169,7 +169,9 @@ public interface InstructionFactStore {
     List<FirstView> firstViews(String organizationId, String instructionId, int revision, String viewer);
 
     /**
-     * Record an acknowledgment, never overwriting an earlier one.
+     * Record one patient account's acknowledgment of a revision, never
+     * overwriting that account's earlier receipt. Several verified accounts may
+     * link to the same chart (IAM-05), so each is recorded separately.
      *
      * @param organizationId active organization
      * @param acknowledgment acknowledgment fact
@@ -178,12 +180,12 @@ public interface InstructionFactStore {
     Acknowledgment putAcknowledgmentIfAbsent(String organizationId, Acknowledgment acknowledgment);
 
     /**
-     * List acknowledgments for one revision.
+     * List every patient account's acknowledgments for one revision.
      *
      * @param organizationId active organization
      * @param instructionId  instruction identifier
      * @param revision       revision number
-     * @return acknowledgment facts
+     * @return acknowledgment facts in occurrence then actor order
      */
     List<Acknowledgment> acknowledgments(String organizationId, String instructionId, int revision);
 
