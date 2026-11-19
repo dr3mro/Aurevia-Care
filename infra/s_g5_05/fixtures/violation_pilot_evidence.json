@@ -1,0 +1,28 @@
+{
+  "schema_version": "1.0",
+  "kind": "synthetic_rehearsal",
+  "source": "synthetic-violation-fixture",
+  "profile": {
+    "organizations": 20,
+    "patient_charts": 100000,
+    "concurrent_staff": 200,
+    "requests_per_second": 50,
+    "duration_minutes": 30
+  },
+  "measurement": {
+    "scope": "server_side",
+    "excluded": ["document_transfer", "document_rendering"],
+    "route_class": {
+      "patients.search": "read",
+      "orders.accept": "command"
+    }
+  },
+  "results": {
+    "availability": {"window": "30_minutes", "percent": 99.95},
+    "p95_read_ms": 620,
+    "p95_command_ms": 910,
+    "total_requests": 80000,
+    "read_requests": 56000,
+    "command_requests": 24000
+  }
+}
