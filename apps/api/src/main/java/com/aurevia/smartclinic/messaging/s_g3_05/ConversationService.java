@@ -113,27 +113,30 @@ public class ConversationService {
      * @throws ApiException on denial, stale version, a closed thread or invalid input
      */
     public View reply(String id, ReplyRequest request, int expectedVersion) {
+        String conversationId = ConversationInputs.uuid(id, "id");
         String body = ConversationInputs.body(request.body());
-        return execute(ConversationActions.CONVERSATION_REPLY, id, caller -> {
-            Conversation current = repository.loadForUpdate(id).orElseThrow(notFound());
+        return execute(ConversationActions.CONVERSATION_REPLY, conversationId, caller -> {
+            Conversation current = repository.loadForUpdate(conversationId).orElseThrow(notFound());
+            // Authorize before version/state checks so a foreign thread is never
+            // distinguished by a 412 or 409 (ARC-04 concealment).
+            requireAccess(caller, current);
             requireVersion(current, expectedVersion);
             requireWritable(current);
-            requireAccess(caller, current);
             if (caller.patient()
                     && !repository.patientLinkActive(current.patientSubject(), current.patientId())) {
                 throw notFound("verified patient link not found");
             }
             SenderKind kind = caller.patient() ? SenderKind.PATIENT : SenderKind.STAFF;
             State next = caller.patient() ? State.AWAITING_STAFF : State.AWAITING_PATIENT;
-            int sequence = repository.nextSequence(id);
-            repository.insertMessage(id, sequence, kind.wire(), caller.subject(), caller.role(), body);
-            repository.updateState(id, expectedVersion, next.wire());
+            int sequence = repository.nextSequence(conversationId);
+            repository.insertMessage(conversationId, sequence, kind.wire(), caller.subject(), caller.role(), body);
+            repository.updateState(conversationId, expectedVersion, next.wire());
             if (current.state() == State.RESOLVED) {
-                repository.appendEvent(id, expectedVersion + 1, WorkEventType.REOPENED.wire(), caller.subject(),
-                        current.state().wire(), next.wire(), "reply reopened the work item");
+                repository.appendEvent(conversationId, expectedVersion + 1, WorkEventType.REOPENED.wire(),
+                        caller.subject(), current.state().wire(), next.wire(), "reply reopened the work item");
             }
-            success(ConversationActions.CONVERSATION_REPLY, id);
-            return view(id);
+            success(ConversationActions.CONVERSATION_REPLY, conversationId);
+            return view(conversationId);
         });
     }
 
@@ -167,20 +170,21 @@ public class ConversationService {
 
     private Conversation reassign(String id, String target, String reason, int expectedVersion,
                                   WorkEventType eventType, String action) {
+        String conversationId = ConversationInputs.uuid(id, "id");
         String assignee = ConversationInputs.subject(target, "assigneeSubject");
         String why = ConversationInputs.reason(reason);
-        return execute(action, id, caller -> {
-            Conversation current = repository.loadForUpdate(id).orElseThrow(notFound());
+        return execute(action, conversationId, caller -> {
+            Conversation current = repository.loadForUpdate(conversationId).orElseThrow(notFound());
+            requireAccess(caller, current);
             requireVersion(current, expectedVersion);
             requireWritable(current);
-            requireAccess(caller, current);
             UnitKey unit = UnitKey.from(current.unitKey());
             requireEligibleStaff(assignee, unit);
-            repository.assign(id, expectedVersion, assignee);
-            repository.appendEvent(id, expectedVersion + 1, eventType.wire(), caller.subject(),
+            repository.assign(conversationId, expectedVersion, assignee);
+            repository.appendEvent(conversationId, expectedVersion + 1, eventType.wire(), caller.subject(),
                     current.state().wire(), current.state().wire(), why);
-            success(action, id);
-            return repository.find(id).orElseThrow();
+            success(action, conversationId);
+            return repository.find(conversationId).orElseThrow();
         });
     }
 
@@ -216,16 +220,17 @@ public class ConversationService {
 
     private Conversation transitionWithReason(String id, String why, int expectedVersion,
                                               State target, WorkEventType eventType, String action) {
-        return execute(action, id, caller -> {
-            Conversation current = repository.loadForUpdate(id).orElseThrow(notFound());
+        String conversationId = ConversationInputs.uuid(id, "id");
+        return execute(action, conversationId, caller -> {
+            Conversation current = repository.loadForUpdate(conversationId).orElseThrow(notFound());
+            requireAccess(caller, current);
             requireVersion(current, expectedVersion);
             requireWritable(current);
-            requireAccess(caller, current);
-            repository.updateState(id, expectedVersion, target.wire());
-            repository.appendEvent(id, expectedVersion + 1, eventType.wire(), caller.subject(),
+            repository.updateState(conversationId, expectedVersion, target.wire());
+            repository.appendEvent(conversationId, expectedVersion + 1, eventType.wire(), caller.subject(),
                     current.state().wire(), target.wire(), why);
-            success(action, id);
-            return repository.find(id).orElseThrow();
+            success(action, conversationId);
+            return repository.find(conversationId).orElseThrow();
         });
     }
 
@@ -238,22 +243,23 @@ public class ConversationService {
      * @throws ApiException on denial, stale version or an invisible conversation
      */
     public Conversation markRead(String id, int expectedVersion) {
-        return execute(ConversationActions.CONVERSATION_READ, id, caller -> {
-            Conversation current = repository.loadForUpdate(id).orElseThrow(notFound());
-            requireVersion(current, expectedVersion);
+        String conversationId = ConversationInputs.uuid(id, "id");
+        return execute(ConversationActions.CONVERSATION_READ, conversationId, caller -> {
+            Conversation current = repository.loadForUpdate(conversationId).orElseThrow(notFound());
             requireAccess(caller, current);
+            requireVersion(current, expectedVersion);
             SenderKind opposite = caller.patient() ? SenderKind.STAFF : SenderKind.PATIENT;
-            int sequence = repository.messages(id).stream()
+            int sequence = repository.messages(conversationId).stream()
                     .filter(message -> message.senderKind() == opposite)
                     .mapToInt(Message::sequence)
                     .max().orElse(0);
             if (caller.patient()) {
-                repository.markPatientRead(id, expectedVersion, sequence);
+                repository.markPatientRead(conversationId, expectedVersion, sequence);
             } else {
-                repository.markStaffRead(id, expectedVersion, sequence);
+                repository.markStaffRead(conversationId, expectedVersion, sequence);
             }
-            success(ConversationActions.CONVERSATION_READ, id);
-            return repository.find(id).orElseThrow();
+            success(ConversationActions.CONVERSATION_READ, conversationId);
+            return repository.find(conversationId).orElseThrow();
         });
     }
 
@@ -265,11 +271,12 @@ public class ConversationService {
      * @throws ApiException on denial or an invisible conversation
      */
     public View get(String id) {
-        return execute(ConversationActions.CONVERSATION_READ, id, caller -> {
-            Conversation current = repository.find(id).orElseThrow(notFound());
+        String conversationId = ConversationInputs.uuid(id, "id");
+        return execute(ConversationActions.CONVERSATION_READ, conversationId, caller -> {
+            Conversation current = repository.find(conversationId).orElseThrow(notFound());
             requireAccess(caller, current);
-            success(ConversationActions.CONVERSATION_READ, id);
-            return view(id);
+            success(ConversationActions.CONVERSATION_READ, conversationId);
+            return view(conversationId);
         });
     }
 
