@@ -582,6 +582,9 @@ Raised by the dispatch-3 run-3 verification. Address in the next authorized chan
 - [x] S-FIX-MIG-GAP-01 · Delivery PR policy failed with `migration version gap: expected V9, found V17`: each of 10 parallel workers owns a reserved version (V9…V57) and its branch contains only V1–V8 plus its own migration, so absolute contiguity from V1 is impossible. Removed the contiguity rule; duplicate versions remain an error. Updated README and decision 0002.
   - evidence: run 44514680043 job 135527480395 log. Guards red then green: `test_gapped_versions_are_allowed`, `test_duplicate_version_is_an_error_even_with_gaps`; 35 migration tests, 164 total tooling tests OK. Evidence source: GitHub Actions log plus executed tool commands; no human or clinical evidence.
 
+- [x] S-FIX-APT-01 · Developer reference job failed on transient Ubuntu mirror 503s while `apt-get install doxygen`. Added a bounded 3-attempt retry with backoff in `delivery.yml` and a guard test.
+  - evidence: run 44521340509 job 135550448273 log shows `503 Service Unavailable` for `doxygen_1.9.8...deb`, `libfmt9`, `libxapian30`. 165 tooling tests OK; all workflow YAMLs parse; `check-docs.py`/`check-secrets.py`/`gen-opencode.py --check` green. Evidence source: GitHub Actions log plus executed tool commands; no human or clinical evidence.
+
 ## One-week execution plan (1 wave per hour)
 
 Created 2026-11-19T08:55Z from the open entries above. Horizon: 7 days × 24 hours = 168 hourly wave slots. This plan uses 7 implementation waves; the remaining 161 hourly slots are buffer for `needs-fix` retries, fix PRs, gate re-runs and human approvals.
