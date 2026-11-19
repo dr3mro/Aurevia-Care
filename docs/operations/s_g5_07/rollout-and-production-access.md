@@ -18,7 +18,9 @@ of two distinct stages prevents a direct big-bang release from being relabelled
 as progressive. The final stage must be `full`; a list that stops at `canary`
 or `partial` fails. Duplicate names and blank or non-string members fail, and
 the element type guard runs before the uniqueness comparison so an unhashable
-member fails closed instead of raising.
+member fails closed instead of raising. Names are stripped before the
+distinctness and final-stage checks, so `["full ", "full"]` is a single stage
+and is rejected rather than counting as two distinct stages.
 
 Health gates, monitoring and a tested rollback are separate controls: a stage
 that is monitored but has no health gate, or a rollout that cannot be rolled
@@ -37,8 +39,9 @@ The `production_access` object encodes approval discipline:
 | `expiring` | literal `true` | `production_access.expiring` |
 
 The single `separation_of_duties` check requires both identities to be non-blank
-strings and different. A missing, blank, non-string or self-approved identity
-fails. Together with `approval_required`, `audited` and `expiring`, this encodes
+strings and different after stripping, so whitespace padding cannot turn a
+self-approval into two distinct parties. A missing, blank, non-string or
+self-approved identity fails. Together with `approval_required`, `audited` and `expiring`, this encodes
 the OPS-06 rule that production access is approved, attributable, recorded and
 time-bounded rather than permanent.
 

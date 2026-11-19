@@ -93,7 +93,7 @@ public final class PatientAppointmentService {
         if (store.confirm(appointmentId, patientId, expectedVersion, at) == 0) {
             throw new ApiException(412, "STALE_VERSION", "the appointment changed since it was read");
         }
-        dispatch(patientId, at, "PUSH_CONFIRM");
+        dispatch(subject, patientId, at, "PUSH_CONFIRM");
         audit.append(subject, patientId, "PATIENT_APPOINTMENT_CONFIRM", "SUCCESS", at);
         return store.find(appointmentId, patientId)
                 .orElseThrow(() -> new ApiException(404, "NOT_FOUND", "appointment not found"));
@@ -115,7 +115,7 @@ public final class PatientAppointmentService {
         authorize(subject, patientId, "PATIENT_NOTIFY_STATUS_CHANGE", at);
         store.find(appointmentId, patientId)
                 .orElseThrow(() -> new ApiException(404, "NOT_FOUND", "appointment not found"));
-        dispatch(patientId, at, "PUSH_NOTIFY_" + status.name());
+        dispatch(subject, patientId, at, "PUSH_NOTIFY_" + status.name());
         audit.append(subject, patientId, "PATIENT_NOTIFY_STATUS_CHANGE", "SUCCESS", at);
     }
 
@@ -127,13 +127,18 @@ public final class PatientAppointmentService {
      * @param tokenId   opaque device identifier safe to log
      * @param token     provider push token, never written to an audit sink
      * @param at        server instant of registration
-     * @throws ApiException on denial or blank identifiers
+     * @throws ApiException on denial, blank identifiers or an id owned by another patient
      */
     public void registerDevice(String subject, String patientId, String tokenId, String token,
                                Instant at) {
         authorize(subject, patientId, "DEVICE_REGISTER", at);
         if (isBlank(tokenId) || isBlank(token)) {
             throw new ApiException(422, "INVALID_DEVICE", "a device id and token are required");
+        }
+        DeviceToken existing = devices.findByTokenId(tokenId).orElse(null);
+        if (existing != null && !patientId.equals(existing.patientId())) {
+            throw new ApiException(409, "DEVICE_CONFLICT",
+                    "this device id is registered to another patient");
         }
         devices.save(new DeviceToken(tokenId, token, subject, patientId, DeviceState.ACTIVE));
         audit.append(subject, patientId, "DEVICE_REGISTER", "SUCCESS", at);
@@ -173,12 +178,15 @@ public final class PatientAppointmentService {
         authorize(subject, patientId, "DEVICE_INVALID_TOKEN", at);
         DeviceToken current = devices.find(tokenId, patientId)
                 .orElseThrow(() -> new ApiException(404, "NOT_FOUND", "device not found"));
-        devices.save(current.invalidate());
-        devices.appendInvalidTokenLog(tokenId, patientId, reason, at);
+        // A repeated provider disposition must not create duplicate log rows.
+        if (current.state() != DeviceState.INVALID) {
+            devices.save(current.invalidate());
+            devices.appendInvalidTokenLog(tokenId, patientId, reason, at);
+        }
         audit.append(subject, patientId, "DEVICE_INVALID_TOKEN", "SUCCESS", at);
     }
 
-    private void dispatch(String patientId, Instant at, String action) {
+    private void dispatch(String subject, String patientId, Instant at, String action) {
         GenericPushNotice notice = GenericPushNotice.appointmentUpdate();
         for (DeviceToken token : devices.active(patientId)) {
             if (!token.state().deliverable()) {
@@ -187,9 +195,9 @@ public final class PatientAppointmentService {
             if (gateway.send(token.token(), notice) == PushGateway.Outcome.INVALID_TOKEN) {
                 devices.save(token.invalidate());
                 devices.appendInvalidTokenLog(token.tokenId(), patientId, "INVALID_TOKEN", at);
-                audit.append(token.subject(), patientId, action + "_INVALID_TOKEN", "SUCCESS", at);
+                audit.append(subject, patientId, action + "_INVALID_TOKEN", "SUCCESS", at);
             } else {
-                audit.append(token.subject(), patientId, action + "_SENT", "SUCCESS", at);
+                audit.append(subject, patientId, action + "_SENT", "SUCCESS", at);
             }
         }
     }

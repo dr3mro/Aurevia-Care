@@ -80,6 +80,9 @@ export const CLOSED_THREAD_MESSAGE = 'Conversation is closed and read only.';
 export const MESSAGING_NOT_PERMITTED_MESSAGE =
   'Messaging is no longer permitted for this connection.';
 
+/** User-facing reason shown when a reply has no content to send. */
+export const EMPTY_REPLY_MESSAGE = 'Enter a message before sending.';
+
 /**
  * Return the highest message sequence, or zero for an empty thread.
  *
@@ -161,13 +164,17 @@ export function applyReply(conversation: Conversation, input: ReplyInput): Conve
   if (!conversation.messagingPermitted) {
     throw new Error(MESSAGING_NOT_PERMITTED_MESSAGE);
   }
+  const body = input.body.trim();
+  if (body.length === 0) {
+    throw new Error(EMPTY_REPLY_MESSAGE);
+  }
 
   const message: Message = {
     id: input.messageId,
     conversationId: conversation.id,
     senderId: input.senderId,
     senderRole: 'patient',
-    body: input.body,
+    body,
     sentAt: input.sentAt,
     sequence: highestSequence(conversation.messages) + 1,
   };
