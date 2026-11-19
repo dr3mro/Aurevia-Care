@@ -153,7 +153,7 @@ public class FinanceService {
         String action = actionFor(type);
         return execute(action, id, sink -> {
             Invoice current = repository.loadForUpdate(id).orElseThrow(notFound());
-            String digest = FinanceInputs.digest(type, amount, current.currency());
+            String digest = FinanceInputs.digest(id, type, amount, current.currency(), reason, approver);
             var prior = repository.findByReference(reference);
             if (prior.isPresent()) {
                 Replay replay = prior.get();
