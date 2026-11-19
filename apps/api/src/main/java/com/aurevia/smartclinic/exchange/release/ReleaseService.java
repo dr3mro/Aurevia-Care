@@ -97,9 +97,9 @@ public class ReleaseService {
                 failure.set(denial);
                 return null;
             }
-            if (repository.findActiveByPatientAndRevision(command.patientId(), command.revisionId()).isPresent()) {
+            if (repository.findAnyByPatientAndRevision(command.patientId(), command.revisionId()).isPresent()) {
                 repository.appendAudit(context, ReleaseActionPolicy.AUTHORIZE, command.revisionId(), "CONFLICT");
-                failure.set(new ApiException(409, "CONFLICT", "an active release already exists for this revision"));
+                failure.set(new ApiException(409, "CONFLICT", "a release already exists for this revision"));
                 return null;
             }
             String releaseId;
@@ -212,6 +212,21 @@ public class ReleaseService {
                 failure.set(new ApiException(409, "INVALID_TRANSITION", "a held release must be lifted before correction"));
                 return null;
             }
+            // A correction must point at a different immutable revision. Re-pointing at the row
+            // just marked CORRECTED would re-authorize the retracted result.
+            if (correctedRevisionId.equals(current.revisionId())) {
+                repository.appendAudit(context, ReleaseActionPolicy.CORRECT, id, "CONFLICT");
+                failure.set(new ApiException(409, "CONFLICT", "a correction must use a different revision"));
+                return null;
+            }
+            // The replacement revision must never have been released before, including a
+            // terminal row: an immutable revision is one-way. Detect it before the CAS update
+            // so the conflict is audited; a concurrent insert still fails on the unique index.
+            if (repository.findAnyByPatientAndRevision(current.patientId(), correctedRevisionId).isPresent()) {
+                repository.appendAudit(context, ReleaseActionPolicy.CORRECT, id, "CONFLICT");
+                failure.set(new ApiException(409, "CONFLICT", "a release already exists for the corrected revision"));
+                return null;
+            }
             if (repository.correct(id, expectedVersion) == 0) {
                 repository.appendAudit(context, ReleaseActionPolicy.CORRECT, id, "CONFLICT");
                 failure.set(new ApiException(409, "CONFLICT", "release changed concurrently"));
@@ -220,14 +235,14 @@ public class ReleaseService {
             repository.insertEvent(context, id, "RELEASE_CORRECT", current.state().name(),
                     ReleaseState.CORRECTED.name(), reason);
             repository.insertNotification(context, id, "RELEASE_CORRECTED", "prior-recipients");
-            // A corrected revision inherits the original release policy. A hold that a reviewer
-            // has already lifted is converted to IMMEDIATE: the replacement carries no hold
-            // reason/expiry (V24 forbids a HOLD row without them) and needs no second review.
-            // TIMED and IMMEDIATE keep their kind and effective instant, so a correction cannot
-            // silently open access before the configured release time.
+            // A corrected revision inherits the original release policy AND its effective
+            // instant. A hold that a reviewer has already lifted is converted to IMMEDIATE
+            // (the replacement carries no hold reason/expiry, which V24 forbids on a HOLD row,
+            // and needs no second review), but a configured future instant is preserved for
+            // every kind so a correction can never open access before the release time.
             boolean liftedHold = current.kind() == ReleaseKind.HOLD;
             ReleaseKind replacementKind = liftedHold ? ReleaseKind.IMMEDIATE : current.kind();
-            Instant replacementEffectiveFrom = liftedHold ? clock.instant() : current.effectiveFrom();
+            Instant replacementEffectiveFrom = current.effectiveFrom();
             String replacement = repository.insertRelease(context.organizationId(), current.patientId(),
                     correctedRevisionId, correctedRevisionVersion, context.organizationId(),
                     current.policyVersion(), replacementKind.name(), ReleaseState.AUTHORIZED.name(),
