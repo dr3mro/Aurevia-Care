@@ -15,6 +15,8 @@
 # OPENCODE_API_KEY (agent steps), GH_TOKEN (publish steps only).
 set -euo pipefail
 cd "${GITHUB_WORKSPACE:-$(dirname "$0")/..}"
+mkdir -p "$HOME"
+git config --global --add safe.directory "$PWD"
 out=.agent
 mkdir -p "$out"
 REVIEWERS=${REVIEWERS:-"smartclinic-qa-reviewer smartclinic-devsecops smartclinic-physician-reviewer"}
