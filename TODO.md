@@ -339,7 +339,7 @@ Gate evidence: confirmed patients see only authorized revisions; generic notific
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [-] S-G3-11 · iOS and Android patient flows with accessibility and RTL operation (PAT-01–03, MSG-01–07, UX-01).
   - agent: swarm-1
-  - attempts: 4
+  - attempts: 5
   - scope: apps/patient-mobile/src/features/s_g3_11, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_11
   - reserved: V39
   - details:
