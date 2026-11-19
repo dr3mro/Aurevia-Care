@@ -285,8 +285,13 @@ public class OrderService {
                                     String resourceId, String orderCode, String destination,
                                     String purpose, int duration) {
         Instant now = clock.instant();
+        // The disclosure must stop being valid when the authorization that
+        // permitted it stops applying; otherwise a still-effective grant could
+        // authorize sharing past its own expiry (XCH-01 duration boundary).
+        Instant disclosureExpiresAt = now.plusSeconds(duration * 60L);
         if (grant == null || !grant.active() || grant.effectiveFrom().isAfter(now)
                 || (grant.expiresAt() != null && !grant.expiresAt().isAfter(now))
+                || (grant.expiresAt() != null && disclosureExpiresAt.isAfter(grant.expiresAt()))
                 || !grant.orderCode().equals(orderCode)
                 || !grant.destinationOrg().equals(destination)
                 || !grant.purpose().equals(purpose)
