@@ -9,9 +9,7 @@ import java.util.List;
  * membership event, and role grants carry the grantor and effective-date window
  * they were created with.</p>
  *
- * @param subject     staff subject whose history is returned
- * @param memberships membership events ordered by effective then creation time
- * @param roleGrants  role grants ordered by effective time
+ * @return this record
  */
 public record StaffHistory(String subject, List<MembershipEvent> memberships, List<RoleGrant> roleGrants) {
 
@@ -65,7 +63,8 @@ public record StaffHistory(String subject, List<MembershipEvent> memberships, Li
      * @param grantedBy  user identifier of the grantor in the active organization
      * @param validFrom  instant from which the grant is effective
      * @param validTo    instant at which the grant stops being effective, or {@code null}
-     */
-    public record RoleGrant(String id, String roleKey, String grantedBy, String validFrom, String validTo) {
+ * @return this record
+ */
+public record RoleGrant(String id, String roleKey, String grantedBy, String validFrom, String validTo) {
     }
 }
