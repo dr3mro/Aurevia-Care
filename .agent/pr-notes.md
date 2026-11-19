@@ -1,48 +1,69 @@
-# S-G1-07 — Original PDF/image associations and immutable, localized, versioned PDF rendering
+# S-G4-01 — Imaging order intake, urgency, accession, study association, signed interpretation and addenda (RAD-01)
 
 ## Requirement IDs and acceptance mapping
 
-Primary: **CLN-07**. Supporting: **ARC-01, ARC-02, ARC-03, OPS-02, IAM-01, UX-01** (locale/direction).
-Specification: `SMARTCLINIC_V1_SPEC.md` §3 CLN-07, §7 ARC-01..03, §8 OPS-02.
+Primary: **RAD-01**. Supporting: **ARC-01, ARC-02, ARC-05, ARC-06, CLN-05, OPS-02, ADM-01, PRD-06, XCH-05** (read-back fact boundary). Source: `SMARTCLINIC_V1_SPEC.md` §5 RAD-01, §7 ARC-01..07, §8 OPS-02, §2 role table, §9 G4 gate evidence.
 
-| Acceptance behaviour (CLN-07) | Implementation | Test evidence (synthetic only) |
+| RAD-01 acceptance behaviour | Implementation | Synthetic test evidence |
 |---|---|---|
-| Link original PDF/JPEG/PNG to chart, order or result; retain original bytes + checksum | `DocumentService.link`, `DocumentRepository.insert`; V17 `document_association` + `set_document_original_digest` trigger (sha256 derived from stored bytes, never caller-supplied) | `DocumentServiceTest`, `DocumentInputsTest`, `DocumentValuesTest`, `DocumentIsolationTest` (integrator) |
-| Rotation is presentation metadata only; voiding preserves history with a reason | `rotation_degrees` column pinned by `guard_document_association_update` trigger; `DocumentService.voidAssociation` + append-only `document_association_event` | `DocumentServiceTest`, `DocumentPolicyTest`, `DocumentIsolationTest` (integrator) |
-| Immutable, versioned PDFs; stale version / illegal transition rejected | `rendered_document` UNIQUE(org,type,id,locale,version), append-only triggers, `next_render_version` advisory-lock fold; `If-Match` on void (412) | `DocumentServiceTest`, `DocumentControllerTest`, `PdfRendererTest`, `DocumentIsolationTest` (integrator) |
-| English/Arabic, RTL direction, page numbers, provenance, print profile | `PdfRenderer` direction-aware layout, embedded font placeholder, `/PrintScaling /None`, provenance keys, `Page 1 / 1`; locale->direction checked by V17 CHECK constraint | `PdfRendererTest`, `DocumentValuesTest`, `DocumentIsolationTest` (integrator) |
-| Tenant isolation, fail-closed authorization, audit | Forced RLS on all three V17 tables; role matrix in `DocumentPolicy`; `DocumentService.authorize` re-derives membership/roles per transaction and audits denials | `DocumentPolicyTest`, `DocumentIsolationTest` (integrator) |
+| Order intake captures urgency, clinical question, source, destination, referrer; STAT requires a named owner | `ImagingService.intake`, `RadRules.mayIntake/maySchedule`, `RadTypes.Urgency` | `ImagingServiceTest.intakeRequiresUrgencyClinicalQuestionAndNamedStatOwner`, `RadPolicyTest.roleBoundariesMirrorTheSectionTwoRoleTable` |
+| Schedule records time and tenant-approved modality; version precondition and legal transitions | `ImagingService.schedule`, `RadPolicyCatalog.modalityApproved`, `OrderState.canTransitionTo` | `ImagingServiceTest.schedulingEnforcesApprovalVersionAndState`, `RadTypesTest.orderStateTransitionsAreExactlyTheImagingLifecycle` |
+| Issuer-scoped accession uniqueness within a tenant | `ImagingService.accession` (issuer+accession key), `RadRules.mayAccession` | `ImagingServiceTest.duplicateOrderAndAccessionIdentifiersAreRejectedInOneTenant`, `twoTenantsWithIdenticalLocalIdentifiersRemainIsolated` |
+| Verify patient/accession labels before study association; record Study Instance UID + partner workstation, no image pixels | `ImagingService.associateStudy`, `requireMatch`, `ImagingOrder` fields | `ImagingServiceTest.wrongPatientOrAccessionStudyAssociationIsRefused`, `RadDomainRecordsTest.imagingOrderCarriesApprovedModalityAndStudyReferenceWithoutImageBytes` |
+| Signed interpretation with technique, comparison, findings, impression, follow-up; effective imaging privilege; immutable revision and checksum | `ImagingService.sign`, `RadPolicyCatalog.mayInterpret`, `Interpretation.checksum` (SHA-256 via `NoteChecksum`) | `ImagingServiceTest.signingEnforcesAssociationVerificationPrivilegeAndRequiredFields`, `fullLifecycle...`, `RadDomainRecordsTest.checksumIsAStableFixedLengthSha256DigestOfCanonicalContent` |
+| Linked addenda preserve the signed original and notify the referrer | `ImagingService.addAddendum`, `supersedesVersion`, `ADDENDUM_LINKED` + `REFERRER_NOTIFIED` facts | `ImagingServiceTest.addendaRequireReasonAndCanChainWithoutEditingSignedContent`, `fullLifecycle...` |
+| Critical communication and read-back as separate facts; no clinical narrative in operational events | `ImagingService.recordCriticalCommunication`, `RadEventType.CRITICAL_COMMUNICATION` / `READ_BACK`, SHA-256 `payloadDigest` | `ImagingServiceTest.criticalCommunicationRequiresAssociationAndReadBack`, `fullLifecycle...` |
+| Tenant isolation, fail-closed authorization, concealment | tenant-keyed stores, role checks on every command, 404 concealment | `ImagingServiceTest.twoTenantsWithIdenticalLocalIdentifiersRemainIsolated`, `concealedAndPendingReadsFailClosed`, `studyCommandsDenyUnauthorizedAndUnprivilegedActors` |
 
-Entry-point-to-test trace: `POST /api/v1/documents/associations` → `DocumentController.link` → `DocumentService.link` → guarded `TransactionTemplate` (tenant + membership + action) → `DocumentRepository.insert` (forced RLS + DB-derived digest) → `appendEvent` + `appendAudit` → 201. `POST /api/v1/documents/rendered` → `DocumentController.render` → `DocumentService.render` → `PdfRenderer.render` → `DocumentRepository.insertRendered` (immutable, versioned, RTL/LTR) → 201. Verified by `DocumentControllerTest` (unit) and `DocumentIsolationTest` (integration, two synthetic tenants).
+Entry-point-to-test trace: `IntakeCommand → ImagingService.intake → RadRules/RadPolicyCatalog → ImagingOrder` (append-only revision) `→ RadEvent.ORDER_INTAKED`; `ScheduleCommand/AccessionCommand/AssociateStudyCommand → ImagingService.schedule/accession/associateStudy`; `SignCommand/AddendumCommand → ImagingService.sign/addAddendum → Interpretation.checksum → RadEvent.INTERPRETATION_SIGNED/ADDENDUM_LINKED → REFERRER_NOTIFIED`; `CriticalCommunicationCommand → ImagingService.recordCriticalCommunication → CRITICAL_COMMUNICATION + READ_BACK`. `ImagingServiceTest` calls the kernel directly. Per the established G4 pattern (sibling `s_g4_02` is also an in-memory kernel), this slice has no HTTP controller, migration or DB repository: **reserved V41 is intentionally unused** and `db/migrations` is outside the declared scope. Persistence, RLS, controller and integration checks are the integrator's full gate.
 
-## Commands run and results (evidence source: executed tool commands)
+## Commands run and results
 
-- `mvn -q -B -f apps/api/pom.xml -Pno-security,fast test` → **EXIT 0**. Surefire: **244 tests, 0 failures, 0 errors, 0 skipped**; 54 are in `com.aurevia.smartclinic.it.s_g1_07` (DocumentControllerTest 5, DocumentInputsTest 11, DocumentPolicyTest 4, DocumentServiceTest 20, DocumentValuesTest 5, PdfRendererTest 9). This is the exact Java command in `scripts/quick-check.sh`.
-- `bash scripts/frontend-check.sh` → **EXIT 0** (`frontend standards: policy and tool commands passed`). Includes staff-web `npm run typecheck`, `lint`, `npm test` (vitest) and patient-mobile plus root toolchain checks.
-- `python3 -I scripts/project-name.py displayName|repositorySlug` → `Aurevia Care` / `aurevia-care`, EXIT 0.
-- `python3 -I scripts/check-docs.py` → EXIT 0. `python3 -I scripts/check-secrets.py` → EXIT 0. `bash -n` on all shell scripts → EXIT 0.
+Evidence source labels: **tool** = command executed by this worker; **reviewer** = `.opencode` specialist report; **simulated user** = simulated radiology user (not human clinical acceptance).
 
-I did **not** run the database/integration gate (`db/check.sh`, `mvn verify`, `DocumentIsolationTest`) — per the worker contract those belong to the integrator. Reserved version **V17** is present as `db/migrations/V17__document_associations.sql`; I did not touch any other migration version.
+Baseline (before this worker's edits) — tool:
+- `mvn -q -B -f apps/api/pom.xml -Pno-security,fast test` → EXIT 0; 1463 tests, 0 failures/errors. The pre-existing in-scope kernel was complete and already at 100% coverage.
 
-## Defects found
+Test-first RED rounds — tool:
+- After adding `RadDomainRecordsTest.checksumIsAStableFixedLengthSha256DigestOfCanonicalContent`: `mvn ... -Dtest=RadDomainRecordsTest` → EXIT 1, `expected: <64> but was: <266>` (the old checksum hex-encoded the full 266-char canonical content).
+- After adding READ_BACK assertions: `mvn ... -Dtest=ImagingServiceTest,RadDomainRecordsTest,RadTypesTest` → EXIT 1, compilation error `cannot find symbol: variable READ_BACK` (missing fact behavior).
 
-No in-scope defect was found. The S-G1-07 implementation already committed on this branch is complete and its in-scope fast unit tests pass. No in-scope source or test change was necessary; this worker's scoped contribution is verification evidence and this PR description.
+GREEN — tool:
+- `mvn -q -B -f apps/api/pom.xml -Pno-security,fast test` → **EXIT 0; 1464 tests, 0 failures, 0 errors, 0 skipped** (25 in `it.s_g4_01`: ImagingServiceTest 11, RadDomainRecordsTest 6, RadPolicyTest 5, RadTypesTest 4 — the other 3 G4/G1 suites contribute the remainder of the run).
+- `mvn -q -B -f apps/api/pom.xml -Pno-security,fast jacoco:report` + XML counter check → **every `com/aurevia/smartclinic/g4/s_g4_01` class at 100% LINE, BRANCH, METHOD and CLASS** (0 missed counters), including `ImagingService` (line 252/252, branch 62/62, method 36/36) and `Interpretation`.
+- `mvn -B -f apps/api/pom.xml -Pno-security -Dspotbugs.skip=false spotbugs:check` → EXIT 1 overall with **14 findings, none in `s_g4_01`**; all are pre-existing in other stories (`s_g4_02`, `s_g4_04`, `s_g3_05`, `s_g3_08`, `s_g3_10`, `g0/s_g0_07`).
+- `python3 -I scripts/check-docs.py` → EXIT 0; `python3 -I scripts/check-secrets.py` → EXIT 0; `python3 -I scripts/check-migrations.py --require-baseline` → EXIT 0.
+- `bash -n` on shell scripts was not re-run; no shell files changed.
 
-## Reported merge-gate failures — triaged, all out of scope / environmental
+Not run locally (worker contract — integrator owns DB/integration and the full gate): `bash apps/api/check.sh` (`mvn verify`, JaCoCo build-failing gate, SpotBugs, OWASP), `bash db/check.sh`, `scripts/check.sh`, image smoke, CI. No coverage result was fabricated; the 100% figure above is the local JaCoCo report for the fast tier only.
 
-The untrusted "Requested change" text reported a fast-merge-gate failure whose visible stack trace is a jsdom `reportException` at `apps/staff-web/tests/theme/ThemeProvider.test.tsx:6`. Findings:
+## Defects found and fixed (all test-first, all in scope)
 
-1. **That trace is an intentional negative test, not a failure.** `ThemeProvider.test.tsx:31-35` renders `useTheme()` outside its provider and asserts `toThrow(/useTheme/)` (`ThemeProvider.tsx:36-40` throws exactly that message), with `console.error` spied. Locally `bash scripts/frontend-check.sh` runs the full staff-web vitest suite and exits 0. The path is in `apps/staff-web`, outside my declared scope (`apps/api/.../g1/s_g1_07` and `apps/api/.../it/s_g1_07`). I did **not** modify it.
-2. **`scripts/quick-check.sh` fails at `check-pack.py` — "opencode.json is stale".** Verified as the documented cloud-worker CI-profile trap: worktree `opencode.json` SHA `279aa1e7…` equals `.github/opencode.ci.json`, carries the skip-worktree flag (`git ls-files -v` → `S`), while `git show HEAD:opencode.json` SHA is `14bba0da…`. `check-pack.py` judges the worktree (CI) profile, not the committed local profile — the known false positive recorded as OPS-CW-003-01. I did **not** regenerate or overwrite `opencode.json` (root-level, out of scope, and it would replace the CI profile with the local one).
-3. **`python3 -I scripts/check-migrations.py --require-baseline` fails — "version gap: expected V9, found V17".** This shard contains V1–V8 plus reserved V17; V9–V16 belong to other parallel workers' stories and are absent here. On the integrator's merge with `main` those earlier versions are present, so the contiguity gate applies to the merged tree. I did **not** fabricate V9–V16.
-4. **Python tooling tests report 7 failures / 4 errors**, all explained by the above: four `test_check_pack.*` failures + `test_repository_migrations_are_valid` (items 2 and 3); `test_fast_tier`, `test_workflow_concurrency` and two `test_swarm.PlanTests` errors are `ModuleNotFoundError: No module named 'yaml'` (pyyaml absent in this worker image); three `test_agent_run.*` failures are environment-dependent. None is in the S-G1-07 scope or caused by this story.
+1. **Content "checksum" was not a digest** — `Interpretation.checksum()` hex-encoded the entire length-prefixed canonical content (266 chars, reversible, unbounded) while its contract and `RadEvent.payloadDigest` describe a checksum/digest. Fixed to delegate to the repo's existing `NoteChecksum.sha256(String)` (64-char SHA-256), with a known-answer test.
+2. **Critical read-back was required but discarded** — `recordCriticalCommunication` validated `readBack()` but stored nothing. Added `RadEventType.READ_BACK` as a separate durable fact with the recipient as destination and a SHA-256 digest of the read-back text.
+3. **Raw clinical finding stored in a field documented as a digest** — `payloadDigest` held the literal finding text and a test asserted that literal. Both critical-communication and read-back events now carry SHA-256 digests only; tests assert no event holds either narrative (ARC-06 / OPS-02).
+4. **Attestation omitted from the signed-content checksum** — Javadoc promised signature metadata coverage but `attestation` was not in the canonical input. Added it, with a sensitivity assertion and updated known-answer constant.
+5. **Overclaiming study-association Javadoc** — "a study of a different patient can never be attached" is not provable by an in-memory kernel; reworded to state that only caller-supplied verified labels are checked and UID→patient binding belongs to upstream PACS/DICOMweb verification.
 
-Because the reported failure is outside my scope and not reproducible as a failure locally, and because resolving items 2–4 requires files/dependencies outside my scope, I stopped at verified in-scope evidence rather than making out-of-scope edits.
+## Decisions
 
-## Decisions / notes for the integrator
+- Reused `g1.s_g1_05.NoteChecksum` for SHA-256 rather than adding a fourth local copy (`s_g3_12.EvidenceHash` and `PatientAccessService` already have their own). A comment in `Interpretation` records the intentional cross-story dependency; extracting a neutral crypto package would require out-of-scope edits. Failure path surfaces `ApiException CHECKSUM_UNAVAILABLE` from that shared utility.
+- Reserved migration **V41 not created**: DB paths are outside the declared scope and the sibling G4 kernel (S-G4-02, V42) likewise has no migration.
+- The critical finding narrative is deliberately not persisted in this kernel (only its digest). Residual for a later signed-artifact story: a one-way digest is only checkable if the authoritative original is retained elsewhere.
+- `signedAt` remains excluded from the interpretation digest (documented; deterministic re-render), and unkeyed SHA-256 is a tamper/rendering check, not a digital signature.
 
-- No production or test source was changed by this worker; in-scope code was already complete and green.
-- Confirm on the **merge result**: V9–V16 present (migration contiguity), the correct `opencode.json` profile applies for `check-pack.py`, and pyyaml is installed for the workflow tests. These are merge/environment conditions, not S-G1-07 changes.
-- Coverage (JaCoCo 100% line/branch/method/class) and the real-PostgreSQL `DocumentIsolationTest` are enforced by `mvn verify` / `db/check.sh`, which the integrator runs; I did not fabricate a coverage result.
-- Synthetic fixtures only. No patient data or credentials were used or recorded. No human or clinical evidence; all evidence above is tool-generated.
-- Commit: no in-scope production/test source change was needed, so this branch's only new commit force-adds this ignored `.agent/pr-notes.md` file (the publish job reads the same file from the worktree artifact). The S-G1-07 implementation itself was already committed at HEAD `a9fdb91`.
+## Review evidence
+
+- **reviewer** (`smartclinic-senior-backend`): no blocking or functional findings; digest semantics and the independent known-answer test confirmed correct; one low-severity note on cross-story package coupling — addressed with the one-line comment. Reviewer did not re-run commands (no execute tool).
+- **simulated user** (`smartclinic-radiology-user`): four findings (read-back discarded; raw finding in digest field; study-association overclaim; attestation omitted). Bounded re-review of the updated files marked **all four resolved**, with residual scope risks: UID→patient binding still requires the PACS/DICOMweb step (G4 launch prerequisite), no authoritative critical-finding artifact in this kernel, read-back digest proves presence not correctness of words, and no XCH-05 owner/due-time/escalation events here. Explicitly simulated review, **not human or clinical acceptance**.
+
+## Out-of-scope / environment notes for the integrator
+
+- `python3 -I -m unittest discover -s scripts/tests -p 'test_java_conventions.py' -q` → 1 failure: `test_list_bearing_records_copy_on_store_and_read` in `messaging/s_g3_11/PatientFlowContract.java` (1 `List.copyOf` where 2 expected). Not touched — outside this story's scope and pre-existing in the base tree.
+- `python3 -I scripts/gen-opencode.py --check` and `python3 -I scripts/check-pack.py` → EXIT 1: worktree `opencode.json` SHA `279aa1e7…` equals `.github/opencode.ci.json` and carries skip-worktree flag `S`, while `git show HEAD:opencode.json` SHA is `14bba0da…`. This is the documented cloud-worker CI-profile trap (OPS-CW-003-01). **Did not regenerate or overwrite `opencode.json`** (root-level, out of scope, and would replace the CI profile with the local one). `bash scripts/quick-check.sh` stops at this check for the same reason.
+- `bash scripts/docs.sh` → EXIT 1: "Install Doxygen to build the developer reference" — Doxygen is absent from this worker image; `check-docs.py` (link/ID validation) passes.
+- Sibling stories' SpotBugs findings and the s_g3_11 convention failure are pre-existing in the base commit and must be handled by their own owners; none was caused by this story.
+
+## Scope, data and commit
+
+Changed files (all inside `apps/api/src/main/java/com/aurevia/smartclinic/g4/s_g4_01` or `apps/api/src/test/java/com/aurevia/smartclinic/it/s_g4_01`): `ImagingService.java`, `Interpretation.java`, `RadEvent.java`, `RadTypes.java`, `ImagingServiceTest.java`, `RadDomainRecordsTest.java`. No tracker, migration, contract, build, workflow or documentation files were edited. Synthetic fixtures only; no patient data or credentials were used or recorded. All evidence is tool-generated, reviewer, or simulated-user; there is no human pilot evidence. Commit is scoped to the branch; no push, tag or `gh` call was made.
