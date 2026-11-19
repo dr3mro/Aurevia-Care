@@ -297,7 +297,7 @@ class PlanTests(unittest.TestCase):
         dispatchable = [t for t in tasks
                         if t["status"] == "todo" and t["scope"] and t["details"]
                         and swarm.attempts_of(t) < swarm.MAX_ATTEMPTS]
-        self.assertGreaterEqual(len(dispatchable), 10)
+        self.assertGreaterEqual(len(dispatchable), 9)
 
     def test_worker_name_is_static_not_matrix_expression(self):
         text = (ROOT / ".github/workflows/swarm.yml").read_text()

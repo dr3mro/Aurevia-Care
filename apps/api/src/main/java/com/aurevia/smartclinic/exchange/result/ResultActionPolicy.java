@@ -31,7 +31,7 @@ public class ResultActionPolicy {
 
     private static final Map<String, Set<String>> ALLOWED = Map.of(
             ORDER_REGISTER, Set.of("tenant_admin"),
-            RESULT_IMPORT, Set.of("lab_verifier", "tenant_admin"),
+            RESULT_IMPORT, Set.of("lab_verifier"),
             RESULT_READ, Set.of("lab_verifier", "clinician"),
             REVIEW_ACK, Set.of("lab_verifier", "clinician"),
             RECONCILIATION_READ, Set.of("lab_verifier", "tenant_admin", "privacy_auditor"));

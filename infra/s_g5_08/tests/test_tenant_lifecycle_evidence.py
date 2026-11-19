@@ -155,6 +155,12 @@ class StructureTest(unittest.TestCase):
         self.assertIn("evidence_conflict", failures(report))
         self.assertFalse(report["final_evidence"])
 
+    def test_every_artifact_must_name_a_nonblank_source(self):
+        for value in (None, "", "   ", 7):
+            with self.subTest(value=value):
+                report = tlev.evaluate(synthetic_artifact(source=value))
+                self.assertIn("evidence.source", failures(report))
+
     def test_measured_operation_with_neutral_source_has_no_conflict(self):
         report = tlev.evaluate(synthetic_artifact(
             kind="measured_operation", source="staging-lifecycle-run"))
@@ -307,6 +313,25 @@ class ExportRecordsTest(unittest.TestCase):
                 self.assertIn("export.audit_history", failures(report))
 
 
+class AuditHistoryOrderTest(unittest.TestCase):
+    def test_audit_seq_must_be_strictly_increasing(self):
+        for seqs in ([2, 1], [1, 1], [3, 1, 2]):
+            with self.subTest(seqs=seqs):
+                record = synthetic_record()
+                record["audit"] = [{"seq": seq, "action": "RELEASE", "outcome": "SUCCESS"}
+                                   for seq in seqs]
+                report = tlev.evaluate(synthetic_artifact(export={"records": [record]}))
+                self.assertIn("export.audit_history", failures(report))
+
+    def test_ordered_distinct_audit_seq_is_accepted(self):
+        record = synthetic_record()
+        record["audit"] = [{"seq": seq, "action": "RELEASE", "outcome": "SUCCESS"}
+                           for seq in (1, 2, 3)]
+        report = tlev.evaluate(synthetic_artifact(export={"records": [record]}))
+        self.assertNotIn("export.audit_history", failures(report))
+        self.assertEqual(report["verdict"], "pass")
+
+
 class RetentionTest(unittest.TestCase):
     def test_retention_must_be_an_object(self):
         report = tlev.evaluate(synthetic_artifact(retention=[]))
@@ -351,14 +376,32 @@ class RetentionTest(unittest.TestCase):
                         "approved_by": "privacy-officer", "active_data": True}])))
         self.assertIn("retention.legal_hold_respected", failures(report))
 
-    def test_deletion_under_an_inactive_hold_is_allowed(self):
+    def test_deletion_under_an_authorized_lifted_hold_is_allowed(self):
+        report = tlev.evaluate(synthetic_artifact(retention=with_retention(
+            legal_holds=[{"id": "h1", "reason": "closed_dispute",
+                          "scope": "rec-synthetic-held", "placed_by": "privacy-officer",
+                          "active": False, "lifted_by": "privacy-officer-2",
+                          "lifted_at": "2026-11-19T06:00:00Z",
+                          "lift_reason": "dispute_closed"}],
+            deletions=[{"record_id": "rec-synthetic-held", "reason": "retention_expiry",
+                        "approved_by": "privacy-officer", "active_data": True}])))
+        self.assertNotIn("retention.legal_hold_respected", failures(report))
+        self.assertEqual(report["verdict"], "pass")
+
+    def test_inactive_hold_without_a_recorded_lift_is_rejected(self):
+        report = tlev.evaluate(synthetic_artifact(retention=with_retention(
+            legal_holds=[{"id": "h1", "reason": "closed_dispute",
+                          "scope": "rec-synthetic-held", "placed_by": "privacy-officer",
+                          "active": False}])))
+        self.assertIn("retention.legal_hold_entries", failures(report))
+        # It still covers the record for fail-closed deletion matching.
         report = tlev.evaluate(synthetic_artifact(retention=with_retention(
             legal_holds=[{"id": "h1", "reason": "closed_dispute",
                           "scope": "rec-synthetic-held", "placed_by": "privacy-officer",
                           "active": False}],
             deletions=[{"record_id": "rec-synthetic-held", "reason": "retention_expiry",
                         "approved_by": "privacy-officer", "active_data": True}])))
-        self.assertNotIn("retention.legal_hold_respected", failures(report))
+        self.assertIn("retention.legal_hold_respected", failures(report))
 
     def test_active_data_deletion_requires_reason_and_approval(self):
         for deletion in (
@@ -471,12 +514,43 @@ class ScopeMatchingTest(unittest.TestCase):
                                  "approved_by": "ops-lead", "approved": True}])))
         self.assertIn("retention.backup_hold_respected", failures(report))
 
+    def test_broad_backup_scope_covering_a_narrow_hold_is_blocked(self):
+        report = tlev.evaluate(synthetic_artifact(retention=with_retention(
+            legal_holds=[{"id": "h", "reason": "held_record", "scope": "org-1/rec-5",
+                          "placed_by": "privacy-officer", "active": True}],
+            backup_expirations=[{"backup_set": "bk-1", "scope": "org-1",
+                                 "approved_by": "ops-lead", "approved": True}])))
+        self.assertIn("retention.backup_hold_respected", failures(report))
+
+    def test_deleting_an_ancestor_of_a_held_record_is_blocked(self):
+        report = tlev.evaluate(synthetic_artifact(retention=with_retention(
+            legal_holds=[{"id": "h", "reason": "held_record", "scope": "org-1/rec-5",
+                          "placed_by": "privacy-officer", "active": True}],
+            deletions=[{"record_id": "org-1", "reason": "offboarding",
+                        "approved_by": "privacy-officer", "active_data": True}])))
+        self.assertIn("retention.legal_hold_respected", failures(report))
+
+    def test_whitespace_padded_scope_does_not_bypass_a_hold(self):
+        report = tlev.evaluate(synthetic_artifact(retention=with_retention(
+            legal_holds=[{"id": "h", "reason": "held_record", "scope": "rec-1",
+                          "placed_by": "privacy-officer", "active": True}],
+            deletions=[{"record_id": " rec-1 ", "reason": "expiry",
+                        "approved_by": "privacy-officer", "active_data": True}])))
+        self.assertIn("retention.deletion_entries", failures(report))
+        self.assertIn("retention.legal_hold_respected", failures(report))
+
     def test_wildcard_hold_blocks_backup_expiration(self):
         report = tlev.evaluate(synthetic_artifact(retention=with_retention(
             legal_holds=[{"id": "h", "reason": "hold_all", "scope": "*",
                           "placed_by": "privacy-officer", "active": True}])))
         self.assertIn("retention.backup_hold_respected", failures(report))
         self.assertIn("retention.legal_hold_respected", failures(report))
+
+    def test_hold_on_a_backup_set_blocks_its_expiration(self):
+        report = tlev.evaluate(synthetic_artifact(retention=with_retention(
+            legal_holds=[{"id": "h", "reason": "hold_backup", "scope": "bk-synthetic-1",
+                          "placed_by": "privacy-officer", "active": True}])))
+        self.assertIn("retention.backup_hold_respected", failures(report))
 
     def test_backup_expiration_outside_holds_is_allowed(self):
         report = tlev.evaluate(synthetic_artifact())
@@ -598,6 +672,16 @@ class PhiTest(unittest.TestCase):
         ssn = "123" + "-45-" + "6789"
         report = tlev.evaluate(synthetic_artifact(source=ssn))
         self.assertIn("phi.free", failures(report))
+
+    def test_embedded_ssn_shaped_value_fails_closed(self):
+        ssn = "ssn" + "123" + "-45-" + "6789"
+        report = tlev.evaluate(synthetic_artifact(source=ssn))
+        self.assertIn("phi.free", failures(report))
+
+    def test_ssn_shaped_value_in_a_longer_digit_run_is_not_a_false_positive(self):
+        value = "id" + "12345" + "-45-" + "6789"
+        report = tlev.evaluate(synthetic_artifact(source=value))
+        self.assertNotIn("phi.free", failures(report))
 
 
 class ReportAndCliTest(unittest.TestCase):
