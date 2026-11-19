@@ -50,6 +50,10 @@ REQUIRED_RUNBOOKS = (
     "paper_manual_capture", "patient_identification",
     "critical_contacts", "supervised_back_entry",
 )
+REQUIRED_VERIFICATION_FLAGS = ("before_pilot", "quarterly_cadence")
+REQUIRED_OWNERSHIP_ROLES = (
+    "operational_on_call_owner", "site_clinical_coverage_owner",
+)
 # An owner name that is a placeholder records no accountable person.
 OWNER_PLACEHOLDERS = ("tbd", "n/a", "na", "unknown", "none", "-")
 
@@ -164,7 +168,7 @@ def _check_verification(verification, checks):
         _record(checks, "verification", False,
                 "verification must be a JSON object")
         return
-    for flag in ("before_pilot", "quarterly_cadence"):
+    for flag in REQUIRED_VERIFICATION_FLAGS:
         value = verification.get(flag)
         _record(checks, "verification." + flag, value is True,
                 f"{flag} verification must be recorded")
@@ -185,7 +189,7 @@ def _check_ownership(ownership, checks):
     if not isinstance(ownership, dict):
         _record(checks, "ownership", False, "ownership must be a JSON object")
         return
-    for key in ("operational_on_call_owner", "site_clinical_coverage_owner"):
+    for key in REQUIRED_OWNERSHIP_ROLES:
         value = ownership.get(key)
         named = (_is_nonempty_string(value)
                  and value.strip().lower() not in OWNER_PLACEHOLDERS)
