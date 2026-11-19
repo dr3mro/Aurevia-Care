@@ -7,7 +7,13 @@ The `retention` section is a set of ledgers. A missing or malformed ledger is
 
 - `policy_version`: non-blank string.
 - `legal_holds`: list of holds with `id`, `reason`, `scope`, `placed_by` and a
-  boolean `active`. An empty list is a valid explicit "no holds" declaration.
+  boolean `active`. An active hold needs no lift fields. An **inactive** hold
+  must additionally carry `lifted_by`, `lifted_at` and `lift_reason`: a hold
+  cannot be switched off without a named, reasoned authority. A hold with no
+  valid lift still covers its scope for matching, so a crafted artifact cannot
+  release held data by flipping `active`. An empty list is a valid explicit
+  "no holds" declaration. All identifiers are canonical: leading or trailing
+  whitespace is rejected by entry validation and stripped for hold matching.
 - `deletions`: list of records with `record_id`, `reason`, `approved_by` and a
   boolean `active_data`. Every entry must represent an approved deletion of
   active data: `active_data is true`, a non-blank reason and a non-blank
@@ -19,11 +25,15 @@ The `retention` section is a set of ledgers. A missing or malformed ledger is
 ## Legal hold is binding
 
 A hold's `scope` is an exact record id, an ancestor separated by `/`, or `*`
-for the whole tenant. Deletion is rejected when any **active** hold covers the
-deleted `record_id` (`retention.legal_hold_respected`). Backup expiration is
-rejected when any active hold covers the expiration `scope`
-(`retention.backup_hold_respected`). An inactive hold permits both. This is the
-key safety invariant: retention jobs must not destroy evidence under hold.
+for the whole tenant. Coverage is **bidirectional**: a hold on a descendant
+also covers an ancestor target, because deleting a parent scope or expiring an
+org-wide backup can destroy the held record. Deletion is rejected when any
+effective hold overlaps the deleted `record_id`
+(`retention.legal_hold_respected`). Backup expiration is rejected when any
+effective hold overlaps either the expiration `backup_set` or its `scope`
+(`retention.backup_hold_respected`). Only an inactive hold with a complete,
+authorized lift stops covering. This is the key safety invariant: retention
+jobs must not destroy evidence under hold.
 
 ## Offboarding
 
@@ -46,9 +56,10 @@ restored.
 
 ## Representative scenarios
 
-The `scenarios` list must contain exactly the four tested cases —
-`record_request`, `export`, `offboarding` and `disputed_access` — each once.
-Duplicates and mixed non-string members fail `scenarios.no_duplicates`.
+The `scenarios` list must contain all four tested cases — `record_request`,
+`export`, `offboarding` and `disputed_access` — each once. Additional unique
+scenario strings are allowed; duplicates and mixed non-string members fail
+`scenarios.no_duplicates`.
 
 ## What this check cannot prove
 
