@@ -162,8 +162,8 @@ Independent modules scoped to their own paths so workers cannot collide with bac
   - scope: docs/design
   - details:
     Bilingual clinical design-language documentation, in `docs/design` only. No application code. Produce a maintainer-facing design system specification for the staff web and patient app: color and typography tokens, spacing scale, light/dark theming, RTL mirroring rules, local-name and mixed-script display guidance, accessible focus states and WCAG 2.2 AA patterns for forms, tables, dialogs and critical-result banners. Include a token naming contract that CW-004 and CW-005 can adopt later, with a short mapping to requirement IDs (UX-01, PRD-05). Keep every Markdown link valid and every requirement ID defined in the specification. Do NOT touch `apps/`, `db/`, `contracts/`, `.github/`, `scripts/`, root-level `check.sh`, or any shared tracker. Write the requirement IDs and decisions to `.agent/pr-notes.md`.
-- [-] CW-007 · Staff web React appointment and worklist screens (synthetic fixtures)
-  - agent: swarm-1
+- [x] CW-007 · Staff web React appointment and worklist screens (synthetic fixtures)
+  - pr: #30
   - attempts: 3
   - requirements: CLN-01, CLN-02, UX-01
   - depends: CW-004
@@ -211,10 +211,6 @@ Independent modules scoped to their own paths so workers cannot collide with bac
   - agent: loop
   - evidence: observed failure from `swarm/CW-007-40`/`CW-007-41` — GitHub App refused `.github/workflows/*`, then later slots hit non-fast-forward on `swarm-incoming`. `workflows: write` is NOT a valid GitHub Actions permission scope and made both workflows invalid, so it was removed. Final fix: `publish()` deletes the local `swarm-incoming` ref before each bundle and detects workflow-file changes, releases the claim and skips the push instead of crashing. Guards red first then green: 76 swarm tests, 150 total tooling tests OK; all 8 workflow YAMLs parse; `check.sh`, `quick-check.sh`, `docs.sh`, `gen-opencode.py --check` exit 0. No `SWARM_TOKEN` secret exists; a person must apply workflow changes or supply a token with workflow scope. Evidence source: observed CI errors plus executed tool commands; no human or clinical evidence.
 
-- [x] S-FIX-FRONTEND-01 · Restore the Frontend standards gate after scheduling tests added Node filesystem imports.
-  - agent: loop
-  - evidence: reproduced check run 135471273322 locally (`npm run typecheck` failed TS2307/TS7006); added `@types/node@22.19.0` and `"node"` to root `tsconfig.json`; made the scheduling RTL test resolve its feature directory by `import.meta.url`; root Vitest excludes React `.tsx` tests owned by staff-web; `bash scripts/frontend-check.sh` exit 0 with staff-web 103 tests, patient-mobile 0 tests, root 23 tests. Evidence source: local CI gate and GitHub Actions job log 135471273322.
-
 ## Improvement ideas
 
 - [x] IMP-03 · Stop concurrency-cancelling swarm delivery runs. `delivery.yml` (per-ref group, `cancel-in-progress: false`), `heavy-check.yml`, `agent-image.yml` and `swarm-images.yml` now queue; `swarm.yml`, `swarm-integrator.yml`, `main-watchdog.yml` and `opencode-team.yml` already queued. README-SETUP.md updated.
@@ -239,6 +235,9 @@ Raised by the dispatch-3 run-3 verification. Address in the next authorized chan
 
 - [x] S-FIX-INTEGRATOR-01 · Run the integrator only for successful swarm waves. Failed/cancelled waves publish no PR, but `workflow_run: completed` still triggered three runs per batch. Added a `pick` job guard plus regression test.
   - evidence: `gh run list --workflow=swarm-integrator.yml` showed two failure-triggered runs (`44496897170`, `44496943529`) and one success-triggered run (`44496999654`) within 41 seconds. Guards red then green: 81 swarm tests, 155 total tooling tests OK; all 8 workflow YAMLs parse. Evidence source: GitHub run API plus executed tool commands; no human or clinical evidence.
+
+- [x] S-FIX-FRONTEND-01 · Root frontend gate failed: `tsc` lacked Node types for a staff-web test using `node:fs`, and root `vitest` ran app tests in Node instead of the module's jsdom setup. Added `@types/node` to root tooling, enabled it in `tsconfig.json`, and scoped root `vitest` to `frontend/` tooling tests only.
+  - evidence: CI log showed TS2307 `node:fs`, TS7006 implicit `any`, then 21 jsdom `document is not defined` failures. `bash scripts/frontend-check.sh` exit 0 after fix (root typecheck/lint/format/test green, both module gates green). Evidence source: CI log plus executed tool commands; no human or clinical evidence.
 
 ## One-week execution plan (1 wave per hour)
 
