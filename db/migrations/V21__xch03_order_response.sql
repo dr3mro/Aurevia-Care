@@ -17,11 +17,14 @@
 -- notification record; wiring the sender's own retrieval service is part of the
 -- exchange foundation story.
 --
--- Forced RLS from V2 applies to all five tables, and every foreign key carries
--- the organization so a cross-tenant reference cannot resolve. Actor columns
--- are derived from the transaction-local app.actor binding, never from caller
--- input. No row is ever deleted: cancellation, revocation and supersession are
--- state transitions, and every ledger is append-only.
+-- Forced RLS applies to all five tables, and every foreign key carries the
+-- organization so a cross-tenant reference cannot resolve. The ledger actor_id
+-- columns are derived from the transaction-local app.actor binding, never from
+-- caller input. xch03_order.created_by is different: it records the source
+-- actor captured by the creating flow when the recipient work item is received
+-- (provenance), and is validated by that flow. No row is ever deleted:
+-- cancellation, revocation and supersession are state transitions, and every
+-- ledger is append-only.
 
 -- Mutable current projection of one exchanged order in the active tenant.
 CREATE TABLE public.xch03_order (
