@@ -15,6 +15,7 @@ import java.time.Instant;
  * @param previousEndsAt    slot end before a reschedule, otherwise {@code null}
  * @param actorId           authenticated user identity that performed the action
  * @param occurredAt        database clock instant of the event
+ * @return this record
  */
 public record AppointmentEvent(String id, int appointmentVersion, String action, String fromState,
                                String toState, String reason, Instant previousStartsAt,
