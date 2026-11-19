@@ -21,6 +21,7 @@ import static org.mockito.Mockito.when;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,7 +29,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.namedparam.SqlParameterSource;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.UnexpectedRollbackException;
+import org.springframework.transaction.support.AbstractPlatformTransactionManager;
+import org.springframework.transaction.support.DefaultTransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -59,6 +64,29 @@ class ConsolidationServiceTest {
 
     private DuplicateRepository repository;
     private ConsolidationService service;
+
+    /**
+     * Minimal real transaction manager that reproduces Spring's rollback-only commit
+     * behaviour, so an error mapped by marking the status rollback-only is observed as
+     * the UnexpectedRollbackException a caller would actually receive.
+     */
+    private static final class RollbackAwareManager extends AbstractPlatformTransactionManager {
+        private boolean rolledBack;
+        @Override protected Object doGetTransaction() { return new Object(); }
+        @Override protected boolean isExistingTransaction(Object transaction) { return false; }
+        @Override protected void doBegin(Object transaction, TransactionDefinition definition) { }
+        @Override protected void doRollback(DefaultTransactionStatus status) { rolledBack = true; }
+        @Override protected void doCommit(DefaultTransactionStatus status) {
+            if (status.isLocalRollbackOnly() || status.isGlobalRollbackOnly()) {
+                throw new UnexpectedRollbackException("silently rolled back");
+            }
+        }
+    }
+
+    private ConsolidationService realTransactionService() {
+        return new ConsolidationService(repository, new DuplicatePolicy(),
+                new TransactionTemplate(new RollbackAwareManager()));
+    }
 
     @BeforeEach
     void setUp() {
@@ -360,6 +388,85 @@ class ConsolidationServiceTest {
     }
 
     @Test
+    void concurrentConsolidateConflictStaysA409UnderARealTransaction() {
+        bind(REVIEWER_B);
+        authorized(REVIEWER_B, "tenant_admin");
+        when(repository.findReviewById(REVIEW)).thenReturn(Optional.of(openReview()));
+        when(repository.findCurrentConsolidation(REVIEW)).thenReturn(Optional.empty());
+        when(repository.findPatient(SURVIVOR)).thenReturn(Optional.of(survivor()));
+        when(repository.findPatient(DUPLICATE)).thenReturn(Optional.of(duplicate()));
+        when(repository.lockPair(SURVIVOR, DUPLICATE)).thenReturn(2);
+        when(repository.newId()).thenReturn("assoc-1", "cons-1");
+        when(repository.insertConsolidation(anyString(), anyString(), anyString(), anyString(), anyString(),
+                anyString(), anyString(), anyString(), anyString(), anyString(), any()))
+                .thenThrow(new DuplicateKeyException("dup"));
+
+        ApiException thrown = assertThrows(ApiException.class,
+                () -> realTransactionService().consolidate(REVIEW, 2, "reason"));
+        assertEquals(409, thrown.status());
+    }
+
+    @Test
+    void openRollsBackExplicitlyAfterAConcurrentInsertConflict() {
+        authorized(REVIEWER_A, "tenant_admin");
+        when(repository.findPatient(SURVIVOR)).thenReturn(Optional.of(survivor()));
+        when(repository.findPatient(DUPLICATE)).thenReturn(Optional.of(duplicate()));
+        when(repository.findReviewByPair(SURVIVOR, DUPLICATE)).thenReturn(Optional.empty());
+        when(repository.insertReview(ORG, SURVIVOR, DUPLICATE, REVIEWER_A))
+                .thenThrow(new DuplicateKeyException("dup"));
+        RollbackAwareManager manager = new RollbackAwareManager();
+
+        ApiException thrown = assertThrows(ApiException.class,
+                () -> new ConsolidationService(repository, new DuplicatePolicy(),
+                        new TransactionTemplate(manager)).open(SURVIVOR, DUPLICATE));
+        assertEquals(409, thrown.status());
+        assertTrue(manager.rolledBack, "an aborted insert must be rolled back explicitly");
+    }
+
+    @Test
+    void concurrentCorrectionConflictStaysA409UnderARealTransaction() {
+        authorized(REVIEWER_A, "tenant_admin");
+        Consolidation done = new Consolidation("cons-1", REVIEW, SURVIVOR, DUPLICATE, 1,
+                "CONSOLIDATED", REVIEWER_B, REVIEWER_A, "duplicate", null);
+        when(repository.findCurrentConsolidation(REVIEW)).thenReturn(Optional.of(done));
+        when(repository.findPatient(DUPLICATE)).thenReturn(Optional.of(duplicate()));
+        when(repository.lockPair(SURVIVOR, DUPLICATE)).thenReturn(2);
+        when(repository.newId()).thenReturn("assoc-2", "cons-2");
+        when(repository.insertConsolidation(anyString(), anyString(), anyString(), anyString(), anyString(),
+                anyString(), anyString(), anyString(), anyString(), anyString(), any()))
+                .thenThrow(new DuplicateKeyException("dup"));
+
+        ApiException thrown = assertThrows(ApiException.class,
+                () -> realTransactionService().correct(REVIEW, 1, "reason"));
+        assertEquals(409, thrown.status());
+    }
+
+    @Test
+    void consolidateRechecksCurrentStateInsideThePairLock() {
+        bind(REVIEWER_B);
+        authorized(REVIEWER_B, "tenant_admin");
+        when(repository.findReviewById(REVIEW)).thenReturn(Optional.of(openReview()));
+        // A concurrent approval commits after the first visibility check but before
+        // this command takes the pair lock; the second read must see it.
+        when(repository.findCurrentConsolidation(REVIEW)).thenReturn(Optional.empty(),
+                Optional.of(new Consolidation("cons-race", REVIEW, SURVIVOR, DUPLICATE, 1,
+                        "CONSOLIDATED", REVIEWER_B, REVIEWER_A, "reason", null)));
+        when(repository.findPatient(SURVIVOR)).thenReturn(Optional.of(survivor()));
+        when(repository.findPatient(DUPLICATE)).thenReturn(Optional.of(duplicate()));
+        when(repository.lockPair(SURVIVOR, DUPLICATE)).thenReturn(2);
+        when(repository.newId()).thenReturn("assoc-1", "cons-1");
+
+        ApiException thrown = assertThrows(ApiException.class,
+                () -> service.consolidate(REVIEW, 2, "reason"));
+        assertEquals(409, thrown.status());
+        verify(repository, never()).insertAssociation(anyString(), anyString(), anyString(), anyInt(),
+                anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), anyString());
+        verify(repository, never()).insertConsolidation(anyString(), anyString(), anyString(), anyString(),
+                anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), anyString());
+        verify(repository).appendAudit(TenantContext.current(), "CONSOLIDATE", REVIEW, "CONFLICT");
+    }
+
+    @Test
     void correctRequiresAdminAndValidInputs() {
         assertEquals(422, assertThrows(ApiException.class, () -> service.correct("bad", 1, "reason")).status());
         assertEquals(422, assertThrows(ApiException.class, () -> service.correct(REVIEW, 1, " ")).status());
@@ -411,6 +518,49 @@ class ConsolidationServiceTest {
     }
 
     @Test
+    void correctRechecksCurrentStateInsideThePairLock() {
+        authorized(REVIEWER_A, "tenant_admin");
+        Consolidation done = new Consolidation("cons-1", REVIEW, SURVIVOR, DUPLICATE, 1,
+                "CONSOLIDATED", REVIEWER_B, REVIEWER_A, "duplicate", null);
+        // A concurrent support correction commits after the first status check but
+        // before the lock; the second read must see the CORRECTED revision.
+        when(repository.findCurrentConsolidation(REVIEW)).thenReturn(Optional.of(done),
+                Optional.of(new Consolidation("cons-2", REVIEW, SURVIVOR, DUPLICATE, 2,
+                        "CORRECTED", REVIEWER_A, REVIEWER_B, "duplicate", "other correction")));
+        when(repository.findPatient(DUPLICATE)).thenReturn(Optional.of(duplicate()));
+        when(repository.lockPair(SURVIVOR, DUPLICATE)).thenReturn(2);
+        when(repository.newId()).thenReturn("assoc-2", "cons-3");
+
+        ApiException thrown = assertThrows(ApiException.class,
+                () -> service.correct(REVIEW, 1, "wrong patient"));
+        assertEquals(409, thrown.status());
+        verify(repository, never()).insertAssociation(anyString(), anyString(), anyString(), anyInt(),
+                anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), anyString());
+        verify(repository).appendAudit(TenantContext.current(), "CONSOLIDATION_CORRECT", REVIEW, "CONFLICT");
+    }
+
+    @Test
+    void correctSnapshotsPatientVersionReadAfterThePairLock() {
+        authorized(REVIEWER_A, "tenant_admin");
+        Consolidation done = new Consolidation("cons-1", REVIEW, SURVIVOR, DUPLICATE, 1,
+                "CONSOLIDATED", REVIEWER_B, REVIEWER_A, "duplicate", null);
+        when(repository.findCurrentConsolidation(REVIEW)).thenReturn(Optional.of(done));
+        AtomicReference<Patient> visible = new AtomicReference<>(duplicate());
+        when(repository.findPatient(DUPLICATE)).thenAnswer(invocation -> Optional.of(visible.get()));
+        doAnswer(invocation -> {
+            visible.set(new Patient(DUPLICATE, 3, "MRN-2", "CLINIC-B", "Amina  Khan", "amina khan",
+                    null, "not_disclosed", "ar", "{}", "[]", "[]"));
+            return 2;
+        }).when(repository).lockPair(SURVIVOR, DUPLICATE);
+        when(repository.newId()).thenReturn("assoc-2", "cons-2");
+
+        service.correct(REVIEW, 1, "wrong patient");
+
+        verify(repository).insertAssociation(eq("assoc-2"), eq(ORG), eq(DUPLICATE), eq(3), eq(SURVIVOR),
+                eq("REVERSED"), anyString(), anyString(), anyString(), anyString(), eq("wrong patient"));
+    }
+
+    @Test
     void coversRareFailureAndNullInputBranches() {
         assertEquals(422, assertThrows(ApiException.class, () -> service.review(null, DUPLICATE)).status());
         assertEquals(422, assertThrows(ApiException.class, () -> service.review(SURVIVOR, SURVIVOR)).status());
@@ -433,6 +583,7 @@ class ConsolidationServiceTest {
         Consolidation done = new Consolidation("cons-1", REVIEW, SURVIVOR, DUPLICATE, 1,
                 "CONSOLIDATED", REVIEWER_B, REVIEWER_A, "duplicate", null);
         when(repository.findCurrentConsolidation(REVIEW)).thenReturn(Optional.of(done));
+        when(repository.lockPair(SURVIVOR, DUPLICATE)).thenReturn(2);
         when(repository.findPatient(DUPLICATE)).thenReturn(Optional.empty());
         assertEquals(404, assertThrows(ApiException.class, () -> service.correct(REVIEW, 1, "reason")).status());
 

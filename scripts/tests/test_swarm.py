@@ -333,11 +333,17 @@ class PlanTests(unittest.TestCase):
         self.assertNotIn("fix-pr-watchdog.yml", swarm.BUDGET_WORKFLOWS)
         self.assertNotIn("main-watchdog.yml", swarm.BUDGET_WORKFLOWS)
 
-    def test_worker_has_three_hour_budget_with_restart_slack(self):
+    def test_worker_has_three_hour_budget_in_segments_with_merge_slack(self):
         worker = (ROOT / ".github/workflows/swarm-worker.yml").read_text()
-        # 175 min of agent work + a 35 min merge step + bundling and upload slack.
-        self.assertIn("timeout-minutes: 225", worker)
-        self.assertIn("AGENT_TIMEOUT: 175m", worker)
+        # 45+45+45+40 = 175 minutes of agent work, a main sync after each of the
+        # first three segments, then the final merge before publishing.
+        for minutes in ("45m", "45m", "45m", "40m"):
+            self.assertIn(f"AGENT_TIMEOUT: {minutes}", worker)
+        for n in (1, 2, 3, 4):
+            self.assertIn(f"SEGMENT: '{n}'", worker)
+        self.assertEqual(worker.count("SYNC_ONLY: '1'"), 3)
+        self.assertIn("Fetch main (final)", worker)
+        self.assertIn("timeout-minutes: 300", worker)
         self.assertIn("timeout-minutes: 35", worker)
 
     def test_task_prompt_states_the_deadline(self):
@@ -397,6 +403,19 @@ class PlanTests(unittest.TestCase):
         worker = (ROOT / ".github/workflows/swarm-worker.yml").read_text()
         self.assertIn("needs: work", worker)
         self.assertIn("workflow_call:", worker)
+
+    def test_a_manual_run_can_skip_the_queue_but_planning_stays_serial(self):
+        import yaml
+        text = (ROOT / ".github/workflows/swarm.yml").read_text()
+        config = yaml.safe_load(text)
+        self.assertEqual(config[True]["workflow_dispatch"]["inputs"]["now"]["type"], "boolean")
+        group = config["concurrency"]["group"]
+        self.assertIn("inputs.now", group)
+        self.assertIn("'agent-swarm'", group)
+        self.assertIs(config["concurrency"]["cancel-in-progress"], False)
+        plan = config["jobs"]["plan"]["concurrency"]
+        self.assertEqual(plan["group"], "agent-swarm-plan")
+        self.assertIs(plan["cancel-in-progress"], False)
 
     def test_wave_is_capped_by_the_remaining_budget(self):
         self.assertGreaterEqual(swarm.affordable_workers(0, 10000), 10)
@@ -768,7 +787,19 @@ class ResolveConflictTests(unittest.TestCase):
         text = (ROOT / ".github/workflows/swarm-worker.yml").read_text()
         worker = text.split("  publish:\n", 1)[0]
         self.assertLess(worker.index("agent-run.sh fetch-main"), worker.index("agent-run.sh implement"))
-        self.assertNotIn("github.token", worker.split("agent-run.sh implement", 1)[1])
+        # After the agent has run, the only step that sees a token is the inline
+        # fetch: no workspace script, repository hooks off, token sent to github.com.
+        import yaml
+        steps = yaml.safe_load(text)["jobs"]["work"]["steps"]
+        started = False
+        for step in steps:
+            if "agent-run.sh implement" in step.get("run", ""):
+                started = True
+            if started and "github.token" in str(step.get("env", {})):
+                self.assertTrue(step["name"].startswith("Fetch main"), step["name"])
+                self.assertNotIn("agent-run.sh", step["run"])
+                self.assertIn("core.hooksPath=/dev/null", step["run"])
+                self.assertIn('fetch -q "https://github.com/$GITHUB_REPOSITORY"', step["run"])
 
 
 class RepairTests(unittest.TestCase):

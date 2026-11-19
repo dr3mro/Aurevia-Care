@@ -100,8 +100,20 @@ context_index() {
   } | sort -u > "$out/context-files.txt"
 }
 
+resume_note() { # segments after the first continue the same story
+  [[ "${SEGMENT:-1}" -gt 1 ]] || return 0
+  cat <<NOTE
+This is segment ${SEGMENT} of ${SEGMENTS:-1} of the same story. Your earlier work is already
+committed on this branch and the branch was just merged with the latest ${BASE_BRANCH:-main}. Do not start
+over: read ${notes_file}, git log and git diff origin/${BASE_BRANCH:-main}...HEAD, then continue with
+what is left. When the story is complete, say so in ${notes_file} and stop.
+
+NOTE
+}
+
 story_prompt() {
   context_index
+  resume_note
   cat <<PROMPT
 Before doing anything else, load the full project context: read every file listed in
 $out/context-files.txt (all Markdown files, plus every skill under .opencode/skills and
@@ -126,16 +138,21 @@ cmd_implement() {
   configure_auth
   git config user.name "github-actions[bot]"
   git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-  local slug branch
-  if [[ "${MODE:-story}" == fix ]]; then
-    branch=${BRANCH:?BRANCH is required in fix mode}
+  local slug branch seg=${SEGMENT:-1} segs=${SEGMENTS:-1}
+  if [[ $seg -gt 1 && -s "$out/branch" && -s "$out/base-sha" ]]; then
+    # A later segment of the same worker: the branch and its base already exist.
+    branch=$(cat "$out/branch")
   else
-    slug=$(printf '%s' "${STORY_ID:?}" | tr -c 'A-Za-z0-9' '-' | cut -c1-40)
-    branch="${BRANCH_PREFIX:-opencode}/${slug}-${GITHUB_RUN_NUMBER:-0}"
-    git switch -c "$branch"
+    if [[ "${MODE:-story}" == fix ]]; then
+      branch=${BRANCH:?BRANCH is required in fix mode}
+    else
+      slug=$(printf '%s' "${STORY_ID:?}" | tr -c 'A-Za-z0-9' '-' | cut -c1-40)
+      branch="${BRANCH_PREFIX:-opencode}/${slug}-${GITHUB_RUN_NUMBER:-0}"
+      git switch -c "$branch"
+    fi
+    git rev-parse HEAD > "$out/base-sha"
+    printf '%s' "$branch" > "$out/branch"
   fi
-  git rev-parse HEAD > "$out/base-sha"
-  printf '%s' "$branch" > "$out/branch"
 
   local result
   activate_ci_config
@@ -166,6 +183,11 @@ cmd_implement() {
   printf '%s' "$commits" > "$out/commits"
   emit result "$result"; emit commits "$commits"; emit checks "$checks"
   emit branch "$branch"
+  # A segment that only ran out of time continues after main is merged in; any
+  # other ending (done, failed, rate limited) is final and later segments skip.
+  local more=false
+  [[ "$result" == timeout && $seg -lt $segs ]] && more=true
+  emit more "$more"
 }
 
 audit_prompt() {
@@ -250,10 +272,14 @@ cmd_merge_main() {
   if [[ "$outcome" != merged ]]; then
     git merge --abort 2> /dev/null || true
     git reset -q --hard "$pre"
-    printf '%s\n' "Merge with $base could not be completed after $attempt attempt(s)" >> "$out/check.log"
-    printf '%s' failed > "$out/checks"
-    emit checks failed
-  elif ! git diff --quiet "$pre" HEAD; then
+    # A mid-run sync that fails just leaves the branch as it was; the final
+    # merge step tries again and is the one that records a failure.
+    if [[ -z "${SYNC_ONLY:-}" ]]; then
+      printf '%s\n' "Merge with $base could not be completed after $attempt attempt(s)" >> "$out/check.log"
+      printf '%s' failed > "$out/checks"
+      emit checks failed
+    fi
+  elif [[ -z "${SYNC_ONLY:-}" ]] && ! git diff --quiet "$pre" HEAD; then
     # Main's changes are now part of the branch: check the merged result.
     local checks=failed
     if bash "${CHECK_SCRIPT:-scripts/check.sh}" > "$out/check.log" 2>&1; then checks=passed; fi
