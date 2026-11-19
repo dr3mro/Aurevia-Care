@@ -1,7 +1,0 @@
-# Shell scripts and container entry points must keep LF endings even when the
-# repository is checked out on Windows, or bash fails with "\r: command not found".
-* text=auto eol=lf
-*.sh text eol=lf
-*.png binary
-*.jpg binary
-*.pdf binary

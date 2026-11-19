@@ -16,7 +16,14 @@ import com.aurevia.smartclinic.tenant.TenantContext;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-/** Derives tenant context from the authenticated principal and explicit organization selection. */
+/**
+ * Derives tenant context from the authenticated principal and an explicit
+ * organization selection.
+ *
+ * <p>The synthetic subject header is accepted only under the
+ * {@code synthetic-auth} profile and is not a production authentication
+ * mechanism.</p>
+ */
 @Component
 public class TenantContextInterceptor implements HandlerInterceptor, WebMvcConfigurer {
 
@@ -26,10 +33,24 @@ public class TenantContextInterceptor implements HandlerInterceptor, WebMvcConfi
 
     private final Environment environment;
 
+    /**
+     * Create the interceptor.
+     *
+     * @param environment spring environment used for profile checks
+     */
     public TenantContextInterceptor(Environment environment) {
         this.environment = environment;
     }
 
+    /**
+     * Validate headers and bind the request tenant context.
+     *
+     * @param request  current HTTP request
+     * @param response current HTTP response
+     * @param handler  selected handler
+     * @return {@code true} so the request proceeds
+     * @throws ApiException when authentication or tenant selection is invalid
+     */
     @Override
     @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
             value = "HRS_REQUEST_PARAMETER_TO_HTTP_HEADER",
@@ -58,12 +79,25 @@ public class TenantContextInterceptor implements HandlerInterceptor, WebMvcConfi
         return true;
     }
 
+    /**
+     * Clear the thread-local context at request completion.
+     *
+     * @param request   current HTTP request
+     * @param response  current HTTP response
+     * @param handler   selected handler
+     * @param exception any exception raised during handling
+     */
     @Override
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response,
                                 Object handler, Exception exception) {
         TenantContext.clear();
     }
 
+    /**
+     * Register the interceptor on protected API routes.
+     *
+     * @param registry spring interceptor registry
+     */
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(this).addPathPatterns("/api/v1/**");

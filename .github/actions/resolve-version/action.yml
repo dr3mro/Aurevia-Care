@@ -1,0 +1,24 @@
+name: Resolve image version
+description: Derive the immutable image version from the GitHub ref and SHA.
+
+outputs:
+  value:
+    description: Image version (sha-<commit> or the validated v* tag)
+    value: ${{ steps.version.outputs.value }}
+
+runs:
+  using: composite
+  steps:
+    - id: version
+      shell: bash
+      env:
+        REF_TYPE: ${{ github.ref_type }}
+        REF_NAME: ${{ github.ref_name }}
+      run: |
+        version="sha-$GITHUB_SHA"
+        if [[ "$REF_TYPE" == tag ]]; then
+          [[ "$REF_NAME" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[A-Za-z0-9]+([.-][A-Za-z0-9]+)*)?$ ]]
+          (( ${#REF_NAME} <= 122 ))
+          version="$REF_NAME"
+        fi
+        printf 'value=%s\n' "$version" >> "$GITHUB_OUTPUT"
