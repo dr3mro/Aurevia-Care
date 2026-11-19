@@ -31,6 +31,7 @@ runs:
       shell: bash
       env:
         NVD_API_KEY: ${{ inputs.nvd-api-key }}
+        SMARTCLINIC_PG_ADMIN: ${{ inputs.pg-admin }}
       run: bash apps/api/check.sh
 
     - name: PostgreSQL migration and policy checks
