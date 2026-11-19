@@ -54,7 +54,7 @@ fixtures, and the unit tests.
 
 | Check | Command | Proves |
 |---|---|---|
-| Unit and fixture gate | `bash infra/s_g5_10/check-ux01.sh` | 51 synthetic unit tests pass; the conforming fixture passes and the violation fixture fails with the exact exit code 1 and a FAIL marker |
+| Unit and fixture gate | `bash infra/s_g5_10/check-ux01.sh` | 54 synthetic unit tests pass; the conforming fixture passes and the violation fixture fails with the exact exit code 1 and a FAIL marker |
 | Unit tests alone | `python3 -I -m unittest discover -s infra/s_g5_10/tests -q` | The evaluator's enumerated branches behave as specified, including hostile JSON input |
 | Line coverage | `python3 -m trace --count --missing --coverdir /tmp/opencode/s_g5_10_cov infra/s_g5_10/tests/run_coverage.py` | No missed executable line in the evaluator, including the `if __name__ == "__main__"` CLI entry point; stdlib `trace` is used because `coverage.py` is not installed |
 | Links and requirement IDs | `python3 -I scripts/check-docs.py` | Relative links resolve and every requirement ID is defined in the specification |
@@ -71,6 +71,7 @@ fixtures, and the unit tests.
 | D5 | A passing synthetic artifact is not final evidence | Rehearsal proves the check works, not that a human assistive-technology review happened |
 | D6 | The gate script is named `check-ux01.sh`, not `check.sh` | `swarm.py` protects `*/check.sh` paths as human-only; a non-matching name keeps this story auto-mergeable while remaining its canonical gate |
 | D7 | Reserved migration version V52 is not used | No schema change is needed; version gaps are allowed by the repository's change-safety gate |
+| D8 | Every artifact must carry a non-blank string `source` label | A measured artifact with no attributable source cannot be traced to an authorized reviewer; it fails the envelope and is never promoted to final evidence. This closes an honesty gap where an unattributable artifact passed as measured acceptance |
 
 ## Boundaries
 

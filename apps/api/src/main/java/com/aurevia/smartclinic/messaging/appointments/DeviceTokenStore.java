@@ -28,6 +28,18 @@ public interface DeviceTokenStore {
     Optional<DeviceToken> find(String tokenId, String patientId);
 
     /**
+     * Find a device by id within the active tenant, ignoring patient scope.
+     *
+     * <p>Registration uses this to reject an id already owned by a different
+     * patient in the same organization; rebinding would silently strip the
+     * displaced patient of the ability to revoke their own device.</p>
+     *
+     * @param tokenId opaque device identifier
+     * @return the existing registration or empty when the id is unused
+     */
+    Optional<DeviceToken> findByTokenId(String tokenId);
+
+    /**
      * Return deliverable devices at dispatch time, not from a long-lived cache.
      *
      * @param patientId verified patient identifier
