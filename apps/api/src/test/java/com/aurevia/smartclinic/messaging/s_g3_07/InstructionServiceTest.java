@@ -286,6 +286,26 @@ class InstructionServiceTest {
     }
 
     @Test
+    void listForPatientConcealsThreadsFromUnassignedUnitsAndRevokedConnections() {
+        fixture();
+        bind(ORG_A, "clinician-a");
+        service.send(sendRequest());
+
+        // READ permission alone is not a care relationship. A privacy auditor
+        // has INSTRUCTION_READ but is not assigned to the sending unit, so it
+        // must not enumerate another unit's patient instructions (IAM-01, ARC-02).
+        store.seedMember("auditor", List.of("privacy_auditor"));
+        bind(ORG_A, "auditor");
+        assertTrue(service.listForPatient(PATIENT).isEmpty());
+
+        // Revoking the connection ends future access even for an assigned,
+        // clinically authorized sender on the next protected read (MSG-07).
+        store.deactivateConnection(CONNECTION);
+        bind(ORG_A, "clinician-a");
+        assertTrue(service.listForPatient(PATIENT).isEmpty());
+    }
+
+    @Test
     void clinicalGateUsesAnyActiveRoleAndRecordsAMatchingAuthorRole() {
         fixture();
         // The clinician subtag is not the first role in the membership fold.
