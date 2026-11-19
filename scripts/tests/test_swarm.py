@@ -276,6 +276,11 @@ class PlanTests(unittest.TestCase):
                 if isinstance(block, dict):
                     self.assertFalse(set(block) - valid, f"{name}: invalid permission keys")
 
+    def test_publish_gets_workflow_token_flag(self):
+        text = (ROOT / ".github/workflows/swarm.yml").read_text()
+        publish = text.split("  publish:\n", 1)[1].split("  next:\n", 1)[0]
+        self.assertIn("SWARM_WORKFLOW_PUSH: ${{ secrets.SWARM_TOKEN != '' }}", publish)
+
     def test_fallback_wave_runs_hourly(self):
         text = (ROOT / ".github/workflows/swarm.yml").read_text()
         self.assertIn("cron: '7 * * * *'", text)
@@ -590,6 +595,16 @@ class GitTests(unittest.TestCase):
         self.assertTrue(released.called)
         self.assertNotIn("refs/heads/swarm/CW-001-1",
                          self.run_git("ls-remote", "--heads", "origin"))
+
+    def test_publish_allows_workflow_changes_with_swarm_token(self):
+        out = self.worker_dir(extra={".github/workflows/x.yml": "name: x\n"})
+        with mock.patch.dict(os.environ, {"SWARM_WORKFLOW_PUSH": "true"}), \
+             mock.patch.object(swarm, "gh", FakeGh()), \
+             mock.patch.object(swarm, "release_claim") as released:
+            swarm.publish(self.TASK, out)
+        self.assertFalse(released.called)
+        self.assertIn("refs/heads/swarm/CW-001-1",
+                      self.run_git("ls-remote", "--heads", "origin"))
 
     def test_publish_twice_does_not_reuse_a_stale_incoming_ref(self):
         with mock.patch.object(swarm, "gh", FakeGh()):
