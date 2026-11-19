@@ -7,9 +7,12 @@
 -- response, renewal, cancellation and dispensing evidence separate.
 --
 -- Forced RLS from V2 applies to every table and every foreign key carries the
--- organization. A guarded update enforces the same state machine and the
--- stable-submission invariant as the domain service, so a retry cannot create
--- a second downstream prescription even if application checks are bypassed.
+-- organization. A guarded update enforces the same state machine and immutable
+-- clinical columns as the domain service. The submission ledger is keyed by the
+-- stable submission id and constrained to one row per prescription, so neither
+-- a replayed insert nor a retry can create a second downstream prescription.
+-- The verified-absent-before-resend retry gate is enforced in the domain service
+-- and evidenced by the append-only partner-status event ledger.
 --
 -- Compatibility note: the offline db/check.sh runner applies V*.sql in shell
 -- glob order, which places this two-digit version before V3. Flyway applies by
@@ -70,6 +73,7 @@ BEGIN
         created_by            uuid NOT NULL,
         created_at            timestamptz NOT NULL DEFAULT now(),
         PRIMARY KEY (organization_id, submission_id),
+        CONSTRAINT rx02_one_submission_row_per_prescription UNIQUE (organization_id, prescription_id),
         FOREIGN KEY (organization_id, prescription_id)
             REFERENCES public.rx02_prescription(organization_id, id),
         FOREIGN KEY (organization_id, created_by)

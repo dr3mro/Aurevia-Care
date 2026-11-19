@@ -237,10 +237,9 @@ public final class RxContract {
      */
     public record View(Prescription prescription, List<Event> events) {
         /**
-         * Defensively copy the event trail.
-         *
-         * @param prescription current projection
-         * @param events       event trail
+         * Defensively copy the event trail. Components are documented once on
+         * the record declaration; repeating them here yields duplicate Doxygen
+         * parameter sections and fails the documentation gate.
          */
         public View {
             events = List.copyOf(events);
