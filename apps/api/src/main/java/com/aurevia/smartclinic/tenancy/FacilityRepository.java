@@ -11,7 +11,13 @@ import org.springframework.stereotype.Repository;
 
 import com.aurevia.smartclinic.tenant.TenantContext;
 
-/** The only SQL boundary for the G0 facility slice; every query is RLS-bounded. */
+/**
+ * The single SQL boundary for the G0 facility slice.
+ *
+ * <p>Every statement is bounded by the transaction-local tenant context set by
+ * {@link com.aurevia.smartclinic.tenant.TenantGuardTransactionManager}; forced
+ * row-level security is the authoritative isolation control.</p>
+ */
 @Repository
 public class FacilityRepository {
 
@@ -21,18 +27,35 @@ public class FacilityRepository {
 
     private final NamedParameterJdbcTemplate jdbc;
 
+    /**
+     * Create the repository.
+     *
+     * @param jdbc shared named-parameter JDBC template
+     */
     @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
             value = "EI_EXPOSE_REP2", justification = "Spring-managed singleton collaborator")
     public FacilityRepository(NamedParameterJdbcTemplate jdbc) {
         this.jdbc = jdbc;
     }
 
+    /**
+     * Find a facility by tenant-local code in the active organization.
+     *
+     * @param code tenant-local facility code
+     * @return the facility when visible, otherwise empty
+     */
     public Optional<Facility> findByCode(String code) {
         return jdbc.query("""
                 SELECT organization_id, code, name FROM public.facility WHERE code = :code
                 """, Map.of("code", code), FACILITY_MAPPER).stream().findFirst();
     }
 
+    /**
+     * Insert a facility owned by the active organization.
+     *
+     * @param facility facility to insert
+     * @return number of inserted rows
+     */
     public int insert(Facility facility) {
         return jdbc.update("""
                 INSERT INTO public.facility (organization_id, code, name)
@@ -43,6 +66,12 @@ public class FacilityRepository {
                 .addValue("name", facility.name()));
     }
 
+    /**
+     * Check whether the subject has an active membership in the active organization.
+     *
+     * @param subject authenticated subject
+     * @return {@code true} when an active membership is visible
+     */
     public boolean hasActiveMembership(String subject) {
         Integer count = jdbc.queryForObject("""
                 SELECT count(*) FROM public.membership m
@@ -54,6 +83,12 @@ public class FacilityRepository {
         return java.util.Optional.ofNullable(count).orElse(0) > 0;
     }
 
+    /**
+     * List active role keys for the subject in the active organization.
+     *
+     * @param subject authenticated subject
+     * @return distinct role keys with active membership and assignment windows
+     */
     public List<String> activeRoles(String subject) {
         return jdbc.queryForList("""
                 SELECT DISTINCT ra.role_key FROM public.role_assignment ra
@@ -67,6 +102,15 @@ public class FacilityRepository {
                 """, Map.of("subject", subject), String.class);
     }
 
+    /**
+     * Append one audit event inside the caller's transaction.
+     *
+     * @param context      active tenant context
+     * @param action       action key
+     * @param resourceType audited resource type
+     * @param resourceId   audited resource identifier
+     * @param outcome      success or denial outcome
+     */
     public void appendAudit(TenantContext context, String action, String resourceType,
                             String resourceId, String outcome) {
         jdbc.update("""
