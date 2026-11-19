@@ -5,9 +5,10 @@ import org.springframework.stereotype.Component;
 /**
  * Bounded action matrix for the FIN-01 slice (PRD-04).
  *
- * <p>Finance data is not clinical data: only finance staff and tenant
- * administrators may read invoices or reconciliation totals, and only finance
- * staff may post or void entries. Approvals are checked separately as a
+ * <p>Finance data is not clinical data: finance staff, tenant administrators
+ * and privacy auditors may read invoices or reconciliation totals for audit and
+ * disclosure review, and only finance staff may post or void entries. Approvals
+ * are checked separately as a
  * distinct action so the approver must be a different active member. The matrix
  * is paired with a fresh membership and role check on every protected request
  * in the domain service.</p>
@@ -45,7 +46,8 @@ public class FinanceActions {
         return switch (action) {
             case CREATE, ISSUE, PAYMENT, CREDIT, REFUND, VOID -> "finance".equals(role);
             case APPROVE -> "finance".equals(role) || "tenant_admin".equals(role);
-            case READ, RECONCILE -> "finance".equals(role) || "tenant_admin".equals(role);
+            case READ, RECONCILE -> "finance".equals(role) || "tenant_admin".equals(role)
+                    || "privacy_auditor".equals(role);
             default -> false;
         };
     }
