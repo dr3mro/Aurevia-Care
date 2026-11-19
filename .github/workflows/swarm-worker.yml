@@ -23,8 +23,9 @@ jobs:
   work:
     name: Work the task
     runs-on: ubuntu-latest
-    # Three-hour task budget plus 10 minutes for bundling and artifact upload.
-    timeout-minutes: 225
+    # Four work segments of 45/45/45/40 minutes (175 of agent work), up to three
+    # 20-minute syncs with main, the 35-minute final merge, and bundling.
+    timeout-minutes: 300
     container:
       image: ${{ inputs.image }}
       credentials:
@@ -48,7 +49,6 @@ jobs:
       STORY_BODY: ${{ fromJSON(inputs.task).body }}
       FIX_COMMENT: ${{ fromJSON(inputs.task).fix }}
       PR_NUMBER: ${{ fromJSON(inputs.task).number }}
-      AGENT_TIMEOUT: 175m
       CHECK_SCRIPT: scripts/quick-check.sh
     steps:
       - uses: actions/checkout@v7
@@ -65,11 +65,136 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           BASE_BRANCH: ${{ github.event.repository.default_branch }}
         run: scripts/agent-run.sh fetch-main || true
-      - name: Work the task (no GitHub token in this step)
+      - id: s1
+        name: Work the task, segment 1 of 4 (no GitHub token in this step)
         env:
           # Prefer this slot's account, with the team key as a compatibility fallback.
           OPENCODE_API_KEY: ${{ secrets[format('OPENCODE_API_KEY_{0}', inputs.slot)] || secrets.OPENCODE_API_KEY }}
+          BASE_BRANCH: ${{ github.event.repository.default_branch }}
+          SEGMENT: '1'
+          SEGMENTS: '4'
+          AGENT_TIMEOUT: 45m
         run: scripts/agent-run.sh implement
+      # Bring main into the branch between segments so the work never drifts far
+      # from it. The only token step after the agent has run is this inline fetch:
+      # it runs no workspace script, ignores repository hooks and sends the
+      # read-only token to github.com only.
+      - name: Fetch main (after segment 1)
+        if: steps.s1.outputs.more == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          header=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 | tr -d '\n')
+          git -c core.hooksPath=/dev/null -c core.fsmonitor=false \
+            -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $header" \
+            fetch -q "https://github.com/$GITHUB_REPOSITORY" \
+            "+refs/heads/$BASE_BRANCH:refs/remotes/origin/$BASE_BRANCH" || true
+      - name: Merge main into the branch (after segment 1, no GitHub token in this step)
+        if: steps.s1.outputs.more == 'true'
+        env:
+          OPENCODE_API_KEY: ${{ secrets[format('OPENCODE_API_KEY_{0}', inputs.slot)] || secrets.OPENCODE_API_KEY }}
+          BASE_BRANCH: ${{ github.event.repository.default_branch }}
+          MERGE_ATTEMPTS: '3'
+          AGENT_TIMEOUT: 15m
+          SYNC_ONLY: '1'
+        timeout-minutes: 20
+        run: scripts/agent-run.sh merge-main
+      - id: s2
+        name: Work the task, segment 2 of 4 (no GitHub token in this step)
+        if: steps.s1.outputs.more == 'true'
+        env:
+          # Prefer this slot's account, with the team key as a compatibility fallback.
+          OPENCODE_API_KEY: ${{ secrets[format('OPENCODE_API_KEY_{0}', inputs.slot)] || secrets.OPENCODE_API_KEY }}
+          BASE_BRANCH: ${{ github.event.repository.default_branch }}
+          SEGMENT: '2'
+          SEGMENTS: '4'
+          AGENT_TIMEOUT: 45m
+        run: scripts/agent-run.sh implement
+      # Bring main into the branch between segments so the work never drifts far
+      # from it. The only token step after the agent has run is this inline fetch:
+      # it runs no workspace script, ignores repository hooks and sends the
+      # read-only token to github.com only.
+      - name: Fetch main (after segment 2)
+        if: steps.s2.outputs.more == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          header=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 | tr -d '\n')
+          git -c core.hooksPath=/dev/null -c core.fsmonitor=false \
+            -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $header" \
+            fetch -q "https://github.com/$GITHUB_REPOSITORY" \
+            "+refs/heads/$BASE_BRANCH:refs/remotes/origin/$BASE_BRANCH" || true
+      - name: Merge main into the branch (after segment 2, no GitHub token in this step)
+        if: steps.s2.outputs.more == 'true'
+        env:
+          OPENCODE_API_KEY: ${{ secrets[format('OPENCODE_API_KEY_{0}', inputs.slot)] || secrets.OPENCODE_API_KEY }}
+          BASE_BRANCH: ${{ github.event.repository.default_branch }}
+          MERGE_ATTEMPTS: '3'
+          AGENT_TIMEOUT: 15m
+          SYNC_ONLY: '1'
+        timeout-minutes: 20
+        run: scripts/agent-run.sh merge-main
+      - id: s3
+        name: Work the task, segment 3 of 4 (no GitHub token in this step)
+        if: steps.s2.outputs.more == 'true'
+        env:
+          # Prefer this slot's account, with the team key as a compatibility fallback.
+          OPENCODE_API_KEY: ${{ secrets[format('OPENCODE_API_KEY_{0}', inputs.slot)] || secrets.OPENCODE_API_KEY }}
+          BASE_BRANCH: ${{ github.event.repository.default_branch }}
+          SEGMENT: '3'
+          SEGMENTS: '4'
+          AGENT_TIMEOUT: 45m
+        run: scripts/agent-run.sh implement
+      # Bring main into the branch between segments so the work never drifts far
+      # from it. The only token step after the agent has run is this inline fetch:
+      # it runs no workspace script, ignores repository hooks and sends the
+      # read-only token to github.com only.
+      - name: Fetch main (after segment 3)
+        if: steps.s3.outputs.more == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          header=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 | tr -d '\n')
+          git -c core.hooksPath=/dev/null -c core.fsmonitor=false \
+            -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $header" \
+            fetch -q "https://github.com/$GITHUB_REPOSITORY" \
+            "+refs/heads/$BASE_BRANCH:refs/remotes/origin/$BASE_BRANCH" || true
+      - name: Merge main into the branch (after segment 3, no GitHub token in this step)
+        if: steps.s3.outputs.more == 'true'
+        env:
+          OPENCODE_API_KEY: ${{ secrets[format('OPENCODE_API_KEY_{0}', inputs.slot)] || secrets.OPENCODE_API_KEY }}
+          BASE_BRANCH: ${{ github.event.repository.default_branch }}
+          MERGE_ATTEMPTS: '3'
+          AGENT_TIMEOUT: 15m
+          SYNC_ONLY: '1'
+        timeout-minutes: 20
+        run: scripts/agent-run.sh merge-main
+      - id: s4
+        name: Work the task, segment 4 of 4 (no GitHub token in this step)
+        if: steps.s3.outputs.more == 'true'
+        env:
+          # Prefer this slot's account, with the team key as a compatibility fallback.
+          OPENCODE_API_KEY: ${{ secrets[format('OPENCODE_API_KEY_{0}', inputs.slot)] || secrets.OPENCODE_API_KEY }}
+          BASE_BRANCH: ${{ github.event.repository.default_branch }}
+          SEGMENT: '4'
+          SEGMENTS: '4'
+          AGENT_TIMEOUT: 40m
+        run: scripts/agent-run.sh implement
+      # Last look at main right before publishing (same hardened inline fetch).
+      - name: Fetch main (final)
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          header=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 | tr -d '\n')
+          git -c core.hooksPath=/dev/null -c core.fsmonitor=false \
+            -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $header" \
+            fetch -q "https://github.com/$GITHUB_REPOSITORY" \
+            "+refs/heads/$BASE_BRANCH:refs/remotes/origin/$BASE_BRANCH" || true
       - name: Merge main and fix conflicts (no GitHub token in this step)
         if: always()
         env:
