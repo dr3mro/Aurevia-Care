@@ -1,5 +1,6 @@
 import { tenantKey } from './tenancy';
 import type {
+  DeviceState,
   DeviceToken,
   InvalidTokenEvent,
   InvalidTokenReason,
@@ -9,20 +10,27 @@ import type {
 /**
  * List devices eligible for dispatch at this moment.
  *
- * Only active devices in the active organization are returned; invalid and
- * revoked registrations are excluded on every evaluation, never cached.
+ * Only active devices of the verified patient in the active organization are
+ * returned; another patient's device in the same tenant is never a recipient,
+ * and invalid or revoked registrations are excluded on every evaluation, never
+ * cached.
  *
  * @param devices tenant-keyed device registry
  * @param organizationId active organization
- * @returns deliverable registrations
+ * @param patientId verified patient whose devices may receive a push
+ * @returns deliverable registrations for this patient
  */
 export function eligibleTokens(
   devices: ReadonlyMap<string, DeviceToken>,
   organizationId: OrganizationId,
+  patientId: string,
 ): DeviceToken[] {
   const prefix = `${organizationId}\u0000`;
   return [...devices.entries()]
-    .filter(([key, token]) => key.startsWith(prefix) && token.state === 'active')
+    .filter(
+      ([key, token]) =>
+        key.startsWith(prefix) && token.patientId === patientId && token.state === 'active',
+    )
     .map(([, token]) => token);
 }
 
@@ -53,6 +61,66 @@ export function invalidateToken(
     token: { ...token, state: 'invalid' },
     event: { deviceId: token.id, patientId: token.patientId, reason, at },
   };
+}
+
+/**
+ * Persist a device state change under its active tenant key.
+ *
+ * A key that does not exist in this organization is left unchanged, so a
+ * guessed device id cannot create a registration or mutate a peer tenant.
+ *
+ * @param devices tenant-keyed registry to update
+ * @param organizationId active organization
+ * @param deviceId organization-local device identifier
+ * @param state new delivery state
+ * @returns a new registry containing the updated registration
+ */
+function withDeviceState(
+  devices: ReadonlyMap<string, DeviceToken>,
+  organizationId: OrganizationId,
+  deviceId: string,
+  state: DeviceState,
+): Map<string, DeviceToken> {
+  const key = tenantKey(organizationId, deviceId);
+  const current = devices.get(key);
+  if (!current) {
+    return new Map(devices);
+  }
+  const next = new Map(devices);
+  next.set(key, { ...current, state });
+  return next;
+}
+
+/**
+ * Persist a patient's revocation so the device stops receiving future pushes.
+ *
+ * @param devices tenant-keyed registry to update
+ * @param organizationId active organization
+ * @param deviceId organization-local device identifier
+ * @returns a new registry with the device revoked when it is in this tenant
+ */
+export function withRevokedDevice(
+  devices: ReadonlyMap<string, DeviceToken>,
+  organizationId: OrganizationId,
+  deviceId: string,
+): Map<string, DeviceToken> {
+  return withDeviceState(devices, organizationId, deviceId, 'revoked');
+}
+
+/**
+ * Persist a provider rejection so the device stops receiving future pushes.
+ *
+ * @param devices tenant-keyed registry to update
+ * @param organizationId active organization
+ * @param deviceId organization-local device identifier
+ * @returns a new registry with the device invalid when it is in this tenant
+ */
+export function withInvalidatedDevice(
+  devices: ReadonlyMap<string, DeviceToken>,
+  organizationId: OrganizationId,
+  deviceId: string,
+): Map<string, DeviceToken> {
+  return withDeviceState(devices, organizationId, deviceId, 'invalid');
 }
 
 /**

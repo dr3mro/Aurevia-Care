@@ -22,6 +22,13 @@ describe('deriveConfirmation', () => {
     expect(deriveConfirmation(booked, false)).toEqual({ kind: 'unavailable', confirmedAt: null });
   });
 
+  it('is unavailable when the server marked this appointment non-confirmable even if the site flag is set', () => {
+    expect(deriveConfirmation({ ...booked, confirmationEnabled: false }, true)).toEqual({
+      kind: 'unavailable',
+      confirmedAt: null,
+    });
+  });
+
   it('is unavailable for a status past confirmation', () => {
     expect(deriveConfirmation({ ...booked, status: 'checked_in' }, true)).toEqual({
       kind: 'unavailable',
