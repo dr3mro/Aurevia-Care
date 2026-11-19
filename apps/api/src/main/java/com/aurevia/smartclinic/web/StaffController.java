@@ -17,8 +17,8 @@ import com.aurevia.smartclinic.staff.StaffService;
 /**
  * Thin HTTP adapter for tenant staff lifecycle administration.
  *
- * <p>All authorization and history invariants live in {@link StaffService}; this
- * adapter only maps outcomes to status codes and headers.</p>
+ * <p>All authorization and history invariants live in the staff domain service;
+ * this adapter only maps outcomes to status codes and headers.</p>
  */
 @RestController
 @RequestMapping("/api/v1/staff")
