@@ -49,4 +49,4 @@ For every loop stage append one compact row. Update MEMORY.md's checkpoint point
 
 Resolved by user decision 2026-11-19: keep the NVD key; no rotation and no history purge. No force-push or history rewrite was performed. Residual risk: the full literal remains in published commits 589c7d4 and 57efab8; the current tree is clean and the secret is supplied only through the `NVD_API_KEY` environment variable.
 
-Next story: S-G0-02 — staff lifecycle and immutable membership history (IAM-02). Acceptance focus: invite/deactivate, effective dates, immutable grantor history, permission change on next protected request.
+Next work: remaining S-G0-03 slices (catalogs, broader audit query, OPS-06 infrastructure beyond migration checks), then S-G0-04 isolation across search, files, workers and exports.
