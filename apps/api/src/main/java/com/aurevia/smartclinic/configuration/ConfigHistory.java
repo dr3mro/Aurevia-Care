@@ -1,0 +1,31 @@
+package com.aurevia.smartclinic.configuration;
+
+import java.util.List;
+
+/**
+ * Immutable version history of one configuration key in the active organization.
+ *
+ * @param key     tenant-local configuration key
+ * @param entries all versions with their approval facts, ordered by version
+ */
+public record ConfigHistory(String key, List<ConfigEntry> entries) {
+
+    /**
+     * Freeze the history list so callers cannot mutate an append-only trail in memory.
+     *
+     * @throws NullPointerException when entries is null
+     */
+    public ConfigHistory {
+        entries = List.copyOf(entries);
+    }
+
+    /**
+     * Return the immutable version list.
+     *
+     * @return versions in ascending version order
+     */
+    @Override
+    public List<ConfigEntry> entries() {
+        return List.copyOf(entries);
+    }
+}

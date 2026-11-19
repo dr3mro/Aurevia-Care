@@ -24,6 +24,9 @@ PATTERNS = {
     "hard-coded NVD credential": re.compile(
         r"nvdApiKey(?:EnvironmentVariable)?\s*>\s*[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-"
         r"[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"),
+    "NVD credential in note": re.compile(
+        r"(?i)nvd[ _-]?key.{0,80}\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-"
+        r"[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b"),
 }
 
 
