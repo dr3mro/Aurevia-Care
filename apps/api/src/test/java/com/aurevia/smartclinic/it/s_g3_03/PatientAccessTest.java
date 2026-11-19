@@ -57,6 +57,7 @@ class PatientAccessTest {
     private static final String OTHER_CHART = "cccccccc-cccc-cccc-cccc-cccccccccccc";
     private static final String SUBJECT_A = "syn-patient-a";
     private static final String SUBJECT_B = "syn-patient-b";
+    private static final String SUBJECT_PEER = "syn-patient-peer";
     private static final String FACTS = "site-verified-facts";
     private static final String CONTACT = "syn-contact";
 
@@ -312,6 +313,56 @@ class PatientAccessTest {
         PatientAccount unlocked = service.unlock(adminA, account.id());
         assertEquals(AccountState.ACTIVE, unlocked.state());
         assertEquals(0, unlocked.failedAttempts());
+    }
+
+    @Test
+    void patientCannotRecoverAnotherPatientsAccountEvenWithAValidCode() {
+        PatientAccount ownAccount = enrollAccount();
+        PatientAccount peer = enrollPeerAccount();
+        assertNotEquals(ownAccount.id(), peer.id());
+
+        // The code is bound to patientA's subject. Supplying a peer account id
+        // must still be denied: role and token checks alone are not object
+        // authorization (PRD-03 self-access, IAM-01 domain authorization).
+        var ownCode = service.issueRecovery(privacyA, ownAccount.id());
+        assertApi(404, "NOT_FOUND", () -> service.recover(patientA,
+                new RecoverRequest(peer.id(), ownCode.token(), FACTS)));
+        assertFalse(store.token(ORG_A, ownCode.token()).orElseThrow().used());
+        assertEquals(0, store.account(ORG_A, peer.id()).orElseThrow().failedAttempts());
+        assertNotOwnerAudited();
+
+        // Positive control: the same code still restores the owner's account.
+        assertEquals(AccountState.ACTIVE, service.recover(patientA,
+                new RecoverRequest(ownAccount.id(), ownCode.token(), FACTS)).state());
+        assertTrue(store.token(ORG_A, ownCode.token()).orElseThrow().used());
+    }
+
+    @Test
+    void patientCannotApplySensitiveChangeOrCheckAccessOnAnotherPatientsAccount() {
+        PatientAccount ownAccount = enrollAccount();
+        PatientAccount peer = enrollPeerAccount();
+
+        // patientA holds valid step-up tokens for their own account, but the
+        // caller-supplied accountId points at a peer in the same tenant.
+        assertApi(404, "NOT_FOUND", () -> service.sensitiveChange(patientA, new SensitiveChangeRequest(
+                peer.id(), SensitiveAction.UNLINK_CHART,
+                reauthToken(SensitiveAction.UNLINK_CHART.wire()), CHART_B)));
+        assertEquals(Set.of(CHART_B), store.account(ORG_A, peer.id()).orElseThrow().linkedChartIds());
+
+        assertApi(404, "NOT_FOUND", () -> service.sensitiveChange(patientA, new SensitiveChangeRequest(
+                peer.id(), SensitiveAction.CHANGE_CONTACT,
+                reauthToken(SensitiveAction.CHANGE_CONTACT.wire()), CONTACT)));
+        assertEquals(peer.contactDigest(), store.account(ORG_A, peer.id()).orElseThrow().contactDigest());
+
+        assertApi(404, "NOT_FOUND", () -> service.checkChartAccess(patientA, peer.id(), CHART_B));
+        assertEquals(3, store.audit(ORG_A).stream()
+                .filter(event -> event.eventType() == EventType.ACCESS_DENIED
+                        && "not_owner".equals(event.detail()))
+                .count());
+        // Positive control: the owner can still unlink their own chart after step-up.
+        assertEquals(Set.of(), service.sensitiveChange(patientA, new SensitiveChangeRequest(
+                ownAccount.id(), SensitiveAction.UNLINK_CHART,
+                reauthToken(SensitiveAction.UNLINK_CHART.wire()), CHART_A)).linkedChartIds());
     }
 
     @Test
@@ -594,6 +645,22 @@ class PatientAccessTest {
     private PatientAccount enrollAccount() {
         Invitation invitation = issue(staffA, CHART_A, FACTS);
         return service.enroll(patientA, new EnrollRequest(invitation.code(), FACTS));
+    }
+
+    /** A second verified account inside ORG_A with the same synthetic facts. */
+    private PatientAccount enrollPeerAccount() {
+        Invitation invitation = issue(staffA, CHART_B, FACTS);
+        return service.enroll(peerActor(), new EnrollRequest(invitation.code(), FACTS));
+    }
+
+    private static Actor peerActor() {
+        return Actor.of(ORG_A, SUBJECT_PEER, EnrollmentActions.PATIENT);
+    }
+
+    private void assertNotOwnerAudited() {
+        assertTrue(store.audit(ORG_A).stream()
+                .anyMatch(event -> event.eventType() == EventType.ACCESS_DENIED
+                        && "not_owner".equals(event.detail())));
     }
 
     private Invitation issue(Actor staff, String chart, String facts) {
