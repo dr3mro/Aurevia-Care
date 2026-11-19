@@ -1,12 +1,13 @@
 name: Main watchdog
-# Watches the Delivery workflow on main. When it fails, starts one repair worker
-# with the failing log. The fix goes through the same branch, integration check
-# and merge path as any other swarm work. It stops after three tries in 24 hours
-# and opens an issue for a person. The fix is a pull request labeled autofix that
-# is never merged automatically: you review it and press merge.
+# Watches Delivery, Heavy verification and the image builds on main. When one
+# fails, starts one repair worker with the failing log. The fix is a pull request
+# labeled autofix that the integrator merges once the fast gate passes, then
+# Delivery runs again on main; a fix that did not work starts the next repair.
+# Workflow, script and agent-file fixes still wait for a person. It stops after
+# three tries in 24 hours and opens an issue.
 on:
   workflow_run:
-    workflows: [Delivery, Heavy verification]
+    workflows: [Delivery, Heavy verification, Agent image, Swarm slot images]
     types: [completed]
     branches: [main]
 permissions:

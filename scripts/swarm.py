@@ -18,6 +18,8 @@ from pathlib import Path
 
 MARK = "<!-- swarm-integrator -->"
 MAX_FIX = 3
+# A task a swarm worker has taken this many times without finishing waits for a person.
+MAX_ATTEMPTS = 3
 BODY_LIMIT = 8000
 # Default monthly runner-minute cap for all swarm-related workflows. The guard
 # estimates usage from finished run durations and refuses a wave near the cap.
@@ -27,7 +29,7 @@ BUDGET_WORKFLOWS = ("swarm.yml", "swarm-integrator.yml", "heavy-check.yml",
 BRANCH = re.compile(r"swarm/[A-Za-z0-9._-]+")
 LABELS = {
     "swarm": ("1d76db", "Pull request opened by a swarm worker"),
-    "autofix": ("0e8a16", "Automatic repair of a failed main run; a person reviews and merges it"),
+    "autofix": ("0e8a16", "Automatic repair of a failed main run"),
     "needs-fix": ("d93f0b", "Integration failed; a worker should fix it"),
     "needs-human": ("b60205", "Swarm stopped; a person must decide"),
     "fix-1": ("ededed", "Fix attempt 1"), "fix-2": ("ededed", "Fix attempt 2"),
@@ -142,7 +144,7 @@ def parse_tasks(text):
             close()
             current = {"id": entry.group(2), "task": entry.group(3), "status": STATUS[entry.group(1)],
                        "requirements": "", "depends": "", "scope": "", "reserved": "", "aliases": "",
-                       "pr": "", "agent": "", "evidence": ""}
+                       "pr": "", "agent": "", "evidence": "", "attempts": ""}
             body, in_details = [], False
         elif current is not None and line and not line.startswith(" "):
             close()
@@ -160,6 +162,11 @@ def parse_tasks(text):
     return tasks
 
 
+def attempts_of(task):
+    value = task.get("attempts", "")
+    return int(value) if str(value).isdigit() else 0
+
+
 def set_task_status(text, task_id, status, pr="", agent="", evidence=""):
     """Change one entry's mark and its agent, pr and evidence fields. Other entries are untouched."""
     lines = text.splitlines()
@@ -173,18 +180,21 @@ def set_task_status(text, task_id, status, pr="", agent="", evidence=""):
         end += 1
     while end > start + 1 and not lines[end - 1]:
         end -= 1
-    drop = {"agent", "pr"} | ({"evidence"} if evidence else set())
-    kept, in_details = [], False
+    drop = {"agent", "pr"} | ({"evidence"} if evidence else set()) | ({"attempts"} if status == "taken" else set())
+    kept, in_details, tries = [], False, 0
     for line in lines[start + 1:end]:
         field = FIELD.match(line)
         if field and field.group(1) == "details":
             in_details = True
+        if field and not in_details and field.group(1) == "attempts":
+            tries = attempts_of({"attempts": field.group(2)})
         if field and not in_details and field.group(1) in drop:
             continue
         kept.append(line)
     fresh = [f"  - {k}: {v}" for k, v in (("agent", agent if status == "taken" else ""),
                                           ("pr", pr if status == "done" else ""),
-                                          ("evidence", evidence)) if v]
+                                          ("evidence", evidence),
+                                          ("attempts", tries + 1 if status == "taken" else 0)) if v]
     lines[start + 1:end] = fresh + kept
     return "\n".join(lines) + "\n"
 
@@ -281,7 +291,8 @@ def plan_workers(max_workers, slots, text, open_prs, repair=None):
     in_flight = {task_id_of(p["headRefName"]) for p in open_prs}
     done = {name for t in tasks if t["status"] == "done" for name in (t["id"], *t["aliases"])}
     for task in tasks:
-        if task["status"] != "todo" or not task["scope"] or task["id"] in in_flight:
+        if task["status"] != "todo" or not task["scope"] or task["id"] in in_flight \
+                or attempts_of(task) >= MAX_ATTEMPTS:
             continue
         if not set(task["depends"]) <= done:
             continue
@@ -338,8 +349,9 @@ def publish(task, directory):
                     f"Agent result: {result}.\n\n{clip(notes)}")
             repair = task["id"].startswith("FIX-")
             if repair:
-                body = ("**Automatic repair of a failed run on main.** Review the diff and merge it "
-                        "to turn main green; it is never merged automatically.\n\n" + body)
+                body = ("**Automatic repair of a failed run on main.** The integrator merges it "
+                        "once the fast gate passes; changes to workflow, script or agent files wait "
+                        "for a person.\n\n" + body)
             gh("pr", "create", "--base", os.environ.get("BASE_BRANCH", "main"), "--head", branch,
                "--title", f"{task['id']}: {task['title']}", "--body", body, "--label", "swarm",
                *(["--label", "autofix"] if repair else []),
@@ -390,15 +402,14 @@ def main_is_red(workflow="delivery.yml"):
 
 
 def plan_integration(red=False):
-    """Pull requests ready to integrate, oldest first. Repair pull requests (FIX-)
-    are never merged here: a person reviews and merges them. While main is red
-    nothing else merges, so ordinary work is not blamed for it."""
+    """Pull requests ready to integrate, oldest first. While main is red only
+    repair pull requests (FIX-) may merge, so ordinary work is not blamed for it."""
     prs = gh_json("pr", "list", "--state", "open", "--label", "swarm", "--limit", "50",
                   "--json", "number,title,labels,isCrossRepository")
     blocked = {"needs-fix", "needs-human"}
     return [p["number"] for p in sorted(prs, key=lambda p: p["number"])
             if not p["isCrossRepository"] and not blocked & label_names(p)
-            and not p.get("title", "").startswith("FIX-") and not red]
+            and (not red or p.get("title", "").startswith("FIX-"))]
 
 
 def repair_task(run_id):
@@ -527,6 +538,20 @@ def dispatch_heavy():
     gh("workflow", "run", "heavy-check.yml", "--ref", "main", check=False)
 
 
+def dispatch_delivery():
+    """Re-run Delivery on main so a merge (including a repair) is verified and a still-red main wakes the watchdog."""
+    gh("workflow", "run", "delivery.yml", "--ref", "main", check=False)
+
+
+def continue_swarm(text, prs):
+    """True when another wave has work and nothing is waiting for the integrator,
+    which starts the next wave itself after it merges."""
+    ready = plan_workers(1, [{"slot": 1, "model": ""}], text, prs)
+    waiting = [p for p in prs if not p["isCrossRepository"]
+               and not {"needs-fix", "needs-human"} & label_names(p)]
+    return bool(ready) and not waiting
+
+
 def run_gate(gate):
     """Run the fast gate on the current merge. Returns (ok, log tail)."""
     # Agent-written code is already merged locally at this point. Strip every
@@ -576,6 +601,7 @@ def integrate_batch(queue, gate="scripts/quick-check.sh"):
     for (pr, _, _), comment in zip(merged, comments):
         gh("pr", "comment", str(pr), "--body", comment)
     dispatch_heavy()
+    dispatch_delivery()
     emit("merged", len(merged))
     return len(merged)
 
@@ -608,6 +634,8 @@ def main(argv=None):
     p.add_argument("--slots", default=".github/swarm/slots.json")
     p.add_argument("--file", default="TODO.md")
     p.add_argument("--repair-run", default="")
+    p = sub.add_parser("continue")
+    p.add_argument("--file", default="TODO.md")
     p = sub.add_parser("repair-gate")
     p.add_argument("--run", required=True)
     for name in ("release", "publish"):
@@ -653,6 +681,13 @@ def main(argv=None):
         update_todo(mark, f"Take {len(claims)} task(s) for the swarm", a.file)
         emit("matrix", json.dumps({"include": include}, separators=(",", ":")))
         emit("count", len(include))
+    elif a.cmd == "continue":
+        prs = gh_json("pr", "list", "--state", "open", "--label", "swarm", "--limit", "100",
+                      "--json", "number,title,headRefName,isCrossRepository,labels,comments") or []
+        go = continue_swarm(Path(a.file).read_text(), prs)
+        print("Starting the next wave." if go else "No further wave to start now.")
+        if go:
+            gh("workflow", "run", "swarm.yml", "--ref", "main", check=False)
     elif a.cmd == "release":
         release(json.loads(a.task), a.result, a.commits)
     elif a.cmd == "publish":
