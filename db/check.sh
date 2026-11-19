@@ -38,7 +38,8 @@ DO $$
 DECLARE t text; n integer;
 BEGIN
   FOREACH t IN ARRAY ARRAY['organization','user_identity','facility',
-                           'membership','role_assignment','audit_event']
+                           'membership','role_assignment','audit_event',
+                           'config_entry','config_approval']
   LOOP
     SELECT count(*) INTO n FROM pg_class
      WHERE oid = ('public.' || t)::regclass AND relrowsecurity AND relforcerowsecurity;
@@ -58,7 +59,8 @@ BEGIN
     SELECT 1 FROM pg_class c JOIN pg_roles r ON r.oid = c.relowner
      WHERE r.rolname = 'smartclinic_app'
        AND c.relname IN ('organization','user_identity','facility',
-                         'membership','role_assignment','audit_event')) THEN
+                         'membership','role_assignment','audit_event',
+                         'config_entry','config_approval')) THEN
     RAISE EXCEPTION 'smartclinic_app owns a tenant table';
   END IF;
   IF public.app_org() IS NOT NULL THEN
@@ -148,9 +150,13 @@ INSERT INTO public.role_assignment (organization_id, membership_id, role_key, gr
   FROM public.membership m
   JOIN public.user_identity u ON u.organization_id = m.organization_id AND u.id = m.user_id
   WHERE u.subject = 'admin-a';
+INSERT INTO public.config_entry (organization_id, key, version, value)
+  VALUES (:'a', 'check.policy', 1, 'seed');
+INSERT INTO public.config_approval (organization_id, entry_id, note)
+  SELECT :'a', id, 'seed approval' FROM public.config_entry WHERE key = 'check.policy';
 SQL
 
-for t in user_identity membership role_assignment; do
+for t in user_identity membership role_assignment config_entry config_approval; do
   if "${mig[@]}" -v a="$org_a" <<SQL >/dev/null 2>&1
 SET app.current_org = :'a';
 UPDATE public.$t SET organization_id = organization_id WHERE organization_id = :'a';
@@ -174,7 +180,8 @@ done
 DO $$
 DECLARE t text;
 BEGIN
-  FOREACH t IN ARRAY ARRAY['user_identity','membership','role_assignment']
+  FOREACH t IN ARRAY ARRAY['user_identity','membership','role_assignment',
+                           'config_entry','config_approval']
   LOOP
     IF has_table_privilege('smartclinic_app','public.'||t,'UPDATE')
        OR has_table_privilege('smartclinic_app','public.'||t,'DELETE')
@@ -240,4 +247,72 @@ SQL
 )
 [[ "$roles" == "0" ]] || { printf 'fail: appended revoke left stale roles\n' >&2; exit 1; }
 
-printf 'db: migrations, forced RLS, role separation, isolation, audit and append-only staff history verified\n'
+# 10. Configuration versions are actor-derived, monotonic and folded on approval.
+if "${mig[@]}" -v a="$org_a" <<'SQL' >/dev/null 2>&1
+SET app.current_org = :'a';
+INSERT INTO public.config_entry (organization_id, key, version, value)
+  VALUES (:'a', 'missing.actor', 1, 'x');
+SQL
+then
+  printf 'fail: config entry accepted without app.actor\n' >&2
+  exit 1
+fi
+
+"${mig[@]}" -v a="$org_a" <<'SQL' >/dev/null
+SET app.current_org = :'a';
+SET app.actor = 'admin-a';
+INSERT INTO public.config_entry (organization_id, key, version, value, effective_from)
+  VALUES (:'a', 'check.fold', public.next_config_version('check.fold'), 'old', now() - interval '2 days');
+INSERT INTO public.config_entry (organization_id, key, version, value, effective_from)
+  VALUES (:'a', 'check.fold', public.next_config_version('check.fold'), 'new', now() - interval '1 day');
+INSERT INTO public.config_entry (organization_id, key, version, value, effective_from)
+  VALUES (:'a', 'check.fold', public.next_config_version('check.fold'), 'future', now() + interval '1 day');
+SQL
+
+versions=$("${app[@]}" -v a="$org_a" <<'SQL'
+SET app.current_org = :'a';
+SELECT string_agg(version::text, ',' ORDER BY version) FROM public.config_entry WHERE key = 'check.fold';
+SQL
+)
+[[ "$versions" == "1,2,3" ]] || { printf 'fail: config versions %s\n' "$versions" >&2; exit 1; }
+fold=$("${app[@]}" -v a="$org_a" <<'SQL'
+SET app.current_org = :'a';
+SELECT count(*) FROM public.effective_config('check.fold');
+SQL
+)
+[[ "$fold" == "0" ]] || { printf 'fail: unapproved config leaked into fold\n' >&2; exit 1; }
+
+"${mig[@]}" -v a="$org_a" <<'SQL' >/dev/null
+SET app.current_org = :'a';
+SET app.actor = 'admin-a';
+INSERT INTO public.config_approval (organization_id, entry_id, note)
+  SELECT :'a', id, 'approve old' FROM public.config_entry WHERE key = 'check.fold' AND version = 1;
+INSERT INTO public.config_approval (organization_id, entry_id, note)
+  SELECT :'a', id, 'approve new' FROM public.config_entry WHERE key = 'check.fold' AND version = 2;
+SQL
+
+if "${mig[@]}" -v a="$org_a" <<'SQL' >/dev/null 2>&1
+SET app.current_org = :'a';
+SET app.actor = 'admin-a';
+INSERT INTO public.config_approval (organization_id, entry_id, note)
+  SELECT :'a', id, 'duplicate' FROM public.config_entry WHERE key = 'check.fold' AND version = 2;
+SQL
+then
+  printf 'fail: duplicate config approval accepted\n' >&2
+  exit 1
+fi
+
+fold=$("${app[@]}" -v a="$org_a" <<'SQL'
+SET app.current_org = :'a';
+SELECT value FROM public.effective_config('check.fold');
+SQL
+)
+[[ "$fold" == "new" ]] || { printf 'fail: effective config was %s\n' "$fold" >&2; exit 1; }
+fold=$("${app[@]}" -v b="$org_b" <<'SQL'
+SET app.current_org = :'b';
+SELECT count(*) FROM public.effective_config('check.fold');
+SQL
+)
+[[ "$fold" == "0" ]] || { printf 'fail: foreign tenant saw config\n' >&2; exit 1; }
+
+printf 'db: migrations, forced RLS, role separation, isolation, audit, append-only staff history and versioned config verified\n'
