@@ -13,14 +13,17 @@
     "scope": "server_side",
     "excluded": ["document_transfer", "document_rendering", "external_calls"],
     "route_class": {
-      "patients.search": "read",
-      "appointments.list": "read",
-      "catalogs.list": "read",
+      "patient.chart.lookup": "read",
+      "appointment.worklist": "read",
+      "catalog.configuration.read": "read",
       "audit.query": "read",
-      "appointments.book": "command",
-      "encounters.sign": "command",
-      "orders.accept": "command",
-      "results.release": "command"
+      "appointment.booking": "command",
+      "encounter.checkin": "command",
+      "clinical.documentation.sign": "command",
+      "order.transition": "command",
+      "result.reconciliation": "command",
+      "patient.release": "command",
+      "messaging.instruction": "command"
     }
   },
   "results": {
