@@ -240,6 +240,11 @@ class PlanTests(unittest.TestCase):
                 swarm.gh("pr", "edit", "30", "--add-label", "needs-fix")
         self.assertIn("permission denied", stream.getvalue())
 
+    def test_integrator_only_runs_for_successful_swarm_waves(self):
+        text = (ROOT / ".github/workflows/swarm-integrator.yml").read_text()
+        pick = text.split("  pick:\n", 1)[1].split("  integrate:\n", 1)[0]
+        self.assertIn("github.event.workflow_run.conclusion == 'success'", pick)
+
     def test_integrator_gate_is_the_full_check(self):
         text = (ROOT / ".github/workflows/swarm-integrator.yml").read_text()
         self.assertIn("GATE: scripts/check.sh", text)
