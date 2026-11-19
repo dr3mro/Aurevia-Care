@@ -162,8 +162,8 @@ Independent modules scoped to their own paths so workers cannot collide with bac
   - scope: docs/design
   - details:
     Bilingual clinical design-language documentation, in `docs/design` only. No application code. Produce a maintainer-facing design system specification for the staff web and patient app: color and typography tokens, spacing scale, light/dark theming, RTL mirroring rules, local-name and mixed-script display guidance, accessible focus states and WCAG 2.2 AA patterns for forms, tables, dialogs and critical-result banners. Include a token naming contract that CW-004 and CW-005 can adopt later, with a short mapping to requirement IDs (UX-01, PRD-05). Keep every Markdown link valid and every requirement ID defined in the specification. Do NOT touch `apps/`, `db/`, `contracts/`, `.github/`, `scripts/`, root-level `check.sh`, or any shared tracker. Write the requirement IDs and decisions to `.agent/pr-notes.md`.
-- [-] CW-007 · Staff web React appointment and worklist screens (synthetic fixtures)
-  - agent: swarm-1
+- [x] CW-007 · Staff web React appointment and worklist screens (synthetic fixtures)
+  - pr: #30
   - attempts: 3
   - requirements: CLN-01, CLN-02, UX-01
   - depends: CW-004
@@ -239,6 +239,9 @@ Raised by the dispatch-3 run-3 verification. Address in the next authorized chan
 
 - [x] S-FIX-INTEGRATOR-01 · Run the integrator only for successful swarm waves. Failed/cancelled waves publish no PR, but `workflow_run: completed` still triggered three runs per batch. Added a `pick` job guard plus regression test.
   - evidence: `gh run list --workflow=swarm-integrator.yml` showed two failure-triggered runs (`44496897170`, `44496943529`) and one success-triggered run (`44496999654`) within 41 seconds. Guards red then green: 81 swarm tests, 155 total tooling tests OK; all 8 workflow YAMLs parse. Evidence source: GitHub run API plus executed tool commands; no human or clinical evidence.
+
+- [x] S-FIX-FRONTEND-01 · Root frontend gate failed: `tsc` lacked Node types for a staff-web test using `node:fs`, and root `vitest` ran app tests in Node instead of the module's jsdom setup. Added `@types/node` to root tooling, enabled it in `tsconfig.json`, and scoped root `vitest` to `frontend/` tooling tests only.
+  - evidence: CI log showed TS2307 `node:fs`, TS7006 implicit `any`, then 21 jsdom `document is not defined` failures. `bash scripts/frontend-check.sh` exit 0 after fix (root typecheck/lint/format/test green, both module gates green). Evidence source: CI log plus executed tool commands; no human or clinical evidence.
 
 ## One-week execution plan (1 wave per hour)
 
