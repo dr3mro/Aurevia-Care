@@ -553,6 +553,9 @@ Raised by the dispatch-3 run-3 verification. Address in the next authorized chan
 - [x] S-FIX-BRANCH-ID-01 · All 10 swarm workers failed at publish with `refusing unexpected branch name 'swarm/S-G0-06-64'`: `task_id_of()` only recognised one-hyphen IDs (`CW-001`), while new spec stories use multi-hyphen IDs (`S-G0-06`). Fixed the parser to strip only the trailing numeric run suffix; added a regression test covering `CW-001`, `S-G0-06`, `S-G1-02`, `X-01`, `FIX-444`.
   - evidence: user-supplied CI log named all 10 branches; local check confirms each now maps to its task ID; 160 tooling tests OK across three consecutive runs, `quick-check.sh`, `check-docs.py`, `check-secrets.py`, `gen-opencode.py --check` green. Evidence source: CI log plus executed tool commands; no human or clinical evidence.
 
+- [x] S-FIX-WAVE-AMP-01 · Failed workers released claims via `update_todo()`, which committed `TODO.md` with `SWARM_TOKEN`; every such push triggered another `swarm.yml` wave, producing 12 queued waves from 10 failures. Tracker-only commits now carry `[skip ci]`; stale queued waves were cancelled. Added a regression test.
+  - evidence: `gh run list --workflow=swarm.yml` showed 12 pending/in-progress waves; all queued ones cancelled; 161 tooling tests OK. Evidence source: GitHub run API plus executed tool commands; no human or clinical evidence.
+
 ## One-week execution plan (1 wave per hour)
 
 Created 2026-11-19T08:55Z from the open entries above. Horizon: 7 days × 24 hours = 168 hourly wave slots. This plan uses 7 implementation waves; the remaining 161 hourly slots are buffer for `needs-fix` retries, fix PRs, gate re-runs and human approvals.

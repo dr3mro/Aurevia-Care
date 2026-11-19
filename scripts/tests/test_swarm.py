@@ -270,6 +270,10 @@ class PlanTests(unittest.TestCase):
                 self.assertEqual(swarm.task_id_of(branch), expected)
         self.assertEqual(swarm.task_id_of("main"), "")
 
+    def test_tracker_commits_skip_ci_waves(self):
+        source = (ROOT / "scripts/swarm.py").read_text()
+        self.assertIn('"commit", "-qm", f"{message} [skip ci]"', source)
+
     def test_open_spec_tasks_are_dispatchable(self):
         tasks = swarm.parse_tasks((ROOT / "TODO.md").read_text())
         dispatchable = [t for t in tasks
