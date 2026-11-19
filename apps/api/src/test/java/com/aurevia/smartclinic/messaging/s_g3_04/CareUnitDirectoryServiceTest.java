@@ -23,6 +23,7 @@ import com.aurevia.smartclinic.messaging.s_g3_04.MessagingContract.ConnectionCon
 import com.aurevia.smartclinic.messaging.s_g3_04.MessagingContract.ConnectionList;
 import com.aurevia.smartclinic.messaging.s_g3_04.MessagingContract.ConnectionState;
 import com.aurevia.smartclinic.messaging.s_g3_04.MessagingContract.EligibleRelationship;
+import com.aurevia.smartclinic.messaging.s_g3_04.MessagingContract.MessagingAudit;
 import com.aurevia.smartclinic.messaging.s_g3_04.MessagingContract.PatientUnitConnection;
 import com.aurevia.smartclinic.messaging.s_g3_04.MessagingContract.UnitDirectory;
 import com.aurevia.smartclinic.tenant.TenantContext;
@@ -393,6 +394,40 @@ class CareUnitDirectoryServiceTest {
         assertTrue(store.findConnection(ORG, foreign.id()).isEmpty());
         store.revokeConnection(ORG, "unknown", NOW);
         assertEquals(2, store.connectionsFor(ORG, PATIENT).size());
+    }
+
+    @Test
+    void connectDenialIsAuditedWithTheAttemptedAction() {
+        store.unlinkPatient(ORG, SUBJECT, PATIENT);
+        ApiException error = assertThrows(ApiException.class,
+                () -> service.connect(request(PATIENT, UNIT, "order", REFERENCE)));
+        assertEquals(403, error.status());
+        assertEquals(1, store.auditEvents(ORG).size());
+        MessagingAudit audit = store.auditEvents(ORG).get(0);
+        assertEquals(MessagingActions.CONNECTION_CREATE, audit.action());
+        assertEquals("DENIED", audit.outcome());
+    }
+
+    @Test
+    void listConnectionsDenialIsAuditedWithTheAttemptedAction() {
+        store.unlinkPatient(ORG, SUBJECT, PATIENT);
+        assertThrows(ApiException.class, () -> service.listConnections(PATIENT));
+        MessagingAudit audit = store.auditEvents(ORG).get(0);
+        assertEquals(MessagingActions.CONNECTION_LIST, audit.action());
+        assertEquals("DENIED", audit.outcome());
+    }
+
+    @Test
+    void protectedConnectionUseDenialIsAudited() {
+        service.connect(request(PATIENT, UNIT, "order", REFERENCE));
+        ApiException error = assertThrows(ApiException.class,
+                () -> service.requireActiveConnection(PATIENT, OTHER_UNIT));
+        assertEquals(403, error.status());
+        MessagingAudit denial = store.auditEvents(ORG).stream()
+                .filter(audit -> "DENIED".equals(audit.outcome()))
+                .findFirst().orElseThrow();
+        assertEquals("CONNECTION_USE", denial.action());
+        assertEquals(OTHER_UNIT, denial.resourceId());
     }
 
     private void seedOtherSubject() {

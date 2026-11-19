@@ -65,7 +65,7 @@ public class CareUnitDirectoryService {
     public UnitDirectory eligibleUnits() {
         TenantContext context = requireContext();
         authorize(context, MessagingActions.UNIT_LIST, "DIRECTORY");
-        Set<String> charts = verifiedCharts(context);
+        Set<String> charts = verifiedCharts(context, MessagingActions.UNIT_LIST);
         Set<String> unitIds = new LinkedHashSet<>();
         for (String patientId : charts) {
             for (EligibleRelationship relationship : store.relationshipsFor(context.organizationId(), patientId)) {
@@ -105,7 +105,7 @@ public class CareUnitDirectoryService {
             throw deny(context, MessagingActions.CONNECTION_CREATE, unitId, 404, "NOT_FOUND",
                     "patient not found");
         }
-        Set<String> charts = verifiedCharts(context);
+        Set<String> charts = verifiedCharts(context, MessagingActions.CONNECTION_CREATE);
         if (!charts.contains(patientId)) {
             throw deny(context, MessagingActions.CONNECTION_CREATE, unitId, 403, "FORBIDDEN",
                     "the chart is not verified for this account");
@@ -158,7 +158,7 @@ public class CareUnitDirectoryService {
         String id = MessagingInputs.uuid(patientId, "patientId");
         TenantContext context = requireContext();
         authorize(context, MessagingActions.CONNECTION_LIST, id);
-        if (!verifiedCharts(context).contains(id)) {
+        if (!verifiedCharts(context, MessagingActions.CONNECTION_LIST).contains(id)) {
             throw deny(context, MessagingActions.CONNECTION_LIST, id, 404, "NOT_FOUND", "patient not found");
         }
         List<PatientUnitConnection> connections = store.connectionsFor(context.organizationId(), id);
@@ -182,7 +182,8 @@ public class CareUnitDirectoryService {
                         "NOT_FOUND", "connection not found"));
         boolean staffRevoker = store.activeRoles(context.organizationId(), context.subject()).stream()
                 .anyMatch(role -> "tenant_admin".equals(role));
-        if (!staffRevoker && !verifiedCharts(context).contains(current.patientId())) {
+        if (!staffRevoker && !verifiedCharts(context, MessagingActions.CONNECTION_REVOKE)
+                .contains(current.patientId())) {
             throw deny(context, MessagingActions.CONNECTION_REVOKE, id, 404, "NOT_FOUND",
                     "connection not found");
         }
@@ -209,12 +210,13 @@ public class CareUnitDirectoryService {
         String chart = MessagingInputs.uuid(patientId, "patientId");
         String unit = MessagingInputs.uuid(unitId, "unitId");
         TenantContext context = requireContext();
-        if (!store.hasActiveMembership(context.organizationId(), context.subject())
-                || !verifiedCharts(context).contains(chart)
+        authorize(context, MessagingActions.CONNECTION_USE, unit);
+        if (!verifiedCharts(context, MessagingActions.CONNECTION_USE).contains(chart)
                 || store.connectionsFor(context.organizationId(), chart).stream()
                         .noneMatch(connection -> unit.equals(connection.unitId())
                                 && connection.state() == ConnectionState.ACTIVE)) {
-            throw new ApiException(403, "FORBIDDEN", "no active connection for this patient and unit");
+            throw deny(context, MessagingActions.CONNECTION_USE, unit, 403, "FORBIDDEN",
+                    "no active connection for this patient and unit");
         }
     }
 
@@ -231,10 +233,10 @@ public class CareUnitDirectoryService {
         return context;
     }
 
-    private Set<String> verifiedCharts(TenantContext context) {
+    private Set<String> verifiedCharts(TenantContext context, String action) {
         Set<String> charts = store.verifiedPatientCharts(context.organizationId(), context.subject());
         if (charts.isEmpty()) {
-            throw deny(context, MessagingActions.UNIT_LIST, "ACCOUNT", 403, "NO_VERIFIED_CHART",
+            throw deny(context, action, "ACCOUNT", 403, "NO_VERIFIED_CHART",
                     "the account has no verified patient chart");
         }
         return charts;
