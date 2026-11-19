@@ -46,11 +46,11 @@ The core stack follows the included product specification. Select and pin compat
 
 ## Run the delivery loop
 
-> Resume SmartClinic V1 in this repository. Start with WORKSPACE.md and the latest PROGRESS.md checkpoint. Execute each eligible story, WIP one, with test-first implementation and specialist reviews. Save each stage. Commit small verified changes, push to the current approved delivery branch, and verify GitHub checks for the exact SHA. Stop only when the eligible queue is empty or the next step needs unavailable evidence, access or an owner decision. Release tags require separate release authority.
+> Resume SmartClinic V1 in this repository. Start with WORKSPACE.md and TODO.md. Execute each eligible story, WIP one, with test-first implementation and specialist reviews. Save each stage. Commit small verified changes, push to the current approved delivery branch, and verify GitHub checks for the exact SHA. Stop only when the eligible queue is empty or the next step needs unavailable evidence, access or an owner decision. Release tags require separate release authority.
 
 Product Manager turns feedback into outcomes. Product Owner owns priority and story acceptance. Architect and Scrum Master order the work. Senior Software Engineer routes the slice to React, mobile, backend, database, integrations or another relevant expert. Tester defines executable tests, the primary agent runs them, QA reviews evidence independently, and Debugger diagnoses failures. UI/UX and synthetic clinician or unit reviewers exercise the relevant product flows and feed defects and ideas back into the next cycle. The System Designer owns deployment planning, load balancing and scaling. DevSecOps reviews defensive controls. The GitHub Workflow Expert owns delivery pipeline guidance.
 
-Use synthetic review for routine engineering. Record real clinical and unit feedback only from authorized people. Keep one compact checkpoint per stage in PROGRESS.md, point MEMORY.md to it, update WORKSPACE.md when the environment changes, and record defects in BUGS.md. Resume by reading these files and only the specification IDs needed. Track improvement ideas and acceptance in TODO.md.
+Use synthetic review for routine engineering. Record real clinical and unit feedback only from authorized people. Keep each stage's evidence on its TODO.md entry (`[ ]` open, `[-]` taken, `[x]` done), update WORKSPACE.md when the environment changes, and record defects in BUGS.md. Resume by reading these files and only the specification IDs needed. Track improvement ideas and acceptance in TODO.md.
 
 ## Checks, coverage and release
 
@@ -74,7 +74,7 @@ See [docs/TEAM-ACTIONS.md](docs/TEAM-ACTIONS.md) for the prepared-image workflow
 
 ## Agent swarm
 
-See [docs/SWARM.md](docs/SWARM.md) for the 10-worker swarm driven by CLOUDWORKERS.md, its integrator and the main watchdog.
+See [docs/SWARM.md](docs/SWARM.md) for the 10-worker swarm driven by TODO.md, its integrator and the main watchdog.
 
 ## Browse and maintain the code
 

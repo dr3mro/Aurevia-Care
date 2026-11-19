@@ -5,7 +5,7 @@ description: Execute the persistent SmartClinic story, TDD, UAT, CI and release 
 
 # Delivery loop
 
-1. Resume from WORKSPACE.md and the last PROGRESS.md checkpoint. Reconcile branch, dirty files, SHA, running CI and active story. Ask Context Optimizer for a compact file and requirement map. Save discovery.
+1. Resume from WORKSPACE.md and TODO.md (the `[-]` entry you own, otherwise the first `[ ]` entry whose dependencies are `[x]`; mark it `[-]` with your agent name before you start). Reconcile branch, dirty files, SHA, running CI and active story. Ask Context Optimizer for a compact file and requirement map. Save discovery.
 2. Product Manager turns user and unit feedback into outcomes. Product Owner ranks backlog and defines one story with acceptance scenarios. Physician reviews risks when clinically relevant. Architect defines boundaries and data changes. Scrum Master sets WIP one and assigns reviewers. Save the story, plan and routing.
 3. Senior Software Engineer coordinates implementation. Use the development stack and specialist routing table in README-SETUP.md. Route each changed language, framework or runtime boundary to its named senior specialist. Ask for one shared review when multiple specialties overlap. Tester specifies executable checks. Write and run failing tests first. Confirm each meaningful failure is caused by missing behavior. Save red commands and results.
 4. Implement, run green, then refactor and rerun. Use Debugger on failures. Run repository checks, unit, server/database, interface and end-to-end tests as applicable. Record actual commands, coverage, skipped tests and blockers. DevSecOps checks defensive changes and supply chain. System Designer reviews deployment, load balancing, capacity and recovery changes.

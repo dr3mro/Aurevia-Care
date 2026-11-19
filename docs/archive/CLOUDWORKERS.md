@@ -1,6 +1,6 @@
 # Cloud workers task list
 
-The swarm orchestrator reads this file. Each wave it picks `todo` tasks whose dependencies are `done` and whose scopes do not overlap with each other or with open swarm pull requests, and gives one to each free worker slot (at most 10). Workers follow AGENTS.md, CODING_STYLE.md, SMARTCLINIC_V1_SPEC.md and the `.opencode` specialists, commit to their own `swarm/<ID>-<run>` branch and never edit shared trackers. The integrator merges a branch only after the full check passes on the merge result, then marks the task `done` here and adds a PROGRESS.md row. See [docs/SWARM.md](docs/SWARM.md).
+The swarm orchestrator reads this file. Each wave it picks `todo` tasks whose dependencies are `done` and whose scopes do not overlap with each other or with open swarm pull requests, and gives one to each free worker slot (at most 10). Workers follow AGENTS.md, CODING_STYLE.md, SMARTCLINIC_V1_SPEC.md and the `.opencode` specialists, commit to their own `swarm/<ID>-<run>` branch and never edit shared trackers. The integrator merges a branch only after the full check passes on the merge result, then marks the task `done` here and adds a PROGRESS.md row. See [docs/SWARM.md](../SWARM.md).
 
 Columns: `Scope` lists comma-separated path prefixes the worker may change. `Reserved` is the one database migration version the task may add, so parallel tasks never collide. `Status` is `todo`, `done` or `blocked`. The integrator fills `PR`.
 

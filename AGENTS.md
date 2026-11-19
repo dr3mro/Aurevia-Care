@@ -2,11 +2,11 @@
 
 **Read the relevant docs before writing code.** List the repository's Markdown files and read the ones that govern your task (working rules, README/setup, CODING_STYLE.md, docs/WORKFLOW.md, architecture decisions, the maintainer guide and API conventions). Follow the code style and testing guidelines there; `opencode.json` and `.github/opencode.ci.json` also load these files as `instructions` for every agent, including swarm workers.
 
-Read WORKSPACE.md and the current checkpoint in PROGRESS.md first. Read MEMORY.md, BUGS.md and SMARTCLINIC_V1_SPEC.md by relevant IDs. Current code and executed checks are implementation evidence. Preserve unrelated changes. Never include patient data or credentials in agent context, tests, logs or trackers.
+Read WORKSPACE.md and TODO.md first. TODO.md is the single task file: `[ ]` open, `[-]` taken by an agent, `[x]` done. Read MEMORY.md, BUGS.md and SMARTCLINIC_V1_SPEC.md by relevant IDs. Current code and executed checks are implementation evidence. Preserve unrelated changes. Never include patient data or credentials in agent context, tests, logs or trackers.
 
 Use the smartclinic-delivery skill. The primary agent owns edits and history; specialists return bounded findings and patches in their reports. Route each task to its domain specialist. Give specialists only story IDs, paths, acceptance criteria and relevant evidence. Prefer one bounded review per stage; combine independent reviews when useful. Rehydrate from tracking files after context resets. Report unavailable delegation accurately.
 
-Run one story at a time. Save each stage to PROGRESS.md and update MEMORY.md with its current checkpoint pointer and any durable decision. Update WORKSPACE.md when branch, commands or environment changes. Record defects in BUGS.md. Keep unrelated notes out of the active checkpoint.
+Run one story at a time. Take it in TODO.md before you start (change `[ ]` to `[-]` and add `- agent: <name>`), record each stage's evidence on its entry, and mark it `[x]` with `evidence:` and `pr:` only when every gate passes. Put it back to `[ ]` if you stop. Swarm workers never edit TODO.md: the orchestrator marks their task `[-]` and the integrator marks it `[x]`. Update MEMORY.md with any durable decision. Update WORKSPACE.md when branch, commands or environment changes. Record defects in BUGS.md. Keep unrelated notes out of the active checkpoint.
 
 Start with failing acceptance/regression tests, implement the smallest change, then refactor and verify. Apply CODING_STYLE.md. No uncovered production code is permitted by default. Require all applicable gates and observed evidence before calling a commit releasable. Use synthetic fixtures and defensive tests. Follow real-patient approval gates in the specification.
 
@@ -23,7 +23,7 @@ Every user instruction or choice is durable input. Route it to the owning tracke
 | Input or outcome                                         | Owner file                              |
 | -------------------------------------------------------- | --------------------------------------- |
 | Durable directive, policy decision or approved choice    | MEMORY.md (decision, rationale, date)   |
-| Task stage, executed commands, reviewer or test evidence | PROGRESS.md (one compact row per stage) |
+| Task state, executed commands, reviewer or test evidence | TODO.md (marks and `evidence:` on the task entry) |
 | Branch, delivery branch, commands or environment change  | WORKSPACE.md                            |
 | Implementation decision with requirement IDs             | PROJECT.md                              |
 | New story, acceptance change or improvement idea         | TODO.md                                 |
