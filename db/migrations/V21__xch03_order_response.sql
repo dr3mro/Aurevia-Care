@@ -6,11 +6,16 @@
 --
 -- This migration is self-contained: the parallel XCH-01/XCH-02 stories own the
 -- sender order and its workflow/transmission/clinical-review states, so no table
--- from V19/V20 is referenced here. The order code, released checksum and source
--- identifiers are stored as provenance. Every table below is new, so no existing
--- relation is locked or rewritten. Sender-hosted retrieval blocking is
--- represented by the revoked state and the notification record; wiring the
--- sender's own retrieval service is part of the exchange foundation story.
+-- from V19/V20 is referenced here. It also has no creation-time dependency on
+-- any other story's migration: db/check.sh applies V*.sql in filename order
+-- (V21 before V4/V7) while Flyway applies by version, so the local patient
+-- association and append-only guard are enforced by locally defined triggers
+-- that resolve their referenced tables only at write time. The order code,
+-- released checksum and source identifiers are stored as provenance. Every
+-- table below is new, so no existing relation is locked or rewritten.
+-- Sender-hosted retrieval blocking is represented by the revoked state and the
+-- notification record; wiring the sender's own retrieval service is part of the
+-- exchange foundation story.
 --
 -- Forced RLS from V2 applies to all five tables, and every foreign key carries
 -- the organization so a cross-tenant reference cannot resolve. Actor columns
@@ -40,9 +45,7 @@ CREATE TABLE public.xch03_order (
     created_by         uuid NOT NULL,
     created_at         timestamptz NOT NULL DEFAULT now(),
     updated_at         timestamptz NOT NULL DEFAULT now(),
-    PRIMARY KEY (organization_id, id),
-    FOREIGN KEY (organization_id, local_patient_id)
-        REFERENCES public.patient_record(organization_id, id)
+    PRIMARY KEY (organization_id, id)
 );
 
 -- Immutable released-content revisions. previous_revision is a same-tenant,
@@ -135,6 +138,13 @@ CREATE INDEX xch03_event_history_idx
 CREATE INDEX xch03_notification_history_idx
     ON public.xch03_notification (organization_id, order_id, occurred_at, id);
 
+-- Local tenant-context accessor with the same semantics as app_org() from V2,
+-- so these policies can be created before that migration is applied (filename
+-- order puts V21 ahead of V2; Flyway version order puts it after).
+CREATE OR REPLACE FUNCTION public.xch03_app_org() RETURNS uuid
+LANGUAGE sql STABLE SET search_path = pg_catalog
+AS $$ SELECT NULLIF(current_setting('app.current_org', true), '')::uuid $$;
+
 -- Forced row-level security with fail-closed WITH CHECK on every new table.
 DO $$
 DECLARE t text;
@@ -146,8 +156,8 @@ BEGIN
         EXECUTE format('ALTER TABLE public.%I FORCE ROW LEVEL SECURITY', t);
         EXECUTE format(
             $p$CREATE POLICY tenant_isolation ON public.%I
-                 USING (organization_id = public.app_org())
-                 WITH CHECK (organization_id = public.app_org())$p$, t);
+                 USING (organization_id = public.xch03_app_org())
+                 WITH CHECK (organization_id = public.xch03_app_org())$p$, t);
     END LOOP;
 END $$;
 
@@ -168,6 +178,43 @@ BEGIN
     NEW.actor_id := v_actor;
     RETURN NEW;
 END $$;
+
+-- Append-only ledger guard owned by this migration. A locally named function
+-- keeps V21 independent of the shared helper introduced by another story's
+-- migration file (which may not exist yet under filename-order application).
+CREATE OR REPLACE FUNCTION public.reject_xch03_immutable_mutation()
+RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog
+AS $$
+BEGIN
+    IF TG_OP = 'TRUNCATE' THEN
+        RAISE EXCEPTION '% is append-only (TRUNCATE)', TG_TABLE_NAME USING ERRCODE = '44000';
+    END IF;
+    RAISE EXCEPTION '% is append-only (%; organization_id=%)',
+        TG_TABLE_NAME, TG_OP, OLD.organization_id USING ERRCODE = '44000';
+END $$;
+
+-- A locally verified patient association must resolve inside the active tenant.
+-- It is checked at write time instead of by a table-level foreign key so V21
+-- does not depend on the patient-registration migration's filename position;
+-- plpgsql resolves public.patient_record when the trigger fires, after all
+-- migrations have been applied.
+CREATE OR REPLACE FUNCTION public.validate_xch03_local_patient()
+RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog
+AS $$
+BEGIN
+    IF NEW.local_patient_id IS NOT NULL AND NOT EXISTS (
+        SELECT 1 FROM public.patient_record p
+         WHERE p.organization_id = NEW.organization_id
+           AND p.id = NEW.local_patient_id) THEN
+        RAISE EXCEPTION 'xch03 local patient must be a verified patient of the active tenant'
+            USING ERRCODE = '23503';
+    END IF;
+    RETURN NEW;
+END $$;
+
+CREATE TRIGGER xch03_order_patient_check
+    BEFORE INSERT OR UPDATE ON public.xch03_order
+    FOR EACH ROW EXECUTE FUNCTION public.validate_xch03_local_patient();
 
 -- The current projection may advance state and version only. Ownership, the
 -- released checksum and the original author are pinned, and no row may be
@@ -205,10 +252,10 @@ BEGIN
     LOOP
         EXECUTE format($d$CREATE TRIGGER %I_no_update_delete
             BEFORE UPDATE OR DELETE ON public.%I
-            FOR EACH ROW EXECUTE FUNCTION public.reject_immutable_mutation()$d$, t, t);
+            FOR EACH ROW EXECUTE FUNCTION public.reject_xch03_immutable_mutation()$d$, t, t);
         EXECUTE format($d$CREATE TRIGGER %I_no_truncate
             BEFORE TRUNCATE ON public.%I
-            FOR EACH STATEMENT EXECUTE FUNCTION public.reject_immutable_mutation()$d$, t, t);
+            FOR EACH STATEMENT EXECUTE FUNCTION public.reject_xch03_immutable_mutation()$d$, t, t);
         EXECUTE format($d$CREATE TRIGGER %I_actor_from_actor
             BEFORE INSERT ON public.%I
             FOR EACH ROW EXECUTE FUNCTION public.set_xch03_actor_from_actor()$d$, t, t);
@@ -217,15 +264,16 @@ END $$;
 
 CREATE TRIGGER xch03_order_no_delete
     BEFORE DELETE ON public.xch03_order
-    FOR EACH ROW EXECUTE FUNCTION public.reject_immutable_mutation();
+    FOR EACH ROW EXECUTE FUNCTION public.reject_xch03_immutable_mutation();
 CREATE TRIGGER xch03_order_no_truncate
     BEFORE TRUNCATE ON public.xch03_order
-    FOR EACH STATEMENT EXECUTE FUNCTION public.reject_immutable_mutation();
+    FOR EACH STATEMENT EXECUTE FUNCTION public.reject_xch03_immutable_mutation();
 CREATE TRIGGER xch03_order_update_guard
     BEFORE UPDATE ON public.xch03_order
     FOR EACH ROW EXECUTE FUNCTION public.guard_xch03_order_update();
 
 -- Least privilege for the runtime role. No DELETE or TRUNCATE on any table.
+GRANT EXECUTE ON FUNCTION public.xch03_app_org() TO smartclinic_app;
 GRANT SELECT, INSERT, UPDATE ON public.xch03_order TO smartclinic_app;
 GRANT SELECT, INSERT ON public.xch03_revision, public.xch03_retained_copy,
                        public.xch03_event, public.xch03_notification TO smartclinic_app;
@@ -234,3 +282,5 @@ REVOKE UPDATE, DELETE, TRUNCATE ON public.xch03_revision, public.xch03_retained_
 REVOKE DELETE, TRUNCATE ON public.xch03_order FROM smartclinic_app;
 REVOKE ALL ON FUNCTION public.set_xch03_actor_from_actor() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.guard_xch03_order_update() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.reject_xch03_immutable_mutation() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.validate_xch03_local_patient() FROM PUBLIC;

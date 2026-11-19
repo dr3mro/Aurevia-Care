@@ -342,8 +342,12 @@ public class Xch03Repository {
 
     private static Revision mapRevision(ResultSet resultSet, int rowNumber) throws SQLException {
         int previous = resultSet.getInt("previous_revision");
+        // wasNull() must be read immediately after the column it describes; the
+        // original order read "revision" here and never mapped a linked change's
+        // first revision to the documented unknown previousRevision.
+        Integer previousRevision = resultSet.wasNull() ? null : previous;
         return new Revision(resultSet.getString("id"), resultSet.getInt("revision"),
-                resultSet.wasNull() ? null : previous, resultSet.getString("content_checksum"),
+                previousRevision, resultSet.getString("content_checksum"),
                 resultSet.getString("change_summary"), resultSet.getString("actor_id"),
                 instant(resultSet, "occurred_at"));
     }
