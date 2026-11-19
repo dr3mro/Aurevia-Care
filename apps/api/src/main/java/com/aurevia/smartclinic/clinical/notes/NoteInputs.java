@@ -126,20 +126,29 @@ public final class NoteInputs {
     /**
      * Parse an effective instant, defaulting to the injected clock.
      *
+     * <p>A future instant is rejected: V15 requires {@code signed_at >= effective_at},
+     * so a future-effective draft could never be signed and the irreversible sign
+     * command would otherwise fail with an unhandled database error.</p>
+     *
      * @param value supplied ISO-8601 instant, possibly absent
      * @param now   authoritative instant from the application clock
      * @return the effective instant as ISO-8601 text
-     * @throws ApiException when a supplied instant is malformed
+     * @throws ApiException when a supplied instant is malformed or in the future
      */
     public static String instantOrNow(String value, Instant now) {
         if (value == null) {
             return now.toString();
         }
+        Instant parsed;
         try {
-            return Instant.parse(value).toString();
+            parsed = Instant.parse(value);
         } catch (DateTimeParseException exception) {
             throw new ApiException(422, "INVALID_EFFECTIVE_AT", "effectiveAt must be an ISO-8601 instant");
         }
+        if (parsed.isAfter(now)) {
+            throw new ApiException(422, "INVALID_EFFECTIVE_AT", "effectiveAt must not be in the future");
+        }
+        return parsed.toString();
     }
 
     /**
