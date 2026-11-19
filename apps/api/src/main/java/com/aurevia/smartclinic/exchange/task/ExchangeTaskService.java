@@ -160,9 +160,14 @@ public class ExchangeTaskService {
             }
             Integer reviewedRevision = command.dimension() == ExchangeDimension.CLINICAL_REVIEW
                     ? current.version() : null;
+            // A reason belongs to a workflow decision only. Carrying a caller's
+            // text into a transmission or review event would put evidence in the
+            // ledger that the task itself does not hold (XCH-02, ARC-01).
+            String eventReason = command.dimension() == ExchangeDimension.WORKFLOW
+                    ? recordedReason : null;
             repository.appendEvent(taskId, next.version(), command.dimension(), action,
                     ExchangeStateMachine.fromState(current, command.dimension()),
-                    command.targetState(), recordedReason, reviewedRevision);
+                    command.targetState(), eventReason, reviewedRevision);
             audit.append(context, action, action, RESOURCE_TYPE, SCOPE, taskId, "SUCCESS");
             return repository.find(taskId).orElseThrow();
         });

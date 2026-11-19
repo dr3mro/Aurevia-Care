@@ -215,6 +215,46 @@ class ExchangeTaskServiceTest {
     }
 
     @Test
+    void clinicalReviewIgnoresCallerReasonInBothStateAndLedger() {
+        active("clinician");
+        when(repository.loadForUpdate(ID)).thenReturn(Optional.of(initial()));
+        when(repository.updateState(eq(ID), eq(1), any())).thenReturn(1);
+        ExchangeTask acknowledged = new ExchangeTask(ID, 2, "LOCAL-1", WorkflowState.REQUESTED,
+                TransmissionState.PENDING, ClinicalReviewState.ACKNOWLEDGED,
+                null, null, NOW, 1, NOW);
+        when(repository.find(ID)).thenReturn(Optional.of(acknowledged));
+
+        service.execute(ID, 1, ExchangeCommand.ACKNOWLEDGE, "caller supplied review note");
+
+        ArgumentCaptor<ExchangeTask> next = ArgumentCaptor.forClass(ExchangeTask.class);
+        verify(repository).updateState(eq(ID), eq(1), next.capture());
+        assertNull(next.getValue().reason());
+        // Only a workflow decision may record a reason. A review event must not
+        // carry caller-supplied text that the task itself does not hold (XCH-02).
+        verify(repository).appendEvent(ID, 2, ExchangeDimension.CLINICAL_REVIEW,
+                "EXCHANGE_ACKNOWLEDGE", "unreviewed", "acknowledged", null, 1);
+    }
+
+    @Test
+    void transmissionIgnoresCallerReasonInBothStateAndLedger() {
+        active("lab_collector");
+        when(repository.loadForUpdate(ID)).thenReturn(Optional.of(sent()));
+        when(repository.updateState(eq(ID), eq(1), any())).thenReturn(1);
+        ExchangeTask failed = new ExchangeTask(ID, 2, "LOCAL-1", WorkflowState.REQUESTED,
+                TransmissionState.FAILED, ClinicalReviewState.UNREVIEWED,
+                null, null, null, null, NOW);
+        when(repository.find(ID)).thenReturn(Optional.of(failed));
+
+        service.execute(ID, 1, ExchangeCommand.FAIL, "caller supplied delivery note");
+
+        ArgumentCaptor<ExchangeTask> next = ArgumentCaptor.forClass(ExchangeTask.class);
+        verify(repository).updateState(eq(ID), eq(1), next.capture());
+        assertNull(next.getValue().reason());
+        verify(repository).appendEvent(ID, 2, ExchangeDimension.TRANSMISSION,
+                "EXCHANGE_FAIL", "sent", "failed", null, null);
+    }
+
+    @Test
     void acknowledgeDeniesNonClinicianAndInactiveMembership() {
         when(repository.hasActiveMembership("clinician-a")).thenReturn(true);
         when(repository.activeRoles("clinician-a")).thenReturn(List.of("lab_collector"));
