@@ -155,10 +155,10 @@ public class ClinicalNoteService {
                 failure.set(denial);
                 return null;
             }
+            repository.lockNote(id);
             NoteRevision current = load(id, context, UPDATE);
             requireVersion(current, expectedVersion);
             requireEditable(current);
-            repository.lockNote(id);
             append(context, UPDATE, id, copy(current, current.state(), noteTitle, noteContent,
                     NoteChecksum.sha256(noteContent), current.version(), null, null, "[]"));
             return repository.current(id).orElse(null);
@@ -190,6 +190,7 @@ public class ClinicalNoteService {
                 failure.set(denial);
                 return null;
             }
+            repository.lockNote(id);
             NoteRevision current = load(id, context, SIGN);
             requireVersion(current, expectedVersion);
             if (current.state() != NoteState.DRAFT) {
@@ -197,7 +198,6 @@ public class ClinicalNoteService {
             }
             requireFields(current);
             requirePatient(current, context, SIGN);
-            repository.lockNote(id);
             append(context, SIGN, id, copy(current, NoteState.SIGNED, current.title(), current.content(),
                     current.contentChecksum(), current.version(), clock.instant().toString(),
                     attested, current.affectedRecipients()));
@@ -230,6 +230,7 @@ public class ClinicalNoteService {
                 failure.set(denial);
                 return null;
             }
+            repository.lockNote(id);
             NoteRevision current = load(id, context, SIGN_ADDENDUM);
             requireVersion(current, expectedVersion);
             if (current.state() != NoteState.AMENDMENT_DRAFT) {
@@ -237,7 +238,6 @@ public class ClinicalNoteService {
             }
             requireFields(current);
             requirePatient(current, context, SIGN_ADDENDUM);
-            repository.lockNote(id);
             append(context, SIGN_ADDENDUM, id, copy(current, NoteState.ADDENDUM, current.title(),
                     current.content(), current.contentChecksum(), current.version(),
                     clock.instant().toString(), attested, current.affectedRecipients()));
@@ -267,12 +267,12 @@ public class ClinicalNoteService {
                 failure.set(denial);
                 return null;
             }
+            repository.lockNote(id);
             NoteRevision current = load(id, context, AMEND);
             requireVersion(current, expectedVersion);
             if (!current.state().signatureBearing()) {
                 throw new ApiException(409, "INVALID_TRANSITION", "only a signed revision can be amended");
             }
-            repository.lockNote(id);
             append(context, AMEND, id, copy(current, NoteState.AMENDMENT_DRAFT, current.title(),
                     current.content(), current.contentChecksum(), current.version(), null, null,
                     current.affectedRecipients()));
@@ -307,13 +307,13 @@ public class ClinicalNoteService {
                 failure.set(denial);
                 return null;
             }
+            repository.lockNote(id);
             NoteRevision current = load(id, context, ENTERED_IN_ERROR);
             requireVersion(current, expectedVersion);
             if (!current.state().signatureBearing()) {
                 throw new ApiException(409, "INVALID_TRANSITION",
                         "only a signed revision can be marked entered-in-error");
             }
-            repository.lockNote(id);
             append(context, ENTERED_IN_ERROR, id, copy(current, NoteState.ENTERED_IN_ERROR,
                     current.title(), current.content(), current.contentChecksum(), current.version(),
                     null, null, recordedRecipients, recordedReason));

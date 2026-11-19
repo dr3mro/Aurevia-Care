@@ -248,6 +248,7 @@ class ClinicalNoteRevisionIntegrationTest {
         assertEquals("clinician-a", field(signed.getBody(), "signerSubject"));
         assertEquals("I attest I reviewed this note", field(signed.getBody(), "attestation"));
         assertFalse(field(signed.getBody(), "signedAt").isEmpty());
+        assertFalse(field(signed.getBody(), "effectiveAt").isEmpty());
         assertEquals("1", field(signed.getBody(), "templateVersion"));
         assertEquals(sha256("Chief concern: chest pain"), field(signed.getBody(), "contentChecksum"));
         ResponseEntity<String> view = request(HttpMethod.GET, "/api/v1/clinical-notes/" + id,
@@ -286,6 +287,8 @@ class ClinicalNoteRevisionIntegrationTest {
                 "{\"attestation\":\"addendum attested\"}", "clinician-a", ORG_A, "\"3\"");
         assertEquals(HttpStatus.OK, addendum.getStatusCode(), addendum.getBody());
         assertEquals("addendum", field(addendum.getBody(), "state"));
+        assertEquals("3", field(addendum.getBody(), "supersedesVersion"),
+                "the addendum must link to the amendment draft it signs");
         assertEquals("clinician-a", field(addendum.getBody(), "signerSubject"));
         ResponseEntity<String> view = request(HttpMethod.GET, "/api/v1/clinical-notes/" + id,
                 null, "clinician-a", ORG_A);
@@ -358,19 +361,31 @@ class ClinicalNoteRevisionIntegrationTest {
     @Test
     void revisionRowsAreAppendOnlyForEveryRole() throws Exception {
         String id = field(create("clinician-a", ORG_A).getBody(), "id");
-        try (Connection connection = DriverManager.getConnection(URL, "smartclinic_migrate", "");
-             Statement statement = connection.createStatement()) {
-            statement.execute("SET app.current_org = '" + ORG_A + "'");
-            statement.execute("SET app.actor = 'clinician-a'");
-            statement.execute("UPDATE public.clinical_note_revision SET content = 'tampered' "
-                    + "WHERE id = '" + id + "'");
-            org.junit.jupiter.api.Assertions.fail("append-only revision must reject UPDATE");
-        } catch (SQLException exception) {
-            assertEquals("44000", exception.getSQLState(), exception.getMessage());
-        }
+        assertMutationRejected("smartclinic_migrate", "UPDATE public.clinical_note_revision "
+                + "SET content = 'tampered' WHERE id = '" + id + "'");
+        assertMutationRejected("smartclinic_app", "UPDATE public.clinical_note_revision "
+                + "SET content = 'tampered' WHERE id = '" + id + "'");
+        assertMutationRejected("smartclinic_migrate", "DELETE FROM public.clinical_note_revision "
+                + "WHERE id = '" + id + "'");
+        assertMutationRejected("smartclinic_migrate", "TRUNCATE public.clinical_note_revision");
         ResponseEntity<String> view = request(HttpMethod.GET, "/api/v1/clinical-notes/" + id,
                 null, "clinician-a", ORG_A);
         assertEquals("Chief concern: chest pain", field(view.getBody(), "content"));
+    }
+
+    private static void assertMutationRejected(String user, String sql) throws Exception {
+        try (Connection connection = DriverManager.getConnection(URL, user, "");
+             Statement statement = connection.createStatement()) {
+            statement.execute("SET app.current_org = '" + ORG_A + "'");
+            statement.execute("SET app.actor = 'clinician-a'");
+            statement.execute(sql);
+            org.junit.jupiter.api.Assertions.fail("append-only revision must reject: " + sql);
+        } catch (SQLException exception) {
+            // 44000 is the append-only guard; 42501 is the missing write grant.
+            assertTrue("44000".equals(exception.getSQLState())
+                            || "42501".equals(exception.getSQLState()),
+                    "unexpected SQL state " + exception.getSQLState() + " for " + sql);
+        }
     }
 
     @Test
