@@ -8,9 +8,13 @@ Columns: `Scope` lists comma-separated path prefixes the worker may change. `Res
 
 | ID | Task | Requirements | Depends | Scope | Reserved | Status | PR |
 |---|---|---|---|---|---|---|---|
-| CW-001 | Staff lifecycle and immutable membership history | IAM-02, IAM-01 | - | apps/api/src/main/java/com/aurevia/smartclinic/staff, apps/api/src/test/java/com/aurevia/smartclinic/staff, db/migrations | V4 | todo | |
-| CW-002 | Tenant configuration, catalog and broader audit | ARC-02, OPS-02 | - | apps/api/src/main/java/com/aurevia/smartclinic/config, apps/api/src/test/java/com/aurevia/smartclinic/config | V5 | todo | |
+| CW-001 | Staff lifecycle and immutable membership history | IAM-02, IAM-01 | - | apps/api/src/main/java/com/aurevia/smartclinic/staff, apps/api/src/test/java/com/aurevia/smartclinic/staff, db/migrations | V4 | done | #7 |
+| CW-002 | Tenant configuration, catalog and broader audit | ARC-02, OPS-02 | - | apps/api/src/main/java/com/aurevia/smartclinic/config, apps/api/src/test/java/com/aurevia/smartclinic/config | V5 | done | e8911e9 |
 | CW-003 | Concurrent-connection tenant isolation tests | ARC-02 | - | apps/api/src/test/java/com/aurevia/smartclinic/it | - | todo | |
+
+### Reconciliation (2026-11-19)
+
+CW-001 and CW-002 were delivered directly on `main` rather than by a swarm worker, so the integrator never saw a PR to mark them done. They are recorded here with the delivering PR/commit as evidence: CW-001 → PR #7 (`8d015b5`, 81 tests, JaCoCo 100%, green CI); CW-002 → commit `e8911e9` (119 tests, JaCoCo 100%, CI run 44455300465 green). CW-003 remains the only outstanding task. This prevents the swarm from re-attempting finished work.
 
 ### CW-001
 
