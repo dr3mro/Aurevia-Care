@@ -167,6 +167,17 @@ class LabAccessionServiceTest {
     }
 
     @Test
+    void accessionInsertRaceIsAuditedAsConflict() {
+        authorizedCollector();
+        when(repository.patientExists(PATIENT)).thenReturn(true);
+        when(repository.insert(anyString(), anyString(), anyString(), anyString(), anyString(),
+                anyString(), any(), any())).thenThrow(new DuplicateKeyException("dup"));
+        assertEquals(409, assertThrows(ApiException.class, () -> service.accession(accessionRequest())).status());
+        verify(audit).append(any(), eq("LAB_ACCESSION"), eq(LabActionPolicy.ACCESSION_CREATE),
+                eq("ACCESSION"), eq("LAB"), anyString(), eq("CONFLICT"));
+    }
+
+    @Test
     void accessionDeniesInactiveMembershipAndWrongRole() {
         when(repository.hasActiveMembership(ACTOR)).thenReturn(false);
         assertEquals(403, assertThrows(ApiException.class, () -> service.accession(accessionRequest())).status());
@@ -206,6 +217,11 @@ class LabAccessionServiceTest {
                         "Sam Collector", COLLECTED_AT, 1)));
         assertEquals(422, accession.status());
         assertEquals("PATIENT_ACCESSION_MISMATCH", accession.code());
+        ApiException issuer = assertThrows(ApiException.class, () -> service.collect(ID,
+                new CollectRequest(PATIENT, "ACC-1", "LAB-B", "PLASMA", "SITE-A",
+                        "Sam Collector", COLLECTED_AT, 1)));
+        assertEquals(422, issuer.status());
+        assertEquals("PATIENT_ACCESSION_MISMATCH", issuer.code());
         verify(repository, never()).update(anyString(), anyString(), anyInt(), any(), anyString(),
                 anyString(), anyString(), anyString(), any(), any(), any(), any());
     }
@@ -366,6 +382,17 @@ class LabAccessionServiceTest {
     }
 
     @Test
+    void recollectInsertRaceIsAuditedAsConflict() {
+        authorizedVerifier();
+        when(repository.findById(ID)).thenReturn(Optional.of(accession(AccessionState.REJECTED, 4)));
+        when(repository.insert(anyString(), anyString(), anyString(), anyString(), anyString(),
+                anyString(), any(), anyString())).thenThrow(new DuplicateKeyException("dup"));
+        assertEquals(409, assertThrows(ApiException.class, () -> service.recollect(ID, recollectRequest())).status());
+        verify(audit).append(any(), eq("LAB_ACCESSION"), eq(LabActionPolicy.SPECIMEN_RECOLLECT),
+                eq("ACCESSION"), eq("LAB"), eq(ID), eq("CONFLICT"));
+    }
+
+    @Test
     void getReturnsStoredProjectionWithHistory() {
         authorizedCollector();
         when(repository.findById(ID)).thenReturn(Optional.of(accession(AccessionState.RECEIVED, 3)));
@@ -384,9 +411,10 @@ class LabAccessionServiceTest {
     void transitionsRecollectAndReadDenyWithoutMembership() {
         when(repository.hasActiveMembership(ACTOR)).thenReturn(false);
         assertEquals(403, assertThrows(ApiException.class, () -> service.collect(ID, collectRequest())).status());
+        assertEquals(403, assertThrows(ApiException.class, () -> service.reject(ID, rejectRequest())).status());
         assertEquals(403, assertThrows(ApiException.class, () -> service.recollect(ID, recollectRequest())).status());
         assertEquals(403, assertThrows(ApiException.class, () -> service.get(ID)).status());
-        verify(audit, org.mockito.Mockito.times(3)).append(any(), anyString(), anyString(), anyString(),
+        verify(audit, org.mockito.Mockito.times(4)).append(any(), anyString(), anyString(), anyString(),
                 anyString(), anyString(), eq("DENIED"));
     }
 
