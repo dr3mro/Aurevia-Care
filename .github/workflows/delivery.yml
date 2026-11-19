@@ -4,7 +4,7 @@ on:
   pull_request:
     paths-ignore: ['docs/**', '**/*.md']
   push:
-    branches: ['**']
+    branches: [main]
     tags: ['v*']
     paths-ignore: ['docs/**', '**/*.md']
   merge_group:
@@ -56,8 +56,29 @@ jobs:
       # violates AGENTS.md because this is a required check.
       - run: bash scripts/frontend-check.sh
 
+  # Pull requests get the fast tier only (compile and unit tests). The full
+  # tier (coverage, OWASP, SpotBugs, PostgreSQL) runs on main, tags and merge
+  # groups, so a repair or swarm pull request is checked in minutes.
+  quick:
+    name: Java unit tests (pull request)
+    if: github.event_name == 'pull_request'
+    timeout-minutes: 15
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Compile and unit tests
+        run: mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest='!*IsolationTest' test
+
   java-verify:
     name: Java and database verification
+    if: github.event_name != 'pull_request'
     needs: policy
     timeout-minutes: 30
     runs-on: ubuntu-24.04
@@ -82,7 +103,7 @@ jobs:
 
   docs:
     name: Developer reference
-    needs: policy
+    if: github.event_name != 'pull_request'
     timeout-minutes: 10
     runs-on: ubuntu-24.04
     steps:
@@ -103,16 +124,13 @@ jobs:
 
   verify:
     name: Verify and smoke image (${{ matrix.arch }})
-    needs: [java-verify, docs]
+    if: github.event_name != 'pull_request'
+    needs: java-verify
     timeout-minutes: 30
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - arch: amd64
-            runner: ubuntu-24.04
-          - arch: arm64
-            runner: ubuntu-24.04-arm
+      # arm64 is built only for a release tag; every other run needs amd64.
+      matrix: ${{ fromJSON(github.ref_type == 'tag' && '{"include":[{"arch":"amd64","runner":"ubuntu-24.04"},{"arch":"arm64","runner":"ubuntu-24.04-arm"}]}' || '{"include":[{"arch":"amd64","runner":"ubuntu-24.04"}]}') }}
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v7

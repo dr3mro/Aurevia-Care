@@ -19,30 +19,11 @@ concurrency:
   group: swarm-images
   cancel-in-progress: true
 jobs:
-  plan:
+  build:
+    name: Slot images
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
-    timeout-minutes: 3
-    outputs:
-      matrix: ${{ steps.slots.outputs.matrix }}
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-          sparse-checkout: |
-            scripts
-            .github/swarm
-      - id: slots
-        run: python3 -I scripts/swarm.py slot-matrix
-  build:
-    name: Slot ${{ matrix.slot }} image
-    needs: plan
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    strategy:
-      max-parallel: 5
-      fail-fast: false
-      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
         with:
@@ -51,17 +32,24 @@ jobs:
             scripts
             .github/swarm
             .github/agent-image
-      - name: Build and push the slot image
+      # One runner builds every slot: the slot layer is tiny and the base image
+      # is pulled once, so ten separate runners only added startup time.
+      - name: Build and push the slot images
         env:
           GH_TOKEN: ${{ github.token }}
-          SLOT: ${{ matrix.slot }}
         run: |
+          set -euo pipefail
           base="ghcr.io/${GITHUB_REPOSITORY,,}-agent:latest"
-          image="ghcr.io/${GITHUB_REPOSITORY,,}-agent-${SLOT}"
-          config=$(python3 -I scripts/swarm.py slot-config --slot "$SLOT")
           printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
-          docker build --pull -f .github/agent-image/Dockerfile.slot \
-            --build-arg "BASE=$base" --build-arg "SLOT=$SLOT" --build-arg "SLOT_CONFIG=$config" \
-            --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
-            -t "$image:latest" .github/agent-image
-          docker push "$image:latest"
+          docker pull "$base"
+          GITHUB_OUTPUT=slots.out python3 -I scripts/swarm.py slot-matrix
+          slots=$(sed -n 's/^matrix=//p' slots.out | jq -r '.slot[]')
+          for slot in $slots; do
+            image="ghcr.io/${GITHUB_REPOSITORY,,}-agent-${slot}"
+            config=$(python3 -I scripts/swarm.py slot-config --slot "$slot")
+            docker build -f .github/agent-image/Dockerfile.slot \
+              --build-arg "BASE=$base" --build-arg "SLOT=$slot" --build-arg "SLOT_CONFIG=$config" \
+              --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
+              -t "$image:latest" .github/agent-image
+            docker push "$image:latest"
+          done

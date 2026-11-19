@@ -27,6 +27,7 @@ BUDGET_WORKFLOWS = ("swarm.yml", "swarm-integrator.yml", "heavy-check.yml",
 BRANCH = re.compile(r"swarm/[A-Za-z0-9._-]+")
 LABELS = {
     "swarm": ("1d76db", "Pull request opened by a swarm worker"),
+    "autofix": ("0e8a16", "Automatic repair of a failed main run; a person reviews and merges it"),
     "needs-fix": ("d93f0b", "Integration failed; a worker should fix it"),
     "needs-human": ("b60205", "Swarm stopped; a person must decide"),
     "fix-1": ("ededed", "Fix attempt 1"), "fix-2": ("ededed", "Fix attempt 2"),
@@ -255,9 +256,14 @@ def publish(task, directory):
             notes = read(directory / "pr-notes.md", "No notes were written.")
             body = (f"Task: {task['id']}\n\nSwarm worker {task['slot']}. Local checks: {checks}. "
                     f"Agent result: {result}.\n\n{clip(notes)}")
+            repair = task["id"].startswith("FIX-")
+            if repair:
+                body = ("**Automatic repair of a failed run on main.** Review the diff and merge it "
+                        "to turn main green; it is never merged automatically.\n\n" + body)
             gh("pr", "create", "--base", os.environ.get("BASE_BRANCH", "main"), "--head", branch,
                "--title", f"{task['id']}: {task['title']}", "--body", body, "--label", "swarm",
-               *(["--draft"] if checks != "passed" else []))
+               *(["--label", "autofix"] if repair else []),
+               *(["--draft"] if checks != "passed" and not repair else []))
             pr = gh("pr", "view", branch, "--json", "number", "--jq", ".number").strip()
         else:
             pr = str(task["number"])
@@ -300,14 +306,15 @@ def main_is_red(workflow="delivery.yml"):
 
 
 def plan_integration(red=False):
-    """Pull requests ready to integrate, oldest first. While main is red only
-    repair pull requests may merge, so ordinary work is not blamed for it."""
+    """Pull requests ready to integrate, oldest first. Repair pull requests (FIX-)
+    are never merged here: a person reviews and merges them. While main is red
+    nothing else merges, so ordinary work is not blamed for it."""
     prs = gh_json("pr", "list", "--state", "open", "--label", "swarm", "--limit", "50",
                   "--json", "number,title,labels,isCrossRepository")
     blocked = {"needs-fix", "needs-human"}
     return [p["number"] for p in sorted(prs, key=lambda p: p["number"])
             if not p["isCrossRepository"] and not blocked & label_names(p)
-            and (not red or p["title"].startswith("FIX-"))]
+            and not p.get("title", "").startswith("FIX-") and not red]
 
 
 def repair_task(run_id):
