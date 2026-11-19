@@ -155,6 +155,7 @@ public class PatientRepository {
      *
      * @param normalizedName normalized search form
      * @param dob            civil date of birth
+     * @param excludeId      opaque id of the patient whose own record is excluded
      * @return possible duplicates, excluding the given patient
      */
     public List<Patient> likelyDuplicates(String normalizedName, String dob, String excludeId) {

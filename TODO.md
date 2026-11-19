@@ -34,7 +34,9 @@ Gate evidence: two tenants with identical local IDs remain isolated across API, 
   - evidence: 158 tests incl. audit; JaCoCo 100%; green CI run 44466453912 on `4349263`
 - [x] S-G0-03c · define, approve and read versioned tenant catalogs (diagnosis codes, partner directory) with named approval and effective dates, scoped to the active organization
   - evidence: V6 catalog fold, 158 tests, JaCoCo 100%, green CI 44468724537 on `99d586d`; catalog contract and maintainer trace updated
-- [ ] S-G0-03d · OPS-06 infrastructure foundations: separate environments, rollout and migration checks beyond the CI migration gate (OPS-06).
+- [-] S-G0-03d · OPS-06 infrastructure foundations: separate environments, rollout and migration checks beyond the CI migration gate (OPS-06).
+  - agent: loop
+  - status 2026-11-19T07:03Z: active. Bounded to a migration change-safety gate (expand/contract, version sequencing, destructive-DDL guard); environment separation, signed builds and monitored rollout deferred to cloud/human-gated S-G5-07. All gates green locally (check.sh, quick-check.sh, docs.sh exit 0; 106 tooling tests; stdlib trace 100% line coverage). Three independent reviewers found real checker gaps (omitted DROP VIEW/INDEX, string-literal `--` ordering, multi-line/same-line bypass, duplicate-version keying, unverified Forward-fix, fail-open with no migrations, doc example fails gate); fixing those before acceptance.
 - [ ] S-G0-04 · Isolation across search, files, workers and exports plus concurrent-connection and transaction tests (ARC-02). Concurrent-connection test slice merged by swarm as CW-003; other surfaces remain.
 - [x] CW-003 · Concurrent-connection tenant isolation tests
   - requirements: ARC-02
