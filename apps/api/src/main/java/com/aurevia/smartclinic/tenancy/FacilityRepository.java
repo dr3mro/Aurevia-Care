@@ -21,6 +21,8 @@ public class FacilityRepository {
 
     private final NamedParameterJdbcTemplate jdbc;
 
+    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
+            value = "EI_EXPOSE_REP2", justification = "Spring-managed singleton collaborator")
     public FacilityRepository(NamedParameterJdbcTemplate jdbc) {
         this.jdbc = jdbc;
     }
@@ -49,7 +51,7 @@ public class FacilityRepository {
                 WHERE u.subject = :subject AND m.status = 'active'
                   AND m.valid_from <= now() AND (m.valid_to IS NULL OR m.valid_to > now())
                 """, Map.of("subject", subject), Integer.class);
-        return count > 0;
+        return java.util.Optional.ofNullable(count).orElse(0) > 0;
     }
 
     public List<String> activeRoles(String subject) {

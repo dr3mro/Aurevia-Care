@@ -20,6 +20,8 @@ public class FacilityService {
     private final ActionPolicy policy;
     private final TransactionTemplate transactions;
 
+    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
+            value = "EI_EXPOSE_REP2", justification = "Spring-managed singleton collaborators")
     public FacilityService(FacilityRepository repository, ActionPolicy policy,
                            TransactionTemplate transactions) {
         this.repository = repository;

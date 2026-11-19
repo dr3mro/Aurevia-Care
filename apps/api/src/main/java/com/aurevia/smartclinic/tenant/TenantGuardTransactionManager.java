@@ -11,11 +11,8 @@ import org.springframework.transaction.TransactionDefinition;
 @Component
 public class TenantGuardTransactionManager extends DataSourceTransactionManager {
 
-    private final JdbcTemplate jdbc;
-
     public TenantGuardTransactionManager(DataSource dataSource) {
         super(dataSource);
-        this.jdbc = new JdbcTemplate(dataSource);
     }
 
     @Override
@@ -25,7 +22,7 @@ public class TenantGuardTransactionManager extends DataSourceTransactionManager 
             throw new IllegalStateException("tenant context required");
         }
         super.doBegin(transaction, definition);
-        jdbc.queryForObject("""
+        new JdbcTemplate(getDataSource()).queryForObject("""
                 SELECT set_config('app.current_org', ?, true) ||
                        set_config('app.actor', ?, true) ||
                        set_config('app.purpose', ?, true) ||

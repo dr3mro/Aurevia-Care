@@ -31,6 +31,9 @@ public class TenantContextInterceptor implements HandlerInterceptor, WebMvcConfi
     }
 
     @Override
+    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
+            value = "HRS_REQUEST_PARAMETER_TO_HTTP_HEADER",
+            justification = "Correlation id is allowlist-validated before being echoed")
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
         String correlation = request.getHeader("X-Correlation-Id");
         if (correlation == null || correlation.isBlank()) {
