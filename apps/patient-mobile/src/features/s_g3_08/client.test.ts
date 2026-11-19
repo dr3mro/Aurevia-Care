@@ -108,7 +108,7 @@ describe('MSG-05 auth-gated patient client', () => {
     expect(acknowledged.ok).toBe(true);
   });
 
-  it('surfaces a stable denial when the first view cannot be recorded', async () => {
+  it('records the first view of a new revision instead of failing', async () => {
     const existing = {
       ...EMPTY,
       firstView: {
@@ -119,8 +119,33 @@ describe('MSG-05 auth-gated patient client', () => {
         occurredAt: NOW,
       },
     };
+    const client = createMessageFactsClient(fixture({
+      facts: { [INSTRUCTION]: existing },
+      instructions: [view({ revision: 3, latestRevision: 3 })],
+    }));
+    const next = await client.markFirstView(INSTRUCTION, 3);
+    expect(next.revision).toBe(3);
+    expect(next.occurredAt).toBe(NOW);
+  });
+
+  it('denies a first view attributed to a different viewer', async () => {
+    const existing = {
+      ...EMPTY,
+      firstView: {
+        kind: 'first_view' as const,
+        instructionId: INSTRUCTION,
+        revision: 2,
+        viewer: 'other-patient',
+        occurredAt: NOW,
+      },
+    };
     const client = createMessageFactsClient(fixture({ facts: { [INSTRUCTION]: existing } }));
-    await expect(client.markFirstView(INSTRUCTION, 1)).rejects.toThrow('FIRST_VIEW_MISMATCH');
+    await expect(client.markFirstView(INSTRUCTION, 2)).rejects.toThrow('FIRST_VIEW_MISMATCH');
+  });
+
+  it('rejects a first view for a revision that is not the loaded instruction', async () => {
+    const client = createMessageFactsClient(fixture());
+    await expect(client.markFirstView(INSTRUCTION, 5)).rejects.toThrow('REVISION_MISMATCH');
   });
 
   it('projects overdue instructions and their owning unit', () => {
@@ -130,5 +155,22 @@ describe('MSG-05 auth-gated patient client', () => {
     expect(client.owningUnitFor(INSTRUCTION)).toBe(UNIT);
     expect(client.owningUnitFor(INSTRUCTION)).not.toBe(OTHER_UNIT);
     expect(() => client.owningUnitFor(FOREIGN)).toThrow('INSTRUCTION_NOT_FOUND');
+  });
+
+  it('requires a credential for every protected projection', () => {
+    const client = createMessageFactsClient(fixture({ readToken: () => null }));
+    expect(() => client.overdueInstructions(NOW)).toThrow('NOT_AUTHENTICATED');
+    expect(() => client.owningUnitFor(INSTRUCTION)).toThrow('NOT_AUTHENTICATED');
+  });
+
+  it('never projects an instruction outside the active tenant or chart', () => {
+    const client = createMessageFactsClient(fixture({
+      instructions: [
+        view(),
+        view({ id: 'cross-tenant', organizationId: OTHER_ORG }),
+        view({ id: 'other-chart', patientId: FOREIGN }),
+      ],
+    }));
+    expect(client.overdueInstructions(NOW).map((item) => item.id)).toEqual([INSTRUCTION]);
   });
 });
