@@ -221,8 +221,9 @@ Gate evidence: rejected or recollected specimens trace to the right order; dupli
     Implement Requisition accession, specimen identification, rejection and linked recollection (LAB-01) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [-] S-G2-09 · Numeric, qualified, text and coded observations, verification states and issued revisions (LAB-02).
-  - agent: swarm-7
+- [x] S-G2-09 · Numeric, qualified, text and coded observations, verification states and issued revisions (LAB-02).
+  - pr: #51
+  - evidence: PR #51; integrator ran scripts/check.sh on the merge result (tool evidence); heavy-check.yml re-verifies main after the push; notes in docs/swarm/S-G2-09.md; simulated review only
   - attempts: 2
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g2/s_g2_09, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g2_09
   - reserved: V27
@@ -230,8 +231,9 @@ Gate evidence: rejected or recollected specimens trace to the right order; dupli
     Implement Numeric, qualified, text and coded observations, verification states and issued revisions (LAB-02) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [-] S-G2-10 · Synthetic partner conformance fixtures including duplicates, corrections and partial outages (XCH-01–07, LAB-01, LAB-02).
-  - agent: swarm-8
+- [x] S-G2-10 · Synthetic partner conformance fixtures including duplicates, corrections and partial outages (XCH-01–07, LAB-01, LAB-02).
+  - pr: #52
+  - evidence: PR #52; integrator ran scripts/check.sh on the merge result (tool evidence); heavy-check.yml re-verifies main after the push; notes in docs/swarm/S-G2-10.md; simulated review only
   - attempts: 2
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g2/s_g2_10, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g2_10
   - reserved: V28
@@ -253,8 +255,9 @@ Gate evidence: confirmed patients see only authorized revisions; generic notific
     Implement Patient appointment list, confirmation, generic push notifications and device revocation (PAT-01) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [-] S-G3-02 · Released reports with revision and correction context, authorized downloads and protected local credentials (PAT-02).
-  - agent: swarm-10
+- [x] S-G3-02 · Released reports with revision and correction context, authorized downloads and protected local credentials (PAT-02).
+  - pr: #54
+  - evidence: PR #54; integrator ran scripts/check.sh on the merge result (tool evidence); heavy-check.yml re-verifies main after the push; notes in docs/swarm/S-G3-02.md; simulated review only
   - attempts: 1
   - scope: apps/patient-mobile/src/features/s_g3_02, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_02
   - reserved: V30
