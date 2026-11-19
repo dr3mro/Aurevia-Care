@@ -1,0 +1,55 @@
+{
+  "contract": "x-02-arc-05",
+  "dataClass": "synthetic",
+  "namespace": "partner-lab",
+  "sender": "lab-partner",
+  "eventType": "observation.result",
+  "aggregateId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+  "orderId": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+  "patientId": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+  "scenarios": [
+    {
+      "name": "duplicate-delivery",
+      "description": "Partner retries the same external event id with the same digest.",
+      "events": [
+        { "externalEventId": "ext-100", "aggregateVersion": 1, "payloadDigest": "a", "expectedOutcome": "accepted" },
+        { "externalEventId": "ext-100", "aggregateVersion": 1, "payloadDigest": "a", "expectedOutcome": "duplicate" }
+      ],
+      "expectedReceiptCount": 1
+    },
+    {
+      "name": "correction-after-final",
+      "description": "A corrected revision at a higher aggregate version supersedes the final report without overwriting it.",
+      "events": [
+        { "externalEventId": "ext-101", "aggregateVersion": 4, "payloadDigest": "a", "expectedOutcome": "accepted" },
+        { "externalEventId": "ext-102", "aggregateVersion": 5, "payloadDigest": "b", "expectedOutcome": "accepted" }
+      ],
+      "expectedReceiptCount": 2
+    },
+    {
+      "name": "out-of-order-replay",
+      "description": "A delayed replay of an earlier version is held when a later version was already processed.",
+      "events": [
+        { "externalEventId": "ext-103", "aggregateVersion": 8, "payloadDigest": "a", "expectedOutcome": "accepted" },
+        { "externalEventId": "ext-104", "aggregateVersion": 6, "payloadDigest": "a", "expectedOutcome": "held_out_of_order" }
+      ],
+      "expectedReceiptCount": 2
+    },
+    {
+      "name": "partial-partner-outage",
+      "description": "Transient send failures retry with bounded backoff, then dead-letter and require separate review.",
+      "events": [
+        { "externalEventId": "ext-105", "aggregateVersion": 1, "payloadDigest": "a", "expectedOutcome": "accepted", "delivery": { "state": "failed", "attempts": 3, "finalState": "dead_lettered", "reviewRequired": true, "resolution": "requeued" } }
+      ],
+      "expectedReceiptCount": 1
+    },
+    {
+      "name": "unconfirmed-identifiers",
+      "description": "An event whose order or patient cannot be confirmed in the active tenant is rejected and cannot be linked.",
+      "events": [
+        { "externalEventId": "ext-106", "aggregateVersion": 1, "payloadDigest": "a", "orderId": "dddddddd-dddd-dddd-dddd-dddddddddddd", "expectedOutcome": "rejected" }
+      ],
+      "expectedReceiptCount": 1
+    }
+  ]
+}
