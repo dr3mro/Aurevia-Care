@@ -3,7 +3,8 @@ name: Main watchdog
 # fails, starts one repair worker with the failing log. The fix is a pull request
 # labeled autofix that the integrator merges once the fast gate passes, then
 # Delivery runs again on main; a fix that did not work starts the next repair.
-# Workflow, script and agent-file fixes still wait for a person. It stops after
+# Repairs may change workflow, script or agent files; the fast gate still applies.
+# It stops after
 # three tries in 24 hours and opens an issue.
 on:
   workflow_run:

@@ -39,8 +39,8 @@ Up to 10 OpenCode workers run in parallel on GitHub-hosted runners. An orchestra
 
 - Workers follow AGENTS.md, CODING_STYLE.md, the specification and the `.opencode` specialists, stay inside their `Scope`, and use only their `Reserved` migration version.
 - Workers do not edit shared trackers. The orchestrator marks a task `[-]` when it starts a worker, and the integrator marks it `[x]` with `pr:` and `evidence:` and writes `docs/swarm/<ID>.md` after each merge, one at a time, so TODO.md never conflicts. A worker that publishes nothing releases its task back to `[ ]`.
-- Repair pull requests (`FIX-`, label `autofix`) are merged by the integrator like other swarm work, but only while their diff stays out of `.github/`, `.opencode/`, `scripts/` and the other protected files; those wait for a person.
-- A pull request that changes `.github/`, `.opencode/`, `scripts/`, `opencode.json`, AGENTS.md, Dockerfile, compose or any `check.sh` is never merged automatically. It is labeled `needs-human`.
+- Repair pull requests (`FIX-`, label `autofix`) are merged by the integrator like other swarm work, including changes to `.github/`, `.opencode/`, `scripts/` and the other protected files, as long as the fast gate passes. Ordinary story pull requests touching those files still wait for a person.
+- A story pull request that changes `.github/`, `.opencode/`, `scripts/`, `opencode.json`, AGENTS.md, Dockerfile, compose or any `check.sh` is never merged automatically. It is labeled `needs-human`. Watchdog repair pull requests (`FIX-`, label `autofix`) are the exception: the integrator merges them after the fast gate even when they change those files, because repairing the pipeline itself must not need owner action. All merges still require the fast gate, and shared trackers stay integrator-only.
 - The integrator merges exactly the commit it tested and refuses if the branch moved.
 - A rate limit, timeout or failure ends that worker. There are no retries inside a run.
 - Use synthetic data only. Free models are not suitable for real patient data. Check each provider's terms before running several free accounts.

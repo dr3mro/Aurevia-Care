@@ -90,6 +90,12 @@ def label_names(item):
     return {label["name"] for label in item.get("labels", [])}
 
 
+def is_repair(pr):
+    """True for watchdog repair PRs (autofix label or FIX- title)."""
+    info = gh_json("pr", "view", str(pr), "--json", "labels,title")
+    return "autofix" in label_names(info) or info.get("title", "").startswith("FIX-")
+
+
 def run_url():
     repo, run = os.environ.get("GITHUB_REPOSITORY", ""), os.environ.get("GITHUB_RUN_ID", "")
     return f"https://github.com/{repo}/actions/runs/{run}"
@@ -350,8 +356,8 @@ def publish(task, directory):
             repair = task["id"].startswith("FIX-")
             if repair:
                 body = ("**Automatic repair of a failed run on main.** The integrator merges it "
-                        "once the fast gate passes; changes to workflow, script or agent files wait "
-                        "for a person.\n\n" + body)
+                        "once the fast gate passes, including changes to workflow, script or agent "
+                        "files.\n\n" + body)
             gh("pr", "create", "--base", os.environ.get("BASE_BRANCH", "main"), "--head", branch,
                "--title", f"{task['id']}: {task['title']}", "--body", body, "--label", "swarm",
                *(["--label", "autofix"] if repair else []),
@@ -479,11 +485,16 @@ def repair_gate(run_id, now=None):
     return True, "Starting a repair."
 
 
-def guard(pr):
-    """Return the files that stop an automatic merge and label accordingly."""
+def guard(pr, repair=False):
+    """Return the files that stop an automatic merge and label accordingly.
+
+    Ordinary PRs never auto-merge workflow, agent or script changes. Watchdog
+    repairs are the exception: they must be able to fix the pipeline itself,
+    and they still pass the fast gate before the integrator merges them.
+    """
     files = gh("pr", "diff", str(pr), "--name-only").split()
     touched = protected_files(files)
-    if touched:
+    if touched and not repair:
         gh("pr", "edit", str(pr), "--add-label", "needs-human")
         gh("pr", "comment", str(pr), "--body",
            f"{MARK}\nThis pull request changes workflow, agent or script files, which are never "
@@ -571,7 +582,7 @@ def integrate_batch(queue, gate="scripts/quick-check.sh"):
     bad PR never blocks the others. Returns the number of merged PRs."""
     merged = []
     for pr in queue:
-        blocked = guard(pr)
+        blocked = guard(pr, is_repair(pr))
         if blocked:
             continue
         sha, task_id, conflicts = merge_local(pr)
@@ -649,6 +660,8 @@ def main(argv=None):
     for name in ("guard", "merge-local", "finalize", "fail"):
         p = sub.add_parser(name)
         p.add_argument("--pr", type=int, required=True)
+        if name == "guard":
+            p.add_argument("--repair", action="store_true")
         if name == "finalize":
             p.add_argument("--task-id", required=True)
             p.add_argument("--sha", required=True)
@@ -707,7 +720,7 @@ def main(argv=None):
     elif a.cmd == "integrate-batch":
         integrate_batch(json.loads(a.queue), a.gate)
     elif a.cmd == "guard":
-        emit("blocked", "true" if guard(a.pr) else "false")
+        emit("blocked", "true" if guard(a.pr, a.repair) else "false")
     elif a.cmd == "merge-local":
         sha, task_id, files = merge_local(a.pr)
         if sha is None:
