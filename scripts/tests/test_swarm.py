@@ -257,6 +257,19 @@ class PlanTests(unittest.TestCase):
         self.assertIn("SMARTCLINIC_PG_ADMIN: postgres", text)
         self.assertNotIn("GATE: scripts/quick-check.sh", text)
 
+    def test_task_id_of_handles_multi_hyphen_story_ids(self):
+        cases = {
+            "swarm/CW-001-1": "CW-001",
+            "swarm/S-G0-06-64": "S-G0-06",
+            "swarm/S-G1-02-64": "S-G1-02",
+            "swarm/X-01-64": "X-01",
+            "swarm/FIX-444-7": "FIX-444",
+        }
+        for branch, expected in cases.items():
+            with self.subTest(branch=branch):
+                self.assertEqual(swarm.task_id_of(branch), expected)
+        self.assertEqual(swarm.task_id_of("main"), "")
+
     def test_open_spec_tasks_are_dispatchable(self):
         tasks = swarm.parse_tasks((ROOT / "TODO.md").read_text())
         dispatchable = [t for t in tasks
@@ -657,10 +670,10 @@ class GitTests(unittest.TestCase):
             # fast-forward; only the local swarm-incoming ref is reused.
             shutil.rmtree(self.tmp / "work")
             shutil.rmtree(first)
-            second = self.worker_dir(branch="swarm/CW-001-1-second")
+            second = self.worker_dir(branch="swarm/CW-001-2")
             swarm.publish(self.TASK, second)
         heads = self.run_git("ls-remote", "--heads", "origin")
-        self.assertIn("refs/heads/swarm/CW-001-1-second", heads)
+        self.assertIn("refs/heads/swarm/CW-001-2", heads)
 
     def test_failed_local_checks_open_a_draft(self):
         out, fake = self.worker_dir(checks="failed"), FakeGh()
