@@ -89,6 +89,23 @@ def gh_json(*args):
     return json.loads(gh(*args) or "null")
 
 
+def repo_slug():
+    """Full owner/name used by the REST label endpoints."""
+    return os.environ.get("GITHUB_REPOSITORY", "dr3mro/Aurevia-Care")
+
+
+def add_labels(pr, *names):
+    """Add labels through REST; `gh pr edit` needs read:org via GraphQL."""
+    fields = [f for name in names for f in ("-f", f"labels[]={name}")]
+    gh("api", "--method", "POST", f"repos/{repo_slug()}/issues/{pr}/labels", *fields)
+
+
+def remove_label(pr, name):
+    """Remove one label through REST."""
+    gh("api", "--method", "DELETE",
+       f"repos/{repo_slug()}/issues/{pr}/labels/{name}", check=False)
+
+
 def emit(name, value):
     with open(os.environ.get("GITHUB_OUTPUT", os.devnull), "a") as out:
         out.write(f"{name}={value}\n")
@@ -340,8 +357,7 @@ def release(task, result, commits, pr=""):
         with open(summary, "a") as out:
             out.write(line)
     if commits == 0 and task["kind"] == "fix" and result in ("rate_limited", "timeout", "failed"):
-        gh("pr", "edit", str(task["number"]), "--add-label",
-           "needs-fix" if result != "failed" else "needs-human")
+        add_labels(task["number"], "needs-fix" if result != "failed" else "needs-human")
         gh("pr", "comment", str(task["number"]), "--body",
            f"Worker {task['slot']} ended with '{result}' and pushed nothing. {run_url()}")
 
@@ -420,13 +436,14 @@ def fail(pr, reason, log_text=""):
     tail = "\n".join(log_text.splitlines()[-80:])[-6000:].replace("```", "'''")
     detail = f"\n\n```text\n{tail}\n```" if tail else ""
     if attempts >= MAX_FIX:
-        gh("pr", "edit", str(pr), "--add-label", "needs-human", "--remove-label", "needs-fix")
+        add_labels(pr, "needs-human")
+        remove_label(pr, "needs-fix")
         gh("pr", "comment", str(pr), "--body",
            f"{MARK}\nIntegration still fails after {MAX_FIX} fix attempts: {reason}. "
            f"A person must take over.{detail}")
         return False
     attempt = attempts + 1
-    gh("pr", "edit", str(pr), "--add-label", "needs-fix", "--add-label", f"fix-{attempt}")
+    add_labels(pr, "needs-fix", f"fix-{attempt}")
     gh("pr", "comment", str(pr), "--body",
        f"{MARK}\n{reason}. Fix attempt {attempt} of {MAX_FIX}. Reproduce with "
        f"`scripts/check.sh` on the merge of main and this branch.{detail}")
@@ -529,7 +546,7 @@ def guard(pr, repair=False):
     files = gh("pr", "diff", str(pr), "--name-only").split()
     touched = protected_files(files)
     if touched and not repair:
-        gh("pr", "edit", str(pr), "--add-label", "needs-human")
+        add_labels(pr, "needs-human")
         gh("pr", "comment", str(pr), "--body",
            f"{MARK}\nThis pull request changes workflow, agent or script files, which are never "
            f"merged automatically: {', '.join(touched[:10])}. Please review it.")
@@ -540,7 +557,7 @@ def guard(pr, repair=False):
              + " and put the evidence in .agent/pr-notes.md")
         return trackers
     if len(files) > MAX_PR_FILES:
-        gh("pr", "edit", str(pr), "--add-label", "needs-human")
+        add_labels(pr, "needs-human")
         gh("pr", "comment", str(pr), "--body",
            f"{MARK}\nThis pull request changes {len(files)} files; the limit is {MAX_PR_FILES}. "
            "Split it into one bounded story per pull request. A person must decide how to split it.")
