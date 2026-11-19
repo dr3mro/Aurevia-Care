@@ -8,6 +8,7 @@ package com.aurevia.smartclinic.tenant;
  * @param subject        authenticated synthetic subject
  * @param purpose        recorded business purpose
  * @param correlationId  request correlation identifier
+ * @return this record
  */
 public record TenantContext(String organizationId, String subject, String purpose, String correlationId) {
 
