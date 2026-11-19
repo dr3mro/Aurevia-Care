@@ -15,7 +15,7 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       bash ca-certificates curl git gh jq python3 shellcheck \
  && rm -rf /var/lib/apt/lists/* \
- && npm install -g "opencode-ai@${OPENCODE_VERSION}" \
+ && npm install -g "@opencode/cli@${OPENCODE_VERSION}" \
  && npm cache clean --force \
  && opencode --version && java -version && mvn -v
 # Warm the Maven repository so workers do not download dependencies. The
