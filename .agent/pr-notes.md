@@ -1,102 +1,52 @@
-# X-03 — Upload validation, quarantine, mediated downloads and PDF binding (ARC-06)
+# CW-009 — Staff web React audit and access-review screens (synthetic fixtures)
 
 ## Requirements and acceptance mapping
 
-| Requirement | Acceptance implemented | Evidence (entry point → test) |
-|---|---|---|
-| ARC-06 | Upload validation (PDF/JPEG/PNG, magic bytes, extension, 1 byte–10 MiB, lowercase SHA-256); private quarantine; verified object key/version/checksum; mediated metadata-only downloads; async PDF jobs bound to exact immutable revisions; release blocked when a required PDF is missing, stale or unverified | `QuarantineService.upload/scan/complete/remove/download/view` and `PdfBindingService.requestRender/pickupRender/finishRender/failRender/bind/release` → `apps/api/src/test/java/com/aurevia/smartclinic/api/x_03/DocumentArtifactTest.java` (38 tests) |
-| ARC-01, ARC-02 | Tenant-scoped `(organizationId, id)` keys, two tenants with identical local IDs, cross-tenant 404 concealment, server-seeded owner/context binding, compare-and-set writes | `DocumentStore`/`InMemoryDocumentStore` → `concealsArtifactsAcrossTenantsWithIdenticalLocalIds`, `deniesUnknownInactiveAndForeignAuthorizations`, `competingWritesAreRejectedRatherThanOverwritingCommittedState` |
-| IAM-01 | Role-action table and fresh actor on every command; forbidden/inactive/wrong-tenant/wrong-owner denials audited | `DocumentActions`, `DocumentGuard` → `deniesMissingRoleAndNullActorWithoutChangingState`, `actionPolicyGrantsOnlyBoundedRoles` |
-| OPS-02 | Append-only facts with actor, resource, outcome, server time; no payload, file name or URL in facts or handles | `DocumentGuard.record` → `downloadHandleAndFactsCarryNoPayloadFileNameOrUrl`, `factsAreAppendOnlyAndTenantScopedAndNeverCarryPayloads` |
+- **ADM-02** — operational/audit review: `AuditEventList` renders actor, purpose, scope, correlation ID, action, resource, UTC instant and outcome for every row; `AccessStateNotice` renders permission-denied (role="alert") and concealment (role="status") states from fixture probes; `AdminScreen` composes the tenant-scoped views and a configuration proposal announcement. The requested configuration editor is primarily an ADM-01 display (version/approval/effective date) and is included because the story requires it.
+- **OPS-02** — audit and least privilege: `StaffHistoryView` shows append-only invite / role-grant / deactivation events with grantor, actor, effective instant and deactivation reason; deactivation collapses current roles to none. `AuditEventList` computes a synthetic hash-chain verdict with a chain-verified / chain-not-verified badge and an escalation hint for a broken chain. No real credentials or endpoints.
+- **UX-01** — English/Arabic bundles with parity checks, RTL document direction, logical CSS properties only, `<bdi dir="auto">` isolation with content-correct `lang`, `Intl` civil-date and UTC-instant formatting.
 
-Contract: `contracts/x_03/document-artifacts.md`.
+Synthetic data only: all fixtures use `Synthetic*` names and two organizations from `src/fixtures/synthetic.ts` whose local identifiers intentionally collide (config key, staff subject, audit sequence). No patient data, credentials, endpoint calls or transport imports.
 
-## Scope and decisions
+## Scope
 
-- The dispatch environment (`STORY_ID=X-03`, `Scope: contracts/x_03,
-  apps/api/src/main/java/com/aurevia/smartclinic/api/x_03`) is authoritative.
-  `TODO.md` still lists the older `contracts/upload` / `...api/upload` scope for
-  this entry; no other worker uses either path, so there is no collision. The
-  integrator should expect the `x_03` path. I did not edit TODO.md.
-- CODING_STYLE.md prefers business-domain packages over ticket-ID packages. The
-  swarm scope mandates `api/x_03`, so the directory is scope-driven while all
-  classes and methods use business-domain names (`QuarantineService`,
-  `PdfBindingService`, `DocumentContract`, `DocumentActions`, `DocumentInputs`,
-  `DocumentStore`, `DocumentGuard`). Converging this with the existing
-  `s_g3_06`/`s_g1_07` packages is a follow-up outside this story.
-- Reserved migration V56 was not used: `db/migrations` is outside the declared
-  scope and the slice persists through a tenant-scoped store boundary, matching
-  the other cross-cutting and swarm stories.
-- Stale `If-Match` versions return 412 (`STALE_VERSION`), following ARC-04 and
-  the test-engineer review, rather than the 409 used by the older S-G3-06
-  attachment slice.
-- Idempotency request digests (ARC-03) and real PDF bytes/fonts/RTL rendering
-  belong to X-01 and the rendering/document stories respectively; this slice
-  records verified object metadata and immutable bindings only.
-- Secondary review findings incorporated: explicit render pickup state,
-  `DocumentActions` role table, verified object boundary on completion and
-  download, compare-and-set writes, and an audit fact on blocked releases.
+`apps/staff-web/src/features/admin/**` only, plus this notes file. No shared trackers, `check.sh`, API, db, contracts, GitHub or scripts were edited. No migration version used. The feature is intentionally not mounted in `AppShell` (matching the CW-004/CW-007 pattern; mounting is outside this scope).
 
-## Commands and results (all executed locally; synthetic data only)
+## Files
 
-1. **Red — tests before production code**
-   `cd apps/api && mvn -B -Pno-security,fast test` → exit 1, compile errors for
-   the missing `com.aurevia.smartclinic.api.x_03` types. After adding the
-   implementation, the first behavioral run gave 7 assertion failures
-   (1549 tests); each was a real mismatch between the test matrix and the
-   service (scan re-scan, role for remove, error codes, CAS setup). All fixed
-   by changing the test or the owning rule, never by deleting an assertion.
-2. **Green — fast unit tier**
-   `cd apps/api && mvn -B -Pno-security,fast test` → exit 0,
-   `Tests run: 1550, Failures: 0, Errors: 0, Skipped: 0`; the new
-   `DocumentArtifactTest` ran 38 tests with 0 failures.
-3. **Coverage**
-   `cd apps/api && mvn -B -Pno-security,fast verify` → tests green; JaCoCo
-   `Report` and `check` ran. The bundle gate reports 0.81–0.94 because the
-   `fast` profile excludes the `@Tag("integration")` database suites; the
-   per-class JaCoCo XML shows **zero missed instructions, lines, branches,
-   methods and classes for every new `api/x_03` class** (checked by parsing
-   `target/site/jacoco/jacoco.xml`). The integrator's full `scripts/check.sh`
-   run is the authoritative bundle gate.
-4. **Static analysis**
-   `cd apps/api && mvn -B -Pfast -DskipTests -Djacoco.skip=true
-   -Dspotbugs.skip=false -Dowasp.skip=true spotbugs:check` → exit 1 with six
-   pre-existing Medium findings in `g0/s_g0_07`, `g4/s_g4_04`,
-   `messaging/s_g3_05`, `messaging/s_g3_08` and `messaging/s_g3_10`; **zero
-   findings mentioning `x_03`**.
-5. **Repository checks**
-   `python3 -I scripts/check-docs.py` → exit 0 (valid links and requirement IDs,
-   including the new contract and these notes).
-   `python3 -I -m unittest discover -s scripts/tests -q` → 163 tests with 12
-   pre-existing failures/errors in `check_pack` (stale `opencode.json`),
-   `swarm`, `agent_run`, `workflow_concurrency`, `fast_tier`, and Java
-   convention failures in `G3EvidenceService.java` and `PatientFlowContract.java`
-   — none reference `x_03`. I did not modify those shared files.
-   `python3 -I scripts/check-pack.py` → exit 1: committed `opencode.json` is
-   stale on this branch before my changes (git status showed only my new
-   directories as untracked); regenerating it is outside my scope.
-   `bash scripts/docs.sh` → exit 1: Doxygen is not installed locally.
-6. **Database/integration tests** were not run locally: `127.0.0.1:5432`
-   refuses connections and `psql`/`pg_isready` are absent. Per the worker
-   directive, the integrator runs the database and integration tests.
+`domain.ts`, `fixtures.ts`, `messages.ts`, `StateBadge.tsx`, `AccessStateNotice.tsx`, `ConfigEditor.tsx`, `StaffHistoryView.tsx`, `AuditEventList.tsx`, `AdminScreen.tsx`, plus `admin-core.test.ts`, `admin-components.test.tsx`, `admin-screen.test.tsx`.
 
-## Review evidence and defects
+## Specialist routing and evidence source
 
-- Bounded specialist reviews: `smartclinic-senior-backend` (design gaps) and
-  `smartclinic-test-engineer` (test matrix) returned findings; they were
-  simulated reviewers, not human or clinical participants. Their findings are
-  resolved in the implemented classes and tests as listed under Decisions.
-- Defects found and fixed during this story: scan allowed re-scan of a CLEAN
-  artifact, remove used a role without that permission, stale-version status
-  mismatch, unmocked object verification, idempotency and CAS race branches,
-  and missing accessor coverage — each fixed with a focused test and code
-  change.
-- No real patient data, credentials or clinical feedback were used or recorded.
+- `smartclinic-senior-react`: bounded design proposal (read-only) before implementation; recommended the feature-local pure core / fixtures / messages / presentational components / screen split, a shared badge primitive, and the v8 coverage pitfalls that were followed. No files edited by the specialist.
+- `smartclinic-ux-reviewer`: three static review rounds (read-only, no shell available to the reviewer). Round 1 found a reproducible invalid-date `RangeError` crash plus six accessibility/accuracy findings; all were fixed. Round 2 found a field-association WCAG issue plus residual `lang` metadata issues; both were fixed. Round 3 confirmed no remaining findings. These are simulated reviewer findings, not human or clinical feedback.
+- All command results below are tool-generated from commands executed by the implementing agent (evidence source: tool). No human participant, real clinician or patient evidence.
 
-## Blocking items for the integrator / owner
+## Test-first evidence
 
-- The shared-tracker and policy failures in item 5 are pre-existing on this
-  branch and outside X-03 scope; the integrator should reconcile them before
-  treating `scripts/check.sh` as green.
-- No decision or evidence required for X-03 acceptance is missing from this
-  note.
+- Red before production code: `npx vitest run src/features/admin/admin-core.test.ts` → import resolution failure on missing `./domain` (new behaviour absent). Red before UI code: `npx vitest run src/features/admin/admin-components.test.tsx src/features/admin/admin-screen.test.tsx` → import resolution failures on missing `./ConfigEditor` and `./AdminScreen`.
+- Green after implementation: `npx vitest run src/features/admin` → 3 files, 40 tests passed (later 144 after the UX fixes).
+- Defects found and fixed: (1) invalid/free-text effective date reached `Intl.DateTimeFormat` and would throw `RangeError` — added `isValidCivilDate` (format + real-calendar round-trip) and a localized, field-associated error; (2) status live region mislabelled as the audit region and unlocalized — localized announcement re-computed at render time with correct label and bidi isolation; (3) concealment wording implied cross-tenant existence — neutral "not found" copy and neutral probe label; (4) deactivation actor mislabelled as grantor, non-unique row headers, UTC not disclosed — separate Actor/Grantor columns, sequence row header, UTC header; (5) empty audit chain shown as "Chain not verified" — neutral "no events to verify" verdict and an escalation hint for genuinely broken chains; (6) mixed-script language metadata incorrect for Latin fixtures — content-correct `lang`; (7) raw technical table caption, cramped badges — localized caption and token gap.
+
+## Final verification commands and results
+
+All run from `apps/staff-web` unless noted.
+
+- `npm run typecheck` → exit 0 (`tsc --noEmit -p tsconfig.json`).
+- `npm run lint` → exit 0 (`eslint . --max-warnings 0`).
+- `npm run test:coverage` → 26 files, **144 tests passed**, 35 files fully covered; **100% statements (388/388), branches (195/195), functions (140/140), lines (370/370)** with `perFile: true`.
+- `bash check.sh` (canonical gate: generated-client drift, typecheck, lint, coverage) → **exit 0**, same 144 tests and 100% metrics.
+- `bash docs.sh /tmp/opencode/cw009-docs3` (TypeDoc, warnings are errors) → **exit 0**, `index.html` produced.
+- From repo root: `bash scripts/frontend-check.sh` → **exit 0**, including module typecheck/lint/tests, TypeScript-only policy, strict tsconfig flags, no `any`/`@ts-ignore`, root Prettier check and root Vitest.
+
+The stderr stack trace from `tests/theme/ThemeProvider.test.tsx` is the pre-existing fail-closed test (`useTheme` outside a provider); it does not fail any gate.
+
+Prettier note: `apps/staff-web` has no Prettier dependency or script (its canonical formatter surface is ESLint + strict TypeScript), and `.prettierignore` excludes `apps/**`; the root `format:check` therefore does not measure module files. Adding a module formatter is outside this story's scope and was not silently skipped.
+
+## Entry-point-to-test trace
+
+`AdminScreen` (composition) → `ConfigEditor.submit` → `isValidCivilDate` / `proposeVersion` → `versionsFor` / `effectiveVersion` → rendered version table (`admin-screen.test.tsx`, `admin-components.test.tsx`, `admin-core.test.ts`). `AdminScreen` → `StaffHistoryView` → `historyFor` / `isDeactivated` / `currentRoles` → append-only event table (same tests). `AdminScreen` → `AuditEventList` → `adminChainFor` / `verifyChain` → outcome rows and chain badge (same tests). `AdminScreen` → `resolveAccess(probe.viewer, probe.resourceOrganizationId)` → `AccessStateNotice` permitted/denied/concealed notices (same tests). Tenant switching resets local proposals via `useEffect`, covered by rerender in `admin-screen.test.tsx`.
+
+## Delivery
+
+Committed to the assigned branch only; no push, tag, `gh` call or tracker edit.
