@@ -11,6 +11,7 @@ package com.aurevia.smartclinic.catalog;
  * @param approvedBy    user identifier of the named approver
  * @param approvedAt    approval instant
  * @param note          approval note, or {@code null}
+ * @return this record
  */
 public record CatalogEntry(String family, String code, int version, String value, String effectiveFrom,
                            String approvedBy, String approvedAt, String note) {

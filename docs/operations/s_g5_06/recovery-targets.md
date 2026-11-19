@@ -56,7 +56,7 @@ the procedure that makes it true is in [Restore procedure](restore-procedure.md)
 |---|---|
 | `hashes` | Stored object and report checksums recomputed and compared with the recorded digests. |
 | `source_versions` | Source system identifiers, versions and clinical effective times preserved, not renumbered. |
-| `in_flight_deliveries` | Outbox and dead-letter entries deduplicated by immutable event ID in the sender/type namespace, so replay produces one downstream effect. |
+| `in_flight_deliveries` | Outbox and dead-letter entries deduplicated by immutable event ID in the sender/type namespace, so replay produces one downstream effect (ARC-05). |
 | `audit_coverage` | The per-tenant append-only audit hash chain verified across restored rows, with no missing sequence. |
 | `completed_before_writes_reopened` | All of the above completed *before* the restored system accepts writes again. |
 
