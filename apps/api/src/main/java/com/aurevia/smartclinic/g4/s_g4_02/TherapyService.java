@@ -3,11 +3,12 @@ package com.aurevia.smartclinic.g4.s_g4_02;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
-import java.util.Objects;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
 import com.aurevia.smartclinic.api.ApiException;
+import com.aurevia.smartclinic.g1.s_g1_05.NoteChecksum;
 import com.aurevia.smartclinic.g4.s_g4_02.TherapyContract.AckRequest;
 import com.aurevia.smartclinic.g4.s_g4_02.TherapyContract.Actor;
 import com.aurevia.smartclinic.g4.s_g4_02.TherapyContract.ClinicalNote;
@@ -66,13 +67,34 @@ public final class TherapyService {
     private static final String ACTION_ACK = "RETURN_ACK";
     private static final String ACTION_SCALE_DEFINE = "SCALE_DEFINE";
     private static final String ACTION_SCALE_APPROVE = "SCALE_APPROVE";
-    private static final String ACTION_READ = "THERAPY_READ";
+    private static final String ACTION_READ_EPISODE = "THERAPY_READ";
+    private static final String ACTION_READ_SCALE = "SCALE_READ";
     private static final String ACTION_AUDIT = "AUDIT_READ";
     private static final String OUTCOME_SUCCESS = "SUCCESS";
     private static final String OUTCOME_DENIED = "DENIED";
     private static final String OUTCOME_NOT_FOUND = "NOT_FOUND";
     private static final String OUTCOME_CONFLICT = "CONFLICT";
     private static final String OUTCOME_INVALID = "INVALID";
+
+    /**
+     * Declarative server-side action policy (IAM-01). Unknown actions resolve to
+     * an empty role set, so authorization always fails closed. Clinical reads are
+     * restricted to PT staff; scale reads additionally allow governance and admin.
+     */
+    private static final Map<String, Set<String>> ACTION_ROLES = Map.ofEntries(
+            Map.entry(ACTION_ACCEPT, Set.of(PT_CLINICIAN, PT_COORDINATOR)),
+            Map.entry(ACTION_SUMMARY, Set.of(PT_CLINICIAN, PT_COORDINATOR)),
+            Map.entry(ACTION_EVALUATION, Set.of(PT_CLINICIAN)),
+            Map.entry(ACTION_OUTCOME, Set.of(PT_CLINICIAN)),
+            Map.entry(ACTION_INTERVENTION, Set.of(PT_CLINICIAN)),
+            Map.entry(ACTION_NOTE, Set.of(PT_CLINICIAN)),
+            Map.entry(ACTION_SIGN, Set.of(PT_CLINICIAN)),
+            Map.entry(ACTION_ACK, Set.of(PT_CLINICIAN, PT_COORDINATOR)),
+            Map.entry(ACTION_SCALE_DEFINE, Set.of(TENANT_ADMIN)),
+            Map.entry(ACTION_SCALE_APPROVE, Set.of(CLINICAL_GOVERNANCE)),
+            Map.entry(ACTION_READ_EPISODE, Set.of(PT_CLINICIAN, PT_COORDINATOR)),
+            Map.entry(ACTION_READ_SCALE, Set.of(TENANT_ADMIN, CLINICAL_GOVERNANCE, PT_CLINICIAN)),
+            Map.entry(ACTION_AUDIT, Set.of(PRIVACY_AUDITOR, TENANT_ADMIN)));
 
     private final TherapyStore store;
     private final Clock clock;
@@ -250,9 +272,9 @@ public final class TherapyService {
      * @throws ApiException on denial
      */
     public List<OutcomeScale> versions(Actor actor, String key) {
-        authorize(actor, ACTION_READ, key);
+        authorize(actor, ACTION_READ_SCALE, key);
         List<OutcomeScale> all = store.scales(actor.organizationId(), key);
-        audit(actor, ACTION_READ, key, OUTCOME_SUCCESS);
+        audit(actor, ACTION_READ_SCALE, key, OUTCOME_SUCCESS);
         return all;
     }
 
@@ -533,9 +555,9 @@ public final class TherapyService {
      * @throws ApiException on denial or an invisible episode
      */
     public TherapyAggregate get(Actor actor, String episodeId) {
-        authorize(actor, ACTION_READ, episodeId);
-        TherapyAggregate aggregate = load(actor, episodeId, ACTION_READ);
-        audit(actor, ACTION_READ, episodeId, OUTCOME_SUCCESS);
+        authorize(actor, ACTION_READ_EPISODE, episodeId);
+        TherapyAggregate aggregate = load(actor, episodeId, ACTION_READ_EPISODE);
+        audit(actor, ACTION_READ_EPISODE, episodeId, OUTCOME_SUCCESS);
         return aggregate;
     }
 
@@ -567,17 +589,8 @@ public final class TherapyService {
             audit(actor, action, resourceId, OUTCOME_DENIED);
             throw new ApiException(403, "FORBIDDEN", "no active membership");
         }
-        Set<String> allowed = switch (action) {
-            case ACTION_ACCEPT, ACTION_SUMMARY -> Set.of(PT_CLINICIAN, PT_COORDINATOR);
-            case ACTION_EVALUATION, ACTION_OUTCOME, ACTION_INTERVENTION, ACTION_NOTE, ACTION_SIGN ->
-                    Set.of(PT_CLINICIAN);
-            case ACTION_ACK -> Set.of(PT_CLINICIAN, PT_COORDINATOR);
-            case ACTION_SCALE_DEFINE -> Set.of(TENANT_ADMIN);
-            case ACTION_SCALE_APPROVE -> Set.of(CLINICAL_GOVERNANCE);
-            case ACTION_AUDIT -> Set.of(PRIVACY_AUDITOR, TENANT_ADMIN);
-            default -> null;
-        };
-        if (allowed != null && actor.roles().stream().noneMatch(allowed::contains)) {
+        Set<String> allowed = ACTION_ROLES.getOrDefault(action, Set.of());
+        if (actor.roles().stream().noneMatch(allowed::contains)) {
             audit(actor, action, resourceId, OUTCOME_DENIED);
             throw new ApiException(403, "FORBIDDEN", "missing " + action + " permission");
         }
@@ -630,11 +643,7 @@ public final class TherapyService {
     }
 
     private static String checksum(String... parts) {
-        int hash = 1;
-        for (String part : parts) {
-            hash = 31 * hash + Objects.hashCode(part);
-        }
-        return Integer.toHexString(hash);
+        return NoteChecksum.sha256(String.join("\u0000", parts));
     }
 
     private static String newId() {
