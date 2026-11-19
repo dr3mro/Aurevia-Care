@@ -211,7 +211,7 @@ Independent modules scoped to their own paths so workers cannot collide with bac
 
 - [x] S-FIX-PUBLISH-01 · Fix swarm publish failure on workflow-file changes: grant `workflows: write` to the publish and integrator jobs, and recreate the local `swarm-incoming` ref before each bundle fetch.
   - agent: loop
-  - evidence: observed failure from `swarm/CW-007-40` — GitHub App refused `.github/workflows/agent-image.yml` without `workflows` permission, then a second bundle hit non-fast-forward on `swarm-incoming`. Guards red first then green: 77 swarm tests, 151 total tooling tests OK, including a test that publishes two bundles from one checkout. `check.sh`, `quick-check.sh`, `docs.sh`, `gen-opencode.py --check` exit 0. No `SWARM_TOKEN` secret exists, so the fallback `github.token` is the App token that needs the scope. The failed task's `[-]` claim will be freed by `reclaim()` on the next wave because no PR was opened. Evidence source: observed CI error plus executed tool commands; no human or clinical evidence.
+  - evidence: observed failure from `swarm/CW-007-40`/`CW-007-41` — GitHub App refused `.github/workflows/*`, then later slots hit non-fast-forward on `swarm-incoming`. `workflows: write` is NOT a valid GitHub Actions permission scope and made both workflows invalid, so it was removed. Final fix: `publish()` deletes the local `swarm-incoming` ref before each bundle and detects workflow-file changes, releases the claim and skips the push instead of crashing. Guards red first then green: 76 swarm tests, 150 total tooling tests OK; all 8 workflow YAMLs parse; `check.sh`, `quick-check.sh`, `docs.sh`, `gen-opencode.py --check` exit 0. No `SWARM_TOKEN` secret exists; a person must apply workflow changes or supply a token with workflow scope. Evidence source: observed CI errors plus executed tool commands; no human or clinical evidence.
 
 ## Improvement ideas
 
@@ -228,6 +228,9 @@ Raised by the dispatch-3 run-3 verification. Address in the next authorized chan
 
 - [x] S-PLAN-01 · One-week execution plan at one wave per hour: all 59 executable open tasks mapped into 7 waves below; swarm fallback cron changed from every 3 hours to hourly.
   - evidence: programmatic coverage check (59 tasks, no duplicates, no unscheduled open task); `scripts/tests/test_swarm.py` hourly-cron guard red then green; 148 tooling tests OK; `check.sh`, `quick-check.sh`, `docs.sh`, `gen-opencode.py --check` exit 0. S-G0-04 remains blocked and unscheduled. Evidence source: executed tool commands; no human or clinical evidence.
+
+- [x] S-FIX-REPAIR-01 · `main-repair.yml` now runs only on `pull_request` events for `FIX-`/`autofix` PRs; the `fix-pr-watchdog.yml` duplicate was deleted. No failed-run or cron trigger.
+  - evidence: observed `Main repair` run `44491531055` was a `workflow_run` event, which the user rejected. Guards red first then green: 76 swarm tests, 150 total tooling tests OK; all 8 workflow YAMLs parse with `main-repair.yml` triggered by `pull_request` only; budget workflow list reduced to six. Evidence source: `gh run list` plus executed tool commands; no human or clinical evidence.
 
 ## One-week execution plan (1 wave per hour)
 

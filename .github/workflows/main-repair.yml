@@ -1,47 +1,72 @@
-name: Main repair
-# Watches Delivery, Heavy verification and the image builds on main. When one
-# fails, starts one repair worker with the failing log. The fix is a pull request
-# labeled autofix that fix-pr-watchdog.yml validates on a pull_request event,
-# then hands to the integrator; a fix that did not work starts the next repair.
-# It stops after three tries in 24 hours and opens an issue.
+name: Fix PR repair
+# Event-driven, not periodic. Only a FIX- PR labeled autofix triggers this job.
+# It validates that exact fix with the full gate and hands a green PR to the
+# integrator; a red fix goes back through swarm.py fail() for one bounded retry.
+# There is deliberately no failed-run or cron trigger: a repair exists only
+# once a fix PR is available.
 on:
-  workflow_run:
-    workflows: [Delivery, Heavy verification, Agent image, Swarm slot images]
-    types: [completed]
-    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
 permissions:
   contents: read
 concurrency:
-  group: main-repair
+  group: fix-pr-repair
   cancel-in-progress: false
   queue: max
 jobs:
-  repair:
-    name: Start a repair
-    if: github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.event != 'pull_request'
-    runs-on: ubuntu-latest
-    timeout-minutes: 3
+  validate:
+    name: Validate fix PR
+    if: contains(github.event.pull_request.labels.*.name, 'autofix') || startsWith(github.event.pull_request.title, 'FIX-')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
     permissions:
       contents: read
-      pull-requests: read
-      issues: write
+      pull-requests: write
       actions: write
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PR: ${{ github.event.pull_request.number }}
+      SMARTCLINIC_PG_ADMIN: postgres
+      NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 0
           persist-credentials: false
-          sparse-checkout: |
-            scripts
-            .github/swarm
-      - name: Decide whether to repair
-        id: gate
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RUN_ID: ${{ github.event.workflow_run.id }}
-        run: python3 -I scripts/swarm.py repair-gate --run "$RUN_ID"
-      - name: Start one repair worker with the failing log
-        if: steps.gate.outputs.start == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RUN_ID: ${{ github.event.workflow_run.id }}
-        run: gh workflow run swarm.yml -f workers=1 -f repair_run="$RUN_ID"
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Cache OWASP NVD data
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository/org/owasp/dependency-check-data
+          key: owasp-nvd-${{ runner.os }}-${{ runner.arch }}-${{ github.sha }}
+          restore-keys: |
+            owasp-nvd-${{ runner.os }}-${{ runner.arch }}-
+      - name: Run the full gate and hand off
+        run: |
+          set +e
+          bash scripts/check.sh > fix-pr-gate.log 2>&1
+          code=$?
+          set -e
+          if [[ "$code" -eq 0 ]]; then
+            gh workflow run swarm-integrator.yml
+          else
+            tail -80 fix-pr-gate.log
+            python3 -I scripts/swarm.py fail --pr "$PR" \
+              --reason "Fix PR gate failed" --log fix-pr-gate.log
+            exit 1
+          fi
