@@ -20,8 +20,10 @@ SECRET_READ_RULES = [
     {"action": "read", "resource": "*.env.example", "effect": "allow"},
 ]
 
-# Local, reversible commands the delivery loop runs constantly. Everything else
-# in the shell stays on "ask", so pushes, tags, gh and installs keep a human gate.
+# The orchestrator runs scoped shell work without prompts by user directive
+# (2026-11-18). Hard safety gates stay as explicit deny rules below: force push,
+# reset/clean, --no-verify and .env reads are never allowed. CI uses the same
+# allow-by-default shell with a larger deny list for publication commands.
 SHELL_ALLOW = [
     "git status*", "git diff*", "git log*", "git show*", "git branch*",
     "git rev-parse*", "git ls-files*", "git add*", "git commit*",
@@ -54,7 +56,7 @@ def build(names, ci=False):
     specialists = sorted(set(names) - {PRIMARY})
     primary = [
         rule("external_directory", "*", "deny"),
-        rule("shell", "*", "allow" if ci else "ask"),
+        rule("shell", "*", "allow"),
         *[rule("shell", pattern, "allow") for pattern in SHELL_ALLOW],
         *[rule("shell", pattern, "deny")
           for pattern in SHELL_DENY + (CI_SHELL_DENY if ci else [])],
