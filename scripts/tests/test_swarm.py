@@ -270,7 +270,7 @@ class PlanTests(unittest.TestCase):
 
     def test_integrator_gate_is_the_full_check(self):
         text = (ROOT / ".github/workflows/swarm-integrator.yml").read_text()
-        self.assertIn("GATE: scripts/check.sh", text)
+        self.assertIn("GATE: scripts/integrator-gate.sh", text)
         self.assertIn("postgres:", text)
         self.assertIn("SMARTCLINIC_PG_ADMIN: postgres", text)
         self.assertNotIn("GATE: scripts/quick-check.sh", text)
@@ -362,6 +362,14 @@ class PlanTests(unittest.TestCase):
         text = (ROOT / ".github/workflows/swarm.yml").read_text()
         self.assertIn("cron: '7 * * * *'", text)
         self.assertNotIn("cron: '7 */3 * * *'", text)
+
+    def test_integrator_gate_runs_full_check_and_docs(self):
+        script = (ROOT / "scripts/integrator-gate.sh").read_text()
+        self.assertIn("bash scripts/check.sh", script)
+        self.assertIn("bash scripts/docs.sh", script)
+        workflow = (ROOT / ".github/workflows/swarm-integrator.yml").read_text()
+        self.assertIn("GATE: scripts/integrator-gate.sh", workflow)
+        self.assertIn("Install Doxygen", workflow)
 
     def test_doxygen_install_retries_apt_mirror_failures(self):
         text = (ROOT / ".github/workflows/delivery.yml").read_text()

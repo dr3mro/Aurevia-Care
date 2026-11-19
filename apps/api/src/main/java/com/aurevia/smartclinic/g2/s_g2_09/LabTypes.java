@@ -110,6 +110,11 @@ public interface LabTypes {
 
         private final String symbol;
 
+        /**
+         * Bind the display symbol for this qualifier.
+         *
+         * @param symbol operator symbol shown to a reader
+         */
         Qualifier(String symbol) {
             this.symbol = symbol;
         }
