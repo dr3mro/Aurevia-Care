@@ -51,7 +51,10 @@ export function createMessageFactsClient(fixture: MessageFactsFixture): MessageF
 
     async markFirstView(instructionId: string, revision: number): Promise<FirstViewFact> {
       requireAuth();
-      findInstruction(instructionId);
+      const view = findInstruction(instructionId);
+      if (revision !== view.revision) {
+        throw new Error('REVISION_MISMATCH');
+      }
       const current = factsFor(instructionId);
       const updated = recordFirstViewOnce(
         current, instructionId, revision, fixture.viewer, fixture.now,
@@ -80,10 +83,14 @@ export function createMessageFactsClient(fixture: MessageFactsFixture): MessageF
     },
 
     overdueInstructions(now: string): readonly InstructionView[] {
-      return overdueInstructions(fixture.instructions, facts, now);
+      requireAuth();
+      const visible = fixture.instructions.filter((item) =>
+        item.organizationId === fixture.organizationId && item.patientId === fixture.viewer);
+      return overdueInstructions(visible, facts, now);
     },
 
     owningUnitFor(instructionId: string): string {
+      requireAuth();
       return findInstruction(instructionId).unitId;
     },
   };

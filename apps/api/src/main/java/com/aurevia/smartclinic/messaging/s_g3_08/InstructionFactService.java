@@ -89,27 +89,48 @@ public class InstructionFactService {
         String contentRef = InstructionFactInputs.text(command.contentRef(), "contentRef", 128);
         Instant dueAt = InstructionFactInputs.dueAt(command.acknowledgmentDueAt(), "acknowledgmentDueAt");
         String clientId = InstructionFactInputs.text(command.clientId(), "clientId", 128);
+        if (command.requiresAcknowledgment() && dueAt == null) {
+            throw new ApiException(422, "ACKNOWLEDGMENT_DUE_DATE_REQUIRED",
+                    "a requested acknowledgment needs a due instant for overdue routing");
+        }
         TenantContext context = requireContext();
         authorize(context, PUBLISH, id);
         if (!store.isStaffAssignedToUnit(context.organizationId(), context.subject(), unitId)) {
             throw deny(context, PUBLISH, id, 403, "FORBIDDEN", "the unit is not assigned to this actor");
         }
-        String digest = String.join("|", id, Integer.toString(revision), contentRef,
+        String digest = String.join("|", id, patientId, unitId, Integer.toString(revision), contentRef,
                 Boolean.toString(command.requiresAcknowledgment()), String.valueOf(dueAt),
                 Boolean.toString(command.sendNotification()));
-        Optional<String> recorded = requireFreshKey(context, PUBLISH, id, clientId, digest);
+        Optional<String> recorded = recordedClientDigest(context, PUBLISH, id, clientId, digest);
+        if (recorded.isEmpty()) {
+            Instruction latest = store.latestInstruction(context.organizationId(), id).orElse(null);
+            if (latest != null && (!patientId.equals(latest.patientId())
+                    || !unitId.equals(latest.unitId()))) {
+                throw deny(context, PUBLISH, id, 409, "INSTRUCTION_CONTEXT_CONFLICT",
+                        "a revision cannot change the verified patient or owning unit");
+            }
+            // Immutable revisions: a stale version is rejected and a duplicate
+            // version can never replace previously published content.
+            if (latest != null && revision < latest.revision()) {
+                throw deny(context, PUBLISH, id, 409, "STALE_REVISION",
+                        "a revision must not be older than the latest stored revision");
+            }
+            if (!store.hasActiveConnection(context.organizationId(), patientId, unitId)) {
+                throw deny(context, PUBLISH, id, 403, "FORBIDDEN",
+                        "no active connection for this patient and unit");
+            }
+        }
         if (recorded.isPresent()) {
-            return store.publications(context.organizationId(), id, revision).stream()
-                    .findFirst().orElseThrow();
+            return committedPublication(context, id, revision);
         }
-        Instruction latest = store.latestInstruction(context.organizationId(), id).orElse(null);
-        if (latest != null && (!patientId.equals(latest.patientId())
-                || !unitId.equals(latest.unitId()))) {
-            throw deny(context, PUBLISH, id, 409, "INSTRUCTION_CONTEXT_CONFLICT",
-                    "a revision cannot change the verified patient or owning unit");
+        reserveClientDigest(context, PUBLISH, id, clientId, digest);
+        Instruction candidate = new Instruction(id, context.organizationId(), patientId, unitId,
+                revision, contentRef, command.requiresAcknowledgment(), dueAt);
+        Instruction stored = store.putInstruction(context.organizationId(), candidate);
+        if (!candidate.equals(stored)) {
+            throw deny(context, PUBLISH, id, 409, "REVISION_CONFLICT",
+                    "this revision was already published with different content");
         }
-        store.putInstruction(context.organizationId(), new Instruction(id, context.organizationId(),
-                patientId, unitId, revision, contentRef, command.requiresAcknowledgment(), dueAt));
         Publication publication = store.putPublication(context.organizationId(),
                 new Publication(context.organizationId(), id, revision, context.subject(), clock.instant()));
         if (command.sendNotification()) {
@@ -138,11 +159,11 @@ public class InstructionFactService {
             throw deny(context, DISPATCH, id, 403, "FORBIDDEN", "the unit is not assigned to this actor");
         }
         String digest = id + "|" + revision;
-        Optional<String> recorded = requireFreshKey(context, DISPATCH, id, clientId, digest);
+        Optional<String> recorded = recordedClientDigest(context, DISPATCH, id, clientId, digest);
         if (recorded.isPresent()) {
-            return store.dispatches(context.organizationId(), id, revision).stream()
-                    .findFirst().orElseThrow();
+            return committedDispatch(context, id, revision);
         }
+        reserveClientDigest(context, DISPATCH, id, clientId, digest);
         Dispatch dispatch = store.appendDispatch(context.organizationId(), new Dispatch(
                 context.organizationId(), id, revision, GENERIC_NOTIFICATION_KEY,
                 context.correlationId(), clock.instant()));
@@ -196,16 +217,18 @@ public class InstructionFactService {
                     "this revision did not request an acknowledgment");
         }
         String digest = id + "|" + revision;
-        Optional<String> recorded = requireFreshKey(context, ACKNOWLEDGE, id, clientId, digest);
+        Optional<String> recorded = recordedClientDigest(context, ACKNOWLEDGE, id, clientId, digest);
+        if (recorded.isEmpty()) {
+            Instruction latest = store.latestInstruction(context.organizationId(), id).orElseThrow();
+            if (latest.revision() != revision) {
+                throw deny(context, ACKNOWLEDGE, id, 409, "STALE_REVISION",
+                        "a newer instruction revision exists");
+            }
+        }
         if (recorded.isPresent()) {
-            return store.acknowledgments(context.organizationId(), id, revision).stream()
-                    .findFirst().orElseThrow();
+            return committedAcknowledgment(context, id, revision);
         }
-        Instruction latest = store.latestInstruction(context.organizationId(), id).orElseThrow();
-        if (latest.revision() != revision) {
-            throw deny(context, ACKNOWLEDGE, id, 409, "STALE_REVISION",
-                    "a newer instruction revision exists");
-        }
+        reserveClientDigest(context, ACKNOWLEDGE, id, clientId, digest);
         Acknowledgment acknowledgment = store.putAcknowledgmentIfAbsent(context.organizationId(),
                 new Acknowledgment(context.organizationId(), id, revision, context.subject(),
                         AcknowledgmentScope.RECEIPT, clock.instant()));
@@ -242,6 +265,11 @@ public class InstructionFactService {
                 .filter(followUp -> store.instruction(context.organizationId(),
                         followUp.instructionId(), followUp.revision())
                         .map(Instruction::requiresAcknowledgment).orElse(false))
+                // A superseded revision can no longer be acknowledged by the
+                // patient, so its follow-up must never appear as open work.
+                .filter(followUp -> store.latestInstruction(context.organizationId(),
+                        followUp.instructionId())
+                        .map(latest -> latest.revision() == followUp.revision()).orElse(false))
                 .sorted(Comparator.comparing(FollowUp::instructionId)
                         .thenComparingInt(FollowUp::revision))
                 .toList();
@@ -327,19 +355,41 @@ public class InstructionFactService {
         }
     }
 
-    private Optional<String> requireFreshKey(TenantContext context, String action, String id,
-                                             String clientId, String digest) {
+    private Optional<String> recordedClientDigest(TenantContext context, String action, String id,
+                                                  String clientId, String digest) {
         Optional<String> recorded = store.clientDigest(context.organizationId(), context.subject(),
                 action, clientId);
-        if (recorded.isPresent()) {
-            if (!digest.equals(recorded.get())) {
-                throw deny(context, action, id, 409, "IDEMPOTENCY_CONFLICT",
-                        "the idempotency key was used with a different request");
-            }
-            return recorded;
+        if (recorded.isPresent() && !digest.equals(recorded.get())) {
+            throw deny(context, action, id, 409, "IDEMPOTENCY_CONFLICT",
+                    "the idempotency key was used with a different request");
         }
-        store.putClientDigest(context.organizationId(), context.subject(), action, clientId, digest);
-        return Optional.empty();
+        return recorded;
+    }
+
+    private void reserveClientDigest(TenantContext context, String action, String id,
+                                     String clientId, String digest) {
+        if (!store.putClientDigest(context.organizationId(), context.subject(), action, clientId, digest)) {
+            throw deny(context, action, id, 409, "CONFLICT",
+                    "the idempotency key was already recorded");
+        }
+    }
+
+    private Publication committedPublication(TenantContext context, String id, int revision) {
+        return store.publications(context.organizationId(), id, revision).stream().findFirst()
+                .orElseThrow(() -> deny(context, PUBLISH, id, 409, "CONFLICT",
+                        "the recorded command has no committed publication"));
+    }
+
+    private Dispatch committedDispatch(TenantContext context, String id, int revision) {
+        return store.dispatches(context.organizationId(), id, revision).stream().findFirst()
+                .orElseThrow(() -> deny(context, DISPATCH, id, 409, "CONFLICT",
+                        "the recorded command has no committed dispatch"));
+    }
+
+    private Acknowledgment committedAcknowledgment(TenantContext context, String id, int revision) {
+        return store.acknowledgments(context.organizationId(), id, revision).stream().findFirst()
+                .orElseThrow(() -> deny(context, ACKNOWLEDGE, id, 409, "CONFLICT",
+                        "the recorded command has no committed acknowledgment"));
     }
 
     private TenantContext requireContext() {

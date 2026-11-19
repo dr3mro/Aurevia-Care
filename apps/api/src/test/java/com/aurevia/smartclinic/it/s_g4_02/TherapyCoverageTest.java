@@ -3,12 +3,14 @@ package com.aurevia.smartclinic.it.s_g4_02;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -101,6 +103,33 @@ class TherapyCoverageTest {
                 new EvaluationRequest(List.of("p"), List.of(), List.of(), 1, 0), 1)));
         assertEquals(422, status(() -> service.recordEvaluation(pt, episode.id(),
                 new EvaluationRequest(List.of("p"), List.of(), List.of(), 0, 1), 1)));
+    }
+
+    /** Command records must copy caller-owned lists yet preserve null for validation. */
+    @Test
+    void commandRecordsCopyListsAndPreserveNull() {
+        List<String> problems = new ArrayList<>(List.of("p1"));
+        List<Measurement> baselines = new ArrayList<>(List.of(
+                new Measurement("ROM", "90", "degrees", "2026-11-19T09:00:00Z")));
+        List<Goal> goals = new ArrayList<>(List.of(new Goal("g", "1", "2026-12-19")));
+        EvaluationRequest request = new EvaluationRequest(problems, baselines, goals, 1, 1);
+        problems.clear();
+        baselines.clear();
+        goals.clear();
+        assertEquals(List.of("p1"), request.problems());
+        assertEquals(1, request.baselines().size());
+        assertEquals(1, request.goals().size());
+        assertThrows(UnsupportedOperationException.class, () -> request.problems().add("x"));
+
+        List<String> values = new ArrayList<>(List.of("0", "50"));
+        ScaleRequest scaleRequest = new ScaleRequest("k", "d", "u", values);
+        values.clear();
+        assertEquals(2, scaleRequest.permittedValues().size());
+        assertThrows(UnsupportedOperationException.class,
+                () -> scaleRequest.permittedValues().add("x"));
+
+        assertNull(new EvaluationRequest(null, List.of(), List.of(), 1, 1).problems());
+        assertNull(new ScaleRequest("k", "d", "u", null).permittedValues());
     }
 
     /** A correct explicit patient binding is accepted. */
