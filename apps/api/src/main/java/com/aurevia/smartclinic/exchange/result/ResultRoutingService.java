@@ -343,6 +343,18 @@ public class ResultRoutingService {
                 throw new ApiException(422, "SUPERSEDES_NOT_ALLOWED",
                         "only a corrected result may supersede a prior version");
             }
+            // A repeated or reordered non-correction must resolve to the exact
+            // revision it already produced, not create a new version. Searching
+            // the whole lineage (not just the computed tip) is what prevents a
+            // duplicate final report after a correction has advanced the tip;
+            // a genuinely new finding still advances the lineage below.
+            Optional<ResultReport> replay = lineage.stream()
+                    .filter(stored -> sameContent(stored, identifiers, kind, effectiveAt, checksum))
+                    .findFirst();
+            if (replay.isPresent()) {
+                writeAudit(context, "XCH04_RESULT_REPLAY", RESOURCE_TYPE, replay.get().id(), "SUCCESS");
+                return new ImportOutcome(replay.get(), null);
+            }
             version = tip + 1;
         }
 
