@@ -117,7 +117,9 @@ CREATE TRIGGER exchange_task_no_truncate
     FOR EACH STATEMENT EXECUTE FUNCTION public.reject_immutable_mutation();
 
 -- Resolve the acting user id from the transaction-local subject; fail closed
--- when there is no authenticated user of the active tenant.
+-- when there is no authenticated, actively enrolled user of the active tenant.
+-- Membership is re-folded here (not cached in a token) so a deactivation denies
+-- the next protected write at the database authority too, not just in service.
 CREATE OR REPLACE FUNCTION public.xch02_actor_id()
 RETURNS uuid LANGUAGE plpgsql STABLE SET search_path = pg_catalog
 AS $$
@@ -125,9 +127,10 @@ DECLARE v_actor uuid;
 BEGIN
     SELECT id INTO v_actor FROM public.user_identity
      WHERE organization_id = public.app_org()
-       AND subject = NULLIF(current_setting('app.actor', true), '');
+       AND subject = NULLIF(current_setting('app.actor', true), '')
+       AND public.has_active_membership(NULLIF(current_setting('app.actor', true), ''));
     IF v_actor IS NULL THEN
-        RAISE EXCEPTION 'exchange command requires an authenticated user of the active tenant'
+        RAISE EXCEPTION 'exchange command requires an active user of the active tenant'
             USING ERRCODE = '42501';
     END IF;
     RETURN v_actor;
@@ -143,6 +146,27 @@ END $$;
 CREATE TRIGGER xch02_a_set_task_created_by
     BEFORE INSERT ON public.exchange_task
     FOR EACH ROW EXECUTE FUNCTION public.xch02_set_task_created_by();
+
+-- A work item is always born in the three initial channels. Normalising on
+-- INSERT closes the storage-level forgery path: a direct SQL writer cannot
+-- create an already-acknowledged or resolved task with a chosen actor,
+-- revision and timestamp. The clinical channel can leave 'unreviewed' only
+-- through the guarded UPDATE below, which binds a live human actor.
+CREATE OR REPLACE FUNCTION public.xch02_initialize_task_channels()
+RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog
+AS $$
+BEGIN
+    NEW.workflow_state := 'requested';
+    NEW.transmission_state := 'pending';
+    NEW.clinical_review_state := 'unreviewed';
+    NEW.clinical_reviewed_at := NULL;
+    NEW.clinical_revision := NULL;
+    NEW.clinical_review_actor_id := NULL;
+    RETURN NEW;
+END $$;
+CREATE TRIGGER xch02_a_initialize_task_channels
+    BEFORE INSERT ON public.exchange_task
+    FOR EACH ROW EXECUTE FUNCTION public.xch02_initialize_task_channels();
 
 CREATE OR REPLACE FUNCTION public.xch02_set_transition_actor()
 RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog
@@ -237,9 +261,11 @@ REVOKE UPDATE, DELETE, TRUNCATE ON public.exchange_task_transition FROM smartcli
 
 REVOKE ALL ON FUNCTION public.xch02_actor_id() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.xch02_set_task_created_by() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.xch02_initialize_task_channels() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.xch02_set_transition_actor() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.xch02_guard_task_update() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.xch02_actor_id() TO smartclinic_app;
 GRANT EXECUTE ON FUNCTION public.xch02_set_task_created_by() TO smartclinic_app;
+GRANT EXECUTE ON FUNCTION public.xch02_initialize_task_channels() TO smartclinic_app;
 GRANT EXECUTE ON FUNCTION public.xch02_set_transition_actor() TO smartclinic_app;
 GRANT EXECUTE ON FUNCTION public.xch02_guard_task_update() TO smartclinic_app;

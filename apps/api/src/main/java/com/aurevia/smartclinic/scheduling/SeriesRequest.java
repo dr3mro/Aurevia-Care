@@ -13,6 +13,7 @@ package com.aurevia.smartclinic.scheduling;
  * @param overrideReason recorded reason when a slot is outside availability
  * @param repeatWeeks    weeks between occurrences, 1-4
  * @param occurrences    total number of occurrences, 1-52
+ * @return this record
  */
 public record SeriesRequest(String facilityCode, String patientId, String visitType,
                             String clinicianCode, String roomCode, String startsAt,

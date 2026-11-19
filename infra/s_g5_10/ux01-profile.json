@@ -1,0 +1,16 @@
+{
+  "requirement": "UX-01",
+  "schema_version": "1.0",
+  "languages": ["en", "ar"],
+  "instant_storage": "utc",
+  "wcag": {
+    "standard": "WCAG 2.2",
+    "level": "AA"
+  },
+  "screen_readers": {
+    "ios": "VoiceOver",
+    "android": "TalkBack"
+  },
+  "assessment_kinds": ["synthetic_rehearsal", "measured_acceptance"],
+  "synthetic_only": true
+}
