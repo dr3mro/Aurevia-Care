@@ -8,11 +8,15 @@ on:
   workflow_dispatch:
     inputs:
       workers:
-        description: Worker cap; the wave uses fewer when fewer tasks are ready (1 to 10, default 1)
-        default: '1'
+        description: 'Worker cap; the wave uses fewer when fewer tasks are ready (1 to 10, default 10)'
+        default: '10'
       repair_run:
         description: Failed run id on main to repair (set by the main watchdog)
         default: ''
+      now:
+        description: 'Start immediately instead of queueing behind the running or queued waves'
+        type: boolean
+        default: false
   push:
     branches: [main]
     paths: [TODO.md]
@@ -28,9 +32,11 @@ on:
     branches: [main]
 permissions:
   contents: read
-# Waves queue: one wave plans and starts at a time so a task is never started twice.
+# Waves queue behind each other. A manual run with `now` ticked gets a group of
+# its own, so it starts at once; only the short plan job below is serialized, so
+# two waves can never claim the same task.
 concurrency:
-  group: agent-swarm
+  group: ${{ inputs.now && format('agent-swarm-now-{0}', github.run_id) || 'agent-swarm' }}
   cancel-in-progress: false
   # Keep every queued wave: a newer queued request must not supersede an older
   # one, and the running wave is never cancelled.
@@ -38,6 +44,12 @@ concurrency:
 jobs:
   plan:
     name: Plan the wave
+    # Planning reads TODO.md and claims tasks, so it never overlaps another
+    # plan, whichever wave it belongs to.
+    concurrency:
+      group: agent-swarm-plan
+      cancel-in-progress: false
+      queue: max
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -93,7 +105,8 @@ jobs:
         if: steps.budget.outputs.start == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          WORKERS: ${{ inputs.workers || '1' }}
+          WORKERS: ${{ inputs.workers || '10' }}
+          BUDGET_WORKERS: ${{ steps.budget.outputs.workers }}
           REPAIR_RUN: ${{ inputs.repair_run }}
           IMAGES_READY: ${{ steps.images.outputs.ready }}
         run: |
@@ -104,144 +117,46 @@ jobs:
             exit 0
           fi
           python3 -I scripts/swarm.py ensure-labels
+          # Never plan more workers than the remaining monthly budget can pay for.
+          if [[ "$BUDGET_WORKERS" =~ ^[0-9]+$ ]] && (( BUDGET_WORKERS < WORKERS )); then
+            echo "Budget allows $BUDGET_WORKERS worker(s); capping the wave." >&2
+            WORKERS=$BUDGET_WORKERS
+          fi
           python3 -I scripts/swarm.py plan-workers --max "$WORKERS" --repair-run "$REPAIR_RUN"
   worker:
-    # GitHub renders matrix values in this name when the wave has tasks; a
-    # literal ${{ ... }} only appears when the matrix is empty (job skipped).
-    # Keep the name static so an empty wave does not look like broken YAML.
+    # Static name: GitHub renders matrix values in a job name only when the
+    # wave has tasks, and a literal ${{ ... }} shows when the matrix is empty.
     name: Swarm worker
     needs: plan
-    if: needs.plan.outputs.count != '0'
-    runs-on: ubuntu-latest
-    # Three-hour task budget plus 10 minutes for bundling and artifact upload.
-    # The agent gets a cooperative 175-minute deadline in its prompt; the next
-    # wave starts automatically after publish via the `next` job.
-    timeout-minutes: 225
+    # count is empty when the budget gate skipped the plan step; fromJSON('')
+    # on the matrix would then fail the whole run and trigger a false repair.
+    if: needs.plan.result == 'success' && fromJSON(needs.plan.outputs.count || '0') > 0
     strategy:
-      max-parallel: 1
+      # Ten slots, ten accounts: workers run side by side and each one
+      # publishes its own pull request when it ends (see swarm-worker.yml).
+      max-parallel: 10
       fail-fast: false
       matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
-    # The slot's prepared image: toolchain, dependencies and this slot's own
-    # OpenCode setup are already inside, so the job starts working immediately.
-    container:
-      image: ${{ needs.plan.outputs.image_prefix }}-${{ matrix.slot }}:latest
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-    permissions:
-      contents: read
-      packages: read
-    # Container jobs default to sh (dash), which lacks pipefail.
-    defaults:
-      run:
-        shell: bash
-    env:
-      MODEL: ${{ matrix.model }}
-      MODE: ${{ matrix.kind == 'fix' && 'fix' || 'story' }}
-      BRANCH: ${{ matrix.branch }}
-      BRANCH_PREFIX: swarm
-      SWARM: '1'
-      STORY_ID: ${{ matrix.id }}
-      STORY_TITLE: ${{ matrix.title }}
-      STORY_BODY: ${{ matrix.body }}
-      FIX_COMMENT: ${{ matrix.fix }}
-      PR_NUMBER: ${{ matrix.number }}
-      AGENT_TIMEOUT: 175m
-      CHECK_SCRIPT: scripts/quick-check.sh
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ matrix.kind == 'fix' && matrix.branch || github.event.repository.default_branch }}
-          # Full history so the branch can be merged with main after the work.
-          fetch-depth: 0
-          persist-credentials: false
-      # The read-only token is used here, before the agent has touched the
-      # workspace. The main branch can move during the run, so the merge step
-      # later fetches nothing; a newer main is picked up by the integrator.
-      - name: Fetch main
-        env:
-          GH_TOKEN: ${{ github.token }}
-          BASE_BRANCH: ${{ github.event.repository.default_branch }}
-        run: scripts/agent-run.sh fetch-main || true
-      - name: Work the task (no GitHub token in this step)
-        env:
-          # Prefer this slot's account, with the team key as a compatibility fallback.
-          OPENCODE_API_KEY: ${{ secrets[format('OPENCODE_API_KEY_{0}', matrix.slot)] || secrets.OPENCODE_API_KEY }}
-        run: scripts/agent-run.sh implement
-      - name: Merge main and fix conflicts (no GitHub token in this step)
-        if: always()
-        env:
-          OPENCODE_API_KEY: ${{ secrets[format('OPENCODE_API_KEY_{0}', matrix.slot)] || secrets.OPENCODE_API_KEY }}
-          BASE_BRANCH: ${{ github.event.repository.default_branch }}
-          MERGE_ATTEMPTS: '5'
-          AGENT_TIMEOUT: 20m
-        timeout-minutes: 35
-        run: scripts/agent-run.sh merge-main
-      - name: Pack the commits
-        if: always()
-        run: scripts/agent-run.sh bundle || true
-      - uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: worker-${{ matrix.slot }}
-          path: |
-            .agent/result
-            .agent/commits
-            .agent/checks
-            .agent/branch
-            .agent/merge
-            .agent/pr-notes.md
-            .agent/result.bundle
-          if-no-files-found: ignore
-          # Kept for a week so a blocked or failed publish never loses the work.
-          retention-days: 7
-  # One runner publishes every slot's result; ten matrix runners only added
-  # startup time to a step that takes seconds.
-  publish:
-    name: Publish results
-    needs: [plan, worker]
-    if: always() && needs.plan.outputs.count != '0'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # A called workflow gets at most the permissions its caller grants.
     permissions:
       contents: write
       pull-requests: write
+      packages: read
       actions: read
-    steps:
-      # Trusted copy of the scripts: the worker job never had a token and cannot
-      # alter what runs here.
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      - uses: actions/download-artifact@v8
-        continue-on-error: true
-        with:
-          pattern: worker-*
-          path: results
-      - name: Push the branches and open the pull requests
-        env:
-          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
-          # Set only when SWARM_TOKEN exists: that token can push workflow files.
-          SWARM_WORKFLOW_PUSH: ${{ secrets.SWARM_TOKEN != '' }}
-          MATRIX: ${{ needs.plan.outputs.matrix }}
-          BASE_BRANCH: ${{ github.event.repository.default_branch }}
-        run: |
-          set -uo pipefail
-          status=0
-          while read -r task; do
-            slot=$(jq -r '.slot' <<< "$task")
-            python3 -I scripts/swarm.py publish --task "$task" --dir "results/worker-$slot" || status=1
-          done < <(jq -c '.include[]' <<< "$MATRIX")
-          exit "$status"
+    uses: ./.github/workflows/swarm-worker.yml
+    secrets: inherit
+    with:
+      image: ${{ needs.plan.outputs.image_prefix }}-${{ matrix.slot }}:latest
+      slot: ${{ format('{0}', matrix.slot) }}
+      task: ${{ toJSON(matrix) }}
   # Keeps the loop going without a person: when work remains and no pull request
   # is waiting (the integrator starts the next wave after it merges), start
   # another wave. A task a worker fails three times waits for a person, so this
   # cannot spin forever.
   next:
     name: Start the next wave
-    needs: [plan, publish]
-    if: always() && needs.plan.outputs.count != '0'
+    needs: [plan, worker]
+    if: always() && needs.plan.result == 'success' && fromJSON(needs.plan.outputs.count || '0') > 0
     runs-on: ubuntu-latest
     timeout-minutes: 3
     permissions:
