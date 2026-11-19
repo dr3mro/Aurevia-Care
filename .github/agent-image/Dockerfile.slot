@@ -1,0 +1,11 @@
+# One small layer per worker slot on top of the base image. It bakes that slot's
+# own OpenCode setup (model and config). The slot's free account credential is
+# never in the image: it is injected at run time from OPENCODE_API_KEY_<slot>.
+ARG BASE
+FROM ${BASE}
+ARG SLOT
+ARG SLOT_CONFIG
+ENV XDG_CONFIG_HOME=/opt/opencode-config \
+    AGENT_SLOT=${SLOT}
+RUN mkdir -p "$XDG_CONFIG_HOME/opencode" \
+ && printf '%s' "$SLOT_CONFIG" > "$XDG_CONFIG_HOME/opencode/opencode.json"

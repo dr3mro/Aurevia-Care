@@ -1,0 +1,116 @@
+name: Swarm integrator
+# Checks each swarm pull request on the merge result and, when the full check is
+# green, commits the merge to main and records it. Otherwise the pull request is
+# returned to the worker pool with the failure log. No model is used here.
+on:
+  workflow_run:
+    workflows: [Agent swarm]
+    types: [completed]
+  workflow_dispatch:
+permissions:
+  contents: read
+# One merge at a time keeps main linear and every merge tested against the latest main.
+concurrency:
+  group: swarm-integrator
+  cancel-in-progress: false
+jobs:
+  plan:
+    name: Pick the queue
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      pull-requests: read
+      actions: read
+    outputs:
+      queue: ${{ steps.queue.outputs.queue }}
+      count: ${{ steps.queue.outputs.count }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          sparse-checkout: scripts
+      - id: queue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 -I scripts/swarm.py plan-integration
+  integrate:
+    name: Integrate PR ${{ matrix.pr }}
+    needs: plan
+    if: needs.plan.outputs.count != '0'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    strategy:
+      max-parallel: 1
+      fail-fast: false
+      matrix:
+        pr: ${{ fromJSON(needs.plan.outputs.queue) }}
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Stop for a person when protected files changed
+        id: guard
+        run: python3 -I scripts/swarm.py guard --pr "${{ matrix.pr }}"
+      - name: Merge the pull request into main locally
+        id: merge
+        if: steps.guard.outputs.blocked == 'false'
+        run: python3 -I scripts/swarm.py merge-local --pr "${{ matrix.pr }}"
+      - name: Set up Java and caches
+        id: ready
+        if: steps.merge.outputs.conflict == 'false'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Cache OWASP NVD data
+        if: steps.ready.outcome == 'success'
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository/org/owasp/dependency-check-data
+          key: owasp-nvd-${{ runner.os }}-${{ runner.arch }}-${{ github.run_id }}
+          restore-keys: |
+            owasp-nvd-${{ runner.os }}-${{ runner.arch }}-
+      # The full check runs agent-written code, so this step has no GitHub token.
+      - name: Full check on the merge result
+        id: gate
+        if: steps.ready.outcome == 'success'
+        env:
+          GH_TOKEN: ''
+          GITHUB_TOKEN: ''
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+          SMARTCLINIC_PG_ADMIN: postgres
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/gate"
+          scripts/check.sh 2>&1 | tee "$RUNNER_TEMP/gate/gate.log"
+      - name: Return to the worker pool
+        if: failure() && steps.gate.outcome == 'failure'
+        run: >-
+          python3 -I scripts/swarm.py fail --pr "${{ matrix.pr }}"
+          --reason "Integration check failed on the merge of main and this branch"
+          --log "$RUNNER_TEMP/gate/gate.log"
+      - name: Commit the merge to main and record it
+        if: steps.gate.outcome == 'success'
+        run: >-
+          python3 -I scripts/swarm.py finalize --pr "${{ matrix.pr }}"
+          --task-id "${{ steps.merge.outputs.task }}" --sha "${{ steps.merge.outputs.sha }}"
