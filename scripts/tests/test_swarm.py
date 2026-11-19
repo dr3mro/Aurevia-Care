@@ -295,7 +295,7 @@ class PlanTests(unittest.TestCase):
     def test_open_spec_tasks_are_dispatchable(self):
         tasks = swarm.parse_tasks((ROOT / "TODO.md").read_text())
         dispatchable = [t for t in tasks
-                        if t["status"] == "todo" and t["scope"] and t["details"]
+                        if t["status"] in ("todo", "taken") and t["scope"] and t["details"]
                         and swarm.attempts_of(t) < swarm.MAX_ATTEMPTS]
         self.assertGreaterEqual(len(dispatchable), 9)
 
@@ -334,8 +334,7 @@ class PlanTests(unittest.TestCase):
         self.assertNotIn("main-watchdog.yml", swarm.BUDGET_WORKFLOWS)
 
     def test_worker_has_three_hour_budget_with_restart_slack(self):
-        text = (ROOT / ".github/workflows/swarm.yml").read_text()
-        worker = text.split("  worker:\n", 1)[1].split("  publish:\n", 1)[0]
+        worker = (ROOT / ".github/workflows/swarm-worker.yml").read_text()
         # 175 min of agent work + a 35 min merge step + bundling and upload slack.
         self.assertIn("timeout-minutes: 225", worker)
         self.assertIn("AGENT_TIMEOUT: 175m", worker)
@@ -365,8 +364,7 @@ class PlanTests(unittest.TestCase):
                     self.assertFalse(set(block) - valid, f"{name}: invalid permission keys")
 
     def test_publish_gets_workflow_token_flag(self):
-        text = (ROOT / ".github/workflows/swarm.yml").read_text()
-        publish = text.split("  publish:\n", 1)[1].split("  next:\n", 1)[0]
+        publish = (ROOT / ".github/workflows/swarm-worker.yml").read_text().split("  publish:\n", 1)[1]
         self.assertIn("SWARM_WORKFLOW_PUSH: ${{ secrets.SWARM_TOKEN != '' }}", publish)
 
     def test_fallback_wave_runs_hourly(self):
@@ -387,11 +385,35 @@ class PlanTests(unittest.TestCase):
         self.assertIn("for attempt in 1 2 3", text)
         self.assertIn("apt install attempt", text)
 
-    def test_wave_defaults_to_one_worker(self):
+    def test_wave_runs_ten_workers_and_each_publishes_on_its_own(self):
         text = (ROOT / ".github/workflows/swarm.yml").read_text()
-        self.assertRegex(text, r"default: '1'")
-        self.assertIn("inputs.workers || '1'", text)
-        self.assertIn("max-parallel: 1", text)
+        self.assertIn("default: '10'", text)
+        self.assertIn("inputs.workers || '10'", text)
+        self.assertIn("max-parallel: 10", text)
+        # Each worker is a reusable-workflow call, so its publish job needs only its
+        # own work job and never waits for the slowest worker of the wave.
+        self.assertIn("uses: ./.github/workflows/swarm-worker.yml", text)
+        self.assertNotIn("\n  publish:\n", text)
+        worker = (ROOT / ".github/workflows/swarm-worker.yml").read_text()
+        self.assertIn("needs: work", worker)
+        self.assertIn("workflow_call:", worker)
+
+    def test_wave_is_capped_by_the_remaining_budget(self):
+        self.assertGreaterEqual(swarm.affordable_workers(0, 10000), 10)
+        self.assertEqual(swarm.affordable_workers(7434, 10000), 8)
+        self.assertEqual(swarm.affordable_workers(8950, 10000), 1)
+        self.assertEqual(swarm.affordable_workers(20000, 10000), 1)
+        self.assertIn("BUDGET_WORKERS", (ROOT / ".github/workflows/swarm.yml").read_text())
+
+    def test_parallel_workers_are_billed_by_job_minutes(self):
+        class Gh(FakeGh):
+            def __call__(self, *args, check=True):
+                self.calls.append(args)
+                if args[0] == "api":
+                    return "\n".join(["2026-11-19T10:00:00Z\t2026-11-19T12:00:00Z"] * 10)
+                return ""
+        with mock.patch.object(swarm, "gh", Gh()):
+            self.assertEqual(swarm.run_job_minutes(7), 1200.0)
 
     def test_pr_size_guard_is_enforced(self):
         fake = FakeGh(diff="\n".join(f"apps/api/src/F{i}.java" for i in range(16)))
@@ -542,13 +564,13 @@ class WorkflowTests(unittest.TestCase):
             self.assertEqual(done.returncode, 0, command)
 
     def test_every_slot_has_a_secret_reference_pattern_and_an_image_layer(self):
-        text = (ROOT / ".github/workflows/swarm.yml").read_text()
+        text = (ROOT / ".github/workflows/swarm-worker.yml").read_text()
         self.assertIn("OPENCODE_API_KEY_{0}", text)
         self.assertNotIn("OPENCODE_API_KEY:", (ROOT / ".github/agent-image/Dockerfile.slot").read_text())
 
     def test_swarm_slot_secret_falls_back_to_team_secret(self):
-        text = (ROOT / ".github/workflows/swarm.yml").read_text()
-        self.assertIn("secrets[format('OPENCODE_API_KEY_{0}', matrix.slot)]", text)
+        text = (ROOT / ".github/workflows/swarm-worker.yml").read_text()
+        self.assertIn("secrets[format('OPENCODE_API_KEY_{0}', inputs.slot)]", text)
         self.assertIn("secrets.OPENCODE_API_KEY", text)
 
     def test_worker_script_marks_checkout_safe(self):
@@ -743,8 +765,8 @@ class ResolveConflictTests(unittest.TestCase):
         self.assertIn("ref: ${{ github.event.repository.default_branch }}", publish)
 
     def test_swarm_worker_uses_its_token_only_before_the_agent_runs(self):
-        text = (ROOT / ".github/workflows/swarm.yml").read_text()
-        worker = text.split("  worker:\n", 1)[1].split("  publish:\n", 1)[0]
+        text = (ROOT / ".github/workflows/swarm-worker.yml").read_text()
+        worker = text.split("  publish:\n", 1)[0]
         self.assertLess(worker.index("agent-run.sh fetch-main"), worker.index("agent-run.sh implement"))
         self.assertNotIn("github.token", worker.split("agent-run.sh implement", 1)[1])
 
