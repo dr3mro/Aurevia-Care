@@ -59,6 +59,7 @@ BEGIN
         CHECK (balance_minor = total_minor - paid_minor + refunded_minor - credited_minor),
         CHECK (refunded_minor <= paid_minor),
         CHECK (issued_at IS NULL OR state <> 'draft'),
+        CHECK (state <> 'void' OR (void_reason IS NOT NULL AND voided_by_subject IS NOT NULL)),
         FOREIGN KEY (organization_id, patient_id)
             REFERENCES public.patient_record(organization_id, id),
         FOREIGN KEY (organization_id, created_by)
@@ -76,7 +77,8 @@ BEGIN
         description           text NOT NULL,
         quantity              integer NOT NULL CHECK (quantity > 0),
         unit_amount_minor     bigint NOT NULL CHECK (unit_amount_minor >= 0),
-        amount_minor          bigint NOT NULL CHECK (amount_minor >= 0),
+        amount_minor          bigint NOT NULL
+            CHECK (amount_minor >= 0 AND amount_minor = quantity * unit_amount_minor),
         created_by            uuid NOT NULL,
         created_at            timestamptz NOT NULL DEFAULT now(),
         PRIMARY KEY (organization_id, id),
@@ -222,6 +224,45 @@ BEGIN
         BEFORE INSERT ON public.finance_ledger_entry
         FOR EACH ROW EXECUTE FUNCTION public.set_finance_entry_actor_from_actor()$ddl$;
 
+    -- One currency per invoice, including every linked ledger entry.
+    EXECUTE $ddl$CREATE OR REPLACE FUNCTION public.guard_finance_entry_currency()
+    RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog
+    AS $fn$
+    DECLARE v_currency text;
+    BEGIN
+        SELECT currency INTO v_currency FROM public.finance_invoice
+         WHERE organization_id = NEW.organization_id AND id = NEW.invoice_id;
+        IF v_currency IS NULL OR v_currency <> NEW.currency THEN
+            RAISE EXCEPTION 'a ledger entry currency must match its invoice currency'
+                USING ERRCODE = '23514';
+        END IF;
+        RETURN NEW;
+    END $fn$$ddl$;
+    EXECUTE $ddl$CREATE TRIGGER finance_ledger_entry_currency
+        BEFORE INSERT ON public.finance_ledger_entry
+        FOR EACH ROW EXECUTE FUNCTION public.guard_finance_entry_currency()$ddl$;
+
+    -- Itemized total and immutable lines cannot drift apart at issue time.
+    EXECUTE $ddl$CREATE OR REPLACE FUNCTION public.guard_finance_invoice_issue_items()
+    RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog
+    AS $fn$
+    DECLARE v_items bigint;
+    BEGIN
+        IF OLD.state = 'draft' AND NEW.state <> 'draft' THEN
+            SELECT COALESCE(SUM(amount_minor), 0) INTO v_items
+              FROM public.finance_invoice_item
+             WHERE organization_id = NEW.organization_id AND invoice_id = NEW.id;
+            IF v_items <> NEW.total_minor THEN
+                RAISE EXCEPTION 'invoice total must equal the sum of its itemized lines'
+                    USING ERRCODE = '23514';
+            END IF;
+        END IF;
+        RETURN NEW;
+    END $fn$$ddl$;
+    EXECUTE $ddl$CREATE TRIGGER finance_invoice_issue_items
+        BEFORE UPDATE ON public.finance_invoice
+        FOR EACH ROW EXECUTE FUNCTION public.guard_finance_invoice_issue_items()$ddl$;
+
     -- The database is the second line of defence for the FIN-01 invariants.
     EXECUTE $ddl$CREATE OR REPLACE FUNCTION public.guard_finance_invoice_update()
     RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog
@@ -274,8 +315,12 @@ BEGIN
     EXECUTE $ddl$REVOKE ALL ON FUNCTION public.set_finance_item_created_by_from_actor() FROM PUBLIC$ddl$;
     EXECUTE $ddl$REVOKE ALL ON FUNCTION public.set_finance_entry_actor_from_actor() FROM PUBLIC$ddl$;
     EXECUTE $ddl$REVOKE ALL ON FUNCTION public.guard_finance_invoice_update() FROM PUBLIC$ddl$;
+    EXECUTE $ddl$REVOKE ALL ON FUNCTION public.guard_finance_entry_currency() FROM PUBLIC$ddl$;
+    EXECUTE $ddl$REVOKE ALL ON FUNCTION public.guard_finance_invoice_issue_items() FROM PUBLIC$ddl$;
     EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.set_finance_invoice_created_by_from_actor() TO smartclinic_app$ddl$;
     EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.set_finance_item_created_by_from_actor() TO smartclinic_app$ddl$;
     EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.set_finance_entry_actor_from_actor() TO smartclinic_app$ddl$;
     EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.guard_finance_invoice_update() TO smartclinic_app$ddl$;
+    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.guard_finance_entry_currency() TO smartclinic_app$ddl$;
+    EXECUTE $ddl$GRANT EXECUTE ON FUNCTION public.guard_finance_invoice_issue_items() TO smartclinic_app$ddl$;
 END $finance$;
