@@ -42,7 +42,6 @@ public final class FinanceContract {
         /**
          * Create a state with its stable wire key.
          *
-         * @param wire lowercase wire key
          */
         InvoiceState(String wire) {
             this.wire = wire;
@@ -61,7 +60,6 @@ public final class FinanceContract {
         /**
          * Parse a stored state key.
          *
-         * @param value stored key
          * @return the matching state
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -78,7 +76,6 @@ public final class FinanceContract {
          * Decide whether a transition is permitted. A no-op is allowed so a
          * balance recomputation does not need a state move.
          *
-         * @param next requested target state
          * @return {@code true} when the transition is legal
          */
         public boolean canTransitionTo(InvoiceState next) {
@@ -112,7 +109,6 @@ public final class FinanceContract {
         /**
          * Create an entry type with its stable wire key.
          *
-         * @param wire lowercase wire key
          */
         EntryType(String wire) {
             this.wire = wire;
@@ -131,7 +127,6 @@ public final class FinanceContract {
         /**
          * Parse a stored entry key.
          *
-         * @param value stored key
          * @return the matching entry type
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -148,13 +143,6 @@ public final class FinanceContract {
     /**
      * One immutable itemized line.
      *
-     * @param id              line identifier
-     * @param invoiceId       owning invoice
-     * @param lineNo          stable 1-based line number
-     * @param description     non-clinical catalogue-style label
-     * @param quantity        positive quantity
-     * @param unitAmountMinor unit amount in minor units
-     * @param amountMinor     quantity multiplied by unit amount, in minor units
      * @return the immutable value
      */
     public record InvoiceItem(String id, String invoiceId, int lineNo, String description,
@@ -164,21 +152,6 @@ public final class FinanceContract {
     /**
      * Current projection of one invoice.
      *
-     * @param id                invoice identifier
-     * @param version           optimistic version
-     * @param patientId         owning patient in the active tenant
-     * @param currency          ISO-style three-letter currency code
-     * @param state             current lifecycle state
-     * @param totalMinor        sum of the itemized lines in minor units
-     * @param paidMinor         gross payments in minor units, never decreases
-     * @param refundedMinor     gross refunds in minor units, never decreases
-     * @param creditedMinor     approved credits in minor units, never decreases
-     * @param balanceMinor      total minus paid plus refunded minus credited
-     * @param serviceReference  opaque non-clinical service reference, or {@code null}
-     * @param createdAt         creation instant
-     * @param issuedAt          issue instant, or {@code null} while still a draft
-     * @param voidReason        recorded reason when void, otherwise {@code null}
-     * @param voidedBySubject   approving subject when void, otherwise {@code null}
      * @return the immutable value
      */
     public record Invoice(String id, int version, String patientId, String currency,
@@ -191,18 +164,6 @@ public final class FinanceContract {
     /**
      * One immutable, numbered finance ledger entry.
      *
-     * @param id              entry identifier
-     * @param invoiceId       owning invoice
-     * @param invoiceVersion  invoice revision the entry was posted against
-     * @param type            payment, refund or credit
-     * @param amountMinor     magnitude in minor units
-     * @param currency        currency snapshotted from the invoice
-     * @param reference       caller's stable, tenant-unique reference
-     * @param reason          recorded reason, or {@code null} for a payment
-     * @param approverSubject approving subject, or {@code null} for a payment
-     * @param receiptNo       tenant-monotonic receipt number
-     * @param actorId         authenticated actor resolved by the database
-     * @param occurredAt      server timestamp
      * @return the immutable value
      */
     public record LedgerEntry(String id, String invoiceId, int invoiceVersion, EntryType type,
@@ -214,18 +175,12 @@ public final class FinanceContract {
     /**
      * An invoice together with its items and full ledger trail.
      *
-     * @param invoice current invoice projection
-     * @param items   immutable itemized lines in line-number order
-     * @param entries immutable ledger entries in chronological order
      * @return the immutable value
      */
     public record View(Invoice invoice, List<InvoiceItem> items, List<LedgerEntry> entries) {
         /**
          * Defensively copy both lists.
          *
-         * @param invoice current invoice projection
-         * @param items   itemized lines
-         * @param entries ledger entries
          */
         public View {
             items = List.copyOf(items);
@@ -236,14 +191,6 @@ public final class FinanceContract {
     /**
      * One day/currency row of the finance-only reconciliation report.
      *
-     * @param day          UTC calendar day in {@code YYYY-MM-DD} form
-     * @param currency     invoice or entry currency
-     * @param issuedMinor  total face value of invoices issued that day
-     * @param paymentMinor total payments posted that day
-     * @param refundMinor  total refunds posted that day
-     * @param creditMinor  total credits posted that day
-     * @param netMinor     payments minus refunds minus credits
-     * @param entryCount   number of ledger entries posted that day
      * @return the immutable value
      */
     public record DailyTotal(String day, String currency, long issuedMinor, long paymentMinor,
@@ -253,14 +200,12 @@ public final class FinanceContract {
     /**
      * Daily reconciliation totals. No clinical field is present.
      *
-     * @param days one row per day and currency
      * @return the immutable value
      */
     public record Reconciliation(List<DailyTotal> days) {
         /**
          * Defensively copy the rows.
          *
-         * @param days per-day totals
          */
         public Reconciliation {
             days = List.copyOf(days);
@@ -270,9 +215,6 @@ public final class FinanceContract {
     /**
      * One itemized line supplied at invoice creation.
      *
-     * @param description     non-clinical label
-     * @param quantity        positive quantity
-     * @param unitAmountMinor non-negative unit amount in minor units
      * @return the creation input
      */
     public record LineRequest(String description, Integer quantity, Long unitAmountMinor) {
@@ -281,10 +223,6 @@ public final class FinanceContract {
     /**
      * Create a draft invoice.
      *
-     * @param patientId        owning patient
-     * @param currency         single currency for every line and entry
-     * @param serviceReference opaque non-clinical reference, or {@code null}
-     * @param items            one or more itemized lines
      * @return the creation command
      */
     public record CreateInvoiceRequest(String patientId, String currency, String serviceReference,
@@ -293,10 +231,6 @@ public final class FinanceContract {
          * Defensively copy the item list so a request cannot be mutated after it
          * has been validated.
          *
-         * @param patientId        owning patient
-         * @param currency         single currency for every line and entry
-         * @param serviceReference opaque non-clinical reference, or {@code null}
-         * @param items            one or more itemized lines
          */
         public CreateInvoiceRequest {
             items = items == null ? null : List.copyOf(items);

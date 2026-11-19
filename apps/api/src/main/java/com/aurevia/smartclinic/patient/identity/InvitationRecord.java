@@ -12,6 +12,7 @@ package com.aurevia.smartclinic.patient.identity;
  * @param purpose        bounded purpose key (ENROLL, LINK or REVERIFY)
  * @param expiresAt      ISO instant after which the invitation is unusable
  * @param consumed       {@code true} once the invitation has been used
+ * @return this record
  */
 public record InvitationRecord(String id, String accountSubject, String chartId, String purpose,
                                String expiresAt, boolean consumed) {

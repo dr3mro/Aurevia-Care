@@ -25,6 +25,7 @@ import java.time.Instant;
  * @param disclosureId         disclosure ledger identifier
  * @param workItemId           bounded destination work item identifier
  * @param createdAt            release instant
+ * @return this record
  */
 public record OrderView(String id, int version, String patientId, String encounterRef,
                         String orderCode, String priority, String clinicalQuestion,

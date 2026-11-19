@@ -10,13 +10,7 @@ import com.aurevia.smartclinic.patient.Patient;
  * <p>The two identities, their conflicting demographics, blocking dependencies and
  * a textual dry run are computed on read. Nothing here changes patient data.</p>
  *
- * @param review            the open review ticket, when one exists
- * @param survivor          effective surviving identity
- * @param duplicate         effective duplicate identity
- * @param conflicts         demographic fields that differ between the identities
- * @param dependencies      orders, patient-account links or grants on the duplicate
- * @param dryRun            non-mutating description of the planned association
- * @param chartVisibilityId effective patient id the duplicate chart resolves to now
+ * @return this record
  */
 public record ReviewDetail(DuplicateReview review, Patient survivor, Patient duplicate,
                            List<Conflict> conflicts, List<Dependency> dependencies,
@@ -70,8 +64,9 @@ public record ReviewDetail(DuplicateReview review, Patient survivor, Patient dup
      * @param reference source reference of the ambiguous order, link or grant
      * @param ambiguous whether the dependency cannot be attributed confidently
      * @param resolved  whether an authorized workflow has already resolved it
-     */
-    public record Dependency(String id, String kind, String reference,
+ * @return this record
+ */
+public record Dependency(String id, String kind, String reference,
                              boolean ambiguous, boolean resolved) {
     }
 }

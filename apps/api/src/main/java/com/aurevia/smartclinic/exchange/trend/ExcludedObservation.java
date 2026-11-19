@@ -10,6 +10,7 @@ package com.aurevia.smartclinic.exchange.trend;
  *
  * @param observation the original observation
  * @param reason      why it is not part of the trend
+ * @return this record
  */
 public record ExcludedObservation(TrendObservation observation, ExclusionReason reason) {
 }

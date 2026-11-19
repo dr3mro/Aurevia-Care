@@ -7,8 +7,7 @@ package com.aurevia.smartclinic.catalog.dictionary;
  * transliteration. Display selection is deterministic and lives here so every
  * screen applies the same precedence.</p>
  *
- * @param latin       Latin-script spelling, or {@code null} when not recorded
- * @param localScript local-script spelling, or {@code null} when not recorded
+ * @return this record
  */
 public record LocalizedName(String latin, String localScript) {
 

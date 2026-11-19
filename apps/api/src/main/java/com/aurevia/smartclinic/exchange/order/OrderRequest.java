@@ -14,6 +14,7 @@ package com.aurevia.smartclinic.exchange.order;
  * @param responsibleClinician responsible clinician of the sending organization
  * @param workQueue           destination work queue that receives the exchange item
  * @param durationMinutes     authorized validity of the released content
+ * @return this record
  */
 public record OrderRequest(String patientId, String encounterRef, String orderCode, String priority,
                            String clinicalQuestion, String destinationOrg, String purpose,

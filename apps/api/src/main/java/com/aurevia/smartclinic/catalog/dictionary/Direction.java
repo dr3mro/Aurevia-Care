@@ -16,6 +16,9 @@ public enum Direction {
 
     private final String attribute;
 
+    /**
+     * @param attribute
+     */
     Direction(String attribute) {
         this.attribute = attribute;
     }

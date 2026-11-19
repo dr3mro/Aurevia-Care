@@ -29,7 +29,6 @@ public final class PrescriptionContract {
         /**
          * Create an alternative kind.
          *
-         * @param wire stable lowercase wire key
          */
         AlternativeKind(String wire) {
             this.wire = wire;
@@ -48,7 +47,6 @@ public final class PrescriptionContract {
         /**
          * Parse a stored key.
          *
-         * @param value stored key
          * @return the matching kind
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -78,7 +76,6 @@ public final class PrescriptionContract {
         /**
          * Create an allergy status.
          *
-         * @param wire stable lowercase wire key
          */
         AllergyStatus(String wire) {
             this.wire = wire;
@@ -97,7 +94,6 @@ public final class PrescriptionContract {
         /**
          * Parse a stored status key.
          *
-         * @param value stored key
          * @return the matching status
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -127,7 +123,6 @@ public final class PrescriptionContract {
         /**
          * Create a finding kind.
          *
-         * @param wire stable lowercase wire key
          */
         FindingKind(String wire) {
             this.wire = wire;
@@ -146,7 +141,6 @@ public final class PrescriptionContract {
         /**
          * Parse a stored finding key.
          *
-         * @param value stored key
          * @return the matching kind
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -176,7 +170,6 @@ public final class PrescriptionContract {
         /**
          * Create a check outcome.
          *
-         * @param wire stable lowercase wire key
          */
         CheckOutcome(String wire) {
             this.wire = wire;
@@ -195,7 +188,6 @@ public final class PrescriptionContract {
         /**
          * Parse a stored outcome key.
          *
-         * @param value stored key
          * @return the matching outcome
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -212,9 +204,6 @@ public final class PrescriptionContract {
     /**
      * Structured substance identity used for matching; free-text names are never matched.
      *
-     * @param substanceId          structured substance identifier, or {@code null} when only a group is known
-     * @param group                approved cross-reactivity group code, or {@code null}
-     * @param groupVersion         approved group dictionary version; {@code 0} when no group is present
      * @return the validated structured ingredient identity
      */
     public record Ingredient(String substanceId, String group, int groupVersion) {
@@ -236,18 +225,6 @@ public final class PrescriptionContract {
     /**
      * One versioned, approved-effective drug catalog entry (RX-01, ADM-01).
      *
-     * @param entryId              stable tenant-local catalog entry key
-     * @param version              positive catalog version of this entry
-     * @param genericName          generic name used for search and display
-     * @param tradeName            market-approved trade name used for search
-     * @param formulation          approved formulation
-     * @param strengthValue        approved numeric strength value
-     * @param strengthUnit         approved strength unit
-     * @param ingredients          structured ingredient identities used for allergy matching
-     * @param approved             whether a named approval makes this version effective
-     * @param effectiveFrom        inclusive start of the effective window
-     * @param effectiveTo          exclusive end of the effective window, or {@code null} for open-ended
-     * @param approvalProvenance   named market approval source
      * @return the validated, effective-datable catalog entry
      */
     public record DrugEntry(String entryId, int version, String genericName, String tradeName,
@@ -287,11 +264,6 @@ public final class PrescriptionContract {
     /**
      * A suggestion shown alongside a search result; it never changes the clinician's selection.
      *
-     * @param kind                 why the suggestion is shown; never an accepted substitution
-     * @param entry                the suggested effective catalog entry, never auto-selected
-     * @param reason               short traceable reason for the suggestion
-     * @param sourceCatalogVersion provenance of the catalog version that produced the suggestion
-     * @param requiresClinicianSelection always {@code true}: selection stays with the clinician
      * @return the validated review-only suggestion
      */
     public record Alternative(AlternativeKind kind, DrugEntry entry, String reason,
@@ -311,8 +283,6 @@ public final class PrescriptionContract {
     /**
      * One effective catalog entry with its suggestions.
      *
-     * @param entry                the effective catalog entry found by the search
-     * @param alternatives         tagged, review-only suggestions for that entry
      * @return the validated catalog hit with immutable suggestions
      */
     public record CatalogHit(DrugEntry entry, List<Alternative> alternatives) {
@@ -332,12 +302,6 @@ public final class PrescriptionContract {
     /**
      * One allergy statement from the chart, including its verification state.
      *
-     * @param substanceId          structured substance identifier of the charted allergy
-     * @param group                cross-reactivity group code, or {@code null}
-     * @param groupVersion         approved group dictionary version; {@code 0} when no group is present
-     * @param verificationState    verified, unverified or unknown chart verification state
-     * @param source               provenance of the chart statement
-     * @param effectiveFrom        clinical effective time of the statement
      * @return the validated chart allergy statement
      */
     public record AllergyEntry(String substanceId, String group, int groupVersion,
@@ -363,8 +327,6 @@ public final class PrescriptionContract {
     /**
      * A patient's overall allergy assessment together with its statements.
      *
-     * @param status               overall verified, verified-none, unverified or unknown status
-     * @param entries              all retained allergy statements, including unverified ones
      * @return the validated assessment with immutable entries
      */
     public record AllergyAssessment(AllergyStatus status, List<AllergyEntry> entries) {
@@ -384,11 +346,6 @@ public final class PrescriptionContract {
     /**
      * One retained finding of an allergy check.
      *
-     * @param kind                 why the finding was retained
-     * @param substanceId          matched substance identity, or {@code null} for a group-only finding
-     * @param group                matched group code, or {@code null} for a substance-only finding
-     * @param groupVersion         approved group version relevant to the finding
-     * @param detail               human-readable, non-sensitive rationale
      * @return the validated retained finding
      */
     public record Finding(FindingKind kind, String substanceId, String group, int groupVersion,
@@ -409,10 +366,6 @@ public final class PrescriptionContract {
     /**
      * Immutable, versioned result of an allergy check.
      *
-     * @param outcome              conflict, warning, unresolved or no-conflict disposition
-     * @param allergyStatus        the assessment status this check was computed against
-     * @param findings             every retained finding; unresolved data is never collapsed to safe
-     * @param catalogVersion       provenance of the catalog version used for matching
      * @return the validated immutable check with retained findings
      */
     public record AllergyCheck(CheckOutcome outcome, AllergyStatus allergyStatus,
@@ -433,25 +386,6 @@ public final class PrescriptionContract {
     /**
      * Current projection of a prescription draft.
      *
-     * @param id                   opaque tenant-local draft identifier
-     * @param version              optimistic-lock version of this draft
-     * @param patientId            owning patient of the active tenant
-     * @param state                draft state; signing and release belong to later slices
-     * @param selectedEntryId      resolved catalog entry key, or {@code null} before selection
-     * @param selectedEntryVersion catalog version resolved at selection time
-     * @param drugGenericName      generic name snapshot from the approved catalog entry
-     * @param doseValue            clinician-entered dose value
-     * @param doseUnit             clinician-entered dose unit
-     * @param route                clinician-entered route
-     * @param frequency            clinician-entered frequency
-     * @param quantity             clinician-entered quantity
-     * @param quantityUnit         clinician-entered quantity unit
-     * @param refills              supported refill count, or {@code null} when not supported
-     * @param instructions         clinician instructions retained with the draft
-     * @param destination          intended care unit or pharmacy destination
-     * @param encounterReference   optional encounter link
-     * @param prescriberSubject    authenticated prescriber derived from the actor
-     * @param createdAt            server creation time
      * @return the validated draft projection
      */
     public record Draft(String id, int version, String patientId, String state, String selectedEntryId,
@@ -474,12 +408,6 @@ public final class PrescriptionContract {
     /**
      * Immutable override record binding reason, author and the matched data snapshot.
      *
-     * @param draftId              draft this immutable override belongs to
-     * @param draftVersion         exact draft revision that was overridden
-     * @param reason               clinician-documented override reason
-     * @param authorSubject        authenticated author derived from the actor
-     * @param matchedSnapshot      deterministic snapshot of the matched catalog and allergy data
-     * @param occurredAt           server time at which the override was recorded
      * @return the validated immutable override fact
      */
     public record OverrideRecord(String draftId, int draftVersion, String reason, String authorSubject,
@@ -499,8 +427,6 @@ public final class PrescriptionContract {
     /**
      * A draft with its optional immutable override.
      *
-     * @param draft                current draft projection, never {@code null}
-     * @param override             immutable override when one was documented, otherwise {@code null}
      * @return the validated draft and its optional override
      */
     public record DraftView(Draft draft, OverrideRecord override) {

@@ -21,6 +21,7 @@ import java.math.BigDecimal;
  * @param qualitativeValue coded/text result
  * @param sourceSystem     originating system
  * @param sourceVersion    originating revision/version
+ * @return this record
  */
 public record ObservationRequest(String patientId, String testCode, String testDisplay,
                                  String comparabilityGroup, String revisionStatus,

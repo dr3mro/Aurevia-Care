@@ -14,6 +14,7 @@ package com.aurevia.smartclinic.patient.identity;
  * @param method       provenance of the event (for example INVITATION or REVERIFICATION)
  * @param reason       optional reason for an unlink or re-verification
  * @param occurredAt   ISO instant when the event was recorded
+ * @return this record
  */
 public record ChartLink(String id, String accountSubject, String chartId, String event,
                         String method, String reason, String occurredAt) {

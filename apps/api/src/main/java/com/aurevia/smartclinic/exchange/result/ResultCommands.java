@@ -24,8 +24,9 @@ public final class ResultCommands {
      * @param destinationId expected receiving unit
      * @param owner         named owner for routed results
      * @param coverageQueue coverage queue for routed results
-     */
-    public record RegisterOrderRequest(String orderId, String patientId, String sourceId,
+ * @return this record
+ */
+public record RegisterOrderRequest(String orderId, String patientId, String sourceId,
                                        String accessionId, String destinationId,
                                        String owner, String coverageQueue) {
     }
@@ -42,8 +43,9 @@ public final class ResultCommands {
      * @param supersedesVersion prior version corrected by this import, or null
      * @param effectiveAt       clinical effective instant in ISO-8601
      * @param checksum          checksum of the retained synthetic payload
-     */
-    public record ImportResultRequest(String orderId, String patientId, String sourceId,
+ * @return this record
+ */
+public record ImportResultRequest(String orderId, String patientId, String sourceId,
                                       String accessionId, String destinationId, String kind,
                                       Integer supersedesVersion, String effectiveAt,
                                       String checksum) {

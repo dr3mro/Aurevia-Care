@@ -42,7 +42,6 @@ public final class ConversationContract {
         /**
          * Create a state with its stable wire key.
          *
-         * @param wire lowercase state key
          */
         State(String wire) {
             this.wire = wire;
@@ -61,7 +60,6 @@ public final class ConversationContract {
         /**
          * Parse a stored state key.
          *
-         * @param value stored key
          * @return the matching state
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -77,7 +75,6 @@ public final class ConversationContract {
         /**
          * Decide whether a transition is permitted.
          *
-         * @param next requested target state
          * @return {@code true} for a no-op or any transition out of a non-closed state
          */
         public boolean canTransitionTo(State next) {
@@ -107,7 +104,6 @@ public final class ConversationContract {
         /**
          * Create a unit key with its stable wire value.
          *
-         * @param wire lowercase unit key
          */
         UnitKey(String wire) {
             this.wire = wire;
@@ -126,7 +122,6 @@ public final class ConversationContract {
         /**
          * Parse a stored unit key.
          *
-         * @param value stored key
          * @return the matching unit
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -155,7 +150,6 @@ public final class ConversationContract {
         /**
          * Create a sender kind with its stable wire key.
          *
-         * @param wire lowercase sender key
          */
         SenderKind(String wire) {
             this.wire = wire;
@@ -174,7 +168,6 @@ public final class ConversationContract {
         /**
          * Parse a stored sender key.
          *
-         * @param value stored key
          * @return the matching sender kind
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -211,7 +204,6 @@ public final class ConversationContract {
         /**
          * Create a work-item event type with its stable wire key.
          *
-         * @param wire lowercase event key
          */
         WorkEventType(String wire) {
             this.wire = wire;
@@ -230,7 +222,6 @@ public final class ConversationContract {
         /**
          * Parse a stored work-item event key.
          *
-         * @param value stored key
          * @return the matching event type
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -247,18 +238,6 @@ public final class ConversationContract {
     /**
      * Current, mutable projection of one conversation.
      *
-     * @param id                   opaque identifier
-     * @param version              optimistic version
-     * @param patientId            owning patient identifier in this tenant
-     * @param patientSubject       synthetic subject bound to the patient at open
-     * @param unitKey               recipient care-unit key
-     * @param connectionId         verified patient-unit connection identifier
-     * @param topic                optional conversation topic
-     * @param state                lifecycle state
-     * @param assigneeSubject      currently assigned staff subject, or {@code null}
-     * @param patientReadSequence  highest sequence the patient has read
-     * @param staffReadSequence    highest sequence the unit staff have read
-     * @param createdAt            server creation instant
      * @return the immutable value
      */
     public record Conversation(String id, int version, String patientId, String patientSubject,
@@ -270,14 +249,6 @@ public final class ConversationContract {
     /**
      * One immutable message in a conversation.
      *
-     * @param id             event identifier
-     * @param conversationId owning conversation
-     * @param sequence       per-conversation monotonic sequence
-     * @param senderKind     patient or staff author
-     * @param senderSubject  authenticated author subject
-     * @param senderRole     role active for the author at publication
-     * @param body           non-sensitive message text
-     * @param createdAt      server publication instant
      * @return the immutable value
      */
     public record Message(String id, String conversationId, int sequence, SenderKind senderKind,
@@ -287,15 +258,6 @@ public final class ConversationContract {
     /**
      * One immutable work-item fact.
      *
-     * @param id                  event identifier
-     * @param conversationId      owning conversation
-     * @param conversationVersion revision the fact is bound to
-     * @param eventType           fact type
-     * @param actorSubject        authenticated actor
-     * @param fromState           state before the fact, or {@code null}
-     * @param toState             state after the fact, or {@code null}
-     * @param reason              required reason for assign, resolve and close
-     * @param occurredAt          server timestamp
      * @return the immutable value
      */
     public record WorkItemEvent(String id, String conversationId, int conversationVersion,
@@ -306,18 +268,12 @@ public final class ConversationContract {
     /**
      * One conversation with its complete message and work-item trails.
      *
-     * @param conversation current projection
-     * @param messages     messages in sequence order
-     * @param events       work-item facts in chronological order
      * @return the immutable value
      */
     public record View(Conversation conversation, List<Message> messages, List<WorkItemEvent> events) {
         /**
          * Defensively copy both trails.
          *
-         * @param conversation current projection
-         * @param messages     message trail
-         * @param events       work-item fact trail
          */
         public View {
             messages = List.copyOf(messages);
@@ -328,8 +284,6 @@ public final class ConversationContract {
     /**
      * One patient-inbox entry with its derived unread count.
      *
-     * @param conversation current projection
-     * @param unreadCount  staff messages beyond the patient read watermark
      * @return the immutable value
      */
     public record InboxEntry(Conversation conversation, int unreadCount) {
@@ -338,14 +292,12 @@ public final class ConversationContract {
     /**
      * A patient inbox.
      *
-     * @param entries entries ordered by most recently updated
      * @return the immutable value
      */
     public record Inbox(List<InboxEntry> entries) {
         /**
          * Defensively copy the entries.
          *
-         * @param entries inbox entries
          */
         public Inbox {
             entries = List.copyOf(entries);
@@ -355,14 +307,12 @@ public final class ConversationContract {
     /**
      * A role-scoped staff work queue.
      *
-     * @param entries conversations in the caller's unit
      * @return the immutable value
      */
     public record WorkQueue(List<Conversation> entries) {
         /**
          * Defensively copy the entries.
          *
-         * @param entries queue entries
          */
         public WorkQueue {
             entries = List.copyOf(entries);

@@ -22,6 +22,7 @@ package com.aurevia.smartclinic.clinical.notes;
  * @param supersedesVersion     prior version this revision supersedes
  * @param enteredErrorReason    entered-in-error reason
  * @param affectedRecipients    recipient identifiers as a JSON array
+ * @return this record
  */
 public record RevisionInput(NoteState state, String patientId, String encounterId, String title,
                             String content, String language, String templateCode, int templateVersion,

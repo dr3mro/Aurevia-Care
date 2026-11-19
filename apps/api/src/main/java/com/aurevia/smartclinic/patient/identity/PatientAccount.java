@@ -10,6 +10,7 @@ package com.aurevia.smartclinic.patient.identity;
  * @param id          opaque account identifier
  * @param subject     verified login subject, unique within the tenant
  * @param displayName human-readable account label (synthetic in tests)
+ * @return this record
  */
 public record PatientAccount(String id, String subject, String displayName) {
 }

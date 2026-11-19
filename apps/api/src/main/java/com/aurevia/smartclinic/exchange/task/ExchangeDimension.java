@@ -24,6 +24,10 @@ public enum ExchangeDimension {
     private final String wire;
     private final String policyAction;
 
+    /**
+     * @param wire
+     * @param policyAction
+     */
     ExchangeDimension(String wire, String policyAction) {
         this.wire = wire;
         this.policyAction = policyAction;

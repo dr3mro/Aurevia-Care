@@ -16,6 +16,7 @@ import java.time.Instant;
  * @param reviewedRevision exact reviewed revision for clinical events, or {@code null}
  * @param actorId       authenticated actor, derived from the transaction context
  * @param occurredAt    event instant
+ * @return this record
  */
 public record ExchangeTaskEvent(String id, String taskId, int taskVersion,
                                 ExchangeDimension channel, String action,

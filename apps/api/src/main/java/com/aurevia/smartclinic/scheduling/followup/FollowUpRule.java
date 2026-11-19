@@ -13,6 +13,7 @@ import java.util.Locale;
  * @param visitType    tenant-local visit type code
  * @param intervalDays approved number of civil days after the encounter
  * @param configKey    configuration key the value was read from
+ * @return this record
  */
 public record FollowUpRule(String visitType, int intervalDays, String configKey) {
 

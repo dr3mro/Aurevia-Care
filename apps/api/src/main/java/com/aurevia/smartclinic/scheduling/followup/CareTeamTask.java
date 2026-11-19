@@ -19,6 +19,7 @@ import java.time.LocalDate;
  * @param outcome        recorded outcome, or {@code null} while open
  * @param createdBy      subject that opened the task
  * @param createdAt      instant the task was opened
+ * @return this record
  */
 public record CareTeamTask(String id, String organizationId, String followUpId, String owner,
                            LocalDate dueDate, String instruction, String status, String outcome,

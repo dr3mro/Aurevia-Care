@@ -5,8 +5,7 @@ import java.util.List;
 /**
  * Current revision and the complete append-only history of one note (CLN-05).
  *
- * @param current the current revision
- * @param history every revision ordered by version ascending
+ * @return this record
  */
 public record NoteView(ClinicalNoteRevision current, List<ClinicalNoteRevision> history) {
 

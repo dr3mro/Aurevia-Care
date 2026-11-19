@@ -25,8 +25,6 @@ public final class RadPolicyCatalog {
     /**
      * Create a catalog from approved configuration entries.
      *
-     * @param approvedModalities modalities the tenant has approved for use
-     * @param privileges          interpreter imaging privileges, in any order
      * @throws ApiException when either collection is missing
      */
     public RadPolicyCatalog(List<Modality> approvedModalities, List<InterpreterPrivilege> privileges) {
@@ -40,7 +38,6 @@ public final class RadPolicyCatalog {
     /**
      * Whether the tenant has approved a modality for scheduling.
      *
-     * @param modality candidate modality, possibly {@code null}
      * @return {@code true} when the modality is on the approved list
      */
     public boolean modalityApproved(Modality modality) {
@@ -50,9 +47,6 @@ public final class RadPolicyCatalog {
     /**
      * Whether a subject holds an approved, effective privilege to interpret a modality.
      *
-     * @param subject  authenticated subject
-     * @param modality modality of the study to be interpreted
-     * @param at       evaluation instant
      * @return {@code true} when at least one approved effective privilege applies
      */
     public boolean mayInterpret(String subject, Modality modality, Instant at) {
@@ -63,11 +57,12 @@ public final class RadPolicyCatalog {
     /**
      * One approved, effective-dated imaging privilege (ADM-01, RAD-01).
      *
-     * @param subject       subject holding the privilege
-     * @param modality      modality the subject may interpret
-     * @param approved      whether the named governance approval is present
-     * @param effectiveFrom first instant at which the privilege applies
-     * @param effectiveTo   exclusive end of the window, or {@code null} for open-ended
+     * @param subject       clinician subject
+     * @param modality      imaging modality
+     * @param approved      whether the privilege is approved
+     * @param effectiveFrom effective start instant
+     * @param effectiveTo   effective end instant, or {@code null}
+     * @return this record
      */
     public record InterpreterPrivilege(String subject, Modality modality, boolean approved,
                                        Instant effectiveFrom, Instant effectiveTo) {

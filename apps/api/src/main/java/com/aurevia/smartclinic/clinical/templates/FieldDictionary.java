@@ -5,10 +5,7 @@ import java.util.List;
 /**
  * An approved site field dictionary used by CODE template fields (CLN-04).
  *
- * @param key       tenant-local dictionary key
- * @param entries   permitted codes
- * @param approved  whether clinical governance has approved this dictionary
- * @param approvedBy governance approver subject, or {@code null} for a draft
+ * @return this record
  */
 public record FieldDictionary(String key, List<String> entries, boolean approved, String approvedBy) {
 

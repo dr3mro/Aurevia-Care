@@ -5,7 +5,7 @@ import java.util.List;
 /**
  * An immutable read model of a patient's longitudinal chart (CLN-03).
  *
- * @param entries chart entries in the active tenant
+ * @return this record
  */
 public record ChartView(List<ChartEntry> entries) {
 

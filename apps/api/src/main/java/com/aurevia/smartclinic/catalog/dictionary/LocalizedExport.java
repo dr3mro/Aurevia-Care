@@ -3,9 +3,7 @@ package com.aurevia.smartclinic.catalog.dictionary;
 /**
  * Export payload that preserves a record's language and unit symbols (UX-01, PRD-05).
  *
- * @param languageTag language tag of the exported text
- * @param text        exported text, preserved verbatim
- * @param unit        source unit symbol, or {@code null} when not applicable
+ * @return this record
  */
 public record LocalizedExport(String languageTag, String text, String unit) {
 

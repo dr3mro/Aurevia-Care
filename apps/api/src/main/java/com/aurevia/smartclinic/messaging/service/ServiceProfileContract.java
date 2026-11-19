@@ -33,6 +33,15 @@ public final class ServiceProfileContract {
 
         private final String wire;
 
+        /**
+
+
+         * @param wire
+
+
+         */
+
+
         ProfileStatus(String wire) {
             this.wire = wire;
         }
@@ -50,7 +59,6 @@ public final class ServiceProfileContract {
         /**
          * Parse a stored or supplied status key.
          *
-         * @param value stored key
          * @return the matching status
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -77,6 +85,15 @@ public final class ServiceProfileContract {
 
         private final String wire;
 
+        /**
+
+
+         * @param wire
+
+
+         */
+
+
         WorkState(String wire) {
             this.wire = wire;
         }
@@ -94,7 +111,6 @@ public final class ServiceProfileContract {
         /**
          * Parse a stored or supplied state key.
          *
-         * @param value stored key
          * @return the matching state
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -111,8 +127,6 @@ public final class ServiceProfileContract {
     /**
      * One approved piece of guidance copy in a supported language.
      *
-     * @param language BCP-47 language tag ({@code en} or {@code ar})
-     * @param value    approved, non-sensitive static text
      * @return the immutable value
      */
     public record LocalizedText(String language, String value) {
@@ -123,9 +137,6 @@ public final class ServiceProfileContract {
      * time means the window wraps into the next local day; equal times are
      * rejected by validation so "24/7" can never be implied accidentally.
      *
-     * @param day   weekday the window starts on
-     * @param start inclusive local start time
-     * @param end   exclusive local end time
      * @return the immutable window
      */
     public record ServiceWindow(DayOfWeek day, LocalTime start, LocalTime end) {
@@ -143,8 +154,6 @@ public final class ServiceProfileContract {
     /**
      * Service hours in the unit's IANA time zone.
      *
-     * @param zone    IANA zone identifier; never a fixed offset or the server default
-     * @param windows ordered service windows
      * @return the immutable hours value
      */
     public record ServiceHours(ZoneId zone, List<ServiceWindow> windows) {
@@ -152,8 +161,6 @@ public final class ServiceProfileContract {
         /**
          * Defensively copy the window list.
          *
-         * @param zone    service time zone
-         * @param windows service windows
          */
         public ServiceHours {
             windows = List.copyOf(windows);
@@ -163,10 +170,7 @@ public final class ServiceProfileContract {
     /**
      * Availability projection computed from service hours at one instant.
      *
-     * @param open           whether the unit is inside a service window now
-     * @param nextHandlingAt absolute UTC instant the routine queue next opens,
      *                       or {@code null} when open or when no windows exist
-     * @param timeZone       facility IANA zone label for display
      * @return the immutable projection
      */
     public record ServiceAvailability(boolean open, Instant nextHandlingAt, String timeZone) {
@@ -179,26 +183,6 @@ public final class ServiceProfileContract {
      * new version. Only an approved profile whose effective date has been reached
      * is ever served.</p>
      *
-     * @param id                  opaque profile identifier
-     * @param organizationId      owning tenant
-     * @param unitId              recipient care unit
-     * @param version             monotonically increasing per unit
-     * @param status              governance state
-     * @param hours               service hours and facility zone
-     * @param responseTargetMinutes target for a first staff response
-     * @param topics              approved topic keys for this unit
-     * @param urgentInstructions  approved static urgent guidance by language
-     * @param queueOwner          named owner of the unit work queue
-     * @param backupCoverage      named backup owners
-     * @param escalationChannel   site-approved key for overdue escalation
-     * @param urgentChannel       site-approved key for time-sensitive care
-     * @param downtimeChannel     site-approved key for downtime contact
-     * @param createdBy           authenticated subject that published the profile
-     * @param approvedBy          distinct named approver, or {@code null} while draft
-     * @param approvedAt          approval instant, or {@code null} while draft
-     * @param approvalNote        named approval rationale
-     * @param effectiveFrom       instant from which the profile is effective
-     * @param createdAt           server creation instant
      * @return the immutable profile
      */
     public record ServiceProfile(String id, String organizationId, String unitId, int version,
@@ -212,26 +196,6 @@ public final class ServiceProfileContract {
         /**
          * Defensively copy all lists.
          *
-         * @param id                  profile identifier
-         * @param organizationId      owning tenant
-         * @param unitId              recipient unit
-         * @param version             profile version
-         * @param status              governance state
-         * @param hours               service hours
-         * @param responseTargetMinutes response target
-         * @param topics              approved topics
-         * @param urgentInstructions  urgent guidance
-         * @param queueOwner          named queue owner
-         * @param backupCoverage      named backups
-         * @param escalationChannel   site-approved channel key for overdue escalation
-         * @param urgentChannel       urgent channel key
-         * @param downtimeChannel     downtime channel key
-         * @param createdBy           publisher subject
-         * @param approvedBy          approver subject
-         * @param approvedAt          approval instant
-         * @param approvalNote        approval rationale
-         * @param effectiveFrom       effective instant
-         * @param createdAt           creation instant
          */
         public ServiceProfile {
             topics = List.copyOf(topics);
@@ -242,7 +206,6 @@ public final class ServiceProfileContract {
         /**
          * Whether this version is approved and its effective date has arrived.
          *
-         * @param at instant to evaluate
          * @return {@code true} only for an approved, effective version
          */
         public boolean effectiveAt(Instant at) {
@@ -252,7 +215,6 @@ public final class ServiceProfileContract {
         /**
          * Compute the response deadline for work opened at the given instant.
          *
-         * @param openedAt work-opening instant
          * @return the elapsed-time response deadline
          */
         public Instant dueAt(Instant openedAt) {
@@ -266,7 +228,6 @@ public final class ServiceProfileContract {
         /**
          * Defensively copy the version list.
          *
-         * @param versions versions in ascending order
          */
         public ProfileHistory {
             versions = List.copyOf(versions);
@@ -277,14 +238,6 @@ public final class ServiceProfileContract {
      * A non-sensitive work fact used to derive supervisor counters. It carries
      * no patient identifier, topic text or clinical payload.
      *
-     * @param organizationId      owning tenant
-     * @param id                  opaque work item identifier
-     * @param unitId              recipient unit
-     * @param state               workflow state
-     * @param assignee            named assignee, or {@code null} when unassigned
-     * @param createdAt           work-opening instant
-     * @param lastStaffResponseAt last staff response instant, or {@code null}
-     * @param notificationFailed  whether a notification dispatch failed
      * @return the immutable fact
      */
     public record WorkItemFact(String organizationId, String id, String unitId, WorkState state,
@@ -295,13 +248,6 @@ public final class ServiceProfileContract {
     /**
      * Derived supervisor counters for one unit at one instant.
      *
-     * @param organizationId      owning tenant
-     * @param unitId              recipient unit
-     * @param backlog             open work items
-     * @param unassigned          open items with no named assignee
-     * @param failedNotifications open items with a failed notification
-     * @param overdueResponses    open items awaiting a response past their deadline
-     * @param generatedAt         snapshot instant
      * @return the immutable snapshot
      */
     public record SupervisorSnapshot(String organizationId, String unitId, int backlog, int unassigned,
@@ -312,19 +258,6 @@ public final class ServiceProfileContract {
      * Publish command. Tenant, subject and timestamps are derived by the server;
      * only explicit policy values are accepted from the caller.
      *
-     * @param unitId                 recipient unit
-     * @param timeZone                IANA zone identifier
-     * @param windows                 service windows as {@code DAY|HH:mm|HH:mm}
-     * @param responseTargetMinutes   first-response target
-     * @param queueOwner              named queue owner
-     * @param backupCoverage          named backups
-     * @param escalationChannel       site-approved channel key used for overdue escalation
-     * @param urgentChannel           site-approved urgent channel key
-     * @param downtimeChannel         site-approved downtime channel key
-     * @param topics                  approved topic keys
-     * @param urgentInstructions      approved static guidance by language
-     * @param effectiveFrom           effective instant
-     * @param expectedVersion         compare-and-set expected new version
      * @return the immutable command
      */
     public record PublishProfileRequest(String unitId, String timeZone, List<String> windows,
@@ -337,19 +270,6 @@ public final class ServiceProfileContract {
         /**
          * Defensively copy all list fields.
          *
-         * @param unitId                 recipient unit
-         * @param timeZone                IANA zone
-         * @param windows                 service windows
-         * @param responseTargetMinutes   response target
-         * @param queueOwner              queue owner
-         * @param backupCoverage          backups
-         * @param escalationChannel       site-approved channel key for overdue escalation
-         * @param urgentChannel           urgent channel key
-         * @param downtimeChannel         downtime channel key
-         * @param topics                  topics
-         * @param urgentInstructions      urgent guidance
-         * @param effectiveFrom           effective instant
-         * @param expectedVersion         expected version
          */
         public PublishProfileRequest {
             windows = List.copyOf(windows);

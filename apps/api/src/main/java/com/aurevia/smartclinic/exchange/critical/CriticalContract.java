@@ -37,7 +37,6 @@ public final class CriticalContract {
         /**
          * Create a state with its stable wire key.
          *
-         * @param wire lowercase state key
          */
         State(String wire) {
             this.wire = wire;
@@ -56,7 +55,6 @@ public final class CriticalContract {
         /**
          * Parse a stored state key.
          *
-         * @param value stored key
          * @return the matching state
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -72,7 +70,6 @@ public final class CriticalContract {
         /**
          * Decide whether a transition is permitted.
          *
-         * @param next requested target state
          * @return {@code true} for the three forward transitions or a no-op
          */
         public boolean canTransitionTo(State next) {
@@ -114,7 +111,6 @@ public final class CriticalContract {
         /**
          * Create an event type with its stable wire key.
          *
-         * @param wire lowercase event key
          */
         EventType(String wire) {
             this.wire = wire;
@@ -133,7 +129,6 @@ public final class CriticalContract {
         /**
          * Parse a stored event key.
          *
-         * @param value stored key
          * @return the matching event type
          * @throws IllegalArgumentException when the key is unknown
          */
@@ -150,26 +145,6 @@ public final class CriticalContract {
     /**
      * Current, mutable projection of one critical result.
      *
-     * @param id                 identifier
-     * @param version            optimistic version
-     * @param patientId          owning patient identifier in this tenant
-     * @param sourceSystem       source system of the finding
-     * @param sourceId           source event or observation identifier
-     * @param orderReference     originating order reference when available
-     * @param accession          source accession when available
-     * @param resultSummary      synthetic non-identifying narrative
-     * @param observedValue      observed critical value
-     * @param unit               unit of the observed value
-     * @param readBackRequired   whether a verbatim read-back is required
-     * @param state              clinical state
-     * @param verifiedBySubject  subject that verified the finding
-     * @param verifiedAt         verification instant
-     * @param ownerSubject       responsible owner subject
-     * @param dueAt              acknowledgment deadline
-     * @param primaryChannel     approved channel used before the deadline
-     * @param backupChannel      approved channel used when overdue or down
-     * @param backupRecipient    approved backup subject
-     * @param createdAt          registration instant
      * @return the immutable value
      */
     public record Result(String id, int version, String patientId, String sourceSystem, String sourceId,
@@ -183,16 +158,6 @@ public final class CriticalContract {
     /**
      * One immutable fact in a critical-result trail.
      *
-     * @param id                   event identifier
-     * @param criticalResultId     owning critical result
-     * @param criticalResultVersion revision the fact is bound to
-     * @param eventType            fact type
-     * @param actorId              authenticated actor resolved by the database
-     * @param recipient            notified recipient when applicable
-     * @param channel              delivery channel when applicable
-     * @param outcome              recorded outcome such as delivered or failed
-     * @param detail               non-sensitive detail
-     * @param occurredAt           server timestamp
      * @return the immutable value
      */
     public record Event(String id, String criticalResultId, int criticalResultVersion,
@@ -203,16 +168,12 @@ public final class CriticalContract {
     /**
      * One result together with its complete event trail.
      *
-     * @param result current projection
-     * @param events immutable event trail in chronological order
      * @return the immutable value
      */
     public record View(Result result, List<Event> events) {
         /**
          * Defensively copy the event trail.
          *
-         * @param result current projection
-         * @param events event trail
          */
         public View {
             events = List.copyOf(events);
@@ -222,18 +183,12 @@ public final class CriticalContract {
     /**
      * Operational report of overdue alerts, roster gaps and failed notifications.
      *
-     * @param overdue            verified, owned alerts past their due time
-     * @param rosterGaps         recorded gaps in approved backup coverage
-     * @param failedNotifications failed escalation attempts
      * @return the immutable value
      */
     public record Report(List<Result> overdue, List<Event> rosterGaps, List<Event> failedNotifications) {
         /**
          * Defensively copy every reported list.
          *
-         * @param overdue            overdue alerts
-         * @param rosterGaps         roster gaps
-         * @param failedNotifications failed notifications
          */
         public Report {
             overdue = List.copyOf(overdue);

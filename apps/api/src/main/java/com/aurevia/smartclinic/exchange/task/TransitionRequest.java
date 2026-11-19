@@ -8,6 +8,7 @@ package com.aurevia.smartclinic.exchange.task;
  * forge the human acknowledgment binding (XCH-02).</p>
  *
  * @param reason recorded reason, or {@code null}
+ * @return this record
  */
 public record TransitionRequest(String reason) {
 }

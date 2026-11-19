@@ -10,10 +10,7 @@ import java.util.regex.Pattern;
  * optional bounded set of allowed values. The value list is defensively copied
  * so a caller cannot mutate a saved dictionary version.</p>
  *
- * @param code          tenant-local field code
- * @param label         localized label shown to clinical staff
- * @param requiredness  explicit requiredness decision
- * @param allowedValues bounded allowed values, or {@code null} for free text
+ * @return this record
  */
 public record DictionaryField(String code, LocalizedText label, Requiredness requiredness,
                               List<String> allowedValues) {

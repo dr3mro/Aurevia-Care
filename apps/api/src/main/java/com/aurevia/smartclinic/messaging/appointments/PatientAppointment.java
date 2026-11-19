@@ -19,6 +19,7 @@ import java.time.Instant;
  * @param status             authoritative patient-visible status
  * @param confirmationEnabled whether the site enabled patient confirmation
  * @param confirmedAt        server instant of patient confirmation, or {@code null}
+ * @return this record
  */
 public record PatientAppointment(String id, int version, String patientId, String facilityCode,
                                  String facilityTimeZone, Instant startsAt,

@@ -9,9 +9,7 @@ import java.util.Set;
  * every protected request (IAM-01, IAM-02). A patient subject is the verified
  * account owner, never a demographic claim.</p>
  *
- * @param organizationId active organization identifier
- * @param subject        authenticated subject
- * @param roles          role assignments in the active organization
+ * @return this record
  */
 public record PatientAccessActor(String organizationId, String subject, Set<String> roles) {
 

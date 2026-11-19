@@ -11,6 +11,7 @@ import java.time.LocalDate;
  *
  * @param appointmentId source appointment identifier
  * @param date          facility-local civil date of the existing follow-up
+ * @return this record
  */
 public record PriorFollowUp(String appointmentId, LocalDate date) {
 }

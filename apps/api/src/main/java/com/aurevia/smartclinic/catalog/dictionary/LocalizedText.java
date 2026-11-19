@@ -7,8 +7,7 @@ package com.aurevia.smartclinic.catalog.dictionary;
  * diacritic stripping or reformatting is performed. The content language is
  * independent of the interface locale.</p>
  *
- * @param text        the stored text, preserved verbatim
- * @param languageTag BCP-47 language tag of the content, for example {@code ar-EG}
+ * @return this record
  */
 public record LocalizedText(String text, String languageTag) {
 

@@ -13,6 +13,7 @@ package com.aurevia.smartclinic.clinical.templates;
  * @param required      whether a note must carry a value for this field
  * @param dictionaryKey approved dictionary key, when {@code type} is CODE
  * @param language      language tag for the canonical free text, or {@code null}
+ * @return this record
  */
 public record FieldDefinition(String key, String label, FieldType type, boolean required,
                               String dictionaryKey, String language) {

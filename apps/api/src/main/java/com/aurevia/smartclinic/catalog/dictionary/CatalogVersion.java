@@ -9,11 +9,6 @@ import java.util.List;
  * version with an approved copy; earlier versions remain in the history so a
  * historical field meaning or mapping is never rewritten.</p>
  *
- * @param version  positive, monotonically allocated version number
- * @param entries  immutable entries of this version
- * @param author   identifier of the clinician or administrator who defined it
- * @param approval named approval, or {@code null} while the version is a draft
- * @param <T>      entry value type
  */
 public record CatalogVersion<T>(int version, List<T> entries, String author, Approval approval) {
 

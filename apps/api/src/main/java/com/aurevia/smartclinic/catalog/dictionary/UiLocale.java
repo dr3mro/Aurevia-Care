@@ -18,6 +18,10 @@ public enum UiLocale {
     private final String tag;
     private final Direction direction;
 
+    /**
+     * @param tag
+     * @param direction
+     */
     UiLocale(String tag, Direction direction) {
         this.tag = tag;
         this.direction = direction;

@@ -29,6 +29,7 @@ import java.time.Instant;
  * @param version                optimistic-concurrency version
  * @param createdBy              user who authorized the release
  * @param createdAt              instant the release was authorized
+ * @return this record
  */
 public record PatientRelease(
         String id,

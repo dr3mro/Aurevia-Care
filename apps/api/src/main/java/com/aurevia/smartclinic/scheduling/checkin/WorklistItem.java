@@ -21,6 +21,7 @@ import java.time.Instant;
  * @param assigneeSubject active member currently assigned, or {@code null}
  * @param assignedAt      instant of the current assignment, or {@code null}
  * @param version         optimistic-concurrency version of the current projection
+ * @return this record
  */
 public record WorklistItem(String id, String appointmentId, String intakeReason, String patientId,
                            String facilityCode, Instant startsAt, int priority,

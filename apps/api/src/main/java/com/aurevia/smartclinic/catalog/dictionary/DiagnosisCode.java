@@ -10,10 +10,7 @@ import java.util.regex.Pattern;
  * original code, original text and original language tag are retained unchanged.
  * The code and its display text remain separate fields for bidi-safe display.</p>
  *
- * @param code        original tenant-local code, kept in Latin script
- * @param originalText original displayed text with its language tag
- * @param mappedCode  market code after mapping, or {@code null} when unmapped
- * @param mappedText  market display text, or {@code null} when unmapped
+ * @return this record
  */
 public record DiagnosisCode(String code, LocalizedText originalText, String mappedCode,
                             LocalizedText mappedText) {

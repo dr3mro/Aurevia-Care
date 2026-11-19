@@ -15,6 +15,7 @@ import java.time.LocalDate;
  * @param visitType      visit type code
  * @param followUpDate   effective facility-local civil date
  * @param timeZone       IANA zone for interpreting the civil date
+ * @return this record
  */
 public record BookingIntent(String followUpId, String organizationId, String patientId,
                             String facilityCode, String visitType, LocalDate followUpDate,

@@ -12,16 +12,7 @@ import java.util.List;
  * alternate path names the site-approved workflow and records why the standard
  * two-identifier check was unavailable.</p>
  *
- * @param id              opaque verification identifier
- * @param appointmentId   appointment this evidence belongs to
- * @param patientId       patient whose identity was confirmed
- * @param facilityCode    facility where the check-in occurred
- * @param method          {@code two_identifiers} or {@code documented_alternate}
- * @param identifiers     distinct identifier categories used
- * @param alternateCode   named workflow code for the alternate path, or {@code null}
- * @param alternateReason recorded reason for the alternate path, or {@code null}
- * @param verifier        authenticated subject that verified, from the transaction actor
- * @param verifiedAt      instant the evidence was committed
+ * @return this record
  */
 public record Verification(String id, String appointmentId, String patientId, String facilityCode,
                            String method, List<String> identifiers, String alternateCode,

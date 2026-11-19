@@ -25,6 +25,7 @@ import java.time.LocalDate;
  * @param confirmed       whether explicit confirmation created a booking
  * @param bookingId       identifier returned by the booking port, or {@code null}
  * @param version         optimistic-concurrency version
+ * @return this record
  */
 public record FollowUpSuggestion(String id, String organizationId, String patientId,
                                  String facilityCode, String visitType, Instant encounterAt,
