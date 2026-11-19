@@ -1,6 +1,7 @@
 package com.aurevia.smartclinic.it.exchangetask;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -58,6 +59,9 @@ class ExchangeTaskIsolationTest {
     private static final String ACK = "00000005-0000-0000-0000-000000000000";
     private static final String REVIEW = "00000006-0000-0000-0000-000000000000";
     private static final String GUARD = "00000007-0000-0000-0000-000000000000";
+    private static final String FORGED = "00000008-0000-0000-0000-000000000000";
+    private static final String REVOKED_TASK = "00000009-0000-0000-0000-000000000000";
+    private static final String MUTATE = "0000000a-0000-0000-0000-000000000000";
     private static final String PEER = "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee";
     private static final String URL = "jdbc:postgresql://127.0.0.1:5432/smartclinic_xch02_it";
     private static final String ADMIN = System.getenv().getOrDefault(
@@ -112,8 +116,10 @@ class ExchangeTaskIsolationTest {
                 seedMember(statement, org, "lab-" + suffix, "lab_collector");
                 seedMember(statement, org, "reception-" + suffix, "reception");
                 seedMember(statement, org, "admin-" + suffix, "tenant_admin");
+                seedMember(statement, org, "revoke-" + suffix, "clinician");
             }
-            String[] ids = {READ, WORKFLOW, SENT, FAILED, ACK, REVIEW, GUARD};
+            String[] ids = {READ, WORKFLOW, SENT, FAILED, ACK, REVIEW, GUARD,
+                    FORGED, REVOKED_TASK, MUTATE};
             for (int index = 0; index < ids.length; index++) {
                 seedTask(statement, ORG_A, ids[index], "LOCAL-" + (index + 1));
             }
@@ -236,10 +242,12 @@ class ExchangeTaskIsolationTest {
         assertEquals(1, task.get("version").asInt());
         assertEquals(1, view.get("history").size());
 
-        try (Connection connection = DriverManager.getConnection(URL, "smartclinic_app", "");
+        // The owner keeps UPDATE privilege but FORCE RLS still binds it to the
+        // active tenant, so this exercises reject_immutable_mutation() itself
+        // rather than the runtime role's missing privilege.
+        try (Connection connection = DriverManager.getConnection(URL, "smartclinic_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
-            statement.execute("SET app.actor = 'clinician-a'");
             assertThrows(java.sql.SQLException.class, () -> statement.execute(
                     "UPDATE public.exchange_task_transition SET to_state = 'requested' "
                             + "WHERE task_id = '" + READ + "'"));
@@ -407,6 +415,78 @@ class ExchangeTaskIsolationTest {
         assertEquals(422, call(HttpMethod.POST,
                 "/api/v1/exchange-tasks/" + GUARD + "/unknown", "lab-a", ORG_A, null, "\"1\"")
                 .getStatusCode().value());
+    }
+
+    @Test
+    void storageCannotForgeAReviewedTaskOrMoveTwoChannels() throws Exception {
+        try (Connection connection = DriverManager.getConnection(URL, "smartclinic_app", "");
+             Statement statement = connection.createStatement()) {
+            statement.execute("SET app.current_org = '" + ORG_A + "'");
+            statement.execute("SET app.actor = 'clinician-a'");
+            String actor = actorId(ORG_A, "clinician-a");
+
+            // A raw SQL writer must not be able to create an already-resolved
+            // clinical task with a chosen actor, revision and timestamp.
+            statement.execute("INSERT INTO public.exchange_task "
+                    + "(organization_id, id, order_ref, workflow_state, transmission_state, "
+                    + "clinical_review_state, clinical_reviewed_at, clinical_revision, "
+                    + "clinical_review_actor_id) VALUES ('" + ORG_A + "', '" + FORGED
+                    + "', 'FORGED', 'completed', 'delivered', 'resolved', now(), 9, '"
+                    + actor + "')");
+            try (ResultSet result = statement.executeQuery(
+                    "SELECT workflow_state, transmission_state, clinical_review_state, "
+                            + "clinical_reviewed_at, clinical_revision, clinical_review_actor_id "
+                            + "FROM public.exchange_task WHERE id = '" + FORGED + "'")) {
+                assertTrue(result.next());
+                assertEquals("requested", result.getString(1));
+                assertEquals("pending", result.getString(2));
+                assertEquals("unreviewed", result.getString(3));
+                assertNull(result.getObject(4));
+                assertNull(result.getObject(5));
+                assertNull(result.getObject(6));
+            }
+
+            // The V20 guard rejects a write that moves two channels or skips a version.
+            assertThrows(java.sql.SQLException.class, () -> statement.execute(
+                    "UPDATE public.exchange_task SET workflow_state = 'accepted', "
+                            + "transmission_state = 'sent', version = version + 1 "
+                            + "WHERE id = '" + MUTATE + "'"));
+            assertThrows(java.sql.SQLException.class, () -> statement.execute(
+                    "UPDATE public.exchange_task SET workflow_state = 'accepted', "
+                            + "version = version + 2 WHERE id = '" + MUTATE + "'"));
+        }
+    }
+
+    @Test
+    void revokedMembershipDeniesTheNextProtectedRequest() throws Exception {
+        try (Connection connection = DriverManager.getConnection(URL, "smartclinic_migrate", "");
+             Statement statement = connection.createStatement()) {
+            statement.execute("SET app.current_org = '" + ORG_A + "'");
+            statement.execute("INSERT INTO public.membership (organization_id, user_id, status) "
+                    + "SELECT '" + ORG_A + "', id, 'revoked' FROM public.user_identity "
+                    + "WHERE organization_id = '" + ORG_A + "' AND subject = 'revoke-a'");
+        }
+
+        assertEquals(403, call(HttpMethod.POST,
+                "/api/v1/exchange-tasks/" + REVOKED_TASK + "/acknowledge", "revoke-a", ORG_A,
+                null, "\"1\"").getStatusCode().value());
+        assertEquals(403, call(HttpMethod.GET,
+                "/api/v1/exchange-tasks/" + REVOKED_TASK, "revoke-a", ORG_A,
+                null, null).getStatusCode().value());
+
+        // The database authority also fails closed for a deactivated actor: it
+        // cannot attribute a ledger or review event to a revoked clinician.
+        try (Connection connection = DriverManager.getConnection(URL, "smartclinic_app", "");
+             Statement statement = connection.createStatement()) {
+            statement.execute("SET app.current_org = '" + ORG_A + "'");
+            statement.execute("SET app.actor = 'revoke-a'");
+            assertThrows(java.sql.SQLException.class, () -> statement.execute(
+                    "INSERT INTO public.exchange_task_transition "
+                            + "(organization_id, task_id, to_version, channel, action, "
+                            + "from_state, to_state) VALUES ('" + ORG_A + "', '"
+                            + REVOKED_TASK + "', 2, 'workflow', 'EXCHANGE_WORKFLOW', "
+                            + "'requested', 'accepted')"));
+        }
     }
 
     private static String actorId(String org, String subject) throws Exception {

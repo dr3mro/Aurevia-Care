@@ -21,6 +21,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -120,6 +121,20 @@ class ExchangeTaskServiceTest {
         assertApi(403, () -> service.create(new CreateExchangeRequest("LOCAL-1")));
         verify(audit, org.mockito.Mockito.times(2)).append(any(), eq("EXCHANGE_CREATE"),
                 eq("EXCHANGE_CREATE"), eq("EXCHANGE_TASK"), eq("EXCHANGE"), any(), eq("DENIED"));
+    }
+
+    @Test
+    void duplicateOrderReferenceIsAuditedAsConflict() {
+        active("clinician");
+        when(repository.insert(eq(ORG), any(), eq("LOCAL-1")))
+                .thenThrow(new DuplicateKeyException("duplicate order reference"));
+
+        assertApi(409, () -> service.create(new CreateExchangeRequest("LOCAL-1")));
+
+        verify(audit).append(any(), eq("EXCHANGE_CREATE"), eq("EXCHANGE_CREATE"),
+                eq("EXCHANGE_TASK"), eq("EXCHANGE"), eq("LOCAL-1"), eq("CONFLICT"));
+        verify(repository, never()).appendEvent(any(), org.mockito.ArgumentMatchers.anyInt(),
+                any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -223,6 +238,7 @@ class ExchangeTaskServiceTest {
 
         assertApi(422, () -> service.execute(ID, 1, ExchangeCommand.REJECT, null));
         assertApi(422, () -> service.execute(ID, 1, ExchangeCommand.CANCEL, "  "));
+        assertApi(422, () -> service.execute(ID, 1, ExchangeCommand.REJECT, "x".repeat(501)));
         ExchangeTask rejected = service.execute(ID, 1, ExchangeCommand.REJECT, "duplicate order");
         assertEquals(WorkflowState.REJECTED, rejected.workflowState());
         verify(repository).appendEvent(ID, 2, ExchangeDimension.WORKFLOW,
