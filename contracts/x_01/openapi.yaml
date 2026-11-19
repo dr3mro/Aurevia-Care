@@ -1,0 +1,172 @@
+openapi: 3.0.3
+info:
+  title: SmartClinic cross-cutting API contract (X-01)
+  version: 0.1.0
+  description: >-
+    Synthetic-only wire contract for ARC-03 and ARC-04. Versioning,
+    idempotency, cursor pagination, correlation IDs and machine-readable
+    errors. This fragment documents shared parameters and the worked POST
+    command example; it does not register new routes. Correlation IDs, the
+    uniform error body and If-Match are owned by existing apps/api components.
+servers:
+  - url: http://localhost:8081
+paths:
+  /api/v1/orders/{id}/accept:
+    post:
+      operationId: acceptOrder
+      summary: >-
+        ARC-04 worked example: authenticated destination context accepts an
+        order with an idempotency key and a version precondition.
+      description: >-
+        The owning exchange story registers this route. On success the service
+        commits the new state, acceptance event and audit record atomically and
+        returns the order id, accepted state, new version and timestamp.
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/SyntheticSubject'
+        - $ref: '#/components/parameters/ApiVersion'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+        - name: id
+          in: path
+          required: true
+          description: Opaque local order identifier in the active tenant.
+          schema: { type: string, pattern: '^[A-Za-z0-9._:-]{1,256}$' }
+      requestBody:
+        required: true
+        description: Validated local requisition association and optional receiving assignee.
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AcceptOrderRequest' }
+      responses:
+        '200':
+          description: Accepted; state, acceptance event and audit committed together.
+          headers:
+            X-Correlation-Id: { $ref: '#/components/headers/CorrelationId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AcceptOrderResponse' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '412': { $ref: '#/components/responses/StaleVersion' }
+        '422': { $ref: '#/components/responses/InvalidInput' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+components:
+  parameters:
+    ActiveOrganization:
+      name: X-Active-Organization
+      in: header
+      required: true
+      description: Explicitly selected active tenant UUID; never inferred from the body or cursor.
+      schema: { type: string, format: uuid }
+    CorrelationId:
+      name: X-Correlation-Id
+      in: header
+      required: false
+      description: Generated as a UUID when absent, validated, and echoed on every response and error body.
+      schema: { type: string, pattern: '^[A-Za-z0-9._-]{1,128}$' }
+    SyntheticSubject:
+      name: X-Synthetic-Subject
+      in: header
+      required: true
+      description: Synthetic authenticated subject, accepted only under the synthetic-auth profile; not production authentication.
+      schema: { type: string, minLength: 1 }
+    ApiVersion:
+      name: X-Api-Version
+      in: header
+      required: false
+      description: Absent or blank selects v1; v1 and V1 are accepted; other values are rejected. Header selection cannot create a new route prefix.
+      schema: { type: string, default: v1 }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Opaque key scoped to tenant, caller and command. Required on protected POST commands.
+      schema: { type: string, pattern: '^[A-Za-z0-9._:-]{1,255}$' }
+    IfMatch:
+      name: If-Match
+      in: header
+      required: true
+      description: Positive integer version validator; strong, weak and quoted forms are accepted.
+      schema: { type: string }
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      description: Opaque canonical base64url token over tenant, stable sort key and unique id.
+      schema: { type: string, maxLength: 1200 }
+    Limit:
+      name: limit
+      in: query
+      required: false
+      description: Requested page size; default 50 and maximum 200.
+      schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+  headers:
+    CorrelationId:
+      description: Correlation id of the current request, never replayed from an earlier idempotent call.
+      schema: { type: string, pattern: '^[A-Za-z0-9._-]{1,128}$' }
+  responses:
+    Unauthenticated:
+      description: Missing or invalid authentication; no clinical detail is exposed.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorBody' }
+      examples:
+        default:
+          value: { code: UNAUTHENTICATED, message: authentication required, correlationId: corr-1 }
+    NotFound:
+      description: Inaccessible resource or denied replay; existence is concealed.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorBody' }
+    Conflict:
+      description: Invalid transition, in-flight duplicate, or idempotency key reused with a different payload.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorBody' }
+    StaleVersion:
+      description: If-Match did not match the stored revision.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorBody' }
+    InvalidInput:
+      description: Invalid business input or malformed version, idempotency, cursor or paging value.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorBody' }
+    PreconditionRequired:
+      description: A required If-Match or Idempotency-Key header is absent.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorBody' }
+  schemas:
+    ErrorBody:
+      type: object
+      additionalProperties: false
+      required: [code, message, correlationId]
+      properties:
+        code: { type: string }
+        message: { type: string }
+        correlationId: { type: string }
+    AcceptOrderRequest:
+      type: object
+      additionalProperties: false
+      required: [requisitionAssociation]
+      properties:
+        requisitionAssociation:
+          type: string
+          description: Validated local requisition association verified in the destination tenant.
+        receivingAssignee:
+          type: string
+          description: Optional receiving assignee within the destination work queue.
+    AcceptOrderResponse:
+      type: object
+      additionalProperties: false
+      required: [orderId, state, version, acceptedAt]
+      properties:
+        orderId: { type: string }
+        state: { type: string, enum: [ACCEPTED] }
+        version: { type: integer, minimum: 1 }
+        acceptedAt: { type: string, format: date-time }
