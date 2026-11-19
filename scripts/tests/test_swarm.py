@@ -650,15 +650,17 @@ class GitTests(unittest.TestCase):
 
     def test_publish_twice_does_not_reuse_a_stale_incoming_ref(self):
         with mock.patch.object(swarm, "gh", FakeGh()):
-            first = self.worker_dir()
+            first = self.worker_dir(branch="swarm/CW-001-1")
             swarm.publish(self.TASK, first)
-            # A second slot publishes from a different bundle into the same
-            # trusted checkout; the local ref must be recreated, not reused.
+            # A second slot publishes a different bundle into the same trusted
+            # checkout. Its own branch is new, so the push is always a
+            # fast-forward; only the local swarm-incoming ref is reused.
             shutil.rmtree(self.tmp / "work")
             shutil.rmtree(first)
-            second = self.worker_dir()
+            second = self.worker_dir(branch="swarm/CW-001-1-second")
             swarm.publish(self.TASK, second)
-        self.assertIn("refs/heads/swarm/CW-001-1", self.run_git("ls-remote", "--heads", "origin"))
+        heads = self.run_git("ls-remote", "--heads", "origin")
+        self.assertIn("refs/heads/swarm/CW-001-1-second", heads)
 
     def test_failed_local_checks_open_a_draft(self):
         out, fake = self.worker_dir(checks="failed"), FakeGh()
