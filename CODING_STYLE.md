@@ -1,0 +1,26 @@
+# SmartClinic coding style and test policy
+
+- Give each module, class, function and component one clear responsibility. Prefer existing abstractions and simple composition. Extract shared behavior after a stable common contract emerges. Avoid duplicated rules across web, mobile and server.
+- Use precise domain names and small APIs. Validate at trust boundaries, enforce core invariants in domain services and the database, and keep side effects explicit. Prefer transaction-safe commands and structured errors.
+- Write readable code with the language's standard formatter, type checks and lint rules. Use concise comments for rationale, clinical safety constraints, concurrency, unusual tradeoffs and public contracts. Document inputs, outputs, failure semantics and assumptions where callers need them.
+- Update OpenAPI, state models, migrations, operator documentation and user-facing instructions with the code they describe. Never expose real identifiers or sensitive payloads in fixtures.
+- Start each story with a failing test through a normal entry point. Run red, implement to green, refactor, then rerun. Keep tests deterministic, independent and readable. Cover data integrity, failures, security boundaries and retries as well as successful flows.
+- Target and enforce 100% statements/lines, branches, functions and source files where measured by the language tooling, plus applicable behavior and migration tests. Coverage scope includes new production files from day one. Exclude generated or vendor code only with a documented rule and independent review. Any metric unavailable in a tool must be documented, with the closest supported measure and compensating tests. Coverage alone does not demonstrate correctness.
+- Backend use JaCoCo with build-failing line and branch thresholds and executable integration tests. React and Expo use a coverage runner with fail-under thresholds and explicit all-source inclusion. PostgreSQL requires migration, policy, integrity and transaction scenarios. Mark an unimplemented module as pending instead of reporting it as covered.
+
+## Maintainable implementation
+
+- Give each feature a discoverable entry point, a small domain model and explicit boundaries. Prefer straight-line code and guard clauses, domain vocabulary, shallow nesting and predictable side effects. Prefer platform libraries and existing project conventions. Introduce an abstraction when it names a stable concept or removes consequential duplication.
+- Keep controllers and screen event handlers thin. Put durable decisions and invariants in domain operations. Keep SQL and I/O at named boundaries. Use database constraints for invariants that must survive concurrent requests.
+- Choose explicit types and dependencies. Keep configurable policy outside hard-coded conditionals. Inject clocks, ID generators or external clients where nondeterminism would make tests fragile. Keep data model changes and backfills reviewable and reversible where possible.
+- Address time zone, money and measurement units in the domain. Use representation types that preserve precision and distinguish unknown values from zero or empty. Do not introduce framework-neutral wrappers solely to conceal ordinary framework APIs.
+- A reviewer must be able to trace the happy path and a failure path from entry point to test. Split sprawling changes by independently green behavior. Keep generated files, formatting churn and unrelated cleanup outside feature diffs.
+- Fix recurring complexity at the cause. Flag duplicated rules, broad exception handling, unbounded work, speculative extensibility and coupling that makes a local change require unrelated edits. The author supplies a short trace and a rationale for consequential decisions.
+
+## Source comments and reference docs
+
+- Add Javadoc-style documentation to public Java classes, interfaces, methods and constructors. Explain responsibility, usage, parameters, returned values and observable failures. Use `@param`, `@return`, `@throws` and cross-references when applicable. Document public extension points, transaction boundaries, tenant scope, idempotency, retry semantics and side effects at the owning symbol.
+- Use TSDoc comments for exported TypeScript packages, functions, class members and reusable React or Expo interfaces. Explain props that have important invariants, ownership or side effects. Generate TypeDoc references and fail module documentation builds on warnings. Keep generated types and third-party sources out of hand-authored documentation scopes.
+- Use comments to explain why, safety invariants, tricky edge cases and non-obvious sequencing. Comment a line when seeing it without the reason would create risk. Keep identifiers and structure clear enough for routine statements to read on their own.
+- Document SQL migration intent, prerequisites, lock and volume impact when relevant, and recovery or forward-fix options. Explain workflow or script inputs, outputs, failure modes and platform requirements.
+- Update the maintainer guide when a module or boundary changes and document important architectural tradeoffs in a short decision record. Link tests and contracts where helpful. Build the developer reference before approving a change.

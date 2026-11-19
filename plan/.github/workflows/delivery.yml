@@ -1,0 +1,132 @@
+name: Delivery
+on:
+  pull_request:
+  push:
+    branches: ['**']
+    tags: ['v*']
+  merge_group:
+permissions:
+  contents: read
+# A newer push to the same branch or pull request supersedes the older run.
+# Tag runs are never cancelled because they feed the release job.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_type != 'tag' }}
+jobs:
+  verify:
+    name: Verify and smoke image (${{ matrix.arch }})
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Resolve image version
+        id: version
+        shell: bash
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          version="sha-$GITHUB_SHA"
+          if [[ "$REF_TYPE" == tag ]]; then
+            [[ "$REF_NAME" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[A-Za-z0-9]+([.-][A-Za-z0-9]+)*)?$ ]]
+            (( ${#REF_NAME} <= 122 ))
+            version="$REF_NAME"
+          fi
+          printf 'value=%s\n' "$version" >> "$GITHUB_OUTPUT"
+      - name: Run checks and build the image
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+        run: scripts/verify.sh "$VERSION"
+      - name: Build developer reference
+        if: matrix.arch == 'amd64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y doxygen
+          scripts/docs.sh
+      - uses: actions/upload-artifact@v4
+        if: matrix.arch == 'amd64'
+        with:
+          name: developer-reference
+          path: build/developer-reference/html
+          if-no-files-found: error
+      - name: Save smoke-tested image for a release
+        if: github.ref_type == 'tag'
+        run: docker save smartclinic:test -o smartclinic-image.tar
+      - uses: actions/upload-artifact@v4
+        if: github.ref_type == 'tag'
+        with:
+          name: smoke-tested-image-${{ matrix.arch }}
+          path: smartclinic-image.tar
+  release:
+    name: Publish tagged test image and release
+    if: github.ref_type == 'tag'
+    needs: verify
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: smoke-tested-image-*
+      - name: Require a green default-branch run for this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          total=$(gh api --method GET "repos/$GITHUB_REPOSITORY/actions/workflows/delivery.yml/runs" \
+            -f branch="$DEFAULT_BRANCH" -f head_sha="$GITHUB_SHA" -f event=push -f status=success \
+            --jq '.total_count')
+          [[ "$total" -gt 0 ]]
+      - name: Publish exact tested image and release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          image="ghcr.io/${GITHUB_REPOSITORY,,}:$VERSION"
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          refs=()
+          for arch in amd64 arm64; do
+            docker load -i "smoke-tested-image-$arch/smartclinic-image.tar"
+            test "$(docker image inspect smartclinic:test --format '{{.Architecture}}')" = "$arch"
+            test "$(docker image inspect smartclinic:test --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')" = "$GITHUB_SHA"
+            test "$(docker image inspect smartclinic:test --format '{{index .Config.Labels "org.opencontainers.image.version"}}')" = "$VERSION"
+            child="$image-$arch"
+            docker tag smartclinic:test "$child"
+            if docker buildx imagetools inspect "$child" >/dev/null 2>&1; then
+              docker pull --platform "linux/$arch" "$child"
+              test "$(docker image inspect "$child" --format '{{.Id}}')" = "$(docker image inspect smartclinic:test --format '{{.Id}}')"
+            else
+              docker push "$child"
+            fi
+            refs+=("$(docker image inspect "$child" --format '{{index .RepoDigests 0}}')")
+          done
+          if ! docker buildx imagetools inspect "$image" >/dev/null 2>&1; then
+            docker buildx imagetools create --tag "$image" "${refs[@]}"
+          fi
+          manifest=$(docker buildx imagetools inspect "$image" --raw)
+          for child in "${refs[@]}"; do
+            jq -e --arg digest "${child##*@}" '.manifests | any(.digest == $digest)' <<< "$manifest" >/dev/null
+          done
+          digest=$(docker buildx imagetools inspect "$image" --format '{{json .Manifest}}' | jq -er .digest)
+          digest="${image%:*}@$digest"
+          # shellcheck disable=SC2016
+          printf 'Smoke-tested image: `%s`\nCommit: `%s`\n' "$digest" "$GITHUB_SHA" > release-notes.md
+          if ! gh release view "$VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            args=()
+            if [[ "$VERSION" == *-* ]]; then args+=(--prerelease); fi
+            gh release create "$VERSION" --verify-tag --repo "$GITHUB_REPOSITORY" --title "$VERSION" --notes-file release-notes.md "${args[@]}"
+          fi
