@@ -47,11 +47,10 @@ public final class TherapyContract {
         }
 
         /**
-         * Build an actor from role names.
+         * Build an actor from role names. Parameter semantics are documented once
+         * on the record declaration; repeating them here yields duplicate
+         * Doxygen sections for the canonical constructor.
          *
-         * @param organizationId active organization identifier
-         * @param subject        authenticated subject
-         * @param roles          role assignments
          * @return the actor
          */
         public static Actor of(String organizationId, String subject, String... roles) {
@@ -499,6 +498,47 @@ public final class TherapyContract {
      */
     public record EvaluationRequest(List<String> problems, List<Measurement> baselines,
                                     List<Goal> goals, int frequencyPerWeek, int durationWeeks) {
+
+        /**
+         * Freeze caller-owned lists; null is preserved so the service can reject
+         * a missing list with a structured 422. Component semantics are documented
+         * on the record declaration.
+         */
+        public EvaluationRequest {
+            problems = problems == null ? null : List.copyOf(problems);
+            baselines = baselines == null ? null : List.copyOf(baselines);
+            goals = goals == null ? null : List.copyOf(goals);
+        }
+
+        /**
+         * Return the immutable problem list, or {@code null} when it was omitted.
+         *
+         * @return problems
+         */
+        @Override
+        public List<String> problems() {
+            return problems == null ? null : List.copyOf(problems);
+        }
+
+        /**
+         * Return the immutable baseline list, or {@code null} when it was omitted.
+         *
+         * @return baseline measurements
+         */
+        @Override
+        public List<Measurement> baselines() {
+            return baselines == null ? null : List.copyOf(baselines);
+        }
+
+        /**
+         * Return the immutable goal list, or {@code null} when it was omitted.
+         *
+         * @return therapy goals
+         */
+        @Override
+        public List<Goal> goals() {
+            return goals == null ? null : List.copyOf(goals);
+        }
     }
 
     /**
@@ -511,6 +551,25 @@ public final class TherapyContract {
      */
     public record ScaleRequest(String key, String description, String unit,
                                List<String> permittedValues) {
+
+        /**
+         * Freeze caller-owned permitted values; null is preserved so the service
+         * can reject a missing list with a structured 422. Component semantics are
+         * documented on the record declaration.
+         */
+        public ScaleRequest {
+            permittedValues = permittedValues == null ? null : List.copyOf(permittedValues);
+        }
+
+        /**
+         * Return the immutable permitted values, or {@code null} when omitted.
+         *
+         * @return permitted coded values
+         */
+        @Override
+        public List<String> permittedValues() {
+            return permittedValues == null ? null : List.copyOf(permittedValues);
+        }
     }
 
     /**
