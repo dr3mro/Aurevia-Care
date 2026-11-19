@@ -166,8 +166,7 @@ Gate evidence: rejected or recollected specimens trace to the right order; dupli
     Implement Separate workflow, transmission and clinical review states with human acknowledgment (XCH-02) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [-] S-G2-03 · Accept, reject with reason, clarify, linked changes, cancellations and revocation (XCH-03).
-  - agent: swarm-6
+- [ ] S-G2-03 · Accept, reject with reason, clarify, linked changes, cancellations and revocation (XCH-03).
   - attempts: 2
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g2/s_g2_03, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g2_03
   - reserved: V21
