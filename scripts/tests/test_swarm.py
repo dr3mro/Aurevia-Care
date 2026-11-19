@@ -199,7 +199,7 @@ class PlanTests(unittest.TestCase):
     def test_committed_files_are_valid(self):
         slots = swarm.load_slots(ROOT / ".github/swarm/slots.json")
         self.assertEqual([s["slot"] for s in slots], list(range(1, 11)))
-        self.assertTrue(all(s["model"].startswith("opencode/") for s in slots))
+        self.assertTrue(all(s["model"] == "opencode-go/hy4-flash-free" for s in slots))
         config = swarm.slot_config(slots, 2)
         self.assertEqual((config["model"], config["autoupdate"], config["share"]),
                          (slots[1]["model"], False, "disabled"))
