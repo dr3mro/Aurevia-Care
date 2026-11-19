@@ -10,9 +10,9 @@ Columns: `Scope` lists comma-separated path prefixes the worker may change. `Res
 |---|---|---|---|---|---|---|---|
 | CW-001 | Staff lifecycle and immutable membership history | IAM-02, IAM-01 | - | apps/api/src/main/java/com/aurevia/smartclinic/staff, apps/api/src/test/java/com/aurevia/smartclinic/staff, db/migrations | V4 | done | #7 |
 | CW-002 | Tenant configuration, catalog and broader audit | ARC-02, OPS-02 | - | apps/api/src/main/java/com/aurevia/smartclinic/config, apps/api/src/test/java/com/aurevia/smartclinic/config | V5 | done | e8911e9 |
-| CW-003 | Concurrent-connection tenant isolation tests | ARC-02 | - | apps/api/src/test/java/com/aurevia/smartclinic/it | - | todo | |
-| CW-004 | Staff web foundation: Vite/React/TS scaffold, design system and generated client | PRD-06, UX-01, ARC-03 | - | apps/staff-web | - | todo | |
-| CW-005 | Patient mobile foundation: Expo/React Native/TS scaffold and accessible shell | PAT-01, PAT-02, PAT-03, UX-01 | - | apps/patient-mobile | - | todo | |
+| CW-003 | Concurrent-connection tenant isolation tests | ARC-02 | - | apps/api/src/test/java/com/aurevia/smartclinic/it | - | done | #18 |
+| CW-004 | Staff web foundation: Vite/React/TS scaffold, design system and generated client | PRD-06, UX-01, ARC-03 | - | apps/staff-web | - | done | #19 |
+| CW-005 | Patient mobile foundation: Expo/React Native/TS scaffold and accessible shell | PAT-01, PAT-02, PAT-03, UX-01 | - | apps/patient-mobile | - | done | #17 |
 | CW-006 | Bilingual clinical design language and token contract documentation | UX-01, PRD-05 | - | docs/design | - | todo | |
 | CW-007 | Staff web React appointment and worklist screens (synthetic fixtures) | CLN-01, CLN-02, UX-01 | CW-004 | apps/staff-web/src/features/scheduling | - | todo | |
 | CW-008 | Staff web React chart and document screens (synthetic fixtures) | CLN-03, CLN-05, CLN-07, UX-01 | CW-004 | apps/staff-web/src/features/chart | - | todo | |
