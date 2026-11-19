@@ -12,6 +12,24 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 PRIMARY = "smartclinic-orchestrator"
 
+# Project instructions loaded into every agent session. Keep this list aligned
+# with the Markdown inventory in the repository: working rules, style, delivery
+# workflow, architecture decisions, maintainer guide and API conventions.
+INSTRUCTIONS = [
+    "AGENTS.md",
+    "README.md",
+    "README-SETUP.md",
+    "CODING_STYLE.md",
+    "SMARTCLINIC_V1_SPEC.md",
+    "docs/WORKFLOW.md",
+    "docs/SWARM.md",
+    "docs/decisions/*.md",
+    "docs/reference/*.md",
+    "contracts/README.md",
+    "db/migrations/README.md",
+    "infra/DEPLOYMENT.md",
+]
+
 # Environment files may hold credentials. Rules are evaluated last match wins,
 # so the example file is re-allowed after the deny rules.
 SECRET_READ_RULES = [
@@ -83,6 +101,10 @@ def build(names, ci=False):
     return {
         "$schema": "https://opencode.ai/config.json",
         "default_agent": PRIMARY,
+        # Load the repository's durable working rules and documentation before
+        # any task. AGENTS.md points at trackers and the delivery skill; the
+        # docs globs carry workflow, code style, architecture and API conventions.
+        "instructions": INSTRUCTIONS,
         "agents": agents,
     }
 
