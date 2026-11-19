@@ -1,67 +1,137 @@
-# S-G2-02 — XCH-02: separate workflow, transmission and clinical review states with human acknowledgment
-
-## Scope decision (important)
-
-The story text inside the dispatch markers names `g2/s_g2_02` / `it/s_g2_02` and calls that the scope. That text is untrusted story description and conflicts with both the authoritative `TODO.md` entry (scope `apps/api/src/main/java/com/aurevia/smartclinic/exchange/task`, `apps/api/src/test/java/com/aurevia/smartclinic/it/exchangetask`) and AGENTS.md ("Name Java packages by business domain and operation, never by story, task, gate or ticket ID"). A repository-wide refactor recorded in `.agent/pr-notes/REFACTOR-PACKAGES-20261119-201815.md` already moved `g2/s_g2_02` → `exchange/task` and its tests → `it/exchangetask`. All work here stays in the authoritative business-domain scope and in the reserved migration `V20__exchange_task_states.sql` (unchanged this attempt).
+# S-G1-08 — Clinical dictionaries, diagnosis/procedure catalogs and RTL mixed-script operation (PRD-05, UX-01)
 
 ## Requirement IDs and acceptance mapping
 
-| XCH-02 clause | Implementation (pre-existing + this attempt) | Executed evidence |
+Primary: **PRD-05** (English and Arabic operation, one market per deployment), **UX-01** (RTL,
+local-name display, mixed-script clinical text, UTC instants with IANA zones, civil dates,
+preserved language/units in exports). Supporting: **CLN-03** (versioned market diagnosis
+catalog, retain original code and text after mapping, explicit unknown/none states),
+**CLN-04** (versioned field dictionaries, governance-approved requiredness, historical field
+meanings), **ADM-01** (named approval with effective data), **ARC-01/ARC-02** (domain keys and
+tenant isolation — deferred to the persistence/policy layers in this kernel slice),
+**OPS-02** (audit — likewise delegated).
+
+| Acceptance clause | Implementation | Executed evidence |
 |---|---|---|
-| Separate workflow `requested → accepted → processing → completed` with `rejected` / `cancelled` branches | `WorkflowState`, `ExchangeCommand`, `ExchangeStateMachine.next`, V20 `workflow_state` CHECK and update guard | `WorkflowStateTest`, `ExchangeStateMachineTest`, `ExchangeTaskServiceTest`, `ExchangeTaskIsolationTest.workflowPathRejectsReasonsAndIllegalTransitions` (DB, integrator) |
-| Separate transmission `pending → sent → delivered` / `failed` | `TransmissionState`, `SEND`/`DELIVER`/`FAIL`, V20 `transmission_state` CHECK and guard | `TransmissionStateTest`, `ExchangeTaskServiceTest.transmissionAcknowledgmentNeverMutatesClinicalReview`, `ExchangeTaskIsolationTest.transmissionAcknowledgmentNeverClosesAClinicalTask` (DB, integrator) |
-| Separate clinical review `unreviewed → acknowledged → action_pending → resolved` | `ClinicalReviewState`, `ACKNOWLEDGE`/`REQUEST_ACTION`/`RESOLVE`, V20 guard | `ClinicalReviewStateTest`, `ExchangeStateMachineTest.reviewChainRequiresPriorHumanAcknowledgment`, `ExchangeTaskIsolationTest.reviewChainRequiresAcknowledgmentAndIsAppendOnly` (DB, integrator) |
-| Acknowledgment by an authorized human with timestamp and revision; a transmission acknowledgment cannot close a clinical task | Clinician-only `ExchangeActionPolicy`; actor derived by V20 `xch02_actor_id()` from `app.actor`; clock/revision bound in `ExchangeStateMachine`; one-channel-per-update DB guard | `ExchangeActionPolicyTest`, `ExchangeTaskServiceTest.acknowledgeBindsClockAndRevisionAndNeverTrustsTheCallerForActor`, `ExchangeTaskIsolationTest.humanAcknowledgmentBindsContextActorClockAndRevision` (DB, integrator) |
-| Audit, append-only ledger, version precondition, tenant concealment, revocation on next request | `IfMatch`, CAS in `ExchangeTaskRepository.updateState`, forced RLS in V20, transactional `AuditAppender`, immutable transition trigger | `ExchangeTaskControllerTest`, `ExchangeTaskServiceTest`, `ExchangeTaskIsolationTest` (DB, integrator) |
-| **This attempt:** a reason is evidence of a workflow decision only and cannot be injected into a transmission or clinical-review event | `ExchangeTaskService.execute` computes `eventReason` only for the `WORKFLOW` dimension | New `ExchangeTaskServiceTest.clinicalReviewIgnoresCallerReasonInBothStateAndLedger` (red → green) and `transmissionIgnoresCallerReasonInBothStateAndLedger` (symmetric guard) |
+| Versioned market diagnosis/procedure catalog; mapping never replaces original code or text (CLN-03) | `DiagnosisCode`, `DiagnosisCode.withMapping`, `DiagnosisCatalogService`, `VersionStore` | `ClinicalCatalogAcceptanceTest.marketMappingAddsAnEntryWithoutRewritingTheOriginalCodeOrText`, `searchReadsOnlyTheApprovedVersionAndNeverMutatesTheStoredSpellings`; existing `DiagnosisCatalogTest` |
+| Versioned clinical field dictionaries; governance approves fields and requiredness; historical meanings preserved (CLN-04, ADM-01) | `DictionaryField`, `Requiredness`, `Approval`, `CatalogVersion`, `ClinicalDictionaryService` | `ClinicalCatalogAcceptanceTest.governanceApprovalRequiresADistinctNamedReviewerAndOnlyApprovedVersionsAreEffective`; existing `ClinicalDictionaryTest` |
+| English/Arabic direction and local-name display, mixed-script isolation without altering stored text (PRD-05, UX-01) | `UiLocale`, `Direction`, `RunDirection`, `LocalizedName`, `LocalizedText`, `MixedScriptRun`, `MixedScriptSupport` | `ClinicalCatalogAcceptanceTest.rtlDirectionAndLocalNameDisplayAreDerivedFromTheInterfaceLocale`, `mixedScriptRunIsIsolationMetadataAndKeepsStoredCodePointsExactly`; existing `LocalizationTest`/`MixedScriptSupportTest` |
+| UTC instants with IANA zone across DST, civil dates without zone shift, source units/language preserved in measurement and export (UX-01, PRD-05) | `MixedScriptSupport.instantWithZone`, `civilDate`, `formatMeasurement`, `export`, `LocalizedExport` | `ClinicalCatalogAcceptanceTest.utcInstantsKeepTheirIdentityAcrossDstAndCivilDatesNeverShift`, `measurementAndExportPreserveSourceUnitsAndLanguageWithoutConversion` |
+| **This attempt:** entries supplied at a trust boundary are validated and cannot cause an unhelpful NPE or a partially allocated version | `VersionStore.define` null-entry guard, shared by both services | New red→green `ClinicalCatalogAcceptanceTest.defineRejectsNullDictionaryEntryWithoutAllocatingAVersion` and `defineRejectsNullCatalogEntryWithoutAllocatingAVersion` |
 
-Supporting IDs: ARC-01 (tenant-owned `(organization_id, id)` keys), ARC-02 (forced RLS, non-owner runtime role), ARC-03/04 (versioned routes, explicit POST commands, `If-Match` 428/412/422, 401/403/404/409), OPS-02 (transactional append-only audit), PRD-06 (server-side authorization), IAM-01/02 (membership re-derived per request).
+Supporting IDs traced only at the domain-kernel boundary: server-side authorization, tenant
+RLS, persistence, idempotency and audit are owned by the controller/policy/database layers,
+not by this in-memory kernel. No real patient data or credentials appear anywhere.
 
-## Files changed this attempt
+## Scope and files changed
 
-- `apps/api/src/main/java/com/aurevia/smartclinic/exchange/task/ExchangeTaskService.java` — in `execute`, the event ledger now receives a caller reason only for workflow commands; transmission and clinical-review events record `null`. The task's own `reason` was already unchanged for those dimensions, so this removes a ledger/state integrity mismatch and prevents caller text from being attributed to a clinical acknowledgment.
-- `apps/api/src/test/java/com/aurevia/smartclinic/it/exchangetask/ExchangeTaskServiceTest.java` — new clinical-review regression test plus a symmetric transmission regression test.
-- `.agent/pr-notes/S-G2-02.md` — this file.
-- No other file, shared tracker, generated config or migration was edited.
+- `apps/api/src/main/java/com/aurevia/smartclinic/catalog/dictionary/VersionStore.java` — added an
+  explicit null-entry check in `define` before the identity function is applied, and documented it
+  on the `@throws` clause. Both `ClinicalDictionaryService` and `DiagnosisCatalogService` share this
+  guard, so the fix applies to dictionaries and catalogs symmetrically.
+- `apps/api/src/test/java/com/aurevia/smartclinic/it/catalog/dictionary/ClinicalCatalogAcceptanceTest.java`
+  — new acceptance-level suite (9 tests) in the declared test scope, covering the CLN-03/CLN-04,
+  PRD-05 and UX-01 backend data contracts and the new boundary validation.
+- `.agent/pr-notes/S-G1-08.md` — this file.
+- No other file, shared tracker, generated config or migration was edited. Reserved **V18 is
+  unused**, consistent with sibling domain-kernel stories (the store is a deterministic in-memory
+  adapter; DB RLS/uniqueness constraints for a production adapter are a separate persistence
+  story). The integrator runs the database and integration gates.
 
-The rest of the implementation and the 39 prior S-G2-02 unit tests plus 10 DB acceptance tests were already present on branch `swarm/S-G2-02-114` (base `4f9bbeb`), inherited from earlier attempts and the package refactor; this attempt brings the S-G2-02 unit total to 41.
+The implementation already present at the base (16 production classes in `catalog/dictionary`
+plus 26 unit tests in `it/catalog`) was inherited and reused, not duplicated. Those tests sit in
+`it/catalog`, outside this worker's declared test scope, so no attempt was made to move or edit
+them; the new suite is additive and lives in the declared `it/catalog/dictionary` path.
+
+## Entry-point-to-test trace
+
+`ClinicalCatalogAcceptanceTest` calls the public domain services directly:
+`DiagnosisCatalogService.define` → `VersionStore.define` (new null guard) → `CatalogVersion`
+immutable entries → `VersionStore.approve` → `DiagnosisCatalogService.search`/`effective`/`history`;
+`ClinicalDictionaryService.define` → the same fold. Localization flows call
+`MixedScriptSupport.directionFor`, `displayLocalName`, `annotateRun`, `formatMeasurement`,
+`export`, `instantWithZone` and `civilDate`. Each assertion is in the same test class, so the
+happy path, validation failure, governance denial, DST instants and exact mixed-script round trip
+are each traceable from public entry point to assertion.
 
 ## Test-first sequence (tool evidence)
 
-1. Added `clinicalReviewIgnoresCallerReasonInBothStateAndLedger` with Mockito verification that `appendEvent(..., "EXCHANGE_ACKNOWLEDGE", "unreviewed", "acknowledged", null, 1)` is called after `execute(..., ACKNOWLEDGE, "caller supplied review note")`.
-2. `mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest=ExchangeTaskServiceTest test` → **exit 1**, `Tests run: 15, Failures: 1`. Mockito showed the real call carried `"caller supplied review note"` as the event reason. Genuine red state.
-3. Added the `eventReason` guard in `ExchangeTaskService.execute`.
-4. Same targeted command → **exit 0**, 15 tests, 0 failures/errors. Green.
-5. A bounded senior-backend specialist review found no blocking issue and suggested a symmetric transmission test (LOW). Added `transmissionIgnoresCallerReasonInBothStateAndLedger`; the final clean fast run has **16** `ExchangeTaskServiceTest` tests, 0 failures.
+1. Added `ClinicalCatalogAcceptanceTest` with 9 tests, including the two null-entry tests, before
+   touching production code.
+2. `mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest=ClinicalCatalogAcceptanceTest test`
+   → **exit 1, Tests run: 9, Failures: 2**, both failures `expected IllegalArgumentException but
+   was NullPointerException` from `VersionStore.define` (genuine red).
+3. Added the null-entry guard in `VersionStore.define`.
+4. Same targeted command → **exit 0, Tests run: 9, Failures: 0, Errors: 0**.
+5. Full fast suite and coverage re-run green (see below).
 
-## Exact commands and results (evidence source: executed tool commands)
+## Exact commands run and results (evidence source: executed tool commands)
 
 | Command | Result |
 |---|---|
-| `mvn -q -B -f apps/api/pom.xml -Pno-security,fast clean test` | **exit 0**; Surefire: 143 test classes, **1644 tests, 0 failures, 0 errors, 0 skipped**. S-G2-02 unit classes: ClinicalReviewStateTest 2, ExchangeActionPolicyTest 4, ExchangeCommandTest 3, ExchangeStateMachineTest 6, ExchangeTaskControllerTest 5, ExchangeTaskServiceTest 16, TransmissionStateTest 2, WorkflowStateTest 3 = **41**. |
-| `mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest=ExchangeTaskServiceTest test` | red 15/1 failure → green 15/0 (before the symmetric guard was added); final clean run 16/0. |
-| `mvn -q -B -f apps/api/pom.xml -Pno-security,fast jacoco:report` + `jacoco.xml` inspection | `ExchangeTaskService` 0 missed of 504 instructions, 46 branches, 100 lines, 16 methods, 1 class (100%). All other `exchange/task` production classes also 0 missed; `ExchangeTaskRepository` is exercised by the DB suite run by the integrator. |
-| `mvn -q -B -f apps/api/pom.xml -Pno-security spotbugs:check` | **exit 0** after the change. |
-| `python3 -I scripts/check-migrations.py --require-baseline` | **exit 0** (V20 still `Change: expand`). |
-| `python3 -I scripts/check-docs.py`, `python3 -I scripts/check-secrets.py` | **exit 0** each. |
-| `git diff --check` | **exit 0**. |
-| `bash scripts/quick-check.sh` | **exit 1 at the first gate**: `check-pack: opencode.json is stale: run scripts/gen-opencode.py`. Pre-existing environment/pack drift, reproduced before any edit; it stops the script before Java tests, which were therefore run directly. |
-| `python3 -I -m unittest discover -s scripts/tests -q` | 164 tests, **6 failures + 4 errors**, all pre-existing and out of scope: 3 pack failures from the stale `opencode.json`, 1 Javadoc-link failure in `Qualifier.java` (another module), 2 `test_agent_run` failures (sandbox push/gh behaviour), 4 import errors because PyYAML is absent locally. |
-| `python3 -m unittest discover -s scripts/tests -p 'test_java_conventions.py' -v` | The only failure is `test_javadoc_links_are_fully_qualified` on `Qualifier.java`, outside this scope; no `exchange/task` file was flagged. |
+| `mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest='ClinicalDictionaryTest,DiagnosisCatalogTest,LocalizationTest,MixedScriptSupportTest' test` | exit 0; inherited 26 tests green (baseline established before any edit) |
+| `mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest=ClinicalCatalogAcceptanceTest test` | red 9/2 failures → green 9/0 after the fix |
+| `mvn -q -B -f apps/api/pom.xml -Pno-security,fast clean test jacoco:report` | **exit 0**; Surefire **1694 tests, 0 failures, 0 errors, 0 skipped** (was 1685 before the 9 new tests). JaCoCo CSV: all **16** `catalog.dictionary` classes have **0 missed** instructions (1100 covered), branches (201 covered), lines (213 covered) and methods (161 covered) — 100% at instrument/line/branch/method/class level |
+| `mvn -q -B -f apps/api/pom.xml -Pno-security spotbugs:check` | exit 0 |
+| `python3 -I -m unittest discover -s scripts/tests -p 'test_java_conventions.py' -q` | 2 tests OK — list-bearing records copy on store and read; Javadoc links fully qualified |
+| `python3 -I scripts/check-docs.py`, `python3 -I scripts/check-secrets.py`, `python3 -I scripts/check-migrations.py --require-baseline` | exit 0 each (V18 unused; no migration added) |
+| `git diff --check` | exit 0 |
 
 ## Defects found and decisions
 
-- **Defect fixed (medium, ledger integrity):** `execute` copied a caller-supplied `reason` into transition events for the transmission and clinical-review channels even though those channels never store a reason. This let a client attribute arbitrary text to a human acknowledgment in the append-only ledger. Fixed by recording a reason only for workflow commands; covered by the new test.
-- **Decision — scope:** followed authoritative `TODO.md` + AGENTS.md business-domain paths, not the stale untrusted `s_g2_02` paths. No new package or story-ID-named class was introduced.
-- **Decision — idempotency:** command-level `Idempotency-Key` remains the cross-cutting X-01 story (`contracts/x_01`, reserved V54); duplicating it in V20 would collide with that worker. XCH-02 uses the mandated `If-Match` precondition with 409/412/422/401/403/404 semantics.
-- **Decision — no migration change:** V20 already enforces channel independence, bound review actor/revision/timestamp and the one-channel-per-update guard; the fix is in the service only.
-- **Specialist review (simulated, senior backend):** no blocking findings. It confirmed the ledger reason previously diverged from persisted state on a reachable path, that audit and V20 constraints are unaffected, that both branches of the new conditional are covered, and that no existing test asserts a non-workflow ledger reason. Its LOW finding (no transmission-specific non-null-reason test) was addressed by `transmissionIgnoresCallerReasonInBothStateAndLedger`. Its INFO observations were accepted without change: `reason(...)` still validates length for non-workflow commands even though the value is now discarded (unchanged behaviour, defensible), and a pre-existing WORKFLOW state/ledger reason divergence is outside this diff.
-- **Evidence source:** all gate results above are from executed tool commands; the review finding came from a simulated specialist, which reviewed statically and did not re-execute the checks. There was **no simulated-user exercise and no human or clinical participant evidence**. Prior-attempt simulated review findings (architect/QA/backend) are recorded in the earlier version of this file and were addressed in the inherited implementation. Real clinical approval remains a G5 gate.
+- **Defect fixed (boundary validation):** `VersionStore.define` dereferenced a null entry through
+  `identity.apply(entry)` and threw `NullPointerException`. A caller could therefore receive an
+  unstructured runtime error and no clear reason the command failed. It now throws
+  `IllegalArgumentException("entry must not be null")` before allocating a version, so no version
+  is consumed on the failed command. Both services inherit the guard. Covered by the two new
+  red→green tests.
+- **No other production defect found** in the 16 seeded classes relative to CLN-03/CLN-04/PRD-05/
+  UX-01 after reviewing every value object, the version fold and the localization kernel. The
+  domain kernel intentionally omits tenancy, authorization, persistence and audit (documented on
+  `VersionStore`); this matches sibling in-memory kernel slices and is not reported as covered.
+- **Decision — in-memory store and unused V18:** no database migration was added. The reserved V18
+  is not needed because this slice is a deterministic domain kernel with no persistence adapter;
+  tenant RLS and uniqueness would belong to the later persistence story. See sibling stories where
+  reserved versions are likewise unused (S-G1-04/V14, S-G1-06/V16).
+- **Decision — test scope:** the authoritative `TODO.md`/AGENTS.md business-domain paths were used.
+  The new tests are in `it/catalog/dictionary` as the dispatch scope requires; no story/task-ID
+  package or class name was introduced.
+- **Scope/classification:** cross-boundary domain data contract (docs/WORKFLOW.md) — one bounded
+  senior-backend review plus the executed gates; no clinical enablement is claimed.
 
-## Blockers / evidence genuinely missing (stop-and-report)
+## Specialist review outcome (simulated senior-backend reviewer)
 
-1. **No local PostgreSQL** (`psql`/`pg_isready` absent, 127.0.0.1:5432 not reachable). The 10 `@Tag("integration")` tests in `ExchangeTaskIsolationTest` — forced RLS, two-tenant concealment, V20 guard triggers, actor/revision binding, revocation on next request — **were not executed here**. The integrator must run `bash apps/api/check.sh` on the exact merged SHA and record the JaCoCo ratios; that suite is the authority for `ExchangeTaskRepository` coverage.
-2. **`opencode.json` is stale at this base** under the cloud-worker profile (`git ls-files -v opencode.json` shows `S` = skip-worktree, so the checked-out file is the CI profile while the committed file is the local profile), so the fast policy gate (`quick-check.sh`, `check-pack.py`, several Python tests) fails before reaching Java. It is a shared generated file outside this story's scope; no `opencode.json` change is committed. The owner/loop must regenerate it from `scripts/gen-opencode.py` before the integrator gate can pass.
-3. **Python tooling failures** listed above are pre-existing and out of scope (missing PyYAML, stale pack, unrelated `Qualifier.java` Javadoc, sandbox `agent_run` assumptions). They were not edited.
-4. **No clinical or human participant evidence.** Clinical acknowledgment semantics were reviewed by simulated reviewers only; G5 site approval is separate.
-5. **No patient data, real identifiers or credentials** appear in any fixture or note; all subjects, organizations and order references are synthetic.
+A bounded senior-backend review inspected the new test, the `VersionStore.define` change and all
+context classes; it executed **read-only inspection only** (no Maven/JUnit/SpotBugs available to the
+reviewer). It confirmed the red/green fix is correct, allocates no version on failure, breaks no
+existing behavior, and that the tests are deterministic and independent (explicit `Locale.ROOT`,
+`ZoneId.of`, tolerant fall-back assertion). It found **no blocking defect** in the slice.
+
+| Finding | Severity | Disposition |
+|---|---|---|
+| F-1: class-level `@return this record` and empty `@param` descriptions on pre-existing records/enums (`DiagnosisCode`, `DictionaryField`, `Approval`, `LocalizedText`, `LocalizedName`, `MixedScriptRun`, `LocalizedExport`, `Direction`, `RunDirection`, `UiLocale`) | Low, pre-existing, not introduced by this diff | **Deferred.** These files predate this change; CODING_STYLE.md keeps unrelated cleanup out of feature diffs. No Javadoc doclint plugin runs today, and `python3 -I scripts/check-docs.py` passes. Doxygen is not installed locally, so the integrator's `docs.sh` remains authoritative before any separate hygiene story. No behavior change, so no risk to this PR's gates. |
+| F-2: `Approval.approvedAt` is unvalidated text and `VersionStore.effective()` ignores it, so a future-dated approval is effective immediately | Low, pre-existing, layering | **Deferred by design.** This is a deterministic domain kernel; effective dating is enforced by the V5 persistence/policy fold (`effective_config()` selects entries with `effective_from <= now()`), as recorded in the maintainer guide and PROJECT.md. Validating ISO-8601 and injecting a clock here would duplicate a rule owned by the database layer and change the public record contract used by the inherited tests. A production adapter must enforce it; no new story is needed now. |
+| F-3: the catalog null-entry test did not assert `effective() == null` symmetrically with the dictionary test | Info, in this diff | **Fixed.** Added `assertNull(service.effective(CATALOG_KEY))`; targeted and full fast suites re-run green (1694 tests), JaCoCo unchanged at 100%. |
+
+Evidence source for the review: simulated specialist (static read-only inspection); all gate results
+in this note were re-executed locally by the primary agent with tools. No simulated-user or human
+clinical evidence.
+
+## Evidence limitations / blockers (honest report)
+
+1. **No database or integration tests run here** by instruction — the integrator runs
+   `bash apps/api/check.sh` on the merged SHA with PostgreSQL. The new tests are plain JUnit domain
+   tests and need no database, so they ran in the fast tier. JaCoCo evidence above is from the fast
+   tier with the integration group excluded; the integrator's full-tier coverage is authoritative.
+2. **Doxygen is not installed locally**, so `bash scripts/docs.sh` exits with "Install Doxygen to
+   build the developer reference." `python3 -I scripts/check-docs.py` (Markdown links, requirement
+   IDs) passes; the integrator's `integrator-gate.sh` runs Doxygen.
+3. **`opencode.json` worktree artifact:** `git ls-files -v opencode.json` shows `S` (skip-worktree)
+   and the worktree file differs from `git show HEAD:opencode.json`, so `gen-opencode.py --check`
+   and `check-pack.py` fail locally. This is the documented CI-profile artifact (BUGS
+   OPS-CW-003-01, MEMORY.md), not HEAD truth; the file was not edited.
+4. **No simulation or human evidence:** the specialist review is a static, simulated review; no
+   simulated user exercise and no human or clinical participant evidence was produced. Site
+   clinical/privacy approval for real use remains a G5 gate.
+5. All evidence above is tool-generated and synthetic; no PHI, real identifiers or credentials
+   were used.
