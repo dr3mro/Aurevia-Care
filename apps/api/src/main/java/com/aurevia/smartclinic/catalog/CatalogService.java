@@ -16,7 +16,7 @@ import com.aurevia.smartclinic.tenant.TenantContext;
 /**
  * Tenant catalog invariants: bounded families and codes, append-only versions.
  *
- * <p>Drafts are created through {@link ConfigurationService} and only become
+ * <p>Drafts are created through the configuration domain service and only become
  * effective after that service appends a named approval. This service adds the
  * catalog key namespace and read-side authorization; it never writes the shared
  * configuration tables directly.</p>
