@@ -2,6 +2,7 @@ import {
   applyReply,
   canReply,
   CLOSED_THREAD_MESSAGE,
+  EMPTY_REPLY_MESSAGE,
   markRead,
   MESSAGING_NOT_PERMITTED_MESSAGE,
   unreadCount,
@@ -129,5 +130,11 @@ describe('MSG-02 apply reply', () => {
     expect(first.state).toBe('awaiting_staff');
     const fromAwaitingPatient = applyReply(conversation({ state: 'awaiting_patient' }), reply());
     expect(fromAwaitingPatient.state).toBe('awaiting_staff');
+  });
+
+  it('refuses a blank reply body before appending any message', () => {
+    const original = conversation();
+    expect(() => applyReply(original, { ...reply(), body: '   ' })).toThrow(EMPTY_REPLY_MESSAGE);
+    expect(original.messages).toHaveLength(0);
   });
 });
