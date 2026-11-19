@@ -166,6 +166,7 @@ public final class ReleasedReportService {
      * @param purpose        business purpose of the access (OPS-02)
      * @param scope          audited scope of the access (OPS-02)
      * @param occurredAt     instant of the decision, from the injected clock (OPS-02)
+     * @return the immutable audit fact
      */
     public record AuditRecord(String action, String resourceId, String outcome, String subject,
                               String organizationId, String correlationId, String purpose,
@@ -210,6 +211,7 @@ public final class ReleasedReportService {
      * @param documentId opaque rendered artifact identifier
      * @param checksum   artifact checksum for integrity verification
      * @param language   document language
+     * @return the authorized document reference
      */
     public record ReportDownload(String reportId, int revision, String documentId, String checksum,
                                  String language) {
@@ -225,6 +227,7 @@ public final class ReleasedReportService {
      * @param language            document language
      * @param correctionReason    reason shown for a correction, or {@code null}
      * @param supersedesRevision  revision replaced by this correction, or {@code null}
+     * @return the patient-visible projection
      */
     public record ReleasedReportView(String reportId, int revision, String issuingOrganization,
                                      String effectiveDate, String language, String correctionReason,
@@ -233,7 +236,7 @@ public final class ReleasedReportService {
         /**
          * Project one released revision, exposing correction context without the document reference.
          *
-         * @param report released revision
+         * Project one released revision.
          * @return the patient-visible view
          */
         static ReleasedReportView from(ReleasedReport report) {
