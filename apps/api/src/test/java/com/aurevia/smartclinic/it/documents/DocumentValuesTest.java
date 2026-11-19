@@ -102,7 +102,7 @@ class DocumentValuesTest {
     @Test
     void pdfSpecDefendsItsLineList() {
         PdfSpec spec = new PdfSpec("org", "chart", "p-1", "en", 1, 90, "Title",
-                List.of("a", "b"), "SYS", "SRC", "2026-11-19T10:00:00Z");
+                List.of("a", "b"), "SYS", "SRC", "2026-11-19T10:00:00Z", null);
         assertEquals("org", spec.organizationId());
         assertEquals("chart", spec.subjectType());
         assertEquals("p-1", spec.subjectId());
@@ -116,11 +116,11 @@ class DocumentValuesTest {
         assertEquals("SRC", spec.sourceId());
         assertEquals("2026-11-19T10:00:00Z", spec.effectiveAt());
         assertEquals(spec, new PdfSpec("org", "chart", "p-1", "en", 1, 90, "Title",
-                List.of("a", "b"), "SYS", "SRC", "2026-11-19T10:00:00Z"));
+                List.of("a", "b"), "SYS", "SRC", "2026-11-19T10:00:00Z", null));
         assertEquals(spec.hashCode(), new PdfSpec("org", "chart", "p-1", "en", 1, 90, "Title",
-                List.of("a", "b"), "SYS", "SRC", "2026-11-19T10:00:00Z").hashCode());
+                List.of("a", "b"), "SYS", "SRC", "2026-11-19T10:00:00Z", null).hashCode());
         assertEquals(spec.toString(), new PdfSpec("org", "chart", "p-1", "en", 1, 90, "Title",
-                List.of("a", "b"), "SYS", "SRC", "2026-11-19T10:00:00Z").toString());
+                List.of("a", "b"), "SYS", "SRC", "2026-11-19T10:00:00Z", null).toString());
     }
 
     @Test
