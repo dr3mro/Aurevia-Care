@@ -251,7 +251,18 @@ public class InstructionService {
      */
     public List<Revision> listForPatient(String patientId) {
         String patient = InstructionInputs.uuid(patientId, "patientId");
-        return execute(InstructionActions.READ, patient, () -> store.forPatient(patient));
+        return execute(InstructionActions.READ, patient, () -> {
+            String subject = context().subject();
+            // READ permission is not a care relationship. Mirror get() and the
+            // mutation guards: a caller only sees revisions from units they are
+            // assigned to over a still-active, verified patient connection
+            // (IAM-01, MSG-01, MSG-07, ARC-02).
+            return store.forPatient(patient).stream()
+                    .filter(revision -> store.staffAssignedToUnit(subject, revision.unitId()))
+                    .filter(revision -> store.connectionActive(
+                            revision.connectionId(), revision.patientId(), revision.unitId()))
+                    .toList();
+        });
     }
 
     private <T> T execute(String action, String resourceId, Supplier<T> work) {
