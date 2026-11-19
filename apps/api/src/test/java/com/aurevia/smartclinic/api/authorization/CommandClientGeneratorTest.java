@@ -1,4 +1,4 @@
-package com.aurevia.smartclinic.api.x_04;
+package com.aurevia.smartclinic.api.authorization;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
