@@ -1,85 +1,183 @@
-# S-G3-01 — Patient appointment list, confirmation, generic push notifications and device revocation (PAT-01)
+# S-G5-06 — Recovery targets, restore into a clean environment and operational runbooks
 
-Worker branch: `swarm/S-G3-01-113`, forked from the single squashed snapshot commit `d79a776`. The orchestrator had already marked the task `[-]` in TODO.md; this worker did **not** edit TODO.md, MEMORY.md, WORKSPACE.md, BUGS.md, PROJECT.md or `docs/swarm`. No push, tag, `gh` or force-push was performed. All fixtures are synthetic (`org-a`/`org-b`, `patient-1`/`patient-2`, `synthetic-token`); no patient data or credentials appear in code, tests or this note.
+## Story / scope
 
-## Scope and naming decision
+- Story: S-G5-06 (attempt 6/resume), branch `swarm/S-G5-06-114`, base SHA `2945531`.
+- Requirements: **OPS-04**, **OPS-05**.
+- Scope honoured: `infra/s_g5_06/**`, `docs/operations/s_g5_06/**` and this PR-notes file. No tracker,
+  CI, application, schema or shared file touched. Reserved migration **V48 deliberately unused**
+  (no schema change; version gaps are allowed by `scripts/check-migrations.py`).
+- Synthetic data only. No real identifier, credential, patient data or log is present.
 
-- Story text names the API path `messaging/s_g3_01`, but CODING_STYLE.md forbids Java packages named after a story/task ID, and `TODO.md` + `.agent/pr-notes/REFACTOR-PACKAGES.md` record the canonical mapping `messaging/s_g3_01 → messaging/appointments` (all G3 siblings use `messaging/reports`, `messaging/units`, …). The API code therefore lives in `apps/api/src/main/java/com/aurevia/smartclinic/messaging/appointments/`.
-- Companion unit tests mirror that package under `apps/api/src/test/java/com/aurevia/smartclinic/messaging/appointments/`, exactly as the G3 sibling stories do. No other test path was touched.
-- Mobile code is in `apps/patient-mobile/src/features/s_g3_01/`.
-- **No V29 migration was created.** Reserved V29 is unused, matching every other G3 messaging slice (reports V30, enrollment V31, units V32, …), because this slice has no persistence adapter yet.
-- 10 changed files total (9 code/test + this note), below the swarm's 15-file guard.
+## Resume state / honesty about authorship
 
-## Requirement and acceptance mapping
+The complete implementation and its test suite were already present at the resume checkpoint
+(`2945531`). I re-read every scoped file, re-ran all fast checks and the policy gates, then added a
+**build-failing 100% line-coverage gate** (the quality bar requires one; the prior `check.sh` only
+measured coverage and its documented `trace --count` command was vacuous). Three real defects were
+found and fixed test-first: the vacuous coverage measurement (missing `--missing`), a cover-file
+selection bug that measured the test module instead of the evaluator, and a stale documented test
+count. A bounded senior-python review then raised seven robustness findings on the new gate, all
+addressed before commit (F1–F7 below). This note is the pull-request description committed with the
+work; earlier review findings from attempt 4 are retained below for continuity.
 
-| ID | Behaviour | Where |
+## Acceptance mapping (specification clause -> implementation -> evidence)
+
+| Spec clause | Enforced as | Evidence |
 |---|---|---|
-| PAT-01 | List appointments with facility time zone and status | `PatientAppointmentService.listAppointments`, `PatientAppointment`, `AppointmentStatus`, mobile `appointmentView`, `sortByScheduled`, `AppointmentListScreen` |
-| PAT-01 | Confirm only where enabled; record a server timestamp | `PatientAppointmentService.confirm` (server-owned `confirmationEnabled`, `If-Match`-style version precondition, `Instant at`), mobile `deriveConfirmation` / `confirm` |
-| PAT-01 | Status-change push with generic text; detail only after auth | `GenericPushNotice` (fixed template, no input, no resource id in deep link), `GenericPushNotice.reveals`, mobile `GENERIC_NOTICE`, `detailAfterAuth` |
-| PAT-01 | Log invalid device tokens; support revocation | `recordInvalidToken`, `revokeDevice` (idempotent), `DeviceTokenStore.appendInvalidTokenLog`, mobile `invalidateToken` / `withInvalidatedDevice` / `withRevokedDevice` |
-| PRD-03 / IAM-05 | Self-access only; one patient cannot touch another patient's device | new patient-ownership guards (see fixes below), verified-link recheck on every command |
-| ARC-01 / ARC-02 | Tenant-scoped keys, verified link re-derived per command, fail closed | `authorize` at the top of all six commands; mobile `tenantKey` with NUL separator and tenant-prefix filtering |
-| ARC-05 / OPS-02 | Generic notices, no PHI in push/audit/log, audit of allow and deny | fixed notice factory, provider token never passed to `AuditSink`, audit `DENIED` rows, bounded reason on invalid-token log |
-| UX-01 | IANA zone retained and shown; RTL/localization is a separate story | `facilityTimeZone` reaches the screen; localized labels and RTL are deliberately deferred to S-G3-11 (see Decisions) |
+| OPS-04 RPO <= 15 min | `targets.rpo_minutes` number in `[0,15]`; unit pinned by field name; non-finite/boolean/string rejected | `recovery_evidence.py::_check_targets`; tests `TargetsTest` (limit, above-limit, 0, negative, NaN/inf, bool, string) |
+| OPS-04 RTO <= 4 h | `targets.rto_hours` number in `(0,4]` | same; `TargetsTest` rto cases |
+| OPS-04 recover core chart, order data, documents **and their associations** | `scope` must contain all four named classes, no duplicates, extras allowed; exact (not substring) membership | `REQUIRED_SCOPE`, `_check_required_members`; `CoverageListTest`, incl. `documentation` near-miss |
+| OPS-04 restore database, objects, IdP dependencies | `restore.targets` must name all three | `_check_restore`; `CoverageListTest` restore cases |
+| OPS-04 into a clean environment | `restore.clean_environment` must be literal `true` (not truthy) | `_check_restore`; boolean/string negative tests |
+| OPS-04 reconcile hashes, source versions, in-flight deliveries, audit coverage before writes reopen | four named gates plus `completed_before_writes_reopened`, each literal `true` | `REQUIRED_RECONCILIATION`, `_check_reconciliation`; `ReconciliationTest` |
+| OPS-04 verify before pilot and quarterly | `verification.before_pilot` and `quarterly_cadence` literal `true` | `_check_verification`; `VerificationTest` |
+| OPS-05 13 monitoring signals | `monitoring.signals` must name all 13, no duplicates | `REQUIRED_MONITORING_SIGNALS`, `_check_monitoring`; `MonitoringTest` |
+| OPS-05 operational on-call + site clinical coverage owners | both non-blank, non-placeholder strings | `_check_ownership`, `OWNER_PLACEHOLDERS`; `OwnershipTest` |
+| OPS-05 four runbooks (paper/manual capture, patient identification, critical contacts, supervised back-entry) | `runbooks` must name all four, no duplicates | `REQUIRED_RUNBOOKS`, `RunbooksTest` (incl. `downtime_drills` near-miss); topic bodies in `operational-runbooks.md` |
+| OPS-05 prevent duplicates when recovering | `duplicate_prevention` literal `true`; procedure detail in restore runbook | `_check_duplicate_prevention`; `DuplicatePreventionTest`; `restore-procedure.md` §5 |
+| Evidence honesty | synthetic rehearsal is never final evidence; conducted drill with synthetic-labelled source => `evidence_conflict` | `_verdict`, `evaluate`; `ConformingArtifactTest`, `StructureTest` |
 
-## Test-first log (red → green)
+Cross-references (IAM-02/IAM-05 revocation reapplication, ARC-03 idempotency and durable
+uniqueness, ARC-05 event dedup, XCH-05 acknowledgment, ADM-01 approved rosters, PAT-01/MSG-05
+generic notifications) are named in `README.md` and at the point of use in the runbooks; they add
+no new threshold.
 
-All new behaviour was written as a failing test before production code:
+## Exact commands run and results (tool evidence)
 
-1. **Cross-patient device mutation (mobile).** Red: `npm run typecheck` → `TS2554: Expected 3 arguments, but got 4` at `devices.test.ts` (new `withRevokedDevice(..., patientId)` / `withInvalidatedDevice(..., patientId)` calls) and `TS2322: Property 'patientId' does not exist` at six `AppointmentListScreen` renders. Green after adding the ownership parameter and screen filter.
-2. **Confirmation disclosed an existing timestamp unauthenticated (mobile).** Red: `npx jest --runInBand --silent confirmation` → `1 failed, 9 passed`; expected `UNAUTHENTICATED`, received `idempotent` with `confirmedAt`. Green after the early auth guard.
-3. **Backend security/audit fixes.** Red: `mvn -B -f apps/api/pom.xml -Pno-security,fast -Dtest=PatientAppointmentServiceTest test` → `COMPILATION ERROR … cannot find symbol: method findByTokenId(String)`. Green after adding the port method and its guards.
-4. **Coverage regression from the new registration branch.** First green run showed JaCoCo `BRANCH missed=1` at `PatientAppointmentService.java:139` (same-patient re-registration). A new red/green test (`registerAllowsReRegisteringTheSamePatientsDeviceId`) restored 100%.
-
-## Fixes applied (defects found and closed)
-
-1. **High — cross-patient device revocation/invalidation (mobile).** `withDeviceState` keyed only by organization, so any valid local device id in the tenant could be revoked or invalidated regardless of owner, and `AppointmentListScreen` rendered a revoke control for every active device in the organization. Added a `patientId` ownership guard to `withDeviceState`/`withRevokedDevice`/`withInvalidatedDevice`, added a required `patientId` screen prop and filtered the rendered devices. Negative tests added for wrong-patient revoke/invalidate and for the screen control.
-2. **Medium — cross-patient device-id rebinding (API + mobile).** `registerDevice` was an unscoped insert-or-replace and `withRegisteredDevice` overwrote an existing key, so a colliding `tokenId` could be rebound to another patient in the same tenant, stripping the displaced patient of revoke/invalidate access. Added `DeviceTokenStore.findByTokenId`, a 409 `DEVICE_CONFLICT` guard, and the equivalent mobile guard; positive same-patient re-registration stays allowed.
-3. **Medium — fail-closed link recheck unverified on half the commands.** Added explicit 403/`FORBIDDEN` denial tests for `confirm`, `notifyStatusChange` and `recordInvalidToken`, each asserting no store write, gateway send or device write. Production already called `authorize()` on every command; these are regression tests that would catch its removal (line coverage alone would not).
-4. **Medium — confirmation auth gap (mobile).** `confirm()` consulted `authenticated` only on the `pending` branch, so an unauthenticated replay of a `confirmed` state disclosed the stored timestamp. Authentication is now required on every branch.
-5. **Low — wrong audit actor on push events.** `dispatch` audited `token.subject()` (the device owner) rather than the authenticated caller. Now threads the acting `subject` into `dispatch`; a test uses a different device owner to pin the correct actor.
-6. **Low — duplicate invalid-token log rows.** `recordInvalidToken` unconditionally saved and logged a repeated provider disposition. It is now idempotent for an already-INVALID device while still auditing the retry.
-
-## Exact commands and results
-
-Executed locally in `/__w/Aurevia-Care/Aurevia-Care`, JDK 21.0.13, Maven 3.10.0, Node 22.23.5, Python 3.11, on branch `swarm/S-G3-01-113`.
+All run from the repository root, `python3 -I` isolated mode, working tree clean at start.
 
 | Command | Result |
 |---|---|
-| `mvn -B -f apps/api/pom.xml -Pno-security,fast -Dtest=PatientAppointmentServiceTest test` (after fixes) | **34 tests, 0 failures/errors, BUILD SUCCESS** |
-| `mvn -B -f apps/api/pom.xml -Pno-security,fast test jacoco:report` | **1552 tests, 0 failures/errors, exit 0** |
-| JaCoCo report parsing of `apps/api/target/site/jacoco/jacoco.xml`, package `messaging/appointments` | INSTRUCTION 0 missed / 674 covered; BRANCH 0 / 54; LINE 0 / 102; COMPLEXITY 0 / 59; METHOD 0 / 32; CLASS 0 / 7 → **100%** |
-| `npm run typecheck` (apps/patient-mobile) | exit 0 |
-| `npm run lint` (apps/patient-mobile) | exit 0 |
-| `npm run test:coverage -- --ci` (apps/patient-mobile) | **26 suites, 275 tests passed; all files 100% statements/branches/functions/lines** |
-| `bash apps/patient-mobile/check.sh` | exit 0 (canonical module gate) |
-| `bash scripts/frontend-check.sh` | exit 0 — "frontend standards: policy and tool commands passed" (includes Prettier and root Vitest) |
-| `python3 -I scripts/check-docs.py`, `python3 -I scripts/check-secrets.py`, `python3 -I scripts/check-migrations.py --require-baseline`, `python3 -I scripts/project-name.py displayName` / `repositorySlug` | exit 0; "Aurevia Care" / "aurevia-care" |
-| `python3 -I -m unittest discover -s scripts/tests -p 'test_java_conventions.py' -q` | 2 tests OK |
+| `python3 -I -m unittest discover -s infra/s_g5_06/tests` | **97 tests OK** (0.09s): 80 evaluator tests from the prior checkpoint plus 17 coverage-gate tests added this resume |
+| `bash infra/s_g5_06/check.sh` | **exit 0**; 97 tests OK; coverage gate PASS; synthetic fixture PASS; violation fixture FAIL (all expected checks); final banner confirms |
+| `python3 -I infra/s_g5_06/tests/coverage_gate.py` | **exit 0**; `coverage gate: PASS - 100% line coverage (271 lines across 1 module(s), 0 uncovered)` — real `trace --count --missing` measurement |
+| F1 regression proof (one-off, out of tree) | Running the same probe with `--count` only detected `[]` uncovered lines, so the pinned assertion `== [3]` would fail if `--missing` were removed from `run_traced_suite` — the gate's safety property is now tested, not just hard-coded |
+| RED then GREEN for the coverage-gate helper | new `test_coverage_gate.py` importing the not-yet-written `coverage_gate.py` → `Ran 81 tests ... FAILED (errors=1)` (`ModuleNotFoundError`); after implementing the helper → `Ran 85 tests ... OK` |
+| RED then GREEN for cover-file selection | two `FindCoverFileTest` cases → `FAILED (failures=2)` (test module's cover file selected); after excluding `test_recovery_evidence.cover` → OK |
+| RED then GREEN for the coverage gate itself | gate with `--missing` first reported `FAIL - 1 uncovered line(s): [271]` (the `__main__` guard) and earlier the 554-line test cover file; after adding `#pragma NO COVER` to the CLI guard and fixing file selection → `PASS ... (271 lines, 0 uncovered)` |
+| `TraceIntegrationTest.test_trace_marks_a_never_called_function_as_uncovered` | real `trace` run on a synthetic probe module with an unexecuted branch → gate detects exactly the uncovered line; proves the gate is not vacuous |
+| `python3 -I infra/s_g5_06/recovery_evidence.py infra/s_g5_06/fixtures/synthetic_recovery_evidence.json` | exit 0; `verdict: pass`, `classification: rehearsal`, `final_evidence: false`, all 20 checks PASS |
+| `python3 -I infra/s_g5_06/recovery_evidence.py infra/s_g5_06/fixtures/violation_recovery_evidence.json` | exit 1; failed checks for both targets, missing scope/restore members, clean_environment, two reconciliation gates, before_pilot, signals, clinical owner, runbooks, duplicate_prevention |
+| `python3 -I -m trace --count --missing --coverdir <tmp> infra/s_g5_06/tests/run_coverage.py` | exit 0; evaluator cover report has **0 uncovered lines** (271 lines). `--missing` is mandatory: `--count` alone never annotates unexecuted lines |
+| `python3 -I scripts/check-docs.py` | exit 0 (all relative links resolve; all requirement IDs defined) |
+| `python3 -I scripts/check-secrets.py` | exit 0 (no credential/PHI-shaped string introduced) |
+| `python3 -I scripts/check-migrations.py --require-baseline` | exit 0 (V48 gap allowed; no schema change) |
+| `bash -n infra/s_g5_06/check.sh` | exit 0 |
 
-### Commands that did not pass, with cause
+## Pre-existing baseline observations (not introduced by this story)
 
-- `bash scripts/quick-check.sh` stops at `check-pack: opencode.json is stale: run scripts/gen-opencode.py`. This is a **worker-harness artifact**: `git ls-files -v opencode.json` reports `S` (skip-worktree), and the delivery skill documents that `agent-run.sh` copies the CI profile over the worktree file; `check-pack.py` therefore judges a stale profile. `git diff HEAD -- opencode.json` is empty and the file was not touched. The Java and policy steps of quick-check were run directly instead.
-- `python3 -I -m unittest discover -s scripts/tests -q`: 164 tests, 10 not passing. Three `test_check_pack` failures are the same stale `opencode.json` artifact; two loader errors (`test_fast_tier`, `test_workflow_concurrency`) and `test_swarm` / `test_agent_run` failures assert live harness/repository state (e.g. `assertGreaterEqual(len(dispatchable), 10)` saw 9). None is in the touched scope and none was caused by this change.
-- `mvn -q -B -f apps/api/pom.xml -Pfast -Dspotbugs.skip=false -Dowasp.skip=true spotbugs:check`: exit 1 with **6 pre-existing Medium findings, all outside this scope** (`messaging.conversations.ConversationRepository:180`, `messaging.governance.MessagingGovernanceController:48`, `patient.identity.IdentityProofingService:314`, `prescription.rx.RxController:47`, `prescription.rx.RxRepository:309`). **Zero findings in `messaging.appointments`.** Not fixed: AGENTS.md requires staying inside the declared scope and preserving unrelated work.
-- `bash scripts/check.sh` / `scripts/docs.sh` / DB integration tests: not run by this worker. Doxygen, shellcheck and Docker are absent in this checkout, and the user assigned database and integration tests to the integrator.
+- `python3 -I scripts/gen-opencode.py --check` -> `opencode.json is out of date`. The worktree was
+  clean at start and this story changes no agent, skill or `opencode.json` file. This is a
+  prepared-image/CI-profile condition, left untouched as out of scope.
+- `python3 -I -m unittest discover -s scripts/tests -q` -> 163 tests, 8 failures + 4 errors, all in
+  unrelated areas (stale `opencode.json` pack tests, swarm/agent-run tests, Java-convention findings
+  in `G3EvidenceService.java` and `PatientFlowContract.java`). None references `infra/s_g5_06` or
+  `docs/operations/s_g5_06`. Not modified here.
+- `shellcheck` and PyYAML are not installed in this worker image; `bash -n` was used for shell syntax.
 
-## Review evidence and dispositions
+## Defects found
 
-Three bounded, read-only specialist reviews were commissioned (senior backend, senior mobile, independent QA). All findings were reviewer analysis of source; none involved a simulated user, clinician or human participant.
+No correctness defect in the evaluator's OPS-04/OPS-05 decision logic. The evaluator, fixtures and
+contract are internally consistent (`ContractConsistencyTest` pins contract literals to evaluator
+constants) and fail closed on wrong types, missing/duplicated members, truthy values and
+contradictory evidence classes. The three defects found this resume are in the coverage tooling and
+documentation, listed below.
 
-- Fixed: mobile cross-patient revocation and screen exposure; mobile registration rebinding (QA F2); mobile confirmation auth (mobile finding 2); backend registration rebinding and its coverage gap; backend fail-closed denial tests (backend F1, QA F4); backend audit actor (backend F3); backend invalid-token idempotency (backend F5).
-- Deferred with rationale:
-  - **QA F1 (blocker for G3 gate evidence, not a code defect in scope):** this slice is a pure domain kernel. The five collaborators are interfaces with no implementations, there is no controller/HTTP adapter, no V29 schema and no real push gateway, so none of the seven PAT-01 behaviours is reachable from an authenticated request at runtime. This is the deliberate pre-wiring pattern of every G3 messaging slice and is explicitly documented in `PatientAppointmentService` and `PushGateway`. **This worker cannot produce system-boundary evidence inside the declared scope; the integrator and the follow-on wiring/API stories must supply it before G3 acceptance.** Flagged here as required per the stop-and-report instruction.
-  - **Backend F2 (push outbox/dedup):** synchronous dispatch has no durable outbox and no client dedup key. Deferred to cross-cutting story X-02 (durable events, outbox, dedup, replay); the slice has no persistence adapter yet.
-  - **Backend F4 (status cross-check):** `notifyStatusChange` uses the supplied enum only for the audit action key; a wrong status would mislabel an audit event but cannot change generic push text. Low impact, deferred.
-  - **Mobile findings 3 and 5:** localized status/RTL labels and a screen-level timestamp assertion are owned by S-G3-11 (iOS/Android flows, accessibility and RTL). The pure `confirm` timestamp path is covered by unit tests.
-  - **Mobile finding 4 (bare local id in detail callback):** the authenticated app re-scopes through the server's tenant context and `detailAfterAuth` takes an opaque reference; changing the callback payload is a wiring decision for the integration story.
-  - **Unconstrained `recordInvalidToken.reason`:** the parameter is documented as an internal non-sensitive disposition code and is bounded on the mobile client; HTTP-level boundary validation belongs to the future adapter (X-01/X-04), not this domain kernel.
+1. Low-severity **traceability** finding from the system-designer review: the duplicate-prevention
+   procedure in `restore-procedure.md` reproduced ARC-03's idempotency rules and ARC-05's event-dedup
+   rules without naming those IDs, and the README cross-reference example named ARC-05 but omitted
+   ARC-03. **Fixed**: tagged the idempotency/durable-uniqueness bullets `(ARC-03)`, the event-dedup
+   bullet and the `in_flight_deliveries` reconciliation row `(ARC-05)`, and listed both IDs in the
+   README cross-reference note. No spec literal or evaluator behavior changed.
 
-## Evidence provenance
+2. Low-severity **test completeness** finding from the senior-python review: `ContractConsistencyTest`
+   did not pin `schema_version`, `verification`, `ownership_roles` or the target min bounds, so a
+   future contract edit could drift silently while the test still passed. **Fixed test-first**
+   (RED/GREEN evidence in the table above): introduced `REQUIRED_VERIFICATION_FLAGS` and
+   `REQUIRED_OWNERSHIP_ROLES`, used them in `_check_verification` / `_check_ownership`, and extended
+   the consistency test. Also added a `conducted_drill` + blank/non-string source test and an RTO=0
+   rejection test to complete branch enumeration (78 → 80 tests).
 
-- Gate results, counts and coverage numbers: **executed tool commands** run by this worker (Maven, npm, Jest, JaCoCo XML, Python policy scripts).
-- Defects and dispositions: **three simulated specialist reviewers**; no simulated-user, clinician or human-participant evidence is claimed.
-- No real-patient or G5 launch evidence exists or is implied.
+3. **Build-failing coverage gap** (owner: this resume; supersedes the earlier "accepted exception"):
+   the canonical `check.sh` measured coverage but could never fail on it, contrary to the quality
+   bar's build-failing gate. **Fixed**: added `infra/s_g5_06/tests/coverage_gate.py`, wired into
+   `check.sh`, that runs the suite under `trace --count --missing` and exits 1 on any uncovered
+   evaluator line. Branch completeness remains covered by enumerated negative tests; no fabricated
+   branch metric is claimed.
+
+4. **Vacuous coverage measurement** (owner: this resume): every documented coverage command used
+   `trace --count` without `--missing`. Verified from the stdlib `trace` source that `--count` alone
+   never writes the `>>>>>>` marker, so the prior "0 uncovered lines" claim could not have detected
+   an uncovered line. **Fixed test-first**: a `TraceIntegrationTest` now runs real `trace` on a
+   synthetic probe module with an unexecuted branch and asserts the gate reports that line. All
+   documented commands now include `--missing`, and the gate hard-codes it with an explanatory
+   comment.
+
+5. **Cover-file selection bug** (owner: this resume): `find_cover_file` matched any name ending in
+   `recovery_evidence.cover`, which also matches `test_recovery_evidence.cover` (554 lines). The gate
+   consequently measured the test module and reported a false uncovered line. **Fixed test-first**
+   (two RED `FindCoverFileTest` cases → GREEN): exclude `test_recovery_evidence.cover`; gate now
+   measures the 271-line evaluator.
+
+6. **Stale documented test count** (owner: this resume): `README.md` and `recovery-evidence.md` said
+   "78 unit tests" while the suite already had 80 (now 97). **Fixed** by citation-only doc edits.
+
+7. **Senior-python review findings** (simulated reviewer, this resume). Bounded static review of the
+   two new coverage-gate files raised seven findings; all were addressed before commit:
+   - **F1 HIGH** — the `--missing` flag was hardcoded but no test exercised that path, so removing it
+     would silently reintroduce a vacuous gate. **Fixed**: `run_traced_suite` now accepts a `target`
+     and `TraceIntegrationTest` drives the exact production command on a probe module whose known
+     uncovered line must be detected; one-off proof above shows the assertion fails without the flag.
+   - **F2 MEDIUM** — cover-file selection was tested only with synthetic filenames. **Fixed**: the
+     integration test now calls the production `find_cover_file` on a real trace artifact.
+   - **F3 MEDIUM** — ambiguous suffix match could select a decoy cover file. **Fixed**:
+     `find_cover_file` requires exactly one match and raises otherwise; RED/GREEN tests for zero and
+     multiple matches.
+   - **F4 MEDIUM** — a future production module could escape coverage. **Fixed**: `production_modules()`
+     enumerates `*.py` in the story root and the gate requires a fully-covered report for each.
+   - **F5 LOW/MEDIUM** — the `#pragma NO COVER` dependency on the CLI guard was untested. **Fixed**:
+     the probe carries the same pragma and asserts trace honours it on this interpreter.
+   - **F6 LOW** — no timeout and opaque subprocess failures. **Fixed**: 120 s timeout and return-code
+     / stderr tail in the error.
+   - **F7 LOW** — too-narrow exception handler. **Fixed**: `subprocess.SubprocessError` and `ValueError`
+     are caught, with a RED/GREEN `TimeoutExpired` test.
+   Reviewer executed no commands (no tool available in its session); it was static only. Its finding
+   that recursion was safe was correct for the original design; a new full-suite integration test I
+   added did recurse (123 s, one error), so I removed it — F2 is fully covered by the probe test.
+
+## Decisions
+
+1. Enforce only the literals and named sets that OPS-04/OPS-05 actually specify; inventing extra thresholds would overstate the contract.
+2. Units are carried by field names (`rpo_minutes`, `rto_hours`) to prevent unit fail-open.
+3. RPO = 0 is accepted (zero data loss); RTO must be strictly positive.
+4. Coverage lists use "must include, no duplicates, extras allowed" semantics.
+5. All boolean gates use strict `is True`; a string `"false"` cannot pass.
+6. `kind` is the authority for evidence class; a synthetic-labelled source on a conducted drill is a conflict.
+7. Revocation/withdrawal reapplication is a mandatory *runbook* gate derived from IAM-02/IAM-05/§11, not a fabricated evaluator threshold.
+8. V48 unused; no schema change.
+9. The evaluator judges an artifact, never a running system; a real drill and human G5 acceptance remain open.
+10. Coverage is now build-failing with stdlib `trace --count --missing` (271 evaluator lines, 0
+    uncovered). The CLI `__main__` guard is a documented `#pragma NO COVER` exception whose `main()`
+    is covered directly by tests. No fabricated branch metric is claimed; branch completeness is
+    addressed by the enumerated negative tests.
+11. The root `scripts/check.sh` does not discover `infra/**/check.sh` (it only loops over app modules
+    and `db`). This is a pre-existing repo-level wiring gap, out of this story's scope; the story's
+    canonical gate remains `infra/s_g5_06/check.sh` and the integrator's environment may run it
+    explicitly. No shared script was edited.
+
+## Evidence-source labels
+
+- Commands and coverage above: **executed tool** evidence (this worker): 97 tests, coverage gate,
+  `check.sh`, docs/secrets/migrations gates, and the one-off F1 regression proof.
+- Code review: **simulated specialist reviewers** — attempt 4 senior-python and system-designer; this
+  resume's bounded static senior-python review of the new coverage gate. All findings and dispositions
+  are recorded in "Defects found" above.
+- No **human participant**, clinician or real pilot feedback was used or implied. No patient data.
+
+## Remaining gate (explicitly out of scope for this repository)
+
+A real conducted restore drill with measured RPO/RTO, reconciliation results, named owners and a
+dated drill record must be produced in an authorized environment; quarterly cadence and final human
+G5 acceptance cannot be attested by a script. This story delivers the contract, evaluator, runbooks
+and a synthetic rehearsal of the check only.
