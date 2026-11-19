@@ -86,7 +86,8 @@ def synthetic_artifact(**overrides):
             _audit("audit-5", "op-1", "RETRY", "d-1"),
             _audit("audit-6", "op-2", "ASSIGN", "m-1"),
             _audit("audit-7", "op-2", "RESOLVE", "a-1"),
-            _audit("audit-8", "op-1", "EXPORT", "export-1"),
+            _audit("audit-8", "op-1", "EXPORT", "export-1",
+                   at="2026-11-19T10:00:00Z"),
         ],
         "queues": {
             "unsigned_encounters": [
@@ -703,6 +704,72 @@ class FixtureIntegrityTest(unittest.TestCase):
                 + self.violation_path.read_text(encoding="utf-8"))
         self.assertIsNone(re.search(r"[\w.+-]+@[\w-]+\.[\w.]+", text))
         self.assertIsNone(re.search(r"\b\d{3}-\d{2}-\d{4}\b", text))
+
+
+class AuditCorroborationTest(unittest.TestCase):
+    """An audit reference must describe the action that cites it."""
+
+    def test_action_cannot_cite_an_event_for_another_actor(self):
+        artifact = synthetic_artifact()
+        artifact["audit_events"][0]["actor"] = "op-2"
+        self.assertIn("items.audit", failures(oq.evaluate(artifact)))
+
+    def test_action_cannot_cite_an_event_for_another_action(self):
+        artifact = synthetic_artifact()
+        artifact["audit_events"][0]["action"] = "RESOLVE"
+        self.assertIn("items.audit", failures(oq.evaluate(artifact)))
+
+    def test_action_cannot_cite_an_event_for_another_resource(self):
+        artifact = synthetic_artifact()
+        artifact["audit_events"][0]["resource_id"] = "u-999"
+        self.assertIn("items.audit", failures(oq.evaluate(artifact)))
+
+    def test_action_cannot_cite_an_event_at_another_time(self):
+        artifact = synthetic_artifact()
+        artifact["audit_events"][0]["at"] = "2026-11-19T08:00:00Z"
+        self.assertIn("items.audit", failures(oq.evaluate(artifact)))
+
+    def test_equivalent_offset_instant_corroborates_the_same_action(self):
+        artifact = synthetic_artifact()
+        artifact["audit_events"][0]["at"] = "2026-11-19T09:30:00+00:00"
+        self.assertNotIn("items.audit", failures(oq.evaluate(artifact)))
+
+    def test_unhashable_action_type_fails_closed(self):
+        artifact = synthetic_artifact()
+        artifact["queues"]["unsigned_encounters"][0]["actions"][0]["type"] = ["assign"]
+        report = oq.evaluate(artifact)
+        self.assertIn("items.actions", failures(report))
+        self.assertIn("items.audit", failures(report))
+
+    def test_export_cannot_cite_an_event_for_another_actor(self):
+        artifact = synthetic_artifact()
+        artifact["audit_events"][7]["actor"] = "op-2"
+        self.assertIn("exports.audit", failures(oq.evaluate(artifact)))
+
+    def test_export_cannot_cite_a_non_export_event(self):
+        artifact = synthetic_artifact()
+        artifact["audit_events"][7]["action"] = "RESOLVE"
+        self.assertIn("exports.audit", failures(oq.evaluate(artifact)))
+
+    def test_export_with_a_corroborating_event_still_passes(self):
+        self.assertNotIn("exports.audit", failures(oq.evaluate(synthetic_artifact())))
+
+
+class TemporalOrderingTest(unittest.TestCase):
+    """An operator cannot act on an item before it exists."""
+
+    def test_action_cannot_precede_the_work_item(self):
+        artifact = synthetic_artifact()
+        artifact["queues"]["unsigned_encounters"][0]["actions"][0]["at"] = \
+            "2026-11-19T08:00:00Z"
+        self.assertIn("items.actions", failures(oq.evaluate(artifact)))
+
+    def test_action_at_the_creation_instant_is_accepted(self):
+        artifact = synthetic_artifact()
+        artifact["queues"]["unsigned_encounters"][0]["actions"][0]["at"] = \
+            "2026-11-19T09:00:00Z"
+        artifact["audit_events"][0]["at"] = "2026-11-19T09:00:00Z"
+        self.assertNotIn("items.actions", failures(oq.evaluate(artifact)))
 
 
 if __name__ == "__main__":
