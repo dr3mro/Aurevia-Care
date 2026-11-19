@@ -1,85 +1,67 @@
-# S-G3-01 — Patient appointment list, confirmation, generic push notifications and device revocation (PAT-01)
+# S-G2-04 — Result routing, identifier matching, reconciliation queue and correction versions
 
-Worker branch: `swarm/S-G3-01-113`, forked from the single squashed snapshot commit `d79a776`. The orchestrator had already marked the task `[-]` in TODO.md; this worker did **not** edit TODO.md, MEMORY.md, WORKSPACE.md, BUGS.md, PROJECT.md or `docs/swarm`. No push, tag, `gh` or force-push was performed. All fixtures are synthetic (`org-a`/`org-b`, `patient-1`/`patient-2`, `synthetic-token`); no patient data or credentials appear in code, tests or this note.
+## Requirements and acceptance mapping
 
-## Scope and naming decision
+Primary: **XCH-04**. Supporting: XCH-02, XCH-05, XCH-06, ARC-01, ARC-02, ARC-03, ARC-04, ARC-05, IAM-01, IAM-06, OPS-02.
 
-- Story text names the API path `messaging/s_g3_01`, but CODING_STYLE.md forbids Java packages named after a story/task ID, and `TODO.md` + `.agent/pr-notes/REFACTOR-PACKAGES.md` record the canonical mapping `messaging/s_g3_01 → messaging/appointments` (all G3 siblings use `messaging/reports`, `messaging/units`, …). The API code therefore lives in `apps/api/src/main/java/com/aurevia/smartclinic/messaging/appointments/`.
-- Companion unit tests mirror that package under `apps/api/src/test/java/com/aurevia/smartclinic/messaging/appointments/`, exactly as the G3 sibling stories do. No other test path was touched.
-- Mobile code is in `apps/patient-mobile/src/features/s_g3_01/`.
-- **No V29 migration was created.** Reserved V29 is unused, matching every other G3 messaging slice (reports V30, enrollment V31, units V32, …), because this slice has no persistence adapter yet.
-- 10 changed files total (9 code/test + this note), below the swarm's 15-file guard.
-
-## Requirement and acceptance mapping
-
-| ID | Behaviour | Where |
+| Acceptance | Implementation | Evidence |
 |---|---|---|
-| PAT-01 | List appointments with facility time zone and status | `PatientAppointmentService.listAppointments`, `PatientAppointment`, `AppointmentStatus`, mobile `appointmentView`, `sortByScheduled`, `AppointmentListScreen` |
-| PAT-01 | Confirm only where enabled; record a server timestamp | `PatientAppointmentService.confirm` (server-owned `confirmationEnabled`, `If-Match`-style version precondition, `Instant at`), mobile `deriveConfirmation` / `confirm` |
-| PAT-01 | Status-change push with generic text; detail only after auth | `GenericPushNotice` (fixed template, no input, no resource id in deep link), `GenericPushNotice.reveals`, mobile `GENERIC_NOTICE`, `detailAfterAuth` |
-| PAT-01 | Log invalid device tokens; support revocation | `recordInvalidToken`, `revokeDevice` (idempotent), `DeviceTokenStore.appendInvalidTokenLog`, mobile `invalidateToken` / `withInvalidatedDevice` / `withRevokedDevice` |
-| PRD-03 / IAM-05 | Self-access only; one patient cannot touch another patient's device | new patient-ownership guards (see fixes below), verified-link recheck on every command |
-| ARC-01 / ARC-02 | Tenant-scoped keys, verified link re-derived per command, fail closed | `authorize` at the top of all six commands; mobile `tenantKey` with NUL separator and tenant-prefix filtering |
-| ARC-05 / OPS-02 | Generic notices, no PHI in push/audit/log, audit of allow and deny | fixed notice factory, provider token never passed to `AuditSink`, audit `DENIED` rows, bounded reason on invalid-token log |
-| UX-01 | IANA zone retained and shown; RTL/localization is a separate story | `facilityTimeZone` reaches the screen; localized labels and RTL are deliberately deferred to S-G3-11 (see Decisions) |
+| Five issuer-scoped identifiers (patient, source, accession, destination, order) matched before import | `ResultRules.match` compares all five; `ResultRoutingService.importGuarded` diverts on `UNMATCHED`/`CONFLICT` | `ResultRulesTest` (7), `ResultRoutingServiceTest`, `ResultRoutingIntegrationTest.unmatchedAndConflictingReportsEnterTheReconciliationQueue` |
+| Unmatched/conflicting reports enter a reconciliation queue, no clinical review task | `xch04_reconciliation` + `XCH04_RESULT_RECONCILED` audit; no `insertReview` on diversion | service tests assert no report/review insert; integration asserts 202 + `open` status |
+| Final, corrected and critical results routed to a named owner and coverage queue | `ResultRules.route` + `xch04_report_revision.owner_subject/coverage_queue`; critical audit `XCH04_CRITICAL_ROUTE` | `ResultRulesTest.everyDispositionRoutes...`, service test, `matchedResultIsImportedRoutedAndAudited`, `criticalResultIsRoutedWithItsCriticalOwnerAndQueue` |
+| Corrections append an immutable revision, preserve the prior revision and its acknowledgment, notify prior recipients, reopen review | `xch04_report_revision` insert-only triggers; `xch04_review` separate task; `xch04_notification`; `XCH04_REVIEW_REOPENED` | `correctionAppendsANewRevisionReopensReviewAndNotifiesPriorRecipients`, `correctionPreservesTheOriginalReopensReviewAndNotifiesPriorRecipients` |
+| Replay/concurrent duplicate produces one revision and one review task | natural unique key + `ON CONFLICT DO NOTHING`; version precondition on review | `replayOfTheSameReportDoesNotDuplicate...`, `aConcurrentInsertConflictReturnsTheWinningRevisionWithoutDuplicating`, `concurrentReplayProducesOneRevisionAndOneReview` |
+| Tenant isolation, fail-closed authorization on next request, 401/403/404/409/412/422 | forced RLS on all five V22 tables, `(org,id)` FKs, per-request membership/role fold, guarded transactions | `authorizationAndTenantIsolationFailClosed`, `versionPreconditionsAndInvalidInputsAreEnforced`, service denial tests |
+| Synthetic fixtures only | two synthetic orgs share local order/accession/MRN; no real identifiers | integration `@BeforeAll` seed; no PHI-shaped strings |
 
-## Test-first log (red → green)
+## Entry point → test trace
 
-All new behaviour was written as a failing test before production code:
+`POST /api/v1/xch04/orders` → `ResultController.registerOrder` → `ResultRoutingService.registerOrder` → guarded `TransactionTemplate` → `authorize` (membership + role fold) → `ResultRepository.insertOrder` (`ON CONFLICT` + forced RLS) → `appendAudit` → 201/409. `POST /api/v1/xch04/results` → `ResultController.importResult` → `ResultRoutingService.importResult` → `ResultRules.match` → reconcile or `ResultRules.route` → `replayOrConflict` → `ResultRepository.insertReport`/`insertReview`/`insertNotification`/`insertReconciliation` → `appendAudit` → 201/202/409. `GET /results/{id}`, `POST /results/{id}/acknowledge`, `GET /reconciliations` follow the same guarded path. Fast tests: `ResultRoutingServiceTest`, `ResultRulesTest`, `ResultActionPolicyTest`. DB tests: `ResultRoutingIntegrationTest` (12 HTTP scenarios, `@Tag("integration")`, real PostgreSQL).
 
-1. **Cross-patient device mutation (mobile).** Red: `npm run typecheck` → `TS2554: Expected 3 arguments, but got 4` at `devices.test.ts` (new `withRevokedDevice(..., patientId)` / `withInvalidatedDevice(..., patientId)` calls) and `TS2322: Property 'patientId' does not exist` at six `AppointmentListScreen` renders. Green after adding the ownership parameter and screen filter.
-2. **Confirmation disclosed an existing timestamp unauthenticated (mobile).** Red: `npx jest --runInBand --silent confirmation` → `1 failed, 9 passed`; expected `UNAUTHENTICATED`, received `idempotent` with `confirmedAt`. Green after the early auth guard.
-3. **Backend security/audit fixes.** Red: `mvn -B -f apps/api/pom.xml -Pno-security,fast -Dtest=PatientAppointmentServiceTest test` → `COMPILATION ERROR … cannot find symbol: method findByTokenId(String)`. Green after adding the port method and its guards.
-4. **Coverage regression from the new registration branch.** First green run showed JaCoCo `BRANCH missed=1` at `PatientAppointmentService.java:139` (same-patient re-registration). A new red/green test (`registerAllowsReRegisteringTheSamePatientsDeviceId`) restored 100%.
+## Commands and results (evidence source: executed tool commands)
 
-## Fixes applied (defects found and closed)
+Latest session (this worker, Java 21 / Maven 3.10, no PostgreSQL client and no Docker locally):
 
-1. **High — cross-patient device revocation/invalidation (mobile).** `withDeviceState` keyed only by organization, so any valid local device id in the tenant could be revoked or invalidated regardless of owner, and `AppointmentListScreen` rendered a revoke control for every active device in the organization. Added a `patientId` ownership guard to `withDeviceState`/`withRevokedDevice`/`withInvalidatedDevice`, added a required `patientId` screen prop and filtered the rendered devices. Negative tests added for wrong-patient revoke/invalidate and for the screen control.
-2. **Medium — cross-patient device-id rebinding (API + mobile).** `registerDevice` was an unscoped insert-or-replace and `withRegisteredDevice` overwrote an existing key, so a colliding `tokenId` could be rebound to another patient in the same tenant, stripping the displaced patient of revoke/invalidate access. Added `DeviceTokenStore.findByTokenId`, a 409 `DEVICE_CONFLICT` guard, and the equivalent mobile guard; positive same-patient re-registration stays allowed.
-3. **Medium — fail-closed link recheck unverified on half the commands.** Added explicit 403/`FORBIDDEN` denial tests for `confirm`, `notifyStatusChange` and `recordInvalidToken`, each asserting no store write, gateway send or device write. Production already called `authorize()` on every command; these are regression tests that would catch its removal (line coverage alone would not).
-4. **Medium — confirmation auth gap (mobile).** `confirm()` consulted `authenticated` only on the `pending` branch, so an unauthenticated replay of a `confirmed` state disclosed the stored timestamp. Authentication is now required on every branch.
-5. **Low — wrong audit actor on push events.** `dispatch` audited `token.subject()` (the device owner) rather than the authenticated caller. Now threads the acting `subject` into `dispatch`; a test uses a different device owner to pin the correct actor.
-6. **Low — duplicate invalid-token log rows.** `recordInvalidToken` unconditionally saved and logged a repeated provider disposition. It is now idempotent for an already-INVALID device while still auditing the retry.
+- `cd apps/api && mvn -q -B -Pno-security,fast -Dtest='ResultRoutingServiceTest,ResultRulesTest,ResultActionPolicyTest' test` → exit 0. Surefire reports: `ResultRoutingServiceTest` 39 / `ResultRulesTest` 7 / `ResultActionPolicyTest` 6 = 52 in-scope tests, 0 failures/errors/skipped.
+- `cd apps/api && mvn -q -B -f apps/api/pom.xml -Pno-security,fast test` → exit 0; whole fast tier 1653 tests, 0 failures, 0 errors, 0 skipped. Test sources including `ResultRoutingIntegrationTest` compile cleanly.
+- `cd apps/api && mvn -q -B -Pno-security jacoco:report` → `target/site/jacoco/jacoco.csv`: every in-scope pure-Java class is 100% instruction/line/branch/method (`ResultRoutingService` 1206/1206 instructions, 90/90 branches, 235/235 lines, 28/28 methods; `ResultRules` 111/111, 17/17; `ResultActionPolicy` 39/39, 4/4; all `ResultModel.*` and `ResultCommands.*` records/enums 100%). `ResultController` and `ResultRepository` are exercised only by the integration tier; the whole-bundle 100% gate is the integrator's `scripts/check.sh` run.
+- `python3 -I scripts/check-migrations.py --require-baseline` → exit 0 (V22 unchanged in this session; no new migration version used).
+- `cd apps/api && mvn -q -B -Pno-security -DskipTests -Djacoco.skip=true -Dspotbugs.skip=false spotbugs:check` → 5 Medium findings, **none** in `exchange/result` (all in `messaging/acknowledgment`, `messaging/conversations`, `patient/identity`, `prescription/rx` — pre-existing, out of scope).
+- `python3 -I -m unittest discover -s scripts/tests -p 'test_java_conventions.py' -q` → 1 failure in `exchange/trend/Qualifier.java` (pre-existing, belongs to S-G2-07's scope); no in-scope convention failure.
 
-## Exact commands and results
+Earlier session in this story: `mvn -Pno-security,fast test` → 1518 fast tests green; SpotBugs 6 Medium (none in scope); `check-pack` blocked by the cloud-worker CI `opencode.json` skip-worktree artifact (documented environment artifact, not a story defect).
 
-Executed locally in `/__w/Aurevia-Care/Aurevia-Care`, JDK 21.0.13, Maven 3.10.0, Node 22.23.5, Python 3.11, on branch `swarm/S-G3-01-113`.
+Database tier (`ResultRoutingIntegrationTest`, 11 HTTP scenarios against real PostgreSQL with two synthetic tenants sharing local order/accession/MRN) and the full JaCoCo bundle gate are for the integrator; no PostgreSQL client/server or Docker is available in this worker.
 
-| Command | Result |
-|---|---|
-| `mvn -B -f apps/api/pom.xml -Pno-security,fast -Dtest=PatientAppointmentServiceTest test` (after fixes) | **34 tests, 0 failures/errors, BUILD SUCCESS** |
-| `mvn -B -f apps/api/pom.xml -Pno-security,fast test jacoco:report` | **1552 tests, 0 failures/errors, exit 0** |
-| JaCoCo report parsing of `apps/api/target/site/jacoco/jacoco.xml`, package `messaging/appointments` | INSTRUCTION 0 missed / 674 covered; BRANCH 0 / 54; LINE 0 / 102; COMPLEXITY 0 / 59; METHOD 0 / 32; CLASS 0 / 7 → **100%** |
-| `npm run typecheck` (apps/patient-mobile) | exit 0 |
-| `npm run lint` (apps/patient-mobile) | exit 0 |
-| `npm run test:coverage -- --ci` (apps/patient-mobile) | **26 suites, 275 tests passed; all files 100% statements/branches/functions/lines** |
-| `bash apps/patient-mobile/check.sh` | exit 0 (canonical module gate) |
-| `bash scripts/frontend-check.sh` | exit 0 — "frontend standards: policy and tool commands passed" (includes Prettier and root Vitest) |
-| `python3 -I scripts/check-docs.py`, `python3 -I scripts/check-secrets.py`, `python3 -I scripts/check-migrations.py --require-baseline`, `python3 -I scripts/project-name.py displayName` / `repositorySlug` | exit 0; "Aurevia Care" / "aurevia-care" |
-| `python3 -I -m unittest discover -s scripts/tests -p 'test_java_conventions.py' -q` | 2 tests OK |
+## Defects found and fixed (red → green)
 
-### Commands that did not pass, with cause
+1. **Blocking clinical integrity — divergent payload silently returned as replay.** The natural key `(order, source, accession, version)` alone decided replay; two different corrections of the same prior version, or a changed final, were discarded while the caller received 201 with the older report (ARC-03/ARC-04). Added `replayOrConflict`/`sameContent` fingerprint (identifiers, kind, effectiveAt, checksum) with `409 PAYLOAD_CONFLICT` + `XCH04_RESULT_CONFLICT` audit on divergence, applied to both the pre-insert and concurrent-winner paths. New tests failed before the fix (3 failures) and pass after.
+2. **Out-of-order correction could replay an unrelated revision.** Added a lineage-tip guard: `supersedes` must equal the current tip, otherwise the result is diverted to reconciliation with `supersedesVersion` mismatch. New test failed before the fix.
+3. **Concurrent order registration raced to an unmapped 500.** `insertOrder` now uses `ON CONFLICT (organization_id, order_ref) DO NOTHING RETURNING`; a losing insert maps to `409 ORDER_EXISTS` with a conflict audit. New unit test failed before the fix; added integration concurrency test for the DB path.
+4. **Over-privileged import role.** `tenant_admin` could write clinical result content while being denied result reads; removed `RESULT_IMPORT` from tenant admin, restricted to `lab_verifier`. Policy test failed before the fix.
+5. **Misleading test.** `aConcurrentInsertConflictReturnsTheWinningRevisionWithoutDuplicating` never reached the concurrent-insert branch because the duplicate lookup returned the winner first. Tightened the stub to consecutive returns and asserted the insert was attempted; the test failed before the fix and now covers the previously untested branch.
+6. **Blocking duplicate final report on replay (this session).** The fast unit stub `matched()` always returned an empty lineage, hiding the real replay path. `importGuarded` computed a non-correction's version as `tip + 1`, so after a successful import (lineage = [v1]) a repeated or reordered final resolved to version 2, bypassed the duplicate lookup and inserted a second FINAL revision — violating XCH-02/ARC-05 and the G2 gate "duplicate and reordered events do not duplicate or overwrite final reports". Red test `aReplayAgainstAPopulatedLineageReturnsTheStoredFinal` (populated lineage, same payload) returned a new version-2 report; fixed in `ResultRoutingService.importGuarded` by scanning the whole lineage for an identical clinical payload and replaying that exact revision before assigning a new version. A genuinely new finding still advances the tip (proved by `aNewFindingAfterAnExistingFinalAdvancesTheLineage` and `aReplayOfAnOlderFinalAfterACorrectionDoesNotDuplicateOrOverwrite`), so a critical arriving after a final is not wrongly rejected. Green: 38 service tests. This is the most likely cause of this story's five failed integration attempts (`ResultRoutingIntegrationTest.replayOfTheSameReportDoesNotDuplicateIt` would fail against real PostgreSQL before the fix).
 
-- `bash scripts/quick-check.sh` stops at `check-pack: opencode.json is stale: run scripts/gen-opencode.py`. This is a **worker-harness artifact**: `git ls-files -v opencode.json` reports `S` (skip-worktree), and the delivery skill documents that `agent-run.sh` copies the CI profile over the worktree file; `check-pack.py` therefore judges a stale profile. `git diff HEAD -- opencode.json` is empty and the file was not touched. The Java and policy steps of quick-check were run directly instead.
-- `python3 -I -m unittest discover -s scripts/tests -q`: 164 tests, 10 not passing. Three `test_check_pack` failures are the same stale `opencode.json` artifact; two loader errors (`test_fast_tier`, `test_workflow_concurrency`) and `test_swarm` / `test_agent_run` failures assert live harness/repository state (e.g. `assertGreaterEqual(len(dispatchable), 10)` saw 9). None is in the touched scope and none was caused by this change.
-- `mvn -q -B -f apps/api/pom.xml -Pfast -Dspotbugs.skip=false -Dowasp.skip=true spotbugs:check`: exit 1 with **6 pre-existing Medium findings, all outside this scope** (`messaging.conversations.ConversationRepository:180`, `messaging.governance.MessagingGovernanceController:48`, `patient.identity.IdentityProofingService:314`, `prescription.rx.RxController:47`, `prescription.rx.RxRepository:309`). **Zero findings in `messaging.appointments`.** Not fixed: AGENTS.md requires staying inside the declared scope and preserving unrelated work.
-- `bash scripts/check.sh` / `scripts/docs.sh` / DB integration tests: not run by this worker. Doxygen, shellcheck and Docker are absent in this checkout, and the user assigned database and integration tests to the integrator.
+Findings 1 and 3 were independently raised by the senior-backend and software-architect reviewers (simulated review, not human or clinical evidence). Finding 6 was found by this worker through direct code analysis and a red/green unit regression; no human or clinical evidence.
 
-## Review evidence and dispositions
+## Specialist review findings resolved (senior-backend, simulated)
 
-Three bounded, read-only specialist reviews were commissioned (senior backend, senior mobile, independent QA). All findings were reviewer analysis of source; none involved a simulated user, clinician or human participant.
+A bounded senior-backend review of finding 6 returned **no blocking correctness defect** and three non-blocking findings, all resolved:
 
-- Fixed: mobile cross-patient revocation and screen exposure; mobile registration rebinding (QA F2); mobile confirmation auth (mobile finding 2); backend registration rebinding and its coverage gap; backend fail-closed denial tests (backend F1, QA F4); backend audit actor (backend F3); backend invalid-token idempotency (backend F5).
-- Deferred with rationale:
-  - **QA F1 (blocker for G3 gate evidence, not a code defect in scope):** this slice is a pure domain kernel. The five collaborators are interfaces with no implementations, there is no controller/HTTP adapter, no V29 schema and no real push gateway, so none of the seven PAT-01 behaviours is reachable from an authenticated request at runtime. This is the deliberate pre-wiring pattern of every G3 messaging slice and is explicitly documented in `PatientAppointmentService` and `PushGateway`. **This worker cannot produce system-boundary evidence inside the declared scope; the integrator and the follow-on wiring/API stories must supply it before G3 acceptance.** Flagged here as required per the stop-and-report instruction.
-  - **Backend F2 (push outbox/dedup):** synchronous dispatch has no durable outbox and no client dedup key. Deferred to cross-cutting story X-02 (durable events, outbox, dedup, replay); the slice has no persistence adapter yet.
-  - **Backend F4 (status cross-check):** `notifyStatusChange` uses the supplied enum only for the audit action key; a wrong status would mislabel an audit event but cannot change generic push text. Low impact, deferred.
-  - **Mobile findings 3 and 5:** localized status/RTL labels and a screen-level timestamp assertion are owned by S-G3-11 (iOS/Android flows, accessibility and RTL). The pure `confirm` timestamp path is covered by unit tests.
-  - **Mobile finding 4 (bare local id in detail callback):** the authenticated app re-scopes through the server's tenant context and `detailAfterAuth` takes an opaque reference; changing the callback payload is a wiring decision for the integration story.
-  - **Unconstrained `recordInvalidToken.reason`:** the parameter is documented as an internal non-sensitive disposition code and is bounded on the mobile client; HTTP-level boundary validation belongs to the future adapter (X-01/X-04), not this domain kernel.
+- **(medium) Regression proven only with mocks.** Added `ResultRoutingIntegrationTest.aReorderedFinalAfterACorrectionDoesNotDuplicateOrOverwrite`: register → import final → import corrected v2 → re-import the original final through the HTTP entry point; asserts the replayed id equals the first, revision count stays 2 and the correction's review remains `unreviewed`. Compiles locally; the integrator executes it against real PostgreSQL.
+- **(low) Nanosecond `effectiveAt` defeated dedup.** `Instant.parse` now truncates to microsecond precision at the trust boundary in `ResultRoutingService.instant`, matching PostgreSQL `timestamptz`. Red test `aReplayWithSubMicrosecondEffectiveAtResolvesToTheStoredRevision` returned a duplicate version 2 before the fix and replays the stored revision after.
+- **(nit) Stale `sameContent` rationale.** Rephrased to cover both the whole-lineage scan and the version lookup.
 
-## Evidence provenance
+The reviewer's observation that replaying a CRITICAL emits `XCH04_RESULT_REPLAY` rather than `XCH04_CRITICAL_ROUTE` was judged consistent with the class contract (critical escalation belongs to XCH-05), so no change. All review evidence is static source review by a simulated specialist, not human or clinical evidence.
 
-- Gate results, counts and coverage numbers: **executed tool commands** run by this worker (Maven, npm, Jest, JaCoCo XML, Python policy scripts).
-- Defects and dispositions: **three simulated specialist reviewers**; no simulated-user, clinician or human-participant evidence is claimed.
-- No real-patient or G5 launch evidence exists or is implied.
+## Decisions and deferred items (owner input needed)
+
+- **Expected-order source of truth (architect F2).** V22 deliberately registers a synthetic expectation (`xch04_expected_order`) because sibling exchange stories own their order tables and this branch keeps slices self-contained (V21 uses the same pattern). V19 `exchange_order` does exist, so before G2 acceptance a Product Owner/Architect decision is needed on linking the expectation to a released, non-revoked order; that requires a cross-story migration outside the V22 reservation. Not changed here to avoid cross-story coupling and applied-migration checksum churn.
+- **`Idempotency-Key`/request digest (architect F3, backend #6), durable outbox (F4), reconciliation resolution (F6), cursor pagination (F7), `acknowledged_by` (F8), critical-as-flag (F9) and reconciliation dedup (backend #4)** belong to the separately scheduled cross-cutting stories X-01/X-02 and ADM-02, or to follow-on stories. In-scope compensating controls are the payload fingerprint, the unique natural key, the reconciliation queue and the audit trail.
+- **Critical acknowledgment separation (architect F5).** `XCH04_REVIEW_ACK` is a result-review fact only; it never advances XCH-05's critical acknowledgment or due-time state. `lab_verifier` is retained as an authorized human reviewer for laboratory results per XCH-02; critical escalation stays in S-G2-05/V23.
+- **Scope note.** The worker task text named `.../g2/s_g2_04` and `.../it/s_g2_04`, but AGENTS.md/CODING_STYLE.md forbid story-ID package names and duplicate domain types. The authoritative TODO.md `scope` is `exchange/result` and `it/exchange/result`; the existing committed implementation lives in `com.aurevia.smartclinic.exchange.result` with tests in `com.aurevia.smartclinic.it.exchangeresult`. All changes in this session stay inside those domain-named directories and reuse the existing domain types; no story-ID package was created. The integrator should confirm this interpretation.
+- No clinical or human participant evidence was used. All fixtures are synthetic. No production deployment, push, tag or `gh` call was made.
+
+## Environment caveats for the integrator
+
+The local toolchain lacks PyYAML, Doxygen and PostgreSQL; full-policy Python tests that import `yaml`, `docs.sh`, and the DB tier could not be executed in this worker. Those checks, plus `check.sh` and the JaCoCo 100% bundle gate, must be judged by the integrator's prepared environment. The stale `opencode.json` finding is the known `skip-worktree` CI-profile artifact and was not modified (out of scope).
