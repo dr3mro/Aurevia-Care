@@ -306,7 +306,7 @@ public class ResultRoutingService {
             }
             version = supersedes + 1;
             Optional<ResultReport> prior = repository.findReport(
-                    identifiers.sourceId(), identifiers.accessionId(), supersedes);
+                    identifiers.orderId(), identifiers.sourceId(), identifiers.accessionId(), supersedes);
             if (prior.isEmpty()) {
                 ReconciliationEntry entry = new ReconciliationEntry(UUID.randomUUID().toString(),
                         identifiers, ReconciliationReason.CONFLICT, List.of("supersedesVersion"),
@@ -329,7 +329,7 @@ public class ResultRoutingService {
         }
 
         Optional<ResultReport> duplicate = repository.findReport(
-                identifiers.sourceId(), identifiers.accessionId(), version);
+                identifiers.orderId(), identifiers.sourceId(), identifiers.accessionId(), version);
         if (duplicate.isPresent()) {
             writeAudit(context, "XCH04_RESULT_REPLAY", RESOURCE_TYPE, duplicate.get().id(), "SUCCESS");
             return new ImportOutcome(duplicate.get(), null);
@@ -339,7 +339,16 @@ public class ResultRoutingService {
         ResultReport report = new ResultReport(UUID.randomUUID().toString(), version, identifiers.orderId(),
                 identifiers, kind, supersedes, previousId, routing.owner(), routing.coverageQueue(),
                 effectiveAt, receivedAt, checksum);
-        repository.insertReport(report);
+        if (!repository.insertReport(report)) {
+            // A racing import won the unique key. Return that exact revision; never
+            // attach a second review task or a duplicate set of notifications.
+            ResultReport winner = repository.findReport(identifiers.orderId(), identifiers.sourceId(),
+                    identifiers.accessionId(), version)
+                    .orElseThrow(() -> new ApiException(409, "REPLAY_UNRESOLVED",
+                            "a concurrent import owns this result version; retry the read"));
+            writeAudit(context, "XCH04_RESULT_REPLAY", RESOURCE_TYPE, winner.id(), "SUCCESS");
+            return new ImportOutcome(winner, null);
+        }
         repository.insertReview(report.id());
         for (String recipient : recipients) {
             repository.insertNotification(new RecipientNotification(UUID.randomUUID().toString(),
