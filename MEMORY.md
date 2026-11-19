@@ -1,6 +1,6 @@
 # Durable memory
 
-Current checkpoint: PROGRESS.md, G0-01 CI optimization and merge (main at e1dc7cd, all required checks green on f9bc461). Next story: S-G0-02 staff lifecycle and immutable membership history (IAM-02). Keep a short pointer to the last completed stage and next action in this file after each stage.
+Current checkpoint: PROGRESS.md, H-G0-01 housekeeping (local, blocked on user action); next S-G0-02. Both this pointer and WORKSPACE.md name the same checkpoint. Keep a short pointer to the last completed stage and next action in this file after each stage.
 
 | Decision | Rationale and evidence |
 |---|---|
