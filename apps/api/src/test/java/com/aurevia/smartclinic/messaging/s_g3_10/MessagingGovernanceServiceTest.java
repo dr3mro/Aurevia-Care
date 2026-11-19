@@ -142,6 +142,28 @@ class MessagingGovernanceServiceTest {
     }
 
     @Test
+    void recordActionRejectsGovernanceCommandsItCannotPerform() {
+        // These actions are only genuinely performed through their dedicated
+        // commands (placeHold, createExport, linkToChart, requestCopy, ...).
+        // Recording them through the generic recorder would fabricate a
+        // SUCCESS audit for work that never happened (OPS-02).
+        AuditAction[] governance = {AuditAction.EXPORT, AuditAction.HOLD_PLACE,
+                AuditAction.HOLD_RELEASE, AuditAction.CHART_LINK, AuditAction.COPY_REQUEST,
+                AuditAction.RETENTION_APPLY, AuditAction.AUDIT_READ};
+        // An admin has the permissions for all of these, so authorization is
+        // not what must stop them: the recorder itself must refuse them.
+        as("admin", ORG);
+        for (AuditAction action : governance) {
+            ApiException error = assertThrows(ApiException.class, () -> service.recordAction(
+                    new RecordActionRequest(action.wire(), RESOURCE, UNIT)));
+            assertEquals(422, error.status(), action.toString());
+            assertEquals("INVALID_ACTION", error.code(), action.toString());
+        }
+        assertEquals(0, store.auditEvents(ORG).size(),
+                "no fabricated governance audit fact may be appended");
+    }
+
+    @Test
     void auditTrailReadsTenantEventsAndAuditsItsOwnRead() {
         service.recordAction(new RecordActionRequest("view", RESOURCE, UNIT));
         as("auditor", ORG);
