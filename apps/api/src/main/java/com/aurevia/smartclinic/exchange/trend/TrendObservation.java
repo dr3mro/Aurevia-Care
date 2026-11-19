@@ -16,8 +16,11 @@ import com.aurevia.smartclinic.api.ApiException;
  * interpretation and the source system/version; the trend engine generates no
  * clinical interpretation of its own.</p>
  *
- *                           comparable results
- *                           {@code corrected} or {@code entered_in_error}
+ * <p>Only a {@code final} revision within an established comparability rule is
+ * eligible for the numeric trend. Preliminary, {@code corrected} and
+ * {@code entered_in_error} revisions remain visible as exclusions and are never
+ * plotted as current values.</p>
+ *
  * @return this record
  */
 public record TrendObservation(String id, String patientId, String testCode, String testDisplay,

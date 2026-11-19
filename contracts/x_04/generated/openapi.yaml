@@ -1,0 +1,607 @@
+openapi: 3.0.3
+info:
+  title: SmartClinic command contract (X-04)
+  version: 0.1.0
+  description: >-
+    Synthetic-only explicit POST commands. Every operation names the
+    server-side action that governs it. A client never supplies its
+    own role, permission or scope (PRD-06, IAM-01, ARC-03).
+servers:
+  - url: http://localhost:8081
+paths:
+  /api/v1/facilities:
+    post:
+      operationId: createFacility
+      summary: createFacility command
+      description: >-
+        Authorized by action FACILITY_WRITE in the active organization.
+        Client-supplied authority is never consulted.
+      x-smartclinic-action: FACILITY_WRITE
+      x-smartclinic-policy: ActionPolicy
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/SyntheticSubject'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/ApiVersion'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '201': { description: Command committed with its audit event }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidInput' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+  /api/v1/staff:
+    post:
+      operationId: inviteStaff
+      summary: inviteStaff command
+      description: >-
+        Authorized by action STAFF_INVITE in the active organization.
+        Client-supplied authority is never consulted.
+      x-smartclinic-action: STAFF_INVITE
+      x-smartclinic-policy: ActionPolicy
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/SyntheticSubject'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/ApiVersion'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '201': { description: Command committed with its audit event }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidInput' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+  /api/v1/staff/{subject}/deactivate:
+    post:
+      operationId: deactivateStaff
+      summary: deactivateStaff command
+      description: >-
+        Authorized by action STAFF_DEACTIVATE in the active organization.
+        Client-supplied authority is never consulted.
+      x-smartclinic-action: STAFF_DEACTIVATE
+      x-smartclinic-policy: ActionPolicy
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/SyntheticSubject'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/ApiVersion'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '201': { description: Command committed with its audit event }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidInput' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+  /api/v1/configuration:
+    post:
+      operationId: createConfiguration
+      summary: createConfiguration command
+      description: >-
+        Authorized by action CONFIG_CREATE in the active organization.
+        Client-supplied authority is never consulted.
+      x-smartclinic-action: CONFIG_CREATE
+      x-smartclinic-policy: ActionPolicy
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/SyntheticSubject'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/ApiVersion'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '201': { description: Command committed with its audit event }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidInput' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+  /api/v1/configuration/{key}/versions/{version}/approve:
+    post:
+      operationId: approveConfiguration
+      summary: approveConfiguration command
+      description: >-
+        Authorized by action CONFIG_APPROVE in the active organization.
+        Client-supplied authority is never consulted.
+      x-smartclinic-action: CONFIG_APPROVE
+      x-smartclinic-policy: ActionPolicy
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/SyntheticSubject'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/ApiVersion'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '201': { description: Command committed with its audit event }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidInput' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+  /api/v1/patients:
+    post:
+      operationId: registerPatient
+      summary: registerPatient command
+      description: >-
+        Authorized by action PATIENT_REGISTER in the active organization.
+        Client-supplied authority is never consulted.
+      x-smartclinic-action: PATIENT_REGISTER
+      x-smartclinic-policy: ActionPolicy
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/SyntheticSubject'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/ApiVersion'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '201': { description: Command committed with its audit event }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidInput' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+  /api/v1/appointments:
+    post:
+      operationId: bookAppointment
+      summary: bookAppointment command
+      description: >-
+        Authorized by action APPOINTMENT_BOOK in the active organization.
+        Client-supplied authority is never consulted.
+      x-smartclinic-action: APPOINTMENT_BOOK
+      x-smartclinic-policy: ActionPolicy
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/SyntheticSubject'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/ApiVersion'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '201': { description: Command committed with its audit event }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidInput' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+  /api/v1/checkin/{id}/identity:
+    post:
+      operationId: verifyIdentity
+      summary: verifyIdentity command
+      description: >-
+        Authorized by action IDENTITY_VERIFY in the active organization.
+        Client-supplied authority is never consulted.
+      x-smartclinic-action: IDENTITY_VERIFY
+      x-smartclinic-policy: WorklistPolicy
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/SyntheticSubject'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/ApiVersion'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '201': { description: Command committed with its audit event }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidInput' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+  /api/v1/checkin/{id}/complete:
+    post:
+      operationId: checkIn
+      summary: checkIn command
+      description: >-
+        Authorized by action APPOINTMENT_CHECK_IN in the active organization.
+        Client-supplied authority is never consulted.
+      x-smartclinic-action: APPOINTMENT_CHECK_IN
+      x-smartclinic-policy: WorklistPolicy
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/SyntheticSubject'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/ApiVersion'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '201': { description: Command committed with its audit event }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidInput' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+  /api/v1/worklist/{id}/assign:
+    post:
+      operationId: assignWorkItem
+      summary: assignWorkItem command
+      description: >-
+        Authorized by action WORKLIST_ASSIGN in the active organization.
+        Client-supplied authority is never consulted.
+      x-smartclinic-action: WORKLIST_ASSIGN
+      x-smartclinic-policy: WorklistPolicy
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/SyntheticSubject'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/ApiVersion'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '201': { description: Command committed with its audit event }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidInput' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+  /api/v1/lab/accessions:
+    post:
+      operationId: accessionRequisition
+      summary: accessionRequisition command
+      description: >-
+        Authorized by action LAB_ACCESSION_CREATE in the active organization.
+        Client-supplied authority is never consulted.
+      x-smartclinic-action: LAB_ACCESSION_CREATE
+      x-smartclinic-policy: LabActionPolicy
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/SyntheticSubject'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/ApiVersion'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '201': { description: Command committed with its audit event }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidInput' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+  /api/v1/lab/specimens/{id}/collect:
+    post:
+      operationId: collectSpecimen
+      summary: collectSpecimen command
+      description: >-
+        Authorized by action LAB_SPECIMEN_COLLECT in the active organization.
+        Client-supplied authority is never consulted.
+      x-smartclinic-action: LAB_SPECIMEN_COLLECT
+      x-smartclinic-policy: LabActionPolicy
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/SyntheticSubject'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/ApiVersion'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '201': { description: Command committed with its audit event }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidInput' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+  /api/v1/lab/results/{id}/verify:
+    post:
+      operationId: verifyLabResult
+      summary: verifyLabResult command
+      description: >-
+        Authorized by action SPECIALTY_LAB_VERIFY_RELEASE in the active organization.
+        Client-supplied authority is never consulted.
+      x-smartclinic-action: SPECIALTY_LAB_VERIFY_RELEASE
+      x-smartclinic-policy: SpecialtyActions
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/SyntheticSubject'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/ApiVersion'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '201': { description: Command committed with its audit event }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidInput' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+  /api/v1/radiology/interpretations/{id}/sign:
+    post:
+      operationId: signInterpretation
+      summary: signInterpretation command
+      description: >-
+        Authorized by action SPECIALTY_RAD_SIGN_INTERPRETATION in the active organization.
+        Client-supplied authority is never consulted.
+      x-smartclinic-action: SPECIALTY_RAD_SIGN_INTERPRETATION
+      x-smartclinic-policy: SpecialtyActions
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/SyntheticSubject'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/ApiVersion'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '201': { description: Command committed with its audit event }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidInput' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+  /api/v1/therapy/referrals/{id}/accept:
+    post:
+      operationId: acceptTherapyReferral
+      summary: acceptTherapyReferral command
+      description: >-
+        Authorized by action SPECIALTY_PT_ACCEPT_REFERRAL in the active organization.
+        Client-supplied authority is never consulted.
+      x-smartclinic-action: SPECIALTY_PT_ACCEPT_REFERRAL
+      x-smartclinic-policy: SpecialtyActions
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/SyntheticSubject'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/ApiVersion'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '201': { description: Command committed with its audit event }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidInput' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+  /api/v1/specialty/attestations:
+    post:
+      operationId: attestClinicalDecision
+      summary: attestClinicalDecision command
+      description: >-
+        Authorized by action SPECIALTY_ATTEST in the active organization.
+        Client-supplied authority is never consulted.
+      x-smartclinic-action: SPECIALTY_ATTEST
+      x-smartclinic-policy: SpecialtyActions
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/SyntheticSubject'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/ApiVersion'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '201': { description: Command committed with its audit event }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidInput' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+  /api/v1/orders/{id}/accept:
+    post:
+      operationId: acceptOrder
+      summary: acceptOrder command
+      description: >-
+        Authorized by action EXCHANGE_ACCEPT in the active organization.
+        Client-supplied authority is never consulted.
+      x-smartclinic-action: EXCHANGE_ACCEPT
+      x-smartclinic-policy: Xch03ActionPolicy
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/SyntheticSubject'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/ApiVersion'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '201': { description: Command committed with its audit event }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidInput' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+  /api/v1/orders/{id}/reject:
+    post:
+      operationId: rejectOrder
+      summary: rejectOrder command
+      description: >-
+        Authorized by action EXCHANGE_REJECT in the active organization.
+        Client-supplied authority is never consulted.
+      x-smartclinic-action: EXCHANGE_REJECT
+      x-smartclinic-policy: Xch03ActionPolicy
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/SyntheticSubject'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/ApiVersion'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '201': { description: Command committed with its audit event }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidInput' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+  /api/v1/releases/{id}/authorize:
+    post:
+      operationId: authorizeRelease
+      summary: authorizeRelease command
+      description: >-
+        Authorized by action RELEASE_AUTHORIZE in the active organization.
+        Client-supplied authority is never consulted.
+      x-smartclinic-action: RELEASE_AUTHORIZE
+      x-smartclinic-policy: ReleaseActionPolicy
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/SyntheticSubject'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/ApiVersion'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '201': { description: Command committed with its audit event }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidInput' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+  /api/v1/releases/{id}/correct:
+    post:
+      operationId: correctRelease
+      summary: correctRelease command
+      description: >-
+        Authorized by action RELEASE_CORRECT in the active organization.
+        Client-supplied authority is never consulted.
+      x-smartclinic-action: RELEASE_CORRECT
+      x-smartclinic-policy: ReleaseActionPolicy
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/SyntheticSubject'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/ApiVersion'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '201': { description: Command committed with its audit event }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidInput' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+  /api/v1/releases/{id}/withdraw:
+    post:
+      operationId: withdrawRelease
+      summary: withdrawRelease command
+      description: >-
+        Authorized by action RELEASE_WITHDRAW in the active organization.
+        Client-supplied authority is never consulted.
+      x-smartclinic-action: RELEASE_WITHDRAW
+      x-smartclinic-policy: ReleaseActionPolicy
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/SyntheticSubject'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/ApiVersion'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '201': { description: Command committed with its audit event }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidInput' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+  /api/v1/critical/{id}/acknowledge:
+    post:
+      operationId: acknowledgeCriticalResult
+      summary: acknowledgeCriticalResult command
+      description: >-
+        Authorized by action CRITICAL_ACKNOWLEDGE in the active organization.
+        Client-supplied authority is never consulted.
+      x-smartclinic-action: CRITICAL_ACKNOWLEDGE
+      x-smartclinic-policy: CriticalActions
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/SyntheticSubject'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/ApiVersion'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '201': { description: Command committed with its audit event }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidInput' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+  /api/v1/invoices:
+    post:
+      operationId: issueInvoice
+      summary: issueInvoice command
+      description: >-
+        Authorized by action FINANCE_INVOICE_CREATE in the active organization.
+        Client-supplied authority is never consulted.
+      x-smartclinic-action: FINANCE_INVOICE_CREATE
+      x-smartclinic-policy: FinanceActions
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/SyntheticSubject'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/ApiVersion'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '201': { description: Command committed with its audit event }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidInput' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+  /api/v1/instructions/{id}/acknowledge:
+    post:
+      operationId: acknowledgeInstruction
+      summary: acknowledgeInstruction command
+      description: >-
+        Authorized by action ACKNOWLEDGE in the active organization.
+        Client-supplied authority is never consulted.
+      x-smartclinic-action: ACKNOWLEDGE
+      x-smartclinic-policy: InstructionFactActions
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/SyntheticSubject'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/ApiVersion'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '201': { description: Command committed with its audit event }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidInput' }
+        '428': { $ref: '#/components/responses/PreconditionRequired' }
+components:
+  parameters:
+    ActiveOrganization:
+      name: X-Active-Organization
+      in: header
+      required: true
+      description: Explicitly selected active tenant; never inferred from the body.
+      schema: { type: string, format: uuid }
+    SyntheticSubject:
+      name: X-Synthetic-Subject
+      in: header
+      required: true
+      description: Synthetic authenticated subject; accepted only under the synthetic-auth profile.
+      schema: { type: string, minLength: 1 }
+    CorrelationId:
+      name: X-Correlation-Id
+      in: header
+      required: false
+      description: Generated when absent and echoed on every response.
+      schema: { type: string, pattern: '^[A-Za-z0-9._-]{1,128}$' }
+    ApiVersion:
+      name: X-Api-Version
+      in: header
+      required: false
+      description: Absent or blank selects v1; header selection cannot create a route.
+      schema: { type: string, default: v1 }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Opaque retry key scoped to tenant, caller and command.
+      schema: { type: string, minLength: 1 }
+    IfMatch:
+      name: If-Match
+      in: header
+      required: true
+      description: Version precondition; the owning service performs compare-and-set.
+      schema: { type: string, minLength: 1 }
+  responses:
+    Unauthenticated:
+      description: Missing or invalid authentication; no clinical detail is exposed.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorBody' }
+    Forbidden:
+      description: Inactive membership or no active role permits the command.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorBody' }
+    InvalidInput:
+      description: Unknown command or invalid business input.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorBody' }
+    PreconditionRequired:
+      description: Idempotency key or version precondition is missing.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorBody' }
+  schemas:
+    ErrorBody:
+      type: object
+      additionalProperties: false
+      required: [code, message, correlationId]
+      properties:
+        code: { type: string }
+        message: { type: string }
+        correlationId: { type: string }
