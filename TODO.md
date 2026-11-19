@@ -116,8 +116,7 @@ Gate evidence: competing bookings enforce one protected slot; stale drafts canno
     Implement Draft to signed, amendments, signed addenda and entered-in-error with preserved originals (CLN-05) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [-] S-G1-06 · Follow-up suggestions with rule explanation and care-team tasks (CLN-06).
-  - agent: swarm-8
+- [ ] S-G1-06 · Follow-up suggestions with rule explanation and care-team tasks (CLN-06).
   - attempts: 2
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g1/s_g1_06, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g1_06
   - reserved: V16
