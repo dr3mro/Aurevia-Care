@@ -19,6 +19,20 @@ for module in "${modules[@]}"; do
     continue
   fi
 
+  # Run the module's own canonical commands with its own locked toolchain.
+  if [[ ! -f "$module/package.json" ]]; then
+    printf 'FAIL %s: missing package.json\n' "$module" >&2
+    fail=1
+    continue
+  fi
+  (
+    cd "$module"
+    npm ci --no-audit --no-fund
+    npm run typecheck
+    npm run lint
+    npm test
+  ) || fail=1
+
   # TypeScript only.
   bad_js=()
   for file in "${sources[@]}"; do
