@@ -56,7 +56,7 @@ public enum Qualifier {
      * Return the stable wire representation.
      *
      * <p>Annotated so responses expose the same lower-case value the database
-     * stores and {@link com.aurevia.smartclinic.exchange.trend.Qualifier#from(String)} accepts; the enum name is never leaked
+     * stores and {@code from(String)} accepts; the enum name is never leaked
      * to API clients.</p>
      *
      * @return {@code none}, {@code less_than} or {@code greater_than}
