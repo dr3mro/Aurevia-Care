@@ -1,13 +1,13 @@
 # X-04 — Generated command clients and server-side authorization (PRD-06)
 
 Synthetic-only cross-cutting slice. The authoritative command catalog is
-[CommandCatalog.java](../../apps/api/src/main/java/com/aurevia/smartclinic/api/x_04/CommandCatalog.java).
+[CommandCatalog.java](../../apps/api/src/main/java/com/aurevia/smartclinic/api/authorization/CommandCatalog.java).
 The committed [OpenAPI contract](generated/openapi.yaml),
 [typed TypeScript client](generated/client.ts) and
 [checksum manifest](generated/manifest.json) are generated from that one model by
-[CommandClientGenerator.java](../../apps/api/src/main/java/com/aurevia/smartclinic/api/x_04/CommandClientGenerator.java).
+[CommandClientGenerator.java](../../apps/api/src/main/java/com/aurevia/smartclinic/api/authorization/CommandClientGenerator.java).
 The server gate is
-[CommandAuthorization.java](../../apps/api/src/main/java/com/aurevia/smartclinic/api/x_04/CommandAuthorization.java).
+[CommandAuthorization.java](../../apps/api/src/main/java/com/aurevia/smartclinic/api/authorization/CommandAuthorization.java).
 Requirement text is in [SMARTCLINIC_V1_SPEC.md](../../SMARTCLINIC_V1_SPEC.md);
 the shared wire conventions are in the [X-01 contract](../x_01/README.md).
 
@@ -46,10 +46,10 @@ From the repository root, after `mvn -q -B -f apps/api/pom.xml -Pno-security,fas
 
 ```sh
 CP="apps/api/target/classes:$(mvn -q -f apps/api/pom.xml dependency:build-classpath -Dmdep.outputFile=/dev/stdout)"
-java -cp "$CP" com.aurevia.smartclinic.api.x_04.CommandClientGenerator contracts/x_04/generated
-java -cp "$CP" com.aurevia.smartclinic.api.x_04.CommandClientGenerator --check contracts/x_04/generated
-python3 -I contracts/x_04/check.py
-node_modules/.bin/prettier --check contracts/x_04/generated/client.ts
+java -cp "$CP" com.aurevia.smartclinic.api.authorization.CommandClientGenerator contracts/openapi/generated
+java -cp "$CP" com.aurevia.smartclinic.api.authorization.CommandClientGenerator --check contracts/openapi/generated
+python3 -I contracts/openapi/check.py
+node_modules/.bin/prettier --check contracts/openapi/generated/client.ts
 ```
 
 `--check` compares all three artifacts with a fresh generation. `check.py`
@@ -61,7 +61,10 @@ Prettier-compliant TypeScript and is covered by the repository format gate.
 ## Source-of-truth honesty and limits
 
 The Java catalog, not a hand-authored OpenAPI file, is the source of truth; the
-OpenAPI document and the TypeScript client are emitted together from it. The
+OpenAPI document and the TypeScript client are emitted together from it. This
+catalog-generated `generated/openapi.yaml` is distinct from the staff-API
+`contracts/openapi.yaml` (X-01), which `apps/staff-web/scripts/gen-api-types.sh`
+consumes; neither file is edited by hand. The
 `--check` gate proves client ↔ catalog ↔ manifest consistency. It does **not**
 prove that every running `@PostMapping` in `apps/api` calls this gate, nor that
 the documented paths match every deployed route: the 80+ command routes are
@@ -78,9 +81,12 @@ delegation is unchanged here and needs clinical-owner sign-off before live
 enablement. The in-memory decision sink is a synthetic reference; durable
 OPS-02 audit belongs to the owning service's transactional audit appender.
 
-Per the scope rule, coordination with a tracker entry that names
-`contracts/openapi` and `api/authorization` is left to the orchestrator: this
-worker's dispatch explicitly declared `contracts/x_04` and `api/x_04`.
+This slice is delivered at the canonical, business-domain paths named by the
+tracker entry: `contracts/openapi` and `com.aurevia.smartclinic.api.authorization`.
+The earlier story-ID paths (`contracts/x_04`, `api/x_04`) are not retained, so no
+duplicate command catalog or authorization gate exists. Reserved migration V57
+is unused; coordination of the remaining story-ID contract paths
+(`contracts/x_01`–`x_03`) belongs to REFACTOR-PACKAGES-02 under its own owner.
 
 ## Entry point to test trace
 
