@@ -150,8 +150,7 @@ Gate evidence: competing bookings enforce one protected slot; stale drafts canno
 
 Gate evidence: rejected or recollected specimens trace to the right order; duplicate and reordered events do not duplicate or overwrite final reports; unmatched results wait for review; critical results escalate on deadline with human acknowledgment, and corrections reopen review.
 
-- [-] S-G2-01 · Order creation with authorization, snapshot, disclosure record and destination work item (XCH-01).
-  - agent: swarm-4
+- [ ] S-G2-01 · Order creation with authorization, snapshot, disclosure record and destination work item (XCH-01).
   - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g2/s_g2_01, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g2_01
   - reserved: V19
@@ -167,8 +166,7 @@ Gate evidence: rejected or recollected specimens trace to the right order; dupli
     Implement Separate workflow, transmission and clinical review states with human acknowledgment (XCH-02) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [-] S-G2-03 · Accept, reject with reason, clarify, linked changes, cancellations and revocation (XCH-03).
-  - agent: swarm-6
+- [ ] S-G2-03 · Accept, reject with reason, clarify, linked changes, cancellations and revocation (XCH-03).
   - attempts: 2
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g2/s_g2_03, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g2_03
   - reserved: V21
@@ -176,8 +174,7 @@ Gate evidence: rejected or recollected specimens trace to the right order; dupli
     Implement Accept, reject with reason, clarify, linked changes, cancellations and revocation (XCH-03) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [-] S-G2-04 · Result routing, identifier matching, reconciliation queue and correction versions (XCH-04).
-  - agent: swarm-7
+- [ ] S-G2-04 · Result routing, identifier matching, reconciliation queue and correction versions (XCH-04).
   - attempts: 2
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g2/s_g2_04, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g2_04
   - reserved: V22
@@ -195,8 +192,7 @@ Gate evidence: rejected or recollected specimens trace to the right order; dupli
     Implement Critical-result verification, owner, due time, escalation attempts and read-back (XCH-05) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [-] S-G2-06 · Patient release authorization, timed/hold policies and withdrawn releases (XCH-06).
-  - agent: swarm-9
+- [ ] S-G2-06 · Patient release authorization, timed/hold policies and withdrawn releases (XCH-06).
   - attempts: 2
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g2/s_g2_06, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g2_06
   - reserved: V24
@@ -221,8 +217,9 @@ Gate evidence: rejected or recollected specimens trace to the right order; dupli
     Implement Requisition accession, specimen identification, rejection and linked recollection (LAB-01) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [-] S-G2-09 · Numeric, qualified, text and coded observations, verification states and issued revisions (LAB-02).
-  - agent: swarm-7
+- [x] S-G2-09 · Numeric, qualified, text and coded observations, verification states and issued revisions (LAB-02).
+  - pr: #51
+  - evidence: PR #51; integrator ran scripts/check.sh on the merge result (tool evidence); heavy-check.yml re-verifies main after the push; notes in docs/swarm/S-G2-09.md; simulated review only
   - attempts: 2
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g2/s_g2_09, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g2_09
   - reserved: V27
@@ -230,8 +227,9 @@ Gate evidence: rejected or recollected specimens trace to the right order; dupli
     Implement Numeric, qualified, text and coded observations, verification states and issued revisions (LAB-02) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [-] S-G2-10 · Synthetic partner conformance fixtures including duplicates, corrections and partial outages (XCH-01–07, LAB-01, LAB-02).
-  - agent: swarm-8
+- [x] S-G2-10 · Synthetic partner conformance fixtures including duplicates, corrections and partial outages (XCH-01–07, LAB-01, LAB-02).
+  - pr: #52
+  - evidence: PR #52; integrator ran scripts/check.sh on the merge result (tool evidence); heavy-check.yml re-verifies main after the push; notes in docs/swarm/S-G2-10.md; simulated review only
   - attempts: 2
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g2/s_g2_10, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g2_10
   - reserved: V28
@@ -253,8 +251,9 @@ Gate evidence: confirmed patients see only authorized revisions; generic notific
     Implement Patient appointment list, confirmation, generic push notifications and device revocation (PAT-01) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [-] S-G3-02 · Released reports with revision and correction context, authorized downloads and protected local credentials (PAT-02).
-  - agent: swarm-10
+- [x] S-G3-02 · Released reports with revision and correction context, authorized downloads and protected local credentials (PAT-02).
+  - pr: #54
+  - evidence: PR #54; integrator ran scripts/check.sh on the merge result (tool evidence); heavy-check.yml re-verifies main after the push; notes in docs/swarm/S-G3-02.md; simulated review only
   - attempts: 1
   - scope: apps/patient-mobile/src/features/s_g3_02, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_02
   - reserved: V30
@@ -262,26 +261,27 @@ Gate evidence: confirmed patients see only authorized revisions; generic notific
     Implement Released reports with revision and correction context, authorized downloads and protected local credentials (PAT-02) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [-] S-G3-03 · Privacy-safe enrollment, recovery, lockout and identity-dispute support channel (PAT-03).
-  - agent: swarm-6
-  - attempts: 1
+- [x] S-G3-03 · Privacy-safe enrollment, recovery, lockout and identity-dispute support channel (PAT-03).
+  - pr: #60
+  - evidence: PR #60; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); heavy-check.yml re-verifies main after the push; notes in docs/swarm/S-G3-03.md; simulated review only
+  - attempts: 2
   - scope: apps/patient-mobile/src/features/s_g3_03, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_03
   - reserved: V31
   - details:
     Implement Privacy-safe enrollment, recovery, lockout and identity-dispute support channel (PAT-03) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [-] S-G3-04 · Care unit directory and verified, connection-scoped patient-unit relationships (MSG-01, ARC-07).
-  - agent: swarm-7
-  - attempts: 1
+- [x] S-G3-04 · Care unit directory and verified, connection-scoped patient-unit relationships (MSG-01, ARC-07).
+  - pr: #61
+  - evidence: PR #61; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); heavy-check.yml re-verifies main after the push; notes in docs/swarm/S-G3-04.md; simulated review only
+  - attempts: 2
   - scope: apps/patient-mobile/src/features/s_g3_04, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_04
   - reserved: V32
   - details:
     Implement Care unit directory and verified, connection-scoped patient-unit relationships (MSG-01, ARC-07) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [-] S-G3-05 · Conversation lifecycle, unread counts, staff work queue, assignment and reopen states (MSG-02).
-  - agent: swarm-8
+- [ ] S-G3-05 · Conversation lifecycle, unread counts, staff work queue, assignment and reopen states (MSG-02).
   - attempts: 1
   - scope: apps/patient-mobile/src/features/s_g3_05, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_05
   - reserved: V33
@@ -308,6 +308,7 @@ Gate evidence: confirmed patients see only authorized revisions; generic notific
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G3-08 · Publication, dispatch, first view and revision-bound acknowledgment as separate facts (MSG-05).
+  - attempts: 1
   - scope: apps/patient-mobile/src/features/s_g3_08, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_08
   - reserved: V36
   - details:
@@ -315,27 +316,34 @@ Gate evidence: confirmed patients see only authorized revisions; generic notific
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
 - [ ] S-G3-09 · Service hours, response targets, named owners, backup coverage and after-hours guidance (MSG-06).
+  - attempts: 1
   - scope: apps/patient-mobile/src/features/s_g3_09, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_09
   - reserved: V37
   - details:
     Implement Service hours, response targets, named owners, backup coverage and after-hours guidance (MSG-06) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [ ] S-G3-10 · Messaging audit, retention, legal hold, provenance and revocation effects (MSG-07).
+- [-] S-G3-10 · Messaging audit, retention, legal hold, provenance and revocation effects (MSG-07).
+  - agent: swarm-8
+  - attempts: 1
   - scope: apps/patient-mobile/src/features/s_g3_10, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_10
   - reserved: V38
   - details:
     Implement Messaging audit, retention, legal hold, provenance and revocation effects (MSG-07) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [ ] S-G3-11 · iOS and Android patient flows with accessibility and RTL operation (PAT-01–03, MSG-01–07, UX-01).
+- [-] S-G3-11 · iOS and Android patient flows with accessibility and RTL operation (PAT-01–03, MSG-01–07, UX-01).
+  - agent: swarm-9
+  - attempts: 1
   - scope: apps/patient-mobile/src/features/s_g3_11, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_11
   - reserved: V39
   - details:
     Implement iOS and Android patient flows with accessibility and RTL operation (PAT-01–03, MSG-01–07, UX-01) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [ ] S-G3-12 · Restore, downtime, load, accessibility and audit evidence (G3).
+- [-] S-G3-12 · Restore, downtime, load, accessibility and audit evidence (G3).
+  - agent: swarm-10
+  - attempts: 1
   - scope: apps/patient-mobile/src/features/s_g3_12, apps/api/src/main/java/com/aurevia/smartclinic/messaging/s_g3_12
   - reserved: V40
   - details:
@@ -348,42 +356,54 @@ Gate evidence: confirmed patients see only authorized revisions; generic notific
 
 Gate evidence: wrong-patient study association refused; radiology addendum reaches referrer; PT episode produces signed discharge and referral closure; ambiguous prescription transmission reconciles without duplication; payment and refund replay reproduces balances.
 
-- [ ] S-G4-01 · Imaging order intake, urgency, accession, study association, signed interpretation and addenda (RAD-01).
+- [-] S-G4-01 · Imaging order intake, urgency, accession, study association, signed interpretation and addenda (RAD-01).
+  - agent: swarm-4
+  - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g4/s_g4_01, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g4_01
   - reserved: V41
   - details:
     Implement Imaging order intake, urgency, accession, study association, signed interpretation and addenda (RAD-01) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [ ] S-G4-02 · Therapy episode, evaluation, goals, interventions, outcomes, signed progress and discharge (PT-01).
+- [-] S-G4-02 · Therapy episode, evaluation, goals, interventions, outcomes, signed progress and discharge (PT-01).
+  - agent: swarm-5
+  - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g4/s_g4_02, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g4_02
   - reserved: V42
   - details:
     Implement Therapy episode, evaluation, goals, interventions, outcomes, signed progress and discharge (PT-01) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [ ] S-G4-03 · Prescription draft, versioned drug catalog, alternatives and verified allergy checks (RX-01).
+- [-] S-G4-03 · Prescription draft, versioned drug catalog, alternatives and verified allergy checks (RX-01).
+  - agent: swarm-6
+  - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g4/s_g4_03, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g4_03
   - reserved: V43
   - details:
     Implement Prescription draft, versioned drug catalog, alternatives and verified allergy checks (RX-01) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [ ] S-G4-04 · Prescriber attestation, approved routing channel, transmission events and ambiguity reconciliation (RX-02).
+- [-] S-G4-04 · Prescriber attestation, approved routing channel, transmission events and ambiguity reconciliation (RX-02).
+  - agent: swarm-7
+  - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g4/s_g4_04, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g4_04
   - reserved: V44
   - details:
     Implement Prescriber attestation, approved routing channel, transmission events and ambiguity reconciliation (RX-02) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [ ] S-G4-05 · Itemized self-pay invoices, payments, refunds, receipts and daily reconciliation (FIN-01).
+- [-] S-G4-05 · Itemized self-pay invoices, payments, refunds, receipts and daily reconciliation (FIN-01).
+  - agent: swarm-8
+  - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g4/s_g4_05, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g4_05
   - reserved: V45
   - details:
     Implement Itemized self-pay invoices, payments, refunds, receipts and daily reconciliation (FIN-01) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [ ] S-G4-06 · Specialty role permissions and end-to-end flow evidence (PRD-06).
+- [-] S-G4-06 · Specialty role permissions and end-to-end flow evidence (PRD-06).
+  - agent: swarm-9
+  - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g4/s_g4_06, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g4_06
   - reserved: V46
   - details:
@@ -400,7 +420,9 @@ Gate evidence: each site approves workflow, release policy, market constraints, 
 - [ ] S-G5-02 · Clinical templates, code sets, interpreting privileges and result escalation approvals (ADM-01).
 - [ ] S-G5-03 · Result release rules, sensitive information handling and identity recovery approvals (OPS-01).
 - [ ] S-G5-04 · Laboratory, PACS and pharmacy interface contracts, credentials and outage drills (OPS-01).
-- [ ] S-G5-05 · Capacity targets, pilot load profile and measured performance evidence (OPS-03).
+- [-] S-G5-05 · Capacity targets, pilot load profile and measured performance evidence (OPS-03).
+  - agent: swarm-10
+  - attempts: 1
   - scope: infra/s_g5_05, docs/operations/s_g5_05
   - reserved: V47
   - details:
@@ -607,6 +629,13 @@ Raised by the dispatch-3 run-3 verification. Address in the next authorized chan
 
 - [x] S-FIX-INTEGRATOR-RACE-01 · Integrator run `44530039145` failed after a 14-minute full gate: its single `HEAD:main` push was rejected because `[skip ci]` tracker commits advanced `main` meanwhile. `integrate_batch()` now retries the push up to 3 times with `fetch` + `rebase origin/main` + re-gate, aborting the rebase on conflict. `update_todo()` already had this retry.
   - evidence: run 44530039145 job 135580706334 log shows `! [rejected] HEAD -> main (fetch first)` at `authed_git("push", "origin", "HEAD:main")`. New tests `test_integrate_batch_retries_when_main_advanced` and `test_integrate_batch_aborts_rebase_on_conflict` pass; 167 tooling tests OK; `check-docs.py`/`check-secrets.py`/`gen-opencode.py --check` green. Evidence source: GitHub Actions log plus executed tool commands; no human or clinical evidence.
+
+- [x] S-FIX-INTEGRATOR-REBASE-01 · Integrator `44540737335` (SHA `e9ecdb8`, with the push-retry fix) still failed: retry used `git rebase origin/main`, which needs a committer identity (`fatal: empty ident name`) and replays PR merge commits. Replaced with `git reset --soft origin/main` (keeps the already-gated tree staged), `git checkout origin/main -- TODO.md docs/swarm` to adopt fresh trackers, re-apply `record_merge`, re-gate, push. No commit replay.
+  - evidence: run 44540737335 job 135618147530 log shows `fatal: empty ident name` during `Rebasing (1/4)`. Updated tests `test_integrate_batch_retries_when_main_advanced` / `test_integrate_batch_restores_trackers_on_retry`; 167 tooling tests OK; `check-docs.py`/`check-secrets.py`/`gen-opencode.py --check`/`quick-check.sh` green, all workflow YAMLs parse. Evidence source: GitHub Actions log plus executed tool commands; no human or clinical evidence.
+
+- [x] S-FIX-JAVADOC-01 · Delivery `Developer reference` failed on `bc2667b`/`0d8e389` after worker PRs merged: Doxygen `WARN_AS_ERROR` reported 13 Javadoc errors in merged code (`LabPolicyCatalog`, `LabTypes`, `ReleasedReportService`, `TemplateService`). Root cause of recurrence: the integrator's gate `scripts/check.sh` does not run `scripts/docs.sh`, and Delivery's `docs` job is skipped on `pull_request` events — so broken Javadoc only surfaces after merge.
+  - Fix: (a) repaired all Javadoc — record-level `@return`, full `@param` on compact constructors, no inner-method `@param` (Doxygen merges them into the record constructor doc), documented enum constructor, `{@code Actor}` instead of an unresolvable `{@link}`. (b) Systemic: added `scripts/integrator-gate.sh` = `check.sh` + `docs.sh`, wired as the integrator `GATE` with a Doxygen install step (with apt retry). Guard test added.
+  - evidence: run 44544369924 job 135631117346 log; local `bash scripts/docs.sh` exit 0 after fixes; 168 tooling tests OK, `check.sh`/`quick-check.sh`/`check-docs.py`/`check-secrets.py`/`gen-opencode.py --check`/shellcheck green, all workflow YAMLs parse. Evidence source: GitHub Actions log plus executed tool commands; no human or clinical evidence.
 
 ## One-week execution plan (1 wave per hour)
 

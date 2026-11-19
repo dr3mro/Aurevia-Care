@@ -84,13 +84,25 @@ jobs:
           key: owasp-nvd-${{ runner.os }}-${{ runner.arch }}-${{ github.sha }}
           restore-keys: |
             owasp-nvd-${{ runner.os }}-${{ runner.arch }}-
+      - name: Install Doxygen
+        # Required by scripts/docs.sh (WARN_AS_ERROR) so Javadoc defects are
+        # caught before the PR is merged. Retry transient apt mirror 503s.
+        run: |
+          for attempt in 1 2 3; do
+            if sudo apt-get update -qq && sudo apt-get install -y -qq doxygen; then
+              exit 0
+            fi
+            echo "apt install attempt $attempt failed; retrying" >&2
+            sleep $((attempt * 10))
+          done
+          exit 1
       # One job for the batch. The trusted command keeps GH_TOKEN for guard,
       # merge and finalize, and strips it from the gate subprocess so agent-written
       # code never sees a token. Heavy checks run later on main in heavy-check.yml.
       - name: Merge each PR, gate, then push once
         env:
           QUEUE: ${{ needs.pick.outputs.queue }}
-          GATE: scripts/check.sh
+          GATE: scripts/integrator-gate.sh
         run: python3 -I scripts/swarm.py integrate-batch --queue "$QUEUE" --gate "$GATE"
       # A merge can unlock dependent tasks, so start the next wave now.
       - name: Start the next wave
