@@ -47,8 +47,7 @@ Current source state (2026-11-19T07:19Z, from `main` at `311d69a`): 7 Flyway mig
   - scope: apps/api/src/test/java/com/aurevia/smartclinic/it
   - pr: #18
 - [x] S-G0-05 · Patient registration, identity confirmation and likely-duplicate warnings (IAM-03). V7 append-only patient records, issuer-scoped MRN, normalized name search, non-linking duplicate warnings, `/api/v1/patients`; 184 tests at delivery, JaCoCo 100%, local gates green, code on `main`. Current source (2026-11-19): Surefire reports 191 Java tests, 0 failures/errors across the suite; V7 and `/api/v1/patients` present.
-- [-] S-G0-06 · Same-tenant duplicate review and all-or-nothing chart consolidation (IAM-04).
-  - agent: swarm-1
+- [ ] S-G0-06 · Same-tenant duplicate review and all-or-nothing chart consolidation (IAM-04).
   - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g0/s_g0_06, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g0_06
   - reserved: V9
