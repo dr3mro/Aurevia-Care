@@ -13,7 +13,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.web.client.RestClient;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -37,8 +38,13 @@ class FacilityIsolationTest {
     static final String ADMIN = System.getenv().getOrDefault(
             "SMARTCLINIC_PG_ADMIN", System.getProperty("user.name"));
 
-    @Autowired TestRestTemplate rest;
+    RestClient rest;
     @Autowired FacilityService service;
+
+    @org.junit.jupiter.api.BeforeEach
+    void initRestClient(@LocalServerPort int port) {
+        rest = RestClient.builder().baseUrl("http://localhost:" + port).build();
+    }
 
     @BeforeAll
     static void prepare() throws Exception {
@@ -102,8 +108,20 @@ class FacilityIsolationTest {
     }
 
     private ResponseEntity<String> get(String subject, String organization) {
-        return rest.exchange("/api/v1/facilities/MAIN", HttpMethod.GET,
-                new HttpEntity<>(headers(subject, organization)), String.class);
+        return rest.method(HttpMethod.GET).uri("/api/v1/facilities/MAIN")
+                .headers(httpHeaders -> httpHeaders.addAll(headers(subject, organization)))
+                .retrieve()
+                .onStatus(status -> true, (request, response) -> { })
+                .toEntity(String.class);
+    }
+
+    private ResponseEntity<String> post(String body, String subject, String organization) {
+        return rest.method(HttpMethod.POST).uri("/api/v1/facilities")
+                .headers(httpHeaders -> httpHeaders.addAll(headers(subject, organization)))
+                .body(body)
+                .retrieve()
+                .onStatus(status -> true, (request, response) -> { })
+                .toEntity(String.class);
     }
 
     @Test
@@ -138,27 +156,26 @@ class FacilityIsolationTest {
 
     @Test
     void missingOrganizationSelectionIsInvalid() {
-        assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, get("admin-a", null).getStatusCode());
+        assertEquals(422, get("admin-a", null).getStatusCode().value());
     }
 
     @Test
     void duplicateCodeInSameTenantConflicts() {
         String body = "{\"code\":\"MAIN\",\"name\":\"Duplicate\"}";
-        ResponseEntity<String> response = rest.exchange("/api/v1/facilities", HttpMethod.POST,
-                new HttpEntity<>(body, headers("admin-a", ORG_A)), String.class);
+        ResponseEntity<String> response = post(body, "admin-a", ORG_A);
         assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
     }
 
     @Test
     void createThenReadWithinTenant() throws Exception {
         String body = "{\"code\":\"WARD\",\"name\":\"Ward\"}";
-        ResponseEntity<String> created = rest.exchange("/api/v1/facilities", HttpMethod.POST,
-                new HttpEntity<>(body, headers("admin-a", ORG_A)), String.class);
+        ResponseEntity<String> created = post(body, "admin-a", ORG_A);
         assertEquals(HttpStatus.CREATED, created.getStatusCode());
         assertTrue(created.getHeaders().getLocation().toString().endsWith("/WARD"));
 
-        ResponseEntity<String> read = rest.exchange("/api/v1/facilities/WARD", HttpMethod.GET,
-                new HttpEntity<>(headers("admin-a", ORG_A)), String.class);
+        ResponseEntity<String> read = rest.method(HttpMethod.GET).uri("/api/v1/facilities/WARD")
+                .headers(httpHeaders -> httpHeaders.addAll(headers("admin-a", ORG_A)))
+                .retrieve().toEntity(String.class);
         assertEquals(HttpStatus.OK, read.getStatusCode());
         assertTrue(read.getBody().contains(ORG_A));
     }
