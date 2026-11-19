@@ -1,67 +1,68 @@
-# S-G2-02 — XCH-02: separate workflow, transmission and clinical review states with human acknowledgment
+# CW-008 — Staff web React chart and document screens (synthetic fixtures)
 
-## Scope decision (important)
+## Scope and requirements
 
-The story text inside the dispatch markers names `g2/s_g2_02` / `it/s_g2_02` and calls that the scope. That text is untrusted story description and conflicts with both the authoritative `TODO.md` entry (scope `apps/api/src/main/java/com/aurevia/smartclinic/exchange/task`, `apps/api/src/test/java/com/aurevia/smartclinic/it/exchangetask`) and AGENTS.md ("Name Java packages by business domain and operation, never by story, task, gate or ticket ID"). A repository-wide refactor recorded in `.agent/pr-notes/REFACTOR-PACKAGES-20261119-201815.md` already moved `g2/s_g2_02` → `exchange/task` and its tests → `it/exchangetask`. All work here stays in the authoritative business-domain scope and in the reserved migration `V20__exchange_task_states.sql` (unchanged this attempt).
+- Scope: `apps/staff-web/src/features/chart` only. No tracker, API, database, contract, workflow, script, shared config or shared component file was edited.
+- Requirements: **CLN-03, CLN-05, CLN-07, UX-01** (plus tenant-isolation evidence for IAM-01/ARC-01 at the UI boundary).
+- Depends on CW-004 scaffold; reuses its `ThemeProvider`, `I18nProvider`, `MixedScriptText`, `Button`, `i18n/format` helpers and `syntheticOrganizations` fixtures. No real endpoint, credential or patient data is used.
+- Continuation note: this branch already carried a complete chart implementation from an earlier attempt. This attempt independently re-read every source and test file, re-ran all gates, hardened one tenant-key inconsistency, added one CLN-05 acceptance test, and refreshed these notes with observed results. No claim is made that this attempt produced the original red→green implementation.
 
-## Requirement IDs and acceptance mapping
+## Acceptance mapping
 
-| XCH-02 clause | Implementation (pre-existing + this attempt) | Executed evidence |
+| Requirement | Acceptance behaviour | Implementation / evidence |
 |---|---|---|
-| Separate workflow `requested → accepted → processing → completed` with `rejected` / `cancelled` branches | `WorkflowState`, `ExchangeCommand`, `ExchangeStateMachine.next`, V20 `workflow_state` CHECK and update guard | `WorkflowStateTest`, `ExchangeStateMachineTest`, `ExchangeTaskServiceTest`, `ExchangeTaskIsolationTest.workflowPathRejectsReasonsAndIllegalTransitions` (DB, integrator) |
-| Separate transmission `pending → sent → delivered` / `failed` | `TransmissionState`, `SEND`/`DELIVER`/`FAIL`, V20 `transmission_state` CHECK and guard | `TransmissionStateTest`, `ExchangeTaskServiceTest.transmissionAcknowledgmentNeverMutatesClinicalReview`, `ExchangeTaskIsolationTest.transmissionAcknowledgmentNeverClosesAClinicalTask` (DB, integrator) |
-| Separate clinical review `unreviewed → acknowledged → action_pending → resolved` | `ClinicalReviewState`, `ACKNOWLEDGE`/`REQUEST_ACTION`/`RESOLVE`, V20 guard | `ClinicalReviewStateTest`, `ExchangeStateMachineTest.reviewChainRequiresPriorHumanAcknowledgment`, `ExchangeTaskIsolationTest.reviewChainRequiresAcknowledgmentAndIsAppendOnly` (DB, integrator) |
-| Acknowledgment by an authorized human with timestamp and revision; a transmission acknowledgment cannot close a clinical task | Clinician-only `ExchangeActionPolicy`; actor derived by V20 `xch02_actor_id()` from `app.actor`; clock/revision bound in `ExchangeStateMachine`; one-channel-per-update DB guard | `ExchangeActionPolicyTest`, `ExchangeTaskServiceTest.acknowledgeBindsClockAndRevisionAndNeverTrustsTheCallerForActor`, `ExchangeTaskIsolationTest.humanAcknowledgmentBindsContextActorClockAndRevision` (DB, integrator) |
-| Audit, append-only ledger, version precondition, tenant concealment, revocation on next request | `IfMatch`, CAS in `ExchangeTaskRepository.updateState`, forced RLS in V20, transactional `AuditAppender`, immutable transition trigger | `ExchangeTaskControllerTest`, `ExchangeTaskServiceTest`, `ExchangeTaskIsolationTest` (DB, integrator) |
-| **This attempt:** a reason is evidence of a workflow decision only and cannot be injected into a transmission or clinical-review event | `ExchangeTaskService.execute` computes `eventReason` only for the `WORKFLOW` dimension | New `ExchangeTaskServiceTest.clinicalReviewIgnoresCallerReasonInBothStateAndLedger` (red → green) and `transmissionIgnoresCallerReasonInBothStateAndLedger` (symmetric guard) |
+| CLN-03 | Longitudinal view of problems, allergies, medications and vitals with units, source, effective date, verification state, original code/text, and separate clinical author vs data-entry actor. Explicit `none` and `unknown` states are first-class values, not missing fields. | `LongitudinalChart.tsx`, `domain.ts` (`CodedEntry`, `Vital`, `ChartVerification`), `fixtures.ts`; `components.test.tsx` asserts captions, units (`mmHg`, `°C`, `beats/min`), author/entered-by headers and none/unknown/verified labels; `chart-core.test.ts` asserts fixture states. |
+| CLN-05 | SOAP draft → signed; required SOAP fields, signer, attestation, patient/encounter context and optimistic version precondition enforced in the domain; content checksum and template version stamped on signing; signed revisions read-only in the UI; separate amendment draft linked to the source and superseding it; entered-in-error preserves prior revision and records actor, reason, recipients and time. | `domain.ts` (`signDraft` guards, `updateDraft`, `createAmendment`, `markSuperseded`, `markEnteredInError`, `syntheticChecksum`, `currentRevision`), `NoteEditor.tsx` (`readOnly` textareas with no change handler for signed revisions, amendment action only when `canAmend`, `role="alert"` banner), `RevisionHistory.tsx`; `chart-core.test.ts` covers every guard; `chart-screen.test.tsx` covers sign/amend/entered-in-error flows and history preservation. |
+| CLN-07 | Document list shows PDF/image associations with version, language, checksum, link target and rotation; void records retain reason and disable the void action; rotation changes only presentation state, never the checksum. | `domain.ts` (`visibleDocuments`, `voidDocument`, `rotateDocument`, `replaceDocument`), `DocumentList.tsx`; tests assert en/ar badges, void reason, disabled void button, rotation normalization and checksum immutability. `visibleDocuments` is the tenant-safe projection for a future read-only view; the screen intentionally renders voided rows so the audit state is visible. |
+| UX-01 | English/Arabic bundles with key parity, document direction from the shared `I18nProvider`, `<bdi dir="auto">` mixed-script isolation, logical CSS only, local-script names, UTC instants with IANA zones and unit-preserving number formatting. | `messages.ts` + parity test in `chart-core.test.ts`; `chart-core.test.ts` RTL source scan rejects physical margin/padding/border/text-align properties; Arabic RTL rerender assertions in all three test files; `MixedScriptText` and `formatInstant`/`formatMeasurement` reuse. |
 
-Supporting IDs: ARC-01 (tenant-owned `(organization_id, id)` keys), ARC-02 (forced RLS, non-owner runtime role), ARC-03/04 (versioned routes, explicit POST commands, `If-Match` 428/412/422, 401/403/404/409), OPS-02 (transactional append-only audit), PRD-06 (server-side authorization), IAM-01/02 (membership re-derived per request).
+## Entry point → test trace
 
-## Files changed this attempt
+`ChartScreen` (active-tenant chart selection) → `chartsForTenant` → `LongitudinalChart` / `NoteEditor` / `DocumentList` → guarded domain commands (`signDraft`, `createAmendment` + `markSuperseded`, `markEnteredInError`, `voidDocument`, `rotateDocument`, `replaceRevision`/`replaceDocument`) → `chart-status` live region or `role="alert"` banner. The happy path and the denial/lock paths are asserted from that entry point in `chart-screen.test.tsx`; guard-level failures are asserted directly in `chart-core.test.ts`.
 
-- `apps/api/src/main/java/com/aurevia/smartclinic/exchange/task/ExchangeTaskService.java` — in `execute`, the event ledger now receives a caller reason only for workflow commands; transmission and clinical-review events record `null`. The task's own `reason` was already unchanged for those dimensions, so this removes a ledger/state integrity mismatch and prevents caller text from being attributed to a clinical acknowledgment.
-- `apps/api/src/test/java/com/aurevia/smartclinic/it/exchangetask/ExchangeTaskServiceTest.java` — new clinical-review regression test plus a symmetric transmission regression test.
-- `.agent/pr-notes/S-G2-02.md` — this file.
-- No other file, shared tracker, generated config or migration was edited.
+## Changes made in this attempt
 
-The rest of the implementation and the 39 prior S-G2-02 unit tests plus 10 DB acceptance tests were already present on branch `swarm/S-G2-02-114` (base `4f9bbeb`), inherited from earlier attempts and the package refactor; this attempt brings the S-G2-02 unit total to 41.
+1. `ChartScreen.tsx` — `handleAmend` now supersedes the source revision through `replaceRevision(items, organizationId, current.id, ...)`, the same tenant-composite key used by every other mutation, instead of matching on local id alone. Local ids are shared across tenants, so id-only mutation violates the ARC-01/IAM-01 composite-key discipline even though the current state happens to be tenant-scoped. This is a defensive correctness fix, behaviour-preserving under valid state.
+2. `chart-screen.test.tsx` — added `preserves the signed source revision in history after amendment`, asserting that after sign → amend the history still lists the two original revisions by id, the amendment notice names the exact superseded revision, and the new amendment draft is editable (CLN-05).
+3. This notes file — refreshed with observed commands, results and evidence provenance.
 
-## Test-first sequence (tool evidence)
+## Decisions
 
-1. Added `clinicalReviewIgnoresCallerReasonInBothStateAndLedger` with Mockito verification that `appendEvent(..., "EXCHANGE_ACKNOWLEDGE", "unreviewed", "acknowledged", null, 1)` is called after `execute(..., ACKNOWLEDGE, "caller supplied review note")`.
-2. `mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest=ExchangeTaskServiceTest test` → **exit 1**, `Tests run: 15, Failures: 1`. Mockito showed the real call carried `"caller supplied review note"` as the event reason. Genuine red state.
-3. Added the `eventReason` guard in `ExchangeTaskService.execute`.
-4. Same targeted command → **exit 0**, 15 tests, 0 failures/errors. Green.
-5. A bounded senior-backend specialist review found no blocking issue and suggested a symmetric transmission test (LOW). Added `transmissionIgnoresCallerReasonInBothStateAndLedger`; the final clean fast run has **16** `ExchangeTaskServiceTest` tests, 0 failures.
+1. Feature-local bilingual dictionary (mirrors CW-007's scheduling module) because the shared i18n bundle is outside this story's scope; parity is machine-checked for both locales.
+2. `enteredInError`, `void` and `supersededBy` are explicit optional fields with named evidence objects, so an explicit none/unknown/void state is never confused with an unrecorded one.
+3. `syntheticChecksum` is a deterministic stand-in for a server digest and is documented as such — not a clinical integrity control.
+4. Amending a signed revision appends a new draft and marks the source `supersededBy`, so `canAmend` becomes false for an already-amended revision.
+5. Voided documents remain in the list with an explanatory status and a disabled void action, preserving the audit trail while making the live/void distinction explicit.
+6. No PDF/image bytes are generated or fetched: this is a synthetic screen-only slice. Real rendering, font embedding, page numbering and print profiles remain server-side work (CLN-07), out of scope here.
+7. Accessible row-action naming on the document table was considered and deliberately not changed: the shared `Button` component accepts no `aria-label`, and modifying it or adding raw-CSS visually-hidden text would breach this story's scope and the token contract. The row's identity is instead carried by its `<caption>`, `<th scope="col">` headers and cell content; a real WCAG audit remains a launch-gate activity.
 
-## Exact commands and results (evidence source: executed tool commands)
+## Commands run and results (evidence source: executed tool commands, this attempt)
 
-| Command | Result |
-|---|---|
-| `mvn -q -B -f apps/api/pom.xml -Pno-security,fast clean test` | **exit 0**; Surefire: 143 test classes, **1644 tests, 0 failures, 0 errors, 0 skipped**. S-G2-02 unit classes: ClinicalReviewStateTest 2, ExchangeActionPolicyTest 4, ExchangeCommandTest 3, ExchangeStateMachineTest 6, ExchangeTaskControllerTest 5, ExchangeTaskServiceTest 16, TransmissionStateTest 2, WorkflowStateTest 3 = **41**. |
-| `mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest=ExchangeTaskServiceTest test` | red 15/1 failure → green 15/0 (before the symmetric guard was added); final clean run 16/0. |
-| `mvn -q -B -f apps/api/pom.xml -Pno-security,fast jacoco:report` + `jacoco.xml` inspection | `ExchangeTaskService` 0 missed of 504 instructions, 46 branches, 100 lines, 16 methods, 1 class (100%). All other `exchange/task` production classes also 0 missed; `ExchangeTaskRepository` is exercised by the DB suite run by the integrator. |
-| `mvn -q -B -f apps/api/pom.xml -Pno-security spotbugs:check` | **exit 0** after the change. |
-| `python3 -I scripts/check-migrations.py --require-baseline` | **exit 0** (V20 still `Change: expand`). |
-| `python3 -I scripts/check-docs.py`, `python3 -I scripts/check-secrets.py` | **exit 0** each. |
-| `git diff --check` | **exit 0**. |
-| `bash scripts/quick-check.sh` | **exit 1 at the first gate**: `check-pack: opencode.json is stale: run scripts/gen-opencode.py`. Pre-existing environment/pack drift, reproduced before any edit; it stops the script before Java tests, which were therefore run directly. |
-| `python3 -I -m unittest discover -s scripts/tests -q` | 164 tests, **6 failures + 4 errors**, all pre-existing and out of scope: 3 pack failures from the stale `opencode.json`, 1 Javadoc-link failure in `Qualifier.java` (another module), 2 `test_agent_run` failures (sandbox push/gh behaviour), 4 import errors because PyYAML is absent locally. |
-| `python3 -m unittest discover -s scripts/tests -p 'test_java_conventions.py' -v` | The only failure is `test_javadoc_links_are_fully_qualified` on `Qualifier.java`, outside this scope; no `exchange/task` file was flagged. |
+From `apps/staff-web` (node v22.23.5, npm 10.9.9; `npm ci` performed by `check.sh`):
 
-## Defects found and decisions
+- `bash check.sh` → **exit 0**. Gates in order: `gen:api:check`, `typecheck`, `lint` (`eslint . --max-warnings 0`), `test:coverage`. Result: **29 test files, 189 tests passed; statements 100% (553/553), branches 100% (284/284), functions 100% (215/215), lines 100% (524/524)**, `perFile: true`, "No files with missing coverage."
+- `npx vitest run src/features/chart` → **exit 0**, 3 files, **45 tests passed** (after the added CLN-05 test).
+- `npm run build` → **exit 0** (`tsc --noEmit` + `vite build`, 31 modules transformed).
+- `bash docs.sh /tmp/cw008-docs-verify` → **exit 0**; TypeDoc (`treatWarningsAsErrors`) generated `index.html`.
+- `node_modules/.bin/prettier --check apps/staff-web/src/features/chart/ChartScreen.tsx .../chart-screen.test.tsx` (run from repo root with root Prettier) → **exit 0**, "All matched files use Prettier code style!".
 
-- **Defect fixed (medium, ledger integrity):** `execute` copied a caller-supplied `reason` into transition events for the transmission and clinical-review channels even though those channels never store a reason. This let a client attribute arbitrary text to a human acknowledgment in the append-only ledger. Fixed by recording a reason only for workflow commands; covered by the new test.
-- **Decision — scope:** followed authoritative `TODO.md` + AGENTS.md business-domain paths, not the stale untrusted `s_g2_02` paths. No new package or story-ID-named class was introduced.
-- **Decision — idempotency:** command-level `Idempotency-Key` remains the cross-cutting X-01 story (`contracts/x_01`, reserved V54); duplicating it in V20 would collide with that worker. XCH-02 uses the mandated `If-Match` precondition with 409/412/422/401/403/404 semantics.
-- **Decision — no migration change:** V20 already enforces channel independence, bound review actor/revision/timestamp and the one-channel-per-update guard; the fix is in the service only.
-- **Specialist review (simulated, senior backend):** no blocking findings. It confirmed the ledger reason previously diverged from persisted state on a reachable path, that audit and V20 constraints are unaffected, that both branches of the new conditional are covered, and that no existing test asserts a non-workflow ledger reason. Its LOW finding (no transmission-specific non-null-reason test) was addressed by `transmissionIgnoresCallerReasonInBothStateAndLedger`. Its INFO observations were accepted without change: `reason(...)` still validates length for non-workflow commands even though the value is now discarded (unchanged behaviour, defensible), and a pre-existing WORKFLOW state/ledger reason divergence is outside this diff.
-- **Evidence source:** all gate results above are from executed tool commands; the review finding came from a simulated specialist, which reviewed statically and did not re-execute the checks. There was **no simulated-user exercise and no human or clinical participant evidence**. Prior-attempt simulated review findings (architect/QA/backend) are recorded in the earlier version of this file and were addressed in the inherited implementation. Real clinical approval remains a G5 gate.
+From the repository root:
 
-## Blockers / evidence genuinely missing (stop-and-report)
+- `bash scripts/frontend-check.sh` → **exit 0**: module typecheck/lint/tests, TypeScript-only and no-`any`/no-class-component source scan, tsconfig strict flags, root Prettier and root Vitest all passed ("frontend standards: policy and tool commands passed").
+- `python3 -I scripts/gen-opencode.py --check` → **exit 1** (`opencode.json is out of date`), and `git ls-files -v opencode.json` → flag `S` (skip-worktree). This is the known cloud-worker CI-profile artifact (delivery skill; BUGS OPS-CW-003-01, closed as a false positive), not a change made here. No generated/shared config was edited.
 
-1. **No local PostgreSQL** (`psql`/`pg_isready` absent, 127.0.0.1:5432 not reachable). The 10 `@Tag("integration")` tests in `ExchangeTaskIsolationTest` — forced RLS, two-tenant concealment, V20 guard triggers, actor/revision binding, revocation on next request — **were not executed here**. The integrator must run `bash apps/api/check.sh` on the exact merged SHA and record the JaCoCo ratios; that suite is the authority for `ExchangeTaskRepository` coverage.
-2. **`opencode.json` is stale at this base** under the cloud-worker profile (`git ls-files -v opencode.json` shows `S` = skip-worktree, so the checked-out file is the CI profile while the committed file is the local profile), so the fast policy gate (`quick-check.sh`, `check-pack.py`, several Python tests) fails before reaching Java. It is a shared generated file outside this story's scope; no `opencode.json` change is committed. The owner/loop must regenerate it from `scripts/gen-opencode.py` before the integrator gate can pass.
-3. **Python tooling failures** listed above are pre-existing and out of scope (missing PyYAML, stale pack, unrelated `Qualifier.java` Javadoc, sandbox `agent_run` assumptions). They were not edited.
-4. **No clinical or human participant evidence.** Clinical acknowledgment semantics were reviewed by simulated reviewers only; G5 site approval is separate.
-5. **No patient data, real identifiers or credentials** appear in any fixture or note; all subjects, organizations and order references are synthetic.
+The jsdom console stack traces for "useI18n/useTheme must be used inside Provider" come from provider-missing negative-control tests in the shared scaffold; they do not fail any gate (all tests and the coverage gate passed).
+
+## Defects found
+
+- No production defect remains open. In this attempt only one tenant-key inconsistency was found and hardened (id-only supersede in `handleAmend`); all gates were green before and after the change.
+- The inherited notes record that the earlier attempt corrected three test-assertion defects and two TypeScript narrowing errors before reaching green. Those were not re-observed here.
+- No clinical, human-participant or simulated-user evidence was available or claimed in this attempt. The earlier attempt's two bounded reviews (Senior React/Vite and Test Engineer) were read-only specialist design reviews; their findings on RTL source scanning, explicit none/unknown states, draft-version/checksum provenance, clinical-vs-entry actors and amendment supersession are reflected in the code. Evidence provenance: tool commands for all gate results; simulated specialist review (earlier attempt, static, did not re-execute checks) for those findings. No real clinical acceptance.
+- Final bounded review of this attempt's two-file diff by the Senior React/Vite specialist (session `ses_e09d59b6cffee9igasnBQNylWe`): **no findings**. It source-traced `domain.ts`, `NoteEditor.tsx`, `RevisionHistory.tsx`, `fixtures.ts` and `messages.ts` and confirmed (a) the composite-key supersede is a correct defensive no-op consistent with the other handlers and preserves CLN-05 immutability/amendment semantics, (b) the new history test is deterministic and asserts the exact superseded revision id, and (c) no tenant-leak, signed-edit or RTL/accessibility regression was introduced. This was a read-only simulated specialist review; the reviewer did not execute checks, so all gate results above remain tool evidence only.
+
+## Limitations / unverified behaviour
+
+- The integrator runs the database and integration tests; this frontend story has none, and none were run here by design.
+- Accessibility was verified through role/name assertions and logical-CSS source scanning in jsdom, not through an actual WCAG 2.2 AA audit, keyboard pass or screen reader.
+- Arabic copy is synthetically translated for the fixture; it is not a clinically approved translation.
+- No image/PDF bytes are rendered or scanned in this slice; document associations are synthetic records only.
