@@ -112,7 +112,7 @@ class FacilityServiceTest {
         authorize();
         when(repository.insert(any())).thenReturn(1);
         Facility created = service.create("WARD", "Ward");
-        assertEquals(new Facility(ORG, "WARD", "Ward"), created);
+        assertEquals(new Facility(ORG, "WARD", "Ward", "UTC"), created);
         verify(repository).appendAudit(TenantContext.current(), "FACILITY_CREATE",
                 "FACILITY", "WARD", "SUCCESS");
     }
@@ -120,7 +120,7 @@ class FacilityServiceTest {
     @Test
     void readsAndAudits() {
         authorize();
-        when(repository.findByCode("MAIN")).thenReturn(Optional.of(new Facility(ORG, "MAIN", "Main")));
+        when(repository.findByCode("MAIN")).thenReturn(Optional.of(new Facility(ORG, "MAIN", "Main", "UTC")));
         Facility read = service.get("MAIN");
         assertEquals("Main", read.name());
         verify(repository).appendAudit(TenantContext.current(), "FACILITY_READ",
@@ -135,19 +135,30 @@ class FacilityServiceTest {
     }
 
     @Test
+    void createsAFacilityWithAnExplicitTimeZone() {
+        authorize();
+        when(repository.insert(any())).thenReturn(1);
+        Facility created = service.create("RIYADH", "Riyadh", "Asia/Riyadh");
+        assertEquals("Asia/Riyadh", created.timeZone());
+        assertEquals(422, assertThrows(ApiException.class,
+                () -> service.create("BADZONE", "Bad", "Mars/Olympus")).status());
+    }
+
+    @Test
     void valueRecordsExposeTheirParts() {
-        Facility facility = new Facility(ORG, "MAIN", "Main");
+        Facility facility = new Facility(ORG, "MAIN", "Main", "UTC");
         assertEquals(ORG, facility.organizationId());
         assertEquals("MAIN", facility.code());
         assertEquals("Main", facility.name());
-        assertEquals(facility, new Facility(ORG, "MAIN", "Main"));
-        assertEquals(facility.hashCode(), new Facility(ORG, "MAIN", "Main").hashCode());
-        assertEquals("Facility[organizationId=" + ORG + ", code=MAIN, name=Main]", facility.toString());
+        assertEquals(facility, new Facility(ORG, "MAIN", "Main", "UTC"));
+        assertEquals(facility.hashCode(), new Facility(ORG, "MAIN", "Main", "UTC").hashCode());
+        assertEquals("Facility[organizationId=" + ORG + ", code=MAIN, name=Main, timeZone=UTC]", facility.toString());
 
-        FacilityController.CreateRequest request = new FacilityController.CreateRequest("MAIN", "Main");
+        FacilityController.CreateRequest request = new FacilityController.CreateRequest("MAIN", "Main", "UTC");
         assertEquals("MAIN", request.code());
         assertEquals("Main", request.name());
-        assertEquals(request, new FacilityController.CreateRequest("MAIN", "Main"));
-        assertEquals(request.hashCode(), new FacilityController.CreateRequest("MAIN", "Main").hashCode());
+        assertEquals("UTC", request.timeZone());
+        assertEquals(request, new FacilityController.CreateRequest("MAIN", "Main", "UTC"));
+        assertEquals(request.hashCode(), new FacilityController.CreateRequest("MAIN", "Main", "UTC").hashCode());
     }
 }
