@@ -130,6 +130,7 @@ then
 fi
 
 bad=$("${app[@]}" -v a="$org_a" <<'SQL'
+SET app.current_org = :'a';
 SELECT count(*) FROM public.audit_verify_chain(:'a') WHERE NOT ok;
 SQL
 )

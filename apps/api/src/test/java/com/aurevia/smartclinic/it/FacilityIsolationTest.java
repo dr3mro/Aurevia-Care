@@ -9,6 +9,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -70,6 +71,15 @@ class FacilityIsolationTest {
             seed(statement, ORG_B, "admin-b", "tenant_admin", "active", "MAIN", "Beta Main");
             seed(statement, ORG_A, "reception-a", "reception", "active", null, null);
             seed(statement, ORG_A, "revoked-a", "tenant_admin", "revoked", null, null);
+        }
+    }
+
+    @AfterAll
+    static void cleanUp() throws Exception {
+        try (Connection root = DriverManager.getConnection(
+                "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
+             Statement statement = root.createStatement()) {
+            statement.execute("DROP DATABASE IF EXISTS smartclinic_it WITH (FORCE)");
         }
     }
 
@@ -188,13 +198,44 @@ class FacilityIsolationTest {
     }
 
     @Test
+    void auditRecordsTheActingUser() throws Exception {
+        try (Connection connection = DriverManager.getConnection(URL, "smartclinic_migrate", "");
+             Statement statement = connection.createStatement()) {
+            statement.execute("SET app.current_org = '" + ORG_A + "'");
+            try (ResultSet result = statement.executeQuery(
+                    "SELECT actor_id FROM public.audit_event WHERE correlation_id IS NOT NULL "
+                    + "AND actor_id IS NOT NULL LIMIT 1")) {
+                assertTrue(result.next(), "audit rows must carry actor_id (OPS-02)");
+            }
+        }
+    }
+
+    @Test
+    void auditVerifierDoesNotCrossTenants() throws Exception {
+        try (Connection connection = DriverManager.getConnection(URL, "smartclinic_app", "");
+             Statement statement = connection.createStatement()) {
+            statement.execute("SET app.current_org = '" + ORG_A + "'");
+            org.junit.jupiter.api.Assertions.assertThrows(java.sql.SQLException.class,
+                    () -> statement.executeQuery(
+                            "SELECT * FROM public.audit_verify_chain('" + ORG_B + "')"));
+            try (ResultSet result = statement.executeQuery(
+                    "SELECT organization_id::text FROM public.facility WHERE code = 'MAIN'")) {
+                assertTrue(result.next());
+                assertEquals(ORG_A, result.getString(1), "caller context must be unchanged");
+            }
+        }
+    }
+
+    @Test
     void auditChainIsValid() throws Exception {
         try (Connection connection = DriverManager.getConnection(URL, "smartclinic_migrate", "");
-             Statement statement = connection.createStatement();
-             ResultSet result = statement.executeQuery(
-                     "SELECT count(*) FROM public.audit_verify_chain('" + ORG_A + "') WHERE NOT ok")) {
-            result.next();
-            assertEquals(0, result.getInt(1));
+             Statement statement = connection.createStatement()) {
+            statement.execute("SET app.current_org = '" + ORG_A + "'");
+            try (ResultSet result = statement.executeQuery(
+                    "SELECT count(*) FROM public.audit_verify_chain('" + ORG_A + "') WHERE NOT ok")) {
+                result.next();
+                assertEquals(0, result.getInt(1));
+            }
         }
     }
 }
