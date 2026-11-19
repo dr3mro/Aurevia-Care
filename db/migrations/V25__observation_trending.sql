@@ -144,7 +144,10 @@ BEGIN
 END $$;
 
 -- SECURITY INVOKER with forced RLS: an unset organization yields no rows and a
--- future-dated policy never becomes effective early.
+-- future-dated policy never becomes effective early. The latest effective date
+-- wins, not the highest version: a backdated later version must not displace
+-- the rule that has been in force since a more recent instant. Version only
+-- breaks an effective-date tie.
 CREATE OR REPLACE FUNCTION public.current_trend_comparability(p_test_code text)
 RETURNS TABLE (test_code text, version integer, canonical_unit text,
                comparability_group text, trendable boolean)
@@ -154,7 +157,7 @@ AS $$
            c.test_code, c.version, c.canonical_unit, c.comparability_group, c.trendable
       FROM public.trend_comparability c
      WHERE c.test_code = p_test_code AND c.effective_from <= now()
-     ORDER BY c.organization_id, c.test_code, c.version DESC
+     ORDER BY c.organization_id, c.test_code, c.effective_from DESC, c.version DESC
 $$;
 
 REVOKE ALL ON FUNCTION public.next_trend_comparability_version(text) FROM PUBLIC;

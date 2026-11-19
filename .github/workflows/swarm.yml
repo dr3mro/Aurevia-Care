@@ -8,8 +8,8 @@ on:
   workflow_dispatch:
     inputs:
       workers:
-        description: Worker cap; the wave uses fewer when fewer tasks are ready (1 to 10)
-        default: '10'
+        description: Worker cap; the wave uses fewer when fewer tasks are ready (1 to 10, default 1)
+        default: '1'
       repair_run:
         description: Failed run id on main to repair (set by the main watchdog)
         default: ''
@@ -93,7 +93,7 @@ jobs:
         if: steps.budget.outputs.start == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          WORKERS: ${{ inputs.workers || '10' }}
+          WORKERS: ${{ inputs.workers || '1' }}
           REPAIR_RUN: ${{ inputs.repair_run }}
           IMAGES_READY: ${{ steps.images.outputs.ready }}
         run: |
@@ -118,7 +118,7 @@ jobs:
     # wave starts automatically after publish via the `next` job.
     timeout-minutes: 185
     strategy:
-      max-parallel: 10
+      max-parallel: 1
       fail-fast: false
       matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     # The slot's prepared image: toolchain, dependencies and this slot's own
