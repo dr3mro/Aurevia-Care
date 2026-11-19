@@ -204,8 +204,8 @@ Gate evidence: rejected or recollected specimens trace to the right order; dupli
     Implement Patient release authorization, timed/hold policies and withdrawn releases (XCH-06) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [-] S-G2-07 · Trending only comparable observations with units, ranges, time and qualifiers visible (XCH-07).
-  - agent: swarm-1
+- [x] S-G2-07 · Trending only comparable observations with units, ranges, time and qualifiers visible (XCH-07).
+  - pr: #113
   - attempts: 5
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/exchange/trend, apps/api/src/test/java/com/aurevia/smartclinic/it/exchangetrend
   - reserved: V25
@@ -248,8 +248,8 @@ Gate evidence: rejected or recollected specimens trace to the right order; dupli
 
 Gate evidence: confirmed patients see only authorized revisions; generic notifications reveal no clinical detail; withdrawn releases stop future access; messaging works on both mobile platforms including wrong-unit denial, uploads, instructions, revision-specific acknowledgment, failed uploads, notification retry and revoked connections.
 
-- [-] S-G3-01 · Patient appointment list, confirmation, generic push notifications and device revocation (PAT-01).
-  - agent: swarm-2
+- [x] S-G3-01 · Patient appointment list, confirmation, generic push notifications and device revocation (PAT-01).
+  - pr: #114
   - attempts: 4
   - scope: apps/patient-mobile/src/features/s_g3_01, apps/api/src/main/java/com/aurevia/smartclinic/messaging/appointments
   - reserved: V29
@@ -474,8 +474,8 @@ Gate evidence: each site approves workflow, release policy, market constraints, 
     Implement Onboarding dataset manifest, dry run, controlled batches and authorized sign-off (OPS-08) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [-] S-G5-10 · English and Arabic, RTL, time zones, WCAG 2.2 AA and native screen-reader flows (UX-01).
-  - agent: swarm-3
+- [x] S-G5-10 · English and Arabic, RTL, time zones, WCAG 2.2 AA and native screen-reader flows (UX-01).
+  - pr: #115
   - attempts: 2
   - scope: infra/s_g5_10, docs/operations/s_g5_10
   - reserved: V52
@@ -483,8 +483,8 @@ Gate evidence: each site approves workflow, release policy, market constraints, 
     Implement English and Arabic, RTL, time zones, WCAG 2.2 AA and native screen-reader flows (UX-01) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [-] S-G5-11 · Operational queues for unsigned work, unmatched reports, critical findings, failures and revoked accounts (ADM-02).
-  - agent: swarm-4
+- [x] S-G5-11 · Operational queues for unsigned work, unmatched reports, critical findings, failures and revoked accounts (ADM-02).
+  - pr: #116
   - attempts: 2
   - scope: infra/s_g5_11, docs/operations/s_g5_11
   - reserved: V53
@@ -516,17 +516,17 @@ Delivered inside the stories above, not scheduled separately.
     Implement Durable events, outbox, deduplication, replay and dead-letter review (ARC-05) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [x] X-03 · Upload validation, quarantine, mediated downloads and PDF binding to immutable revisions (ARC-06).
-  - pr: #112
-  - attempts: 1
+- [-] X-03 · Upload validation, quarantine, mediated downloads and PDF binding to immutable revisions (ARC-06).
+  - agent: swarm-1
+  - attempts: 4
   - scope: contracts/upload, apps/api/src/main/java/com/aurevia/smartclinic/api/upload
   - reserved: V56
   - details:
     Implement Upload validation, quarantine, mediated downloads and PDF binding to immutable revisions (ARC-06) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [-] X-04 · Generated OpenAPI clients and server-side authorization for every command (PRD-06).
-  - agent: swarm-5
+- [x] X-04 · Generated OpenAPI clients and server-side authorization for every command (PRD-06).
+  - pr: #117
   - attempts: 1
   - scope: contracts/openapi, apps/api/src/main/java/com/aurevia/smartclinic/api/authorization
   - reserved: V57
@@ -560,16 +560,16 @@ Independent modules scoped to their own paths so workers cannot collide with bac
   - scope: apps/staff-web/src/features/scheduling
   - details:
     ReactJS staff-web scheduling screens, in `apps/staff-web/src/features/scheduling` only. Depends on CW-004's scaffold, so reuse its React/Vite/TS setup, component set, theme, i18n bundles and generated OpenAPI client types. Build synthetic-only screens: a day/week appointment worklist ordered by scheduled time, a booking form with protected-resource conflict hint, check-in and assignment controls, and visit-state badges (booked → checked in → in progress → completed, plus cancelled/no-show). Use local fixture data with two tenants sharing the same local IDs to prove the UI never merges tenants; no real endpoints and no clinical data. Keep strict TypeScript, accessible labels and RTL-correct layout, and 100% coverage with Vitest. Do NOT touch `apps/api`, `db/`, `contracts/`, `apps/staff-web/check.sh`, `.github/`, `scripts/`, or shared trackers. Record requirement IDs, commands, results and decisions in `.agent/pr-notes/<story-id>.md`.
-- [-] CW-008 · Staff web React chart and document screens (synthetic fixtures)
-  - agent: swarm-6
+- [x] CW-008 · Staff web React chart and document screens (synthetic fixtures)
+  - pr: #118
   - attempts: 1
   - requirements: CLN-03, CLN-05, CLN-07, UX-01
   - depends: CW-004
   - scope: apps/staff-web/src/features/chart
   - details:
     ReactJS staff-web chart and document screens, in `apps/staff-web/src/features/chart` only. Depends on CW-004's scaffold. Build synthetic-only screens: a longitudinal chart view (problems, allergies, medications, vitals with units), a SOAP note draft with draft/signed states and an entered-in-error banner, and a document list showing PDF/image associations with version and language. Never allow editing a signed revision in the UI; show read-only state and an amendment action instead. Use local fixtures with two tenants sharing local IDs; no real endpoints or patient data. Strict TypeScript, accessible labels, RTL-correct layout and 100% Vitest coverage. Do NOT touch `apps/api`, `db/`, `contracts/`, `apps/staff-web/check.sh`, `.github/`, `scripts/`, or shared trackers. Record evidence in `.agent/pr-notes/<story-id>.md`.
-- [-] CW-009 · Staff web React audit and access-review screens (synthetic fixtures)
-  - agent: swarm-7
+- [x] CW-009 · Staff web React audit and access-review screens (synthetic fixtures)
+  - pr: #119
   - attempts: 1
   - requirements: ADM-02, OPS-02, UX-01
   - depends: CW-004
@@ -608,6 +608,22 @@ Independent modules scoped to their own paths so workers cannot collide with bac
   - evidence: reproduced check run 135471273322 locally (`npm run typecheck` failed TS2307/TS7006); added `@types/node@22.19.0` and `"node"` to root `tsconfig.json`; made the scheduling RTL test resolve its feature directory by `import.meta.url`; root Vitest excludes React `.tsx` tests owned by staff-web; `bash scripts/frontend-check.sh` exit 0 with staff-web 103 tests, patient-mobile 0 tests, root 23 tests. Evidence source: local CI gate and GitHub Actions job log 135471273322.
 
 ## Improvement ideas
+
+- [ ] REFACTOR-PACKAGES-02 · Rename the remaining story-ID Java packages (`api/x_01`–`api/x_04`) to business-domain packages with no behavior change (dispatch-69).
+  - requirements: none (refactor of CODING_STYLE.md package naming)
+  - details: inventory complete, **no file moved** — dispatch-69 rule 2 requires owner approval of the mapping first. No `s_g0_*`…`s_g4_*` or `it/s_*` packages remain (earlier run: `.agent/pr-notes/REFACTOR-PACKAGES-20261119-201815.md`). Deliberately has no `scope:` so no swarm worker picks it up while it waits. Full inventory, 35-file move list, collisions, near-duplicates and every old-path reference: `.agent/pr-notes/REFACTOR-PACKAGES.md`.
+  - proposed mapping (main packages; test mirrors follow them):
+    | Old | New |
+    |---|---|
+    | `api/x_01` | `api/contract` |
+    | `api/x_02` | `events` |
+    | `api/x_03` | `documents` (merge; `DocumentInputs` → `ArtifactInputs`) |
+    | `api/x_04` | `api/authorization` |
+  - question (needs an owner decision before any `git mv`):
+    1. Is the mapping above approved?
+    2. dispatch-69 rule 3 says update every reference to the old paths, rule 5 says do not touch `contracts/`. Renaming `x_01`–`x_04` leaves `contracts/x_01/README.md`, `contracts/x_02/README.md`, `contracts/x_03/document-artifacts.md`, `contracts/x_04/README.md` and `contracts/x_04/generated/{client.ts,manifest.json}` naming dead FQNs, and `CommandClientGenerator --check` / `contracts/x_04/check.py` only stay green if the generator's `GENERATOR` literal is unchanged. Options: (A) allow the mechanical contract-reference update and regeneration (recommended); (B) leave `contracts/` untouched and keep the old identity strings, recording them as a BUGS.md entry; (C) exclude `x_04` from this refactor.
+    3. `it/patientchart/ChartEntryIntegrationTest.java:76` still points Flyway at `it/s_g1_03/migrations`, which no longer exists (the SQL is at `it/patientchart/migrations/V13__longitudinal_chart.sql` and `db/migrations` has no V13). Fixing it changes which migrations apply, so it needs a PostgreSQL run; none is available on this workstation. Fix now or record as a separate defect?
+    4. Optional: rename the test database `smartclinic_s_g1_02_it` (`CheckInWorklistIntegrationTest`) to a story-ID-free name?
 
 - [x] IMP-03 · Stop concurrency-cancelling swarm delivery runs. `delivery.yml` (per-ref group, `cancel-in-progress: false`), `heavy-check.yml`, `agent-image.yml` and `swarm-images.yml` now queue; `swarm.yml`, `swarm-integrator.yml`, `main-watchdog.yml` and `opencode-team.yml` already queued. README-SETUP.md updated.
   - evidence: `scripts/tests/test_workflow_concurrency.py` (red first: 5 failures) now green — parses every `.github/workflows/*.yml`, asserts each declares a non-empty group and `cancel-in-progress: false`, and locks delivery to a per-ref group. `scripts/quick-check.sh` exit 0, 125 tooling tests OK, all eight workflow YAMLs parse. GitHub Workflow reviewer (simulated) found that a SHA-scoped group would remove serialization and allow unbounded parallel full verification; that was reverted to a per-ref group. Its heavy-check SHA-attribution finding is deferred as IMP-04 / CW-IMP03-01. `check.sh`/`docs.sh` remain red on pre-existing G1 SpotBugs and Doxygen defects, unrelated to this change. Evidence source: tool commands plus simulated reviewer; no human or clinical evidence.
