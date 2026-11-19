@@ -15,7 +15,7 @@ Gate evidence: two tenants with identical local IDs remain isolated across API, 
 
 - [x] S-G0-01 — Tenant isolation foundation: membership-derived tenant context, forced RLS, non-owner runtime role, append-only audit (IAM-01, IAM-02, ARC-01, ARC-02, OPS-02). Evidence: `PROGRESS.md` G0-01 rows; 44 tests, JaCoCo 100%; green CI https://github.com/dr3mro/Aurevia-Care/actions/runs/44442227258 on SHA `f9bc461`; merged in `e1dc7cd`.
 - [x] S-G0-02 — Staff lifecycle: invite and deactivate staff, immutable membership and role history, permission change on next protected request (IAM-02, IAM-01, OPS-02). Evidence: `PROGRESS.md` S-G0-02 rows; 81 tests, JaCoCo 100%; V4 append-only history and folded current membership; local security and DB gates green, CI pending.
-- [ ] S-G0-03 — Tenant configuration, catalogs, broader audit and infrastructure foundations (ADM-01, OPS-02, OPS-06).
+- [ ] S-G0-03 — Tenant configuration, catalogs, broader audit and infrastructure foundations (ADM-01, OPS-02, OPS-06). Foundation slice done: versioned append-only config with named approval and effective-date fold (commit `e8911e9`, CI run 44455300465 on `1084ed4`, 119 tests, JaCoCo 100%); catalogs, broader audit query and OPS-06 infrastructure remain, so the checkbox stays open.
 - [ ] S-G0-04 — Isolation across search, files, workers and exports plus concurrent-connection and transaction tests (ARC-02).
 - [ ] S-G0-05 — Patient registration, identity confirmation and likely-duplicate warnings (IAM-03).
 - [ ] S-G0-06 — Same-tenant duplicate review and all-or-nothing chart consolidation (IAM-04).
@@ -119,4 +119,4 @@ Simulated review findings are evidence of review activity, not clinical or human
 
 ## Current position
 
-S-G0-01 and S-G0-02 are done locally; S-G0-03 is the next story. The staff-web and patient-mobile modules are still empty and are not started before G0 is complete.
+S-G0-01 and S-G0-02 are done; the S-G0-03 configuration foundation slice is delivered and green on `main`, with its catalog, broader-audit and OPS-06 slices still open. The staff-web and patient-mobile modules are still empty and are not started before G0 is complete.
