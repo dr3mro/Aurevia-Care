@@ -59,6 +59,16 @@ describe('MSG-05 first in-app view fact', () => {
     expect(withView.publication).toBeNull();
     expect(withView.dispatch).toBeNull();
   });
+
+  it('records a first view for each new revision without rewriting the earlier one', () => {
+    const first = recordFirstViewOnce(EMPTY_FACTS, INSTRUCTION, 2, PATIENT, NOW);
+    const next = recordFirstViewOnce(first, INSTRUCTION, 3, PATIENT, LATER);
+    expect(next.firstView).toEqual({
+      kind: 'first_view', instructionId: INSTRUCTION, revision: 3, viewer: PATIENT, occurredAt: LATER,
+    });
+    expect(first.firstView?.revision).toBe(2);
+    expect(recordFirstViewOnce(next, INSTRUCTION, 3, PATIENT, '2026-11-19T14:00:00Z')).toBe(next);
+  });
 });
 
 describe('MSG-05 revision-bound receipt acknowledgment', () => {
@@ -114,6 +124,17 @@ describe('MSG-05 revision-bound receipt acknowledgment', () => {
     acknowledgeRevisionBound(view(), EMPTY_FACTS, 2, PATIENT, NOW);
     expect(criticalResult).toEqual({ kind: 'critical_result', acknowledged: false });
   });
+
+  it('accepts a new requested revision after an earlier revision was acknowledged', () => {
+    const first = acknowledgeRevisionBound(view(), EMPTY_FACTS, 2, PATIENT, NOW);
+    if (!first.ok) throw new Error('expected success');
+    const facts: DeliveryFacts = { ...EMPTY_FACTS, acknowledgment: first.fact };
+    const superseding = view({ revision: 3, latestRevision: 3, request: { revision: 3, dueAt: LATER } });
+    const second = acknowledgeRevisionBound(superseding, facts, 3, PATIENT, LATER);
+    expect(second.ok).toBe(true);
+    if (!second.ok) throw new Error('expected success');
+    expect(second.fact.revision).toBe(3);
+  });
 });
 
 describe('MSG-05 acknowledgment state and overdue routing', () => {
@@ -126,6 +147,14 @@ describe('MSG-05 acknowledgment state and overdue routing', () => {
     expect(acknowledgmentStatus(view(), acked, LATER)).toBe('acknowledged');
     expect(acknowledgmentStatus(view(), EMPTY_FACTS, DUE)).toBe('overdue');
     expect(acknowledgmentStatus(view(), EMPTY_FACTS, '2026-11-19T11:00:00Z')).toBe('pending');
+    expect(acknowledgmentStatus(
+      view({ revision: 3, latestRevision: 3, request: { revision: 3, dueAt: DUE } }), acked, DUE,
+    )).toBe('overdue');
+  });
+
+  it('compares instants rather than ISO text so offsets cannot hide an overdue request', () => {
+    const offsetView = view({ request: { revision: 2, dueAt: '2026-11-19T14:00:00+02:00' } });
+    expect(acknowledgmentStatus(offsetView, EMPTY_FACTS, '2026-11-19T12:30:00Z')).toBe('overdue');
   });
 
   it('selects only overdue instructions and routes to the owning unit', () => {
@@ -172,5 +201,25 @@ describe('MSG-05 fact reduction', () => {
   it('ignores an unknown fact kind at the boundary', () => {
     const unknown = { kind: 'unknown' } as unknown as DeliveryFact;
     expect(reduceFact(EMPTY_FACTS, unknown)).toBe(EMPTY_FACTS);
+  });
+
+  it('does not let a replay overwrite an earlier first view or receipt', () => {
+    const firstView: DeliveryFact = {
+      kind: 'first_view', instructionId: INSTRUCTION, revision: 2, viewer: PATIENT, occurredAt: NOW,
+    };
+    const receipt: DeliveryFact = {
+      kind: 'acknowledgment', instructionId: INSTRUCTION, revision: 2, actor: PATIENT,
+      purpose: 'receipt', acknowledgedAt: NOW,
+    };
+    const facts = reduceFact(reduceFact(EMPTY_FACTS, firstView), receipt);
+    const replayedView: DeliveryFact = {
+      kind: 'first_view', instructionId: INSTRUCTION, revision: 2, viewer: PATIENT, occurredAt: LATER,
+    };
+    const replayedReceipt: DeliveryFact = {
+      kind: 'acknowledgment', instructionId: INSTRUCTION, revision: 2, actor: PATIENT,
+      purpose: 'receipt', acknowledgedAt: LATER,
+    };
+    expect(reduceFact(facts, replayedView)).toBe(facts);
+    expect(reduceFact(facts, replayedReceipt)).toBe(facts);
   });
 });
