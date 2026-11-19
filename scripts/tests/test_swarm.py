@@ -1,4 +1,5 @@
 import datetime
+import io
 import json
 import os
 import shutil
@@ -6,6 +7,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from contextlib import redirect_stderr
 from unittest import mock
 
 from helpers import ROOT, load
@@ -222,6 +224,21 @@ class PlanTests(unittest.TestCase):
     def test_scope_overlap_uses_path_prefixes(self):
         self.assertTrue(swarm.overlaps(["a/b/**"], ["a/b/c"]))
         self.assertFalse(swarm.overlaps(["a/b"], ["a/c"]))
+
+    def test_label_editing_jobs_have_issues_write(self):
+        import yaml
+        for name, job in (("swarm-integrator.yml", "integrate"), ("main-repair.yml", "validate")):
+            config = yaml.safe_load((ROOT / ".github/workflows" / name).read_text())
+            perms = config["jobs"][job]["permissions"]
+            self.assertEqual(perms.get("issues"), "write", f"{name} {job}")
+
+    def test_gh_failure_surfaces_stderr(self):
+        with mock.patch.object(swarm.subprocess, "run") as run:
+            run.return_value = subprocess.CompletedProcess([], 1, "", "permission denied")
+            stream = io.StringIO()
+            with redirect_stderr(stream), self.assertRaises(subprocess.CalledProcessError):
+                swarm.gh("pr", "edit", "30", "--add-label", "needs-fix")
+        self.assertIn("permission denied", stream.getvalue())
 
     def test_integrator_gate_is_the_full_check(self):
         text = (ROOT / ".github/workflows/swarm-integrator.yml").read_text()
