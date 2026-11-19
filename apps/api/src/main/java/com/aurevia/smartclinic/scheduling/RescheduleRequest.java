@@ -7,6 +7,7 @@ package com.aurevia.smartclinic.scheduling;
  * @param clinicianCode  replacement clinician resource code, or {@code null}
  * @param roomCode       replacement room resource code, or {@code null}
  * @param overrideReason recorded reason when the new slot is outside availability
+ * @return this record
  */
 public record RescheduleRequest(String startsAt, String clinicianCode, String roomCode,
                                 String overrideReason) {
