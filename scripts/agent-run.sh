@@ -180,7 +180,8 @@ cmd_publish() {
   local args=() body="$out/pr-body.md"
   {
     [[ -n "${ISSUE_NUMBER:-}" ]] && printf 'Refs #%s\n\n' "$ISSUE_NUMBER"
-    printf 'Agent run result: %s. scripts/check.sh: %s.\n\n' "$result" "$checks"
+    printf 'Agent run result: %s. Fast check (%s): %s. The integrator runs the full gate before merge.\n\n' \
+      "$result" "${CHECK_SCRIPT:-scripts/check.sh}" "$checks"
     cat .github/pull_request_template.md
   } > "$body"
   [[ "$checks" != passed || "$result" != ok ]] && args+=(--draft)
