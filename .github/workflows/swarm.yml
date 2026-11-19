@@ -16,9 +16,10 @@ on:
   push:
     branches: [main]
     paths: [TODO.md]
-  # Safety net: restarts the loop if it ever stalls. An idle wave costs about one minute.
+  # Safety net: one wave per hour at minute 7 if the event chain ever stalls.
+  # An idle plan job costs about one minute.
   schedule:
-    - cron: '7 */3 * * *'
+    - cron: '7 * * * *'
   # A successful prepared-image rebuild makes any wave skipped during the
   # rebuild eligible again, so no task is left unclaimed.
   workflow_run:

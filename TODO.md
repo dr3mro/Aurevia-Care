@@ -221,3 +221,29 @@ Raised by the dispatch-3 run-3 verification. Address in the next authorized chan
   - evidence: skill note verified by file read; `python3 -I scripts/gen-opencode.py` regenerated both profiles with no diff (skills are not in the generated config); `scripts/check.sh` and `check-pack.py` green. Evidence source: tool.
 - [x] IMP-02 · Pin the worker CLI and image: `ARG OPENCODE_VERSION=2.3.2` in `.github/agent-image/Dockerfile`; workflow dispatch default and fallback both `2.3.2`; publish step prints and uploads the resolved image digest. Closes OPS-CW-003-02 (base `:latest` tag still floats; digest is recorded on every build).
   - evidence: `scripts/tests/test_agent_image.py` 4/4 OK (red before the pin, green after); full `scripts/check.sh`, `quick-check.sh`, `docs.sh` exit 0; YAML inspected; workflow publishes `agent-image-published` digest artifact. The push rebuilt the image on `89d3ad2` (Agent image run 44478095775, check `build` success), so the pinned CLI and digest-recording step were exercised in CI. Evidence source: tool commands plus CI; no human or clinical evidence.
+
+- [x] S-PLAN-01 · One-week execution plan at one wave per hour: all 59 executable open tasks mapped into 7 waves below; swarm fallback cron changed from every 3 hours to hourly.
+  - evidence: programmatic coverage check (59 tasks, no duplicates, no unscheduled open task); `scripts/tests/test_swarm.py` hourly-cron guard red then green; 148 tooling tests OK; `check.sh`, `quick-check.sh`, `docs.sh`, `gen-opencode.py --check` exit 0. S-G0-04 remains blocked and unscheduled. Evidence source: executed tool commands; no human or clinical evidence.
+
+## One-week execution plan (1 wave per hour)
+
+Created 2026-11-19T08:55Z from the open entries above. Horizon: 7 days × 24 hours = 168 hourly wave slots. This plan uses 7 implementation waves; the remaining 161 hourly slots are buffer for `needs-fix` retries, fix PRs, gate re-runs and human approvals.
+
+Cadence and limits:
+
+- One wave is launched per hour at minute 7 (`swarm.yml` schedule `cron: '7 * * * *'`). Because the `agent-swarm` concurrency group queues (`cancel-in-progress: false`, `queue: max`), a wave starts when the previous one finishes.
+- Up to 10 workers per wave, one task per worker. Each task targets 50 minutes or less so a wave fits its hour; the 175-minute agent timeout is a hard cap, not a target.
+- A wave takes a task only after its `depends` are `[x]`; gate entries wait for their phase tasks to merge.
+- S-G0-04 is blocked (search, files, workers and exports surfaces do not exist yet) and is not scheduled.
+- Gate entries (S-G1-09, S-G2-11, S-G3-13, S-G4-07, S-G5-12) prepare evidence only. Product Owner, clinical and privacy acceptance are human decisions; a worker cannot satisfy them.
+- G5 production enablement additionally needs signed site configuration and real partner contracts. The swarm can only produce synthetic evidence.
+
+| Wave | Hour | Tasks (one per worker) | Gate / note |
+|---|---|---|---|
+| W1 | H+1 | `X-01`, `X-02`, `X-03`, `X-04`, `IMP-04`, `S-G0-06`, `S-G0-07`, `S-G0-08` | G0 identity and shared contracts; IMP-04 CI fix |
+| W2 | H+2 | `S-G1-02`, `S-G1-03`, `S-G1-04`, `S-G1-05`, `S-G1-06`, `S-G1-07`, `S-G1-08` | G1 clinic workflows and documentation |
+| W3 | H+3 | `S-G1-09`, `S-G2-01`, `S-G2-02`, `S-G2-03`, `S-G2-04`, `S-G2-05`, `S-G2-06`, `S-G2-07`, `S-G2-08` | G1 gate evidence, then G2 orders and exchange core |
+| W4 | H+4 | `S-G2-09`, `S-G2-10`, `S-G2-11`, `S-G3-01`, `S-G3-02`, `S-G3-03`, `S-G3-04`, `S-G3-05`, `S-G3-06`, `S-G3-07` | G2 lab, conformance and gate evidence; patient access begins |
+| W5 | H+5 | `S-G3-08`, `S-G3-09`, `S-G3-10`, `S-G3-11`, `S-G3-12`, `S-G3-13`, `S-G4-01`, `S-G4-02`, `S-G4-03`, `S-G4-04` | Patient/messaging completion and G3 gate; specialty intake begins |
+| W6 | H+6 | `S-G4-05`, `S-G4-06`, `S-G4-07`, `S-G5-01`, `S-G5-02`, `S-G5-03`, `S-G5-04`, `S-G5-05`, `S-G5-06`, `S-G5-07` | Finance, G4 gate and G0-to-G5 operational foundations |
+| W7 | H+7 | `S-G5-08`, `S-G5-09`, `S-G5-10`, `S-G5-11`, `S-G5-12` | Export, onboarding, localization, queues and final G5 gate |
