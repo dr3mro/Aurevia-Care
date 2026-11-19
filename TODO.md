@@ -591,6 +591,9 @@ Raised by the dispatch-3 run-3 verification. Address in the next authorized chan
 - [x] S-VERIFY-10WORKER-01 · Confirmed a full 10-worker wave runs end-to-end after restoring the default. Run `44521340515` (SHA `f3e3776`): `Plan the wave`, all 10 workers (3 fix + 7 story), `Publish results` and `Start the next wave` all `completed/success`. The 502 retry and migration-gap fix hold at scale.
   - evidence: `gh run view 44521340515 --json jobs` output above; no failures on any HEAD checks during the watch window. Evidence source: GitHub Actions run API; no human or clinical evidence.
 
+- [x] S-FIX-INTEGRATOR-RACE-01 · Integrator run `44530039145` failed after a 14-minute full gate: its single `HEAD:main` push was rejected because `[skip ci]` tracker commits advanced `main` meanwhile. `integrate_batch()` now retries the push up to 3 times with `fetch` + `rebase origin/main` + re-gate, aborting the rebase on conflict. `update_todo()` already had this retry.
+  - evidence: run 44530039145 job 135580706334 log shows `! [rejected] HEAD -> main (fetch first)` at `authed_git("push", "origin", "HEAD:main")`. New tests `test_integrate_batch_retries_when_main_advanced` and `test_integrate_batch_aborts_rebase_on_conflict` pass; 167 tooling tests OK; `check-docs.py`/`check-secrets.py`/`gen-opencode.py --check` green. Evidence source: GitHub Actions log plus executed tool commands; no human or clinical evidence.
+
 ## One-week execution plan (1 wave per hour)
 
 Created 2026-11-19T08:55Z from the open entries above. Horizon: 7 days × 24 hours = 168 hourly wave slots. This plan uses 7 implementation waves; the remaining 161 hourly slots are buffer for `needs-fix` retries, fix PRs, gate re-runs and human approvals.
