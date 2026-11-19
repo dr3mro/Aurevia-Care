@@ -14,7 +14,7 @@ This is the canonical index of all planned stories, grouped by delivery gate. `T
 Gate evidence: two tenants with identical local IDs remain isolated across API, search, files, workers and exports; revocation applies on the next access; concurrent connection and transaction tests pass.
 
 - [x] S-G0-01 — Tenant isolation foundation: membership-derived tenant context, forced RLS, non-owner runtime role, append-only audit (IAM-01, IAM-02, ARC-01, ARC-02, OPS-02). Evidence: `PROGRESS.md` G0-01 rows; 44 tests, JaCoCo 100%; green CI https://github.com/dr3mro/Aurevia-Care/actions/runs/44442227258 on SHA `f9bc461`; merged in `e1dc7cd`.
-- [ ] S-G0-02 — Staff lifecycle: invite and deactivate staff, immutable membership and role history, permission change on next protected request (IAM-02, IAM-01, OPS-02). Current story in `TODO.md`.
+- [x] S-G0-02 — Staff lifecycle: invite and deactivate staff, immutable membership and role history, permission change on next protected request (IAM-02, IAM-01, OPS-02). Evidence: `PROGRESS.md` S-G0-02 rows; 81 tests, JaCoCo 100%; V4 append-only history and folded current membership; local security and DB gates green, CI pending.
 - [ ] S-G0-03 — Tenant configuration, catalogs, broader audit and infrastructure foundations (ADM-01, OPS-02, OPS-06).
 - [ ] S-G0-04 — Isolation across search, files, workers and exports plus concurrent-connection and transaction tests (ARC-02).
 - [ ] S-G0-05 — Patient registration, identity confirmation and likely-duplicate warnings (IAM-03).
@@ -113,9 +113,10 @@ These are delivered inside the stories above, not separately scheduled.
 | Story | Verified evidence | Merge / CI |
 |---|---|---|
 | S-G0-01 | `PROGRESS.md` G0-01 rows; 44 tests, JaCoCo 100% on instruction/line/branch/method/class; `db/check.sh` policy assertions | CI https://github.com/dr3mro/Aurevia-Care/actions/runs/44442227258 on `f9bc461`; merged `e1dc7cd` |
+| S-G0-02 | `PROGRESS.md` S-G0-02 rows; 81 tests, JaCoCo 100%; `db/check.sh` append-only and fold assertions; `scripts/check.sh` and `scripts/docs.sh` green | Local commit and CI pending |
 
 Simulated review findings are evidence of review activity, not clinical or human pilot acceptance. Real-patient approval remains a G5 gate.
 
 ## Current position
 
-Only S-G0-01 is done. S-G0-02 is the next story. The staff-web and patient-mobile modules are still empty and are not started before G0 is complete.
+S-G0-01 and S-G0-02 are done locally; S-G0-03 is the next story. The staff-web and patient-mobile modules are still empty and are not started before G0 is complete.
