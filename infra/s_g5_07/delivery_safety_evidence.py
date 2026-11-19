@@ -38,7 +38,7 @@ DIGEST_PATTERN = re.compile(r"sha256:[0-9a-fA-F]{64}\Z")
 
 
 def _reject_constant(value):
-    """Reject non-finite JSON numbers so NaN cannot pass an equality check."""
+    """Reject NaN and Infinity literals at parse time."""
     raise ValueError("non-finite number: " + value)
 
 
@@ -260,6 +260,8 @@ def evaluate(artifact):
     _record(checks, "schema_version", artifact.get("schema_version") == SCHEMA_VERSION,
             "expected " + SCHEMA_VERSION)
     _record(checks, "kind", kind in KINDS, "kind must be " + " or ".join(KINDS))
+    _require_string(checks, "source", artifact.get("source"),
+                    "source declared", "source must be a non-blank string")
     source = str(artifact.get("source", "")).lower()
     if kind == "measured_deployment" and "synthetic" in source:
         _record(checks, "evidence_conflict", False,

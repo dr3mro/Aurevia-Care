@@ -48,7 +48,7 @@ returns 0/1/2. The gate then runs the two JSON fixtures and the real
   `FileNotFoundError: .../infra/s_g5_07/delivery_safety_evidence.py` at
   `SPEC.loader.exec_module(dse)`; `FAILED (errors=1)`, exit 1.
 - **GREEN** — same command after implementing the evaluator:
-  `Ran 56 tests ... OK`, exit 0.
+  `Ran 59 tests ... OK`, exit 0.
 - During red→green one test-contract mismatch was found and fixed: the
   approver-value cases expected a dedicated `production_access.approver` check
   while the module reports the combined `production_access.separation_of_duties`
@@ -60,11 +60,11 @@ returns 0/1/2. The gate then runs the two JSON fixtures and the real
 | Command | Result |
 |---|---|
 | `python3 -I -m unittest discover -s infra/s_g5_07/tests -q` (RED, before module) | exit 1, `FileNotFoundError` for the evaluator module |
-| `python3 -I -m unittest discover -s infra/s_g5_07/tests -q` (GREEN) | exit 0, **56 tests, 0 failures/errors** |
-| `bash infra/s_g5_07/check.sh` | exit 0; 56 tests OK; conforming fixture exit 0, violation fixture exit 1 as expected; real migration checker exit 0 |
-| `python3 -I infra/s_g5_07/delivery_safety_evidence.py infra/s_g5_07/fixtures/synthetic_evidence.json` | exit 0, `OPS-06 delivery safety: PASS`, 28 named checks all PASS, `final_evidence: False` (rehearsal) |
-| `python3 -I infra/s_g5_07/delivery_safety_evidence.py infra/s_g5_07/fixtures/violation_evidence.json` | exit 1, `FAIL`, 22 named failures out of 28 checks, including duplicate accounts, `secret_scan`, `verified`, `migrations.gate`, `rollout.strategy`, `audited`, `reversible_deployments` |
-| `python3 -m trace --count --coverdir /tmp/opencode/s_g5_07_cov2 infra/s_g5_07/tests/run_coverage.py` | exit 0, 56 tests OK; evaluator `.cover` has **230 executable lines, 0 uncovered** (100% line coverage); `coverage.py` is unavailable so stdlib `trace` is used and branch cases are enumerated in `docs/operations/s_g5_07/evidence-contract.md` |
+| `python3 -I -m unittest discover -s infra/s_g5_07/tests -q` (GREEN) | exit 0, **59 tests, 0 failures/errors** |
+| `bash infra/s_g5_07/check.sh` | exit 0; 59 tests OK; conforming fixture exit 0, violation fixture exit 1 as expected; real migration checker exit 0 |
+| `python3 -I infra/s_g5_07/delivery_safety_evidence.py infra/s_g5_07/fixtures/synthetic_evidence.json` | exit 0, `OPS-06 delivery safety: PASS`, 29 named checks all PASS, `final_evidence: False` (rehearsal) |
+| `python3 -I infra/s_g5_07/delivery_safety_evidence.py infra/s_g5_07/fixtures/violation_evidence.json` | exit 1, `FAIL`, 22 named failures out of 29 checks, including duplicate accounts, `secret_scan`, `verified`, `migrations.gate`, `rollout.strategy`, `audited`, `reversible_deployments` |
+| `python3 -m trace --count --coverdir /tmp/opencode/s_g5_07_cov3 infra/s_g5_07/tests/run_coverage.py` | exit 0, 59 tests OK; evaluator `.cover` has **232 executable lines, 0 uncovered** (100% line coverage); `coverage.py` is unavailable so stdlib `trace` is used and branch cases are enumerated in `docs/operations/s_g5_07/evidence-contract.md` |
 | Ad-hoc malformed-input sweep (16 shapes: `None`, list, int, string, `{}`, list-valued kind, dict-valued kind, non-object sections, unhashable list members in fixture/rollout/access) | all produced a complete verdict with all five report keys; no exception; `format_report` succeeded |
 | `python3 -I scripts/check-docs.py` | exit 0 after fixing one broken relative link in `evidence-contract.md` (`../../s_g5_05` → `../s_g5_05`) |
 | `python3 -I scripts/check-secrets.py` | exit 0, no credential or PHI-shaped string |
@@ -118,6 +118,33 @@ gates are the integrator's responsibility and were not run here.
 - D6: no CI/workflow or root script was wired (out of scope); the gate is
   self-contained and the integrator runs the repository-wide checks.
 - D7: V49 unused; no schema change.
+
+## Independent QA review disposition (simulated reviewer)
+
+An independent simulated QA review found **no blocking findings** and reported
+five non-blocking items, all handled in this follow-up commit:
+
+1. Coverage claim: I ran the exact documented `trace` command. The `__main__`
+   guard line is counted by `trace` and there are no `>>>>>>` markers; the totals
+   were 230/230 executable lines before the `source` check and **232/232** after
+   it. The docs report 232 with 0 uncovered; no exclusion was needed.
+2. `source` was not validated, so a `measured_deployment` with a blank or
+   non-string source could reach `final_evidence: true`. Added the `source`
+   check (literal non-blank string required for every artifact) with paired
+   tests, including a blank-source measured artifact that is never final.
+3. D4 wording implied the full script path was the artifact token; clarified
+   that the artifact carries the label `check-migrations --require-baseline`
+   while the canonical gate executes the real `python3 -I scripts/check-migrations.py
+   --require-baseline`.
+4. `test_fixture_text_contains_no_phi_or_credential_shapes` actually scanned the
+   policy manifest; renamed to `test_policy_text_...` and added a separate test
+   that scans both fixture files for credential/PHI shapes.
+5. Narrowed the `_reject_constant` docstring to "reject NaN and Infinity
+   literals".
+
+Counts after the fixes: **59 tests**, 29 named checks per artifact, conforming
+fixture 0 failures, violation fixture 22 failures; `check.sh`, `check-docs.py`,
+`check-secrets.py` and the trace run are all green again.
 
 ## Evidence provenance and missing evidence
 
