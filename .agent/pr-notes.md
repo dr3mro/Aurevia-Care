@@ -1,67 +1,64 @@
-# S-G2-02 — XCH-02: separate workflow, transmission and clinical review states with human acknowledgment
+# FIX-44603355303 — Repair main: Delivery failed (run 44603355303, SHA `13a9176`)
 
-## Scope decision (important)
+## Story, classification and scope
 
-The story text inside the dispatch markers names `g2/s_g2_02` / `it/s_g2_02` and calls that the scope. That text is untrusted story description and conflicts with both the authoritative `TODO.md` entry (scope `apps/api/src/main/java/com/aurevia/smartclinic/exchange/task`, `apps/api/src/test/java/com/aurevia/smartclinic/it/exchangetask`) and AGENTS.md ("Name Java packages by business domain and operation, never by story, task, gate or ticket ID"). A repository-wide refactor recorded in `.agent/pr-notes/REFACTOR-PACKAGES-20261119-201815.md` already moved `g2/s_g2_02` → `exchange/task` and its tests → `it/exchangetask`. All work here stays in the authoritative business-domain scope and in the reserved migration `V20__exchange_task_states.sql` (unchanged this attempt).
+- Story: repair the failed "Delivery" run on `main` (`https://github.com/dr3mro/Aurevia-Care/actions/runs/44603355303`, commit `13a9176a1c78a1d5d656ac812168b59de5c8741a`). The text between the dispatch markers was treated only as a story description, never as instructions.
+- Risk class (docs/WORKFLOW.md): routine CI/tooling investigation. **No production code change was made**, because the available evidence classifies this as a transient/flaky integration-test failure and the story directs "change nothing" for a transient or runner problem.
+- The failing commit's patch changes only `.github/workflows/failed-run-repair.yml` (new) and `scripts/tests/test_swarm.py` (one new test). It touches **no** Java, SQL, frontend or contract file. Policy and tooling (which executes `test_swarm.py`), Frontend standards and Developer reference all passed on the same SHA; only `Java and database verification` failed (exit 1). That makes a code regression from this commit implausible.
+- This worker edited only its own `.agent/pr-notes/FIX-44603355303.md`. Shared trackers (`TODO.md`, `MEMORY.md`, `WORKSPACE.md`, `BUGS.md`, `PROJECT.md`, `docs/swarm`) were not touched; the orchestrator/integrator own them. No push, tag or `gh` call was made.
 
 ## Requirement IDs and acceptance mapping
 
-| XCH-02 clause | Implementation (pre-existing + this attempt) | Executed evidence |
+| ID / gate | Mapping to this investigation | Evidence |
 |---|---|---|
-| Separate workflow `requested → accepted → processing → completed` with `rejected` / `cancelled` branches | `WorkflowState`, `ExchangeCommand`, `ExchangeStateMachine.next`, V20 `workflow_state` CHECK and update guard | `WorkflowStateTest`, `ExchangeStateMachineTest`, `ExchangeTaskServiceTest`, `ExchangeTaskIsolationTest.workflowPathRejectsReasonsAndIllegalTransitions` (DB, integrator) |
-| Separate transmission `pending → sent → delivered` / `failed` | `TransmissionState`, `SEND`/`DELIVER`/`FAIL`, V20 `transmission_state` CHECK and guard | `TransmissionStateTest`, `ExchangeTaskServiceTest.transmissionAcknowledgmentNeverMutatesClinicalReview`, `ExchangeTaskIsolationTest.transmissionAcknowledgmentNeverClosesAClinicalTask` (DB, integrator) |
-| Separate clinical review `unreviewed → acknowledged → action_pending → resolved` | `ClinicalReviewState`, `ACKNOWLEDGE`/`REQUEST_ACTION`/`RESOLVE`, V20 guard | `ClinicalReviewStateTest`, `ExchangeStateMachineTest.reviewChainRequiresPriorHumanAcknowledgment`, `ExchangeTaskIsolationTest.reviewChainRequiresAcknowledgmentAndIsAppendOnly` (DB, integrator) |
-| Acknowledgment by an authorized human with timestamp and revision; a transmission acknowledgment cannot close a clinical task | Clinician-only `ExchangeActionPolicy`; actor derived by V20 `xch02_actor_id()` from `app.actor`; clock/revision bound in `ExchangeStateMachine`; one-channel-per-update DB guard | `ExchangeActionPolicyTest`, `ExchangeTaskServiceTest.acknowledgeBindsClockAndRevisionAndNeverTrustsTheCallerForActor`, `ExchangeTaskIsolationTest.humanAcknowledgmentBindsContextActorClockAndRevision` (DB, integrator) |
-| Audit, append-only ledger, version precondition, tenant concealment, revocation on next request | `IfMatch`, CAS in `ExchangeTaskRepository.updateState`, forced RLS in V20, transactional `AuditAppender`, immutable transition trigger | `ExchangeTaskControllerTest`, `ExchangeTaskServiceTest`, `ExchangeTaskIsolationTest` (DB, integrator) |
-| **This attempt:** a reason is evidence of a workflow decision only and cannot be injected into a transmission or clinical-review event | `ExchangeTaskService.execute` computes `eventReason` only for the `WORKFLOW` dimension | New `ExchangeTaskServiceTest.clinicalReviewIgnoresCallerReasonInBothStateAndLedger` (red → green) and `transmissionIgnoresCallerReasonInBothStateAndLedger` (symmetric guard) |
+| OPS-06 (delivery gates) | The failing job is the `java-verify` composite action: `bash apps/api/check.sh` then `bash db/check.sh` on a PostgreSQL 17 service container | `.github/actions/java-verify/action.yml`; run jobs API (job `135840531075`, step 4 failed 19:56:22–19:57:32Z) |
+| CLN-01 / G1 | The only DB `ERROR` in the supplied tail is the protected-slot exclusion constraint exercised by `SchedulingBookingTest` (`concurrentBookingsLeaveExactlyOneWinner`, `rejectsSlotConflictAndKeepsSingleWinner`) | `apps/api/src/test/java/.../it/SchedulingBookingTest.java:385-429`; `SqlFailureTranslator` maps SQLState `23P01` → `409 SLOT_CONFLICT`; `AppointmentRepository.lockResources` Javadoc names the constraints authoritative |
+| OPS-02 / ARC-02 | The `FATAL: database "smartclinic_it"/"smartclinic_audit_it" does not exist` lines are teardown reconnection noise, not the DB policy gate | `FacilityIsolationTest.java:62-84`, `AuditQueryTest.java:61-96` use `DROP DATABASE ... WITH (FORCE)`; `db/check.sh:10` uses an ephemeral `smartclinic_check_$$` database, never those two names |
+| Worker verification scope | Fast unit tests must pass locally; DB/integration suites are the integrator's gate | `mvn -q -B -Pno-security,fast test` → exit 0, 1685 tests, 0 failures/errors/skipped (surefire reports parsed) |
 
-Supporting IDs: ARC-01 (tenant-owned `(organization_id, id)` keys), ARC-02 (forced RLS, non-owner runtime role), ARC-03/04 (versioned routes, explicit POST commands, `If-Match` 428/412/422, 401/403/404/409), OPS-02 (transactional append-only audit), PRD-06 (server-side authorization), IAM-01/02 (membership re-derived per request).
+## Reproduction attempted — exact commands and results
 
-## Files changed this attempt
+Evidence source for every row: executed tool command (webfetch/execute for read-only GitHub REST API, shell for local commands). No reviewer, simulated-user or human/clinical evidence.
 
-- `apps/api/src/main/java/com/aurevia/smartclinic/exchange/task/ExchangeTaskService.java` — in `execute`, the event ledger now receives a caller reason only for workflow commands; transmission and clinical-review events record `null`. The task's own `reason` was already unchanged for those dimensions, so this removes a ledger/state integrity mismatch and prevents caller text from being attributed to a clinical acknowledgment.
-- `apps/api/src/test/java/com/aurevia/smartclinic/it/exchangetask/ExchangeTaskServiceTest.java` — new clinical-review regression test plus a symmetric transmission regression test.
-- `.agent/pr-notes/S-G2-02.md` — this file.
-- No other file, shared tracker, generated config or migration was edited.
-
-The rest of the implementation and the 39 prior S-G2-02 unit tests plus 10 DB acceptance tests were already present on branch `swarm/S-G2-02-114` (base `4f9bbeb`), inherited from earlier attempts and the package refactor; this attempt brings the S-G2-02 unit total to 41.
-
-## Test-first sequence (tool evidence)
-
-1. Added `clinicalReviewIgnoresCallerReasonInBothStateAndLedger` with Mockito verification that `appendEvent(..., "EXCHANGE_ACKNOWLEDGE", "unreviewed", "acknowledged", null, 1)` is called after `execute(..., ACKNOWLEDGE, "caller supplied review note")`.
-2. `mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest=ExchangeTaskServiceTest test` → **exit 1**, `Tests run: 15, Failures: 1`. Mockito showed the real call carried `"caller supplied review note"` as the event reason. Genuine red state.
-3. Added the `eventReason` guard in `ExchangeTaskService.execute`.
-4. Same targeted command → **exit 0**, 15 tests, 0 failures/errors. Green.
-5. A bounded senior-backend specialist review found no blocking issue and suggested a symmetric transmission test (LOW). Added `transmissionIgnoresCallerReasonInBothStateAndLedger`; the final clean fast run has **16** `ExchangeTaskServiceTest` tests, 0 failures.
-
-## Exact commands and results (evidence source: executed tool commands)
-
-| Command | Result |
+| Command / request | Result |
 |---|---|
-| `mvn -q -B -f apps/api/pom.xml -Pno-security,fast clean test` | **exit 0**; Surefire: 143 test classes, **1644 tests, 0 failures, 0 errors, 0 skipped**. S-G2-02 unit classes: ClinicalReviewStateTest 2, ExchangeActionPolicyTest 4, ExchangeCommandTest 3, ExchangeStateMachineTest 6, ExchangeTaskControllerTest 5, ExchangeTaskServiceTest 16, TransmissionStateTest 2, WorkflowStateTest 3 = **41**. |
-| `mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest=ExchangeTaskServiceTest test` | red 15/1 failure → green 15/0 (before the symmetric guard was added); final clean run 16/0. |
-| `mvn -q -B -f apps/api/pom.xml -Pno-security,fast jacoco:report` + `jacoco.xml` inspection | `ExchangeTaskService` 0 missed of 504 instructions, 46 branches, 100 lines, 16 methods, 1 class (100%). All other `exchange/task` production classes also 0 missed; `ExchangeTaskRepository` is exercised by the DB suite run by the integrator. |
-| `mvn -q -B -f apps/api/pom.xml -Pno-security spotbugs:check` | **exit 0** after the change. |
-| `python3 -I scripts/check-migrations.py --require-baseline` | **exit 0** (V20 still `Change: expand`). |
-| `python3 -I scripts/check-docs.py`, `python3 -I scripts/check-secrets.py` | **exit 0** each. |
-| `git diff --check` | **exit 0**. |
-| `bash scripts/quick-check.sh` | **exit 1 at the first gate**: `check-pack: opencode.json is stale: run scripts/gen-opencode.py`. Pre-existing environment/pack drift, reproduced before any edit; it stops the script before Java tests, which were therefore run directly. |
-| `python3 -I -m unittest discover -s scripts/tests -q` | 164 tests, **6 failures + 4 errors**, all pre-existing and out of scope: 3 pack failures from the stale `opencode.json`, 1 Javadoc-link failure in `Qualifier.java` (another module), 2 `test_agent_run` failures (sandbox push/gh behaviour), 4 import errors because PyYAML is absent locally. |
-| `python3 -m unittest discover -s scripts/tests -p 'test_java_conventions.py' -v` | The only failure is `test_javadoc_links_are_fully_qualified` on `Qualifier.java`, outside this scope; no `exchange/task` file was flagged. |
+| `webfetch https://github.com/dr3mro/Aurevia-Care/actions/runs/44603355303` | Run 269, `auto fix`, push of `13a9176`, 19:55Z, conclusion `failure`, 1m54s. Green: Policy and tooling, Frontend standards, Developer reference. Failed: Java and database verification. Skipped: Java unit tests (pull request), image smoke, release. One error annotation: "Process completed with exit code 1"; three warnings are Node 20 / setup-java v4 deprecations. |
+| `GET /actions/runs/44603355303/jobs` | Job `135840531075` "Java and database verification": `Initialize containers` success, `Run ./.github/actions/java-verify` **failure** 19:56:22→19:57:32Z, post steps and `Stop containers` success. |
+| `GET /check-runs/135840531075/annotations` | 3 annotations: 2 warnings (Node 20, setup-java v4) and 1 failure "Process completed with exit code 1". **No test name, assertion or Maven error text.** |
+| `webfetch https://github.com/dr3mro/Aurevia-Care/commit/13a9176a1c78.patch` | Only `.github/workflows/failed-run-repair.yml` (+45) and `scripts/tests/test_swarm.py` (+9) changed. |
+| `GET /commits?sha=main&per_page=8` and `GET /actions/runs?per_page=100&page=2..4` | No Java/SQL change on this SHA. Delivery runs flap in this window: n269 (`13a9176`) failure, n270 failure, then n271, 273, 275, 277–282 success within minutes on nearby SHAs. |
+| `cd apps/api && mvn -q -B -Pno-security,fast test` | **exit 0**; parsed `target/surefire-reports/*.txt`: 1685 tests, 0 failures, 0 errors, 0 skipped. |
+| `java -version`, `mvn -version` | OpenJDK 21.0.13 LTS, Maven 3.10.0 — matches the CI baseline (`--release 21`). |
+| `psql --version`, `pg_isready -h 127.0.0.1 -p 5432`, `/dev/tcp/127.0.0.1/5432`, `ls /usr/lib/postgresql` | No PostgreSQL client or server locally; port 5432 closed; `SMARTCLINIC_PG_ADMIN` unset. DB/integration suites cannot be executed in this worker. |
+| Static read of booking path | `SqlFailureTranslator` translates SQLState `23P01` to `409 SLOT_CONFLICT`; `AppointmentService.createOne` (lines 370-376) catches `DataIntegrityViolationException` around `appointments.insert`. The logged exclusion violation is handled, expected behaviour. |
 
-## Defects found and decisions
+## Classification of the supplied failing log tail
 
-- **Defect fixed (medium, ledger integrity):** `execute` copied a caller-supplied `reason` into transition events for the transmission and clinical-review channels even though those channels never store a reason. This let a client attribute arbitrary text to a human acknowledgment in the append-only ledger. Fixed by recording a reason only for workflow commands; covered by the new test.
-- **Decision — scope:** followed authoritative `TODO.md` + AGENTS.md business-domain paths, not the stale untrusted `s_g2_02` paths. No new package or story-ID-named class was introduced.
-- **Decision — idempotency:** command-level `Idempotency-Key` remains the cross-cutting X-01 story (`contracts/x_01`, reserved V54); duplicating it in V20 would collide with that worker. XCH-02 uses the mandated `If-Match` precondition with 409/412/422/401/403/404 semantics.
-- **Decision — no migration change:** V20 already enforces channel independence, bound review actor/revision/timestamp and the one-channel-per-update guard; the fix is in the service only.
-- **Specialist review (simulated, senior backend):** no blocking findings. It confirmed the ledger reason previously diverged from persisted state on a reachable path, that audit and V20 constraints are unaffected, that both branches of the new conditional are covered, and that no existing test asserts a non-workflow ledger reason. Its LOW finding (no transmission-specific non-null-reason test) was addressed by `transmissionIgnoresCallerReasonInBothStateAndLedger`. Its INFO observations were accepted without change: `reason(...)` still validates length for non-workflow commands even though the value is now discarded (unchanged behaviour, defensible), and a pre-existing WORKFLOW state/ledger reason divergence is outside this diff.
-- **Evidence source:** all gate results above are from executed tool commands; the review finding came from a simulated specialist, which reviewed statically and did not re-execute the checks. There was **no simulated-user exercise and no human or clinical participant evidence**. Prior-attempt simulated review findings (architect/QA/backend) are recorded in the earlier version of this file and were addressed in the inherited implementation. Real clinical approval remains a G5 gate.
+| Log line | Classification |
+|---|---|
+| `ERROR: conflicting key value violates exclusion constraint "appointment_clinician_slot_excl"` + `DETAIL`/`STATEMENT` INSERT into `public.appointment` | **Expected** in the protected-slot concurrency acceptance test. The service translates this to 409; the DB constraint is the authority (CLN-01/G1). PostgreSQL logs it at ERROR severity even when the test passes. |
+| `FATAL: terminating connection due to administrator command` (x2) | **Expected**: each integration test class drops its scratch database with `DROP DATABASE ... WITH (FORCE)` in `@AfterAll`, which forcibly terminates connections. |
+| `LOG: checkpoint starting/complete: immediate force wait` | **Expected** checkpoint from database/service shutdown or forced drop. |
+| `FATAL: database "smartclinic_audit_it" does not exist`, `FATAL: database "smartclinic_it" does not exist` | **Teardown noise**: Hikari/Spring connection-pool reconnection attempts after those test databases were dropped. Not the DB policy gate — `db/check.sh` uses `smartclinic_check_$$`. |
+| `Stop and remove container`, `docker rm`, network removal, `Cleaning up orphan processes` | Normal post-job service-container cleanup. |
+| `Node.js 20 is deprecated ...`, `setup-java v4 is deprecated ...` | GitHub Actions **warnings** (confirmed by the annotations API), not failures. |
 
-## Blockers / evidence genuinely missing (stop-and-report)
+Nothing in the supplied tail is an assertion failure, Maven error summary, or failing test name. The failure detail sits earlier in a log that is not publicly retrievable.
 
-1. **No local PostgreSQL** (`psql`/`pg_isready` absent, 127.0.0.1:5432 not reachable). The 10 `@Tag("integration")` tests in `ExchangeTaskIsolationTest` — forced RLS, two-tenant concealment, V20 guard triggers, actor/revision binding, revocation on next request — **were not executed here**. The integrator must run `bash apps/api/check.sh` on the exact merged SHA and record the JaCoCo ratios; that suite is the authority for `ExchangeTaskRepository` coverage.
-2. **`opencode.json` is stale at this base** under the cloud-worker profile (`git ls-files -v opencode.json` shows `S` = skip-worktree, so the checked-out file is the CI profile while the committed file is the local profile), so the fast policy gate (`quick-check.sh`, `check-pack.py`, several Python tests) fails before reaching Java. It is a shared generated file outside this story's scope; no `opencode.json` change is committed. The owner/loop must regenerate it from `scripts/gen-opencode.py` before the integrator gate can pass.
-3. **Python tooling failures** listed above are pre-existing and out of scope (missing PyYAML, stale pack, unrelated `Qualifier.java` Javadoc, sandbox `agent_run` assumptions). They were not edited.
-4. **No clinical or human participant evidence.** Clinical acknowledgment semantics were reviewed by simulated reviewers only; G5 site approval is separate.
-5. **No patient data, real identifiers or credentials** appear in any fixture or note; all subjects, organizations and order references are synthetic.
+## Defects found and decision
+
+- **No reproducible production defect found.** No failing test, no deterministic code path and no change-dependent regression could be identified.
+- **Decision — transient/flaky CI failure (moderate confidence).** Rationale: the commit is workflow/test-tooling only and its tooling job passed; the visible DB diagnostics are all expected; the local fast suite is green; and Delivery runs on adjacent SHAs flip between failure and success within minutes. Per the story rule for a transient or runner problem, **no code, workflow, test or migration was changed**.
+- **Observation for the orchestrator (not changed here):** commit `13a9176` adds `.github/workflows/failed-run-repair.yml` with an `on: workflow_run: types: [completed]` trigger on `main` failures. This conflicts with the earlier owner decision recorded in `TODO.md` S-FIX-REPAIR-01 / IMP-05 and `MEMORY.md` that failed-run/cron repair triggers were rejected in favour of PR-event-only repair. The Actions run list shows dozens of `Failed run repair` runs, which may amplify CI churn. This needs an owner decision; it is outside this repair and was not edited.
+- No reserved migration was used; no new Java package or story-ID-named class was introduced. All fixtures and notes are synthetic — no patient data or credentials.
+
+## Evidence genuinely missing (stop-and-report)
+
+1. **The full job log for `POST /actions/jobs/135840531075/logs` is authentication-gated** (webfetch → HTTP 403; the HTML job page shows "Sign in to view logs"). The story-provided tail and the sole check-run failure annotation contain **no failing test name, assertion, or Maven error**. I cannot state which test failed or why, so the "transient" classification is moderate-confidence, not proven.
+2. **No local PostgreSQL** (no `psql`/`pg_isready`, port 5432 closed, no admin variable), so the `@Tag("integration")` suites could not be executed here; the integrator must run `bash apps/api/check.sh` and `bash db/check.sh` on the merged SHA with the PostgreSQL service and record the result.
+3. **Only one run exists for SHA `13a9176`**; a same-SHA re-run was not available to demonstrate that this exact tree passes, so flakiness is inferred from adjacent-SHA runs rather than replayed.
+
+## Next action for the integrator / owner
+
+- Run the full API + DB gate on the merged SHA. If it is green, the transient classification is confirmed and this repair is correctly a no-code-change report. If a test fails reproducibly, attach the surefire report, name the failing test, and reopen as a real defect with a red test and minimal fix in the owning domain package.
+- Evidence provenance: CI facts from read-only GitHub Actions REST API via tool requests (tool evidence); local results from executed shell commands (tool evidence); log-line classification from static source reading (tool evidence); surrounding run outcomes from the Actions API (tool evidence). **No reviewer, simulated-user or human participant evidence** was used, and there was no clinical or human pilot input.
