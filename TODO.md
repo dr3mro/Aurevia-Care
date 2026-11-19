@@ -236,6 +236,9 @@ Raised by the dispatch-3 run-3 verification. Address in the next authorized chan
 - [x] S-FIX-INTEGRATOR-01 · Run the integrator only for successful swarm waves. Failed/cancelled waves publish no PR, but `workflow_run: completed` still triggered three runs per batch. Added a `pick` job guard plus regression test.
   - evidence: `gh run list --workflow=swarm-integrator.yml` showed two failure-triggered runs (`44496897170`, `44496943529`) and one success-triggered run (`44496999654`) within 41 seconds. Guards red then green: 81 swarm tests, 155 total tooling tests OK; all 8 workflow YAMLs parse. Evidence source: GitHub run API plus executed tool commands; no human or clinical evidence.
 
+- [x] S-FIX-FRONTEND-01 · Root frontend gate failed: `tsc` lacked Node types for a staff-web test using `node:fs`, and root `vitest` ran app tests in Node instead of the module's jsdom setup. Added `@types/node` to root tooling, enabled it in `tsconfig.json`, and scoped root `vitest` to `frontend/` tooling tests only.
+  - evidence: CI log showed TS2307 `node:fs`, TS7006 implicit `any`, then 21 jsdom `document is not defined` failures. `bash scripts/frontend-check.sh` exit 0 after fix (root typecheck/lint/format/test green, both module gates green). Evidence source: CI log plus executed tool commands; no human or clinical evidence.
+
 ## One-week execution plan (1 wave per hour)
 
 Created 2026-11-19T08:55Z from the open entries above. Horizon: 7 days × 24 hours = 168 hourly wave slots. This plan uses 7 implementation waves; the remaining 161 hourly slots are buffer for `needs-fix` retries, fix PRs, gate re-runs and human approvals.
