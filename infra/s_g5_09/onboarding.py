@@ -141,6 +141,7 @@ def _check_dataset(manifest, checks):
     if dataset is None:
         _check(checks, "dataset", False, "dataset must be an object")
         _check(checks, "dataset.records", False, "records unavailable")
+        _check(checks, "dataset.source_ids", False, "source ids unavailable")
         return []
     _check(checks, "dataset", True, "dataset is an object")
     records = dataset.get("records")
@@ -148,9 +149,18 @@ def _check_dataset(manifest, checks):
              and all(_record_shape_ok(record) for record in records))
     _check(checks, "dataset.records", valid,
            "records must be a non-empty list of well-formed records")
-    if isinstance(records, list):
-        return [record for record in records if isinstance(record, dict)]
-    return []
+    dict_records = ([record for record in records if isinstance(record, dict)]
+                    if isinstance(records, list) else [])
+    ids = [record.get("source_id") for record in dict_records]
+    # A source id is the stable handle a controlled batch refers to. Duplicates
+    # would let the batch coverage fold silently drop a record, so require each
+    # id to be a non-blank string unique within the dataset. Guard the set()
+    # with the type check so a malformed id fails closed instead of raising.
+    ids_ok = (all(_nonempty_string(identifier) for identifier in ids)
+              and len(set(ids)) == len(ids))
+    _check(checks, "dataset.source_ids", ids_ok,
+           "source ids must be non-blank strings unique within the dataset")
+    return dict_records
 
 
 def _check_mapping(manifest, checks):

@@ -32,7 +32,7 @@ SCHEMA_VERSION = "1.0"
 KINDS = ("synthetic_rehearsal", "measured_operation")
 CHECKSUM = re.compile(r"\A[0-9a-f]{64}\Z")
 EMAIL = re.compile(r"[\w.+-]+@[\w-]+\.[\w.]+")
-SSN = re.compile(r"\b\d{3}-\d{2}-\d{4}\b")
+SSN = re.compile(r"(?<!\d)\d{3}-\d{2}-\d{4}(?!\d)")
 REQUIRED_MANIFEST_STRINGS = ("schema_version", "policy_version",
                              "organization", "exported_at")
 DOCUMENT_AUTHORIZATIONS = ("release_policy", "record_access_request",
@@ -49,8 +49,13 @@ def _positive_int(value):
 
 
 def _nonempty_str(value):
-    """Return true for a non-blank string."""
-    return isinstance(value, str) and bool(value.strip())
+    """Return true for a canonical, non-blank string.
+
+    Surrounding whitespace is rejected rather than trimmed: an identifier like
+    ``" rec-1 "`` is not a valid scope and must not slip past scope matching.
+    """
+    return (isinstance(value, str) and bool(value.strip())
+            and value == value.strip())
 
 
 def _valid_checksum(value):
@@ -111,14 +116,22 @@ def _valid_authorizations(record):
 
 
 def _valid_audit(record):
-    """Return true when a record carries a well-formed, ordered audit history."""
+    """Return true for a well-formed audit history with strictly increasing seq.
+
+    Audit is append-only: a duplicate or out-of-order sequence defeats tamper
+    evidence, so the sequence numbers must ascend without gaps in the ordering.
+    """
     audit = record.get("audit") if isinstance(record, dict) else None
-    return (isinstance(audit, list) and bool(audit)
-            and all(isinstance(entry, dict)
-                    and _positive_int(entry.get("seq"))
-                    and _nonempty_str(entry.get("action"))
-                    and _nonempty_str(entry.get("outcome"))
-                    for entry in audit))
+    if not (isinstance(audit, list) and bool(audit)):
+        return False
+    if not all(isinstance(entry, dict)
+               and _positive_int(entry.get("seq"))
+               and _nonempty_str(entry.get("action"))
+               and _nonempty_str(entry.get("outcome"))
+               for entry in audit):
+        return False
+    seqs = [entry["seq"] for entry in audit]
+    return all(left < right for left, right in zip(seqs, seqs[1:]))
 
 
 def _check_manifest(manifest, org, checks):
@@ -186,14 +199,28 @@ def _check_export(export, org, checks):
             "every record needs a well-formed audit history")
 
 
+def _valid_hold_lift(hold):
+    """Return true when an inactive hold carries an authorized, reasoned lift.
+
+    A hold cannot simply be switched off: lifting it requires a named actor,
+    time and reason, so the artifact records who released held evidence.
+    """
+    return (isinstance(hold, dict)
+            and hold.get("active") is False
+            and _nonempty_str(hold.get("lifted_by"))
+            and _nonempty_str(hold.get("lifted_at"))
+            and _nonempty_str(hold.get("lift_reason")))
+
+
 def _valid_hold(hold):
-    """Return true for an identified, reasoned legal hold with an actor."""
+    """Return true for an identified, reasoned hold with an actor and a valid lift."""
     return (isinstance(hold, dict)
             and _nonempty_str(hold.get("id"))
             and _nonempty_str(hold.get("reason"))
             and _nonempty_str(hold.get("scope"))
             and _nonempty_str(hold.get("placed_by"))
-            and isinstance(hold.get("active"), bool))
+            and isinstance(hold.get("active"), bool)
+            and (hold.get("active") is True or _valid_hold_lift(hold)))
 
 
 def _valid_deletion(deletion):
@@ -229,15 +256,26 @@ def _scope_covers(hold_scope, target):
     descendant separated by ``/``. Blank or non-string values match nothing, so
     callers still fail closed through their own entry checks.
     """
-    if not _nonempty_str(hold_scope) or not _nonempty_str(target):
+    # Matching strips whitespace even though entry validation rejects padding:
+    # a padded identifier must fail structurally AND stay under its hold.
+    if not isinstance(hold_scope, str) or not isinstance(target, str):
         return False
-    return (hold_scope == "*" or hold_scope == target
-            or target.startswith(hold_scope.rstrip("/") + "/"))
+    scope, target_id = hold_scope.strip(), target.strip()
+    if not scope or not target_id:
+        return False
+    return (scope == "*" or scope == target_id
+            or target_id.startswith(scope.rstrip("/") + "/"))
 
 
 def _covered(target, held):
-    """Return true when any active hold scope covers the target."""
-    return any(_scope_covers(scope, target) for scope in held)
+    """Return true when any effective hold scope overlaps the target.
+
+    Coverage is bidirectional: a hold on a descendant still blocks expiring an
+    ancestor backup or deleting a parent scope, because those actions can
+    destroy the held data even though the scopes are not identical.
+    """
+    return any(_scope_covers(scope, target) or _scope_covers(target, scope)
+               for scope in held)
 
 
 def _check_retention(retention, checks):
@@ -257,8 +295,11 @@ def _check_retention(retention, checks):
     _record(checks, "retention.legal_hold_entries",
             holds_ok and all(_valid_hold(hold) for hold in hold_list),
             "every legal hold needs id, reason, scope, actor and active flag")
+    # An inactive hold without a valid, authorized lift still covers its scope:
+    # a crafted artifact must not release held data by flipping "active" to false.
     held = {hold.get("scope") for hold in hold_list
-            if isinstance(hold, dict) and hold.get("active") is True
+            if isinstance(hold, dict)
+            and (hold.get("active") is True or not _valid_hold_lift(hold))
             and _nonempty_str(hold.get("scope"))}
 
     deletions = retention.get("deletions")
@@ -290,9 +331,10 @@ def _check_retention(retention, checks):
     _record(checks, "retention.backup_hold_respected",
             holds_ok and backups_ok
             and all(isinstance(backup, dict)
+                    and not _covered(backup.get("backup_set"), held)
                     and not _covered(backup.get("scope"), held)
                     for backup in backup_list),
-            "no scope under an active legal hold may have its backup expired")
+            "no backup set or scope under an effective legal hold may be expired")
 
 
 def _check_offboarding(offboarding, org, checks):
@@ -385,14 +427,20 @@ def evaluate(artifact):
     _record(checks, "organization", _nonempty_str(org),
             "organization must be a non-blank string")
     kind = artifact.get("kind")
+    source = artifact.get("source")
     _record(checks, "schema_version",
             artifact.get("schema_version") == SCHEMA_VERSION,
             f"expected {SCHEMA_VERSION}")
     _record(checks, "kind", kind in KINDS,
             "kind must be " + " or ".join(KINDS))
+    # An artifact without a named source cannot claim a measured run, and a
+    # measured run cannot name a synthetic source. This is a best-effort
+    # declaration check, not independent proof that the run occurred.
+    _record(checks, "evidence.source", _nonempty_str(source),
+            "every evidence artifact must name a non-blank source")
     _record(checks, "evidence_conflict",
             not (kind == "measured_operation"
-                 and "synthetic" in str(artifact.get("source", "")).lower()),
+                 and "synthetic" in str(source).lower()),
             "a measured operation cannot name a synthetic source")
     _check_export(artifact.get("export"), org if _nonempty_str(org) else None, checks)
     _check_retention(artifact.get("retention"), checks)

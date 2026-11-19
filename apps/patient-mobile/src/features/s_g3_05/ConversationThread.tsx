@@ -9,7 +9,7 @@ import { activeLayoutDirection } from './layout';
 export interface ConversationThreadProps {
   /** Conversation and its ordered messages. */
   readonly conversation: Conversation;
-  /** Called with the durable message id and draft text when the patient sends. */
+  /** Called with the conversation id and trimmed draft text for a non-empty reply. */
   readonly onSend: (conversationId: string, body: string) => void;
 }
 
@@ -25,19 +25,32 @@ export function ConversationThread({ conversation, onSend }: ConversationThreadP
   const [draft, setDraft] = useState('');
   const direction = activeLayoutDirection();
   const editable = canReply(conversation);
+  const canSend = draft.trim().length > 0;
+  // A disabled Pressable never fires onPress; the domain also rejects a blank body.
+  const sendReply = () => onSend(conversation.id, draft.trim());
   return (
     <View accessibilityLabel="conversation thread" style={[styles.container, { direction }]}>
       <Text accessibilityLabel={`unit ${conversation.unitName}`}>{conversation.unitName}</Text>
       <Text accessibilityLabel={`state ${conversation.state}`}>{conversation.state}</Text>
       {conversation.messages.map(message => (
-        <Text key={message.id} accessibilityLabel={`message ${message.sequence} from ${message.senderRole}`}>
+        <Text
+          key={message.id}
+          accessibilityRole="text"
+          accessibilityLabel={`${message.senderRole} said: ${message.body}`}
+        >
           {message.body}
         </Text>
       ))}
       {editable ? (
         <View accessibilityLabel="reply composer">
           <TextInput accessibilityLabel="reply input" value={draft} onChangeText={setDraft} />
-          <Pressable accessibilityLabel="send reply" onPress={() => onSend(conversation.id, draft)}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="send reply"
+            accessibilityState={{ disabled: !canSend }}
+            disabled={!canSend}
+            onPress={sendReply}
+          >
             <Text>Send</Text>
           </Pressable>
         </View>
