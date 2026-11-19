@@ -53,15 +53,14 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Set up Java once for the whole batch
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '21'
           cache: maven
-      # One job for the batch, so agent-written code is already merged locally;
-      # the gate itself holds no GitHub token.
-      # The trusted command retains the token for guard, merge and finalize, and
-      # strips it from the gate subprocess, so agent-written code never sees it.
+      # One job for the batch. The trusted command keeps GH_TOKEN for guard,
+      # merge and finalize, and strips it from the gate subprocess so agent-written
+      # code never sees a token. Heavy checks run later on main in heavy-check.yml.
       - name: Merge each PR, gate, then push once
         env:
           QUEUE: ${{ needs.pick.outputs.queue }}

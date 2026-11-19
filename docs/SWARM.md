@@ -20,12 +20,14 @@ Up to 10 OpenCode workers run in parallel on GitHub-hosted runners. An orchestra
 
 ## Prepared images
 
-`agent-image.yml` builds a base image once (OpenCode, Git, gh, JDK 21, Maven, the project's Maven dependencies). `swarm-images.yml` adds one small layer per slot, `ghcr.io/<owner>/<repo>-agent-<n>`, that bakes that slot's OpenCode model and config from `.github/swarm/slots.json`. Each slot uses its own free account through the secret `OPENCODE_API_KEY_<n>`. Credentials are never baked into an image. Edit `slots.json` to give a slot a different model or extra OpenCode settings, and the image rebuilds.
+`agent-image.yml` builds a base image once (OpenCode V2 CLI, Git, gh, JDK 21, Maven, the project's Maven dependencies). `swarm-images.yml` adds one small layer per slot, `ghcr.io/<owner>/<repo>-agent-<n>`, that bakes that slot's OpenCode model and config from `.github/swarm/slots.json`. Each slot uses its own free account through the secret `OPENCODE_API_KEY_<n>`. Credentials are never baked into an image. Edit `slots.json` to give a slot a different model or extra OpenCode settings, and the image rebuilds.
+
+**Reusable build, never per-task.** Images are built only when their own inputs change (the agent Dockerfile, `slots.json`, the image workflows, or `apps/api/pom.xml` for the warmed Maven cache), on the monthly refresh, or by manual dispatch. `swarm.yml` contains no build step: a worker only pulls its slot's `:latest` image, so running N tasks does not rebuild anything. Because a slot image layers on the base `:latest` tag, `swarm.yml` checks image health before planning a wave: while `agent-image` or `swarm-images` is running, or the last slot build is not green, it starts no workers (avoiding a stale-image race such as a V1 CLI after the base moved to V2). A successful `Swarm slot images` run re-triggers `swarm.yml`, so a wave skipped during a rebuild still picks up its task. To verify a CLI change reached workers, rebuild the base image, wait for slot images, then start a wave.
 
 ## Setup
 
 1. Push the branch, merge it, then run **Agent image** once. **Swarm slot images** follows automatically.
-2. For each slot you use, save the repository secret `OPENCODE_API_KEY_<n>` from that slot's own OpenCode account. A slot with no secret fails fast and its task stays `todo`.
+2. For each slot you use, save the repository secret `OPENCODE_API_KEY_<n>` from that slot's own OpenCode account. If a slot-specific secret is absent, the worker falls back to `OPENCODE_API_KEY`; if neither secret exists, the task stays `todo`.
 3. Settings, Actions, General: allow Actions to create pull requests.
 4. `main` must allow the integrator to push. Either exempt the integrator from the branch rule, or save a fine-grained token with contents, pull requests and actions write as the secret `SWARM_TOKEN`. A `SWARM_TOKEN` also lets pull requests and merges trigger the Delivery workflow and the next wave.
 5. Edit CLOUDWORKERS.md and push to `main`, or run **Agent swarm** manually.

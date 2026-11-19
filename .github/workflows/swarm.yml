@@ -16,6 +16,12 @@ on:
   push:
     branches: [main]
     paths: [CLOUDWORKERS.md]
+  # A successful prepared-image rebuild makes any wave skipped during the
+  # rebuild eligible again, so no task is left unclaimed.
+  workflow_run:
+    workflows: [Swarm slot images]
+    types: [completed]
+    branches: [main]
 permissions:
   contents: read
 # Waves queue: one wave plans and starts at a time so a task is never started twice.
@@ -25,6 +31,7 @@ concurrency:
 jobs:
   plan:
     name: Plan the wave
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -51,13 +58,42 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 -I scripts/swarm.py budget-gate
+      # The prepared images are built once by agent-image.yml / swarm-images.yml
+      # and reused by every worker. Never start a wave while they are rebuilding
+      # or not green: a worker would pull a stale image (for example V1 OpenCode
+      # after the base image moved to V2) and fail before doing any work.
+      - id: images
+        if: steps.budget.outputs.start == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          latest() { gh run list --workflow "$1" --limit 1 --json status,conclusion -q ".[0].$2"; }
+          base_status=$(latest agent-image.yml status)
+          slot_status=$(latest swarm-images.yml status)
+          slot_conclusion=$(latest swarm-images.yml conclusion)
+          ready=true
+          if [[ "$base_status" == in_progress || "$base_status" == queued \
+             || "$slot_status" == in_progress || "$slot_status" == queued \
+             || "$slot_conclusion" != success ]]; then
+            ready=false
+          fi
+          echo "Prepared images not ready (base=$base_status, slot=$slot_status/$slot_conclusion)" >&2
+          echo "ready=$ready" >> "$GITHUB_OUTPUT"
       - id: plan
         if: steps.budget.outputs.start == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           WORKERS: ${{ inputs.workers || '3' }}
           REPAIR_RUN: ${{ inputs.repair_run }}
+          IMAGES_READY: ${{ steps.images.outputs.ready }}
         run: |
+          if [[ "$IMAGES_READY" != true ]]; then
+            echo 'Prepared images are rebuilding or not green; skipping this wave.' >&2
+            echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"
+            echo 'count=0' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           python3 -I scripts/swarm.py ensure-labels
           python3 -I scripts/swarm.py plan-workers --max "$WORKERS" --repair-run "$REPAIR_RUN"
   worker:
@@ -105,8 +141,8 @@ jobs:
           persist-credentials: false
       - name: Work the task (no GitHub token in this step)
         env:
-          # This slot's own free account. The secret is looked up by slot number.
-          OPENCODE_API_KEY: ${{ secrets[format('OPENCODE_API_KEY_{0}', matrix.slot)] }}
+          # Prefer this slot's account, with the team key as a compatibility fallback.
+          OPENCODE_API_KEY: ${{ secrets[format('OPENCODE_API_KEY_{0}', matrix.slot)] || secrets.OPENCODE_API_KEY }}
         run: scripts/agent-run.sh implement
       - name: Pack the commits
         if: always()

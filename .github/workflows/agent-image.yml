@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       opencode_version:
-        description: OpenCode npm version to install
+        description: OpenCode V2 CLI npm version to install (@opencode/cli)
         default: latest
 permissions:
   contents: read

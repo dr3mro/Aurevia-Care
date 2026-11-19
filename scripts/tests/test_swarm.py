@@ -199,6 +199,21 @@ class IntegrationTests(unittest.TestCase):
             self.assertEqual(swarm.guard(9), [])
         self.assertEqual(fake.calls, [("pr", "diff", "9", "--name-only")])
 
+    def test_guard_blocks_new_module_check_scripts_for_a_human(self):
+        # The merge gate itself is protected, including module check.sh files:
+        # a change to any check script must be reviewed by a person.
+        fake = FakeGh(diff="apps/staff-web/check.sh\napps/staff-web/src/App.tsx\n"
+                           "apps/patient-mobile/check.sh\napps/patient-mobile/App.tsx\n")
+        with mock.patch.object(swarm, "gh", fake):
+            self.assertEqual(swarm.guard(9), ["apps/staff-web/check.sh", "apps/patient-mobile/check.sh"])
+        self.assertTrue(fake.said("needs-human"))
+
+    def test_guard_still_protects_repository_root_check_script(self):
+        fake = FakeGh(diff="check.sh\n")
+        with mock.patch.object(swarm, "gh", fake):
+            self.assertEqual(swarm.guard(9), ["check.sh"])
+        self.assertTrue(fake.said("needs-human"))
+
 
 class WorkflowTests(unittest.TestCase):
     def test_workflows_only_call_real_subcommands(self):
@@ -219,6 +234,15 @@ class WorkflowTests(unittest.TestCase):
         text = (ROOT / ".github/workflows/swarm.yml").read_text()
         self.assertIn("OPENCODE_API_KEY_{0}", text)
         self.assertNotIn("OPENCODE_API_KEY:", (ROOT / ".github/agent-image/Dockerfile.slot").read_text())
+
+    def test_swarm_slot_secret_falls_back_to_team_secret(self):
+        text = (ROOT / ".github/workflows/swarm.yml").read_text()
+        self.assertIn("secrets[format('OPENCODE_API_KEY_{0}', matrix.slot)]", text)
+        self.assertIn("secrets.OPENCODE_API_KEY", text)
+
+    def test_worker_script_marks_checkout_safe(self):
+        text = (ROOT / "scripts/agent-run.sh").read_text()
+        self.assertIn("git config --global --add safe.directory", text)
 
 
 class RepairTests(unittest.TestCase):

@@ -47,6 +47,23 @@ class GeneratorTests(unittest.TestCase):
             self.assertIn({"action": "read", "resource": "*.env", "effect": "deny"},
                           agent["permissions"])
 
+    def test_extra_hard_denies_are_present(self):
+        """Each safety deny must appear in both local and CI permission sets."""
+        patterns = [
+            "sudo*", "rm -rf /*", "rm -rf ~*",
+            "curl*|*sh*", "wget*|*sh*",
+            "git push*:*", "git remote set-url*",
+        ]
+        for ci in (False, True):
+            config = gen.build(
+                ["smartclinic-orchestrator", "smartclinic-qa-reviewer"], ci=ci)
+            rules = config["agents"]["smartclinic-orchestrator"]["permissions"]
+            for pattern in patterns:
+                self.assertIn(
+                    {"action": "shell", "resource": pattern, "effect": "deny"},
+                    rules, f"missing deny for {pattern!r} in CI={ci}",
+                )
+
     def test_deny_rules_follow_allow_rules(self):
         """Last match wins, so denies must come after the broad allows."""
         rules = gen.build(["smartclinic-orchestrator"])["agents"][

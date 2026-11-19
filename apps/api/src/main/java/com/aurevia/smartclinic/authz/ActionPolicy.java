@@ -14,7 +14,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class ActionPolicy {
 
-    private static final Set<String> ADMIN_ACTIONS = Set.of("FACILITY_READ", "FACILITY_WRITE");
+    private static final Set<String> ADMIN_ACTIONS = Set.of(
+            "FACILITY_READ", "FACILITY_WRITE",
+            "STAFF_INVITE", "STAFF_DEACTIVATE", "STAFF_READ", "STAFF_HISTORY",
+            "CONFIG_CREATE", "CONFIG_APPROVE", "CONFIG_READ", "CONFIG_HISTORY");
 
     /**
      * Decide whether a role may perform an action.
