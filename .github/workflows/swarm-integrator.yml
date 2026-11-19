@@ -46,8 +46,6 @@ jobs:
       contents: write
       pull-requests: write
       actions: write
-      # Repair PRs may change workflow files; merging them needs this scope.
-      workflows: write
     services:
       postgres:
         image: postgres:17

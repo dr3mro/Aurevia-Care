@@ -230,16 +230,11 @@ class PlanTests(unittest.TestCase):
         self.assertIn("SMARTCLINIC_PG_ADMIN: postgres", text)
         self.assertNotIn("GATE: scripts/quick-check.sh", text)
 
-    def test_repair_trigger_is_renamed_and_event_driven(self):
+    def test_repair_watches_fix_prs_only(self):
         workflows = ROOT / ".github/workflows"
         self.assertFalse((workflows / "main-watchdog.yml").exists())
+        self.assertFalse((workflows / "fix-pr-watchdog.yml").exists())
         text = (workflows / "main-repair.yml").read_text()
-        self.assertIn("workflow_run:", text)
-        self.assertNotIn("cron:", text)
-        self.assertNotIn("pull_request:", text)
-
-    def test_fix_pr_watchdog_is_pull_request_driven(self):
-        text = (ROOT / ".github/workflows/fix-pr-watchdog.yml").read_text()
         self.assertIn("pull_request:", text)
         self.assertNotIn("workflow_run:", text)
         self.assertNotIn("cron:", text)
@@ -247,9 +242,9 @@ class PlanTests(unittest.TestCase):
         self.assertIn("scripts/check.sh", text)
         self.assertIn("swarm-integrator.yml", text)
 
-    def test_budget_workflows_include_both_repair_workflows(self):
+    def test_budget_workflows_include_single_repair_workflow(self):
         self.assertIn("main-repair.yml", swarm.BUDGET_WORKFLOWS)
-        self.assertIn("fix-pr-watchdog.yml", swarm.BUDGET_WORKFLOWS)
+        self.assertNotIn("fix-pr-watchdog.yml", swarm.BUDGET_WORKFLOWS)
         self.assertNotIn("main-watchdog.yml", swarm.BUDGET_WORKFLOWS)
 
     def test_worker_has_three_hour_budget_with_restart_slack(self):
@@ -267,14 +262,19 @@ class PlanTests(unittest.TestCase):
     def test_monthly_cap_allows_long_waves(self):
         self.assertGreaterEqual(swarm.DEFAULT_MONTHLY_MINUTES, 10 * 185 * 5)
 
-    def test_publish_can_push_workflow_files(self):
-        text = (ROOT / ".github/workflows/swarm.yml").read_text()
-        publish = text.split("  publish:\n", 1)[1].split("  next:\n", 1)[0]
-        self.assertIn("workflows: write", publish)
-
-    def test_integrator_can_merge_workflow_files(self):
-        text = (ROOT / ".github/workflows/swarm-integrator.yml").read_text()
-        self.assertIn("workflows: write", text)
+    def test_workflow_permissions_use_only_valid_scopes(self):
+        """`workflows` is not a permissions key; using it invalidates the YAML."""
+        import yaml
+        valid = {"actions", "attestations", "checks", "contents", "deployments",
+                 "discussions", "id-token", "issues", "models", "packages",
+                 "pages", "pull-requests", "security-events", "statuses", "none", "write-all", "read-all"}
+        for name in ("swarm.yml", "swarm-integrator.yml"):
+            config = yaml.safe_load((ROOT / ".github/workflows" / name).read_text())
+            blocks = [config.get("permissions", {})]
+            blocks += [job.get("permissions", {}) for job in config.get("jobs", {}).values()]
+            for block in blocks:
+                if isinstance(block, dict):
+                    self.assertFalse(set(block) - valid, f"{name}: invalid permission keys")
 
     def test_fallback_wave_runs_hourly(self):
         text = (ROOT / ".github/workflows/swarm.yml").read_text()
@@ -426,7 +426,7 @@ class WorkflowTests(unittest.TestCase):
             calls |= set(re.findall(r"scripts/swarm\.py (?:-I )?([a-z-]+)", path.read_text()))
             calls |= set(re.findall(r"swarm\.py ([a-z-]+)", path.read_text()))
         self.assertTrue({"plan-workers", "publish", "budget-gate", "integrate-batch",
-                         "repair-gate", "plan-integration", "slot-config", "slot-matrix",
+                         "plan-integration", "slot-config", "slot-matrix",
                          "ensure-labels"} <= calls)
         for command in calls:
             done = subprocess.run(["python3", "-I", str(ROOT / "scripts/swarm.py"), command, "--help"],
@@ -551,11 +551,15 @@ class GitTests(unittest.TestCase):
             self.run_git("push", "-q", "origin", f"HEAD:refs/pull/{pr_ref}/head")
         self.run_git("switch", "-q", "main")
 
-    def worker_dir(self, branch="swarm/CW-001-1", result="ok", checks="passed"):
+    def worker_dir(self, branch="swarm/CW-001-1", result="ok", checks="passed", extra=None):
         work = self.tmp / "work"
         self.run_git("clone", "-q", str(self.origin), str(work), cwd=self.tmp)
         base = self.run_git("rev-parse", "HEAD", cwd=work).strip()
         (work / "f.txt").write_text("feature\n")
+        for name, text in (extra or {}).items():
+            target = work / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(text)
         self.run_git("add", "-A", cwd=work)
         self.run_git("commit", "-qm", "feature", cwd=work)
         out = self.tmp / "result"
@@ -577,6 +581,15 @@ class GitTests(unittest.TestCase):
         self.assertIn("Task: CW-001", create[create.index("--body") + 1])
         self.assertEqual(create[create.index("--title") + 1], "CW-001: Staff")
         self.assertNotIn("--draft", create)
+
+    def test_publish_blocks_workflow_file_changes_and_releases_claim(self):
+        out = self.worker_dir(extra={".github/workflows/x.yml": "name: x\n"})
+        with mock.patch.object(swarm, "gh", FakeGh()), \
+             mock.patch.object(swarm, "release_claim", return_value=True) as released:
+            swarm.publish(self.TASK, out)
+        self.assertTrue(released.called)
+        self.assertNotIn("refs/heads/swarm/CW-001-1",
+                         self.run_git("ls-remote", "--heads", "origin"))
 
     def test_publish_twice_does_not_reuse_a_stale_incoming_ref(self):
         with mock.patch.object(swarm, "gh", FakeGh()):
@@ -702,8 +715,8 @@ class BudgetTests(unittest.TestCase):
         with mock.patch.object(swarm, "gh", Gh()):
             minutes = swarm.monthly_minutes(now)
         # 2 min + max(1 min, 20s) = 3 min per workflow, October ignored,
-        # seven budgeted workflows queried = 21 billed minutes this month.
-        self.assertEqual(minutes, 21.0)
+        # six budgeted workflows queried = 18 billed minutes this month.
+        self.assertEqual(minutes, 18.0)
 
     def test_budget_gate_allows_well_under_cap(self):
         with mock.patch.object(swarm, "monthly_minutes", return_value=100):
