@@ -10,8 +10,12 @@ sections: `environments`, `fixtures`, `ci_checks`, `signed_builds`,
 a `provenance` object with six non-blank string fields: `tool`, `tool_version`,
 `command`, `utc_timestamp`, `environment` and `source_sha`. The
 [conforming fixture](../../../infra/s_g5_07/fixtures/synthetic_evidence.json) is
-the worked rehearsal example; there is no measured-deployment fixture because
-real rollout provenance is produced and reviewed outside this repository.
+the worked rehearsal example; there is no *conforming* measured-deployment
+fixture because real rollout provenance is produced and reviewed outside this
+repository. A negative
+[relabelled-rehearsal fixture](../../../infra/s_g5_07/fixtures/relabelled_violation_evidence.json)
+does exist: it is the conforming rehearsal with only `kind` and `source`
+changed and no provenance, and the canonical gate requires it to be rejected.
 
 The evaluator aggregates every breach into one report; it never raises on
 content problems. Each check has a stable name:
@@ -56,6 +60,8 @@ python3 -I infra/s_g5_07/delivery_safety_evidence.py \
   infra/s_g5_07/fixtures/synthetic_evidence.json
 python3 -I infra/s_g5_07/delivery_safety_evidence.py \
   infra/s_g5_07/fixtures/violation_evidence.json   # exit 1 is expected
+python3 -I infra/s_g5_07/delivery_safety_evidence.py \
+  infra/s_g5_07/fixtures/relabelled_violation_evidence.json  # exit 1: relabelled rehearsal
 ```
 
 `0` = every check passes, `1` = at least one failed check, `2` = wrong argument
@@ -96,12 +102,15 @@ by paired synthetic cases:
 | CLI | success, `sys.argv` path | bad usage, missing file, malformed JSON, non-UTF-8, `NaN` |
 | measured provenance | conforming six-field object; rehearsal needs none | missing, empty and non-object provenance; each field blank, non-string or absent |
 | normalized distinctness | conforming four environments, `canary → full` stages, distinct access parties | whitespace-padded duplicate account/resource/stages and whitespace-padded self-approval |
+| gate negative controls | conforming rehearsal passes | violation fixture and relabelled-rehearsal fixture each exit exactly 1; relabelled rehearsal fails only on provenance |
 
 Each `subTest` case above is executed by `unittest`; the full suite reports
-**68 tests, 0 failures**. The policy manifest and both fixture files are also
-scanned for credential and PHI-shaped strings. The canonical gate requires the
-violation fixture to exit with status exactly `1`; any other non-zero status is
-a parse or I/O regression and fails the gate.
+**71 tests, 0 failures**. The policy manifest and all fixture files are also
+scanned for credential and PHI-shaped strings. The canonical gate requires both
+negative fixtures (the control breach and the relabelled rehearsal) to exit with
+status exactly `1`; any other non-zero status is a parse or I/O regression and
+fails the gate. The relabelled-rehearsal check is also a gate-level complement to
+the unit tests for the `evidence_conflict` / measured-provenance branches.
 
 ## Boundary
 

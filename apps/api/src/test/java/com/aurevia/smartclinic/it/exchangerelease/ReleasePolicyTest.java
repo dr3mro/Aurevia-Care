@@ -34,10 +34,12 @@ class ReleasePolicyTest {
     }
 
     @Test
-    void heldCanGoToAuthorizedWithdrawnOrCorrectedOnly() {
+    void heldCanGoToAuthorizedOrWithdrawnOnly() {
         assertTrue(ReleaseState.HELD.canTransitionTo(ReleaseState.AUTHORIZED));
         assertTrue(ReleaseState.HELD.canTransitionTo(ReleaseState.WITHDRAWN));
-        assertTrue(ReleaseState.HELD.canTransitionTo(ReleaseState.CORRECTED));
+        // An unreviewed hold must be lifted before it can be corrected; the service, the enum
+        // and the V24 database trigger all enforce this same invariant.
+        assertFalse(ReleaseState.HELD.canTransitionTo(ReleaseState.CORRECTED));
         assertFalse(ReleaseState.HELD.canTransitionTo(ReleaseState.HELD));
     }
 

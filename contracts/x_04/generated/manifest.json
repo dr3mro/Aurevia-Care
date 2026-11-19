@@ -1,0 +1,31 @@
+{
+  "generator": "com.aurevia.smartclinic.api.x_04.CommandClientGenerator",
+  "contractSha256": "56a6ba8557d585dfb7470f6f1bdbf2ebf3ad8efaf5fb04bc94ad1ef463019d3d",
+  "clientSha256": "153060d891249903f792e84d0cb541995bf6da6b1c71806bdf8e1787374a212a",
+  "commands": [
+    {"id": "createFacility", "action": "FACILITY_WRITE", "method": "POST", "path": "/api/v1/facilities", "policy": "ActionPolicy"},
+    {"id": "inviteStaff", "action": "STAFF_INVITE", "method": "POST", "path": "/api/v1/staff", "policy": "ActionPolicy"},
+    {"id": "deactivateStaff", "action": "STAFF_DEACTIVATE", "method": "POST", "path": "/api/v1/staff/{subject}/deactivate", "policy": "ActionPolicy"},
+    {"id": "createConfiguration", "action": "CONFIG_CREATE", "method": "POST", "path": "/api/v1/configuration", "policy": "ActionPolicy"},
+    {"id": "approveConfiguration", "action": "CONFIG_APPROVE", "method": "POST", "path": "/api/v1/configuration/{key}/versions/{version}/approve", "policy": "ActionPolicy"},
+    {"id": "registerPatient", "action": "PATIENT_REGISTER", "method": "POST", "path": "/api/v1/patients", "policy": "ActionPolicy"},
+    {"id": "bookAppointment", "action": "APPOINTMENT_BOOK", "method": "POST", "path": "/api/v1/appointments", "policy": "ActionPolicy"},
+    {"id": "verifyIdentity", "action": "IDENTITY_VERIFY", "method": "POST", "path": "/api/v1/checkin/{id}/identity", "policy": "WorklistPolicy"},
+    {"id": "checkIn", "action": "APPOINTMENT_CHECK_IN", "method": "POST", "path": "/api/v1/checkin/{id}/complete", "policy": "WorklistPolicy"},
+    {"id": "assignWorkItem", "action": "WORKLIST_ASSIGN", "method": "POST", "path": "/api/v1/worklist/{id}/assign", "policy": "WorklistPolicy"},
+    {"id": "accessionRequisition", "action": "LAB_ACCESSION_CREATE", "method": "POST", "path": "/api/v1/lab/accessions", "policy": "LabActionPolicy"},
+    {"id": "collectSpecimen", "action": "LAB_SPECIMEN_COLLECT", "method": "POST", "path": "/api/v1/lab/specimens/{id}/collect", "policy": "LabActionPolicy"},
+    {"id": "verifyLabResult", "action": "SPECIALTY_LAB_VERIFY_RELEASE", "method": "POST", "path": "/api/v1/lab/results/{id}/verify", "policy": "SpecialtyActions"},
+    {"id": "signInterpretation", "action": "SPECIALTY_RAD_SIGN_INTERPRETATION", "method": "POST", "path": "/api/v1/radiology/interpretations/{id}/sign", "policy": "SpecialtyActions"},
+    {"id": "acceptTherapyReferral", "action": "SPECIALTY_PT_ACCEPT_REFERRAL", "method": "POST", "path": "/api/v1/therapy/referrals/{id}/accept", "policy": "SpecialtyActions"},
+    {"id": "attestClinicalDecision", "action": "SPECIALTY_ATTEST", "method": "POST", "path": "/api/v1/specialty/attestations", "policy": "SpecialtyActions"},
+    {"id": "acceptOrder", "action": "EXCHANGE_ACCEPT", "method": "POST", "path": "/api/v1/orders/{id}/accept", "policy": "Xch03ActionPolicy"},
+    {"id": "rejectOrder", "action": "EXCHANGE_REJECT", "method": "POST", "path": "/api/v1/orders/{id}/reject", "policy": "Xch03ActionPolicy"},
+    {"id": "authorizeRelease", "action": "RELEASE_AUTHORIZE", "method": "POST", "path": "/api/v1/releases/{id}/authorize", "policy": "ReleaseActionPolicy"},
+    {"id": "correctRelease", "action": "RELEASE_CORRECT", "method": "POST", "path": "/api/v1/releases/{id}/correct", "policy": "ReleaseActionPolicy"},
+    {"id": "withdrawRelease", "action": "RELEASE_WITHDRAW", "method": "POST", "path": "/api/v1/releases/{id}/withdraw", "policy": "ReleaseActionPolicy"},
+    {"id": "acknowledgeCriticalResult", "action": "CRITICAL_ACKNOWLEDGE", "method": "POST", "path": "/api/v1/critical/{id}/acknowledge", "policy": "CriticalActions"},
+    {"id": "issueInvoice", "action": "FINANCE_INVOICE_CREATE", "method": "POST", "path": "/api/v1/invoices", "policy": "FinanceActions"},
+    {"id": "acknowledgeInstruction", "action": "ACKNOWLEDGE", "method": "POST", "path": "/api/v1/instructions/{id}/acknowledge", "policy": "InstructionFactActions"}
+  ]
+}
