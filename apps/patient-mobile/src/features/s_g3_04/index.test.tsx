@@ -87,6 +87,18 @@ describe('MSG-01 eligible unit directory', () => {
     ];
     expect(eligibleUnits(units, relationships, PATIENT, NOW)).toEqual([]);
   });
+
+  it('never lists a cross-tenant unit even when a relationship names it', () => {
+    const subject = createSyntheticCareUnitClient({
+      organizationId: ORG,
+      verifiedCharts: [PATIENT],
+      units: [unit(LAB, ORG, 'Synthetic Laboratory'), unit(FOREIGN, OTHER_ORG, 'Foreign Unit')],
+      relationships: [relationship('rel-foreign', PATIENT, FOREIGN, { organizationId: OTHER_ORG })],
+      now: NOW,
+      newId: () => 'connection-1',
+    });
+    expect(subject.listEligibleUnits(PATIENT)).toEqual([]);
+  });
 });
 
 describe('ARC-07 connection scoping', () => {
@@ -158,6 +170,16 @@ describe('ARC-07 connection scoping', () => {
     const first = subject.connect(PATIENT, LAB, 'order', 'order-ref');
     const second = subject.connect(PATIENT, LAB, 'order', 'order-ref');
     if (first.ok && second.ok) expect(second.connection.id).toBe(first.connection.id);
+    expect(subject.listConnections(PATIENT)).toHaveLength(1);
+  });
+
+  it('does not reuse a connection granted under a different verified context', () => {
+    const subject = client([relationship('rel-1', PATIENT, LAB)]);
+    const first = subject.connect(PATIENT, LAB, 'order', 'order-ref');
+    expect(first.ok).toBe(true);
+    const mismatch = subject.connect(PATIENT, LAB, 'referral', 'order-ref');
+    expect(mismatch.ok).toBe(false);
+    if (!mismatch.ok) expect(mismatch.reason).toBe('NO_ELIGIBLE_RELATIONSHIP');
     expect(subject.listConnections(PATIENT)).toHaveLength(1);
   });
 

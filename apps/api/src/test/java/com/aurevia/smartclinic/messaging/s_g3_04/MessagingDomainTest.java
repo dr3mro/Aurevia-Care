@@ -94,6 +94,14 @@ class MessagingDomainTest {
     }
 
     @Test
+    void protectedConnectionUseActionIsBoundedToSelfService() {
+        MessagingActions actions = new MessagingActions();
+        assertTrue(actions.allows("CONNECTION_USE", "patient"));
+        assertFalse(actions.allows("CONNECTION_USE", "tenant_admin"));
+        assertFalse(actions.allows("CONNECTION_USE", "lab_verifier"));
+    }
+
+    @Test
     void uuidValidationRejectsMalformedIdentifiers() {
         assertEquals(UNIT, MessagingInputs.uuid(UNIT, "unitId"));
         assertEquals(422, assertThrows(ApiException.class,
