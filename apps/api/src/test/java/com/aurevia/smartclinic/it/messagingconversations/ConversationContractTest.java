@@ -196,8 +196,8 @@ class ConversationContractTest {
             for (String role : staffRoles) {
                 assertTrue(actions.allows(action, role) == isStaffAction(action), action + " " + role);
             }
-            assertEquals(isStaffAction(action), actions.allows(action, "tenant_admin"),
-                    action + " admin");
+            assertEquals(ConversationActions.WORK_QUEUE_READ.equals(action),
+                    actions.allows(action, "tenant_admin"), action + " admin");
             assertFalse(actions.allows(action, "privacy_auditor"));
         }
         assertFalse(actions.allows("UNKNOWN", "tenant_admin"));
@@ -213,6 +213,19 @@ class ConversationContractTest {
 
     private static boolean isStaffAction(String action) {
         return !ConversationActions.INBOX_READ.equals(action);
+    }
+
+    @Test
+    void tenantAdminHasOnlyWorkQueueOversightPermission() {
+        ConversationActions actions = new ConversationActions();
+        for (String action : List.of(ConversationActions.CONVERSATION_OPEN,
+                ConversationActions.CONVERSATION_REPLY, ConversationActions.CONVERSATION_READ,
+                ConversationActions.INBOX_READ, ConversationActions.WORK_ASSIGN,
+                ConversationActions.WORK_TRANSFER, ConversationActions.WORK_RESOLVE,
+                ConversationActions.WORK_CLOSE)) {
+            assertFalse(actions.allows(action, "tenant_admin"), action);
+        }
+        assertTrue(actions.allows(ConversationActions.WORK_QUEUE_READ, "tenant_admin"));
     }
 
     @Test
