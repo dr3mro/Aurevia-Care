@@ -6,10 +6,13 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Set;
 
@@ -179,7 +182,9 @@ class ImagingServiceTest {
 
         RadEvent criticalEvent = service.recordCriticalCommunication(critical(6, PATIENT, UID));
         assertEquals(RadEventType.CRITICAL_COMMUNICATION, criticalEvent.type());
-        assertEquals(9, service.events(ORG).size());
+        assertEquals(10, service.events(ORG).size());
+        assertEquals(List.of(RadEventType.CRITICAL_COMMUNICATION, RadEventType.READ_BACK),
+                service.events(ORG).subList(8, 10).stream().map(RadEvent::type).toList());
     }
 
     @Test
@@ -306,7 +311,7 @@ class ImagingServiceTest {
     }
 
     @Test
-    void criticalCommunicationRequiresAssociationAndReadBack() {
+    void criticalCommunicationRequiresAssociationAndReadBack() throws Exception {
         ImagingOrder accessioned = accessioned();
         assertEquals(409, codeOf(() -> service.recordCriticalCommunication(
                 critical(accessioned.version(), PATIENT, UID))));
@@ -321,11 +326,20 @@ class ImagingServiceTest {
                         PATIENT, UID, "finding", "recipient", "read back"))));
         RadEvent event = service.recordCriticalCommunication(critical(associated.version(), PATIENT, UID));
         assertEquals(RadEventType.CRITICAL_COMMUNICATION, event.type());
-        assertEquals("critical finding", event.payloadDigest());
+        assertEquals(sha256("critical finding"), event.payloadDigest());
         assertEquals("referrer", event.destination());
         assertEquals(event.eventId(), service.events(ORG).stream()
                 .filter(e -> e.type() == RadEventType.CRITICAL_COMMUNICATION).findFirst().orElseThrow()
                 .eventId());
+
+        // Read-back is a distinct fact with its own digest; no clinical narrative enters an event.
+        RadEvent readBack = service.events(ORG).stream()
+                .filter(e -> e.type() == RadEventType.READ_BACK).findFirst().orElseThrow();
+        assertEquals(sha256("read back confirmed"), readBack.payloadDigest());
+        assertEquals("referrer", readBack.destination());
+        assertEquals(PATIENT, readBack.patientId());
+        assertTrue(service.events(ORG).stream().noneMatch(e -> "critical finding".equals(e.payloadDigest())
+                || "read back confirmed".equals(e.payloadDigest())));
     }
 
     @Test
@@ -386,6 +400,11 @@ class ImagingServiceTest {
                 ORDER, signedVersion, PATIENT, UID, "f", "i", "r", "a"))));
         assertEquals(403, codeOf(() -> service.addAddendum(new AddendumCommand(ORG, "dr-no-priv",
                 INTERPRETER_ROLE, ORDER, signedVersion, PATIENT, UID, "f", "i", "r", "a"))));
+    }
+
+    private static String sha256(String value) throws Exception {
+        return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                .digest(value.getBytes(StandardCharsets.UTF_8)));
     }
 
     private static int codeOf(Runnable action) {

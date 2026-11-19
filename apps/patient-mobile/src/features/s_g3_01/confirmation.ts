@@ -7,6 +7,10 @@ import type { Appointment, ConfirmationState, ConfirmResult } from './types';
  * Enablement and status come from the server projection; a client cannot
  * enable confirmation for a disabled site or a finished visit.
  *
+ * Both the site flag and the per-appointment server flag must permit
+ * confirmation. The stricter value wins, so a caller cannot show a confirm
+ * affordance for a visit the server marked non-confirmable.
+ *
  * @param appointment server appointment projection
  * @param enabled site confirmation enablement evaluated by the server
  * @returns the display state
@@ -15,7 +19,11 @@ export function deriveConfirmation(
   appointment: Appointment,
   enabled: boolean,
 ): ConfirmationState {
-  if (!enabled || !CONFIRMABLE_STATUSES.includes(appointment.status)) {
+  if (
+    !enabled ||
+    !appointment.confirmationEnabled ||
+    !CONFIRMABLE_STATUSES.includes(appointment.status)
+  ) {
     return { kind: 'unavailable', confirmedAt: null };
   }
   if (appointment.confirmedAt !== null) {
