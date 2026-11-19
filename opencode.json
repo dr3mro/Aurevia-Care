@@ -12,7 +12,7 @@
         {
           "action": "shell",
           "resource": "*",
-          "effect": "allow"
+          "effect": "ask"
         },
         {
           "action": "shell",
