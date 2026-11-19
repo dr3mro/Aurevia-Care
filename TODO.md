@@ -100,8 +100,9 @@ Gate evidence: competing bookings enforce one protected slot; stale drafts canno
     Implement Longitudinal chart: problems, allergies, medications, vitals, source and verification states (CLN-03) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [-] S-G1-04 · Versioned SOAP, operative, OB/GYN, perinatal and pediatric development templates (CLN-04).
-  - agent: swarm-6
+- [x] S-G1-04 · Versioned SOAP, operative, OB/GYN, perinatal and pediatric development templates (CLN-04).
+  - pr: #38
+  - evidence: PR #38; integrator ran scripts/check.sh on the merge result (tool evidence); heavy-check.yml re-verifies main after the push; notes in docs/swarm/S-G1-04.md; simulated review only
   - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g1/s_g1_04, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g1_04
   - reserved: V14
@@ -117,8 +118,9 @@ Gate evidence: competing bookings enforce one protected slot; stale drafts canno
     Implement Draft to signed, amendments, signed addenda and entered-in-error with preserved originals (CLN-05) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [-] S-G1-06 · Follow-up suggestions with rule explanation and care-team tasks (CLN-06).
-  - agent: swarm-8
+- [x] S-G1-06 · Follow-up suggestions with rule explanation and care-team tasks (CLN-06).
+  - pr: #40
+  - evidence: PR #40; integrator ran scripts/check.sh on the merge result (tool evidence); heavy-check.yml re-verifies main after the push; notes in docs/swarm/S-G1-06.md; simulated review only
   - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g1/s_g1_06, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g1_06
   - reserved: V16
@@ -184,8 +186,9 @@ Gate evidence: rejected or recollected specimens trace to the right order; dupli
     Implement Result routing, identifier matching, reconciliation queue and correction versions (XCH-04) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [-] S-G2-05 · Critical-result verification, owner, due time, escalation attempts and read-back (XCH-05).
-  - agent: swarm-8
+- [x] S-G2-05 · Critical-result verification, owner, due time, escalation attempts and read-back (XCH-05).
+  - pr: #47
+  - evidence: PR #47; integrator ran scripts/check.sh on the merge result (tool evidence); heavy-check.yml re-verifies main after the push; notes in docs/swarm/S-G2-05.md; simulated review only
   - attempts: 2
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g2/s_g2_05, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g2_05
   - reserved: V23
