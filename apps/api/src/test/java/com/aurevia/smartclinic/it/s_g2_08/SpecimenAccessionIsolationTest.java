@@ -207,6 +207,9 @@ class SpecimenAccessionIsolationTest {
 
         assertEquals(HttpStatus.NOT_FOUND, get(id, "lab-b", ORG_B).getStatusCode());
         assertEquals(HttpStatus.OK, get(id, "lab-a", ORG_A).getStatusCode());
+        // ARC-02 fail-closed on writes: a peer tenant cannot mutate a concealed accession.
+        assertEquals(HttpStatus.NOT_FOUND,
+                collect(id, patientA, "ACC-1", "LAB-A", 1, "lab-b", ORG_B).getStatusCode());
     }
 
     @Test

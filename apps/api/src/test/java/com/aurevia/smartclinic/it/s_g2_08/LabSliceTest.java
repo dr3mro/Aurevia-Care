@@ -14,6 +14,7 @@ import com.aurevia.smartclinic.g2.s_g2_08.LabAccessionController;
 import com.aurevia.smartclinic.g2.s_g2_08.LabAccessionService;
 import com.aurevia.smartclinic.g2.s_g2_08.LabActionPolicy;
 import com.aurevia.smartclinic.g2.s_g2_08.LabInputs;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
@@ -73,6 +74,7 @@ class LabActionPolicyTest {
         assertTrue(policy.allows(LabActionPolicy.SPECIMEN_COLLECT, "lab_collector"));
         assertTrue(policy.allows(LabActionPolicy.ACCESSION_READ, "lab_collector"));
         assertFalse(policy.allows(LabActionPolicy.SPECIMEN_RECEIVE, "lab_collector"));
+        assertFalse(policy.allows(LabActionPolicy.SPECIMEN_REJECT, "lab_collector"));
     }
 
     @Test
@@ -168,6 +170,27 @@ class LabInputsTest {
                 assertThrows(ApiException.class, () -> LabInputs.instant(null, "collectedAt")).code());
         assertEquals("INVALID_TIMESTAMP",
                 assertThrows(ApiException.class, () -> LabInputs.instant("yesterday", "receivedAt")).code());
+    }
+}
+
+/** S-G2-08 LAB-01: the immutable history view cannot be mutated through its input list. */
+class AccessionViewTest {
+
+    @Test
+    void freezesHistoryAgainstCallerMutation() {
+        List<AccessionEvent> mutable = new ArrayList<>();
+        mutable.add(new AccessionEvent("e1", "id", 1, "accessioned", null,
+                "accessioned", null, null, "2026-11-19T09:00:00Z"));
+        LabAccession accession = new LabAccession("id", 1, "ACC-1", "LAB-A", "PAT-1", "ORD/1",
+                AccessionState.ACCESSIONED, null, null, null, null, null, null, null, null, null);
+        AccessionView view = new AccessionView(accession, mutable);
+
+        mutable.add(new AccessionEvent("e2", "id", 2, "collected", "accessioned",
+                "collected", null, null, "2026-11-19T10:00:00Z"));
+
+        assertEquals(1, view.events().size());
+        assertThrows(UnsupportedOperationException.class,
+                () -> view.events().add(mutable.get(0)));
     }
 }
 
