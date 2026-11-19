@@ -184,6 +184,9 @@ jobs:
       contents: write
       pull-requests: write
       actions: read
+      # Repair PRs legitimately change .github/workflows; the App token needs
+      # this scope to push those files on the worker's branch.
+      workflows: write
     steps:
       # Trusted copy of the scripts: the worker job never had a token and cannot
       # alter what runs here.
