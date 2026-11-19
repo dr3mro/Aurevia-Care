@@ -1,0 +1,73 @@
+{
+  "schema_version": "1.0",
+  "kind": "measured_operation",
+  "source": "staging-lifecycle-run",
+  "organization": "org-synthetic-1",
+  "export": {
+    "manifest": {
+      "schema_version": "chart-v3",
+      "policy_version": "release-policy-v2",
+      "organization": "org-synthetic-1",
+      "exported_at": "2026-11-19T03:00:00Z",
+      "record_count": 1
+    },
+    "records": [
+      {
+        "id": "rec-synthetic-1",
+        "checksum": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "provenance": {
+          "source_system": "smartclinic",
+          "source_id": "src-synthetic-1",
+          "version": 3
+        },
+        "documents": [
+          {
+            "id": "doc-synthetic-1",
+            "checksum": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "authorization": "record_access_request",
+            "policy_version": "release-policy-v2"
+          }
+        ],
+        "audit": [
+          {"seq": 1, "action": "EXPORT", "outcome": "SUCCESS"}
+        ]
+      }
+    ]
+  },
+  "retention": {
+    "policy_version": "retention-policy-v1",
+    "legal_holds": [],
+    "deletions": [
+      {
+        "record_id": "rec-synthetic-expired",
+        "reason": "retention_expiry",
+        "approved_by": "privacy-officer",
+        "active_data": true
+      }
+    ],
+    "backup_expirations": [
+      {
+        "backup_set": "bk-synthetic-2",
+        "scope": "org-synthetic-1",
+        "approved_by": "ops-lead",
+        "approved": true
+      }
+    ]
+  },
+  "offboarding": {
+    "organization": "org-synthetic-1",
+    "authorized_by": "tenant-admin-synthetic",
+    "steps": ["suspend_access", "export", "delete_active_data", "expire_backups", "audit"],
+    "audit_reference": "audit-synthetic-offboard-2"
+  },
+  "disputed_access": {
+    "link": "chart-synthetic-2",
+    "suspended_at": "2026-11-19T04:00:00Z",
+    "suspended_by": "privacy-officer",
+    "rereviewed_by": "privacy-officer-2",
+    "rereviewed_at": "2026-11-19T05:00:00Z",
+    "outcome": "restored_after_verification",
+    "identity_reverified": true
+  },
+  "scenarios": ["record_request", "export", "offboarding", "disputed_access"]
+}
