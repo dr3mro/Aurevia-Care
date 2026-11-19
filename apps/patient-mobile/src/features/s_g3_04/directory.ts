@@ -83,7 +83,10 @@ export function createSyntheticCareUnitClient(fixture: DirectoryFixture): CareUn
       if (!fixture.verifiedCharts.includes(patientId)) {
         return [];
       }
-      return eligibleUnits(fixture.units, relationships, patientId, fixture.now);
+      // A directory listing is never an authorization: constrain the visible
+      // units to the active tenant before applying relationship eligibility.
+      const inTenant = fixture.units.filter((candidate) => candidate.organizationId === fixture.organizationId);
+      return eligibleUnits(inTenant, relationships, patientId, fixture.now);
     },
 
     connect(patientId: string, unitId: string, context: ConnectionContext, reference: string): ConnectResult {
@@ -103,6 +106,7 @@ export function createSyntheticCareUnitClient(fixture: DirectoryFixture): CareUn
       const existing = connections.find((candidate) =>
         candidate.patientId === patientId
         && candidate.unitId === unitId
+        && candidate.context === context
         && candidate.contextReference === reference);
       if (existing !== undefined) {
         return { ok: true, connection: existing };

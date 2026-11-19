@@ -22,6 +22,8 @@ public class MessagingActions {
     public static final String CONNECTION_LIST = "CONNECTION_LIST";
     /** Revoke a connection so it grants no future access. */
     public static final String CONNECTION_REVOKE = "CONNECTION_REVOKE";
+    /** Use an existing connection for a protected messaging action. */
+    public static final String CONNECTION_USE = "CONNECTION_USE";
 
     /**
      * Decide whether a role may perform an action.
@@ -34,7 +36,7 @@ public class MessagingActions {
         return switch (action) {
             case UNIT_LIST, CONNECTION_LIST -> "patient".equals(role)
                     || "tenant_admin".equals(role) || "privacy_auditor".equals(role);
-            case CONNECTION_CREATE -> "patient".equals(role);
+            case CONNECTION_CREATE, CONNECTION_USE -> "patient".equals(role);
             case CONNECTION_REVOKE -> "patient".equals(role) || "tenant_admin".equals(role);
             default -> false;
         };
