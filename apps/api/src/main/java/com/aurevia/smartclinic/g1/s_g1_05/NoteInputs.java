@@ -7,6 +7,9 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 
 import com.aurevia.smartclinic.api.ApiException;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Pure trust-boundary validation for clinical note commands (CLN-05).
@@ -17,6 +20,7 @@ import com.aurevia.smartclinic.api.ApiException;
  */
 public final class NoteInputs {
 
+    private static final ObjectMapper JSON = new ObjectMapper();
     private static final Pattern UUID_PATTERN = Pattern.compile(
             "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
     private static final Pattern CODE = Pattern.compile("[A-Z0-9_-]{2,32}");
@@ -153,10 +157,12 @@ public final class NoteInputs {
         if (normalized.length() > MAX_RECIPIENTS) {
             throw new ApiException(422, "INVALID_RECIPIENTS", "affected recipients are too large");
         }
-        if (!normalized.startsWith("[")) {
-            throw new ApiException(422, "INVALID_RECIPIENTS", "affected recipients must be a JSON array");
-        }
-        if (!normalized.endsWith("]")) {
+        try {
+            JsonNode parsed = JSON.readTree(normalized);
+            if (!parsed.isArray()) {
+                throw new ApiException(422, "INVALID_RECIPIENTS", "affected recipients must be a JSON array");
+            }
+        } catch (JacksonException exception) {
             throw new ApiException(422, "INVALID_RECIPIENTS", "affected recipients must be a JSON array");
         }
         return normalized;
