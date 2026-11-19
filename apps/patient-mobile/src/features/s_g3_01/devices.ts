@@ -69,9 +69,14 @@ export function invalidateToken(
  * A key that does not exist in this organization is left unchanged, so a
  * guessed device id cannot create a registration or mutate a peer tenant.
  *
+ * The verified patient is part of the lookup, not just the organization: a
+ * valid local device id owned by another patient in the same tenant is left
+ * untouched, so one patient can never revoke or invalidate another's device.
+ *
  * @param devices tenant-keyed registry to update
  * @param organizationId active organization
  * @param deviceId organization-local device identifier
+ * @param patientId verified patient that owns the device
  * @param state new delivery state
  * @returns a new registry containing the updated registration
  */
@@ -79,11 +84,12 @@ function withDeviceState(
   devices: ReadonlyMap<string, DeviceToken>,
   organizationId: OrganizationId,
   deviceId: string,
+  patientId: string,
   state: DeviceState,
 ): Map<string, DeviceToken> {
   const key = tenantKey(organizationId, deviceId);
   const current = devices.get(key);
-  if (!current) {
+  if (!current || current.patientId !== patientId) {
     return new Map(devices);
   }
   const next = new Map(devices);
@@ -97,14 +103,16 @@ function withDeviceState(
  * @param devices tenant-keyed registry to update
  * @param organizationId active organization
  * @param deviceId organization-local device identifier
- * @returns a new registry with the device revoked when it is in this tenant
+ * @param patientId verified patient that owns the device
+ * @returns a new registry with the device revoked when it belongs to this patient and tenant
  */
 export function withRevokedDevice(
   devices: ReadonlyMap<string, DeviceToken>,
   organizationId: OrganizationId,
   deviceId: string,
+  patientId: string,
 ): Map<string, DeviceToken> {
-  return withDeviceState(devices, organizationId, deviceId, 'revoked');
+  return withDeviceState(devices, organizationId, deviceId, patientId, 'revoked');
 }
 
 /**
@@ -113,18 +121,24 @@ export function withRevokedDevice(
  * @param devices tenant-keyed registry to update
  * @param organizationId active organization
  * @param deviceId organization-local device identifier
- * @returns a new registry with the device invalid when it is in this tenant
+ * @param patientId verified patient that owns the device
+ * @returns a new registry with the device invalid when it belongs to this patient and tenant
  */
 export function withInvalidatedDevice(
   devices: ReadonlyMap<string, DeviceToken>,
   organizationId: OrganizationId,
   deviceId: string,
+  patientId: string,
 ): Map<string, DeviceToken> {
-  return withDeviceState(devices, organizationId, deviceId, 'invalid');
+  return withDeviceState(devices, organizationId, deviceId, patientId, 'invalid');
 }
 
 /**
  * Store a device under its tenant key for the active organization only.
+ *
+ * A device id already owned by a different patient in this organization is
+ * never rebound: the displaced patient would otherwise lose the ability to
+ * revoke or invalidate their own registration (PAT-01, IAM-05).
  *
  * @param devices tenant-keyed registry to add to
  * @param organizationId active organization
@@ -136,7 +150,12 @@ export function withRegisteredDevice(
   organizationId: OrganizationId,
   token: DeviceToken,
 ): Map<string, DeviceToken> {
+  const key = tenantKey(organizationId, token.id);
+  const current = devices.get(key);
+  if (current && current.patientId !== token.patientId) {
+    return new Map(devices);
+  }
   const next = new Map(devices);
-  next.set(tenantKey(organizationId, token.id), token);
+  next.set(key, token);
   return next;
 }
