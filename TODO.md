@@ -13,6 +13,13 @@ Check the repository against each gate before marking work ready. Split items in
 
 Use `planned → in progress → verified → done`. Record `blocked` with reason and prerequisites whenever applicable. Record remaining acceptance IDs and evidence in PROGRESS.md. Use BUGS.md for reproducible defects.
 
+## Improvement ideas
+
+Raised by the dispatch-3 run-3 verification (report-only, no edits made). Address in the next authorized change to the owning file.
+
+- Delivery skill note (owner: `.opencode/skills/smartclinic-delivery/SKILL.md`, requires regenerating `opencode.json` in the same commit): inside a cloud worker the worktree `opencode.json` is the CI profile under `skip-worktree`, so `scripts/check.sh`, `scripts/gen-opencode.py --check` and `scripts/check-pack.py` results seen by the agent are not HEAD truth. Use `git show HEAD:opencode.json`, or state the profile in evidence. This trap produced the false OPS-CW-003-01 finding.
+- Pin the worker CLI and image (owner: `.github/agent-image/Dockerfile`, `.github/workflows/agent-image.yml`): `ARG OPENCODE_VERSION=latest` and the `:latest` base tag make the exact cloud CLI version unreproducible from the repository; record the observed digest and version in each publish run. Tracked as OPS-CW-003-02.
+
 ## Current story
 
 S-G0-01 · staff user of the active organization · read and write only the active tenant's configuration records and be denied on the next protected request after revocation · proves the G0 trust boundary before any clinical code · IAM-01, IAM-02, ARC-02, OPS-02 · G0 · synthetic two-tenant fixtures, real PostgreSQL and auth-derived tenant context · acceptance N1–N4 and E1–E8 recorded in PROGRESS.md · test-first HTTP integration through `GET/POST /api/v1/facilities` before the smallest passing slice · Product Owner definition; architect, Spring Security, DevSecOps and independent QA review; synthetic only · **done** (44 tests, JaCoCo 100%, green CI run 44442227258 on f9bc461, merged in e1dc7cd).
