@@ -3,6 +3,7 @@ package com.aurevia.smartclinic.it.s_g1_05;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -26,6 +27,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
@@ -478,6 +480,82 @@ class ClinicalNoteServiceTest {
                 .noneMatch(component -> component.getName().matches("(?i).*(release|pdf|render|disclos).*")));
         assertTrue(Arrays.stream(ClinicalNoteService.class.getDeclaredMethods())
                 .noneMatch(method -> method.getName().matches("(?i).*(release|pdf|render|disclos).*")));
+    }
+
+    @Test
+    void signPersistsTheExactSignedRevisionInput() {
+        authorized();
+        when(repository.patientExists(PATIENT)).thenReturn(true);
+        when(repository.current(NOTE)).thenReturn(Optional.of(revision(NoteState.DRAFT, 1)),
+                Optional.of(revision(NoteState.SIGNED, 2)));
+        willInsert();
+        service.sign(NOTE, 1, "reviewed and attested");
+        ArgumentCaptor<RevisionInput> captor = ArgumentCaptor.forClass(RevisionInput.class);
+        verify(repository).insert(eq(ORG), eq(NOTE), captor.capture());
+        RevisionInput input = captor.getValue();
+        assertEquals(NoteState.SIGNED, input.state());
+        assertEquals(1, input.supersedesVersion());
+        assertEquals("reviewed and attested", input.attestation());
+        assertEquals(NOW.toString(), input.signedAt());
+        assertEquals("Clinical content", input.content());
+        assertEquals("SOAP", input.templateCode());
+        assertEquals(1, input.templateVersion());
+        assertEquals("author-a", input.clinicalAuthorSubject());
+        assertEquals(NOW.toString(), input.effectiveAt());
+        assertEquals(NoteChecksum.sha256("Clinical content"), input.contentChecksum());
+        assertNull(input.enteredErrorReason());
+        assertEquals("[]", input.affectedRecipients());
+    }
+
+    @Test
+    void enteredInErrorPersistsReasonRecipientsAndPreservedContent() {
+        authorized();
+        when(repository.current(NOTE)).thenReturn(Optional.of(revision(NoteState.SIGNED, 4)),
+                Optional.of(revision(NoteState.ENTERED_IN_ERROR, 5)));
+        willInsert();
+        service.markEnteredInError(NOTE, 4, "wrong patient", "[\"lab-a\"]");
+        ArgumentCaptor<RevisionInput> captor = ArgumentCaptor.forClass(RevisionInput.class);
+        verify(repository).insert(eq(ORG), eq(NOTE), captor.capture());
+        RevisionInput input = captor.getValue();
+        assertEquals(NoteState.ENTERED_IN_ERROR, input.state());
+        assertEquals(4, input.supersedesVersion());
+        assertEquals("wrong patient", input.enteredErrorReason());
+        assertEquals("[\"lab-a\"]", input.affectedRecipients());
+        assertEquals("Clinical content", input.content());
+        assertEquals(NoteChecksum.sha256("Clinical content"), input.contentChecksum());
+        assertNull(input.signedAt());
+        assertNull(input.attestation());
+        // Actors and signer are not caller-supplied fields of the append command.
+        assertTrue(Arrays.stream(RevisionInput.class.getRecordComponents())
+                .noneMatch(component -> component.getName().matches("(?i).*(actor|signer|entry).*")));
+    }
+
+    @Test
+    void amendmentAndAddendumPersistThePriorVersionLink() {
+        authorized();
+        when(repository.patientExists(PATIENT)).thenReturn(true);
+        when(repository.current(NOTE)).thenReturn(Optional.of(revision(NoteState.SIGNED, 2)),
+                Optional.of(revision(NoteState.AMENDMENT_DRAFT, 3)));
+        willInsert();
+        service.createAmendmentDraft(NOTE, 2);
+        ArgumentCaptor<RevisionInput> amendmentCaptor = ArgumentCaptor.forClass(RevisionInput.class);
+        verify(repository).insert(eq(ORG), eq(NOTE), amendmentCaptor.capture());
+        RevisionInput amendment = amendmentCaptor.getValue();
+        assertEquals(NoteState.AMENDMENT_DRAFT, amendment.state());
+        assertEquals(2, amendment.supersedesVersion());
+        assertNull(amendment.signedAt());
+        assertNull(amendment.attestation());
+
+        when(repository.current(NOTE)).thenReturn(Optional.of(revision(NoteState.AMENDMENT_DRAFT, 3)),
+                Optional.of(revision(NoteState.ADDENDUM, 4)));
+        service.signAddendum(NOTE, 3, "addendum attested");
+        ArgumentCaptor<RevisionInput> addendumCaptor = ArgumentCaptor.forClass(RevisionInput.class);
+        verify(repository, org.mockito.Mockito.times(2)).insert(eq(ORG), eq(NOTE), addendumCaptor.capture());
+        RevisionInput addendum = addendumCaptor.getAllValues().get(1);
+        assertEquals(NoteState.ADDENDUM, addendum.state());
+        assertEquals(3, addendum.supersedesVersion());
+        assertEquals("addendum attested", addendum.attestation());
+        assertEquals(NOW.toString(), addendum.signedAt());
     }
 
     @Test

@@ -59,7 +59,7 @@ public class ClinicalNoteController {
      */
     @PutMapping("/{id}")
     public NoteRevision edit(@PathVariable String id,
-                             @RequestHeader("If-Match") String ifMatch,
+                             @RequestHeader(value = "If-Match", required = false) String ifMatch,
                              @RequestBody EditRequest request) {
         return service.updateDraft(id, IfMatch.parse(ifMatch), request.title(), request.content());
     }
@@ -74,7 +74,7 @@ public class ClinicalNoteController {
      */
     @PostMapping("/{id}/sign")
     public NoteRevision sign(@PathVariable String id,
-                             @RequestHeader("If-Match") String ifMatch,
+                             @RequestHeader(value = "If-Match", required = false) String ifMatch,
                              @RequestBody SignRequest request) {
         return service.sign(id, IfMatch.parse(ifMatch), request.attestation());
     }
@@ -89,7 +89,7 @@ public class ClinicalNoteController {
      */
     @PostMapping("/{id}/sign-addendum")
     public NoteRevision signAddendum(@PathVariable String id,
-                                     @RequestHeader("If-Match") String ifMatch,
+                                     @RequestHeader(value = "If-Match", required = false) String ifMatch,
                                      @RequestBody SignRequest request) {
         return service.signAddendum(id, IfMatch.parse(ifMatch), request.attestation());
     }
@@ -103,7 +103,7 @@ public class ClinicalNoteController {
      */
     @PostMapping("/{id}/amend")
     public NoteRevision amend(@PathVariable String id,
-                              @RequestHeader("If-Match") String ifMatch) {
+                              @RequestHeader(value = "If-Match", required = false) String ifMatch) {
         return service.createAmendmentDraft(id, IfMatch.parse(ifMatch));
     }
 
@@ -117,7 +117,7 @@ public class ClinicalNoteController {
      */
     @PostMapping("/{id}/entered-in-error")
     public NoteRevision enteredInError(@PathVariable String id,
-                                       @RequestHeader("If-Match") String ifMatch,
+                                       @RequestHeader(value = "If-Match", required = false) String ifMatch,
                                        @RequestBody ErrorRequest request) {
         return service.markEnteredInError(id, IfMatch.parse(ifMatch), request.reason(),
                 request.affectedRecipients());
