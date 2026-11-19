@@ -59,8 +59,14 @@ describe('patient instruction projections', () => {
   it('projects Arabic instructions as RTL and English as LTR', () => {
     const arabic = displayInstruction(instruction({ language: 'ar-EG', title: 'جمع', text: 'صيام' }));
     expect(arabic).toEqual({ title: 'جمع', text: 'صيام', direction: 'rtl' });
+    expect(displayInstruction(instruction({ language: 'ar' })).direction).toBe('rtl');
     const english = displayInstruction(instruction());
     expect(english.direction).toBe('ltr');
+  });
+
+  it('keeps Latin-script and non-Arabic tags LTR despite an ar prefix', () => {
+    expect(displayInstruction(instruction({ language: 'ar-Latn' })).direction).toBe('ltr');
+    expect(displayInstruction(instruction({ language: 'arn' })).direction).toBe('ltr');
   });
 
   it('formats the optional action due time in the facility time zone', () => {
@@ -94,11 +100,17 @@ describe('patient instruction projections', () => {
     expect(historyForThread([other], 'missing')).toEqual([]);
   });
 
-  it('opens attachments only from a sent revision that binds them', () => {
+  it('opens attachments only from a current sent revision that binds them', () => {
     expect(canOpenAttachment(instruction({ attachmentIds: ['doc-a'] }), 'doc-a')).toBe(true);
     expect(canOpenAttachment(instruction({ attachmentIds: ['doc-a'] }), 'doc-b')).toBe(false);
     expect(
       canOpenAttachment(instruction({ state: 'withdrawn', attachmentIds: ['doc-a'] }), 'doc-a'),
+    ).toBe(false);
+    expect(
+      canOpenAttachment(
+        instruction({ state: 'sent', supersededBy: 2, attachmentIds: ['doc-a'] }),
+        'doc-a',
+      ),
     ).toBe(false);
   });
 

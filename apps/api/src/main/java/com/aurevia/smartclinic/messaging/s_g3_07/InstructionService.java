@@ -47,8 +47,6 @@ public class InstructionService {
      * @param actions bounded action matrix
      */
     @Autowired
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "Spring-managed singleton collaborators")
     public InstructionService(InstructionStore store, InstructionActions actions) {
         this(store, actions, Clock.systemUTC());
     }
@@ -60,8 +58,6 @@ public class InstructionService {
      * @param actions bounded action matrix
      * @param clock   application clock
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "Spring-managed singleton collaborators")
     InstructionService(InstructionStore store, InstructionActions actions, Clock clock) {
         this.store = store;
         this.actions = actions;
@@ -116,10 +112,12 @@ public class InstructionService {
             String body;
             String language;
             Kind kind;
+            boolean clinicalContent;
             if (templateId != null) {
                 Template template = store.approvedTemplate(unitId, templateId)
                         .orElseThrow(() -> new ApiException(404, "NOT_FOUND", "template not found"));
-                if (template.clinical() && !actions.allows(InstructionActions.CLINICAL_SEND, anyRole(roles))) {
+                clinicalContent = template.clinical();
+                if (clinicalContent && !allowsAny(roles, InstructionActions.CLINICAL_SEND)) {
                     throw forbidden("a clinical template requires clinician authorization");
                 }
                 if (template.contextType() != null && template.contextType() != contextType) {
@@ -131,9 +129,10 @@ public class InstructionService {
                 language = template.language();
                 kind = template.kind();
             } else {
-                if (!actions.allows(InstructionActions.CLINICAL_SEND, anyRole(roles))) {
+                if (!allowsAny(roles, InstructionActions.CLINICAL_SEND)) {
                     throw forbidden("free text requires clinician authorization");
                 }
+                clinicalContent = true;
                 kind = request.kind();
                 if (kind == null) {
                     throw new ApiException(422, "INVALID_KIND", "a kind is required for free text");
@@ -143,8 +142,10 @@ public class InstructionService {
                 language = InstructionInputs.language(request.language());
             }
             requireConnection(connectionId, patientId, unitId);
+            String authorRole = authorRoleFor(roles,
+                    clinicalContent ? InstructionActions.CLINICAL_SEND : InstructionActions.SEND);
             Revision revision = new Revision(InstructionInputs.newId(), 1, templateId, kind, title, body,
-                    language, context.subject(), anyRole(roles), unitId, connectionId, patientId,
+                    language, context.subject(), authorRole, unitId, connectionId, patientId,
                     clock.instant(), dueAt, contextType, contextId, attachments, State.SENT,
                     null, null, null);
             store.save(revision);
@@ -175,10 +176,17 @@ public class InstructionService {
         return execute(InstructionActions.WITHDRAW, thread, () -> {
             TenantContext context = context();
             Revision current = requireCurrent(thread, expectedVersion, State.SUPERSEDED);
+            requireOwnership(current);
+            List<String> roles = store.activeRoles(context.subject());
+            // A replacement carries new free text, so it needs the same clinical
+            // authorization as an original free-text send (MSG-04).
+            if (!allowsAny(roles, InstructionActions.CLINICAL_SEND)) {
+                throw forbidden("replacement text requires clinician authorization");
+            }
             int number = current.revision() + 1;
-            Revision replacement = new Revision(current.threadId(), number, current.templateId(),
+            Revision replacement = new Revision(current.threadId(), number, null,
                     current.kind(), title, body, language, context.subject(),
-                    anyRole(store.activeRoles(context.subject())), current.unitId(),
+                    authorRoleFor(roles, InstructionActions.CLINICAL_SEND), current.unitId(),
                     current.connectionId(), current.patientId(), clock.instant(), dueAt,
                     current.contextType(), current.contextId(), attachments, State.SENT, null,
                     current.revision(), null);
@@ -208,6 +216,7 @@ public class InstructionService {
         String reason = InstructionInputs.text(request.reason(), "reason", 500);
         return execute(InstructionActions.WITHDRAW, thread, () -> {
             Revision current = requireCurrent(thread, expectedVersion, State.WITHDRAWN);
+            requireOwnership(current);
             store.withdraw(thread, current.revision(), reason);
             store.append(new Fact(thread, current.revision(), FactType.WITHDRAWN, current.patientId(),
                     clock.instant(), reason));
@@ -281,8 +290,38 @@ public class InstructionService {
         }
     }
 
-    private String anyRole(List<String> roles) {
-        return roles.stream().findFirst().orElse("");
+    /**
+     * Re-check that the caller may still mutate an existing thread: they must be
+     * assigned to its care unit over an active, verified patient connection.
+     * Without this, a role that can withdraw could rewrite another unit's
+     * instruction merely by knowing its thread identifier (ARC-02, ARC-07).
+     *
+     * @param revision current revision of the thread
+     */
+    private void requireOwnership(Revision revision) {
+        if (!store.staffAssignedToUnit(context().subject(), revision.unitId())) {
+            throw forbidden("the actor is not assigned to the care unit");
+        }
+        if (!store.connectionActive(revision.connectionId(), revision.patientId(), revision.unitId())) {
+            throw forbidden("the patient-unit connection is not active for this context");
+        }
+    }
+
+    /** @return whether any active role permits the given action */
+    private boolean allowsAny(List<String> roles, String action) {
+        return roles.stream().anyMatch(role -> actions.allows(action, role));
+    }
+
+    /**
+     * Pick a deterministic authoring role that actually permits the gate action,
+     * independent of role ordering in the membership fold (IAM-01).
+     *
+     * @param roles  active role keys
+     * @param action gate the recording role must satisfy
+     * @return the first matching role, or an empty string when none matches
+     */
+    private String authorRoleFor(List<String> roles, String action) {
+        return roles.stream().filter(role -> actions.allows(action, role)).findFirst().orElse("");
     }
 
     private TenantContext context() {
