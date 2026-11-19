@@ -106,6 +106,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/catalogs/{family}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List effective approved entries in a tenant catalog family */
+        get: operations["listCatalogFamily"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catalogs/{family}/entries/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read the effective approved version of one catalog entry */
+        get: operations["getCatalogEntry"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catalogs/{family}/entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Append a pending catalog entry version */
+        post: operations["defineCatalogEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catalogs/{family}/entries/{code}/versions/{version}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Append a named approval for a catalog entry version */
+        post: operations["approveCatalogEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audit-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Query the active tenant's append-only audit trail */
+        get: operations["queryAuditEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/staff": {
         parameters: {
             query?: never;
@@ -193,7 +278,7 @@ export interface components {
             subject: string;
             displayName: string;
             /** @enum {string} */
-            role: "tenant_admin" | "reception";
+            role: "tenant_admin" | "reception" | "privacy_auditor";
         };
         StaffMember: {
             subject?: string;
@@ -263,6 +348,45 @@ export interface components {
         ConfigHistory: {
             key?: string;
             entries?: components["schemas"]["ConfigEntry"][];
+        };
+        DefineCatalogEntry: {
+            code: string;
+            value: string;
+            /** Format: date-time */
+            effectiveFrom?: string;
+        };
+        CatalogEntry: {
+            family?: string;
+            code?: string;
+            version?: number;
+            value?: string;
+            /** Format: date-time */
+            effectiveFrom?: string;
+            /** Format: uuid */
+            approvedBy?: string;
+            /** Format: date-time */
+            approvedAt?: string;
+            note?: string | null;
+        };
+        AuditEvent: {
+            id?: string;
+            /** Format: date-time */
+            occurredAt?: string;
+            /** Format: uuid */
+            actorId?: string | null;
+            action?: string;
+            resourceType?: string | null;
+            resourceId?: string | null;
+            purpose?: string | null;
+            scope?: string | null;
+            correlationId?: string | null;
+            outcome?: string;
+            /** Format: int64 */
+            seq?: number;
+        };
+        AuditPage: {
+            events?: components["schemas"]["AuditEvent"][];
+            nextCursor?: string | null;
         };
         Error: {
             code?: string;
@@ -537,6 +661,195 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             /** @description Key not visible; existence is concealed */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listCatalogFamily: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                family: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Effective catalog entries */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogEntry"][];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    getCatalogEntry: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                family: string;
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The effective catalog entry */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogEntry"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    defineCatalogEntry: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                family: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DefineCatalogEntry"];
+            };
+        };
+        responses: {
+            /** @description Pending draft appended */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfigEntry"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            /** @description Invalid family */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    approveCatalogEntry: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                family: string;
+                code: string;
+                version: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApproveConfiguration"];
+            };
+        };
+        responses: {
+            /** @description Approved entry */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfigEntry"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            /** @description Entry not found or concealed */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    queryAuditEvents: {
+        parameters: {
+            query?: {
+                /** @description Opaque seq cursor for the next page */
+                cursor?: string;
+                /** @description Page size 1-200 */
+                limit?: number;
+                action?: string;
+                outcome?: string;
+                resourceType?: string;
+                /** @description Inclusive UTC instant */
+                from?: string;
+                /** @description Inclusive UTC instant */
+                to?: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of audit events; the query itself is audited */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditPage"];
+                };
+            };
+            403: components["responses"]["Forbidden"];
+            /** @description Invalid cursor */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

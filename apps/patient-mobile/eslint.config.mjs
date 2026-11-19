@@ -1,6 +1,6 @@
 import { defineConfig } from 'eslint/config';
-import expoConfig from 'eslint-config-expo/flat';
-import tseslint from 'typescript-eslint';
+import expoConfig from 'eslint-config-expo/flat.js';
+import { configs as tseslintConfigs } from 'typescript-eslint';
 
 /**
  * Flat ESLint configuration for the patient-mobile module: Expo's shared
@@ -9,7 +9,7 @@ import tseslint from 'typescript-eslint';
  */
 export default defineConfig(
   { ignores: ['dist/**', 'coverage/**', '.expo/**', 'build/**'] },
-  ...tseslint.configs.recommended,
+  ...tseslintConfigs.recommended,
   ...expoConfig,
   {
     files: ['**/*.ts', '**/*.tsx'],

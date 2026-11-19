@@ -4,6 +4,8 @@ coverage/
 **/target/
 **/dist/
 .agent/
+# Each application owns its own formatter config and check.sh.
+apps/**
 # Repository Markdown/YAML/JSON are governed by check-docs.py and check-pack.py.
 **/*.md
 **/*.yml
