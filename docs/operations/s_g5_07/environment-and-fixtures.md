@@ -18,9 +18,11 @@ All four account identifiers must be distinct
 (`environments.distinct_accounts`) and all four resource identifiers distinct
 (`environments.distinct_resources`). A shared identifier between any two
 environments fails the check, as does a missing, blank or non-string value.
-Identifiers are compared with exact string equality: no case folding or
-whitespace trimming is applied to the *comparison* (values are stripped only to
-detect a blank declaration), so two environments cannot be conflated.
+Identifiers are stripped and then compared with exact string equality; no case
+folding is applied. Because the comparison uses the stripped values, an
+identifier padded with leading or trailing whitespace is treated as the same
+value as its unpadded form and fails the distinctness check, so two environments
+cannot be conflated through whitespace aliasing.
 
 An entry that is not an object records `environments.<name>` as failed and the
 two distinctness checks also fail, because a complete set of four identifiers

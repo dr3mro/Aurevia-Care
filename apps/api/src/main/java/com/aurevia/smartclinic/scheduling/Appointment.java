@@ -18,6 +18,7 @@ import java.time.Instant;
  * @param seriesId       shared identifier of a weekly series, or {@code null}
  * @param expiresAt      hold expiry, or {@code null} for a confirmed appointment
  * @param overrideReason recorded availability override, or {@code null}
+ * @return this record
  */
 public record Appointment(String id, int version, String patientId, String facilityCode,
                           String clinicianCode, String roomCode, String visitType,

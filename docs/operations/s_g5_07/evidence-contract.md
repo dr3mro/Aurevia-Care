@@ -6,9 +6,12 @@ An artifact is a JSON object with a `schema_version` of `1.0`, a `kind` of
 `synthetic_rehearsal` or `measured_deployment`, a `source` string and these
 sections: `environments`, `fixtures`, `ci_checks`, `signed_builds`,
 `migration_checks`, `rollout`, `production_access`, plus the top-level boolean
-`reversible_deployments`. The
+`reversible_deployments`. A `measured_deployment` artifact additionally requires
+a `provenance` object with six non-blank string fields: `tool`, `tool_version`,
+`command`, `utc_timestamp`, `environment` and `source_sha`. The
 [conforming fixture](../../../infra/s_g5_07/fixtures/synthetic_evidence.json) is
-the worked example.
+the worked rehearsal example; there is no measured-deployment fixture because
+real rollout provenance is produced and reviewed outside this repository.
 
 The evaluator aggregates every breach into one report; it never raises on
 content problems. Each check has a stable name:
@@ -24,20 +27,25 @@ content problems. Each check has a stable name:
 | Rollout | `rollout`, `rollout.strategy`, `rollout.stages`, `rollout.health_gates`, `rollout.monitoring`, `rollout.rollback_tested` |
 | Production access | `production_access`, `production_access.approval_required`, `production_access.separation_of_duties`, `production_access.audited`, `production_access.expiring` |
 | Reversibility | `reversible_deployments` |
+| Measured provenance (measured only) | `provenance`, `provenance.tool`, `provenance.tool_version`, `provenance.command`, `provenance.utc_timestamp`, `provenance.environment`, `provenance.source_sha` |
 
 ## Classification and honesty rule
 
 | `kind` | Classification | `final_evidence` |
 |---|---|---|
 | `synthetic_rehearsal` | `rehearsal` | `false` |
-| `measured_deployment` with zero failures | `measured-deployment` | `true` |
-| `measured_deployment` with any failure | `measured-deployment` | `false` |
+| `measured_deployment` with zero failures and conforming provenance | `measured-deployment` | `true` |
+| `measured_deployment` with any failure (including missing provenance) | `measured-deployment` | `false` |
 | unknown or non-string | `unknown` | `false` |
 
 A `measured_deployment` artifact whose `source` contains `synthetic` records an
-`evidence_conflict` failure and is never final. The same classification keys are
-used by the [sibling OPS-03 evaluator](../s_g5_05/README.md), so a rehearsal
-cannot be promoted by relabelling.
+`evidence_conflict` failure and is never final. It must also carry the six-field
+`provenance` object described above, so changing only `kind` and `source` on a
+rehearsal cannot promote it to final evidence. The sibling
+[OPS-03 evaluator](../s_g5_05/README.md) enforces the same rule with its own
+classification key (`measured-pilot`) and provenance fields; the keys are not
+shared. Provenance is checked for presence and shape only — verifying that a
+rollout really happened, and G5 acceptance, remain human and cloud gated.
 
 ## Commands and exit codes
 
@@ -65,7 +73,7 @@ python3 -m trace --count --coverdir /tmp/opencode/s_g5_07_cov \
 grep '^>>>>>>' /tmp/opencode/s_g5_07_cov/*delivery_safety_evidence*.cover
 ```
 
-The result is **232 executable lines, 0 uncovered** (100% line coverage of the
+The result is **248 executable lines, 0 uncovered** (100% line coverage of the
 evaluator). `trace` does not measure branches, so every conditional is exercised
 by paired synthetic cases:
 
@@ -86,10 +94,14 @@ by paired synthetic cases:
 | report filtering / verdict / classification / final | pass report | mixed and all-fail reports, each kind, measured-with-failure |
 | report formatting | PASS and final-true text | FAIL and final-false text |
 | CLI | success, `sys.argv` path | bad usage, missing file, malformed JSON, non-UTF-8, `NaN` |
+| measured provenance | conforming six-field object; rehearsal needs none | missing, empty and non-object provenance; each field blank, non-string or absent |
+| normalized distinctness | conforming four environments, `canary → full` stages, distinct access parties | whitespace-padded duplicate account/resource/stages and whitespace-padded self-approval |
 
 Each `subTest` case above is executed by `unittest`; the full suite reports
-**59 tests, 0 failures**. The policy manifest and both fixture files are also
-scanned for credential and PHI-shaped strings.
+**68 tests, 0 failures**. The policy manifest and both fixture files are also
+scanned for credential and PHI-shaped strings. The canonical gate requires the
+violation fixture to exit with status exactly `1`; any other non-zero status is
+a parse or I/O regression and fails the gate.
 
 ## Boundary
 

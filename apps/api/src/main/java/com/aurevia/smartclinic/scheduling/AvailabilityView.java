@@ -8,6 +8,7 @@ package com.aurevia.smartclinic.scheduling;
  * @param weekday      ISO-8601 day of week, 1 = Monday
  * @param startLocal   local window start, {@code HH:mm}
  * @param endLocal     local window end, {@code HH:mm}
+ * @return this record
  */
 public record AvailabilityView(String facilityCode, String resourceCode, int weekday,
                                String startLocal, String endLocal) {
