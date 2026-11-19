@@ -8,6 +8,10 @@
 #   publish        push the branch and open the pull request (or comment)
 #   post-reviews   post each review as a pull request comment
 #   bundle         pack the new commits into .agent/result.bundle (swarm)
+#   fetch-main     fetch the base branch (needs a read token; swarm)
+#   merge-main     merge the base branch into the work, fixing conflicts with the agent (swarm)
+#   fetch-prs      fetch conflicted pull requests listed in CONFLICTED (integrator)
+#   resolve        merge main into each fetched PR branch, agent fixing conflicts (integrator)
 #   audit          read-only audit of the whole repo; writes .agent/audit-findings.json
 #
 # Inputs (environment): MODEL, STORY_ID, STORY_TITLE, STORY_BODY, MODE
@@ -182,6 +186,108 @@ Never put workflow, script or agent files in scope. Write [] when nothing is wor
 PROMPT
 }
 
+cmd_fetch_main() {
+  : "${GH_TOKEN:?GH_TOKEN is required}"
+  github_git fetch -q origin "${BASE_BRANCH:-main}"
+}
+
+conflict_prompt() { # conflicted files in $1
+  cat <<PROMPT
+A merge of origin/${BASE_BRANCH:-main} into this branch stopped with conflicts in:
+$1
+Resolve every conflict. For each file, read both sides (git diff, git log -p origin/${BASE_BRANCH:-main} -- <file>)
+and keep the intent of both: this story's change and what main changed. Never discard main's
+work or this story's work to make the conflict go away, and leave no conflict markers. Stage the
+resolved files with git add and finish the merge with git commit --no-edit. Do not abort or reset
+the merge, push, tag or call gh. Then run ${CHECK_SCRIPT:-scripts/check.sh} and fix what the merge broke.
+PROMPT
+}
+
+# merge-main: bring the branch up to date with the base branch before publishing.
+# On conflicts the agent resolves them and the merge is tried again, up to
+# MERGE_ATTEMPTS times; a merge that cannot be completed is rolled back so the
+# branch is published exactly as the story left it.
+cmd_merge_main() {
+  finish_merge() { printf '%s' "$1" > "$out/merge"; emit merge "$1"; }
+  configure_auth
+  git config user.name "github-actions[bot]"
+  git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+  local base="origin/${BASE_BRANCH:-main}" max=${MERGE_ATTEMPTS:-5} attempt=0 outcome pre files result
+  if [[ "$(cat "$out/commits" 2>/dev/null || echo 0)" -eq 0 ]] || ! git rev-parse -q --verify "$base" > /dev/null; then
+    finish_merge skipped; return 0
+  fi
+  pre=$(git rev-parse HEAD)
+  if git merge-base --is-ancestor "$base" HEAD; then
+    finish_merge current; return 0
+  fi
+  outcome=conflict
+  git merge --no-edit "$base" > "$out/merge.log" 2>&1 && outcome=merged
+  while [[ "$outcome" == conflict && $attempt -lt $max ]]; do
+    attempt=$((attempt + 1))
+    files=$(git diff --name-only --diff-filter=U)
+    activate_ci_config
+    result=$(run_agent smartclinic-orchestrator "$(conflict_prompt "$files")" "$out/merge-$attempt.log")
+    restore_config
+    [[ "$result" == rate_limited || "$result" == timeout ]] && break
+    # The agent may have staged everything but not committed.
+    if [[ -f "$(git rev-parse --git-path MERGE_HEAD)" && -z "$(git ls-files -u)" ]]; then
+      git commit -q --no-edit || true
+    fi
+    if [[ ! -f "$(git rev-parse --git-path MERGE_HEAD)" && -z "$(git ls-files -u)" ]] \
+        && git merge-base --is-ancestor "$base" HEAD \
+        && ! git grep -qE '^(<<<<<<<|>>>>>>>) ' HEAD -- $files 2> /dev/null; then
+      outcome=merged
+    else
+      # Not a clean merge: start the next attempt from the original conflict.
+      git merge --abort 2> /dev/null || true
+      git reset -q --hard "$pre"
+      git merge --no-edit "$base" >> "$out/merge.log" 2>&1 && outcome=merged
+    fi
+  done
+  if [[ "$outcome" != merged ]]; then
+    git merge --abort 2> /dev/null || true
+    git reset -q --hard "$pre"
+    printf '%s\n' "Merge with $base could not be completed after $attempt attempt(s)" >> "$out/check.log"
+    printf '%s' failed > "$out/checks"
+    emit checks failed
+  elif ! git diff --quiet "$pre" HEAD; then
+    # Main's changes are now part of the branch: check the merged result.
+    local checks=failed
+    if bash "${CHECK_SCRIPT:-scripts/check.sh}" > "$out/check.log" 2>&1; then checks=passed; fi
+    printf '%s' "$checks" > "$out/checks"
+    emit checks "$checks"
+  fi
+  finish_merge "$outcome"
+}
+
+cmd_fetch_prs() {
+  : "${GH_TOKEN:?GH_TOKEN is required}" "${CONFLICTED:?CONFLICTED is required}"
+  local pr
+  for pr in $(jq -r '.[]' <<< "$CONFLICTED"); do
+    github_git fetch -q origin "pull/$pr/head:pr-$pr"
+  done
+}
+
+# resolve: the integrator could not merge these PRs into main. Merge main into
+# each PR branch here instead, with the agent fixing the conflicts, and record
+# the outcome per PR for the trusted publish step. No GitHub token in this step.
+cmd_resolve() {
+  : "${CONFLICTED:?CONFLICTED is required}"
+  local pr
+  mkdir -p "$out/resolve"
+  for pr in $(jq -r '.[]' <<< "$CONFLICTED"); do
+    git switch -q -C "resolve-$pr" "pr-$pr"
+    printf '1' > "$out/commits"
+    rm -f "$out/merge" "$out/checks"
+    cmd_merge_main || true
+    cp "$out/merge" "$out/resolve/$pr" 2> /dev/null || printf 'failed' > "$out/resolve/$pr"
+    # A merge that left the checks failing is not pushed.
+    if [[ "$(cat "$out/resolve/$pr")" == merged && "$(cat "$out/checks" 2> /dev/null)" == failed ]]; then
+      printf 'merged but checks failed' > "$out/resolve/$pr"
+    fi
+  done
+}
+
 cmd_audit() {
   configure_auth
   context_index
@@ -267,5 +373,9 @@ case "${1:-}" in
   post-reviews) cmd_post_reviews ;;
   bundle) cmd_bundle ;;
   audit) cmd_audit ;;
-  *) printf 'usage: %s implement|review|publish|post-reviews|bundle|audit\n' "$0" >&2; exit 2 ;;
+  fetch-main) cmd_fetch_main ;;
+  fetch-prs) cmd_fetch_prs ;;
+  resolve) cmd_resolve ;;
+  merge-main) cmd_merge_main ;;
+  *) printf 'usage: %s implement|review|publish|post-reviews|bundle|audit|fetch-main|merge-main|fetch-prs|resolve\n' "$0" >&2; exit 2 ;;
 esac
