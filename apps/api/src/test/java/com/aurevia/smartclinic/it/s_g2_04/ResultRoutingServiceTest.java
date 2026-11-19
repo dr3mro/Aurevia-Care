@@ -78,6 +78,7 @@ class ResultRoutingServiceTest {
         TransactionTemplate transactions = mock(TransactionTemplate.class);
         service = new ResultRoutingService(repository, new ResultActionPolicy(), transactions, audit,
                 Clock.fixed(NOW, ZoneOffset.UTC));
+        when(repository.insertReport(any())).thenReturn(true);
         doAnswer(invocation -> {
             TransactionCallback<?> callback = invocation.getArgument(0);
             return callback.doInTransaction(mock(TransactionStatus.class));
@@ -121,7 +122,7 @@ class ResultRoutingServiceTest {
     private void matched() {
         when(repository.findOrder(ORDER)).thenReturn(Optional.of(order()));
         when(repository.lineage(ORDER, SOURCE, ACCESSION)).thenReturn(List.of());
-        when(repository.findReport(SOURCE, ACCESSION, 1)).thenReturn(Optional.empty());
+        when(repository.findReport(ORDER, SOURCE, ACCESSION, 1)).thenReturn(Optional.empty());
         when(repository.findReview(anyString())).thenReturn(Optional.empty());
         when(repository.priorRecipients(ORDER)).thenReturn(List.of());
     }
@@ -226,7 +227,7 @@ class ResultRoutingServiceTest {
     void queuesACorrectionWhoseSupersededVersionIsMissing() {
         authorized("lab_verifier");
         matched();
-        when(repository.findReport(SOURCE, ACCESSION, 1)).thenReturn(Optional.empty());
+        when(repository.findReport(ORDER, SOURCE, ACCESSION, 1)).thenReturn(Optional.empty());
         ImportOutcome outcome = service.importResult(request("corrected", 1));
         assertNull(outcome.report());
         assertEquals(ReconciliationReason.CONFLICT, outcome.reconciliation().reason());
@@ -239,7 +240,7 @@ class ResultRoutingServiceTest {
         authorized("lab_verifier");
         matched();
         ResultReport prior = result(1, ResultKind.FINAL, null, null);
-        when(repository.findReport(SOURCE, ACCESSION, 1)).thenReturn(Optional.of(prior));
+        when(repository.findReport(ORDER, SOURCE, ACCESSION, 1)).thenReturn(Optional.of(prior));
         when(repository.priorRecipients(ORDER)).thenReturn(List.of("owner-a", "previous-owner"));
         when(repository.findReview(REPORT_1)).thenReturn(
                 Optional.of(new Review(REPORT_1, 1, ReviewState.ACKNOWLEDGED, NOW)));
@@ -262,7 +263,7 @@ class ResultRoutingServiceTest {
     void correctionOfAnUnreviewedRevisionDoesNotEmitAReopenAudit() {
         authorized("lab_verifier");
         matched();
-        when(repository.findReport(SOURCE, ACCESSION, 1))
+        when(repository.findReport(ORDER, SOURCE, ACCESSION, 1))
                 .thenReturn(Optional.of(result(1, ResultKind.FINAL, null, null)));
         when(repository.findReview(REPORT_1)).thenReturn(
                 Optional.of(new Review(REPORT_1, 1, ReviewState.UNREVIEWED, null)));
@@ -276,13 +277,43 @@ class ResultRoutingServiceTest {
         authorized("lab_verifier");
         matched();
         ResultReport existing = result(1, ResultKind.FINAL, null, null);
-        when(repository.findReport(SOURCE, ACCESSION, 1)).thenReturn(Optional.of(existing));
+        when(repository.findReport(ORDER, SOURCE, ACCESSION, 1)).thenReturn(Optional.of(existing));
         ImportOutcome outcome = service.importResult(request("final", null));
         assertEquals(existing, outcome.report());
         verify(repository, never()).insertReport(any());
         verify(repository, never()).insertReview(anyString());
         verify(repository, never()).insertNotification(any());
         audited("XCH04_RESULT_REPLAY");
+    }
+
+    @Test
+    void aConcurrentInsertConflictReturnsTheWinningRevisionWithoutDuplicating() {
+        authorized("lab_verifier");
+        matched();
+        ResultReport winner = result(1, ResultKind.FINAL, null, null);
+        when(repository.findReport(ORDER, SOURCE, ACCESSION, 1)).thenReturn(Optional.of(winner));
+        when(repository.insertReport(any())).thenReturn(false);
+
+        ImportOutcome outcome = service.importResult(request("final", null));
+
+        assertEquals(winner, outcome.report());
+        assertNull(outcome.reconciliation());
+        verify(repository, never()).insertReview(anyString());
+        verify(repository, never()).insertNotification(any());
+        audited("XCH04_RESULT_REPLAY");
+    }
+
+    @Test
+    void aConcurrentConflictWithNoVisibleWinnerFailsClosedWithAConflict() {
+        authorized("lab_verifier");
+        matched();
+        when(repository.findReport(ORDER, SOURCE, ACCESSION, 1)).thenReturn(Optional.empty());
+        when(repository.insertReport(any())).thenReturn(false);
+
+        ApiException failure = assertThrows(ApiException.class, () -> service.importResult(request("final", null)));
+        assertEquals(409, failure.status());
+        assertEquals("REPLAY_UNRESOLVED", failure.code());
+        verify(repository, never()).insertReview(anyString());
     }
 
     @Test

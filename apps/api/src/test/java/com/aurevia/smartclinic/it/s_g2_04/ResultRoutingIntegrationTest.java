@@ -11,6 +11,12 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterAll;
@@ -123,6 +129,10 @@ class ResultRoutingIntegrationTest {
                 + "(organization_id, version, mrn, mrn_issuer, display_name, normalized_name, dob) "
                 + "VALUES ('" + org + "', 1, 'MRN-1', 'CLINIC', 'Synthetic Patient', 'synthetic patient', "
                 + "'1990-05-20')");
+        statement.execute("INSERT INTO public.patient_record "
+                + "(organization_id, version, mrn, mrn_issuer, display_name, normalized_name, dob) "
+                + "VALUES ('" + org + "', 1, 'MRN-2', 'CLINIC', 'Second Synthetic', 'second synthetic', "
+                + "'1991-06-21')");
     }
 
     private static void seedMember(Statement statement, String org, String subject, String role)
@@ -146,12 +156,16 @@ class ResultRoutingIntegrationTest {
     }
 
     private static String patientId(String organization) {
+        return patientId(organization, "MRN-1");
+    }
+
+    private static String patientId(String organization, String mrn) {
         try (Connection connection = DriverManager.getConnection(URL, "smartclinic_migrate", "")) {
             connection.setAutoCommit(false);
             bind(connection, organization, "admin-a");
             try (Statement statement = connection.createStatement();
                  ResultSet result = statement.executeQuery(
-                         "SELECT id::text FROM public.patient_record WHERE mrn = 'MRN-1'")) {
+                         "SELECT id::text FROM public.patient_record WHERE mrn = '" + mrn + "'")) {
                 assertTrue(result.next(), "seeded patient must exist in " + organization);
                 return result.getString(1);
             } finally {
@@ -444,6 +458,64 @@ class ResultRoutingIntegrationTest {
         assertEquals("conflict", text(outOfOrder, "/reason"));
         assertEquals(0, count(ORG_A, "SELECT count(*) FROM public.xch04_report_revision "
                 + "WHERE accession = 'ACC-R8'"));
+    }
+
+    @Test
+    void sharedAccessionAcrossOrdersDoesNotReplayAnotherPatientsReport() throws Exception {
+        String secondPatient = patientId(ORG_A, "MRN-2");
+        assertEquals(HttpStatus.CREATED, register(ORG_A, "admin-a",
+                orderBody("ORD-S1", patientA, "SRC-SHARED", "ACC-SHARED", "verifier-a", "queue-a"))
+                .getStatusCode());
+        assertEquals(HttpStatus.CREATED, register(ORG_A, "admin-a",
+                orderBody("ORD-S2", secondPatient, "SRC-SHARED", "ACC-SHARED", "verifier-a", "queue-a"))
+                .getStatusCode());
+
+        ResponseEntity<String> first = importResult(ORG_A, "verifier-a",
+                resultBodyForPatient("ORD-S1", "SRC-SHARED", "ACC-SHARED", patientA));
+        ResponseEntity<String> second = importResult(ORG_A, "verifier-a",
+                resultBodyForPatient("ORD-S2", "SRC-SHARED", "ACC-SHARED", secondPatient));
+        assertEquals(HttpStatus.CREATED, first.getStatusCode(), first.getBody());
+        assertEquals(HttpStatus.CREATED, second.getStatusCode(), second.getBody());
+
+        assertFalse(text(first, "/id").equals(text(second, "/id")));
+        assertEquals(patientA, text(first, "/patientId"));
+        assertEquals("ORD-S1", text(first, "/orderId"));
+        assertEquals(secondPatient, text(second, "/patientId"));
+        assertEquals("ORD-S2", text(second, "/orderId"));
+        assertEquals(2, count(ORG_A, "SELECT count(*) FROM public.xch04_report_revision "
+                + "WHERE accession = 'ACC-SHARED'"));
+    }
+
+    @Test
+    void concurrentReplayProducesOneRevisionAndOneReview() throws Exception {
+        assertEquals(HttpStatus.CREATED, register(ORG_A, "admin-a",
+                orderBody("ORD-C1", patientA, "SRC-C", "ACC-C", "verifier-a", "queue-a")).getStatusCode());
+
+        String body = resultBodyForPatient("ORD-C1", "SRC-C", "ACC-C", patientA);
+        CountDownLatch start = new CountDownLatch(1);
+        Callable<ResponseEntity<String>> task = () -> {
+            start.await();
+            return importResult(ORG_A, "verifier-a", body);
+        };
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        try {
+            Future<ResponseEntity<String>> first = pool.submit(task);
+            Future<ResponseEntity<String>> second = pool.submit(task);
+            start.countDown();
+            ResponseEntity<String> a = first.get(30, TimeUnit.SECONDS);
+            ResponseEntity<String> b = second.get(30, TimeUnit.SECONDS);
+            assertEquals(HttpStatus.CREATED, a.getStatusCode(), a.getBody());
+            assertEquals(HttpStatus.CREATED, b.getStatusCode(), b.getBody());
+            assertEquals(text(a, "/id"), text(b, "/id"));
+        } finally {
+            pool.shutdownNow();
+        }
+        assertEquals(1, count(ORG_A, "SELECT count(*) FROM public.xch04_report_revision "
+                + "WHERE accession = 'ACC-C'"));
+        assertEquals(1, count(ORG_A, "SELECT count(*) FROM public.xch04_review r "
+                + "JOIN public.xch04_report_revision p "
+                + "ON p.organization_id = r.organization_id AND p.id = r.report_id "
+                + "WHERE p.accession = 'ACC-C'"));
     }
 
     private static String resultBodyForPatient(String orderRef, String source, String accession,

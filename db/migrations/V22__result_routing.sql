@@ -63,7 +63,9 @@ CREATE TABLE public.xch04_report_revision (
     created_by          uuid NOT NULL,
     created_at          timestamptz NOT NULL DEFAULT now(),
     PRIMARY KEY (organization_id, id),
-    UNIQUE (organization_id, source_code, accession, version),
+    -- The order reference is part of the lineage key: two orders in one tenant
+    -- may carry the same issuer accession, and their revisions must not collide.
+    UNIQUE (organization_id, order_ref, source_code, accession, version),
     CHECK (supersedes_version IS NULL OR supersedes_version > 0),
     CHECK ((kind = 'corrected') = (supersedes_version IS NOT NULL)),
     CHECK ((supersedes_version IS NULL) = (previous_id IS NULL)),
@@ -131,7 +133,7 @@ CREATE TABLE public.xch04_review (
 );
 
 CREATE INDEX xch04_report_lineage_idx ON public.xch04_report_revision
-    (organization_id, source_code, accession, version DESC);
+    (organization_id, order_ref, source_code, accession, version DESC);
 CREATE INDEX xch04_reconciliation_queue_idx ON public.xch04_reconciliation
     (organization_id, status, created_at DESC);
 CREATE INDEX xch04_notification_report_idx ON public.xch04_notification
