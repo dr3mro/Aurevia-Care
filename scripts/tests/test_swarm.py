@@ -230,6 +230,28 @@ class PlanTests(unittest.TestCase):
         self.assertIn("SMARTCLINIC_PG_ADMIN: postgres", text)
         self.assertNotIn("GATE: scripts/quick-check.sh", text)
 
+    def test_repair_trigger_is_renamed_and_event_driven(self):
+        workflows = ROOT / ".github/workflows"
+        self.assertFalse((workflows / "main-watchdog.yml").exists())
+        text = (workflows / "main-repair.yml").read_text()
+        self.assertIn("workflow_run:", text)
+        self.assertNotIn("cron:", text)
+        self.assertNotIn("pull_request:", text)
+
+    def test_fix_pr_watchdog_is_pull_request_driven(self):
+        text = (ROOT / ".github/workflows/fix-pr-watchdog.yml").read_text()
+        self.assertIn("pull_request:", text)
+        self.assertNotIn("workflow_run:", text)
+        self.assertNotIn("cron:", text)
+        self.assertIn("autofix", text)
+        self.assertIn("scripts/check.sh", text)
+        self.assertIn("swarm-integrator.yml", text)
+
+    def test_budget_workflows_include_both_repair_workflows(self):
+        self.assertIn("main-repair.yml", swarm.BUDGET_WORKFLOWS)
+        self.assertIn("fix-pr-watchdog.yml", swarm.BUDGET_WORKFLOWS)
+        self.assertNotIn("main-watchdog.yml", swarm.BUDGET_WORKFLOWS)
+
     def test_wave_defaults_to_ten_workers(self):
         text = (ROOT / ".github/workflows/swarm.yml").read_text()
         self.assertRegex(text, r"default: '10'")
@@ -639,8 +661,8 @@ class BudgetTests(unittest.TestCase):
         with mock.patch.object(swarm, "gh", Gh()):
             minutes = swarm.monthly_minutes(now)
         # 2 min + max(1 min, 20s) = 3 min per workflow, October ignored,
-        # six workflows queried = 18 billed minutes this month.
-        self.assertEqual(minutes, 18.0)
+        # seven budgeted workflows queried = 21 billed minutes this month.
+        self.assertEqual(minutes, 21.0)
 
     def test_budget_gate_allows_well_under_cap(self):
         with mock.patch.object(swarm, "monthly_minutes", return_value=100):

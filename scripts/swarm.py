@@ -28,7 +28,8 @@ BODY_LIMIT = 8000
 # estimates usage from finished run durations and refuses a wave near the cap.
 DEFAULT_MONTHLY_MINUTES = 1500
 BUDGET_WORKFLOWS = ("swarm.yml", "swarm-integrator.yml", "heavy-check.yml",
-                    "agent-image.yml", "swarm-images.yml", "main-watchdog.yml")
+                    "agent-image.yml", "swarm-images.yml", "main-repair.yml",
+                    "fix-pr-watchdog.yml")
 BRANCH = re.compile(r"swarm/[A-Za-z0-9._-]+")
 LABELS = {
     "swarm": ("1d76db", "Pull request opened by a swarm worker"),
