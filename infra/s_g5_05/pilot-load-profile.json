@@ -1,0 +1,46 @@
+{
+  "schema_version": "1.0",
+  "requirement": "OPS-03",
+  "source": "synthetic-load-fixture",
+  "profile": {
+    "organizations": 20,
+    "patient_charts": 100000,
+    "concurrent_staff": 200,
+    "requests_per_second": 50,
+    "duration_minutes": 30
+  },
+  "dataset": {
+    "charts_per_organization": 5000,
+    "total_charts": 100000,
+    "seed": 20261119,
+    "two_organizations_share_local_ids": true,
+    "synthetic_only": true
+  },
+  "workload_mix": {
+    "read": 0.7,
+    "command": 0.3,
+    "families": [
+      {"name": "patient.chart.lookup", "class": "read"},
+      {"name": "appointment.worklist", "class": "read"},
+      {"name": "catalog.configuration.read", "class": "read"},
+      {"name": "audit.query", "class": "read"},
+      {"name": "appointment.booking", "class": "command"},
+      {"name": "encounter.checkin", "class": "command"},
+      {"name": "clinical.documentation.sign", "class": "command"},
+      {"name": "order.transition", "class": "command"},
+      {"name": "result.reconciliation", "class": "command"},
+      {"name": "patient.release", "class": "command"},
+      {"name": "messaging.instruction", "class": "command"}
+    ]
+  },
+  "ramp": {
+    "warm_up_minutes": 5,
+    "measured_window_minutes": 30,
+    "warm_up_excluded_from_latency": true
+  },
+  "assumptions": [
+    "The 70/30 read-to-command split is a declared design assumption, not a specification value; revise it after observing the pilot.",
+    "Latency is measured server-side; document transfer, document rendering and external partner calls are excluded.",
+    "The 30-minute run measures latency and sustained capacity; 99.9% monthly availability needs a separate calendar-month measurement."
+  ]
+}
