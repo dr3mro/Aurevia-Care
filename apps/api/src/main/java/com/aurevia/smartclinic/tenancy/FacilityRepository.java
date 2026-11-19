@@ -23,7 +23,8 @@ public class FacilityRepository {
 
     private static final RowMapper<Facility> FACILITY_MAPPER = (resultSet, rowNumber) ->
             new Facility(resultSet.getString("organization_id"),
-                    resultSet.getString("code"), resultSet.getString("name"));
+                    resultSet.getString("code"), resultSet.getString("name"),
+                    resultSet.getString("time_zone"));
 
     private final NamedParameterJdbcTemplate jdbc;
 
@@ -46,7 +47,7 @@ public class FacilityRepository {
      */
     public Optional<Facility> findByCode(String code) {
         return jdbc.query("""
-                SELECT organization_id, code, name FROM public.facility WHERE code = :code
+                SELECT organization_id, code, name, time_zone FROM public.facility WHERE code = :code
                 """, Map.of("code", code), FACILITY_MAPPER).stream().findFirst();
     }
 
@@ -58,12 +59,13 @@ public class FacilityRepository {
      */
     public int insert(Facility facility) {
         return jdbc.update("""
-                INSERT INTO public.facility (organization_id, code, name)
-                VALUES (CAST(:organizationId AS uuid), :code, :name)
+                INSERT INTO public.facility (organization_id, code, name, time_zone)
+                VALUES (CAST(:organizationId AS uuid), :code, :name, :timeZone)
                 """, new MapSqlParameterSource()
                 .addValue("organizationId", facility.organizationId())
                 .addValue("code", facility.code())
-                .addValue("name", facility.name()));
+                .addValue("name", facility.name())
+                .addValue("timeZone", facility.timeZone()));
     }
 
     /**
