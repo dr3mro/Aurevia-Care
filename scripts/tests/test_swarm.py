@@ -199,6 +199,21 @@ class IntegrationTests(unittest.TestCase):
             self.assertEqual(swarm.guard(9), [])
         self.assertEqual(fake.calls, [("pr", "diff", "9", "--name-only")])
 
+    def test_guard_allows_new_module_check_scripts(self):
+        # Module check.sh files are required test entry points, not the protected
+        # repository-root gate. A frontend task adds these, so they must auto-merge.
+        fake = FakeGh(diff="apps/staff-web/check.sh\napps/staff-web/src/App.tsx\n"
+                           "apps/patient-mobile/check.sh\napps/patient-mobile/App.tsx\n")
+        with mock.patch.object(swarm, "gh", fake):
+            self.assertEqual(swarm.guard(9), [])
+        self.assertFalse(fake.said("needs-human"))
+
+    def test_guard_still_protects_repository_root_check_script(self):
+        fake = FakeGh(diff="check.sh\n")
+        with mock.patch.object(swarm, "gh", fake):
+            self.assertEqual(swarm.guard(9), ["check.sh"])
+        self.assertTrue(fake.said("needs-human"))
+
 
 class WorkflowTests(unittest.TestCase):
     def test_workflows_only_call_real_subcommands(self):
