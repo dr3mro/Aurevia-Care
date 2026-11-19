@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: SmartClinic Staff API
   version: 0.1.0
-  description: G0 tenant-isolated facility administration. Synthetic use only.
+  description: G0 tenant-isolated facility administration and staff lifecycle. Synthetic use only.
 servers:
   - url: http://localhost:8081
 paths:
@@ -49,6 +49,79 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '409': { description: Facility code already exists in this tenant }
         '422': { description: Invalid body, correlation id or tenant selection }
+  /api/v1/staff:
+    post:
+      operationId: inviteStaff
+      summary: Invite staff with one bounded role grant in the active organization
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InviteStaff' }
+      responses:
+        '201':
+          description: Invited; membership and role grant appended, grantor derived from the actor
+          headers:
+            Location: { schema: { type: string } }
+            X-Correlation-Id: { schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StaffMember' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { description: Subject already exists in this tenant }
+        '422': { description: Invalid subject, display name, role or tenant selection }
+  /api/v1/staff/{subject}:
+    get:
+      operationId: getStaff
+      summary: Read the effective staff projection in the active organization
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/Subject'
+      responses:
+        '200':
+          description: The visible staff member
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StaffMember' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: Not found or inaccessible; existence is concealed }
+  /api/v1/staff/{subject}/deactivate:
+    post:
+      operationId: deactivateStaff
+      summary: Append a revoked membership event; deny the next protected request
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/Subject'
+      responses:
+        '200':
+          description: Deactivated; no existing history row was modified
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StaffMember' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: Not found or inaccessible; existence is concealed }
+        '409': { description: Staff member already deactivated }
+  /api/v1/staff/{subject}/history:
+    get:
+      operationId: getStaffHistory
+      summary: Read immutable membership and role-grant history
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/Subject'
+      responses:
+        '200':
+          description: Append-only history with grantors and effective dates
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StaffHistory' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: Not found or inaccessible; existence is concealed }
 components:
   parameters:
     ActiveOrganization:
@@ -63,6 +136,12 @@ components:
       required: false
       description: Generated and echoed when absent.
       schema: { type: string }
+    Subject:
+      name: subject
+      in: path
+      required: true
+      description: Tenant-local synthetic staff subject.
+      schema: { type: string, pattern: '^[a-z0-9][a-z0-9._-]{1,63}$' }
   responses:
     Forbidden:
       description: No active membership or missing action permission
@@ -83,6 +162,52 @@ components:
         organizationId: { type: string, format: uuid }
         code: { type: string }
         name: { type: string }
+    InviteStaff:
+      type: object
+      required: [subject, displayName, role]
+      additionalProperties: false
+      description: Organization, grantor and effective dates are derived server-side, never accepted here.
+      properties:
+        subject: { type: string, pattern: '^[a-z0-9][a-z0-9._-]{1,63}$' }
+        displayName: { type: string, minLength: 1, maxLength: 200 }
+        role: { type: string, enum: [tenant_admin, reception] }
+    StaffMember:
+      type: object
+      properties:
+        subject: { type: string }
+        displayName: { type: string }
+        status: { type: string, enum: [active, deactivated] }
+        roles:
+          type: array
+          items: { type: string }
+    StaffHistory:
+      type: object
+      properties:
+        subject: { type: string }
+        memberships:
+          type: array
+          items: { $ref: '#/components/schemas/MembershipEvent' }
+        roleGrants:
+          type: array
+          items: { $ref: '#/components/schemas/RoleGrant' }
+    MembershipEvent:
+      type: object
+      description: Immutable; deactivation appends a revoked event.
+      properties:
+        id: { type: string }
+        status: { type: string, enum: [active, revoked] }
+        validFrom: { type: string, format: date-time }
+        validTo: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time }
+    RoleGrant:
+      type: object
+      description: Immutable; grantor and effective dates are recorded at grant time.
+      properties:
+        id: { type: string }
+        roleKey: { type: string }
+        grantedBy: { type: string, format: uuid }
+        validFrom: { type: string, format: date-time }
+        validTo: { type: string, format: date-time, nullable: true }
     Error:
       type: object
       properties:

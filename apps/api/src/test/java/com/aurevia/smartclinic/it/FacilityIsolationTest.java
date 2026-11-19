@@ -87,6 +87,7 @@ class FacilityIsolationTest {
                              String membershipStatus, String facilityCode, String facilityName)
             throws Exception {
         statement.execute("SET app.current_org = '" + org + "'");
+        statement.execute("SET app.actor = '" + subject + "'");
         statement.execute("INSERT INTO public.organization (organization_id, display_name) "
                 + "SELECT '" + org + "', 'Org " + subject + "' "
                 + "WHERE NOT EXISTS (SELECT 1 FROM public.organization WHERE organization_id = '" + org + "')");
