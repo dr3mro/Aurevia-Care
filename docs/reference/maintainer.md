@@ -17,3 +17,7 @@ Start with its story and requirement ID in TODO.md. Find the public entry point.
 Document transaction boundaries, tenant scope, event ownership, retries and expected errors at the symbol or module that owns them. Describe how to add an endpoint, schema change or workflow when the first real example exists. Use synthetic examples and links to source rather than copying implementation into docs.
 
 Build the reference with scripts/docs.sh. A module's TypeScript documentation hook generates HTML using TypeDoc and must fail on documentation errors. Java builds use Javadoc-style comments consumed by Doxygen.
+
+## G0 facility slice trace
+
+`POST /api/v1/facilities` → `FacilityController.create` → `TenantContextInterceptor` (subject + explicit active organization) → `FacilityService.create` → `TransactionTemplate` bound by `TenantGuardTransactionManager.doBegin` (`set_config(..., true)`) → `FacilityRepository.insert` (forced RLS + `WITH CHECK`) → `appendAudit` (append-only hash chain) → 201. `GET /api/v1/facilities/{code}` follows the same guarded path and returns 404 when the row is outside the active tenant. `FacilityIsolationTest` exercises all of it against a real PostgreSQL with two synthetic tenants; decision record: `docs/decisions/0001-g0-tenant-isolation.md`.

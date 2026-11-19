@@ -9,6 +9,6 @@
 | Local environment | Java 27, Maven 3.10, Node 26, Python 3.15, shellcheck, gh available; Docker MISSING locally — image builds and smoke run in GitHub Actions only |
 | Project layout | apps/api, apps/staff-web, apps/patient-mobile, db, infra, contracts |
 | CI and release | .github/workflows/delivery.yml |
-| Next action | Define smallest G0 story with acceptance scenarios, write failing tests through a real entry point |
+| Next action | OWASP/static-analysis gate, skill self-improvement updates, independent review, then CI verification on the exact SHA |
 
 Keep this card short and current. PROGRESS.md owns chronological stage evidence. MEMORY.md owns durable decisions.
