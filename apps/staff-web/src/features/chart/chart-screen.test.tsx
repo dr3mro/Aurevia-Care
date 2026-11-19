@@ -68,6 +68,25 @@ describe('ChartScreen', () => {
     expect(screen.queryByRole('button', { name: chartText('en', 'amend') })).toBeNull();
   });
 
+  it('preserves the signed source revision in history after amendment', () => {
+    screenFor(betaOrganizationId);
+    fireEvent.click(screen.getByRole('checkbox', { name: chartText('en', 'attestation') }));
+    fireEvent.click(screen.getByRole('button', { name: chartText('en', 'sign') }));
+    fireEvent.click(screen.getByRole('button', { name: chartText('en', 'amend') }));
+
+    // The signed source is retained in the append-only history, never edited,
+    // and the new amendment draft names the exact revision it supersedes (CLN-05).
+    const history = screen.getByRole('list', { name: chartText('en', 'history') });
+    expect(within(history).getAllByRole('listitem').map((item) => item.getAttribute('data-revision-id'))).toEqual([
+      'rev-001',
+      'rev-002',
+    ]);
+    expect(screen.getByTestId('amendment-notice').textContent).toContain('rev-002');
+    expect(
+      (screen.getByRole('textbox', { name: chartText('en', 'plan') }) as HTMLTextAreaElement).readOnly,
+    ).toBe(false);
+  });
+
   it('records entered-in-error while preserving the prior revision', () => {
     screenFor(alphaOrganizationId);
     const history = screen.getByRole('list', { name: chartText('en', 'history') });
