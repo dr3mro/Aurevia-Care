@@ -84,8 +84,7 @@ Gate evidence: competing bookings enforce one protected slot; stale drafts canno
     Slice: facility time zone, scheduling resources (clinician/room), weekly availability windows, visit types with duration, temporary holds with expiry, transactional booking with a database-enforced single protected slot, atomic reschedule with version precondition, booked → checked in → in progress → completed plus cancelled/no-show/expired branches, weekly recurrence series (all-or-nothing) and append-only appointment history.
     Acceptance matrix: (A1) book inside availability; (A2) competing bookings yield exactly one winner and one 409 under real concurrency; (A3) room and clinician overlaps both blocked; (A4) hold occupies the slot, conversion is atomic, expiry releases it; (A5) reschedule is atomic, stale If-Match is 412, history keeps the previous slot; (A6) cancel/no-show require a reason and record actor; (A7) illegal transitions are 409; (A8) booking outside availability needs a recorded override; (A9) configured booking rules are enforced; (A10) two tenants with identical local identifiers stay isolated; (A11) a series rolls back fully on one conflict; (A12) role authorization and 401/403 outcomes; (A13) invalid input is 422.
     Out of scope for this slice: staff worklist/assignment/handoff (S-G1-02), clinical chart (S-G1-03), equipment resources and paid booking rules.
-- [-] S-G1-02 · Identity verification, check-in, organization/facility worklist, assignment and handoff (CLN-02).
-  - agent: swarm-4
+- [ ] S-G1-02 · Identity verification, check-in, organization/facility worklist, assignment and handoff (CLN-02).
   - attempts: 2
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g1/s_g1_02, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g1_02
   - reserved: V12
