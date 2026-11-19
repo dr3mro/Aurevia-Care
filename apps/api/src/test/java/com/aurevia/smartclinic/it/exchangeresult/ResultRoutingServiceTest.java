@@ -301,6 +301,60 @@ class ResultRoutingServiceTest {
     }
 
     @Test
+    void aReplayAgainstAPopulatedLineageReturnsTheStoredFinal() {
+        // The empty-lineage stub in matched() hides the real replay path: after a
+        // successful import the repository returns the stored revision from
+        // lineage(), so a duplicate final must resolve to that stored revision.
+        authorized("lab_verifier");
+        ResultReport existing = result(1, ResultKind.FINAL, null, null);
+        when(repository.findOrder(ORDER)).thenReturn(Optional.of(order()));
+        when(repository.lineage(ORDER, SOURCE, ACCESSION)).thenReturn(List.of(existing));
+        when(repository.findReport(ORDER, SOURCE, ACCESSION, 1)).thenReturn(Optional.of(existing));
+        when(repository.findReview(anyString())).thenReturn(Optional.empty());
+        when(repository.priorRecipients(ORDER)).thenReturn(List.of());
+
+        ImportOutcome outcome = service.importResult(request("final", null));
+
+        assertEquals(existing, outcome.report(), "a replay must return the stored final revision");
+        assertNull(outcome.reconciliation());
+        verify(repository, never()).insertReport(any());
+        verify(repository, never()).insertReview(anyString());
+        audited("XCH04_RESULT_REPLAY");
+    }
+
+    @Test
+    void aReplayOfAnOlderFinalAfterACorrectionDoesNotDuplicateOrOverwrite() {
+        authorized("lab_verifier");
+        ResultReport first = result(1, ResultKind.FINAL, null, null);
+        ResultReport correction = result(2, ResultKind.CORRECTED, 1, REPORT_1);
+        when(repository.findOrder(ORDER)).thenReturn(Optional.of(order()));
+        when(repository.lineage(ORDER, SOURCE, ACCESSION)).thenReturn(List.of(first, correction));
+
+        ImportOutcome outcome = service.importResult(request("final", null));
+
+        assertEquals(first, outcome.report(), "an out-of-order final resolves to its stored revision");
+        verify(repository, never()).insertReport(any());
+        audited("XCH04_RESULT_REPLAY");
+    }
+
+    @Test
+    void aNewFindingAfterAnExistingFinalAdvancesTheLineage() {
+        authorized("lab_verifier");
+        ResultReport first = result(1, ResultKind.FINAL, null, null);
+        when(repository.findOrder(ORDER)).thenReturn(Optional.of(order()));
+        when(repository.lineage(ORDER, SOURCE, ACCESSION)).thenReturn(List.of(first));
+        when(repository.findReport(ORDER, SOURCE, ACCESSION, 2)).thenReturn(Optional.empty());
+
+        ImportOutcome outcome = service.importResult(request("critical", null));
+
+        assertNotNull(outcome.report());
+        assertEquals(2, outcome.report().version(), "a distinct finding advances the tip");
+        assertEquals(ResultKind.CRITICAL, outcome.report().kind());
+        verify(repository).insertReport(any());
+        audited("XCH04_CRITICAL_ROUTE");
+    }
+
+    @Test
     void aConcurrentInsertConflictReturnsTheWinningRevisionWithoutDuplicating() {
         authorized("lab_verifier");
         matched();
