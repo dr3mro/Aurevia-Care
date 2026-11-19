@@ -495,6 +495,26 @@ class ExportIntegrityTest(unittest.TestCase):
         report = tlev.evaluate(synthetic_artifact(export={"records": [record]}))
         self.assertIn("export.record_ids_unique", failures(report))
 
+    def test_duplicate_document_ids_are_rejected(self):
+        # A record cannot list the same document id twice with different bytes:
+        # the manifest would be ambiguous about which authorized copy was exported.
+        record = synthetic_record()
+        record["documents"].append({"id": record["documents"][0]["id"],
+                                    "checksum": CHECKSUM_C,
+                                    "authorization": "record_access_request",
+                                    "policy_version": "release-policy-v2"})
+        report = tlev.evaluate(synthetic_artifact(export={"records": [record]}))
+        self.assertIn("export.documents", failures(report))
+
+    def test_distinct_document_ids_are_accepted(self):
+        record = synthetic_record()
+        record["documents"].append({"id": "doc-synthetic-2", "checksum": CHECKSUM_C,
+                                    "authorization": "record_access_request",
+                                    "policy_version": "release-policy-v2"})
+        report = tlev.evaluate(synthetic_artifact(export={"records": [record]}))
+        self.assertNotIn("export.documents", failures(report))
+        self.assertEqual(report["verdict"], "pass")
+
 
 class ScopeMatchingTest(unittest.TestCase):
     def test_exact_and_wildcard_scopes_cover_the_target(self):

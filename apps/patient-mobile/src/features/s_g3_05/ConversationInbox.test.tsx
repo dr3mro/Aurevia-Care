@@ -10,7 +10,7 @@ function message(id: string, sequence: number): Message {
     id,
     conversationId: 'conv-1',
     senderId: 'unit-a',
-    senderRole: 'unit',
+    senderRole: 'staff',
     body: `message ${sequence}`,
     sentAt: '2026-11-19T10:00:00Z',
     sequence,
@@ -43,10 +43,9 @@ describe('ConversationInbox', () => {
     );
 
     expect(view.getByLabelText('conversation inbox')).toBeTruthy();
-    expect(view.getByLabelText('Synthetic Lab: awaiting_staff')).toBeTruthy();
-    expect(view.getAllByLabelText('state awaiting_staff')).toHaveLength(2);
-    expect(view.getByLabelText('unread 2')).toBeTruthy();
-    expect(view.queryByLabelText('unread 0')).toBeNull();
+    const unreadRow = view.getByLabelText('Synthetic Lab: awaiting_staff, 2 unread');
+    expect(unreadRow.props.accessibilityRole).toBe('button');
+    expect(view.getByLabelText('Synthetic Clinic: awaiting_staff')).toBeTruthy();
 
     await act(async () => {
       fireEvent.press(view.getByLabelText('Synthetic Clinic: awaiting_staff'));
