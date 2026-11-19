@@ -87,9 +87,11 @@ export function ChartScreen({ charts, organizationId }: ChartScreenProps) {
 
   function handleAmend(current: NoteRevision) {
     const amendment = createAmendment(current, `${current.id}-a${current.version + 1}`);
+    // Supersede by the composite tenant key, as every other mutation does: a
+    // local id alone is not unique across organizations (ARC-01/IAM-01).
     setRevisions((items) => [
-      ...items.map((item) =>
-        item.id === current.id ? markSuperseded(item, amendment.id) : item,
+      ...replaceRevision(items, organizationId, current.id, (item) =>
+        markSuperseded(item, amendment.id),
       ),
       amendment,
     ]);
