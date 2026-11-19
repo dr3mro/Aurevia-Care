@@ -4,7 +4,7 @@ package com.aurevia.smartclinic.api;
  * Machine-readable command failure carrying an explicit HTTP status and error code.
  *
  * <p>Instances are raised at domain or web boundaries and rendered by
- * {@link ApiErrorHandler} into a uniform response body.</p>
+ * the API error handler into a uniform response body.</p>
  */
 public class ApiException extends RuntimeException {
 
