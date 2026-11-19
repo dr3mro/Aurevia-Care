@@ -157,15 +157,14 @@ Gate evidence: rejected or recollected specimens trace to the right order; dupli
 
 - [-] S-G2-01 · Order creation with authorization, snapshot, disclosure record and destination work item (XCH-01).
   - agent: swarm-1
-  - attempts: 1
+  - attempts: 2
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g2/s_g2_01, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g2_01
   - reserved: V19
   - details:
     Implement Order creation with authorization, snapshot, disclosure record and destination work item (XCH-01) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [-] S-G2-02 · Separate workflow, transmission and clinical review states with human acknowledgment (XCH-02).
-  - agent: swarm-2
+- [ ] S-G2-02 · Separate workflow, transmission and clinical review states with human acknowledgment (XCH-02).
   - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g2/s_g2_02, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g2_02
   - reserved: V20
@@ -173,8 +172,7 @@ Gate evidence: rejected or recollected specimens trace to the right order; dupli
     Implement Separate workflow, transmission and clinical review states with human acknowledgment (XCH-02) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [-] S-G2-03 · Accept, reject with reason, clarify, linked changes, cancellations and revocation (XCH-03).
-  - agent: swarm-3
+- [ ] S-G2-03 · Accept, reject with reason, clarify, linked changes, cancellations and revocation (XCH-03).
   - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g2/s_g2_03, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g2_03
   - reserved: V21
@@ -182,8 +180,7 @@ Gate evidence: rejected or recollected specimens trace to the right order; dupli
     Implement Accept, reject with reason, clarify, linked changes, cancellations and revocation (XCH-03) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [-] S-G2-04 · Result routing, identifier matching, reconciliation queue and correction versions (XCH-04).
-  - agent: swarm-4
+- [ ] S-G2-04 · Result routing, identifier matching, reconciliation queue and correction versions (XCH-04).
   - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g2/s_g2_04, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g2_04
   - reserved: V22
@@ -191,8 +188,7 @@ Gate evidence: rejected or recollected specimens trace to the right order; dupli
     Implement Result routing, identifier matching, reconciliation queue and correction versions (XCH-04) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [-] S-G2-05 · Critical-result verification, owner, due time, escalation attempts and read-back (XCH-05).
-  - agent: swarm-5
+- [ ] S-G2-05 · Critical-result verification, owner, due time, escalation attempts and read-back (XCH-05).
   - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g2/s_g2_05, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g2_05
   - reserved: V23
@@ -200,8 +196,7 @@ Gate evidence: rejected or recollected specimens trace to the right order; dupli
     Implement Critical-result verification, owner, due time, escalation attempts and read-back (XCH-05) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [-] S-G2-06 · Patient release authorization, timed/hold policies and withdrawn releases (XCH-06).
-  - agent: swarm-6
+- [ ] S-G2-06 · Patient release authorization, timed/hold policies and withdrawn releases (XCH-06).
   - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g2/s_g2_06, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g2_06
   - reserved: V24
@@ -209,8 +204,7 @@ Gate evidence: rejected or recollected specimens trace to the right order; dupli
     Implement Patient release authorization, timed/hold policies and withdrawn releases (XCH-06) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [-] S-G2-07 · Trending only comparable observations with units, ranges, time and qualifiers visible (XCH-07).
-  - agent: swarm-7
+- [ ] S-G2-07 · Trending only comparable observations with units, ranges, time and qualifiers visible (XCH-07).
   - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g2/s_g2_07, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g2_07
   - reserved: V25
@@ -218,8 +212,7 @@ Gate evidence: rejected or recollected specimens trace to the right order; dupli
     Implement Trending only comparable observations with units, ranges, time and qualifiers visible (XCH-07) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [-] S-G2-08 · Requisition accession, specimen identification, rejection and linked recollection (LAB-01).
-  - agent: swarm-8
+- [ ] S-G2-08 · Requisition accession, specimen identification, rejection and linked recollection (LAB-01).
   - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g2/s_g2_08, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g2_08
   - reserved: V26
@@ -227,8 +220,7 @@ Gate evidence: rejected or recollected specimens trace to the right order; dupli
     Implement Requisition accession, specimen identification, rejection and linked recollection (LAB-01) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [-] S-G2-09 · Numeric, qualified, text and coded observations, verification states and issued revisions (LAB-02).
-  - agent: swarm-9
+- [ ] S-G2-09 · Numeric, qualified, text and coded observations, verification states and issued revisions (LAB-02).
   - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g2/s_g2_09, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g2_09
   - reserved: V27
@@ -236,8 +228,7 @@ Gate evidence: rejected or recollected specimens trace to the right order; dupli
     Implement Numeric, qualified, text and coded observations, verification states and issued revisions (LAB-02) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes.md.
-- [-] S-G2-10 · Synthetic partner conformance fixtures including duplicates, corrections and partial outages (XCH-01–07, LAB-01, LAB-02).
-  - agent: swarm-10
+- [ ] S-G2-10 · Synthetic partner conformance fixtures including duplicates, corrections and partial outages (XCH-01–07, LAB-01, LAB-02).
   - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g2/s_g2_10, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g2_10
   - reserved: V28
