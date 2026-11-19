@@ -155,8 +155,7 @@ Gate evidence: competing bookings enforce one protected slot; stale drafts canno
 
 Gate evidence: rejected or recollected specimens trace to the right order; duplicate and reordered events do not duplicate or overwrite final reports; unmatched results wait for review; critical results escalate on deadline with human acknowledgment, and corrections reopen review.
 
-- [-] S-G2-01 · Order creation with authorization, snapshot, disclosure record and destination work item (XCH-01).
-  - agent: swarm-1
+- [ ] S-G2-01 · Order creation with authorization, snapshot, disclosure record and destination work item (XCH-01).
   - attempts: 2
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/g2/s_g2_01, apps/api/src/test/java/com/aurevia/smartclinic/it/s_g2_01
   - reserved: V19
