@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import type { Conversation } from './domain';
-import { canReply } from './domain';
+import { canReply, senderLabel } from './domain';
 import { activeLayoutDirection } from './layout';
 
 /** Props for the patient conversation thread. */
@@ -36,7 +36,7 @@ export function ConversationThread({ conversation, onSend }: ConversationThreadP
         <Text
           key={message.id}
           accessibilityRole="text"
-          accessibilityLabel={`${message.senderRole} said: ${message.body}`}
+          accessibilityLabel={`${senderLabel(message.senderRole)} said: ${message.body}`}
         >
           {message.body}
         </Text>

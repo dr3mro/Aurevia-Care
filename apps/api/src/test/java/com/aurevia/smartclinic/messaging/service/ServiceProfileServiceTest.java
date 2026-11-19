@@ -169,6 +169,21 @@ class ServiceProfileServiceTest {
     }
 
     @Test
+    void aBrandNewUnitCanPublishItsFirstProfileWithVersionZero() {
+        String newUnit = "77777777-7777-7777-7777-777777777777";
+        store.addUnit(ORG, newUnit);
+        TenantContext.set(new TenantContext(ORG, ADMIN, "ADMIN", "corr-first-publish"));
+        PublishProfileRequest request = new PublishProfileRequest(newUnit, "UTC",
+                List.of("FRIDAY|09:00|17:00"), 30L, "nurse", List.of("backup"),
+                "escalation", "urgent", "downtime", List.of("collection"), instructions(),
+                "2026-11-19T12:00:00Z", 0);
+        ServiceProfile draft = service.publish(request);
+        assertEquals(1, draft.version());
+        assertEquals(ProfileStatus.DRAFT, draft.status());
+        assertEquals(newUnit, draft.unitId());
+    }
+
+    @Test
     void approvalRequiresADifferentApproverAndAnUnapprovedDraft() {
         TenantContext.set(new TenantContext(ORG, ADMIN, "ADMIN", "corr-6"));
         ServiceProfile draft = service.publish(publishRequest(1));

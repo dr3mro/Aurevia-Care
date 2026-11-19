@@ -399,6 +399,67 @@ class PatientReleaseIsolationTest {
     }
 
     @Test
+    void correctionOntoAnAlreadyReleasedRevisionIsAuditedAsConflict() throws Exception {
+        ResponseEntity<String> first = authorize("LAB-CORRECT-DUP-A", 1, "IMMEDIATE", null,
+                null, null, "clinician-a", ORG_A, "rel-dup-1");
+        assertEquals(HttpStatus.CREATED, first.getStatusCode(), first.getBody());
+        ResponseEntity<String> second = authorize("LAB-CORRECT-DUP-B", 1, "IMMEDIATE", null,
+                null, null, "clinician-a", ORG_A, "rel-dup-2");
+        assertEquals(HttpStatus.CREATED, second.getStatusCode(), second.getBody());
+        String firstId = field(first.getBody(), "id");
+
+        ResponseEntity<String> conflict = command(firstId, "correct",
+                "{\"correctedRevisionId\":\"LAB-CORRECT-DUP-B\",\"correctedRevisionVersion\":1,\"reason\":\"duplicate\"}",
+                "\"1\"", "clinician-a", ORG_A, "rel-dup-3");
+        assertEquals(HttpStatus.CONFLICT, conflict.getStatusCode(), conflict.getBody());
+        assertEquals("CONFLICT", queryStrings("SELECT outcome FROM public.audit_event "
+                + "WHERE correlation_id = 'rel-dup-3'").get(0));
+        assertEquals("AUTHORIZED", field(get(firstId, "clinician-a", ORG_A).getBody(), "state"));
+    }
+
+    @Test
+    void withdrawnRevisionCannotBeReauthorized() throws Exception {
+        ResponseEntity<String> created = authorize("LAB-REAUTH-013", 1, "IMMEDIATE", null,
+                null, null, "clinician-a", ORG_A, "rel-reauth-1");
+        assertEquals(HttpStatus.CREATED, created.getStatusCode(), created.getBody());
+        String id = field(created.getBody(), "id");
+        assertEquals(HttpStatus.OK, command(id, "withdraw", "{\"reason\":\"retracted\"}", "\"1\"",
+                "clinician-a", ORG_A, "rel-reauth-2").getStatusCode());
+
+        // An immutable revision is one-way terminal: a retracted revision must never be
+        // released again, so the portal keeps serving no access to it.
+        ResponseEntity<String> again = authorize("LAB-REAUTH-013", 1, "IMMEDIATE", null,
+                null, null, "clinician-a", ORG_A, "rel-reauth-3");
+        assertEquals(HttpStatus.CONFLICT, again.getStatusCode(), again.getBody());
+        assertFalse(visible("clinician-a", ORG_A).getBody().contains("LAB-REAUTH-013"));
+        assertEquals("CONFLICT", queryStrings("SELECT outcome FROM public.audit_event "
+                + "WHERE correlation_id = 'rel-reauth-3'").get(0));
+    }
+
+    @Test
+    void supersededRevisionCannotBeReauthorizedOrUsedAsItsOwnCorrection() throws Exception {
+        ResponseEntity<String> created = authorize("LAB-REAUTH-014", 1, "IMMEDIATE", null,
+                null, null, "clinician-a", ORG_A, "rel-reauthold-1");
+        assertEquals(HttpStatus.CREATED, created.getStatusCode(), created.getBody());
+        String id = field(created.getBody(), "id");
+        ResponseEntity<String> same = command(id, "correct",
+                "{\"correctedRevisionId\":\"LAB-REAUTH-014\",\"correctedRevisionVersion\":2,\"reason\":\"self\"}",
+                "\"1\"", "clinician-a", ORG_A, "rel-reauthold-2");
+        assertEquals(HttpStatus.CONFLICT, same.getStatusCode(), same.getBody());
+
+        ResponseEntity<String> corrected = command(id, "correct",
+                "{\"correctedRevisionId\":\"LAB-REAUTH-014B\",\"correctedRevisionVersion\":2,\"reason\":\"corrected\"}",
+                "\"1\"", "clinician-a", ORG_A, "rel-reauthold-3");
+        assertEquals(HttpStatus.OK, corrected.getStatusCode(), corrected.getBody());
+        ResponseEntity<String> again = authorize("LAB-REAUTH-014", 1, "IMMEDIATE", null,
+                null, null, "clinician-a", ORG_A, "rel-reauthold-4");
+        assertEquals(HttpStatus.CONFLICT, again.getStatusCode(), again.getBody());
+        String access = visible("clinician-a", ORG_A).getBody();
+        assertTrue(access.contains("LAB-REAUTH-014B"));
+        assertFalse(access.contains("LAB-REAUTH-014\""));
+    }
+
+    @Test
     void identicalLocalIdentifiersStayIsolatedAcrossTenants() {
         ResponseEntity<String> created = authorize("LAB-SHARED-007", 1, "IMMEDIATE", null,
                 null, null, "clinician-a", ORG_A, "rel-create-7");

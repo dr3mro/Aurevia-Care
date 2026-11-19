@@ -1,0 +1,139 @@
+import { useState } from 'react';
+import { Form } from '../../components/Form';
+import { FormField } from '../../components/FormField';
+import { MixedScriptText } from '../../components/MixedScriptText';
+import { formatCivilDate } from '../../i18n/format';
+import { useI18n } from '../../i18n/I18nProvider';
+import { useTheme } from '../../theme/ThemeProvider';
+import type { ConfigurationDraft, ConfigurationVersion } from './domain';
+import { effectiveVersion, isValidCivilDate, versionsFor } from './domain';
+import { adminText } from './messages';
+import { StateBadge } from './StateBadge';
+
+/** Props for the tenant-scoped configuration version editor. */
+export interface ConfigurationEditorProps {
+  entries: readonly ConfigurationVersion[];
+  organizationId: string;
+  configKey: string;
+  anchorCivilDate: string;
+  onPropose: (draft: ConfigurationDraft) => void;
+}
+
+/** Show versioned, effective-dated configuration and collect a local draft. */
+export function ConfigEditor({
+  entries,
+  organizationId,
+  configKey,
+  anchorCivilDate,
+  onPropose,
+}: ConfigurationEditorProps) {
+  const { locale } = useI18n();
+  const { tokens } = useTheme();
+  const [value, setValue] = useState('');
+  const [effectiveFrom, setEffectiveFrom] = useState('');
+  const [invalidField, setInvalidField] = useState<'value' | 'effectiveFrom' | null>(null);
+  const text = (key: Parameters<typeof adminText>[1]) => adminText(locale, key);
+
+  const versions = versionsFor(entries, organizationId, configKey);
+  const effective = effectiveVersion(entries, organizationId, configKey, anchorCivilDate);
+
+  function submit() {
+    const proposedValue = value.trim();
+    const proposedDate = effectiveFrom.trim();
+    if (proposedValue.length === 0) {
+      setInvalidField('value');
+      return;
+    }
+    if (!isValidCivilDate(proposedDate)) {
+      setInvalidField('effectiveFrom');
+      return;
+    }
+    setInvalidField(null);
+    onPropose({ value: proposedValue, effectiveFrom: proposedDate });
+    setValue('');
+    setEffectiveFrom('');
+  }
+
+  return (
+    <section aria-label={text('configurationEditor')} style={{ display: 'grid', gap: tokens.spacing.md }}>
+      <h3>{text('configurationEditor')}</h3>
+      <p>
+        {text('configKey')}: <MixedScriptText text={configKey} lang="en" />
+      </p>
+      <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+        <caption style={{ textAlign: 'start', paddingBlock: tokens.spacing.sm }}>
+          {text('configurationVersions')}
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">{text('version')}</th>
+            <th scope="col">{text('configuredValue')}</th>
+            <th scope="col">{text('effectiveFrom')}</th>
+            <th scope="col">{text('approvalState')}</th>
+            <th scope="col">{text('approver')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {versions.length === 0 ? (
+            <tr>
+              <td colSpan={5}>{text('noVersions')}</td>
+            </tr>
+          ) : (
+            versions.map((entry) => (
+              <tr key={`${entry.organizationId}:${entry.version}`}>
+                <th scope="row">{entry.version}</th>
+                <td>
+                  <MixedScriptText text={entry.value} lang="en" />
+                </td>
+                <td>
+                  <time dateTime={entry.effectiveFrom}>{formatCivilDate(entry.effectiveFrom, locale)}</time>
+                </td>
+                <td>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: tokens.spacing.sm }}>
+                    {entry.approved ? (
+                      <StateBadge glyph="✓" label={text('approved')} tone="approved" />
+                    ) : (
+                      <StateBadge glyph="○" label={text('pending')} tone="pending" />
+                    )}
+                    {effective && entry.version === effective.version ? (
+                      <StateBadge glyph="*" label={text('effectiveBadge')} tone="effective" />
+                    ) : null}
+                  </span>
+                </td>
+                <td>
+                  <MixedScriptText
+                    text={entry.approver ?? text('unknown')}
+                    lang={entry.approver ? 'en' : locale}
+                  />
+                </td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+      <Form label={text('configurationEditor')} submitLabel={text('propose')} onSubmit={submit}>
+        <FormField
+          id="admin-config-value"
+          label={text('proposedValue')}
+          value={value}
+          onChange={(next) => {
+            setValue(next);
+            setInvalidField(null);
+          }}
+          error={invalidField === 'value' ? text('invalidDraft') : ''}
+        />
+        <FormField
+          id="admin-config-effective"
+          label={text('effectiveFrom')}
+          value={effectiveFrom}
+          onChange={(next) => {
+            setEffectiveFrom(next);
+            setInvalidField(null);
+          }}
+          placeholder="2026-07-01"
+          error={invalidField === 'effectiveFrom' ? text('invalidDraft') : ''}
+        />
+      </Form>
+    </section>
+  );
+}
