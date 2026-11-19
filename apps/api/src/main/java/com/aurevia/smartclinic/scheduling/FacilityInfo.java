@@ -7,6 +7,7 @@ package com.aurevia.smartclinic.scheduling;
  * @param id       facility identifier
  * @param code     tenant-local facility code
  * @param timeZone IANA time zone name
+ * @return this record
  */
 public record FacilityInfo(String id, String code, String timeZone) {
 }
