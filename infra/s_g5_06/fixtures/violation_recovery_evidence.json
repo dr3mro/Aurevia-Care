@@ -1,0 +1,47 @@
+{
+  "schema_version": "1.0",
+  "kind": "synthetic_rehearsal",
+  "source": "synthetic-violation-fixture",
+  "requirement": "OPS-04/OPS-05",
+  "targets": {
+    "rpo_minutes": 20,
+    "rto_hours": 5
+  },
+  "scope": [
+    "core_chart",
+    "order_data",
+    "documents"
+  ],
+  "restore": {
+    "targets": ["database", "objects"],
+    "clean_environment": false
+  },
+  "reconciliation": {
+    "hashes": false,
+    "source_versions": true,
+    "in_flight_deliveries": true,
+    "audit_coverage": true,
+    "completed_before_writes_reopened": false
+  },
+  "verification": {
+    "before_pilot": false,
+    "quarterly_cadence": true
+  },
+  "monitoring": {
+    "signals": [
+      "error_rates",
+      "saturation",
+      "backup_status"
+    ]
+  },
+  "ownership": {
+    "operational_on_call_owner": "platform-oncall"
+  },
+  "runbooks": [
+    "paper_manual_capture",
+    "patient_identification",
+    "critical_contacts",
+    "downtime_drills"
+  ],
+  "duplicate_prevention": false
+}

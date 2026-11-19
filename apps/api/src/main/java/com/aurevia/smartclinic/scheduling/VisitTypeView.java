@@ -6,6 +6,7 @@ package com.aurevia.smartclinic.scheduling;
  *
  * @param code            tenant-local visit type code
  * @param durationMinutes appointment length in minutes
+ * @return this record
  */
 public record VisitTypeView(String code, int durationMinutes) {
 }
