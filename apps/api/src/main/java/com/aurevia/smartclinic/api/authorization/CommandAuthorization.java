@@ -1,7 +1,8 @@
-package com.aurevia.smartclinic.api.x_04;
+package com.aurevia.smartclinic.api.authorization;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -94,7 +95,17 @@ public final class CommandAuthorization {
          * Normalize the inert claim list.
          */
         public CommandRequest {
-            claimedPermissions = claimedPermissions == null ? List.of() : List.copyOf(claimedPermissions);
+            // Claims are never consulted, but a malformed client payload (for example
+            // a null element) must not throw before authorize() can record a decision.
+            List<String> claims = new ArrayList<>();
+            if (claimedPermissions != null) {
+                for (String claim : claimedPermissions) {
+                    if (claim != null) {
+                        claims.add(claim);
+                    }
+                }
+            }
+            claimedPermissions = List.copyOf(claims);
         }
     }
 
@@ -182,7 +193,8 @@ public final class CommandAuthorization {
      * @return the allowed decision
      * @throws ApiException {@code 401} when unauthenticated, {@code 403} when membership is
      *         inactive, the owner is unknown or no active role is permitted,
-     *         {@code 422} for a malformed or unknown command
+     *         {@code 422} for a malformed or unknown command, and {@code 500} when the
+     *         decision cannot be recorded
      */
     public Decision authorize(CommandRequest request, ServerIdentity identity) {
         if (identity == null || !token(identity.organizationId()) || !token(identity.subject())) {
@@ -205,7 +217,7 @@ public final class CommandAuthorization {
             throw new ApiException(403, "FORBIDDEN", "membership could not be resolved");
         }
         if (!member.activeMembership()) {
-            record(commandId, definition.action(), identity, false, "MEMBERSHIP_INACTIVE", List.of());
+            record(commandId, definition.action(), identity, false, "MEMBERSHIP_INACTIVE", member.activeRoles());
             throw new ApiException(403, "FORBIDDEN", "no active membership");
         }
         List<String> roles = member.activeRoles();
@@ -233,13 +245,20 @@ public final class CommandAuthorization {
      * @param reasonCode stable reason code
      * @param roles      roles considered
      * @return the recorded decision
+     * @throws ApiException {@code 500 DECISION_NOT_RECORDED} when the sink cannot persist the decision
      */
     private Decision record(String commandId, String action, ServerIdentity identity, boolean allowed,
                             String reasonCode, List<String> roles) {
         Decision decision = new Decision(commandId, action, value(identity, ServerIdentity::organizationId),
                 value(identity, ServerIdentity::subject), value(identity, ServerIdentity::correlationId),
                 allowed, reasonCode, roles, clock.instant());
-        sink.record(decision);
+        try {
+            sink.record(decision);
+        } catch (RuntimeException failure) {
+            // A failed audit write must fail the command closed with a defined,
+            // machine-readable error instead of leaking an unstructured runtime fault.
+            throw new ApiException(500, "DECISION_NOT_RECORDED", "authorization decision could not be recorded");
+        }
         return decision;
     }
 

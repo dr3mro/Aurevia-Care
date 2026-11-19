@@ -350,6 +350,24 @@ class DocumentServiceTest {
     }
 
     @Test
+    void renderBindsTheValidatedSourceAssociationIntoTheRenderSpec() {
+        authorized();
+        when(repository.chartExists(SUBJECT)).thenReturn(true);
+        when(repository.findAssociation(ID)).thenReturn(Optional.of(assoc("active", 1, null)));
+        when(repository.nextRenderVersion("chart", SUBJECT, "en")).thenReturn(1);
+        when(repository.findRendered(anyString())).thenReturn(Optional.of(
+                new RenderedDocument(ID, 1, "chart", SUBJECT, "en", "LTR", 1, 4L,
+                        "digest", "provenance", "now", ACTOR)));
+        RenderRequest withSource = new RenderRequest("chart", SUBJECT, "en", "T", List.of("l"),
+                "S", "I", "E", 0, ID);
+        service.render(withSource);
+        ArgumentCaptor<PdfSpec> spec = ArgumentCaptor.forClass(PdfSpec.class);
+        verify(renderer).render(spec.capture());
+        assertEquals(ID, spec.getValue().sourceAssociationId(),
+                "the validated original must be bound to its derived PDF");
+    }
+
+    @Test
     void renderMapsADuplicateVersionTo409() {
         authorized();
         when(repository.chartExists(SUBJECT)).thenReturn(true);
