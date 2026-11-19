@@ -362,6 +362,9 @@ def publish(task, directory):
             raise SystemExit(f"refusing unexpected branch name {branch!r}")
         if task["kind"] == "fix":
             authed_git("fetch", "origin", branch)
+        # The publish job reuses one checkout for every slot. Recreate the
+        # local ref so a second bundle cannot fail as a non-fast-forward.
+        git("update-ref", "-d", "refs/heads/swarm-incoming", check=False)
         git("fetch", str(bundle), "HEAD:refs/heads/swarm-incoming")
         authed_git("push", "origin", f"swarm-incoming:refs/heads/{branch}")
         checks = read(directory / "checks", "skipped")
