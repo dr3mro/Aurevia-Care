@@ -72,6 +72,7 @@ class ClinicalCatalogAcceptanceTest {
         assertThrows(IllegalArgumentException.class,
                 () -> service.define(CATALOG_KEY, entries, "author-1"));
         assertTrue(service.history(CATALOG_KEY).isEmpty());
+        assertNull(service.effective(CATALOG_KEY));
     }
 
     // --- CLN-03 / CLN-04: market mapping, governance approval and preserved history ---
