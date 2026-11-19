@@ -363,6 +363,11 @@ class PlanTests(unittest.TestCase):
         self.assertIn("cron: '7 * * * *'", text)
         self.assertNotIn("cron: '7 */3 * * *'", text)
 
+    def test_doxygen_install_retries_apt_mirror_failures(self):
+        text = (ROOT / ".github/workflows/delivery.yml").read_text()
+        self.assertIn("for attempt in 1 2 3", text)
+        self.assertIn("apt install attempt", text)
+
     def test_wave_defaults_to_ten_workers(self):
         text = (ROOT / ".github/workflows/swarm.yml").read_text()
         self.assertRegex(text, r"default: '10'")
