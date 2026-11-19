@@ -2,8 +2,8 @@
 
 | Field | Current value |
 |---|---|
-| Working tree and remote | Working branch is `main` at `origin/main` (`1084ed4`); origin `github.com/dr3mro/Aurevia-Care.git`. `delivery/g0` was deleted per user directive; `ci/agent-swarm` merged in PR #11 and the CW-001 fix in PR #12. The current dispatch branch is `opencode/dispatch-3-3`: report-only verification, local commits, no push |
-| Active story | S-G0-03 configuration foundation: delivered and green on `main`; remaining S-G0-03 catalog, broader-audit and OPS-06 slices queued |
+| Working tree and remote | Branch `main`, local HEAD `4869b62` (merge of tracker sync with swarm claims at `2dc6a24`); origin `github.com/dr3mro/Aurevia-Care.git`. `delivery/g0` retired; all scoped work commits to `main`. External auto-merge and swarm workers (CW-006/007/008) are active on this repo — reconcile `git fetch origin main` and keep `TODO.md` synced at least every 10 minutes before editing trackers or pushing. |
+| Active story | None claimed. S-G0-03d (OPS-06 migration change-safety gate) accepted: code `6b9d730`, tracker `4869b62`, Delivery run 44477163896 green on all required checks. Next eligible: S-G0-04 (ARC-02 isolation), S-G0-06/07/08 and IMP-01/IMP-02. |
 | Approved delivery branch | `main` (all scoped work commits there from now on; PRs and required checks still apply) |
 | Stable commands | scripts/check.sh, scripts/smoke-image.sh, scripts/verify.sh, scripts/gen-opencode.py, bash apps/api/check.sh, bash db/check.sh |
 | Local environment | Java 27 (baseline is Java 21 bytecode: `--release 21` locally, CI JDK 21), Maven 3.10, Node 26, Python 3.15, shellcheck, Doxygen, PostgreSQL 18.6 on 5432; Docker MISSING locally — image smoke runs in GitHub Actions only |
