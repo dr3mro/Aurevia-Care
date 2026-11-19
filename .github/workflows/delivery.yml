@@ -39,6 +39,23 @@ jobs:
           python3 -I scripts/check-secrets.py
           python3 -I -m unittest discover -s scripts/tests -q
 
+  frontend:
+    name: Frontend standards
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      # Runs tsc --noEmit, eslint --max-warnings=0, prettier --check and Vitest
+      # with 100% coverage thresholds. Agents cannot merge TypeScript that
+      # violates AGENTS.md because this is a required check.
+      - run: bash scripts/frontend-check.sh
+
   java-verify:
     name: Java and database verification
     needs: policy
