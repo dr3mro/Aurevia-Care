@@ -1,3 +1,4 @@
+
 # S-G3-06 — PDF/JPEG/PNG attachments, sender binding, quarantine scans and clean-verdict access
 
 ## Story and requirements
@@ -161,47 +162,56 @@ this IAM-06 backend slice.
 
 ## Requirement IDs and acceptance mapping
 
-Primary: **CLN-07**. Supporting: **ARC-01, ARC-02, ARC-03, OPS-02, IAM-01, UX-01** (locale/direction).
-Specification: `SMARTCLINIC_V1_SPEC.md` §3 CLN-07, §7 ARC-01..03, §8 OPS-02.
+Primary: **XCH-02**. Supporting: **ARC-01, ARC-02, ARC-03, ARC-04, IAM-01, PRD-06, OPS-02**.
+Specification: `SMARTCLINIC_V1_SPEC.md` §4 XCH-02, §2 IAM-01, §7 ARC-01..04, §8 OPS-02. Gate: G2.
 
-| Acceptance behaviour (CLN-07) | Implementation | Test evidence (synthetic only) |
+| XCH-02 acceptance behaviour | Implementation (in scope) | Test evidence (synthetic only) |
 |---|---|---|
-| Link original PDF/JPEG/PNG to chart, order or result; retain original bytes + checksum | `DocumentService.link`, `DocumentRepository.insert`; V17 `document_association` + `set_document_original_digest` trigger (sha256 derived from stored bytes, never caller-supplied) | `DocumentServiceTest`, `DocumentInputsTest`, `DocumentValuesTest`, `DocumentIsolationTest` (integrator) |
-| Rotation is presentation metadata only; voiding preserves history with a reason | `rotation_degrees` column pinned by `guard_document_association_update` trigger; `DocumentService.voidAssociation` + append-only `document_association_event` | `DocumentServiceTest`, `DocumentPolicyTest`, `DocumentIsolationTest` (integrator) |
-| Immutable, versioned PDFs; stale version / illegal transition rejected | `rendered_document` UNIQUE(org,type,id,locale,version), append-only triggers, `next_render_version` advisory-lock fold; `If-Match` on void (412) | `DocumentServiceTest`, `DocumentControllerTest`, `PdfRendererTest`, `DocumentIsolationTest` (integrator) |
-| English/Arabic, RTL direction, page numbers, provenance, print profile | `PdfRenderer` direction-aware layout, embedded font placeholder, `/PrintScaling /None`, provenance keys, `Page 1 / 1`; locale->direction checked by V17 CHECK constraint | `PdfRendererTest`, `DocumentValuesTest`, `DocumentIsolationTest` (integrator) |
-| Tenant isolation, fail-closed authorization, audit | Forced RLS on all three V17 tables; role matrix in `DocumentPolicy`; `DocumentService.authorize` re-derives membership/roles per transaction and audits denials | `DocumentPolicyTest`, `DocumentIsolationTest` (integrator) |
+| Three independent state channels: workflow `requested→accepted→processing→completed` (+ `rejected`/`cancelled`), transmission `pending→sent→delivered\|failed`, clinical review `unreviewed→acknowledged→action_pending→resolved` | `WorkflowState`, `TransmissionState`, `ClinicalReviewState` matrices; `ExchangeDimension`; `ExchangeStateMachine.next` writes exactly one channel; V20 `CHECK` constraints + `xch02_guard_task_update` mirror the matrices in SQL | `WorkflowStateTest` (3), `TransmissionStateTest` (2), `ClinicalReviewStateTest` (2), `ExchangeStateMachineTest` (6); `ExchangeTaskIsolationTest.workflowPathRejectsReasonsAndIllegalTransitions`, `transmissionAcknowledgmentNeverClosesAClinicalTask`, `reviewChainRequiresAcknowledgmentAndIsAppendOnly` (integrator) |
+| Acknowledgment by an authorized human with timestamp and revision | Clinician-only `EXCHANGE_REVIEW` in `ExchangeActionPolicy`; `Clock`-derived timestamp; `reviewedRevision = current.version()` after `If-Match` CAS; actor derived by V20 `xch02_actor_id()` from transaction-local `app.actor`, never from a request DTO | `ExchangeTaskServiceTest.acknowledgeBindsClockAndRevisionAndNeverTrustsTheCallerForActor`, `acknowledgeDeniesNonClinicianAndInactiveMembership`; `ExchangeTaskIsolationTest.humanAcknowledgmentBindsContextActorClockAndRevision` (integrator) |
+| A transmission acknowledgment cannot close a clinical task | `DELIVER`/`FAIL`/`SEND` map to `TRANSMISSION`; the state machine copies the clinical channel and its evidence unchanged; V20 restores clinical evidence columns on non-clinical writes and enforces the one-channel rule | `ExchangeStateMachineTest.aTransmissionAcknowledgmentNeverMutatesClinicalReview`; `ExchangeTaskServiceTest.transmissionAcknowledgmentNeverMutatesClinicalReview`; `ExchangeTaskIsolationTest.transmissionAcknowledgmentNeverClosesAClinicalTask` (integrator, incl. direct SQL assertion) |
+| Explicit POST commands with version precondition and machine-readable errors (ARC-03/04) | `POST /api/v1/exchange-tasks` and `/{id}/{command}`, `IfMatch.parse` (428 missing / 422 malformed / 412 stale through CAS), allowlisted `ExchangeCommand.from`, uniform `ApiException` mapping | `ExchangeTaskControllerTest` (5); `ExchangeTaskIsolationTest.authorizationPreconditionsAndTenantConcealment` (401/403/404/409/412/422/428) (integrator) |
+| Tenant isolation, fail-closed authorization, append-only ledger and audit (ARC-01/02, IAM-01, OPS-02) | `(organization_id,id)` composite keys; forced RLS on both V20 tables with `WITH CHECK`; `FOR UPDATE` + version CAS; immutable `exchange_task_transition`; `appendAudit` SUCCESS/DENIED inside the guarded transaction; membership and roles re-derived per request | `ExchangeTaskIsolationTest` two-tenant `LOCAL-1` concealment, ledger immutability attempt, audit-row assertions (integrator); `ExchangeTaskServiceTest` 403 denial audits |
 
-Entry-point-to-test trace: `POST /api/v1/documents/associations` → `DocumentController.link` → `DocumentService.link` → guarded `TransactionTemplate` (tenant + membership + action) → `DocumentRepository.insert` (forced RLS + DB-derived digest) → `appendEvent` + `appendAudit` → 201. `POST /api/v1/documents/rendered` → `DocumentController.render` → `DocumentService.render` → `PdfRenderer.render` → `DocumentRepository.insertRendered` (immutable, versioned, RTL/LTR) → 201. Verified by `DocumentControllerTest` (unit) and `DocumentIsolationTest` (integration, two synthetic tenants).
+### Entry-point-to-test trace
 
-## Commands run and results (evidence source: executed tool commands)
+`POST /api/v1/exchange-tasks` → `ExchangeTaskController.create` → `ExchangeTaskService.create` → guarded `TransactionTemplate` (`TenantGuardTransactionManager` binds `app.current_org`/`app.actor`) → `ExchangeActionPolicy.allowsCreate` → `ExchangeTaskRepository.insert` (forced RLS) → `appendEvent(CREATE)` + `appendAudit` → 201 with three initial states. Verified by `ExchangeTaskControllerTest.createReturns201WithLocationAndInitialStates` and `ExchangeTaskIsolationTest.createOpensTheThreeInitialChannelsWithOneHistoryEvent`.
 
-- `mvn -q -B -f apps/api/pom.xml -Pno-security,fast test` → **EXIT 0**. Surefire: **244 tests, 0 failures, 0 errors, 0 skipped**; 54 are in `com.aurevia.smartclinic.it.s_g1_07` (DocumentControllerTest 5, DocumentInputsTest 11, DocumentPolicyTest 4, DocumentServiceTest 20, DocumentValuesTest 5, PdfRendererTest 9). This is the exact Java command in `scripts/quick-check.sh`.
-- `bash scripts/frontend-check.sh` → **EXIT 0** (`frontend standards: policy and tool commands passed`). Includes staff-web `npm run typecheck`, `lint`, `npm test` (vitest) and patient-mobile plus root toolchain checks.
-- `python3 -I scripts/project-name.py displayName|repositorySlug` → `Aurevia Care` / `aurevia-care`, EXIT 0.
-- `python3 -I scripts/check-docs.py` → EXIT 0. `python3 -I scripts/check-secrets.py` → EXIT 0. `bash -n` on all shell scripts → EXIT 0.
+`POST /api/v1/exchange-tasks/{id}/{command}` + `If-Match` → `ExchangeTaskController.execute` → `IfMatch.parse` → `ExchangeCommand.from` → `ExchangeTaskService.execute` → authorize → `repository.loadForUpdate` (`FOR UPDATE`) → `requireVersion` → `ExchangeStateMachine.next` (one channel) → `repository.updateState` (version CAS, V20 guard) → `appendEvent` + `appendAudit` → next state. Verified by `ExchangeTaskControllerTest`, `ExchangeTaskServiceTest`, `ExchangeStateMachineTest` and the integration scenarios.
 
-I did **not** run the database/integration gate (`db/check.sh`, `mvn verify`, `DocumentIsolationTest`) — per the worker contract those belong to the integrator. Reserved version **V17** is present as `db/migrations/V17__document_associations.sql`; I did not touch any other migration version.
+`GET /api/v1/exchange-tasks/{id}` → `get` → read policy → `repository.find` + `history` → read audit → state + append-only history.
+
+## Commands run and results
+
+Evidence source for this section: **executed tool commands** (not reviewer claims).
+
+- `java -version` → `openjdk version "21.0.13" 2026-10-13 LTS` (Temurin). `mvn -version` → `Apache Maven 3.10.0`.
+- `mvn -q -B -f apps/api/pom.xml -Pno-security,fast test` → **EXIT 0**. This is the exact DB-less fast command from `scripts/quick-check.sh`. Surefire XML aggregation: **1463 tests, 0 failures, 0 errors, 0 skipped across 134 suites**. The 8 in-scope S-G2-02 suites contribute **38 tests, all green**: `ClinicalReviewStateTest` 2, `ExchangeActionPolicyTest` 4, `ExchangeCommandTest` 3, `ExchangeStateMachineTest` 6, `ExchangeTaskControllerTest` 5, `ExchangeTaskServiceTest` 13, `TransmissionStateTest` 2, `WorkflowStateTest` 3. (The exact command was re-run a second time with `>/tmp/sg2_02_fasttest.log` to capture the exit code: `FAST_TEST_EXIT=0`.)
+- `python3 -I scripts/check-migrations.py --require-baseline` → **EXIT 0**. Reserved V20 is present as `db/migrations/V20__exchange_task_states.sql` with a valid `V<n>__name.sql` name and `Change: expand`; no other migration version was touched.
+- `git check-ignore -v .agent/pr-notes.md` → not ignored (tracked file); `git ls-files --error-unmatch .agent/pr-notes.md` → tracked. `git status --short` before commit → clean.
+- Cross-checks: `IfMatch.parse` (428/422/412 semantics), JaCoCo `check` execution bound at 1.00 for INSTRUCTION/LINE/BRANCH/METHOD/CLASS and the `fast` profile's `excludedGroups=integration` were read from `apps/api/pom.xml` to confirm the gate boundary.
+
+I did **not** run the database/integration/coverage/static-security gates. Per the worker contract these belong to the integrator: `bash db/check.sh`, `mvn -q -B verify` (runs the `@Tag("integration")` `ExchangeTaskIsolationTest` on real PostgreSQL plus JaCoCo 100%, OWASP and SpotBugs), and `scripts/check.sh`. No result from those gates is claimed here.
+
+## Reviewer findings and dispositions
+
+Three independent simulated specialists reviewed the in-scope files (paths, XCH-02 acceptance and the fast-gate evidence only). All three returned **no blocking defect and no required in-scope source change**:
+
+- **Senior Java & Spring Boot** — transition correctness, transmission/clinical independence, server-side acknowledgment binding, CAS, authorization/error mapping all traceable to tests. One low-severity hardening idea: `ExchangeTaskService.reason()` bounds only presence, not length/characters, though `reason` is persisted to two `text` columns. Disposition: **non-blocking follow-up**; not changed here because it is outside the XCH-02 acceptance and the reviewer explicitly said it should not block acceptance.
+- **Software Architect** — Java↔V20 transition matrices match one-for-one; channels independent; revision/time/actor bound to the reviewed version; concurrency/RLS/ledger/audit sound. Flagged (a) no direct SQL negative test of the V20 guard rejection paths, (b) no `Idempotency-Key` (documented project deferral; XCH-02 requires only `If-Match`), (c) "revision" interpretation question, (d) DB guard cannot check role for a hypothetical direct SQL writer. Disposition: **(a) recommended to integrator/QA** as added evidence, not a source change; **(b)** out of scope by documented decision; **(c)** recorded as a decision below; **(d)** defence-in-depth only — authorization is enforced before every write.
+- **Senior Database** — V20 evidence `CHECK`, guard trigger, fail-closed `xch02_actor_id`, CAS, immutability triggers, grants and forced RLS all correct; change-safety checker not tripped. One out-of-scope observation: `db/check.sh` static table lists do not include the two new tables, so the shell gate does not assert V20 policy; the Java IT is the runtime proof. Disposition: **separate change**, not touched here.
+
+Reviewer evidence is **simulated review**, not human or clinical acceptance. No human participant was involved.
 
 ## Defects found
 
-No in-scope defect was found. The S-G1-07 implementation already committed on this branch is complete and its in-scope fast unit tests pass. No in-scope source or test change was necessary; this worker's scoped contribution is verification evidence and this PR description.
-
-## Reported merge-gate failures — triaged, all out of scope / environmental
-
-The untrusted "Requested change" text reported a fast-merge-gate failure whose visible stack trace is a jsdom `reportException` at `apps/staff-web/tests/theme/ThemeProvider.test.tsx:6`. Findings:
-
-1. **That trace is an intentional negative test, not a failure.** `ThemeProvider.test.tsx:31-35` renders `useTheme()` outside its provider and asserts `toThrow(/useTheme/)` (`ThemeProvider.tsx:36-40` throws exactly that message), with `console.error` spied. Locally `bash scripts/frontend-check.sh` runs the full staff-web vitest suite and exits 0. The path is in `apps/staff-web`, outside my declared scope (`apps/api/.../g1/s_g1_07` and `apps/api/.../it/s_g1_07`). I did **not** modify it.
-2. **`scripts/quick-check.sh` fails at `check-pack.py` — "opencode.json is stale".** Verified as the documented cloud-worker CI-profile trap: worktree `opencode.json` SHA `279aa1e7…` equals `.github/opencode.ci.json`, carries the skip-worktree flag (`git ls-files -v` → `S`), while `git show HEAD:opencode.json` SHA is `14bba0da…`. `check-pack.py` judges the worktree (CI) profile, not the committed local profile — the known false positive recorded as OPS-CW-003-01. I did **not** regenerate or overwrite `opencode.json` (root-level, out of scope, and it would replace the CI profile with the local one).
-3. **`python3 -I scripts/check-migrations.py --require-baseline` fails — "version gap: expected V9, found V17".** This shard contains V1–V8 plus reserved V17; V9–V16 belong to other parallel workers' stories and are absent here. On the integrator's merge with `main` those earlier versions are present, so the contiguity gate applies to the merged tree. I did **not** fabricate V9–V16.
-4. **Python tooling tests report 7 failures / 4 errors**, all explained by the above: four `test_check_pack.*` failures + `test_repository_migrations_are_valid` (items 2 and 3); `test_fast_tier`, `test_workflow_concurrency` and two `test_swarm.PlanTests` errors are `ModuleNotFoundError: No module named 'yaml'` (pyyaml absent in this worker image); three `test_agent_run.*` failures are environment-dependent. None is in the S-G1-07 scope or caused by this story.
-
-Because the reported failure is outside my scope and not reproducible as a failure locally, and because resolving items 2–4 requires files/dependencies outside my scope, I stopped at verified in-scope evidence rather than making out-of-scope edits.
+No reproducible in-scope defect was found. The hardening ideas and verification-gap suggestions above are recorded as follow-ups, not as accepted defects.
 
 ## Decisions / notes for the integrator
 
-- No production or test source was changed by this worker; in-scope code was already complete and green.
-- Confirm on the **merge result**: V9–V16 present (migration contiguity), the correct `opencode.json` profile applies for `check-pack.py`, and pyyaml is installed for the workflow tests. These are merge/environment conditions, not S-G1-07 changes.
-- Coverage (JaCoCo 100% line/branch/method/class) and the real-PostgreSQL `DocumentIsolationTest` are enforced by `mvn verify` / `db/check.sh`, which the integrator runs; I did not fabricate a coverage result.
-- Synthetic fixtures only. No patient data or credentials were used or recorded. No human or clinical evidence; all evidence above is tool-generated.
-- Commit: no in-scope production/test source change was needed, so this branch's only new commit force-adds this ignored `.agent/pr-notes.md` file (the publish job reads the same file from the worktree artifact). The S-G1-07 implementation itself was already committed at HEAD `a9fdb91`.
+- The complete S-G2-02 implementation (16 main files), 9 test files and the V20 migration were **already committed at this branch's base** `da4fbb4` (a prior attempt's work, reflected in the recycled `.agent/pr-notes.md`). This worker changed **no production or test source** after verification; its contribution is this PR description and the recorded executable evidence. The prior notes described S-G1-07 and were replaced.
+- **"Revision" interpretation**: XCH-02's "timestamp and revision" is implemented as the work-item optimistic version the clinician reviewed (the `If-Match` version at acknowledgment), not the immutable order snapshot revision from XCH-01. This slice is deliberately self-contained (no V19 dependency) and the choice is documented in `ExchangeStateMachine`/V20 comments. Confirm with Product/Architecture before G2 sign-off if a different meaning was intended; it does not block this story.
+- **Idempotency keys** are absent on transition routes by documented project deferral; a retry after a lost response gets 412 from the version CAS rather than the original outcome. This diverges from the literal ARC-04 sample contract but is outside XCH-02.
+- Verify on the merge result: the `@Tag("integration")` `ExchangeTaskIsolationTest` (real PostgreSQL: V20 guard, forced RLS, actor derivation, two-tenant concealment, ledger immutability), JaCoCo 100% at `verify`, OWASP/SpotBugs and `scripts/check.sh`. These are the integrator's gates, not claims of this worker.
+- Scope respected: only `apps/api/src/main/java/com/aurevia/smartclinic/g2/s_g2_02`, `apps/api/src/test/java/com/aurevia/smartclinic/it/s_g2_02` and reserved migration V20 were in scope; no shared tracker, doc, workflow, other migration or source file was edited. No push, tag or `gh` call was made.
+- Synthetic fixtures only; no patient data, credentials or raw logs were recorded. All gate results above are tool-generated; review findings are simulated; there is no human or clinical evidence.
