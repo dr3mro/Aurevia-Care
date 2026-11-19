@@ -666,16 +666,21 @@ class ResolveConflictTests(unittest.TestCase):
 
     def results(self, tmp, **outcomes):
         for pr, outcome in outcomes.items():
-            Path(tmp, pr.lstrip("pr")).write_text(outcome)
+            number = pr.lstrip("pr")
+            Path(tmp, number).write_text(outcome)
+            if outcome == "merged":
+                Path(tmp, f"{number}.bundle").write_text("bundle")
 
     def test_resolved_branch_is_pushed_and_the_integrator_runs_again(self):
         with tempfile.TemporaryDirectory() as tmp:
             self.results(tmp, pr5="merged")
             fake = FakeGh(pr_view=self.view())
             with mock.patch.object(swarm, "gh", fake), \
+                 mock.patch.object(swarm, "git") as local, \
                  mock.patch.object(swarm, "authed_git") as push, \
                  mock.patch.object(swarm, "fail") as failed:
                 self.assertEqual(swarm.resolve_publish(tmp), ["5"])
+        self.assertTrue(any(c.args[:1] == ("fetch",) for c in local.call_args_list))
         push.assert_called_once_with("push", "origin", "resolve-5:refs/heads/swarm/CW-001-1")
         failed.assert_not_called()
         self.assertTrue(fake.said("workflow", "run", "swarm-integrator.yml"))
@@ -691,10 +696,21 @@ class ResolveConflictTests(unittest.TestCase):
         push.assert_not_called()
         self.assertEqual(failed.call_args.args[0], 5)
 
+    def test_missing_bundle_is_never_pushed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp, "5").write_text("merged")
+            with mock.patch.object(swarm, "gh", FakeGh(pr_view=self.view())), \
+                 mock.patch.object(swarm, "authed_git") as push, \
+                 mock.patch.object(swarm, "fail") as failed:
+                self.assertEqual(swarm.resolve_publish(tmp), [])
+        push.assert_not_called()
+        self.assertTrue(failed.called)
+
     def test_fork_branches_are_never_pushed(self):
         with tempfile.TemporaryDirectory() as tmp:
             self.results(tmp, pr5="merged")
             with mock.patch.object(swarm, "gh", FakeGh(pr_view=self.view(cross=True))), \
+                 mock.patch.object(swarm, "git"), \
                  mock.patch.object(swarm, "authed_git") as push, \
                  mock.patch.object(swarm, "fail") as failed:
                 swarm.resolve_publish(tmp)
@@ -703,11 +719,21 @@ class ResolveConflictTests(unittest.TestCase):
 
     def test_integrator_workflow_resolves_conflicts_without_a_token_in_the_agent_step(self):
         text = (ROOT / ".github/workflows/swarm-integrator.yml").read_text()
-        job = text.split("  resolve:")[1]
-        self.assertIn("agent-run.sh resolve", job)
-        self.assertIn("swarm.py resolve-publish", job)
-        step = job.split("scripts/agent-run.sh resolve")[0].rsplit("- name:", 1)[1]
+        resolve, publish = text.split("  resolve:")[1].split("  resolve-publish:")
+        self.assertIn("agent-run.sh resolve", resolve)
+        self.assertIn("swarm.py resolve-publish", publish)
+        # The agent job holds no write token; the push job never runs the agent.
+        self.assertIn("contents: read", resolve)
+        self.assertNotIn("SWARM_TOKEN", resolve)
+        self.assertNotIn("agent-run.sh resolve", publish)
+        step = resolve.split("scripts/agent-run.sh resolve")[0].rsplit("- name:", 1)[1]
         self.assertNotIn("GH_TOKEN", step)
+
+    def test_swarm_worker_uses_its_token_only_before_the_agent_runs(self):
+        text = (ROOT / ".github/workflows/swarm.yml").read_text()
+        worker = text.split("  worker:\n", 1)[1].split("  publish:\n", 1)[0]
+        self.assertLess(worker.index("agent-run.sh fetch-main"), worker.index("agent-run.sh implement"))
+        self.assertNotIn("github.token", worker.split("agent-run.sh implement", 1)[1])
 
 
 class RepairTests(unittest.TestCase):

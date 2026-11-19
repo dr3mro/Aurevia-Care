@@ -146,6 +146,7 @@ class AgentRunTests(unittest.TestCase):
         done = self.run_cmd("resolve", FAKE_MODE="resolve", CONFLICTED="[5]", MERGE_ATTEMPTS="2")
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertEqual((self.repo / ".agent/resolve/5").read_text(), "merged")
+        self.assertTrue((self.repo / ".agent/resolve/5.bundle").exists())
         shown = subprocess.run(["git", "show", "resolve-5:feature.txt"], cwd=self.repo,
                                capture_output=True, text=True).stdout
         self.assertEqual(shown, "merged\n")

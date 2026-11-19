@@ -831,8 +831,8 @@ def resolve_attempts(pr):
 def resolve_publish(directory):
     """Push every conflict resolution that worked and send the rest back to the workers.
 
-    Trusted step: `directory/<pr>` holds the outcome the token-less resolver wrote
-    and the local branch `resolve-<pr>` holds its merge. Returns pushed PR numbers."""
+    Trusted step in a fresh runner: `directory/<pr>` holds the outcome the token-less
+    resolver wrote and `directory/<pr>.bundle` its merge. Returns pushed PR numbers."""
     pushed, failed = [], []
     for outcome_file in sorted(Path(directory).glob("*")):
         pr = outcome_file.name
@@ -843,6 +843,15 @@ def resolve_publish(directory):
         branch = info["headRefName"]
         gh("pr", "comment", pr, "--body", f"{RESOLVE_MARK}\nAutomatic conflict resolution "
            f"({resolve_attempts(pr) + 1} of {MAX_RESOLVE}): {outcome}. {run_url()}", check=False)
+        bundle = Path(directory) / f"{pr}.bundle"
+        if outcome == "merged" and bundle.exists():
+            git("update-ref", "-d", f"refs/heads/resolve-{pr}", check=False)
+            try:
+                git("fetch", str(bundle), f"resolve-{pr}:refs/heads/resolve-{pr}")
+            except subprocess.CalledProcessError:
+                outcome = "the resolved merge could not be read"
+        elif outcome == "merged":
+            outcome = "the resolved merge was not saved"
         if outcome == "merged" and not info["isCrossRepository"] and BRANCH.fullmatch(branch):
             try:
                 authed_git("push", "origin", f"resolve-{pr}:refs/heads/{branch}")
