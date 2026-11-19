@@ -267,6 +267,11 @@ class PlanTests(unittest.TestCase):
     def test_monthly_cap_allows_long_waves(self):
         self.assertGreaterEqual(swarm.DEFAULT_MONTHLY_MINUTES, 10 * 185 * 5)
 
+    def test_fallback_wave_runs_hourly(self):
+        text = (ROOT / ".github/workflows/swarm.yml").read_text()
+        self.assertIn("cron: '7 * * * *'", text)
+        self.assertNotIn("cron: '7 */3 * * *'", text)
+
     def test_wave_defaults_to_ten_workers(self):
         text = (ROOT / ".github/workflows/swarm.yml").read_text()
         self.assertRegex(text, r"default: '10'")
