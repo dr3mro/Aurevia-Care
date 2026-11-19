@@ -1,6 +1,7 @@
 package com.aurevia.smartclinic.messaging.s_g3_07;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -107,12 +108,16 @@ public interface InstructionStore {
 
         @Override
         public synchronized Optional<Revision> current(String threadId) {
-            return history(threadId).stream().findFirst();
+            return history(threadId).stream().max(Comparator.comparingInt(Revision::revision));
         }
 
         @Override
         public synchronized List<Revision> history(String threadId) {
-            return List.copyOf(threads.getOrDefault(key(threadId), List.of()));
+            // Revisions are stored newest-first for cheap appends, but the port
+            // and View contracts promise ascending order to every reader.
+            return threads.getOrDefault(key(threadId), List.of()).stream()
+                    .sorted(Comparator.comparingInt(Revision::revision))
+                    .toList();
         }
 
         @Override
