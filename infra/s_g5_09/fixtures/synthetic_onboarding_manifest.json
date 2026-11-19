@@ -1,0 +1,134 @@
+{
+  "schema_version": "1.0",
+  "requirement": "OPS-08",
+  "manifest_version": 3,
+  "source": "synthetic-onboarding-fixture",
+  "synthetic_only": true,
+  "dataset": {
+    "name": "synthetic-clinic-a",
+    "records": [
+      {
+        "source_id": "SYN-0001",
+        "fields": {
+          "mrn": "M-001",
+          "issuer": "ORG-A",
+          "given": "Syn",
+          "family": "Patient",
+          "dob": "1990-01-01"
+        },
+        "attachments": [
+          {
+            "key": "doc-SYN-0001",
+            "sha256": "6386972d528a87300dc8a0ac62324ba5a2b1ed76bae9700e55a7a6caf49aab85",
+            "present": true,
+            "type": "pdf"
+          }
+        ],
+        "historical_signature": {
+          "issuer": "legacy-synthetic-emr",
+          "signed_at": "2019-01-01T00:00:00Z",
+          "checksum": "c054db8c01e041e48e720dc503a55769842958231f29ac4a6e9d6b6d8d0b2842"
+        }
+      },
+      {
+        "source_id": "SYN-0002",
+        "fields": {
+          "mrn": "M-002",
+          "issuer": "ORG-A",
+          "given": "Syn",
+          "family": "Patient",
+          "dob": "1990-01-01"
+        },
+        "attachments": [
+          {
+            "key": "doc-SYN-0002",
+            "sha256": "6386972d528a87300dc8a0ac62324ba5a2b1ed76bae9700e55a7a6caf49aab85",
+            "present": true,
+            "type": "pdf"
+          }
+        ],
+        "historical_signature": {
+          "issuer": "legacy-synthetic-emr",
+          "signed_at": "2019-01-01T00:00:00Z",
+          "checksum": "c054db8c01e041e48e720dc503a55769842958231f29ac4a6e9d6b6d8d0b2842"
+        }
+      },
+      {
+        "source_id": "SYN-0003",
+        "fields": {
+          "mrn": "M-003",
+          "issuer": "ORG-A",
+          "given": "Syn",
+          "family": "Patient",
+          "dob": "1990-01-01"
+        },
+        "attachments": [
+          {
+            "key": "doc-SYN-0003",
+            "sha256": "6386972d528a87300dc8a0ac62324ba5a2b1ed76bae9700e55a7a6caf49aab85",
+            "present": true,
+            "type": "pdf"
+          }
+        ],
+        "historical_signature": {
+          "issuer": "legacy-synthetic-emr",
+          "signed_at": "2019-01-01T00:00:00Z",
+          "checksum": "c054db8c01e041e48e720dc503a55769842958231f29ac4a6e9d6b6d8d0b2842"
+        }
+      }
+    ]
+  },
+  "mapping": {
+    "strategy": "canonical_sha256",
+    "deterministic": true,
+    "source_to_target": {
+      "mrn": "mrn",
+      "issuer": "mrnIssuer",
+      "given": "givenName",
+      "family": "familyName",
+      "dob": "birthDate"
+    },
+    "identity_fields": [
+      "mrn",
+      "mrnIssuer"
+    ],
+    "ignored_fields": []
+  },
+  "provenance": {
+    "source_system": "legacy-synthetic-emr",
+    "source_version": "2019.4",
+    "preserve_historical_signatures": true,
+    "creates_new_attestation": false
+  },
+  "batches": [
+    {
+      "sequence": 1,
+      "record_ids": [
+        "SYN-0001",
+        "SYN-0002"
+      ],
+      "expected_count": 2,
+      "sha256": "b1d1aedac17ad3bf19e93bf73ea760c6dc59d5ef4dda09e2845a28a8f4b17a90"
+    },
+    {
+      "sequence": 2,
+      "record_ids": [
+        "SYN-0003"
+      ],
+      "expected_count": 1,
+      "sha256": "279bad3039480e0b98f82b5d5b4bce38fa87e3b6249cba808ecfd466bd31d6a1"
+    }
+  ],
+  "sign_off": {
+    "approver": "ops-lead",
+    "role": "tenant_admin",
+    "decision": "approved",
+    "content_sha256": "0fce0f62ff1bf258c9e66e7c700b3a79695f1957e690f409471e4d31006d1fce",
+    "manifest_version": 3,
+    "batches": [
+      1,
+      2
+    ],
+    "approved_at": "2026-11-19T12:00:00Z"
+  }
+}
