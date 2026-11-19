@@ -1,0 +1,80 @@
+{
+  "schema_version": "1.0",
+  "kind": "measured_operation",
+  "source": "synthetic-violation-fixture",
+  "organization": "org-synthetic-1",
+  "export": {
+    "manifest": {
+      "schema_version": "chart-v3",
+      "policy_version": "release-policy-v2",
+      "organization": "org-synthetic-1",
+      "exported_at": "2026-11-19T00:00:00Z",
+      "record_count": 1
+    },
+    "records": [
+      {
+        "id": "rec-synthetic-1",
+        "checksum": "short",
+        "provenance": {
+          "source_system": "smartclinic",
+          "source_id": "src-synthetic-1",
+          "version": 3
+        },
+        "documents": [
+          {
+            "id": "doc-synthetic-1",
+            "checksum": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "authorization": "arbitrary",
+            "policy_version": "release-policy-v2"
+          }
+        ],
+        "audit": [
+          {"seq": 1, "action": "RELEASE", "outcome": "SUCCESS"}
+        ]
+      }
+    ]
+  },
+  "retention": {
+    "policy_version": "retention-policy-v1",
+    "legal_holds": [
+      {
+        "id": "hold-synthetic-1",
+        "reason": "disputed_access",
+        "scope": "rec-synthetic-held",
+        "placed_by": "privacy-officer",
+        "active": true
+      }
+    ],
+    "deletions": [
+      {
+        "record_id": "rec-synthetic-held",
+        "reason": "retention_expiry",
+        "approved_by": "privacy-officer",
+        "active_data": true
+      }
+    ],
+    "backup_expirations": [
+      {
+        "backup_set": "bk-synthetic-3",
+        "scope": "rec-synthetic-held",
+        "approved_by": "ops-lead",
+        "approved": false
+      }
+    ]
+  },
+  "offboarding": {
+    "organization": "org-synthetic-1",
+    "authorized_by": "tenant-admin-synthetic",
+    "steps": ["suspend_access", "export", "delete_active_data", "expire_backups", "audit"],
+    "audit_reference": "audit-synthetic-offboard-3"
+  },
+  "disputed_access": {
+    "link": "chart-synthetic-3",
+    "suspended_at": "2026-11-19T01:00:00Z",
+    "suspended_by": "privacy-officer",
+    "rereviewed_by": "privacy-officer-2",
+    "rereviewed_at": "2026-11-19T02:00:00Z",
+    "outcome": "restored_after_verification"
+  },
+  "scenarios": ["record_request", "offboarding", "disputed_access"]
+}

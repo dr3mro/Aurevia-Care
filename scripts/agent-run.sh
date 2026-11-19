@@ -19,6 +19,13 @@ mkdir -p "$HOME"
 git config --global --add safe.directory "$PWD"
 out=.agent
 mkdir -p "$out"
+# Each story writes its notes to its own committed file,
+# .agent/pr-notes/<story-id>.md, so parallel workers never edit the same file. Fix runs keep the scratch file.
+if [[ "${MODE:-story}" != fix && -n "${STORY_ID:-}" ]]; then
+  notes_file=".agent/pr-notes/$(printf '%s' "$STORY_ID" | tr -c 'A-Za-z0-9._-' '-').md"
+else
+  notes_file=".agent/pr-notes.md"
+fi
 REVIEWERS=${REVIEWERS:-"smartclinic-qa-reviewer smartclinic-devsecops smartclinic-physician-reviewer"}
 
 emit() { # name value: expose a step output when running in Actions
@@ -72,7 +79,7 @@ run_agent() {
 
 tracker_rules() {
   if [[ "${SWARM:-0}" == 1 ]]; then
-    printf '%s' "You are one of several parallel workers. Follow AGENTS.md, CODING_STYLE.md and the specification, and use the .opencode specialists as AGENTS.md directs. Stay inside the task scope and use only the reserved migration version. Do not edit TODO.md, MEMORY.md, WORKSPACE.md, BUGS.md, PROJECT.md or docs/swarm: the orchestrator already marked your task [-] in TODO.md and the integrator marks it [x] after the merge. Write the requirement IDs, acceptance mapping, exact commands run and results, defects found and decisions to .agent/pr-notes.md. It becomes the pull request description. Run the fast unit tests. The integrator runs the database and integration tests. If a decision or evidence is missing, stop and say so in .agent/pr-notes.md."
+    printf '%s' "You are one of several parallel workers. Follow AGENTS.md, CODING_STYLE.md and the specification, and use the .opencode specialists as AGENTS.md directs. Stay inside the task scope and use only the reserved migration version. Name Java packages and classes by business domain, never by story or task ID, and reuse existing domain types instead of duplicating them. Do not edit TODO.md, MEMORY.md, WORKSPACE.md, BUGS.md, PROJECT.md or docs/swarm: the orchestrator already marked your task [-] in TODO.md and the integrator marks it [x] after the merge. Write the requirement IDs, acceptance mapping, exact commands run and results, defects found and decisions to ${notes_file} (create the pr-notes folder if missing; the file is named after your story and is yours alone, so parallel workers never touch the same file). It is committed with your work and becomes the pull request description. Run the fast unit tests. The integrator runs the database and integration tests. If a decision or evidence is missing, stop and say so in ${notes_file}."
   else
     printf '%s' "Update TODO.md and MEMORY.md. Mark your task [-] with your agent name before you start and [x] with evidence when every gate passes. If a decision or evidence is missing, put the task back to [ ] and write the question under it in TODO.md."
   fi
@@ -112,6 +119,8 @@ cmd_implement() {
   activate_ci_config
   result=$(run_agent smartclinic-orchestrator "$(story_prompt)" "$out/implement.log")
   restore_config
+  # The publish job reads the notes from .agent/pr-notes.md in the artifact.
+  [[ "$notes_file" != .agent/pr-notes.md && -f "$notes_file" ]] && cp "$notes_file" "$out/pr-notes.md"
   # Keep any uncommitted agent work so it is checked and published.
   if [[ -n "$(git status --porcelain --untracked-files=all)" ]]; then
     git add -A
