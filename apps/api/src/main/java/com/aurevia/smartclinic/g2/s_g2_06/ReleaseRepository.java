@@ -129,7 +129,8 @@ public class ReleaseRepository {
      */
     public Optional<PatientRelease> findRelease(String id) {
         return jdbc.query("""
-                SELECT """ + COLUMNS + """
+                SELECT
+                """ + COLUMNS + """
                   FROM public.patient_release WHERE id = CAST(:id AS uuid)
                 """, Map.of("id", id), RELEASE_MAPPER).stream().findFirst();
     }
@@ -143,7 +144,8 @@ public class ReleaseRepository {
      */
     public Optional<PatientRelease> findActiveByPatientAndRevision(String patientId, String revisionId) {
         return jdbc.query("""
-                SELECT """ + COLUMNS + """
+                SELECT
+                """ + COLUMNS + """
                   FROM public.patient_release
                  WHERE patient_id = CAST(:patientId AS uuid) AND revision_id = :revisionId
                    AND state IN ('HELD', 'AUTHORIZED')
@@ -209,7 +211,8 @@ public class ReleaseRepository {
      */
     public List<PatientRelease> findAuthorizedByPatient(String patientId) {
         return jdbc.query("""
-                SELECT """ + COLUMNS + """
+                SELECT
+                """ + COLUMNS + """
                   FROM public.patient_release
                  WHERE patient_id = CAST(:patientId AS uuid) AND state = 'AUTHORIZED'
                 """, Map.of("patientId", patientId), RELEASE_MAPPER);
