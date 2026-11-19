@@ -687,7 +687,25 @@ def integrate_batch(queue, gate="scripts/quick-check.sh"):
     files = ["TODO.md"] + [f"docs/swarm/{t}.md" for _, t, _ in merged]
     git("add", *files)
     git(*IDENTITY, "commit", "-qm", f"Integrate {len(merged)} swarm pull request(s)")
-    authed_git("push", "origin", "HEAD:main")
+    # A full gate can take many minutes; concurrent [skip ci] tracker commits
+    # can advance main meanwhile. Rebase onto the fresh main, re-gate and retry
+    # the push instead of losing the whole verified batch.
+    for attempt in range(3):
+        try:
+            authed_git("push", "origin", "HEAD:main")
+            break
+        except subprocess.CalledProcessError:
+            if attempt == 2:
+                raise
+            authed_git("fetch", "origin", "main")
+            try:
+                git("rebase", "origin/main")
+            except subprocess.CalledProcessError:
+                git("rebase", "--abort", check=False)
+                raise
+            ok, log = run_gate(gate)
+            if not ok:
+                raise subprocess.CalledProcessError(1, ("gate", gate), "", log)
     for (pr, _, _), comment in zip(merged, comments):
         gh("pr", "comment", str(pr), "--body", comment)
     dispatch_heavy()

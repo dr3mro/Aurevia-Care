@@ -885,6 +885,85 @@ class TwoTierTests(unittest.TestCase):
                   and c[2] == "heavy-check.yml"]
         self.assertEqual(len(pushes), 1)
 
+    def test_integrate_batch_retries_when_main_advanced(self):
+        self.repo = Path(tempfile.mkdtemp())
+        (self.repo / "TODO.md").write_text("# TODO\n")
+        self.addCleanup(shutil.rmtree, self.repo)
+        original = Path.cwd()
+        os.chdir(self.repo)
+        self.addCleanup(os.chdir, original)
+
+        class Gh(FakeGh):
+            def __call__(self, *args, check=True):
+                if args[:2] == ("pr", "view") and "--jq" not in args:
+                    self.calls.append(args)
+                    return json.dumps({"headRefOid": "abc", "body": "Task: CW-001"})
+                if args[:2] == ("pr", "diff"):
+                    self.calls.append(args); return "apps/api/A.java\n"
+                if args[:2] == ("pr", "list"):
+                    self.calls.append(args); return json.dumps([])
+                return super().__call__(*args, check=check)
+
+        push_attempts = {"n": 0}
+        def authed(*args, check=True):
+            if args[:2] == ("push", "origin"):
+                push_attempts["n"] += 1
+                if push_attempts["n"] == 1:
+                    raise subprocess.CalledProcessError(1, args, "", "fetch first")
+            return ""
+
+        with mock.patch.object(swarm, "gh", Gh()), \
+             mock.patch.object(swarm, "guard", return_value=[]), \
+             mock.patch.object(swarm, "merge_local", return_value=("abc", "CW-001", [])), \
+             mock.patch.object(swarm, "run_gate", return_value=(True, "ok")) as gate, \
+             mock.patch.object(swarm, "git") as gitmock, \
+             mock.patch.object(swarm, "authed_git", side_effect=authed) as authedmock:
+            count = swarm.integrate_batch([1], "scripts/quick-check.sh")
+        self.assertEqual(count, 1)
+        self.assertEqual(push_attempts["n"], 2)
+        self.assertTrue(authedmock.call_args_list and
+                        any(c.args[:2] == ("fetch", "origin") for c in authedmock.call_args_list))
+        self.assertGreaterEqual(gate.call_count, 2)
+
+    def test_integrate_batch_aborts_rebase_on_conflict(self):
+        self.repo = Path(tempfile.mkdtemp())
+        (self.repo / "TODO.md").write_text("# TODO\n")
+        self.addCleanup(shutil.rmtree, self.repo)
+        original = Path.cwd()
+        os.chdir(self.repo)
+        self.addCleanup(os.chdir, original)
+
+        class Gh(FakeGh):
+            def __call__(self, *args, check=True):
+                if args[:2] == ("pr", "view") and "--jq" not in args:
+                    self.calls.append(args)
+                    return json.dumps({"headRefOid": "abc", "body": "Task: CW-001"})
+                if args[:2] == ("pr", "diff"):
+                    self.calls.append(args); return "apps/api/A.java\n"
+                if args[:2] == ("pr", "list"):
+                    self.calls.append(args); return json.dumps([])
+                return super().__call__(*args, check=check)
+
+        def authed(*args, check=True):
+            if args[:2] == ("push", "origin"):
+                raise subprocess.CalledProcessError(1, args, "", "fetch first")
+            return ""
+
+        def gitmock(*args, check=True):
+            if args[0] == "rebase" and args[1] == "origin/main":
+                raise subprocess.CalledProcessError(1, args, "", "CONFLICT")
+            return ""
+
+        with mock.patch.object(swarm, "gh", Gh()), \
+             mock.patch.object(swarm, "guard", return_value=[]), \
+             mock.patch.object(swarm, "merge_local", return_value=("abc", "CW-001", [])), \
+             mock.patch.object(swarm, "run_gate", return_value=(True, "ok")), \
+             mock.patch.object(swarm, "git", side_effect=gitmock) as gitcalls, \
+             mock.patch.object(swarm, "authed_git", side_effect=authed):
+            with self.assertRaises(subprocess.CalledProcessError):
+                swarm.integrate_batch([1], "scripts/quick-check.sh")
+        self.assertTrue(any(c.args[:2] == ("rebase", "--abort") for c in gitcalls.call_args_list))
+
     def test_guard_still_blocks_module_check_scripts(self):
         fake = FakeGh(diff="apps/staff-web/check.sh\n")
         with mock.patch.object(swarm, "gh", fake):
