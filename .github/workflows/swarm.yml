@@ -199,6 +199,8 @@ jobs:
       - name: Push the branches and open the pull requests
         env:
           GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
+          # Set only when SWARM_TOKEN exists: that token can push workflow files.
+          SWARM_WORKFLOW_PUSH: ${{ secrets.SWARM_TOKEN != '' }}
           MATRIX: ${{ needs.plan.outputs.matrix }}
           BASE_BRANCH: ${{ github.event.repository.default_branch }}
         run: |

@@ -369,7 +369,8 @@ def publish(task, directory):
         # GITHUB_TOKEN is a GitHub App installation token and cannot create or
         # update .github/workflows/*; there is no `workflows` permissions scope.
         # Fail closed instead of crashing the publish loop for every later slot.
-        if any(f.startswith(".github/workflows/") for f in changed):
+        if (any(f.startswith(".github/workflows/") for f in changed)
+                and os.environ.get("SWARM_WORKFLOW_PUSH") != "true"):
             if task["kind"] == "story":
                 release_claim(task["id"], "worker changed workflow files; use SWARM_TOKEN with workflow scope")
             print(f"publish: {task['id']} changed .github/workflows/*; not pushing "
