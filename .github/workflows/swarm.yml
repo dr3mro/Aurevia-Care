@@ -109,7 +109,10 @@ jobs:
     needs: plan
     if: needs.plan.outputs.count != '0'
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    # Three-hour task budget plus 10 minutes for bundling and artifact upload.
+    # The agent gets a cooperative 175-minute deadline in its prompt; the next
+    # wave starts automatically after publish via the `next` job.
+    timeout-minutes: 185
     strategy:
       max-parallel: 10
       fail-fast: false
@@ -139,7 +142,7 @@ jobs:
       STORY_BODY: ${{ matrix.body }}
       FIX_COMMENT: ${{ matrix.fix }}
       PR_NUMBER: ${{ matrix.number }}
-      AGENT_TIMEOUT: 45m
+      AGENT_TIMEOUT: 175m
       CHECK_SCRIPT: scripts/quick-check.sh
     steps:
       - uses: actions/checkout@v7
