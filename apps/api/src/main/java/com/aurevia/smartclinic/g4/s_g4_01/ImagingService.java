@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Set;
 
 import com.aurevia.smartclinic.api.ApiException;
+import com.aurevia.smartclinic.g1.s_g1_05.NoteChecksum;
 import com.aurevia.smartclinic.g4.s_g4_01.RadCommands.AddendumCommand;
 import com.aurevia.smartclinic.g4.s_g4_01.RadCommands.AccessionCommand;
 import com.aurevia.smartclinic.g4.s_g4_01.RadCommands.AssociateStudyCommand;
@@ -175,11 +176,13 @@ public final class ImagingService {
     }
 
     /**
-     * Associate an external study only after patient and accession match the order.
+     * Associate an external study only after patient and accession labels match the order.
      *
-     * <p>A mismatch is refused, so a study of a different patient can never be
-     * attached to this order. Image pixels are not retrieved; the partner
-     * workstation reference is recorded for the reader.</p>
+     * <p>The caller supplies labels already verified upstream; a mismatch between
+     * those labels and the order is refused. Binding the Study Instance UID to a
+     * patient is the responsibility of the partner PACS/DICOMweb verification
+     * step, not of this in-memory kernel. Image pixels are never retrieved; only
+     * the UID and the partner workstation reference are recorded for the reader.</p>
      *
      * @param command association command with the verified patient and accession
      * @return the new study-associated order revision
@@ -304,10 +307,15 @@ public final class ImagingService {
     }
 
     /**
-     * Record a critical communication as a separate fact from interpretation and release.
+     * Record a critical communication and its read-back as separate facts.
+     *
+     * <p>The finding and read-back narratives are never placed in an event: only
+     * their SHA-256 digests are kept, so an operational fact cannot disclose a
+     * protected clinical payload (ARC-06, OPS-02). Read-back is a distinct fact
+     * (XCH-05) so a communication without confirmed read-back is detectable.</p>
      *
      * @param command critical communication command with finding, recipient and read-back
-     * @return the immutable domain event
+     * @return the immutable critical-communication event
      * @throws ApiException when denied, concealed, stale, mismatched or before study association
      */
     public RadEvent recordCriticalCommunication(CriticalCommunicationCommand command) {
@@ -330,8 +338,13 @@ public final class ImagingService {
         requireStudyMatch(current, command.patientId(), command.studyInstanceUid());
         RadEvent event = new RadEvent(command.organizationId(), RadEventType.CRITICAL_COMMUNICATION,
                 command.orderId(), current.version(), current.patientId(), current.accession(),
-                command.subject(), command.recipient(), command.finding(), clock.instant());
+                command.subject(), command.recipient(), NoteChecksum.sha256(command.finding()),
+                clock.instant());
         appendEvent(command.organizationId(), event);
+        appendEvent(command.organizationId(), new RadEvent(command.organizationId(),
+                RadEventType.READ_BACK, command.orderId(), current.version(), current.patientId(),
+                current.accession(), command.subject(), command.recipient(),
+                NoteChecksum.sha256(command.readBack()), clock.instant()));
         return event;
     }
 
