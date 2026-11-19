@@ -33,11 +33,15 @@ closed; it is never treated as an empty but valid import.
 
 A record that fails this shape is excluded from the deterministic dry run and
 its dataset check fails. The dry run still reports it as an error rather than
-silently ignoring it. Separately, every record must carry a non-blank value for
-each required target field (the source name is derived from the mapping); a
-blank MRN is a dry-run error even when the field is present in the mapping.
-Duplicate target values in `source_to_target` are rejected because the reverse
-map used for identity would otherwise depend on JSON key order.
+silently ignoring it. The `dataset.source_ids` check enforces that every
+`source_id` is a non-blank string unique within the dataset: a duplicate or
+malformed id fails closed, because controlled batches refer to records by this
+id and a repeated id would let the coverage fold silently drop a record.
+Separately, every record must carry a non-blank value for each required target
+field (the source name is derived from the mapping); a blank MRN is a dry-run
+error even when the field is present in the mapping. Duplicate target values in
+`source_to_target` are rejected because the reverse map used for identity would
+otherwise depend on JSON key order.
 
 ## Deterministic mapping
 

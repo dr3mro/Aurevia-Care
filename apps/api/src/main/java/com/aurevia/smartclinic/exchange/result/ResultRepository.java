@@ -109,16 +109,23 @@ public class ResultRepository {
     /**
      * Insert the local order expectation.
      *
+     * <p>The unique tenant-scoped order reference makes registration idempotent
+     * under concurrency: a racing insert returns no row and the caller maps that
+     * to a documented conflict instead of an unmapped constraint violation.</p>
+     *
      * @param order expectation with a caller-generated opaque identifier
-     * @return the same expectation
+     * @return the same expectation, or {@code null} when a concurrent
+     *         registration already owns the order reference
      */
     public ExpectedOrder insertOrder(ExpectedOrder order) {
-        jdbc.update("""
+        List<String> inserted = jdbc.query("""
                 INSERT INTO public.xch04_expected_order
                     (organization_id, id, order_ref, patient_id, source_code, accession,
                      destination_code, owner_subject, coverage_queue)
                 VALUES (public.app_org(), CAST(:id AS uuid), :orderRef, CAST(:patientId AS uuid),
                         :sourceCode, :accession, :destinationCode, :owner, :coverageQueue)
+                ON CONFLICT (organization_id, order_ref) DO NOTHING
+                RETURNING id::text
                 """, new MapSqlParameterSource()
                 .addValue("id", newId())
                 .addValue("orderRef", order.orderId())
@@ -127,8 +134,9 @@ public class ResultRepository {
                 .addValue("accession", order.identifiers().accessionId())
                 .addValue("destinationCode", order.identifiers().destinationId())
                 .addValue("owner", order.owner())
-                .addValue("coverageQueue", order.coverageQueue()));
-        return order;
+                .addValue("coverageQueue", order.coverageQueue()),
+                (resultSet, rowNumber) -> resultSet.getString("id"));
+        return inserted.isEmpty() ? null : order;
     }
 
     /**

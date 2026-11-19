@@ -487,6 +487,30 @@ class ResultRoutingIntegrationTest {
     }
 
     @Test
+    void concurrentOrderRegistrationProducesOneOrderAndOneConflict() throws Exception {
+        String body = orderBody("ORD-CONC", patientA, "SRC-CONC", "ACC-CONC", "verifier-a", "queue-a");
+        CountDownLatch start = new CountDownLatch(1);
+        Callable<ResponseEntity<String>> task = () -> {
+            start.await();
+            return register(ORG_A, "admin-a", body);
+        };
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        try {
+            Future<ResponseEntity<String>> first = pool.submit(task);
+            Future<ResponseEntity<String>> second = pool.submit(task);
+            start.countDown();
+            ResponseEntity<String> a = first.get(30, TimeUnit.SECONDS);
+            ResponseEntity<String> b = second.get(30, TimeUnit.SECONDS);
+            assertEquals(201, a.getStatusCode().value(), a.getBody());
+            assertEquals(409, b.getStatusCode().value(), b.getBody());
+        } finally {
+            pool.shutdownNow();
+        }
+        assertEquals(1, count(ORG_A, "SELECT count(*) FROM public.xch04_expected_order "
+                + "WHERE order_ref = 'ORD-CONC'"));
+    }
+
+    @Test
     void concurrentReplayProducesOneRevisionAndOneReview() throws Exception {
         assertEquals(HttpStatus.CREATED, register(ORG_A, "admin-a",
                 orderBody("ORD-C1", patientA, "SRC-C", "ACC-C", "verifier-a", "queue-a")).getStatusCode());

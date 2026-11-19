@@ -8,7 +8,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -23,6 +25,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
@@ -197,13 +200,16 @@ class ReleaseServiceTest {
     }
 
     @Test
-    void authorizeRejectsConcurrentDuplicate() {
+    void authorizeRejectsConcurrentDuplicateWithoutFurtherSqlOnAbortedTransaction() {
         authorized("clinician");
         when(repository.insertRelease(anyString(), anyString(), anyString(), anyInt(), anyString(),
                 anyInt(), anyString(), anyString(), any(), any(), any(), any()))
                 .thenThrow(new DuplicateKeyException("race"));
+        // A unique violation aborts the PostgreSQL transaction; any subsequent statement fails.
+        doThrow(new IllegalStateException("current transaction is aborted"))
+                .when(repository).appendAudit(any(), any(), any(), any());
         assertEquals(409, assertThrows(ApiException.class, () -> service.authorize(immediate())).status());
-        verify(repository).appendAudit(TenantContext.current(), "RELEASE_AUTHORIZE", REVISION, "CONFLICT");
+        verify(repository, never()).appendAudit(any(), any(), any(), any());
     }
 
     @Test
@@ -360,6 +366,62 @@ class ReleaseServiceTest {
         verify(repository).insertNotification(TenantContext.current(), "rel-1",
                 "RELEASE_CORRECTED", "prior-recipients");
         verify(repository).appendAudit(TenantContext.current(), "RELEASE_CORRECT", "rel-1", "SUCCESS");
+    }
+
+    @Test
+    void correctOfReviewedHoldPublishesAnImmediatelyVisibleReplacement() {
+        // A hold that was reviewed (lifted) keeps kind=HOLD in the database but is AUTHORIZED.
+        // Its replacement must be a fresh IMMEDIATE authorization: reusing HOLD with null
+        // hold reason/expiry violates the V24 CHECK and leaves the patient with no access.
+        authorized("clinician");
+        PatientRelease reviewedHold = new PatientRelease("rel-1", ORG, PATIENT, REVISION, 1, ORG, 2,
+                ReleaseKind.HOLD, ReleaseState.AUTHORIZED, NOW, "needs review",
+                NOW.plusSeconds(3600), "reviewer-1", NOW, null, 1, "author-1", NOW);
+        when(repository.findRelease("rel-1")).thenReturn(Optional.of(reviewedHold));
+        when(repository.correct("rel-1", 1)).thenReturn(1);
+        when(repository.insertRelease(anyString(), anyString(), anyString(), anyInt(), anyString(),
+                anyInt(), anyString(), anyString(), any(), any(), any(), eq("rel-1")))
+                .thenReturn("rel-2");
+        when(repository.findRelease("rel-2")).thenReturn(Optional.of(new PatientRelease("rel-2", ORG, PATIENT,
+                "LAB-REV-0002", 2, ORG, 2, ReleaseKind.IMMEDIATE, ReleaseState.AUTHORIZED, NOW,
+                null, null, null, null, "rel-1", 1, "author-1", NOW)));
+
+        PatientRelease result = service.correct("rel-1", 1, "LAB-REV-0002", 2, "corrected result");
+
+        assertEquals("rel-1", result.supersedesId());
+        assertTrue(result.visibleNow(Clock.fixed(NOW, ZoneOffset.UTC)));
+        ArgumentCaptor<String> kind = ArgumentCaptor.forClass(String.class);
+        verify(repository).insertRelease(eq(ORG), eq(PATIENT), eq("LAB-REV-0002"), eq(2), eq(ORG), eq(2),
+                kind.capture(), eq("AUTHORIZED"), any(), isNull(), isNull(), eq("rel-1"));
+        assertEquals("IMMEDIATE", kind.getValue());
+    }
+
+    @Test
+    void correctPreservesTimedReleasePolicy() {
+        authorized("clinician");
+        Instant future = NOW.plusSeconds(3600);
+        PatientRelease timed = new PatientRelease("rel-1", ORG, PATIENT, REVISION, 1, ORG, 2,
+                ReleaseKind.TIMED, ReleaseState.AUTHORIZED, future, null, null, null, null, null,
+                1, "author-1", NOW);
+        when(repository.findRelease("rel-1")).thenReturn(Optional.of(timed));
+        when(repository.correct("rel-1", 1)).thenReturn(1);
+        when(repository.insertRelease(anyString(), anyString(), anyString(), anyInt(), anyString(),
+                anyInt(), anyString(), anyString(), any(), any(), any(), eq("rel-1")))
+                .thenReturn("rel-2");
+        when(repository.findRelease("rel-2")).thenReturn(Optional.of(new PatientRelease("rel-2", ORG, PATIENT,
+                "LAB-REV-0002", 2, ORG, 2, ReleaseKind.TIMED, ReleaseState.AUTHORIZED, future,
+                null, null, null, null, "rel-1", 1, "author-1", NOW)));
+
+        PatientRelease result = service.correct("rel-1", 1, "LAB-REV-0002", 2, "corrected result");
+
+        assertEquals("rel-1", result.supersedesId());
+        assertFalse(result.visibleNow(Clock.fixed(NOW, ZoneOffset.UTC)));
+        ArgumentCaptor<String> kind = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Instant> effective = ArgumentCaptor.forClass(Instant.class);
+        verify(repository).insertRelease(eq(ORG), eq(PATIENT), eq("LAB-REV-0002"), eq(2), eq(ORG), eq(2),
+                kind.capture(), eq("AUTHORIZED"), effective.capture(), isNull(), isNull(), eq("rel-1"));
+        assertEquals("TIMED", kind.getValue());
+        assertEquals(future, effective.getValue());
     }
 
     @Test
