@@ -30,11 +30,17 @@ SHELL_ALLOW = [
     "scripts/check.sh*", "scripts/verify.sh*", "scripts/smoke-image.sh*",
     "scripts/docs.sh*", "python3 scripts/*", "python3 -I scripts/*",
 ]
-# AGENTS.md forbids force-pushing and bypassing protections.
+# AGENTS.md forbids force-pushing and bypassing protections. These denies apply
+# to both the local and CI profiles, on top of the broad shell allow rule.
 SHELL_DENY = [
     "git push*--force*", "git push -f*", "git push* -f *", "git push* -f",
     "git push*--delete*", "git reset --hard*", "git clean*",
     "git commit*--no-verify*", "git push*--no-verify*",
+    # Extra hard denies (user directive 2026-11-19): no privilege escalation,
+    # recursive deletion, download-to-shell pipelines, or remote ref surgery.
+    "sudo*", "rm -rf /*", "rm -rf ~*",
+    "curl*|*sh*", "wget*|*sh*",
+    "git push*:*", "git remote set-url*",
 ]
 
 

@@ -136,6 +136,41 @@
         },
         {
           "action": "shell",
+          "resource": "sudo*",
+          "effect": "deny"
+        },
+        {
+          "action": "shell",
+          "resource": "rm -rf /*",
+          "effect": "deny"
+        },
+        {
+          "action": "shell",
+          "resource": "rm -rf ~*",
+          "effect": "deny"
+        },
+        {
+          "action": "shell",
+          "resource": "curl*|*sh*",
+          "effect": "deny"
+        },
+        {
+          "action": "shell",
+          "resource": "wget*|*sh*",
+          "effect": "deny"
+        },
+        {
+          "action": "shell",
+          "resource": "git push*:*",
+          "effect": "deny"
+        },
+        {
+          "action": "shell",
+          "resource": "git remote set-url*",
+          "effect": "deny"
+        },
+        {
+          "action": "shell",
           "resource": "gh *",
           "effect": "deny"
         },

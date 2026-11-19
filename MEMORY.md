@@ -1,6 +1,6 @@
 # Durable memory
 
-Current checkpoint: PROGRESS.md, G0-01 CI optimization and merge (main at e1dc7cd, all required checks green on f9bc461). Next story: S-G0-02 staff lifecycle and immutable membership history (IAM-02). Keep a short pointer to the last completed stage and next action in this file after each stage.
+Current checkpoint: PROGRESS.md, S-G0-02 implementation and specialist/gate review; next commit, push and exact-SHA CI. Both this pointer and WORKSPACE.md name the same checkpoint. `PLAN.md` is the canonical all-story index with checkbox state; fill a checkbox only when PROGRESS.md records the evidence. Keep a short pointer to the last completed stage and next action in this file after each stage.
 
 | Decision | Rationale and evidence |
 |---|---|
@@ -13,5 +13,7 @@ Current checkpoint: PROGRESS.md, G0-01 CI optimization and merge (main at e1dc7c
 | User directive (2026-11-18): maximize self-improvement of agents and skills; static OWASP testing; 100% testable, readable, clean SOLID code | Engineering quality bar added to AGENTS.md; devsecops/java-build skills and CI will be updated in the same loop so each run inherits the rule |
 | User directive (2026-11-18): check GitHub Actions CI, repair failures, check agent PRs and merge them, make it all automated | Orchestrator owns this loop without further prompts: push scoped commits, watch checks on the exact SHA, fix with new tested commits, inspect agent PRs and merge only when required checks are green |
 | User directive (2026-11-19): CI must use small dependent, reusable, cacheable units | delivery.yml split into policy → java/database + docs → per-arch image smoke → release; reusable composite actions in .github/actions; Maven and OWASP NVD caches; image job skips already-run checks via SMARTCLINIC_SKIP_CHECKS |
+| User decision (2026-11-19): keep the exposed NVD key; no rotation and no history purge | Key remains valid in the repository secret store and is supplied only via `NVD_API_KEY` at runtime. It is absent from the current tree. The full literal remains in published commits 589c7d4 and 57efab8; removing it requires a public history rewrite and force-push, which the execution rules and generator hard denies prohibit, so it was not attempted. The short prefix was redacted from BUGS.md and a note-scan rule added |
+| Orchestrator decision (2026-11-19), S-G0-02 scope (IAM-01/IAM-02/OPS-02) | Zero-staleness permission checks at request time; deactivation is the in-scope permission change with immediate effect; arbitrary role reassignment and permission-matrix edits deferred to S-G0-03; bounded G0 roles are `tenant_admin` (allows) and `reception` (denied); effective dates recorded AND enforced via valid_from/valid_to gating; cross-tenant/nonexistent staff concealed with 404; `tenant_admin` may invite/deactivate, self-deactivation allowed; staff audit purpose is `STAFF_ADMIN`; concurrency stress deferred to S-G0-04. Decision recorded in PROJECT.md |
 
 Add durable decisions only. Reference exact IDs, files and evidence paths. Avoid copying logs, specifications or stage histories.
