@@ -1,0 +1,67 @@
+name: Swarm slot images
+# Builds one prepared image per worker slot (ghcr.io/<repo>-agent-<slot>) on top
+# of the base image. Each slot bakes its own OpenCode model and config from
+# .github/swarm/slots.json. Credentials are never baked in.
+on:
+  push:
+    branches: [main]
+    paths: ['.github/swarm/slots.json', '.github/agent-image/Dockerfile.slot',
+            '.github/workflows/swarm-images.yml']
+  workflow_run:
+    workflows: [Agent image]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  packages: write
+concurrency:
+  group: swarm-images
+  cancel-in-progress: true
+jobs:
+  plan:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    outputs:
+      matrix: ${{ steps.slots.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            scripts
+            .github/swarm
+      - id: slots
+        run: python3 -I scripts/swarm.py slot-matrix
+  build:
+    name: Slot ${{ matrix.slot }} image
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      max-parallel: 5
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            scripts
+            .github/swarm
+            .github/agent-image
+      - name: Build and push the slot image
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SLOT: ${{ matrix.slot }}
+        run: |
+          base="ghcr.io/${GITHUB_REPOSITORY,,}-agent:latest"
+          image="ghcr.io/${GITHUB_REPOSITORY,,}-agent-${SLOT}"
+          config=$(python3 -I scripts/swarm.py slot-config --slot "$SLOT")
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker build --pull -f .github/agent-image/Dockerfile.slot \
+            --build-arg "BASE=$base" --build-arg "SLOT=$SLOT" --build-arg "SLOT_CONFIG=$config" \
+            --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
+            -t "$image:latest" .github/agent-image
+          docker push "$image:latest"
