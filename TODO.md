@@ -518,7 +518,7 @@ Delivered inside the stories above, not scheduled separately.
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [-] X-03 · Upload validation, quarantine, mediated downloads and PDF binding to immutable revisions (ARC-06).
   - agent: swarm-1
-  - attempts: 3
+  - attempts: 4
   - scope: contracts/upload, apps/api/src/main/java/com/aurevia/smartclinic/api/upload
   - reserved: V56
   - details:
