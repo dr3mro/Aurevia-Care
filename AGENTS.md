@@ -28,3 +28,14 @@ Every user instruction or choice is durable input. Route it to the owning tracke
 | Observed, reproducible defect | BUGS.md |
 
 Keep notes short and cite exact requirement IDs, paths and evidence. Record whether evidence came from a tool, reviewer, simulated user or human participant. Never store credentials, patient data or raw logs in any note.
+
+## Engineering quality bar
+
+Every change must meet all of the following before it is called done:
+
+- **100% coverage** of production lines, branches, methods and classes from the first production file, with build-failing gates and no fabricated or pending-as-covered results.
+- **Static and dependency security testing** on every change, including OWASP dependency analysis and language-appropriate static analysis. Record tool, version, command, finding count and disposition in the checkpoint.
+- **Clean code and SOLID**: one responsibility per unit, small explicit interfaces, dependency inversion at boundaries, no duplicated rules across layers, readable names and guard clauses, and a traceable entry point to a test for each behavior.
+- **Self-improvement**: when a defect, review finding or tool gap is observed, update the owning skill or agent instruction in the same change so the next run avoids it. Regenerate `opencode.json` after any agent or skill edit and commit the generated file.
+
+Apply these rules in every specialist routing brief and in acceptance evidence.
