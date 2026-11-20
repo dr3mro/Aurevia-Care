@@ -131,6 +131,7 @@ jobs:
           name: monitor-selection
           path: monitor
       - uses: actions/download-artifact@v8
+        if: needs.select.outputs.triage == 'true'
         continue-on-error: true
         with:
           name: monitor-triage
