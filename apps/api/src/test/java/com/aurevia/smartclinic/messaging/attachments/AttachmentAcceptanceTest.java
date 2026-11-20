@@ -431,6 +431,29 @@ class AttachmentAcceptanceTest {
                 .allMatch(fact -> ORG_B.equals(fact.organizationId())));
     }
 
+    @Test
+    void eventsAreScopedToTheRequestedAttachmentWithinOneTenant() {
+        Attachment a = service.upload(patientA, pdf());
+        service.scan(scannerA, a.id(), new ScanRequest("failed", "detail-of-file-a"), 1);
+        Attachment b = service.upload(patientA, pdf());
+        service.scan(scannerA, b.id(), new ScanRequest("failed", "detail-of-file-b"), 1);
+        assertNotEquals(a.id(), b.id());
+
+        List<AttachmentEvent> aTrail = service.events(patientA, a.id());
+        assertEquals(2, aTrail.size());
+        assertTrue(aTrail.stream().allMatch(fact -> a.id().equals(fact.attachmentId())));
+        assertTrue(aTrail.stream().anyMatch(fact -> "detail-of-file-a".equals(fact.detail())));
+        assertTrue(aTrail.stream().noneMatch(fact -> "detail-of-file-b".equals(fact.detail())));
+        // events() and its sibling view() must expose the same per-file trail.
+        assertEquals(service.view(patientA, a.id()).events(), aTrail);
+
+        List<AttachmentEvent> bTrail = service.events(patientA, b.id());
+        assertEquals(2, bTrail.size());
+        assertTrue(bTrail.stream().allMatch(fact -> b.id().equals(fact.attachmentId())));
+        assertTrue(bTrail.stream().anyMatch(fact -> "detail-of-file-b".equals(fact.detail())));
+        assertTrue(bTrail.stream().noneMatch(fact -> "detail-of-file-a".equals(fact.detail())));
+    }
+
     // --- A8: pure contract and validation coverage --------------------------
 
     @Test

@@ -290,7 +290,10 @@ public final class AttachmentService {
         if (!visible(actor, current)) {
             throw notFound().get();
         }
-        return store.events(actor.organizationId()).stream().toList();
+        String fileId = current.id();
+        return store.events(actor.organizationId()).stream()
+                .filter(fact -> fileId.equals(fact.attachmentId()))
+                .toList();
     }
 
     /**
