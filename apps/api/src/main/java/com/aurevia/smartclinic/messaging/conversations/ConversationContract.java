@@ -324,8 +324,8 @@ public final class ConversationContract {
      *
      * @param patientId     owning patient identifier
      * @param patientSubject synthetic subject bound to the patient's account
-     * @param unitKey       recipient care-unit key
-     * @param connectionId  verified connection identifier
+     * @param unitKey       recipient care-unit key, checked against the connection
+     * @param connectionId  connection identifier, verified server-side for patient callers
      * @param topic         optional topic, or {@code null}
      * @return the open command
      */
