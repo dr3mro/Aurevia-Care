@@ -30,8 +30,8 @@ No new threshold or requirement ID is introduced by this handoff.
 
 | Tier | What it is | What it proves | What it does not prove |
 |---|---|---|---|
-| Contract | The OPS-08 clauses encoded in the [evaluator](../../../infra/s_g5_09/onboarding.py) | Fidelity of the encoding and fail-closed validation | That any dataset was imported |
-| Synthetic rehearsal | The seeded manifests run by [`check.sh`](../../../infra/s_g5_09/check.sh) | The evaluator accepts a conforming manifest and rejects breaches of several clauses at once | That an import or approval really happened; no data was written |
+| Contract | The OPS-08 clauses encoded in the [evaluator](../../../infra/onboarding/onboarding.py) | Fidelity of the encoding and fail-closed validation | That any dataset was imported |
+| Synthetic rehearsal | The seeded manifests run by [`check.sh`](../../../infra/onboarding/check.sh) | The evaluator accepts a conforming manifest and rejects breaches of several clauses at once | That an import or approval really happened; no data was written |
 | Approved import | A manifest, dry run and named sign-off produced by authorized operators outside this repository | A real import followed the declared gate | Clinical or operational acceptance; that remains a G5 human gate |
 
 A passing synthetic manifest is a rehearsal, not an import record. The evaluator
@@ -45,19 +45,19 @@ never writes to a source of truth and never creates an attestation.
 | [Dry run and controlled batches](dry-run-and-batches.md) | The five dry-run findings, the batch envelope and count/hash reconciliation |
 | [Sign-off, provenance and commit gate](sign-off-and-provenance.md) | Provenance preservation, no new attestation, authorized sign-off and the commit gate |
 
-Executable material lives in `infra/s_g5_09`: the
-[evaluator](../../../infra/s_g5_09/onboarding.py), the
-[conforming](../../../infra/s_g5_09/fixtures/synthetic_onboarding_manifest.json)
-and [violation](../../../infra/s_g5_09/fixtures/violation_onboarding_manifest.json)
+Executable material lives in `infra/onboarding`: the
+[evaluator](../../../infra/onboarding/onboarding.py), the
+[conforming](../../../infra/onboarding/fixtures/synthetic_onboarding_manifest.json)
+and [violation](../../../infra/onboarding/fixtures/violation_onboarding_manifest.json)
 fixtures, and the unit tests.
 
 ## Verification
 
 | Check | Command | Proves |
 |---|---|---|
-| Unit and fixture gate | `bash infra/s_g5_09/check.sh` | 68 synthetic unit tests pass; the conforming fixture passes and the violation fixture fails |
-| Unit tests alone | `python3 -I -m unittest discover -s infra/s_g5_09/tests -q` | The evaluator's enumerated branches behave as specified |
-| Line coverage | `python3 -m trace --count --coverdir /tmp/opencode/s_g5_09_cov infra/s_g5_09/tests/run_coverage.py` | Every executable line of the evaluator runs; stdlib `trace` is used because `coverage.py` is not installed |
+| Unit and fixture gate | `bash infra/onboarding/check.sh` | 68 synthetic unit tests pass; the conforming fixture passes and the violation fixture fails |
+| Unit tests alone | `python3 -I -m unittest discover -s infra/onboarding/tests -q` | The evaluator's enumerated branches behave as specified |
+| Line coverage | `python3 -m trace --count --coverdir /tmp/opencode/onboarding_cov infra/onboarding/tests/run_coverage.py` | Every executable line of the evaluator runs; stdlib `trace` is used because `coverage.py` is not installed |
 | Links and requirement IDs | `python3 -I scripts/check-docs.py` | Relative links resolve and every requirement ID is defined in the specification |
 | Credential and PHI shapes | `python3 -I scripts/check-secrets.py` | No credential or patient-identifier pattern was introduced |
 

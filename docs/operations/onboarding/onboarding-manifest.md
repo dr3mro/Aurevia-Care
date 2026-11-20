@@ -1,8 +1,8 @@
 # OPS-08 versioned manifest and deterministic mapping contract
 
-The [evaluator](../../../infra/s_g5_09/onboarding.py) is the authority for this
+The [evaluator](../../../infra/onboarding/onboarding.py) is the authority for this
 contract. This document explains the fields it checks and why. The
-[conforming fixture](../../../infra/s_g5_09/fixtures/synthetic_onboarding_manifest.json)
+[conforming fixture](../../../infra/onboarding/fixtures/synthetic_onboarding_manifest.json)
 is a synthetic, runnable example.
 
 ## Manifest envelope

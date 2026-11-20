@@ -2,7 +2,7 @@
 
 Before any source of truth changes, a manifest must produce a clean dry run and
 a batch plan whose counts and hashes reconcile. Both are computed by the
-[evaluator](../../../infra/s_g5_09/onboarding.py) from the declared records; no
+[evaluator](../../../infra/onboarding/onboarding.py) from the declared records; no
 write occurs.
 
 ## The five dry-run findings

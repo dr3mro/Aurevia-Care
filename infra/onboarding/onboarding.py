@@ -13,7 +13,7 @@ complete and internally consistent and that a clean dry run and sign-off exist.
 It cannot prove an import actually happened or that a person really approved it;
 that remains a human, G5-gated step.
 
-Usage: ``python3 -I infra/s_g5_09/onboarding.py <manifest.json>``
+Usage: ``python3 -I infra/onboarding/onboarding.py <manifest.json>``
 Exit codes: 0 = all OPS-08 checks pass, 1 = a check fails, 2 = unreadable input.
 """
 import hashlib
