@@ -80,10 +80,10 @@ public class ClinicalNoteService {
     /**
      * Run one guarded command, committing its failure audit after a rollback.
      *
-     * <p>A command that fails validation appends an audit row and then throws
-     * inside the guarded transaction. Because the transaction rolls back, that
-     * row would be lost. Such failures are signalled with an {@code AuditedFailure};
-     * this method re-appends their audit in a second committed transaction before
+     * <p>A command that fails inside the guarded transaction signals the failure
+     * with an {@code AuditedFailure} carrying the audit facts but no appended
+     * row: throwing rolls the transaction back, so an inline row would be lost.
+     * This method re-appends the audit in a second committed transaction before
      * rethrowing the public {@code ApiException}. Successes and authorization
      * denials keep their existing single-transaction path.</p>
      *

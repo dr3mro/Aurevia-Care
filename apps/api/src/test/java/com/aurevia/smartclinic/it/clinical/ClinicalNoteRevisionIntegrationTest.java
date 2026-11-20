@@ -388,6 +388,22 @@ class ClinicalNoteRevisionIntegrationTest {
     }
 
     @Test
+    void illegalTransitionAuditIsCommittedAfterRollback() throws Exception {
+        String id = field(create("clinician-a", ORG_A).getBody(), "id");
+        assertEquals(HttpStatus.OK, request(HttpMethod.POST, "/api/v1/clinical-notes/" + id + "/sign",
+                "{\"attestation\":\"attested\"}", "clinician-a", ORG_A, "\"1\"").getStatusCode());
+        long before = auditCount("NOTE_SIGN", "CONFLICT", ORG_A);
+        // Re-signing a signed note is an illegal transition (409). Its CONFLICT
+        // audit must also survive the command rollback (OPS-02).
+        ResponseEntity<String> reSign = request(HttpMethod.POST,
+                "/api/v1/clinical-notes/" + id + "/sign",
+                "{\"attestation\":\"again\"}", "clinician-a", ORG_A, "\"2\"");
+        assertEquals(HttpStatus.CONFLICT, reSign.getStatusCode());
+        assertEquals("INVALID_TRANSITION", field(reSign.getBody(), "code"));
+        assertEquals(before + 1, auditCount("NOTE_SIGN", "CONFLICT", ORG_A));
+    }
+
+    @Test
     void revisionRowsAreAppendOnlyForEveryRole() throws Exception {
         String id = field(create("clinician-a", ORG_A).getBody(), "id");
         assertMutationRejected("smartclinic_migrate", "UPDATE public.clinical_note_revision "

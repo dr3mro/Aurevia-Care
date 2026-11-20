@@ -490,6 +490,7 @@ class ClinicalNoteServiceTest {
         when(repository.current(NOTE)).thenReturn(Optional.of(revision(NoteState.SIGNED, 1)));
         assertEquals(409, assertThrows(ApiException.class,
                 () -> service.updateDraft(NOTE, 1, "Title", "Content")).status());
+        verify(transactions, times(2)).execute(any());
         verify(audit).append(eq(TenantContext.current()), eq(ClinicalNoteService.PURPOSE),
                 eq(ClinicalNoteService.UPDATE), eq(ClinicalNoteService.RESOURCE_TYPE),
                 eq(ClinicalNoteService.SCOPE), eq(NOTE), eq("CONFLICT"));
@@ -501,6 +502,7 @@ class ClinicalNoteServiceTest {
         when(repository.current(NOTE)).thenReturn(Optional.of(revision(NoteState.SIGNED, 1)));
         assertEquals(409, assertThrows(ApiException.class,
                 () -> service.sign(NOTE, 1, "attest")).status());
+        verify(transactions, times(2)).execute(any());
         verify(audit).append(eq(TenantContext.current()), eq(ClinicalNoteService.PURPOSE),
                 eq(ClinicalNoteService.SIGN), eq(ClinicalNoteService.RESOURCE_TYPE),
                 eq(ClinicalNoteService.SCOPE), eq(NOTE), eq("CONFLICT"));
