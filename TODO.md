@@ -86,7 +86,7 @@ Main's Delivery run is red; these tasks restore it. They share `apps/api`, so th
 
 - [-] DLV-04 · Repair integration tests: clinical notes, result routing, access, documents, specimens and trending
   - agent: swarm-1
-  - attempts: 1
+  - attempts: 2
   - requirements: CLN-03, LAB-02, IAM-03, DOC-01
   - depends: DLV-03
   - scope: apps/api, db
