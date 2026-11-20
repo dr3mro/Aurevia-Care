@@ -547,7 +547,7 @@ Delivered inside the stories above, not scheduled separately.
 
 Main's Delivery run is red; these tasks restore it. They share `apps/api`, so the swarm runs them one at a time.
 
-- [-] DLV-01 · Repair integration tests: patient chart, chart entry and exchange task
+- [x] DLV-01 · Repair integration tests: patient chart, chart entry and exchange task
   - agent: swarm-1
   - attempts: 2
   - requirements: CLN-03, CLN-05, ARC-02
