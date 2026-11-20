@@ -79,7 +79,8 @@ Current source state (2026-11-19T07:19Z, from `main` at `311d69a`): 7 Flyway mig
 
 Gate evidence: competing bookings enforce one protected slot; stale drafts cannot overwrite signed records; corrections preserve the signed original; English and Arabic PDFs validated; consolidation is all-or-nothing.
 
-- [ ] S-G1-01 · Facility, clinician and room/resource availability, recurrence, holds and transactional booking with history (CLN-01).
+- [x] S-G1-01 · Facility, clinician and room/resource availability, recurrence, holds and transactional booking with history (CLN-01).
+  - evidence: `db/migrations/V8__scheduling.sql`, the `scheduling` package (facility info, resources, availability, appointments) and `SchedulingBookingTest` are on main.
   - requirements: CLN-01, ARC-01, ARC-02, ARC-03, OPS-02
   - reserved: V8
   - details:
@@ -685,7 +686,8 @@ Independent modules scoped to their own paths so workers cannot collide with bac
 
 - [x] IMP-03 · Stop concurrency-cancelling swarm delivery runs. `delivery.yml` (per-ref group, `cancel-in-progress: false`), `heavy-check.yml`, `agent-image.yml` and `swarm-images.yml` now queue; `swarm.yml`, `swarm-integrator.yml`, `main-watchdog.yml` and `opencode-team.yml` already queued. README-SETUP.md updated.
   - evidence: `scripts/tests/test_workflow_concurrency.py` (red first: 5 failures) now green — parses every `.github/workflows/*.yml`, asserts each declares a non-empty group and `cancel-in-progress: false`, and locks delivery to a per-ref group. `scripts/quick-check.sh` exit 0, 125 tooling tests OK, all eight workflow YAMLs parse. GitHub Workflow reviewer (simulated) found that a SHA-scoped group would remove serialization and allow unbounded parallel full verification; that was reverted to a per-ref group. Its heavy-check SHA-attribution finding is deferred as IMP-04 / CW-IMP03-01. `check.sh`/`docs.sh` remain red on pre-existing G1 SpotBugs and Doxygen defects, unrelated to this change. Evidence source: tool commands plus simulated reviewer; no human or clinical evidence.
-- [ ] IMP-04 · Heavy-check SHA attribution (owner: `.github/workflows/heavy-check.yml`, `scripts/swarm.py`): queued heavy checks check out `main` at execution time, but the watchdog passes the trigger-time `headSha` to the repair worker, so a delayed run can cause a repair on the wrong commit. Pin the checkout to the trigger SHA, or record the executed SHA as a step output and prefer it in `repair_task`. Tracked as CW-IMP03-01 in BUGS.md.
+- [x] IMP-04 · Heavy-check SHA attribution (owner: `.github/workflows/heavy-check.yml`, `scripts/swarm.py`): queued heavy checks check out `main` at execution time, but the watchdog passes the trigger-time `headSha` to the repair worker, so a delayed run can cause a repair on the wrong commit. Pin the checkout to the trigger SHA, or record the executed SHA as a step output and prefer it in `repair_task`. Tracked as CW-IMP03-01 in BUGS.md.
+  - evidence: obsolete, `.github/workflows/heavy-check.yml` was removed when Delivery took over the full tier on main (PR #158), so there is no heavy-check SHA to attribute.
 
 Raised by the dispatch-3 run-3 verification. Address in the next authorized change to the owning file.
 
@@ -769,7 +771,8 @@ Cadence and limits:
 
 ## Audit findings
 
-- [ ] AUD-20261119-01 · Constrain patient released-revisions endpoint to the verified patient chart link
+- [x] AUD-20261119-01 · Constrain patient released-revisions endpoint to the verified patient chart link
+  - pr: #174
   - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/exchange/release, apps/api/src/main/java/com/aurevia/smartclinic/messaging/reports
   - details:
