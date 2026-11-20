@@ -14,7 +14,7 @@ on:
         description: 'Worker cap; the wave uses fewer when fewer tasks are ready (1 to 10, default 10)'
         default: '10'
       repair_run:
-        description: Failed run id on main to repair (set by the main watchdog)
+        description: Failed run id on main to repair (optional; the plan job finds failing runs itself)
         default: ''
       now:
         description: 'Start immediately instead of queueing behind the running or queued waves'
@@ -80,6 +80,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 -I scripts/swarm.py budget-gate
+      # A red main becomes a repair task here, in the same run that plans the
+      # wave, instead of a separate watchdog run per failure. The task goes in
+      # TODO.md first, so the planner below picks it up ahead of everything else.
+      - id: repair
+        if: steps.budget.outputs.start == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 -I scripts/swarm.py add-repair-task --latest
       # The prepared images are built once by agent-image.yml / swarm-images.yml
       # and reused by every worker. Never start a wave while they are rebuilding
       # or not green: a worker would pull a stale image (for example V1 OpenCode
