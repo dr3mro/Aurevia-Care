@@ -431,7 +431,7 @@ def plan_workers(max_workers, slots, text, open_prs, repair=None):
     in_flight = {task_id_of(p["headRefName"]) for p in open_prs}
     done = {name for t in tasks if t["status"] == "done" for name in (t["id"], *t["aliases"])}
     # Repairs of main come first: a red main blocks every other merge.
-    for task in sorted(tasks, key=lambda t: not t["id"].startswith("FIX-")):
+    for task in sorted(tasks, key=lambda t: not is_repair_task(t)):
         if task["status"] != "todo" or not task["scope"] or task["id"] in in_flight \
                 or attempts_of(task) >= MAX_ATTEMPTS:
             continue
@@ -603,6 +603,13 @@ def repair_task(run_id):
 
 
 REPAIR_HEADER = "## Repairs (automatic)"
+# Tasks whose id starts with one of these repair main: planned first, and while
+# one is open no second automatic repair is added (it would repeat the work).
+REPAIR_PREFIXES = ("FIX-", "DLV-")
+
+
+def is_repair_task(task):
+    return task["id"].startswith(REPAIR_PREFIXES)
 
 
 def repair_entry(task):
@@ -631,7 +638,7 @@ def add_repair_task(run_id, path="TODO.md"):
     added = []
 
     def edit(text):
-        if any(t["id"].startswith("FIX-") and t["status"] != "done" for t in parse_tasks(text)):
+        if any(is_repair_task(t) and t["status"] != "done" for t in parse_tasks(text)):
             print("A repair task is already open.")
             return text
         head = "" if REPAIR_HEADER in text else f"\n{REPAIR_HEADER}\n\n"
