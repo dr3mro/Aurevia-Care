@@ -15,7 +15,8 @@ public record CatalogVersion<T>(int version, List<T> entries, String author, App
     /**
      * Validate the version and defensively copy its entries.
      *
-     * @throws IllegalArgumentException when the version is not positive or the author is missing
+     * @throws IllegalArgumentException when the version is not positive, the author is
+     *                                  missing or the entries are null
      */
     public CatalogVersion {
         if (version < 1) {
@@ -23,6 +24,9 @@ public record CatalogVersion<T>(int version, List<T> entries, String author, App
         }
         if (author == null || author.isBlank()) {
             throw new IllegalArgumentException("author is required");
+        }
+        if (entries == null) {
+            throw new IllegalArgumentException("entries are required");
         }
         entries = List.copyOf(entries);
     }
@@ -49,10 +53,17 @@ public record CatalogVersion<T>(int version, List<T> entries, String author, App
     /**
      * Attach an approval, returning a new version.
      *
+     * <p>A missing approval fails closed: returning a copy with no approval would
+     * let a draft look approved without any named governance decision.</p>
+     *
      * @param approval named approval
      * @return the approved version; this version is unchanged
+     * @throws IllegalArgumentException when the approval is missing
      */
     public CatalogVersion<T> approve(Approval approval) {
+        if (approval == null) {
+            throw new IllegalArgumentException("approval is required");
+        }
         return new CatalogVersion<>(version, entries, author, approval);
     }
 }

@@ -185,6 +185,20 @@ describe('StaffHistoryView', () => {
     expect(screen.getByText(adminText('en', 'noRoles'))).toBeTruthy();
   });
 
+  it('shows the grantor only for role grants and renders effective UTC instants', () => {
+    wrap(<StaffHistoryView events={syntheticStaffEvents} organizationId={alphaOrganizationId} subject="synthetic.reception" />);
+    const rows = screen.getAllByRole('row');
+    const invited = rows.find((row) => within(row).queryByRole('rowheader')?.textContent === '1')!;
+    const granted = rows.find((row) => within(row).queryByRole('rowheader')?.textContent === '2')!;
+    // The invited row has no grantor; the role-grant row names its grantor.
+    expect(within(invited).queryByText('Synthetic alpha admin A')).toBeTruthy();
+    expect(within(invited).getAllByText(adminText('en', 'notApplicable')).length).toBeGreaterThan(0);
+    expect(within(granted).getAllByText('Synthetic alpha admin A').length).toBeGreaterThan(0);
+    expect(within(granted).getByText('reception')).toBeTruthy();
+    // OPS-02: the append-only event carries an effective instant in UTC.
+    expect(granted.querySelector('time[datetime="2026-01-06T08:00:00Z"]')).toBeTruthy();
+  });
+
   it('shows an empty state for an unknown subject', () => {
     wrap(<StaffHistoryView events={syntheticStaffEvents} organizationId={alphaOrganizationId} subject="missing.subject" />);
     expect(screen.getByText(adminText('en', 'noHistory'))).toBeTruthy();
@@ -206,6 +220,9 @@ describe('AuditEventList', () => {
     expect(screen.getByText('Synthetic audit query')).toBeTruthy();
     expect(screen.getByText('organization:alpha')).toBeTruthy();
     expect(screen.getByText(adminText('en', 'outcomeDenied'))).toBeTruthy();
+    // ADM-02: the actor is a distinct required column, not just fixture data.
+    expect(screen.getByText('Synthetic alpha privacy auditor')).toBeTruthy();
+    expect(screen.getByText('Synthetic alpha reception')).toBeTruthy();
     expect(screen.getAllByRole('rowheader').map((cell) => cell.textContent)).toEqual(['1', '2', '3']);
   });
 

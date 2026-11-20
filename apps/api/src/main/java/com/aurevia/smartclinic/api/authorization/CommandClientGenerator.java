@@ -89,7 +89,8 @@ public final class CommandClientGenerator {
                     .append("        '401': { $ref: '#/components/responses/Unauthenticated' }\n")
                     .append("        '403': { $ref: '#/components/responses/Forbidden' }\n")
                     .append("        '422': { $ref: '#/components/responses/InvalidInput' }\n")
-                    .append("        '428': { $ref: '#/components/responses/PreconditionRequired' }\n");
+                    .append("        '428': { $ref: '#/components/responses/PreconditionRequired' }\n")
+                    .append("        '500': { $ref: '#/components/responses/DecisionNotRecorded' }\n");
         }
         yaml.append("""
                 components:
@@ -148,6 +149,11 @@ public final class CommandClientGenerator {
                           schema: { $ref: '#/components/schemas/ErrorBody' }
                     PreconditionRequired:
                       description: Idempotency key or version precondition is missing.
+                      content:
+                        application/json:
+                          schema: { $ref: '#/components/schemas/ErrorBody' }
+                    DecisionNotRecorded:
+                      description: Authorization decision could not be recorded; the command is denied.
                       content:
                         application/json:
                           schema: { $ref: '#/components/schemas/ErrorBody' }

@@ -84,7 +84,9 @@ export function AdminScreen({
     >
       <h2>{adminText(locale, 'admin')}</h2>
       <p>{adminText(locale, 'syntheticNotice')}</p>
-      <p role="status" data-testid="admin-status" aria-label={adminText(locale, 'proposalStatus')}>
+      {/* No aria-label: the live region's announcement must be exactly the
+          visible result text, not a static accessible name (WCAG 4.1.3). */}
+      <p role="status" data-testid="admin-status">
         <MixedScriptText
           text={proposal ? proposalAnnouncement(locale, proposal.facilityCode, proposal.version) : ''}
           lang={locale}
@@ -100,7 +102,12 @@ export function AdminScreen({
           />
         ))}
       </section>
+      {/* Key by tenant so an unsubmitted draft typed under one organization is
+          never reconciled into the editor of another. The local value and date
+          are dropped with the old instance instead of being carried into a
+          command scoped to the new tenant (IAM-01, ARC-01). */}
       <ConfigEditor
+        key={organizationId}
         entries={visibleConfigurations}
         organizationId={organizationId}
         configKey={configKey}
