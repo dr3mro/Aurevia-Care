@@ -1784,8 +1784,9 @@ Every entry below is finished and verified. Do not take them again; they stay he
     Two complete 11-class chart implementations coexist: chart/record (delivered by S-G1-03) and patient/chart, whose own comment at chart/record/ChartController.java:23 calls it 'a legacy chart slice'. Both expose live HTTP routes and write the same public.chart_entry table: POST /api/v1/chart/records/entries vs /api/v1/chart/entries, and GET .../patients/{patientId}/entries on each prefix. They have diverged in clinical-safety hardening. chart/record/ChartService.java:292-297 bounds free text before audit/catalog keys and normalizes blank reasons; chart/record/ChartRepository.java:178 sets `clinical_author = COALESCE(clinical_author, :actor)` on verification so a recorder-open entry gains an accountable clinical author. The patient/chart equivalents have neither: its ChartRepository.verify leaves clinical_author null and its ChartService has no requireBounded/normalizedReason. A record verified through the legacy route therefore violates CLN-03's separate clinical author and can hit DB CHECK failures on oversized text, with 100% coverage still passing because both slices are tested independently. Expected fix: keep one contract, delete or deprecate the legacy package and routes, consolidate the hardening, and add an integration test that verifies a null-clinical-author entry through the surviving public route.
     Found by the daily audit. Synthetic fixtures only; failing tests first;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [-] AUD-20261120-16 · Verify order and result subjects in document render and rendered-version reads
-  - agent: swarm-9
+- [x] AUD-20261120-16 · Verify order and result subjects in document render and rendered-version reads
+  - pr: #224
+  - evidence: PR #224; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/AUD-20261120-16.md; simulated review only
   - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/documents, db/migrations
   - details:
