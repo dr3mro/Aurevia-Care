@@ -72,14 +72,44 @@ public class DocumentRepository {
      * @return {@code true} when an effective chart is visible
      */
     public boolean chartExists(String id) {
+        return subjectExists("chart", id);
+    }
+
+    /**
+     * Confirm that a chart, order or result subject exists in the active tenant.
+     *
+     * <p>All three probes are SELECT EXISTS against forced-RLS relations read as
+     * the non-owner runtime role, so a subject from another tenant is concealed.
+     * The chart probe reuses the effective-patient fold; order and result probe
+     * the canonical XCH-01 and XCH-04 tables that own those identifiers. An
+     * unknown type yields {@code false} rather than matching an arbitrary row.</p>
+     *
+     * @param subjectType chart, order or result
+     * @param id          opaque subject identifier
+     * @return {@code true} when the subject is visible in the active tenant
+     */
+    public boolean subjectExists(String subjectType, String id) {
         Boolean exists = jdbc.queryForObject("""
-                SELECT EXISTS (SELECT 1 FROM public.current_patients() WHERE id = CAST(:id AS uuid))
-                """, Map.of("id", id), Boolean.class);
+                SELECT CASE :subjectType
+                    WHEN 'chart' THEN EXISTS (
+                        SELECT 1 FROM public.current_patients() WHERE id = CAST(:id AS uuid))
+                    WHEN 'order' THEN EXISTS (
+                        SELECT 1 FROM public.exchange_order WHERE id = CAST(:id AS uuid))
+                    WHEN 'result' THEN EXISTS (
+                        SELECT 1 FROM public.xch04_report_revision WHERE id = CAST(:id AS uuid))
+                    ELSE false
+                END
+                """, Map.of("subjectType", subjectType, "id", id), Boolean.class);
         return Boolean.TRUE.equals(exists);
     }
 
     /**
      * Insert an original with its bytes and database-derived checksum.
+     *
+     * <p>The subject is re-checked with an RLS-bounded probe inside this boundary
+     * so no caller can bind an artifact to a chart, order or result it cannot see.
+     * A missing subject returns zero without writing, which the service maps to a
+     * concealed 404.</p>
      *
      * @param organizationId active organization identifier
      * @param id             opaque association identifier
@@ -89,10 +119,13 @@ public class DocumentRepository {
      * @param mediaType      PDF, JPEG or PNG media type
      * @param content        retained original bytes
      * @param rotation       presentation-only quarter turn
-     * @return number of inserted rows
+     * @return number of inserted rows, or zero when the subject is absent
      */
     public int insert(String organizationId, String id, String subjectType, String subjectId,
                       String fileName, String mediaType, byte[] content, int rotation) {
+        if (!subjectExists(subjectType, subjectId)) {
+            return 0;
+        }
         return jdbc.update("""
                 INSERT INTO public.document_association
                     (organization_id, id, subject_type, subject_id, file_name, media_type,
