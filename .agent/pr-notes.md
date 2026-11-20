@@ -1,115 +1,164 @@
-# AUD-20261120-13 — Document link accepts order or result subjects without verifying they exist
+# fix-20261120-130314 — AUD-20261120-12 merge/check repair (fix attempt 1 of 3)
 
-## Requirement IDs and acceptance mapping
+## What this attempt is
 
-| Requirement | Acceptance | Where |
+Repair of the integrator outcome on `AUD-20261120-12` ("Patients cannot read
+instruction content: the only instruction reads deny the patient role"):
+
+> Merge conflict with main could not be resolved automatically (merged but checks
+> failed). Fix attempt 1 of 3. Reproduce with `scripts/check.sh` on the merge of
+> main and this branch.
+
+Worker branch `swarm/AUD-20261120-12-289`; starting HEAD `bf47726`
+(`Agent changes for AUD-20261120-12`), clean tree, strict descendant of
+`origin/main` (`git rev-list --left-right --count origin/main...HEAD` = `0 19`;
+merge base = `origin/main` `742f2bb`). No push, tag or `gh` call. Synthetic
+fixtures only. The orchestrator owns `[-]`/`[x]` in `TODO.md`; this worker did
+not edit any shared tracker (`TODO.md`, `MEMORY.md`, `WORKSPACE.md`, `BUGS.md`,
+`PROJECT.md`, `docs/swarm`).
+
+## Root cause (process defect, not a code defect)
+
+The scoped implementation (patient-authorized instruction reads) was already
+complete and correct on the branch: exactly six files under the two declared
+`messaging/instructions` directories. The **only** out-of-scope modification was
+the shared `.agent/pr-notes.md`:
+
+- On `main`, that path holds the note for a different story (`AUD-20261120-13`);
+  the branch's repeated `Agent changes for AUD-20261120-12` commits overwrote it
+  with the AUD-12 note (`137` insertions / `105` deletions vs `main`).
+- When two swarm writers touch the same shared file, the integrator's 3-way
+  merge cannot resolve it.
+
+Reproduced deterministically with `git merge-tree --write-tree` in a temporary
+worktree: with another story's note present in `.agent/pr-notes.md` on the
+`main` side, merging `bf47726` produced:
+
+```
+CONFLICT (content): Merge conflict in .agent/pr-notes.md
+```
+
+No other file diverged outside the declared scope; the six instruction files
+and the per-story note files are not a conflict source (new, uniquely named
+files cannot conflict).
+
+## Fix applied
+
+`git checkout origin/main -- .agent/pr-notes.md` — a **revert of a forbidden
+edit**, not a content change. The shared file now matches `main` byte-for-byte
+(`git diff --numstat origin/main -- .agent/pr-notes.md` is empty), so the net
+committed state of that file equals the merge target and it cannot conflict.
+My notes live only in this uniquely named per-story file. No production or test
+code was changed by this attempt; the scoped code is unchanged.
+
+## Requirement IDs and acceptance mapping (scoped change already on branch)
+
+| Requirement | Acceptance | Where verified |
 |---|---|---|
-| CLN-07 | An original PDF/image binds only to a chart, order or result that exists in the active tenant; an orphan association must not be created | `DocumentService.link` now maps a zero-row insert to 404; `DocumentRepository.insert` re-checks the subject inside the RLS boundary |
-| ARC-01 | Tenant-owned subject keys are real, not arbitrary opaque ids | `DocumentRepository.subjectExists` uses forced-RLS relations only (`current_patients()`, `exchange_order`, `xch04_report_revision`) |
-| ARC-02 | Existence probe runs as the non-owner role with transaction-local tenant context | Reuses `public.current_patients()` fold and the forced-RLS policies already on the canonical tables; no `SECURITY DEFINER`, no explicit tenant switch |
-| XCH-01 / XCH-04 | Canonical owner tables for order and result identifiers | Order probe → `public.exchange_order`; result probe → `public.xch04_report_revision` |
-| OPS-02 | Denials are auditable | The 404 path leaves no success audit row and no history event, matching the existing chart-concealment behavior |
+| MSG-04 / MSG-05 | A verified patient receives typed instruction title/body via `get` and `listForPatient`; reading is a separate fact from acknowledgment | `InstructionServiceTest.patientReadsOwnInstructionContentAndOwnThread`, `InstructionControllerTest.patientReadsOwnInstructionContentThroughHttpRoutes` |
+| PAT-02 | Patient sees only instruction content for a verified, linked, active chart | same positive tests |
+| IAM-05 | Caller bound to charts linked to the authenticated account subject via `InstructionStore.verifiedPatientCharts`; a caller-supplied `patientId` is validated, not trusted | `patientReadsOwnInstructionContentAndOwnThread`, `patientCannotReadAnotherPatientsInstructionContent` |
+| MSG-01 / MSG-07 | A revoked connection ends future content access on the next read (403 for `get`, empty list for `listForPatient`) | `patientReadRequiresAnActiveVerifiedConnection` |
+| ARC-04 | Another patient's chart / unlinked chart concealed with 404 | `patientCannotReadAnotherPatientsInstructionContent` |
+| ARC-02 / OPS-02 | Checks stay in the guarded `execute` path, tenant from `TenantContext`, not the request | all patient tests; staff branch unchanged |
+| IAM-01 (staff) | Staff reads still require unit assignment + active connection | every pre-existing staff test; `unitAssignmentAndConnectionAreValidatedOnEveryCommand` |
 
-## Change (inside the declared scope)
+## Entry-point-to-test trace
 
-- `apps/api/src/main/java/com/aurevia/smartclinic/documents/DocumentRepository.java`
-  - Added `subjectExists(String subjectType, String id)`: one RLS-bounded `SELECT CASE ... EXISTS` probe covering chart (`current_patients()`), order (`exchange_order`) and result (`xch04_report_revision`); unknown type yields `false`; a null JDBC result yields `false`.
-  - `chartExists(String)` now delegates to `subjectExists("chart", id)` so there is one ledger of the chart fold and no duplicated SQL.
-  - `insert(...)` calls `subjectExists(subjectType, subjectId)` first and returns `0` without writing when the subject is absent (atomic with the caller's transaction; no TOCTOU window across transactions).
-- `apps/api/src/main/java/com/aurevia/smartclinic/documents/DocumentService.java`
-  - `link(...)` captures the insert row count and returns `404 NOT_FOUND` ("subject not found") when the insert wrote no row. The pre-existing chart check and the `DuplicateKeyException -> 409` path are unchanged, and no history event or success audit is emitted on the 404 path.
-- New tests in `apps/api/src/test/java/com/aurevia/smartclinic/documents/`:
-  - `DocumentRepositorySubjectTest.java` (5 tests) — probes chart/order/result with RLS-bounded SQL assertions, false and null results, insert skipped when missing, insert writes when present, and chart reuse of the same fold.
-  - `DocumentServiceSubjectLinkTest.java` (6 tests) — order-missing 404, result-missing 404, chart insert-nothing 404, order/result success, and unknown chart still concealed before insert.
+- `GET /api/v1/patient-instructions/{threadId}` → `InstructionController.get` →
+  `InstructionService.get` → `execute(READ, …)` → `isPatient()` →
+  `requirePatientChartAccess` → `verifiedPatientCharts` / `connectionActive`.
+  Tests: `InstructionControllerTest.patientReadsOwnInstructionContentThroughHttpRoutes`,
+  `InstructionServiceTest.patientReadsOwnInstructionContentAndOwnThread`.
+- `GET /api/v1/patient-instructions?patientId=…` →
+  `InstructionController.listForPatient` → `InstructionService.listForPatient`
+  → patient branch (link membership + connection filter). Wrong patient:
+  `InstructionServiceTest.patientCannotReadAnotherPatientsInstructionContent`.
 
-No migration was added; no coverage threshold, exclusion or skip was changed; no existing test was weakened, deleted or skipped. `render(...)` retains its chart-only probe; the story scopes the defect to `link`, and changing `render` would require editing out-of-scope tests. Recorded as a follow-up observation below.
+## New/changed branches and their covering tests (100% coverage)
 
-## Tests written first (red -> green)
+No branch was added by *this* attempt (shared-file revert + notes only). The
+branches introduced by the original story change are all covered; JaCoCo
+counters were read from `apps/api/target/site/jacoco/jacoco.xml` after a full
+verify (tool evidence):
 
-Red command (before production change):
-```
-mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest=DocumentRepositorySubjectTest,DocumentServiceSubjectLinkTest test
-```
-Red result: compilation failure — `cannot find symbol: method subjectExists(String,String)` (the new repository boundary did not exist); plus an initially ambiguous `queryForObject` matcher, fixed in the test by typing the parameter matcher as `Map<String, ?>`.
-
-Green command (same command after implementation): `exit 0`
-```
-Tests run: 5, Failures: 0, Errors: 0, Skipped: 0 -- DocumentRepositorySubjectTest
-Tests run: 6, Failures: 0, Errors: 0, Skipped: 0 -- DocumentServiceSubjectLinkTest
-```
-
-## New/changed branches and their covering tests (AGENTS.md coverage rule 6)
-
-| Production branch | Test |
+| Production branch | Test covering both sides |
 |---|---|
-| `DocumentRepository.subjectExists` result `true` | `DocumentRepositorySubjectTest.subjectExistsChecksChartOrderAndResultWithRlsBoundedQueries`, `insertWritesBytesWhenTheSubjectExists` |
-| `DocumentRepository.subjectExists` result `false` and `null` | `DocumentRepositorySubjectTest.subjectExistsIsFalseForAMissingOrNullResult` |
-| `DocumentRepository.insert` subject absent -> `0` (guard true) | `DocumentRepositorySubjectTest.insertIsSkippedWhenTheSubjectDoesNotExist` |
-| `DocumentRepository.insert` subject present -> JDBC update (guard false) | `DocumentRepositorySubjectTest.insertWritesBytesWhenTheSubjectExists` |
-| `DocumentService.link` `written == 0` -> 404 for order | `DocumentServiceSubjectLinkTest.linkRejectsAnOrderWhoseTargetDoesNotExist` |
-| `DocumentService.link` `written == 0` -> 404 for result | `DocumentServiceSubjectLinkTest.linkRejectsAResultWhoseTargetDoesNotExist` |
-| `DocumentService.link` `written == 0` -> 404 for chart race | `DocumentServiceSubjectLinkTest.linkRejectsAChartWhoseInsertFindsNoEffectiveRecord` |
-| `DocumentService.link` `written > 0` success (guard false) | `DocumentServiceSubjectLinkTest.linkStoresAnAssociationWhenAnOrderTargetExists`, `linkStoresAnAssociationWhenAResultTargetExists`, and existing `it.documents.DocumentServiceTest.linkStoresOriginalBytesAndAppendsHistory` |
-| `DocumentService.link` `DuplicateKeyException` -> 409 (unchanged) | existing `it.documents.DocumentServiceTest.linkMapsAConcurrentConflictTo409` |
-| `DocumentService.link` unknown chart -> 404 before insert (unchanged) | `DocumentServiceSubjectLinkTest.linkStillConcealsAnUnknownChartBeforeInsert` and existing `linkConcealsAnUnknownChart` |
+| `InstructionActions.READ` `\|\| "patient".equals(role)` true/false | `InstructionContractTest.actionMatrixSeparatesAdministrationClinicalAndRead` (new `patient` assertion / existing `finance` denial) |
+| `InstructionService.get`: `if (isPatient())` true/false | patient `get` tests (true); `replacementSupersedesPriorRevisionAndNotifiesPatient` (false, staff) |
+| `get`: `else if (!staffAssignedToUnit(…))` true/false | `unitAssignmentAndConnectionAreValidatedOnEveryCommand` (true, 403); staff `get` tests (false) |
+| `requirePatientChartAccess`: chart-not-linked if true/false | `patientCannotReadAnotherPatientsInstructionContent` (true, 404); `patientReadsOwn…` (false) |
+| `requirePatientChartAccess`: connection-inactive if true/false | `patientReadRequiresAnActiveVerifiedConnection` (true, 403); `patientReadsOwn…` (false) |
+| `listForPatient`: `if (isPatient())` true/false | patient list tests (true); `sendFromApprovedTemplateCreatesSentRevisionAndPatientFacts`, `listForPatientConceals…` (false, staff) |
+| `listForPatient` patient branch: link membership false/true | `patientCannotReadAnotherPatientsInstructionContent` (false, 404); `patientReadsOwn…` (true) |
+| `listForPatient` patient branch: connection filter false/true | `patientReadRequiresAnActiveVerifiedConnection` (false → empty); `patientReadsOwn…` (true → one revision) |
+| `InstructionStore.InMemory.verifiedPatientCharts` / `linkPatientChart` | all three patient service tests + controller patient test (present set); staff tests run the port with empty links |
 
-The SQL `CASE` arms are inside a string literal and create no Java branches; each arm's table is asserted by `subjectExistsChecksChartOrderAndResultWithRlsBoundedQueries`.
+`isPatient()` uses `Stream.anyMatch` (no JaCoCo branch in our code); both
+outcomes are exercised by the tests above.
 
-## Entry point -> test trace
+## Commands run and results (tool evidence)
 
-`POST /api/v1/documents/associations` -> `DocumentController.link` -> `DocumentService.link` -> (authorize + chart probe) -> `DocumentRepository.insert` -> `DocumentRepository.subjectExists` (RLS-bounded SELECT EXISTS) -> zero rows -> 404 `NOT_FOUND`. HTTP success/concealment for charts is exercised by `it.documents.DocumentIsolationTest` (integration tier); per-subject rejection is exercised by the two new mock-based unit classes above.
+- `git rev-list --left-right --count origin/main...HEAD` → `0	19` (strict descendant).
+- `git diff --numstat origin/main HEAD -- .agent/pr-notes.md` → `137	105` before fix;
+  empty after `git checkout origin/main -- .agent/pr-notes.md`.
+- Merge reproduction (before fix): `git merge-tree --write-tree <sim-main> bf47726`
+  → `CONFLICT (content): Merge conflict in .agent/pr-notes.md`.
+- Merge verification (after fix, new HEAD `7a66f10`): the same `git merge-tree
+  --write-tree <sim-main> 7a66f10` returned only a tree OID
+  (`cd20b0f0…`) with **0** `CONFLICT` markers — the unresolvable merge is resolved.
+- `mvn -B -f apps/api/pom.xml -Pno-security,fast -Dtest=InstructionContractTest,InstructionServiceTest,InstructionControllerTest test`
+  → EXIT 0; `Tests run: 34, Failures: 0, Errors: 0, Skipped: 0` (13 contract,
+  18 service, 3 controller). Full log: `/tmp/opencode/aud12-targeted.log`.
+- `SMARTCLINIC_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security verify`
+  → EXIT 0; `Tests run: 2364, Failures: 0, Errors: 0, Skipped: 0`;
+  `jacoco:0.8.16:check → All coverage checks have been met.`; `BUILD SUCCESS`.
+  Full log: `/tmp/opencode/aud12-verify.log`. (OWASP and SpotBugs intentionally
+  skipped via `-Pno-security`; they are the integrator's gate.)
+- `python3 -I scripts/check-names.py`, `check-docs.py`, `check-secrets.py`,
+  `check-migrations.py --require-baseline` → all EXIT 0.
+- `bash scripts/check.sh` → EXIT 1, stopping at
+  `check-pack: opencode.json is stale: run scripts/gen-opencode.py`. This is the
+  documented cloud-worker skip-worktree artifact (OPS-CW-003-01), not a change
+  defect: `git ls-files -v opencode.json` = `S`; `git show HEAD:opencode.json`
+  matches `gen-opencode.render(ci=False)` (True) and the worktree file matches
+  `render(ci=True)` (True). No config/agent/skill file was touched, so
+  `opencode.json` was not regenerated (it would mask the CI profile and edit a
+  file outside scope). The integrator measures the committed local profile,
+  where the check is green.
 
-## Commands actually run and results
+### Per-class JaCoCo coverage (after full verify)
 
-- `mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest=DocumentRepositorySubjectTest,DocumentServiceSubjectLinkTest test` — exit 0, 11 tests, 0 failures.
-- `mvn -q -B -f apps/api/pom.xml -Pno-security,fast test` — exit 0; 1914 unit tests, 0 failures, 0 errors, 0 skipped. The pre-existing `it.documents.DocumentServiceTest` (21 tests) still passes unchanged.
-- `python3 -I scripts/check-names.py`, `python3 -I scripts/check-docs.py`, `python3 -I scripts/check-secrets.py`, `python3 -I scripts/check-migrations.py --require-baseline` — all exit 0.
-- `SMARTCLINIC_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml verify` — result recorded in the Coverage section below.
-- Segment 2 independently re-ran: `bash apps/api/check.sh` (exit 0, full verify — see Coverage); the targeted two-class `mvn ... -Dtest=... test` (exit 0); and `python3 -I scripts/check-names.py`, `python3 -I scripts/check-docs.py`, `python3 -I scripts/check-secrets.py`, `python3 -I scripts/check-migrations.py --require-baseline` (all exit 0). Java 21.0.13, Maven 3.10.0, PostgreSQL accepting connections on 127.0.0.1:5432.
+- `InstructionActions`: INSTRUCTION 73/73, BRANCH 25/25, LINE 11/11, METHOD 3/3, CLASS 1/1.
+- `InstructionService`: INSTRUCTION 950/950, BRANCH 52/52, LINE 166/166, METHOD 32/32, CLASS 1/1.
+- `InstructionStore$InMemory`: INSTRUCTION 571/571, BRANCH 24/24, LINE 95/95, METHOD 29/29, CLASS 1/1.
+- `InstructionController`: INSTRUCTION 58/58, LINE 13/13, METHOD 7/7, CLASS 1/1.
+- `InstructionStore$InMemory$Connection`: INSTRUCTION 12/12, LINE 1/1, METHOD 1/1, CLASS 1/1.
 
-## Coverage (100% gate)
+All missed counters are 0 — 100% on every file touched by the story.
 
-Full canonical gate re-run on the final branch (segment 2), with PostgreSQL available and `SMARTCLINIC_PG_ADMIN=postgres` in the environment:
+## Decisions
 
-```
-bash apps/api/check.sh        # canonical: cd apps/api && mvn -q -B verify
-```
+- Wrong-chart / wrong-patient reads return **404 (NOT_FOUND)** to conceal whether
+  another patient's chart exists (ARC-04); a revoked connection on a linked chart
+  returns 403. This mirrors `InstructionFactService.requirePatientAccess`.
+- The `patientId` query parameter is kept for contract compatibility but is
+  validated against the caller's verified link set (IAM-05), not trusted.
+- The staff branch is unchanged; patient handling is additive.
+- Restoring the shared `.agent/pr-notes.md` to `main` is a revert of a forbidden
+  edit: the net committed state equals `main`, so it cannot conflict. Notes for
+  this attempt live only in this uniquely named per-story file.
 
-Result: **exit 0**. Surefire aggregate from `apps/api/target/surefire-reports/TEST-*.xml`: **2360 tests, 0 failures, 0 errors, 0 skipped**. No failing surefire/failsafe XML report exists. JaCoCo `check` (BUNDLE rule, 1.00 minimum for INSTRUCTION, LINE, BRANCH, METHOD and CLASS) therefore passed — project-wide `apps/api/target/site/jacoco/jacoco.xml` reports **0 missed on every counter**: INSTRUCTION 0/90690, BRANCH 0/6407, LINE 0/15733, COMPLEXITY 0/7069, METHOD 0/3814, CLASS 0/785.
+## Defects found
 
-Read directly from `apps/api/target/site/jacoco/jacoco.csv` for the two touched production files (columns: instruction missed/covered, branch missed/covered, line missed/covered, complexity missed/covered, method missed/covered):
+- Process defect (fixed): this branch repeatedly re-committed its note into the
+  shared `.agent/pr-notes.md` — the sole source of the merge conflict with main.
+- No new product defect. No BUGS.md change is in scope for this worker.
 
-| File | Instruction | Branch | Line | Complexity | Method | Class (from jacoco.xml) |
-|---|---|---|---|---|---|---|
-| `documents/DocumentService.java` | 0/964 | 0/68 | 0/196 | 0/52 | 0/18 | 0/1 |
-| `documents/DocumentRepository.java` | 0/384 | 0/2 | 0/86 | 0/21 | 0/20 | 0/1 |
+## Evidence provenance
 
-Both changed files are at 100% on every counter, including the per-class counter. No new production class was introduced. The report goal is bound to the `verify` phase (pom.xml lines 80-88), so the later targeted `test` run could not overwrite these numbers.
-
-Targeted confirmation of the new tests:
-```
-mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest=DocumentRepositorySubjectTest,DocumentServiceSubjectLinkTest test
-```
-Result: **exit 0** — `DocumentRepositorySubjectTest` 5 tests and `DocumentServiceSubjectLinkTest` 6 tests, 0 failures/errors/skipped each.
-
-## Decisions and rationale
-
-- **Guard in the repository, not a second service call.** The pre-existing unit test `it.documents.DocumentServiceTest.linkForOrderNeedsNoChartLookup` (outside this task's scope) asserts that an order link does not call `chartExists` and stubs `insert` to return 1. Adding a direct `orderExists`/`resultExists` service call would make that unstubbed Mockito method return `false` and break an unrelated test. Performing the RLS-bounded probe inside `insert` keeps that test green, keeps the check atomic with the write, and still returns 404 for a missing target. No out-of-scope file was edited.
-- **Chart case retained.** The service's `chartExists` check remains so `linkConcealsAnUnknownChart` still observes `never().insert`; `chartExists` delegates to the shared `subjectExists` fold to avoid duplicated SQL.
-- **Order/result tables.** Chose the canonical owner tables that actually carry those identifiers (`exchange_order` for XCH-01 orders, `xch04_report_revision` for XCH-04 final/corrected/critical results). Both are forced-RLS tenant tables readable by the non-owner runtime role. No new cross-module FK was added: V17 deliberately deferred that, and the probe enforces the same invariant without a schema change.
-- **Scope of `render`.** `DocumentService.render` has the identical chart-only probe. It is not changed here because the story names `link` specifically, and the change would require editing out-of-scope tests (`renderForOrderSkipsTheChartLookup`, `renderConcealsMissingChart`). Suggested follow-up: apply the same `subjectExists` guard to `render` with its own tests.
-
-## Defects / environment observations (not caused by this change)
-
-- `python3 -I scripts/gen-opencode.py --check` and `scripts/quick-check.sh`'s pack step report `opencode.json is stale` on this checkout. `git status` shows `opencode.json` unmodified and no diff, so this is a pre-existing condition, not introduced by this task; the file is outside scope and was not edited.
-- `python3 -I -m unittest discover -s scripts/tests -q` exits 1 here with 8 failures / 10 errors that are environmental and unrelated to this Java change: `ModuleNotFoundError: No module named 'yaml'` (PyYAML absent) and git-branch setup errors in `test_agent_run.py`. The directly relevant policy checks (`check-names`, `check-docs`, `check-secrets`, `check-migrations`) pass.
-- The full `bash apps/api/check.sh` run emitted two non-fatal OWASP Dependency-Check NVD data-import errors (`Failed to process CVE-2026-6785` / `CVE-2026-6786`: a reference URL longer than the tool's local H2 `URL VARCHAR(1000)` column). These occur during NVD data update, are logged per-CVE by the dependency-check plugin, and did **not** fail the build — the canonical gate returned exit 0 with 2360 passing tests and a green JaCoCo check. Tool/data environment issue, unrelated to this change; no code or threshold was altered to accommodate it.
-- No production deployment or real-patient configuration decision is needed; all fixtures are synthetic.
-
-## Evidence source
-
-Tool evidence: executed `mvn`/`python3` commands and their outputs, plus source reads of `DocumentService`, `DocumentRepository`, `DocumentInputs`, V17/V19/V22 migrations and existing tests. Simulated reviewer evidence: the specialist skills (`smartclinic-senior-backend`, `smartclinic-senior-database`, `smartclinic-senior-java-build`, `smartclinic-test-engineer`) were loaded as instructions; no separate reviewer subagent was run for this bounded fix. Human/clinical/patient evidence: none.
-
-## Completion (segment 2)
-
-Story complete. The code change, red/green tests, per-branch test mapping and 100% coverage evidence are all recorded above. The full canonical gate (`bash apps/api/check.sh`) passed on the final tree with 2360 tests and 0 missed JaCoCo counters project-wide; both touched files are at 100% on every counter. No decision or evidence is missing, no coverage threshold was lowered, no exclusion or skip was added, and no production file outside the two named in the scope was changed. Committing this notes update to the current branch; no push, tag or gh call.
+All evidence above is **tool-generated** (executed Maven/JaCoCo, Git and Python
+policy scripts) from this checkout with synthetic fixtures only. No reviewer
+subagent finding, simulated-user walkthrough, human participant or real patient
+data contributed to this change. The scoped code diff was derived by reading the
+existing source (tool evidence).
