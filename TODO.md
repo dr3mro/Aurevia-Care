@@ -814,16 +814,16 @@ Cadence and limits:
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/web
   - depends: DLV-04
   - details:
-    Problem (verified in the code): `contracts/openapi/generated/openapi.yaml` declares `'201'` for `registerPatient` (POST /api/v1/patients) and `defineCatalogEntry` (POST /api/v1/catalog/{family}/entries), but both controllers answer 200.
+    Problem (verified in the code): `contracts/openapi/generated/openapi.yaml` declares `'201'` for `registerPatient` (POST /api/v1/patients) and `defineCatalogEntry` (POST /api/v1/catalogs/{family}/entries), but both controllers answer 200.
     - `web/PatientController.java`, method `register`: ends with `return ResponseEntity.ok(created);` and its Javadoc already says "HTTP 201".
     - `web/CatalogController.java`, method `define`: ends with `return ResponseEntity.ok(created);`.
     Other controllers already do it right; copy their style, for example `web/StaffController.java` uses `ResponseEntity.created(URI.create("/api/v1/staff/" + created.subject())).body(created)`.
 
     Do this, in order:
-    1. Find who relies on 200 today: `grep -rn "api/v1/patients\|catalog/.*entries" apps/api/src/test apps/staff-web/src apps/patient-mobile/src`. Note every assertion that expects `HttpStatus.OK`/`isOk()`/`200` for these two POSTs.
+    1. Find who relies on 200 today: `grep -rn "api/v1/patients\|catalogs/.*entries" apps/api/src/test apps/staff-web/src apps/patient-mobile/src`. Note every assertion that expects `HttpStatus.OK`/`isOk()`/`200` for these two POSTs.
     2. Change those assertions to expect 201 (`HttpStatus.CREATED` / `isCreated()`). Run the affected test class and watch it FAIL (the controller still says 200). This is your failing test.
     3. In `PatientController.register` replace the last line with `return ResponseEntity.created(URI.create("/api/v1/patients/" + created.id())).body(created);`. If `Patient` has no `id()` accessor, open `patient/Patient.java` and use the accessor that holds the patient identifier. Add `import java.net.URI;`.
-    4. In `CatalogController.define` replace the last line with `return ResponseEntity.created(URI.create("/api/v1/catalog/" + family + "/entries/" + created.code())).body(created);`. Use the real accessor name from `catalog` / `configuration` entry class (open `ConfigEntry.java` if unsure).
+    4. In `CatalogController.define` replace the last line with `return ResponseEntity.created(URI.create("/api/v1/catalogs/" + family + "/entries/" + created.code())).body(created);`. Use the real accessor name from `catalog` / `configuration` entry class (open `ConfigEntry.java` if unsure).
     5. Run the two test classes again; they must pass.
     6. Do NOT change the OpenAPI files: they are already right. Do NOT change any other controller.
     Done when: both POSTs return 201 with a `Location` header, no test expects 200 for them, and `bash scripts/worker-check.sh` is green.
