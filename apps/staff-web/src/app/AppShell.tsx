@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { ReactNode } from 'react';
 import { Button } from '../components/Button';
 import { DataTable } from '../components/DataTable';
 import { Dialog } from '../components/Dialog';
@@ -18,8 +19,14 @@ import { OrgSwitcher } from './OrgSwitcher';
 import { ProtectedRoute } from './ProtectedRoute';
 import { SignInPlaceholder } from './SignInPlaceholder';
 
+/** Props for the staff portal shell. Children are the active route content. */
+export interface AppShellProps {
+  /** Route content rendered inside the main landmark. */
+  children?: ReactNode;
+}
+
 /** Root visual layout for the staff portal; all content is synthetic. */
-export function AppShell() {
+export function AppShell({ children }: AppShellProps) {
   const { locale, t, toggleLocale } = useI18n();
   const { mode, tokens, toggleMode } = useTheme();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -84,6 +91,7 @@ export function AppShell() {
         <ProtectedRoute>
           <p>synthetic protected content</p>
         </ProtectedRoute>
+        {children}
       </main>
 
       <footer role="contentinfo" style={{ padding: tokens.spacing.lg }}>
