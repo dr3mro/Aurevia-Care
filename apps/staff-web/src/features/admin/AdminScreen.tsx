@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { MixedScriptText } from '../../components/MixedScriptText';
 import { useI18n } from '../../i18n/I18nProvider';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -51,13 +51,17 @@ export function AdminScreen({
   const { tokens } = useTheme();
   const [proposals, setProposals] = useState<ConfigurationVersion[]>([]);
   const [proposal, setProposal] = useState<LocalProposal | null>(null);
+  const [proposalOrganizationId, setProposalOrganizationId] = useState(organizationId);
 
-  // Switching the active organization drops local drafts and announcements so
-  // a tenant-local identifier can never be carried into another tenant.
-  useEffect(() => {
+  // Reset synchronously during render when the active organization changes. A
+  // passive effect would leave the previous tenant's announcement painted for
+  // one committed frame; React discards this render and re-runs it immediately
+  // after these state updates, so a tenant-local identifier never crosses over.
+  if (organizationId !== proposalOrganizationId) {
+    setProposalOrganizationId(organizationId);
     setProposals([]);
     setProposal(null);
-  }, [organizationId]);
+  }
 
   const visibleConfigurations = [...configurations, ...proposals];
 
