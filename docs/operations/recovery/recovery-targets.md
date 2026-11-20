@@ -1,7 +1,7 @@
 # Recovery targets (OPS-04)
 
 This document pins the OPS-04 literals exactly as the
-[evaluator](../../../infra/s_g5_06/recovery_evidence.py) enforces them. An
+[evaluator](../../../infra/recovery/recovery_evidence.py) enforces them. An
 evidence artifact that omits or misstates any item below is reported as a
 failure; it is never silently accepted.
 

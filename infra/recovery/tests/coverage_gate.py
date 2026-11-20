@@ -11,7 +11,7 @@ report full coverage. ``TraceIntegrationTest`` exercises this exact command
 path on a deliberately under-covered probe module, so removing the flag fails
 a test.
 
-Usage: ``python3 -I infra/s_g5_06/tests/coverage_gate.py``
+Usage: ``python3 -I infra/recovery/tests/coverage_gate.py``
 Exit codes: 0 = every production line executed, 1 = uncovered lines, 2 = the
 traced run or its coverage files could not be produced.
 """
@@ -101,7 +101,7 @@ def measure_coverage():
     Every production module must have a coverage file; a module that was never
     imported by the suite raises here, which the gate reports as an error.
     """
-    with tempfile.TemporaryDirectory(prefix="s_g5_06_cov_") as directory:
+    with tempfile.TemporaryDirectory(prefix="recovery_cov_") as directory:
         result = run_traced_suite(directory)
         if result.returncode != 0:
             tail = (result.stderr or result.stdout)[-1000:]

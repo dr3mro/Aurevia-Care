@@ -15,7 +15,7 @@ Two honesty rules are enforced beyond the numbers:
   complete; it cannot prove a restore really happened or that a human owner is
   actually on call. Real pilot acceptance is a separate, human-gated step.
 
-Usage: ``python3 -I infra/s_g5_06/recovery_evidence.py <artifact.json>``
+Usage: ``python3 -I infra/recovery/recovery_evidence.py <artifact.json>``
 Exit codes: 0 = artifact passes the OPS-04/OPS-05 checks, 1 = it fails a check,
 2 = unreadable input.
 """

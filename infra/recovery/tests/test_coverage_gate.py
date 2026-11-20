@@ -69,17 +69,17 @@ class ProductionModulesTest(unittest.TestCase):
 
 class FindCoverFileTest(unittest.TestCase):
     def test_selects_evaluator_cover_not_test_module_cover(self):
-        with tempfile.TemporaryDirectory(prefix="s_g5_06_files_") as directory:
+        with tempfile.TemporaryDirectory(prefix="recovery_files_") as directory:
             root = Path(directory)
             (root / "test_recovery_evidence.cover").write_text("test", encoding="utf-8")
-            evaluator = root / "__w.infra.s_g5_06.recovery_evidence.cover"
+            evaluator = root / "__w.infra.recovery.recovery_evidence.cover"
             evaluator.write_text("evaluator", encoding="utf-8")
             self.assertEqual(
                 cg.find_cover_file(root, "recovery_evidence"), evaluator
             )
 
     def test_accepts_a_bare_cover_filename(self):
-        with tempfile.TemporaryDirectory(prefix="s_g5_06_files_") as directory:
+        with tempfile.TemporaryDirectory(prefix="recovery_files_") as directory:
             root = Path(directory)
             evaluator = root / "recovery_evidence.cover"
             evaluator.write_text("evaluator", encoding="utf-8")
@@ -88,14 +88,14 @@ class FindCoverFileTest(unittest.TestCase):
             )
 
     def test_raises_when_no_evaluator_cover_exists(self):
-        with tempfile.TemporaryDirectory(prefix="s_g5_06_files_") as directory:
+        with tempfile.TemporaryDirectory(prefix="recovery_files_") as directory:
             root = Path(directory)
             (root / "test_recovery_evidence.cover").write_text("test", encoding="utf-8")
             with self.assertRaises(RuntimeError):
                 cg.find_cover_file(root, "recovery_evidence")
 
     def test_raises_on_ambiguous_cover_files(self):
-        with tempfile.TemporaryDirectory(prefix="s_g5_06_files_") as directory:
+        with tempfile.TemporaryDirectory(prefix="recovery_files_") as directory:
             root = Path(directory)
             (root / "a.recovery_evidence.cover").write_text("a", encoding="utf-8")
             (root / "b.recovery_evidence.cover").write_text("b", encoding="utf-8")
@@ -159,13 +159,13 @@ class TraceIntegrationTest(unittest.TestCase):
         return cg.find_uncovered_lines(cover.read_text(encoding="utf-8"))
 
     def test_production_trace_detects_uncovered_line(self):
-        with tempfile.TemporaryDirectory(prefix="s_g5_06_probe_") as directory:
+        with tempfile.TemporaryDirectory(prefix="recovery_probe_") as directory:
             # Line 3 is unexecuted and unannotated -> reported.
             # Line 4 is unexecuted but carries trace's pragma -> ignored.
             self.assertEqual(self._trace_probe(directory), [3])
 
     def test_pragma_mechanism_is_honoured_on_this_interpreter(self):
-        with tempfile.TemporaryDirectory(prefix="s_g5_06_probe_") as directory:
+        with tempfile.TemporaryDirectory(prefix="recovery_probe_") as directory:
             uncovered = self._trace_probe(directory)
             self.assertNotIn(4, uncovered)
 

@@ -33,8 +33,8 @@ specification's existing clauses and do not create new acceptance values.
 
 | Tier | What it is | What it proves | What it does not prove |
 |---|---|---|---|
-| Target | The spec literals encoded in the [evaluator](../../../infra/s_g5_06/recovery_evidence.py) | Fidelity of the encoding and fail-closed validation | That any target was achieved |
-| Synthetic rehearsal | A seeded, synthetic artifact run by [`check.sh`](../../../infra/s_g5_06/check.sh) in this repository | That the evaluator accepts a conforming artifact and rejects breaches | That a restore ran, that RPO/RTO were measured, or that anyone is on call |
+| Target | The spec literals encoded in the [evaluator](../../../infra/recovery/recovery_evidence.py) | Fidelity of the encoding and fail-closed validation | That any target was achieved |
+| Synthetic rehearsal | A seeded, synthetic artifact run by [`check.sh`](../../../infra/recovery/check.sh) in this repository | That the evaluator accepts a conforming artifact and rejects breaches | That a restore ran, that RPO/RTO were measured, or that anyone is on call |
 | Conducted drill | An authorized restore drill artifact produced outside this repository | The drill's own recorded facts when the artifact conforms | Human or clinical sign-off; the flag records a *claim*, not an attestation |
 
 A passing synthetic artifact is explicitly labelled `final_evidence: false`. The
@@ -50,21 +50,21 @@ names a synthetic source is rejected as an `evidence_conflict`.
 | [Operational runbooks](operational-runbooks.md) | The 13 monitoring signals, named owners, the four required runbook topics and escalation |
 | [Recovery evidence](recovery-evidence.md) | Artifact schema, commands, the observed rehearsal result, the honesty boundary and the remaining gate |
 
-Executable material lives in `infra/s_g5_06`: the
-[evaluator](../../../infra/s_g5_06/recovery_evidence.py), the
-[recovery contract](../../../infra/s_g5_06/recovery-contract.json), the
-[conforming](../../../infra/s_g5_06/fixtures/synthetic_recovery_evidence.json) and
-[violation](../../../infra/s_g5_06/fixtures/violation_recovery_evidence.json)
+Executable material lives in `infra/recovery`: the
+[evaluator](../../../infra/recovery/recovery_evidence.py), the
+[recovery contract](../../../infra/recovery/recovery-contract.json), the
+[conforming](../../../infra/recovery/fixtures/synthetic_recovery_evidence.json) and
+[violation](../../../infra/recovery/fixtures/violation_recovery_evidence.json)
 fixtures, and the unit tests.
 
 ## Verification
 
 | Check | Command | Proves |
 |---|---|---|
-| Unit and fixture gate | `bash infra/s_g5_06/check.sh` | 97 synthetic unit tests pass; the build-failing coverage gate passes; the conforming fixture passes and the violation fixture fails |
-| Unit tests alone | `python3 -I -m unittest discover -s infra/s_g5_06/tests -q` | The evaluator's enumerated branches behave as specified |
-| Build-failing coverage gate | `python3 -I infra/s_g5_06/tests/coverage_gate.py` | Exits 1 when any executable line of the evaluator is uncovered; wired into `check.sh` so incomplete coverage fails the build |
-| Line coverage | `python3 -I -m trace --count --missing --coverdir /tmp/opencode/s_g5_06_cov infra/s_g5_06/tests/run_coverage.py` | Every executable line of the evaluator runs; stdlib `trace` is used because `coverage.py` is not installed. `--missing` is required: without it `trace` never annotates unexecuted lines and the measurement is vacuous |
+| Unit and fixture gate | `bash infra/recovery/check.sh` | 97 synthetic unit tests pass; the build-failing coverage gate passes; the conforming fixture passes and the violation fixture fails |
+| Unit tests alone | `python3 -I -m unittest discover -s infra/recovery/tests -q` | The evaluator's enumerated branches behave as specified |
+| Build-failing coverage gate | `python3 -I infra/recovery/tests/coverage_gate.py` | Exits 1 when any executable line of the evaluator is uncovered; wired into `check.sh` so incomplete coverage fails the build |
+| Line coverage | `python3 -I -m trace --count --missing --coverdir /tmp/opencode/recovery_cov infra/recovery/tests/run_coverage.py` | Every executable line of the evaluator runs; stdlib `trace` is used because `coverage.py` is not installed. `--missing` is required: without it `trace` never annotates unexecuted lines and the measurement is vacuous |
 | Links and requirement IDs | `python3 -I scripts/check-docs.py` | Relative links resolve and every requirement ID is defined in the specification |
 | Credential and PHI shapes | `python3 -I scripts/check-secrets.py` | No credential or patient-identifier pattern was introduced |
 
