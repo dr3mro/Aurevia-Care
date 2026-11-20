@@ -10,7 +10,7 @@ import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.aurevia.smartclinic.api.x_01.RequestDigest;
+import com.aurevia.smartclinic.api.contract.RequestDigest;
 
 /**
  * Deterministic generator for the X-04 command contract, typed client and checksum manifest (PRD-06).
