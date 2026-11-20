@@ -745,7 +745,10 @@ def fail(pr, reason, log_text=""):
     gh("pr", "comment", str(pr), "--body",
        f"{MARK}\n{reason}. Fix attempt {attempt} of {MAX_FIX}. Reproduce with "
        f"`scripts/check.sh` on the merge of main and this branch.{detail}")
-    gh("workflow", "run", "swarm.yml", "-f", "workers=1", check=False)
+    # One waiting wave already plans every sent-back pull request, so several fails
+    # in one integration run must not each dispatch a wave of their own.
+    if waiting_waves() == 0:
+        gh("workflow", "run", "swarm.yml", "-f", "workers=1", check=False)
     return True
 
 

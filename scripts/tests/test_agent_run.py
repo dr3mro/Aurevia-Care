@@ -41,11 +41,13 @@ class AgentRunTests(unittest.TestCase):
         (self.repo / ".github").mkdir()
         shutil.copy(ROOT / "scripts/agent-run.sh", self.repo / "scripts/agent-run.sh")
         (self.repo / "scripts/check.sh").write_text("#!/usr/bin/env bash\nexit ${CHECK_EXIT:-0}\n")
+        (self.repo / "scripts/coverage-check.sh").write_text(
+            "#!/usr/bin/env bash\necho x >> \"${COVERAGE_LOG:-/dev/null}\"\nexit ${COVERAGE_EXIT:-0}\n")
         (self.repo / ".github/pull_request_template.md").write_text("## Summary\n")
         (self.repo / ".github/opencode.ci.json").write_text('{"ci": true}')
         (self.repo / "opencode.json").write_text('{"real": true}')
         (self.repo / ".gitignore").write_text("/.agent/\n")
-        for name in ("agent-run.sh", "check.sh"):
+        for name in ("agent-run.sh", "check.sh", "coverage-check.sh"):
             (self.repo / "scripts" / name).chmod(0o755)
         self.git("add", "-A")
         self.git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "init")
@@ -220,6 +222,12 @@ class AgentRunTests(unittest.TestCase):
         self.assertEqual(self.outputs()["checks"], "failed")
         self.run_cmd("publish")
         self.assertIn("--draft", self.gh_log.read_text())
+
+    def test_a_coverage_miss_gets_two_repairs_then_opens_a_draft(self):
+        log = self.repo.parent / "coverage.log"
+        self.run_cmd("implement", FAKE_MODE="commit", COVERAGE_EXIT="1", COVERAGE_LOG=str(log))
+        self.assertEqual(self.outputs()["checks"], "failed")
+        self.assertEqual(len(log.read_text().split()), 3)
 
     def test_uncommitted_work_is_committed(self):
         self.run_cmd("implement", FAKE_MODE="dirty")
