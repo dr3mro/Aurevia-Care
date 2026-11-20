@@ -99,15 +99,18 @@ public class OrderService {
                 return null;
             }
             AuthorizationView grant = repository.authorization(authorizationId).orElse(null);
+            // One instant for the window check and the ledger stamp: a live clock
+            // advancing between two reads could otherwise record a disclosure
+            // expiry past the authorization that was just validated (XCH-01).
+            Instant now = clock.instant();
             ApiException grantFailure = checkGrant(grant, context, CREATE_ACTION, authorizationId,
-                    orderCode, destination, purpose, duration);
+                    orderCode, destination, purpose, duration, now);
             if (grantFailure != null) {
                 failure.set(grantFailure);
                 return null;
             }
             OrderRepository.PatientIdentity identity = repository.patientIdentity(patientId)
                     .orElseThrow(() -> new ApiException(404, "NOT_FOUND", "patient not found"));
-            Instant now = clock.instant();
             String id = UUID.randomUUID().toString();
             String snapshotId = UUID.randomUUID().toString();
             String disclosureId = UUID.randomUUID().toString();
@@ -283,11 +286,12 @@ public class OrderService {
 
     private ApiException checkGrant(AuthorizationView grant, TenantContext context, String action,
                                     String resourceId, String orderCode, String destination,
-                                    String purpose, int duration) {
-        Instant now = clock.instant();
+                                    String purpose, int duration, Instant now) {
         // The disclosure must stop being valid when the authorization that
         // permitted it stops applying; otherwise a still-effective grant could
         // authorize sharing past its own expiry (XCH-01 duration boundary).
+        // The caller supplies the same instant used to stamp the disclosure, so
+        // clock drift between validation and recording cannot widen the window.
         Instant disclosureExpiresAt = now.plusSeconds(duration * 60L);
         if (grant == null || !grant.active() || grant.effectiveFrom().isAfter(now)
                 || (grant.expiresAt() != null && !grant.expiresAt().isAfter(now))
