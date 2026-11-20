@@ -1,5 +1,6 @@
 package com.aurevia.smartclinic.catalog.dictionary;
 
+import java.time.DateTimeException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -105,7 +106,7 @@ public final class MixedScriptSupport {
      * @param utcInstant ISO-8601 UTC instant
      * @param ianaZone   IANA zone identifier
      * @return the same instant viewed in the requested zone
-     * @throws IllegalArgumentException when an input is missing
+     * @throws IllegalArgumentException when an input is missing or malformed
      */
     public ZonedDateTime instantWithZone(String utcInstant, String ianaZone) {
         if (utcInstant == null || utcInstant.isBlank()) {
@@ -114,7 +115,22 @@ public final class MixedScriptSupport {
         if (ianaZone == null || ianaZone.isBlank()) {
             throw new IllegalArgumentException("IANA zone is required");
         }
-        return Instant.parse(utcInstant).atZone(ZoneId.of(ianaZone));
+        // Parse each input separately so the caller learns which value was invalid.
+        // java.time throws DateTimeException subclasses; translate them to the
+        // domain error contract used by every other method in this class.
+        Instant instant;
+        try {
+            instant = Instant.parse(utcInstant);
+        } catch (DateTimeException e) {
+            throw new IllegalArgumentException("invalid UTC instant: " + utcInstant, e);
+        }
+        ZoneId zone;
+        try {
+            zone = ZoneId.of(ianaZone);
+        } catch (DateTimeException e) {
+            throw new IllegalArgumentException("invalid IANA zone: " + ianaZone, e);
+        }
+        return instant.atZone(zone);
     }
 
     /**
@@ -122,12 +138,16 @@ public final class MixedScriptSupport {
      *
      * @param isoDate ISO-8601 civil date such as a date of birth
      * @return the parsed civil date
-     * @throws IllegalArgumentException when the input is missing
+     * @throws IllegalArgumentException when the input is missing or malformed
      */
     public LocalDate civilDate(String isoDate) {
         if (isoDate == null || isoDate.isBlank()) {
             throw new IllegalArgumentException("civil date is required");
         }
-        return LocalDate.parse(isoDate);
+        try {
+            return LocalDate.parse(isoDate);
+        } catch (DateTimeException e) {
+            throw new IllegalArgumentException("invalid civil date: " + isoDate, e);
+        }
     }
 }
