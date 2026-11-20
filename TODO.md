@@ -243,8 +243,7 @@ Cadence and limits:
     Done when: `bash db/check.sh` passes, the two new assertions run, and the notes list any table you had to except together with the reason.
 
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` must pass for the classes you touched. Synthetic data only; write the failing test first; stay inside the declared scope; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
-- [-] AUD-20261120-05 · Rename the story-ID folders under infra/ and docs/operations/ to business names
-  - agent: swarm-3
+- [ ] AUD-20261120-05 · Rename the story-ID folders under infra/ and docs/operations/ to business names
   - attempts: 1
   - depends: REFACTOR-PACKAGES-02
   - details:
