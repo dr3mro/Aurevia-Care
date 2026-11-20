@@ -63,19 +63,29 @@ class MessagingDomainTest {
     @Test
     void careUnitDefensivelyCopiesSupportedTopics() {
         List<String> topics = new java.util.ArrayList<>(List.of("collection", "results"));
-        CareUnit unit = new CareUnit(UNIT, ORG, "facility-1", "Synthetic Laboratory", topics, true);
+        CareUnit unit = new CareUnit(UNIT, ORG, "facility-1", "Synthetic Laboratory", "lab", topics, true);
         topics.add("injected");
         assertEquals(List.of("collection", "results"), unit.topics());
         assertThrows(UnsupportedOperationException.class, () -> unit.topics().add("x"));
     }
 
     @Test
+    void careUnitKindIsBoundedToTheApprovedUnitKeys() {
+        assertEquals("lab", new CareUnit(UNIT, ORG, "facility-1", "Synthetic Laboratory", "lab",
+                List.of("results"), true).kind());
+        assertThrows(IllegalArgumentException.class, () -> new CareUnit(UNIT, ORG, "facility-1", "Bad",
+                "demographics", List.of("results"), true));
+        assertThrows(IllegalArgumentException.class, () -> new CareUnit(UNIT, ORG, "facility-1", "Bad",
+                null, List.of("results"), true));
+    }
+
+    @Test
     void distinctSyntheticUnitsAreNotEqual() {
-        CareUnit first = new CareUnit(UNIT, ORG, "facility-1", "Synthetic Laboratory", List.of("lab"), true);
+        CareUnit first = new CareUnit(UNIT, ORG, "facility-1", "Synthetic Laboratory", "lab", List.of("lab"), true);
         CareUnit second = new CareUnit("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb", ORG, "facility-1",
-                "Synthetic Radiology", List.of("imaging"), true);
+                "Synthetic Radiology", "radiology", List.of("imaging"), true);
         assertNotEquals(first, second);
-        assertEquals(first, new CareUnit(UNIT, ORG, "facility-1", "Synthetic Laboratory", List.of("lab"), true));
+        assertEquals(first, new CareUnit(UNIT, ORG, "facility-1", "Synthetic Laboratory", "lab", List.of("lab"), true));
     }
 
     @Test
