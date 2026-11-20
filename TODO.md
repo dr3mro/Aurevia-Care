@@ -566,8 +566,9 @@ Order of work for the whole production-readiness effort: (1) security and platfo
     Do NOT change existing endpoints, response shapes or migrations.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
-- [-] READY-18 · List invoices (GET /api/v1/finance/invoices)
-  - agent: swarm-1
+- [x] READY-18 · List invoices (GET /api/v1/finance/invoices)
+  - pr: #228
+  - evidence: PR #228; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/READY-18.md; simulated review only
   - attempts: 1
   - requirements: ARC-03
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/finance, apps/api/src/test/java/com/aurevia/smartclinic/finance, contracts/openapi
