@@ -8,9 +8,12 @@ import org.springframework.stereotype.Component;
  * Bounded action policy for release decisions (XCH-06, IAM-01).
  *
  * <p>Release, withdrawal, correction and hold review are clinical decisions, so
- * they require a clinician or tenant administrator. Read and access-query actions
- * allow the wider care-team roles; a privacy auditor can review but never decide.
- * This slice owns its policy so it does not widen the shared G0/G1 action matrix.</p>
+ * they require a clinician or tenant administrator. Single-resource reads allow
+ * the wider care-team roles; a privacy auditor can review but never decide. The
+ * patient-scoped revision query is narrower still: it is a care-team read and not
+ * a directory enumeration surface. A verified patient is authorized by the live
+ * chart-link check, not by a staff role. This slice owns its policy so it does
+ * not widen the shared G0/G1 action matrix.</p>
  */
 @Component
 public class ReleaseActionPolicy {
@@ -33,6 +36,7 @@ public class ReleaseActionPolicy {
     private static final Set<String> DECIDERS = Set.of("clinician", "tenant_admin");
     private static final Set<String> READERS =
             Set.of("clinician", "tenant_admin", "reception", "privacy_auditor");
+    private static final Set<String> PATIENT_SCOPED_READERS = Set.of("clinician", "tenant_admin");
 
     /**
      * Decide whether a role may perform a release action.
@@ -47,7 +51,8 @@ public class ReleaseActionPolicy {
         }
         return switch (action) {
             case AUTHORIZE, LIFT_HOLD, WITHDRAW, CORRECT -> DECIDERS.contains(role);
-            case READ, HISTORY, ACCESS -> READERS.contains(role);
+            case READ, HISTORY -> READERS.contains(role);
+            case ACCESS -> PATIENT_SCOPED_READERS.contains(role);
             default -> false;
         };
     }
