@@ -52,6 +52,46 @@ class CommandClientGeneratorTest {
     }
 
     @Test
+    void committedArtifactsMatchAFreshGeneration() throws IOException {
+        Path generated = locateGeneratedArtifacts();
+        CommandClientGenerator generator = new CommandClientGenerator(CommandCatalog.synthetic());
+        assertTrue(generator.matches(generated),
+                "contracts/openapi/generated is stale; rerun CommandClientGenerator <directory>");
+    }
+
+    /**
+     * Resolve the committed artifacts from the working directory or the module basedir published
+     * by Surefire, so the drift gate is independent of where Maven was invoked.
+     *
+     * @return the generated artifact directory
+     */
+    private static Path locateGeneratedArtifacts() {
+        for (String candidate : List.of("../contracts/openapi/generated",
+                "contracts/openapi/generated", "../../contracts/openapi/generated")) {
+            Path path = Path.of(candidate);
+            if (Files.isDirectory(path)) {
+                return path;
+            }
+        }
+        String basedir = System.getProperty("basedir");
+        if (basedir != null) {
+            Path path = Path.of(basedir).resolve("../contracts/openapi/generated").normalize();
+            if (Files.isDirectory(path)) {
+                return path;
+            }
+        }
+        throw new IllegalStateException("cannot locate contracts/openapi/generated");
+    }
+
+    @Test
+    void contractDocumentsTheFailClosedAuditOutcome() {
+        String yaml = new CommandClientGenerator(CommandCatalog.synthetic()).openApiYaml();
+        assertTrue(yaml.contains("'500': { $ref: '#/components/responses/DecisionNotRecorded' }"));
+        assertTrue(yaml.contains("    DecisionNotRecorded:\n"));
+        assertTrue(yaml.contains("'428': { $ref: '#/components/responses/PreconditionRequired' }"));
+    }
+
+    @Test
     void pathParametersBecomeEncodedFunctionArguments() {
         assertEquals(List.of(), CommandClientGenerator.pathParameters("/api/v1/facilities"));
         assertEquals(List.of("key", "version"),

@@ -211,4 +211,56 @@ class PdfRendererTest {
         assertFalse(contentStream(pdf).contains("<> Tj"),
                 "collapsed spacing must not emit an empty text-showing operator");
     }
+
+    @Test
+    void englishBodyLineKeepsInterWordSpacesInItsVisibleTextOperator() {
+        String line = "Plan: rest and review";
+        byte[] pdf = RENDERER.render(spec("en", 1, 0, "Visit", List.of(line)));
+        String visible = contentStream(pdf).replaceAll("(?m)^%LOGICAL.*$", "");
+        assertTrue(visible.contains("<" + utf16Hex(line) + "> Tj"),
+                "a body line must be one show-text run so inter-word spaces are rendered, "
+                        + "not only preserved in the %LOGICAL provenance comment");
+    }
+
+    @Test
+    void arabicBodyLineKeepsSpacesBetweenBidiRunsInItsVisibleTextOperator() {
+        String dose = "\u0627\u0644\u062c\u0631\u0639\u0629";
+        String value = "500";
+        String unit = "mg";
+        String daily = "\u064a\u0648\u0645\u064a\u0627";
+        String line = dose + " " + value + " " + unit + " " + daily;
+        String visualLine = daily + " " + value + " " + unit + " " + dose;
+        byte[] pdf = RENDERER.render(spec("ar", 1, 0, "\u062a\u0642\u0631\u064a\u0631", List.of(line)));
+        String visible = contentStream(pdf).replaceAll("(?m)^%LOGICAL.*$", "");
+        assertTrue(visible.contains("<" + utf16Hex(visualLine) + "> Tj"),
+                "the visually ordered Arabic line must be one run so spaces between "
+                        + "reordered bidi runs survive in the visible text");
+    }
+
+    @Test
+    void arabicIndicDigitsStayInTheLtrValueUnitRun() {
+        String dose = "\u0627\u0644\u062c\u0631\u0639\u0629";
+        String value = "\u0665\u0660\u0660"; // Arabic-Indic digits ٥٠٠
+        String unit = "mg";
+        String daily = "\u064a\u0648\u0645\u064a\u0627";
+        byte[] pdf = RENDERER.render(spec("ar", 1, 0, "\u062a\u0642\u0631\u064a\u0631",
+                List.of(dose + " " + value + " " + unit + " " + daily)));
+        String visible = contentStream(pdf).replaceAll("(?m)^%LOGICAL.*$", "");
+        assertTrue(visible.contains("<" + utf16Hex(daily + " " + value + " " + unit + " " + dose) + "> Tj"),
+                "Arabic-Indic digits are numerals, not an Arabic RTL run: the value "
+                        + "must stay immediately before its unit");
+    }
+
+    @Test
+    void extendedArabicIndicDigitsStayInTheLtrValueUnitRun() {
+        String daily = "\u064a\u0648\u0645\u064a\u0627";
+        String value = "\u06f4\u06f0"; // Extended Arabic-Indic digits ۴۰
+        String unit = "mg";
+        byte[] pdf = RENDERER.render(spec("ar", 1, 0, "\u062a\u0642\u0631\u064a\u0631",
+                List.of(value + " " + unit + " " + daily)));
+        String visible = contentStream(pdf).replaceAll("(?m)^%LOGICAL.*$", "");
+        assertTrue(visible.contains("<" + utf16Hex(daily + " " + value + " " + unit) + "> Tj"),
+                "extended Arabic-Indic digits must behave like other numerals: "
+                        + "value and unit stay one LTR run");
+    }
 }

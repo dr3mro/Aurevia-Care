@@ -134,10 +134,13 @@ class ChartRecordIntegrationTest {
     private static void seedPatient(Statement statement, String org, String name) throws Exception {
         statement.execute("SET app.current_org = '" + org + "'");
         statement.execute("SET app.actor = 'reception-" + (ORG_A.equals(org) ? "a" : "b") + "'");
+        // V7 requires exactly one of dob / dob_unknown_reason. Seed a synthetic
+        // civil date so the fixture satisfies the append-only patient invariant
+        // instead of failing @BeforeAll before any chart behaviour is exercised.
         statement.execute("INSERT INTO public.patient_record "
-                + "(organization_id, id, version, mrn, mrn_issuer, display_name, normalized_name) "
+                + "(organization_id, id, version, mrn, mrn_issuer, display_name, normalized_name, dob) "
                 + "VALUES ('" + org + "', '" + PATIENT + "', 1, 'MRN-CHART', 'CLINIC', '"
-                + name + "', '" + name.toLowerCase() + "')");
+                + name + "', '" + name.toLowerCase() + "', DATE '1990-05-20')");
     }
 
     @BeforeEach
@@ -393,6 +396,20 @@ class ChartRecordIntegrationTest {
         assertEquals(HttpStatus.CREATED, unmapped.getStatusCode(), unmapped.getBody());
         assertEquals("ZZZ", field(unmapped.getBody(), "originalCode"));
         assertTrue(unmapped.getBody().contains("\"mappedCode\":null"));
+    }
+
+    @Test
+    void blankUnknownReasonIsNormalizedBeforeTheDatabaseCheck() {
+        ResponseEntity<String> created = request(HttpMethod.POST, "/api/v1/chart/records/entries",
+                "{\"patientId\":\"" + PATIENT + "\",\"type\":\"ALLERGY\""
+                        + ",\"originalText\":\"no known allergies\",\"source\":\"CLINICIAN_OBSERVED\""
+                        + ",\"presence\":\"ABSENT\",\"unknownReason\":\" \""
+                        + ",\"clinicalAuthor\":\"clinician-a\"}",
+                "clinician-a", ORG_A, "chart-blank-reason");
+        // V13 allows a reason only on UNKNOWN; a blank one must be normalized to
+        // null before INSERT or the CHECK would surface as a misleading 409.
+        assertEquals(HttpStatus.CREATED, created.getStatusCode(), created.getBody());
+        assertTrue(created.getBody().contains("\"unknownReason\":null"), created.getBody());
     }
 
 }
