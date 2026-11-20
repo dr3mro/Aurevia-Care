@@ -151,6 +151,8 @@ jobs:
       pull-requests: write
       packages: read
       actions: read
+      # The work job reads earlier findings; the publish job writes hand-off issues.
+      issues: write
     uses: ./.github/workflows/swarm-worker.yml
     secrets: inherit
     with:

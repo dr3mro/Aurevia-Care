@@ -19,7 +19,10 @@
 ## Migration and rollout considerations
 
 ## Test evidence
-<!-- Commands run and results. Entry point to test trace. Coverage. Link the SHA's CI run. -->
+<!-- Commands run and results. Entry point to test trace. Link the SHA's CI run. -->
+
+## Coverage
+<!-- Coverage command and result per touched area; each new branch and the test that takes it (AGENTS.md, Coverage rules). -->
 
 ## Clinical and architecture review
 <!-- Required for signed data, cross-organization sharing, patient association, prescribing or critical results. -->

@@ -7,11 +7,18 @@ on:
   schedule:
     - cron: '17 7 * * *'
   workflow_dispatch:
+    inputs:
+      focus:
+        description: 'Audit focus for this run (optional; default is the weekday focus)'
+        default: ''
 permissions:
   contents: read
 concurrency:
   group: daily-audit
   cancel-in-progress: false
+  # Keep every waiting run: without this a newer trigger replaces a waiting one,
+  # so a failure event or the 2 AM run could be dropped.
+  queue: max
 env:
   SWARM_GIT_NAME: ${{ vars.SWARM_GIT_NAME }}
   SWARM_GIT_EMAIL: ${{ vars.SWARM_GIT_EMAIL }}
@@ -54,6 +61,7 @@ jobs:
       - name: Run the audit (no GitHub token in this step)
         env:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY_2 || secrets.OPENCODE_API_KEY }}
+          AUDIT_FOCUS: ${{ inputs.focus }}
         run: scripts/agent-run.sh audit
       - uses: actions/upload-artifact@v7
         if: always()

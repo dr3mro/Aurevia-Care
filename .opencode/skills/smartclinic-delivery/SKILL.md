@@ -5,6 +5,14 @@ description: Execute the persistent SmartClinic story, TDD, UAT, CI and release 
 
 # Delivery loop
 
+**Swarm worker mode.** When your prompt says you are one of several parallel workers, or names a notes file under `.agent/pr-notes/`, the swarm runs the outer loop for you, so skip the tracker and Git-publishing parts of the steps below:
+
+- The task is already claimed. Do not edit TODO.md, MEMORY.md, WORKSPACE.md, BUGS.md, PROJECT.md, `docs/swarm`, `AGENTS.md`, `.opencode/`, `scripts/` or workflows, and do not push, tag or call `gh`: trusted jobs publish your commits and write the trackers and issues.
+- Start from the earlier findings in your prompt when there are any, and from the newest `.agent/pr-notes/<YYYY-MM-DD>.md` lessons. Do not redo what they record as tried.
+- Your notes file is your checkpoint, your pull request description and the hand-off to the next worker. Use the headings in AGENTS.md, "Swarm hand-off". Write `## Why this is not finished` the moment you know you will stop early.
+- Finish only with tests green and coverage proven at 100% for every file you touched (AGENTS.md, Coverage rules); the coverage gate after you finish sends failures back to you.
+- Read-only modes (review, audit, triage, notes reconciliation) write only the files their prompt names.
+
 1. Resume from WORKSPACE.md and TODO.md (the `[-]` entry you own, otherwise the first `[ ]` entry whose dependencies are `[x]`; mark it `[-]` with your agent name before you start). Reconcile branch, dirty files, SHA, running CI and active story. **In a cloud worker, the worktree `opencode.json` is the CI profile that `agent-run.sh` copied under `skip-worktree`; `scripts/check.sh`, `gen-opencode.py --check` and `check-pack.py` then judge that CI profile, not the committed local profile.** Use `git show HEAD:opencode.json` to inspect the committed file, or state which profile was measured in the evidence. This distinction caused the false OPS-CW-003-01 finding. Ask Context Optimizer for a compact file and requirement map. Save discovery.
 2. Product Manager turns user and unit feedback into outcomes. Product Owner ranks backlog and defines one story with acceptance scenarios. Physician reviews risks when clinically relevant. Architect defines boundaries and data changes. Scrum Master sets WIP one and assigns reviewers. Save the story, plan and routing.
 3. Senior Software Engineer coordinates implementation. Use the development stack and specialist routing table in README-SETUP.md. Route each changed language, framework or runtime boundary to its named senior specialist. Ask for one shared review when multiple specialties overlap. Tester specifies executable checks. Write and run failing tests first. Confirm each meaningful failure is caused by missing behavior. Save red commands and results.

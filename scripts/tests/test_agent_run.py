@@ -10,6 +10,7 @@ from helpers import ROOT
 
 FAKE_OPENCODE = """#!/usr/bin/env bash
 cp opencode.json "$SEEN"
+printf '%s\\n' "$*" >> "${PROMPT_LOG:-/dev/null}"
 case "$FAKE_MODE" in
   commit) echo work > feature.txt; git add feature.txt; git commit -qm feature; echo done ;;
   rate) echo "Error: 429 rate limit exceeded"; exit 1 ;;
@@ -296,6 +297,28 @@ class AgentRunTests(unittest.TestCase):
 
     def test_unknown_command_is_a_usage_error(self):
         self.assertEqual(self.run_cmd("bogus").returncode, 2)
+
+    # Notes file names (the daily reconciliation groups notes by task id).
+    def notes_path(self, **env):
+        import re
+        log = self.tmp / "prompt.log"
+        done = self.run_cmd("implement", FAKE_MODE="none", PROMPT_LOG=str(log), SWARM="1", **env)
+        self.assertTrue(log.exists(), done.stderr[-600:])
+        found = re.findall(r"\.agent/pr-notes/[A-Za-z0-9._-]+\.md", log.read_text())
+        self.assertTrue(found, log.read_text()[:400])
+        return found[0]
+
+    def test_a_story_names_its_notes_after_the_task(self):
+        self.assertRegex(self.notes_path(STORY_ID="CW-001"), r"^\.agent/pr-notes/CW-001-\d{8}-\d{6}\.md$")
+
+    def test_a_fix_pass_keeps_the_task_id(self):
+        self.assertRegex(self.notes_path(STORY_ID="CW-001", MODE="fix", BRANCH="main", FIX_COMMENT="x"),
+                         r"^\.agent/pr-notes/CW-001-fix-\d{8}-\d{6}\.md$")
+
+    def test_a_fix_without_a_task_id_uses_the_pull_request_number(self):
+        self.assertRegex(self.notes_path(STORY_ID="", MODE="fix", BRANCH="main", PR_NUMBER="42", FIX_COMMENT="x"),
+                         r"^\.agent/pr-notes/pr-42-fix-\d{8}-\d{6}\.md$")
+
 
 
 if __name__ == "__main__":
