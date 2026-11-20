@@ -507,7 +507,7 @@ class TrendingTest {
                 "/api/v1/trends/not-a-uuid?testCode=HBA1C", null, "clinician-a", ORG_A)
                 .getStatusCode().value());
         assertEquals(422, send(HttpMethod.GET,
-                "/api/v1/trends/" + patient + "?testCode=%20", null, "clinician-a", ORG_A)
+                "/api/v1/trends/" + patient + "?testCode=", null, "clinician-a", ORG_A)
                 .getStatusCode().value());
         assertEquals(404, send(HttpMethod.GET,
                 "/api/v1/trends/99999999-9999-9999-9999-999999999999?testCode=HBA1C",

@@ -1,5 +1,7 @@
 package com.aurevia.smartclinic.lab.accession;
 
+import com.fasterxml.jackson.annotation.JsonValue;
+
 /**
  * Lifecycle of one accessioned specimen (LAB-01).
  *
@@ -42,6 +44,7 @@ public enum AccessionState {
      *
      * @return the wire value of this state
      */
+    @JsonValue
     public String wire() {
         return name().toLowerCase(java.util.Locale.ROOT);
     }
