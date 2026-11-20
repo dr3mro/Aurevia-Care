@@ -34,9 +34,12 @@ import com.aurevia.smartclinic.events.DurableEventContract.Resolution;
  * add no manual organization predicate: the tenant-guarded transaction binds
  * {@code app.current_org()} and {@code app.actor}, so forced RLS confines every
  * statement to the active organization and the insert triggers derive
- * authorship from the same transaction. Each operation runs in one guarded
- * transaction, and the idempotent outbox insert commits its audit fact in the
- * same transaction in {@code publishAtomically}.</p>
+ * authorship from the same transaction. The {@code organizationId} argument on
+ * each method identifies that same active tenant; membership and role folds
+ * take their tenant scope from the bound GUC, so the argument is not rebound in
+ * those two queries. Each operation runs in one guarded transaction, and the
+ * idempotent outbox insert commits its audit fact in the same transaction in
+ * {@code publishAtomically}.</p>
  *
  * <p>Every record carries only non-sensitive delivery metadata: opaque ids,
  * server instants, stable wire keys and a payload digest. No clinical payload
