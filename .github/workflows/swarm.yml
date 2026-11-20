@@ -1,9 +1,12 @@
 name: Agent swarm
-# The orchestrator. It reads TODO.md, splits the open tasks across up to
-# 10 worker slots, and starts one prepared container per slot. Each worker runs
-# the agent with no GitHub token on its own branch, uploads its commits, and
-# exits (the container is discarded, nothing idles). A separate trusted job
-# pushes the branch and opens the pull request. The integrator merges later.
+# The one scheduler. It reads TODO.md, splits the open tasks across up to 10
+# worker slots per wave (20 workers across overlapping waves), and starts one
+# prepared container per slot. Each worker runs the agent with no GitHub token
+# on its own branch, uploads its commits, and exits (the container is
+# discarded, nothing idles). A separate trusted job pushes the branch and opens
+# the pull request. The integrator then runs in the same run (full gate before
+# main is touched) and the last job starts the next wave while work remains.
+# Failed runs on main arrive as repair tasks in TODO.md, planned first.
 on:
   workflow_dispatch:
     inputs:
@@ -32,15 +35,12 @@ on:
     branches: [main]
 permissions:
   contents: read
-# Waves queue behind each other. A manual run with `now` ticked gets a group of
-# its own, so it starts at once; only the short plan job below is serialized, so
-# two waves can never claim the same task.
+# Waves may overlap: each run has a group of its own. Only the short plan job
+# below is serialized, so two waves can never claim the same task, and the plan
+# job caps the workers running across all waves at 20 (scripts/swarm.py).
 concurrency:
-  group: ${{ inputs.now && format('agent-swarm-now-{0}', github.run_id) || 'agent-swarm' }}
+  group: ${{ format('agent-swarm-{0}', github.run_id) }}
   cancel-in-progress: false
-  # Keep every queued wave: a newer queued request must not supersede an older
-  # one, and the running wave is never cancelled.
-  queue: max
 jobs:
   plan:
     name: Plan the wave
@@ -57,6 +57,9 @@ jobs:
       contents: write
       pull-requests: write
       actions: read
+      # The budget gate opens an issue when it pauses the swarm; without this
+      # permission the pause was silent.
+      issues: write
     outputs:
       matrix: ${{ steps.plan.outputs.matrix }}
       count: ${{ steps.plan.outputs.count }}
@@ -149,13 +152,28 @@ jobs:
       image: ${{ needs.plan.outputs.image_prefix }}-${{ matrix.slot }}:latest
       slot: ${{ format('{0}', matrix.slot) }}
       task: ${{ toJSON(matrix) }}
-  # Keeps the loop going without a person: when work remains and no pull request
-  # is waiting (the integrator starts the next wave after it merges), start
-  # another wave. A task a worker fails three times waits for a person, so this
-  # cannot spin forever.
-  next:
-    name: Start the next wave
+  # Integration runs inside the wave, after its workers: no workflow_run chain.
+  # The integrator serializes itself (group swarm-integrator), so overlapping
+  # waves queue their batches instead of racing to push main. It also runs when
+  # the wave had no tasks, to pick up pull requests left by earlier waves.
+  integrate:
+    name: Swarm integrator
     needs: [plan, worker]
+    if: always() && needs.plan.result == 'success'
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      actions: write
+      packages: read
+    uses: ./.github/workflows/swarm-integrator.yml
+    secrets: inherit
+  # Keeps the loop going without a person: when work remains and no pull request
+  # is waiting, start another wave (never while one is already waiting). A task a
+  # worker fails three times waits for a person, so this cannot spin forever.
+  loop:
+    name: Start the next wave
+    needs: [plan, worker, integrate]
     if: always() && needs.plan.result == 'success' && fromJSON(needs.plan.outputs.count || '0') > 0
     runs-on: ubuntu-latest
     timeout-minutes: 3
