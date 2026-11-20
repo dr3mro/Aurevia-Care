@@ -39,8 +39,6 @@ public class InstructionFactController {
      *
      * @param service MSG-05 domain service
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "Spring-managed singleton collaborator")
     public InstructionFactController(InstructionFactService service) {
         this.service = service;
     }
