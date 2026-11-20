@@ -15,6 +15,7 @@ python3 -I scripts/project-name.py repositorySlug >/dev/null
 python3 -I scripts/check-pack.py
 python3 -I scripts/check-docs.py
 python3 -I scripts/check-secrets.py
+python3 -I scripts/check-names.py
 python3 -I scripts/check-migrations.py --require-baseline
 python3 -I -m unittest discover -s scripts/tests -q
 
