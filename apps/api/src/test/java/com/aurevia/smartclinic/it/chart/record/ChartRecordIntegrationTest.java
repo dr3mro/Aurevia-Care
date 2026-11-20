@@ -2,6 +2,7 @@ package com.aurevia.smartclinic.it.chart.record;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -415,6 +416,61 @@ class ChartRecordIntegrationTest {
         // null before INSERT or the CHECK would surface as a misleading 409.
         assertEquals(HttpStatus.CREATED, created.getStatusCode(), created.getBody());
         assertTrue(created.getBody().contains("\"unknownReason\":null"), created.getBody());
+    }
+
+    @Test
+    void legacyChartWriteRouteIsRemoved() {
+        // A second, unhardened chart slice used to expose the same chart_entry
+        // table on /api/v1/chart. Its write path left clinical_author null on
+        // verification and accepted unbounded trust-boundary text. Only the
+        // hardened /api/v1/chart/records contract may remain reachable (CLN-03).
+        assertEquals(HttpStatus.NOT_FOUND,
+                request(HttpMethod.POST, "/api/v1/chart/entries",
+                        "{\"patientId\":\"" + PATIENT + "\",\"type\":\"PROBLEM\""
+                                + ",\"originalText\":\"legacy write\",\"source\":\"CLINICIAN_OBSERVED\""
+                                + ",\"presence\":\"PRESENT\"}",
+                        "clinician-a", ORG_A, "legacy-write").getStatusCode());
+        assertEquals(HttpStatus.NOT_FOUND,
+                request(HttpMethod.GET, "/api/v1/chart/patients/" + PATIENT + "/entries",
+                        null, "clinician-a", ORG_A, "legacy-list").getStatusCode());
+    }
+
+    @Test
+    void verificationOfRecorderOpenEntryAssignsAccountableClinicalAuthor() throws Exception {
+        // A clinical assistant records a vital without claiming clinical
+        // authorship. The surviving public route must let a clinician verify it
+        // and attribute the accountable author in both the response and the row.
+        ResponseEntity<String> created = request(HttpMethod.POST, "/api/v1/chart/records/entries",
+                "{\"patientId\":\"" + PATIENT + "\",\"type\":\"VITAL\""
+                        + ",\"originalText\":\"temperature\",\"source\":\"DEVICE\""
+                        + ",\"presence\":\"PRESENT\",\"value\":\"37.1\",\"unit\":\"Celsius\""
+                        + ",\"measuredAt\":\"2026-12-01T10:00:00Z\"}",
+                "assistant-a", ORG_A, "open-author-record");
+        assertEquals(HttpStatus.CREATED, created.getStatusCode(), created.getBody());
+        assertTrue(created.getBody().contains("\"clinicalAuthor\":null"), created.getBody());
+        assertEquals("assistant-a", field(created.getBody(), "dataEntryActor"));
+        String id = field(created.getBody(), "id");
+
+        ResponseEntity<String> verified = verifyWithAs("clinician-a", ORG_A, id);
+        assertEquals(HttpStatus.OK, verified.getStatusCode(), verified.getBody());
+        assertEquals("VERIFIED", field(verified.getBody(), "verification"));
+        assertEquals("clinician-a", field(verified.getBody(), "verifiedBy"));
+        assertEquals("clinician-a", field(verified.getBody(), "clinicalAuthor"));
+        assertEquals("assistant-a", field(verified.getBody(), "dataEntryActor"));
+        assertNotEquals(field(verified.getBody(), "dataEntryActor"),
+                field(verified.getBody(), "clinicalAuthor"));
+
+        try (Connection connection = DriverManager.getConnection(URL, "smartclinic_migrate", "");
+             Statement statement = connection.createStatement()) {
+            statement.execute("SET app.current_org = '" + ORG_A + "'");
+            try (ResultSet result = statement.executeQuery(
+                    "SELECT clinical_author, verified_by FROM public.chart_entry "
+                            + "WHERE id = CAST('" + id + "' AS uuid)")) {
+                assertTrue(result.next());
+                assertEquals("clinician-a", result.getString("clinical_author"));
+                assertEquals("clinician-a", result.getString("verified_by"));
+            }
+        }
     }
 
 }
