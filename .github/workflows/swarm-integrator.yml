@@ -2,11 +2,11 @@ name: Swarm integrator
 # Integrates every ready swarm pull request in one job: merge one at a time on
 # top of main, run the FULL gate (scripts/check.sh with PostgreSQL and NVD) after
 # each, then push once. A PR that fails SpotBugs, coverage, Doxygen or DB policy
-# never reaches main. heavy-check.yml remains a post-merge confirmation.
+# never reaches main. Delivery then verifies the pushed commit on main.
+# Called by swarm.yml after the workers of every wave (one scheduler, no
+# workflow_run chain) and runnable by hand.
 on:
-  workflow_run:
-    workflows: [Agent swarm]
-    types: [completed]
+  workflow_call:
   workflow_dispatch:
 permissions:
   contents: read
@@ -17,9 +17,6 @@ concurrency:
 jobs:
   pick:
     name: Pick the queue
-    # Failed or cancelled waves publish no new PR; integrating on every
-    # completion made the integrator run three times per batch.
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 3
     permissions:
@@ -104,17 +101,13 @@ jobs:
           exit 1
       # One job for the batch. The trusted command keeps GH_TOKEN for guard,
       # merge and finalize, and strips it from the gate subprocess so agent-written
-      # code never sees a token. Heavy checks run later on main in heavy-check.yml.
+      # code never sees a token. Delivery re-verifies main after the push.
       - name: Merge each PR, gate, then push once
         id: merge
         env:
           QUEUE: ${{ needs.pick.outputs.queue }}
           GATE: scripts/integrator-gate.sh
         run: python3 -I scripts/swarm.py integrate-batch --queue "$QUEUE" --gate "$GATE"
-      # A merge can unlock dependent tasks, so start the next wave now.
-      - name: Start the next wave
-        if: always()
-        run: python3 -I scripts/swarm.py continue
 
   # A PR that conflicts with main is not failed right away: the agent merges main
   # into its branch and fixes the conflicts, then a separate trusted job pushes
@@ -197,9 +190,3 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
         run: python3 -I scripts/swarm.py resolve-publish --dir resolved
-      # PRs sent back to the workers (needs-fix) get a fix worker right away.
-      - name: Start the next wave
-        if: always()
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: python3 -I scripts/swarm.py continue

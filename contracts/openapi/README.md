@@ -49,14 +49,24 @@ CP="apps/api/target/classes:$(mvn -q -f apps/api/pom.xml dependency:build-classp
 java -cp "$CP" com.aurevia.smartclinic.api.authorization.CommandClientGenerator contracts/openapi/generated
 java -cp "$CP" com.aurevia.smartclinic.api.authorization.CommandClientGenerator --check contracts/openapi/generated
 python3 -I contracts/openapi/check.py
+python3 -I -m unittest discover -s contracts/openapi -p 'test_*.py' -q
 node_modules/.bin/prettier --check contracts/openapi/generated/client.ts
 ```
 
 `--check` compares all three artifacts with a fresh generation. `check.py`
 independently recomputes both X-01 canonical SHA-256 values, checks command
 parity between manifest, contract and client, and rejects client-side authority
-tokens. Neither command needs a database. The client is generated in
+tokens. Its authority scan is case-insensitive and identifier-suffix aware, so
+`actor`, `userRole`, `grantedScopes` and `X-Actor` are rejected; path-parameter
+encoding and the four required function arguments are verified **per command**,
+not globally. `test_check.py` covers each of these rules with synthetic fixture
+drift. Neither command needs a database. The client is generated in
 Prettier-compliant TypeScript and is covered by the repository format gate.
+
+`CommandClientGeneratorTest.committedArtifactsMatchAFreshGeneration` runs the
+same drift check inside the Java unit tier, so a catalog change that is not
+regenerated fails `mvn test` and the build-failing gate rather than being
+noticed only by a manual command.
 
 ## Source-of-truth honesty and limits
 
@@ -65,12 +75,13 @@ OpenAPI document and the TypeScript client are emitted together from it. This
 catalog-generated `generated/openapi.yaml` is distinct from the staff-API
 `contracts/openapi.yaml` (X-01), which `apps/staff-web/scripts/gen-api-types.sh`
 consumes; neither file is edited by hand. The
-`--check` gate proves client ↔ catalog ↔ manifest consistency. It does **not**
-prove that every running `@PostMapping` in `apps/api` calls this gate, nor that
-the documented paths match every deployed route: the 80+ command routes are
-owned by their feature stories and cannot be rewired inside this scoped slice.
-Wiring the gate into each owning service, and a build-failing POST-mapping ↔
-catalog parity test, are follow-on cross-boundary work with a named owner.
+`--check` gate, the `check.py` gate and the Java-tier drift test together prove
+client ↔ catalog ↔ manifest consistency. They do **not** prove that every
+running `@PostMapping` in `apps/api` calls this gate, nor that the documented
+paths match every deployed route: the 80+ command routes are owned by their
+feature stories and cannot be rewired inside this scoped slice. Wiring the gate
+into each owning service, and a POST-mapping ↔ catalog parity test, are
+follow-on cross-boundary work with a named owner.
 
 PRD-06 clinical decisions remain human acts in the owning services. This gate
 does not derive a diagnosis, treatment or release decision, does not bind a
@@ -102,6 +113,12 @@ is unused; coordination of the remaining story-ID contract paths
 | Inert claims, defensive copies, decision ledger | `CommandAuthorizationTest.inertClaimsAndDecisionValuesAreDefensivelyCopied`, `decisionLedgerCopiesClearsAndRejectsNull` |
 | Contract, client and manifest generation | `CommandClientGeneratorTest.everyCommandAppearsInContractAndClient`, `manifestCarriesDeterministicChecksumsAndEveryCommand`, `emptyCatalogStillGeneratesValidArtifacts` |
 | Drift detection and CLI | `CommandClientGeneratorTest.writeAndCheckDetectEveryKindOfDrift`, `runWritesChecksAndRejectsMalformedArguments`, `mainUsesTheSyntheticCatalog` |
+| Build-failing artifact drift | `CommandClientGeneratorTest.committedArtifactsMatchAFreshGeneration` |
+| 500 fail-closed outcome in the contract | `CommandClientGeneratorTest.contractDocumentsTheFailClosedAuditOutcome` |
+| Collaborator failures record and fail closed | `CommandAuthorizationTest.collaboratorFailuresAreRecordedAndReturnedAsMachineReadableErrors` |
+| Bounded untrusted audit identifiers | `CommandAuthorizationTest.untrustedCommandIdentifiersAreBoundedBeforeTheyAreAudited` |
+| Generator-safe tokens and unique routes | `CommandAuthorizationTest.definitionsRejectTokensThatCannotBeGeneratedSafely`, `catalogRejectsDuplicateRoutes` |
+| Offline gate authority and per-function checks | `contracts/openapi/test_check.py` (7 synthetic cases) |
 
 Evidence is tool-generated from synthetic fixtures and simulated specialist
 review. No human, clinical or patient-participant evidence is claimed.

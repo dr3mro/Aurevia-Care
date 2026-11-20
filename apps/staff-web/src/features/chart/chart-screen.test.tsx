@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { I18nProvider } from '../../i18n/I18nProvider';
 import { ThemeProvider } from '../../theme/ThemeProvider';
@@ -7,6 +7,22 @@ import type { Locale } from '../../i18n/messages';
 import { alphaOrganizationId, betaOrganizationId, syntheticCharts } from './fixtures';
 import { chartText } from './messages';
 import { ChartScreen } from './ChartScreen';
+import type { NoteEditorProps } from './NoteEditor';
+import type * as NoteEditorModule from './NoteEditor';
+
+/** Records the tenant of every note revision the screen renders, including interim renders. */
+const observed = vi.hoisted(() => ({ noteEditorTenants: [] as string[] }));
+
+vi.mock('./NoteEditor', async (importOriginal) => {
+  const actual = await importOriginal<typeof NoteEditorModule>();
+  return {
+    ...actual,
+    NoteEditor: (props: NoteEditorProps) => {
+      observed.noteEditorTenants.push(props.revision.organizationId);
+      return <actual.NoteEditor {...props} />;
+    },
+  };
+});
 
 function wrap(ui: ReactElement, locale: Locale = 'en') {
   return render(
@@ -163,5 +179,42 @@ describe('ChartScreen', () => {
     wrap(<ChartScreen charts={[chartWithoutNotes]} organizationId={alphaOrganizationId} />);
     expect(screen.getByText(chartText('en', 'noRevisions'))).toBeTruthy();
     expect(screen.queryByRole('button', { name: chartText('en', 'amend') })).toBeNull();
+  });
+
+  it('never renders the previous tenant note state when the active organization changes', () => {
+    observed.noteEditorTenants.length = 0;
+    const { rerender } = screenFor(alphaOrganizationId);
+    expect(observed.noteEditorTenants.length).toBeGreaterThan(0);
+    expect(observed.noteEditorTenants.every((id) => id === alphaOrganizationId)).toBe(true);
+
+    observed.noteEditorTenants.length = 0;
+    rerender(
+      <ThemeProvider>
+        <I18nProvider initialLocale="en">
+          <ChartScreen charts={syntheticCharts} organizationId={betaOrganizationId} />
+        </I18nProvider>
+      </ThemeProvider>,
+    );
+    expect(observed.noteEditorTenants.length).toBeGreaterThan(0);
+    // A lagging useEffect would render one frame with alpha's revisions under
+    // beta's chart; every rendered revision must belong to the active tenant.
+    expect(observed.noteEditorTenants.every((id) => id === betaOrganizationId)).toBe(true);
+  });
+
+  it('announces an accessible error and keeps the draft editable when signing an incomplete note', () => {
+    screenFor(betaOrganizationId);
+    for (const field of ['subjective', 'objective', 'assessment', 'plan'] as const) {
+      fireEvent.change(screen.getByRole('textbox', { name: chartText('en', field) }), {
+        target: { value: '' },
+      });
+    }
+    fireEvent.click(screen.getByRole('checkbox', { name: chartText('en', 'attestation') }));
+    fireEvent.click(screen.getByRole('button', { name: chartText('en', 'sign') }));
+    expect(screen.getByRole('alert').textContent).toContain(chartText('en', 'signError'));
+    expect(screen.getByTestId('chart-status').textContent).toBe('');
+    expect(
+      (screen.getByRole('textbox', { name: chartText('en', 'plan') }) as HTMLTextAreaElement)
+        .readOnly,
+    ).toBe(false);
   });
 });
