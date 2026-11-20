@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
@@ -20,6 +21,7 @@ import com.aurevia.smartclinic.messaging.units.MessagingContract.EligibleRelatio
 import com.aurevia.smartclinic.messaging.units.MessagingContract.MessagingAudit;
 import com.aurevia.smartclinic.messaging.units.MessagingContract.PatientUnitConnection;
 import com.aurevia.smartclinic.messaging.units.MessagingContract.UnitDirectory;
+import com.aurevia.smartclinic.messaging.units.MessagingContract.VerifiedConnection;
 import com.aurevia.smartclinic.tenant.TenantContext;
 
 /**
@@ -218,6 +220,75 @@ public class CareUnitDirectoryService {
             throw deny(context, MessagingActions.CONNECTION_USE, unit, 403, "FORBIDDEN",
                     "no active connection for this patient and unit");
         }
+    }
+
+    /**
+     * Resolve a client-supplied connection identifier for a patient self-service
+     * action.
+     *
+     * <p>The connection is resolved inside the active tenant, its chart ownership
+     * and active state are asserted, and the existing
+     * {@link com.aurevia.smartclinic.messaging.units.CareUnitDirectoryService#requireActiveConnection(String, String)}
+     * check is reused so an inactive membership, a revoked chart link or a
+     * revoked connection fails closed. The resulting unit category comes from
+     * the tenant's care-unit directory, never from the client.</p>
+     *
+     * @param patientId    verified chart identifier
+     * @param connectionId connection identifier supplied by the caller
+     * @return the authoritative connection and its tenant unit category
+     * @throws ApiException on invalid input, concealment or an unusable connection
+     */
+    public VerifiedConnection requireActiveConnectionById(String patientId, String connectionId) {
+        VerifiedConnection verified = resolveConnection(patientId, connectionId);
+        requireActiveConnection(patientId, verified.connection().unitId());
+        return verified;
+    }
+
+    /**
+     * Resolve a connection identifier for a staff action in the caller's unit.
+     *
+     * <p>Staff act under a separate clinical role and do not have a patient
+     * chart link, so the patient-only {@code CONNECTION_USE} role gate is not
+     * applied. Membership, connection ownership, active state and the tenant
+     * directory unit are still enforced on every call.</p>
+     *
+     * @param patientId    owning chart identifier
+     * @param connectionId connection identifier carried by the conversation
+     * @return the authoritative connection and its tenant unit category
+     * @throws ApiException on invalid input, concealment, inactive membership or an unusable connection
+     */
+    public VerifiedConnection requireUsableConnection(String patientId, String connectionId) {
+        VerifiedConnection verified = resolveConnection(patientId, connectionId);
+        TenantContext context = requireContext();
+        if (!store.hasActiveMembership(context.organizationId(), context.subject())) {
+            throw deny(context, MessagingActions.CONNECTION_USE, connectionId, 403, "FORBIDDEN",
+                    "no active membership");
+        }
+        return verified;
+    }
+
+    private VerifiedConnection resolveConnection(String patientId, String connectionId) {
+        String chart = MessagingInputs.uuid(patientId, "patientId");
+        String id = MessagingInputs.uuid(connectionId, "connectionId");
+        TenantContext context = requireContext();
+        PatientUnitConnection connection = store.findConnection(context.organizationId(), id)
+                .orElseThrow(() -> deny(context, MessagingActions.CONNECTION_USE, id, 404, "NOT_FOUND",
+                        "connection not found"));
+        if (!Objects.equals(chart, connection.patientId())) {
+            throw deny(context, MessagingActions.CONNECTION_USE, id, 404, "NOT_FOUND", "connection not found");
+        }
+        if (connection.state() != ConnectionState.ACTIVE) {
+            throw deny(context, MessagingActions.CONNECTION_USE, id, 403, "FORBIDDEN",
+                    "the connection is no longer active");
+        }
+        CareUnit unit = store.findUnit(context.organizationId(), connection.unitId())
+                .orElseThrow(() -> deny(context, MessagingActions.CONNECTION_USE, id, 404, "NOT_FOUND",
+                        "recipient care unit not found"));
+        if (!unit.active() || unit.unitKey() == null) {
+            throw deny(context, MessagingActions.CONNECTION_USE, id, 403, "FORBIDDEN",
+                    "the recipient care unit cannot serve conversations");
+        }
+        return new VerifiedConnection(connection, unit.unitKey());
     }
 
     private boolean isUsable(EligibleRelationship relationship) {

@@ -123,10 +123,32 @@ public final class MessagingContract {
     /**
      * One staffed inbox a verified patient may connect to (MSG-01, MSG-06).
      *
+     * <p>The optional {@code unitKey} declares the bounded conversation unit
+     * category this inbox serves. It is tenant-scoped directory data: a
+     * protected messaging command derives the unit of a verified connection by
+     * resolving its unit identifier through this record, never from a global or
+     * client-supplied mapping.</p>
+     *
      * @return the immutable value
      */
     public record CareUnit(String id, String organizationId, String facilityId, String name,
-                           List<String> topics, boolean active) {
+                           List<String> topics, boolean active, String unitKey) {
+        /**
+         * Create a care unit without a conversation unit category. Kept for
+         * directories that only support connection and directory operations.
+         *
+         * @param id             care-unit identifier
+         * @param organizationId owning organization
+         * @param facilityId     owning facility
+         * @param name           display name
+         * @param topics         supported topics
+         * @param active         whether the unit is staffed and accepting messages
+         */
+        public CareUnit(String id, String organizationId, String facilityId, String name,
+                        List<String> topics, boolean active) {
+            this(id, organizationId, facilityId, name, topics, active, null);
+        }
+
         /**
          * Defensively copy the topic list.
          *
@@ -155,6 +177,18 @@ public final class MessagingContract {
                                         String unitId, ConnectionContext context, String contextReference,
                                         String relationshipId, ConnectionState state, String verifiedBy,
                                         Instant verifiedAt, Instant createdAt, Instant revokedAt) {
+    }
+
+    /**
+     * The authoritative result of resolving a client-supplied connection id
+     * through the tenant's directory: the active connection and the conversation
+     * unit category declared by its recipient care unit.
+     *
+     * @param connection tenant-resolved active connection
+     * @param unitKey    bounded conversation unit key from the tenant directory
+     * @return the immutable value
+     */
+    public record VerifiedConnection(PatientUnitConnection connection, String unitKey) {
     }
 
     /**
