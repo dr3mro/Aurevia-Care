@@ -36,6 +36,13 @@ Keep notes short and cite exact requirement IDs, paths and evidence. Record whet
 Every change must meet all of the following before it is called done:
 
 - **100% coverage** of production lines, branches, methods and classes from the first production file, with build-failing gates and no fabricated or pending-as-covered results.
+- **Java coverage is enforced at 100% by JaCoCo in Delivery** (instruction, line, branch, method, class; one missed branch fails the whole run, as in run 518 and 520). The worker gate does not run JaCoCo, so you must prevent it yourself:
+  - Every `if`, `?:`, `&&`, `||`, `switch` and `catch` you write needs a test that takes each side. A guard that can never be true is dead code: delete it (for example a check made impossible by an earlier `canTransitionTo` check) instead of leaving an uncoverable branch.
+  - A `switch` statement on an enum with no `default` counts a hidden default branch that never runs. Use an `if / else if / else` chain, or a `switch` expression that returns a value.
+  - A compare-and-set such as `return jdbc.update(...) == 1;` has two sides. Cover the false side deterministically with a unit test that mocks `NamedParameterJdbcTemplate` to return `0` (set `TenantContext` first, as `FacilityServiceTest` does). Never rely on a race between two threads for coverage.
+  - An `INSERT ... ON CONFLICT DO NOTHING ... RETURNING` method has an "empty result" side. Cover it with a unit test whose mocked `jdbc.query(...)` returns an empty list.
+  - Javadoc `{@link}` and `@see` targets are fully qualified (`java.time.Instant`).
+  - Before you finish a Java change, list each new or changed branch and name the test that covers it in `.agent/pr-notes/<task-id>.md`.
 - **Static and dependency security testing** on every change, including OWASP dependency analysis and language-appropriate static analysis. Record tool, version, command, finding count and disposition in the checkpoint.
 - **Clean code and SOLID**: one responsibility per unit, small explicit interfaces, dependency inversion at boundaries, no duplicated rules across layers, readable names and guard clauses, and a traceable entry point to a test for each behavior.
 - **Self-improvement**: when a defect, review finding or tool gap is observed, update the owning skill or agent instruction in the same change so the next run avoids it. Regenerate `opencode.json` after any agent or skill edit and commit the generated file.
