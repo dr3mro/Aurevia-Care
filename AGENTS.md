@@ -59,6 +59,7 @@ Delivery fails the whole run on a single uncovered line or branch, in Java (JaCo
 5. A test must assert an outcome (a value, a status code, a thrown error, a call that happened). A test with no assertion does not count.
 6. Before you finish, list every new or changed branch and the test that covers it in your notes file. If you cannot name a test for a branch, the branch is not done.
 7. Never weaken, delete or rewrite an existing test to make a change pass. If an existing test must change because behavior changed on purpose, say so in your notes.
+8. **Do not mark a task complete until coverage is proven 100%.** For Java run `mvn -f apps/api/pom.xml verify` (or the repo's `apps/api/check.sh`) and read the JaCoCo report; for the staff web run Vitest with coverage; for the patient app run `apps/patient-mobile/check.sh`. Open the report for every file you touched and confirm no missed line or branch. Put the exact command and the coverage result in your notes file. If you cannot run the coverage command, or any touched file is below 100%, add tests until it is; if you still cannot, say so in your notes and leave the task unfinished instead of claiming it is done.
 
 ## Frontend standards
 
