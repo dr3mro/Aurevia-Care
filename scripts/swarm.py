@@ -324,7 +324,9 @@ def reclaim(text, prs):
     A claim with only a merged pull request was merged by a person, so it is done;
     one with no pull request, or only closed ones, goes back to open."""
     for task in parse_tasks(text):
-        if task["status"] != "taken" or not task["agent"].startswith("swarm"):
+        # `opencode-` claims come from the older dispatch system; with no pull request
+        # behind them they would hold their scope (and block repairs) forever.
+        if task["status"] != "taken" or not task["agent"].startswith(("swarm", "opencode")):
             continue
         mine = [p for p in prs if task_id_of(p["headRefName"]) in {task["id"], *task["aliases"]}]
         # An open PR still in progress keeps the claim. A needs-human PR is a
@@ -665,16 +667,25 @@ def add_repair_task(run_id, path="TODO.md"):
 MAX_ACTIVE_WORKERS = 20  # workers running at once across every wave
 
 
+WAITING_WAVE_MAX_AGE_MIN = 30
+
+
 def waiting_waves():
     """Agent swarm runs that exist but have not started: queued, pending or waiting.
 
     Every wave plans against current TODO.md state, so one waiting wave already
     covers any work the others would take. Starting more only fills the queue."""
+    now = datetime.datetime.now(datetime.timezone.utc)
     total = 0
     for status in ("queued", "pending", "waiting", "requested"):
         out = gh("run", "list", "--workflow", "swarm.yml", "--status", status, "--limit", "50",
-                 "--json", "databaseId", "-q", ".[].databaseId", check=False)
-        total += len(out.split())
+                 "--json", "createdAt", "-q", ".[].createdAt", check=False)
+        for stamp in out.split():
+            created = datetime.datetime.fromisoformat(stamp.replace("Z", "+00:00"))
+            # Runs stuck for hours are zombies from an older concurrency group; counting
+            # them would stop the loop from ever starting another wave.
+            if now - created < datetime.timedelta(minutes=WAITING_WAVE_MAX_AGE_MIN):
+                total += 1
     return total
 
 
@@ -752,6 +763,12 @@ def monthly_minutes(now=None):
                 minutes = max(minutes, run_job_minutes(run["databaseId"]) or 0)
             total += minutes
     return total
+
+
+def repo_is_public():
+    """Standard GitHub-hosted runners are free and unlimited in a public repository."""
+    out = gh("api", f"repos/{repo_slug()}", "--jq", ".private", check=False).strip()
+    return out == "false"
 
 
 def budget_gate(cap=DEFAULT_MONTHLY_MINUTES, now=None, used=None):
@@ -1117,6 +1134,12 @@ def main(argv=None):
         emit("queue", json.dumps(queue))
         emit("count", len(queue))
     elif a.cmd == "budget-gate":
+        if repo_is_public():
+            # No minutes budget to protect: the estimate only ever paused a free swarm.
+            print("Public repository: runner minutes are free; the budget gate is off.")
+            emit("start", "true")
+            emit("workers", MAX_ACTIVE_WORKERS)
+            return 0
         used = monthly_minutes()
         allowed, why = budget_gate(a.cap, used=used)
         print(why)
