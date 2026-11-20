@@ -230,6 +230,24 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { description: Invalid cursor, limit, filter or tenant selection }
   /api/v1/staff:
+    get:
+      operationId: listStaff
+      summary: List staff members in the active organization with cursor pagination
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - { name: cursor, in: query, required: false, description: Opaque subject:id cursor for the next page, schema: { type: string } }
+        - { name: limit, in: query, required: false, description: Page size 1-200, default 50, schema: { type: integer, minimum: 1, maximum: 200 } }
+        - { name: status, in: query, required: false, description: Effective membership status filter, schema: { type: string, enum: [active, deactivated] } }
+      responses:
+        '200':
+          description: One page of staff members ordered by subject ascending
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StaffPage' }
+        '401': { description: Authentication required }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { description: Invalid cursor, limit, status or tenant selection }
     post:
       operationId: inviteStaff
       summary: Invite staff with one bounded role grant in the active organization
@@ -366,6 +384,13 @@ components:
         roles:
           type: array
           items: { type: string }
+    StaffPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/StaffMember' }
+        nextCursor: { type: string, nullable: true }
     StaffHistory:
       type: object
       properties:

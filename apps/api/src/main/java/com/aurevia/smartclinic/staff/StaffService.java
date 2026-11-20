@@ -3,6 +3,7 @@ package com.aurevia.smartclinic.staff;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.springframework.dao.DuplicateKeyException;
@@ -25,6 +26,11 @@ import com.aurevia.smartclinic.tenant.TenantContext;
 public class StaffService {
 
     private static final Pattern SUBJECT = Pattern.compile("[a-z0-9][a-z0-9._-]{1,63}");
+    private static final Pattern CURSOR = Pattern.compile(
+            "([a-z0-9][a-z0-9._-]{1,63}):"
+            + "([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})");
+    private static final int DEFAULT_LIMIT = 50;
+    private static final int MAX_LIMIT = 200;
     private static final int MAX_DISPLAY_NAME = 200;
     private static final List<String> ROLES = List.of("tenant_admin", "reception", "privacy_auditor");
 
@@ -209,6 +215,91 @@ public class StaffService {
             throw failure.get();
         }
         return history;
+    }
+
+    /**
+     * Read one cursor-paginated page of staff members in the active organization.
+     *
+     * <p>The single-record read action is reused: a caller who may read one
+     * member may list the same tenant's members. Validation happens before any
+     * transaction and the read itself is audited inside the guarded transaction.</p>
+     *
+     * @param cursor opaque {@code <subject>:<id>} of the previous page's last row, or {@code null}
+     * @param limit  page size, or {@code null} for the default of 50
+     * @param status optional {@code active} or {@code deactivated} filter
+     * @return one page with an opaque next cursor when more rows exist
+     * @throws ApiException on invalid input or denied access
+     */
+    public StaffPage list(String cursor, String limit, String status) {
+        StaffCursor parsedCursor = parseCursor(cursor);
+        int parsedLimit = parseLimit(limit);
+        String parsedStatus = parseStatus(status);
+        AtomicReference<ApiException> failure = new AtomicReference<>();
+        StaffPage page = transactions.execute(txStatus -> {
+            TenantContext context = TenantContext.current();
+            ApiException denial = authorize(context, "STAFF_READ", "ALL");
+            if (denial != null) {
+                failure.set(denial);
+                return null;
+            }
+            List<StaffRepository.StaffRow> rows = repository.query(
+                    parsedCursor == null ? null : parsedCursor.subject(),
+                    parsedCursor == null ? null : parsedCursor.id(), parsedStatus, parsedLimit + 1);
+            boolean hasMore = rows.size() > parsedLimit;
+            List<StaffRepository.StaffRow> pageRows = hasMore ? rows.subList(0, parsedLimit) : rows;
+            List<StaffMember> members = pageRows.stream().map(StaffRepository.StaffRow::member).toList();
+            String next = hasMore ? pageRows.get(pageRows.size() - 1).member().subject() + ":"
+                    + pageRows.get(pageRows.size() - 1).id() : null;
+            repository.appendAudit(context, "STAFF_READ", "ALL", "SUCCESS");
+            return new StaffPage(members, next);
+        });
+        if (failure.get() != null) {
+            throw failure.get();
+        }
+        return page;
+    }
+
+    private StaffCursor parseCursor(String cursor) {
+        if (cursor == null || cursor.isBlank()) {
+            return null;
+        }
+        Matcher matcher = CURSOR.matcher(cursor);
+        if (!matcher.matches()) {
+            throw new ApiException(422, "INVALID_CURSOR", "cursor must be <subject>:<id>");
+        }
+        return new StaffCursor(matcher.group(1), matcher.group(2));
+    }
+
+    private int parseLimit(String limit) {
+        if (limit == null || limit.isBlank()) {
+            return DEFAULT_LIMIT;
+        }
+        try {
+            int value = Integer.parseInt(limit);
+            if (value < 1 || value > MAX_LIMIT) {
+                throw new NumberFormatException("limit out of range");
+            }
+            return value;
+        } catch (NumberFormatException exception) {
+            throw new ApiException(422, "INVALID_LIMIT", "limit must be 1-200");
+        }
+    }
+
+    private String parseStatus(String status) {
+        if (status == null || status.isBlank()) {
+            return null;
+        }
+        if ("active".equals(status)) {
+            return "active";
+        }
+        if ("deactivated".equals(status)) {
+            return "revoked";
+        }
+        throw new ApiException(422, "INVALID_STATUS", "status must be active or deactivated");
+    }
+
+    /** Parsed opaque cursor: the subject sort value and the immutable row id. */
+    private record StaffCursor(String subject, String id) {
     }
 
     private void validateSubject(String subject) {

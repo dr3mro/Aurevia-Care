@@ -8,10 +8,12 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.aurevia.smartclinic.staff.StaffHistory;
 import com.aurevia.smartclinic.staff.StaffMember;
+import com.aurevia.smartclinic.staff.StaffPage;
 import com.aurevia.smartclinic.staff.StaffService;
 
 /**
@@ -45,6 +47,22 @@ public class StaffController {
     public ResponseEntity<StaffMember> invite(@RequestBody InviteRequest request) {
         StaffMember created = service.invite(request.subject(), request.displayName(), request.role());
         return ResponseEntity.created(URI.create("/api/v1/staff/" + created.subject())).body(created);
+    }
+
+    /**
+     * List staff members in the active organization with cursor pagination.
+     *
+     * @param cursor opaque cursor of the previous page's last row
+     * @param limit  page size, default 50 and at most 200
+     * @param status optional {@code active} or {@code deactivated} filter
+     * @return one page of staff members
+     */
+    @GetMapping
+    public StaffPage list(
+            @RequestParam(required = false) String cursor,
+            @RequestParam(required = false) String limit,
+            @RequestParam(required = false) String status) {
+        return service.list(cursor, limit, status);
     }
 
     /**
