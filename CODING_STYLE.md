@@ -7,6 +7,7 @@
 - Start each story with a failing test through a normal entry point. Run red, implement to green, refactor, then rerun. Keep tests deterministic, independent and readable. Cover data integrity, failures, security boundaries and retries as well as successful flows.
 - Target and enforce 100% statements/lines, branches, functions and source files where measured by the language tooling, plus applicable behavior and migration tests. Coverage scope includes new production files from day one. Exclude generated or vendor code only with a documented rule and independent review. Any metric unavailable in a tool must be documented, with the closest supported measure and compensating tests. Coverage alone does not demonstrate correctness.
 - Backend use JaCoCo with build-failing line and branch thresholds and executable integration tests. React and Expo use a coverage runner with fail-under thresholds and explicit all-source inclusion. PostgreSQL requires migration, policy, integrity and transaction scenarios. Mark an unimplemented module as pending instead of reporting it as covered.
+- In `apps/patient-mobile` (and any frontend with `verbatimModuleSyntax`), `jest` is not an ambient global value: any use of `jest` methods requires `import { jest } from '@jest/globals';`. For per-test timeouts in Jest or Vitest, pass the timeout as the optional argument to `it('...', fn, timeoutMs)` instead of `jest.setTimeout()`. Always run `npm run typecheck` (`tsc --noEmit`) before completing frontend tasks.
 
 ## Maintainable implementation
 
