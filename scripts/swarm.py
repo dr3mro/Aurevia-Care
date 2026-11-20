@@ -2507,7 +2507,11 @@ def main(argv=None):
         # GitHub skips a job output that contains anything it masks as a secret, which
         # leaves the worker matrix empty. Story text is the part that can trip it, so
         # stories travel as an id only and the worker reads their text from TODO.md.
-        lean = [{**t, "title": "", "body": ""} if t["kind"] == "story" else t for t in include]
+        # GitHub skips a job output that contains anything it masks as a secret, which
+        # leaves the worker matrix empty. No task text travels through the output: stories
+        # and fix tasks alike are read from TODO.md (and the issue context file) by the
+        # worker, so strip every free-text field here.
+        lean = [{**t, "title": "", "body": "", "fix": ""} for t in include]
         emit("matrix", json.dumps({"include": lean}, separators=(",", ":")))
         emit("count", len(include))
     elif a.cmd == "watchdog":
