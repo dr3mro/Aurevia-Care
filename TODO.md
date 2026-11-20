@@ -806,3 +806,169 @@ Cadence and limits:
     All 12 directories under apps/patient-mobile/src/features are named s_g3_01 through s_g3_12 (story IDs), for example features/s_g3_02/credentials.ts and features/s_g3_06/attachments.test.tsx. CODING_STYLE.md requires business-domain naming and the earlier refactor already removed Java s_g* packages; this mobile remainder is called out as out of scope in .agent/pr-notes/REFACTOR-PACKAGES.md section 6 but is not a tracked TODO entry. Expected fix: agree an owner-approved domain mapping (appointments, reports, enrollment, units, conversations, attachments, instructions, acknowledgments, service-profiles, governance, flows, evidence), git mv the folders and update imports and tests.
     Found by the daily audit. Synthetic fixtures only; failing tests first;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
+
+## Audit 2026-11-20 (whole-project audit)
+
+- [ ] AUD-20261120-01 · Return HTTP 201 from patient registration and catalog entry creation, as the contract says
+  - attempts: 0
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/web
+  - depends: DLV-04
+  - details:
+    Problem (verified in the code): `contracts/openapi/generated/openapi.yaml` declares `'201'` for `registerPatient` (POST /api/v1/patients) and `defineCatalogEntry` (POST /api/v1/catalog/{family}/entries), but both controllers answer 200.
+    - `web/PatientController.java`, method `register`: ends with `return ResponseEntity.ok(created);` and its Javadoc already says "HTTP 201".
+    - `web/CatalogController.java`, method `define`: ends with `return ResponseEntity.ok(created);`.
+    Other controllers already do it right; copy their style, for example `web/StaffController.java` uses `ResponseEntity.created(URI.create("/api/v1/staff/" + created.subject())).body(created)`.
+
+    Do this, in order:
+    1. Find who relies on 200 today: `grep -rn "api/v1/patients\|catalog/.*entries" apps/api/src/test apps/staff-web/src apps/patient-mobile/src`. Note every assertion that expects `HttpStatus.OK`/`isOk()`/`200` for these two POSTs.
+    2. Change those assertions to expect 201 (`HttpStatus.CREATED` / `isCreated()`). Run the affected test class and watch it FAIL (the controller still says 200). This is your failing test.
+    3. In `PatientController.register` replace the last line with `return ResponseEntity.created(URI.create("/api/v1/patients/" + created.id())).body(created);`. If `Patient` has no `id()` accessor, open `patient/Patient.java` and use the accessor that holds the patient identifier. Add `import java.net.URI;`.
+    4. In `CatalogController.define` replace the last line with `return ResponseEntity.created(URI.create("/api/v1/catalog/" + family + "/entries/" + created.code())).body(created);`. Use the real accessor name from `catalog` / `configuration` entry class (open `ConfigEntry.java` if unsure).
+    5. Run the two test classes again; they must pass.
+    6. Do NOT change the OpenAPI files: they are already right. Do NOT change any other controller.
+    Done when: both POSTs return 201 with a `Location` header, no test expects 200 for them, and `bash scripts/worker-check.sh` is green.
+
+    Run the checks yourself before you finish: `bash scripts/worker-check.sh` must pass for the classes you touched. Synthetic data only; write the failing test first; stay inside the declared scope; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
+- [ ] AUD-20261120-02 · Production authentication, part 1: a pure JWT-claims-to-TenantContext resolver with tests
+  - attempts: 0
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/web
+  - depends: DLV-04
+  - details:
+    Problem (verified): there is no real authentication. `web/TenantContextInterceptor.java` accepts a request only when the Spring profile `synthetic-auth` is active and then trusts the headers `X-Synthetic-Subject` and `X-Active-Organization`. Without that profile every `/api/v1/**` request gets 401. `pom.xml` has no Spring Security dependency. SMARTCLINIC_V1_SPEC.md and README-SETUP.md require managed OIDC with server-side authorization. This task builds only the safe, testable core; part 2 (AUD-20261120-03) wires it in.
+
+    Create `web/AuthenticatedPrincipal.java` (a Java `record`) with `String subject`, `Set<String> organizationIds` and `String issuer`.
+    Create `web/ClaimsTenantResolver.java`, a plain class (no Spring annotations) with one public method:
+    `TenantContext resolve(Map<String, Object> claims, String requestedOrganization, String correlationId)`.
+    Rules, each one needs its own unit test in `ClaimsTenantResolverTest` (JUnit 5, no Spring, no database):
+    1. `claims.get("sub")` must be a non-blank String, else throw `new ApiException(401, "UNAUTHENTICATED", "authentication required")` (class `com.aurevia.smartclinic.api.ApiException`).
+    2. The claim `orgs` must be a List of Strings, each matching the UUID pattern used in `TenantContextInterceptor` (copy the regex, do not loosen it). A missing or empty `orgs` -> 401 as above.
+    3. `requestedOrganization` (the value of the `X-Active-Organization` header) must be a UUID and must be IN the `orgs` list, otherwise throw `new ApiException(403, "ORGANIZATION_NOT_PERMITTED", "organization is not available to this subject")`. A malformed value -> `ApiException(422, "INVALID_TENANT_SELECTION", "an active organization must be selected")`.
+    4. Return `new TenantContext(requestedOrganization, sub, TenantContext.PURPOSE, correlationId)`.
+    5. The client can never choose an organization the token does not list: add a test with a valid UUID that is not in `orgs` and assert 403.
+    Do NOT touch `TenantContextInterceptor`, `pom.xml` or any other file. Do NOT read tokens from the request in this class: it only sees already-validated claims.
+    Done when: `ClaimsTenantResolverTest` has at least 7 tests (happy path, missing sub, blank sub, missing orgs, malformed org list, org not in token, malformed header) and passes.
+
+    Run the checks yourself before you finish: `bash scripts/worker-check.sh` must pass for the classes you touched. Synthetic data only; write the failing test first; stay inside the declared scope; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
+- [ ] AUD-20261120-03 · Production authentication, part 2: validate OIDC bearer tokens and bind the tenant context
+  - attempts: 0
+  - scope: apps/api/pom.xml, apps/api/src/main/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/web, apps/api/src/main/resources
+  - depends: AUD-20261120-02
+  - details:
+    Needs AUD-20261120-02 (the `ClaimsTenantResolver` class) to be merged first.
+    Goal: outside the `synthetic-auth` profile, `/api/v1/**` requires a valid OIDC JWT bearer token; the synthetic header login keeps working only under `synthetic-auth` (all existing tests rely on it, do not break them).
+    Steps:
+    1. In `apps/api/pom.xml` add dependencies `org.springframework.boot:spring-boot-starter-oauth2-resource-server` and, with `<scope>test</scope>`, `org.springframework.security:spring-security-test`. The Spring Boot parent already manages the versions, so add NO `<version>` tag. Run `mvn -q -B -f apps/api/pom.xml -Pno-security -DskipTests compile` to confirm the build still compiles.
+    2. Add `web/SecurityConfiguration.java` (`@Configuration`, `@EnableWebSecurity`) with two `SecurityFilterChain` beans:
+       - `@Profile("synthetic-auth")`: `http.csrf(c -> c.disable()).authorizeHttpRequests(a -> a.anyRequest().permitAll())` so the existing interceptor stays the only gate, exactly as today.
+       - `@Profile("!synthetic-auth")`: stateless sessions (`SessionCreationPolicy.STATELESS`), `csrf` disabled (bearer tokens, no cookies), `authorizeHttpRequests(a -> a.anyRequest().authenticated())`, `oauth2ResourceServer(o -> o.jwt(Customizer.withDefaults()))`.
+    3. In `src/main/resources/application.yml` add `spring.security.oauth2.resourceserver.jwt.issuer-uri: ${SMARTCLINIC_OIDC_ISSUER_URI:}` and `...jwt.audiences: ${SMARTCLINIC_OIDC_AUDIENCE:}`. Never put a real issuer, client id or secret in the repository. If the issuer is empty the application must fail to start outside `synthetic-auth` (fail closed): add a startup check in `SecurityConfiguration` that throws `IllegalStateException("SMARTCLINIC_OIDC_ISSUER_URI must be set")`.
+    4. In `TenantContextInterceptor.preHandle`, replace the branch that returns 401 when `synthetic-auth` is not active: read `SecurityContextHolder.getContext().getAuthentication()`; if it is a `JwtAuthenticationToken`, call `new ClaimsTenantResolver().resolve(token.getToken().getClaims(), request.getHeader("X-Active-Organization"), correlation)` and `TenantContext.set(...)`; otherwise throw the same 401 as before. Keep the `synthetic-auth` branch byte-for-byte as it is.
+    5. Add `TenantContextInterceptorJwtTest` with `MockMvc` and `SecurityMockMvcRequestPostProcessors.jwt()`: (a) no token -> 401; (b) token without `orgs` -> 401; (c) token with `orgs` containing the header value -> request reaches the controller; (d) header organization not in `orgs` -> 403.
+    Do NOT add any user database, password login, API key or cookie session. Do NOT weaken the `synthetic-auth` profile test setup. Done when: the new test passes, every existing test still passes with `-Pno-security`, and the application refuses to start without an issuer outside `synthetic-auth`.
+
+    Run the checks yourself before you finish: `bash scripts/worker-check.sh` must pass for the classes you touched. Synthetic data only; write the failing test first; stay inside the declared scope; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
+- [ ] AUD-20261120-04 · Add a database gate that fails when any tenant table lacks forced row-level security
+  - attempts: 0
+  - scope: db/check.sh
+  - depends: DLV-04
+  - details:
+    Problem: tenant isolation depends on `FORCE ROW LEVEL SECURITY` plus a policy on `organization_id = public.app_org()` for every table that has an `organization_id` column. Migrations apply it inside loops (`FOREACH t IN ARRAY ...`), so nothing proves that a new table was not forgotten. Add one assertion to `db/check.sh`.
+    Steps:
+    1. Read `db/check.sh` fully. Find where it runs SQL assertions against the migrated database (look for `psql`, `assert`, or `fail` helper functions) and copy that exact helper style.
+    2. Add this query (adjust only the helper call around it):
+    ```
+    SELECT c.relname
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public'
+    JOIN pg_attribute a ON a.attrelid = c.oid AND a.attname = 'organization_id' AND NOT a.attisdropped
+    WHERE c.relkind = 'r'
+      AND NOT (c.relrowsecurity AND c.relforcerowsecurity)
+    ORDER BY 1;
+    ```
+       The check must FAIL (non-zero exit, print the table names) when this query returns any row.
+    3. Add a second query that fails when a table with `organization_id` has RLS enabled but no policy: join `pg_policies` on `schemaname = 'public' AND tablename = c.relname` and select tables with zero policies.
+    4. Run `bash db/check.sh` (needs PostgreSQL; it works in the worker image). If it now fails, DO NOT silence it and DO NOT edit migrations. Instead list the failing tables in `.agent/pr-notes/<story-id>.md`, add each one to a clearly commented `EXCEPTIONS` array in `db/check.sh` ONLY if its migration header explains why it is global (for example `organization` itself or reference data), and for every other table write one line in the pr-notes saying "needs RLS" so a person can open a follow-up task. Never add an exception without that written reason.
+    Done when: `bash db/check.sh` passes, the two new assertions run, and the notes list any table you had to except together with the reason.
+
+    Run the checks yourself before you finish: `bash scripts/worker-check.sh` must pass for the classes you touched. Synthetic data only; write the failing test first; stay inside the declared scope; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
+- [ ] AUD-20261120-05 · Rename the story-ID folders under infra/ and docs/operations/ to business names
+  - attempts: 0
+  - scope: infra, docs/operations
+  - depends: REFACTOR-PACKAGES-02
+  - details:
+    Problem (verified): `infra/s_g5_05` ... `infra/s_g5_11` and `docs/operations/s_g5_05` ... `s_g5_11` are named after stories, which CODING_STYLE.md forbids and the owner dislikes. Use `git mv` so history follows. Mapping (old -> new), apply it to BOTH `infra/` and `docs/operations/`:
+    | Old | New |
+    |---|---|
+    | s_g5_05 | capacity |
+    | s_g5_06 | recovery |
+    | s_g5_07 | delivery-safety |
+    | s_g5_08 | tenant-lifecycle |
+    | s_g5_09 | onboarding |
+    | s_g5_10 | accessibility |
+    | s_g5_11 | ops-queues |
+    Steps for EACH row, one row at a time, committing after each:
+    1. `git mv infra/<old> infra/<new>` and `git mv docs/operations/<old> docs/operations/<new>`.
+    2. Find every leftover reference: `grep -rn "<old>" . --include='*' -I | grep -v '^./.git/' | grep -v node_modules | grep -v '^./TODO.md' | grep -v '^./.agent/'`. Typical hits: `check.sh` lines like `cd infra/<old>`, Python path constants, `docs/operations/<old>/README.md` links, `scripts/check-pack.py` or `scripts/docs.sh` file lists. Replace each with the new path using exact text edits. Python module names inside the folders stay as they are; only change paths.
+    3. Run `bash infra/<new>/check.sh` (the file may be called `check-ux01.sh` in `accessibility`; run that name) and fix any failure caused by the move. Then run `python3 -I scripts/check-docs.py` and `python3 -I scripts/check-pack.py`.
+    4. The folder `infra/s_g5_10` holds `check-ux01.sh`, `ux01-profile.json`; keep the file names, move only the folder.
+    Do NOT edit `TODO.md` or any `.agent/` file: they are history. Do NOT change file contents beyond path strings. Do NOT rename Java packages (another task owns that: REFACTOR-PACKAGES-02).
+    Done when: no path `s_g5_` remains outside `TODO.md` and `.agent/`, all seven `check.sh` scripts pass, and both Python checks pass.
+
+    Run the checks yourself before you finish: `bash scripts/worker-check.sh` must pass for the classes you touched. Synthetic data only; write the failing test first; stay inside the declared scope; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
+- [ ] AUD-20261120-06 · Replace the in-memory delivery outbox store with a PostgreSQL-backed store
+  - attempts: 0
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/api/x_02, apps/api/src/test/java/com/aurevia/smartclinic/api/x_02, apps/api/src/test/java/com/aurevia/smartclinic/it
+  - depends: REFACTOR-PACKAGES-02
+  - details:
+    Problem (verified): `api/x_02/InMemoryDeliveryStore.java` is annotated `@Repository`, so it is the production implementation of `DeliveryStore`. Events, receipts and dead letters are lost on every restart and are not shared between API instances. The durable tables already exist: `db/migrations/V55__durable_event_outbox.sql` creates `delivery_outbox`, `delivery_dead_letter`, `delivery_receipt`, `delivery_replay`, `delivery_link`, `delivery_audit`. This task makes the code use them. NO new migration.
+    Steps:
+    1. Read `DeliveryStore.java` (the interface) and `InMemoryDeliveryStore.java` (the behaviour to copy) completely. Read V55 to learn every column name and constraint. Read one existing JDBC repository for style, for example `patient/PatientRepository.java` (uses `NamedParameterJdbcTemplate`/`JdbcTemplate`, never string-concatenated SQL).
+    2. Create `JdbcDeliveryStore implements DeliveryStore` in the same package, `@Repository`, constructor-injected `JdbcTemplate`. Implement every interface method with parameterised SQL. Keep tenant isolation: do not add an `organization_id` filter by hand if row-level security already filters (look at how other repositories rely on `public.app_org()`); inserts must still set `organization_id` the same way other repositories do.
+    3. Remove `@Repository` from `InMemoryDeliveryStore` and keep the class only for unit tests (move it to `apps/api/src/test/java/.../api/x_02` if no main code uses it: check with `grep -rn InMemoryDeliveryStore apps/api/src`).
+    4. Write an integration test class `JdbcDeliveryStoreIntegrationTest` under `apps/api/src/test/java/com/aurevia/smartclinic/it/` following the structure of an existing one (`it/patientchart/ChartEntryIntegrationTest.java` shows `@ActiveProfiles("synthetic-auth")` and the DB setup). Cover: store and read back an event; idempotent re-store of the same event id; a dead-lettered event; tenant A cannot read tenant B's event.
+    5. Run `bash scripts/worker-check.sh`.
+    Do NOT change `DeliveryStore` method signatures, the controllers or any migration. If the interface cannot be implemented with the V55 tables, STOP, write exactly which method and which missing column in `.agent/pr-notes/<story-id>.md`, and finish without code changes.
+
+    Run the checks yourself before you finish: `bash scripts/worker-check.sh` must pass for the classes you touched. Synthetic data only; write the failing test first; stay inside the declared scope; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
+- [ ] AUD-20261120-07 · Inventory every in-memory store and write the persistence decision record
+  - attempts: 0
+  - scope: docs/decisions
+  - details:
+    Problem (verified): production code has many in-memory implementations whose data disappears on restart. Spring beans (`@Repository`): `api/x_02/InMemoryDeliveryStore`, `messaging/service/InMemoryServiceProfileStore`, `messaging/units/InMemoryMessagingStore`, `messaging/flows/InMemoryFlowPolicyStore`, `messaging/governance/InMemoryMessagingGovernanceStore`, `messaging/acknowledgment/InMemoryInstructionFactStore`. Other in-memory classes (check whether anything wires them): `clinical/templates/InMemoryTemplateStore`, `api/authorization/InMemoryDecisionSink` (authorization decisions), `api/x_01/IdempotencyLedger.InMemoryIdempotencyLedger`, `api/x_03/InMemoryDocumentStore`, `messaging/attachments/InMemoryAttachmentStore`, `messaging/enrollment/InMemoryPatientAccessStore`, `messaging/reports/InMemoryReportReleaseStore`, `messaging/instructions/InstructionStore.InMemory`, `therapy/InMemoryTherapyStore`. This task writes ONLY a document; no Java.
+    Create `docs/decisions/0003-persistence-of-in-memory-stores.md` from `docs/decisions/template.md` (keep every heading, set Status: proposed, Date: today's date in YYYY-MM-DD, Requirement IDs: ARC-01, ARC-02, OPS-02).
+    Fill the Context section with a table, one row per class above, with these columns:
+    | Class | Interface it implements | Is it a Spring bean (`@Repository`/`@Component`)? | Who injects the interface (grep `private final <Interface>`) | Durable table that already exists (grep `db/migrations`) or "none" |
+    Get each answer from the code with `grep`; never guess. Add a short Decision section that orders the work: first stores that are Spring beans and already have tables, then stores that need a new migration (use reserved versions V59 and up, one per store), then stores nobody injects (remove them or mark them orphans for AUD-20261119-03).
+    Add in Consequences: one line stating that restart loses data for every `@Repository` in the table, and one line naming `InMemoryDecisionSink` and `IdempotencyLedger` as security-relevant (audit decisions and replay protection must be durable before production).
+    Then run `python3 -I scripts/check-docs.py` and fix any complaint (heading style, links).
+    Do NOT change Java, SQL or other docs. Done when: the file exists, every row in the table is filled from real grep output, and `check-docs.py` passes.
+
+    Run the checks yourself before you finish: `bash scripts/worker-check.sh` must pass for the classes you touched. Synthetic data only; write the failing test first; stay inside the declared scope; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
+- [ ] AUD-20261120-08 · Add HTTP tests for the scheduling, audit and appointment endpoints that no test calls
+  - attempts: 0
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/it/scheduling, apps/api/src/test/java/com/aurevia/smartclinic/it/audit
+  - depends: DLV-04
+  - details:
+    Controllers whose class name appears in no test: `scheduling/AppointmentController`, `web/SchedulingAdminController`, `web/AuditController` (path `/api/v1/audit-events`; one existing test, `it/AuditQueryTest.java`, may already cover reads - check before adding).
+    Method for EVERY controller below (do not skip the first step):
+    1. For each endpoint, find out whether a test already calls it: `grep -rn "<path fragment>" apps/api/src/test`. Controller class names are NOT referenced by name in most integration tests, so search by URL path (for example `/api/v1/audit-events`). Only write tests for endpoints that no test calls.
+    2. Copy the request-building style of an existing integration test: open `apps/api/src/test/java/com/aurevia/smartclinic/it/exchangeresult/ResultRoutingIntegrationTest.java` and reuse the pattern of its `headers(subject, organization)` helper (headers `X-Synthetic-Subject`, `X-Active-Organization`, `Content-Type`), its `@ActiveProfiles("synthetic-auth")` class annotation, and its database setup. Put new classes in `apps/api/src/test/java/com/aurevia/smartclinic/it/<area>/` and mark them like the existing ones so they run in the integration tier.
+    3. For each uncovered endpoint write four tests: (a) no `X-Synthetic-Subject` header -> 401; (b) missing or malformed `X-Active-Organization` -> 422; (c) a subject whose role may not perform the action -> 403 (roles and actions are in `authz/ActionPolicy.java`); (d) an allowed subject -> the success status shown in `contracts/openapi/generated/openapi.yaml` for that path.
+    4. If a test reveals a real bug (wrong status, missing authorization), do NOT fix production code in this task: mark the test with `@Disabled("<one-line reason and the endpoint>")`, and list it in `.agent/pr-notes/<story-id>.md` so a person opens a follow-up.
+    Do NOT change production code, migrations or the OpenAPI files.
+
+    Run the checks yourself before you finish: `bash scripts/worker-check.sh` must pass for the classes you touched. Synthetic data only; write the failing test first; stay inside the declared scope; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
+- [ ] AUD-20261120-09 · Add HTTP tests for the finance, prescription, specialty and conversation endpoints that no test calls
+  - attempts: 0
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/it/finance, apps/api/src/test/java/com/aurevia/smartclinic/it/prescription, apps/api/src/test/java/com/aurevia/smartclinic/it/authz, apps/api/src/test/java/com/aurevia/smartclinic/it/messaging
+  - depends: DLV-04
+  - details:
+    Controllers whose class name appears in no test: `finance/FinanceController`, `prescription/rx/RxController`, `prescription/PrescriptionController`, `prescription/DrugCatalogController`, `authz/specialty/SpecialtyController`, `messaging/conversations/ConversationController`. Some are exercised by existing flow tests (`RxTransmissionFlowTest`, `SpecialtyAuthorizationFlowTest`, `ConversationFlowTest`): step 1 below tells you which gaps remain.
+    Method for EVERY controller below (do not skip the first step):
+    1. For each endpoint, find out whether a test already calls it: `grep -rn "<path fragment>" apps/api/src/test`. Controller class names are NOT referenced by name in most integration tests, so search by URL path (for example `/api/v1/audit-events`). Only write tests for endpoints that no test calls.
+    2. Copy the request-building style of an existing integration test: open `apps/api/src/test/java/com/aurevia/smartclinic/it/exchangeresult/ResultRoutingIntegrationTest.java` and reuse the pattern of its `headers(subject, organization)` helper (headers `X-Synthetic-Subject`, `X-Active-Organization`, `Content-Type`), its `@ActiveProfiles("synthetic-auth")` class annotation, and its database setup. Put new classes in `apps/api/src/test/java/com/aurevia/smartclinic/it/<area>/` and mark them like the existing ones so they run in the integration tier.
+    3. For each uncovered endpoint write four tests: (a) no `X-Synthetic-Subject` header -> 401; (b) missing or malformed `X-Active-Organization` -> 422; (c) a subject whose role may not perform the action -> 403 (roles and actions are in `authz/ActionPolicy.java`); (d) an allowed subject -> the success status shown in `contracts/openapi/generated/openapi.yaml` for that path.
+    4. If a test reveals a real bug (wrong status, missing authorization), do NOT fix production code in this task: mark the test with `@Disabled("<one-line reason and the endpoint>")`, and list it in `.agent/pr-notes/<story-id>.md` so a person opens a follow-up.
+    Do NOT change production code, migrations or the OpenAPI files.
+
+    Run the checks yourself before you finish: `bash scripts/worker-check.sh` must pass for the classes you touched. Synthetic data only; write the failing test first; stay inside the declared scope; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
