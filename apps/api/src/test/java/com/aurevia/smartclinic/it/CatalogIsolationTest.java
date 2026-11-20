@@ -121,7 +121,10 @@ class CatalogIsolationTest {
 
     @Test
     void approvalMakesCatalogEntryEffective() {
-        assertEquals(HttpStatus.OK, define("diagnosis", "R51", "Headache", "admin-a", ORG_A).getStatusCode());
+        ResponseEntity<String> defined = define("diagnosis", "R51", "Headache", "admin-a", ORG_A);
+        assertEquals(HttpStatus.CREATED, defined.getStatusCode(), defined.getBody());
+        assertEquals("/api/v1/catalogs/diagnosis/entries/R51",
+                defined.getHeaders().getFirst(HttpHeaders.LOCATION));
         assertEquals(HttpStatus.NOT_FOUND,
                 request(HttpMethod.GET, "/api/v1/catalogs/diagnosis/entries/R51", null, "admin-a", ORG_A)
                         .getStatusCode());

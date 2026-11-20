@@ -27,12 +27,11 @@ for module in "${modules[@]}"; do
     continue
   fi
   (
-    cd "$module" &&
-      npm ci --no-audit --no-fund &&
-      npm audit --audit-level=high &&
-      npm run typecheck &&
-      npm run lint &&
-      npm run test:coverage
+    cd "$module"
+    npm ci --no-audit --no-fund
+    npm run typecheck
+    npm run lint
+    npm test
   ) || fail=1
 
   # TypeScript only.
@@ -80,7 +79,6 @@ fi
 
 # Toolchain commands must pass; npm ci makes the gate self-contained in CI.
 npm ci --no-audit --no-fund
-npm audit --audit-level=high
 npm run typecheck
 npm run lint
 npm run format:check

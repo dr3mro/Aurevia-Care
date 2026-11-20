@@ -1,5 +1,6 @@
 package com.aurevia.smartclinic.web;
 
+import java.net.URI;
 import java.util.List;
 
 import org.springframework.http.ResponseEntity;
@@ -47,7 +48,7 @@ public class PatientController {
         Patient created = service.register(request.displayName(), request.mrn(), request.issuer(),
                 request.dob(), request.dobUnknownReason(), request.language(), request.contacts(),
                 request.identifiers(), request.consents());
-        return ResponseEntity.ok(created);
+        return ResponseEntity.created(URI.create("/api/v1/patients/" + created.id())).body(created);
     }
 
     /**

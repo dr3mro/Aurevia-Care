@@ -8,23 +8,19 @@ name: Swarm integrator
 on:
   workflow_call:
   workflow_dispatch:
-  workflow_run:
-    workflows: [Delivery]
-    types: [completed]
 permissions:
   contents: read
 concurrency:
   group: swarm-integrator
   cancel-in-progress: false
+  queue: max
 env:
   SWARM_GIT_NAME: ${{ vars.SWARM_GIT_NAME }}
   SWARM_GIT_EMAIL: ${{ vars.SWARM_GIT_EMAIL }}
-  SWARM_ISSUES: ${{ vars.SWARM_ISSUES }}
 
 jobs:
   pick:
     name: Pick the queue
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.event == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 3
     permissions:
@@ -109,8 +105,8 @@ jobs:
           done
           exit 1
       # One job for the batch. The trusted command keeps GH_TOKEN for guard,
-      # merge and finalize, and strips GitHub credentials from the gate environment.
-      # Delivery re-verifies main after the push.
+      # merge and finalize, and strips it from the gate subprocess so agent-written
+      # code never sees a token. Delivery re-verifies main after the push.
       - name: Merge each PR, gate, then push once
         id: merge
         env:

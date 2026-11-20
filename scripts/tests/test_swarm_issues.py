@@ -214,16 +214,15 @@ class HandoffTests(unittest.TestCase):
             (tmp / "check.log").write_text(log)
         return tmp
 
-    def test_the_handoff_carries_the_workers_reason_without_raw_logs(self):
+    def test_the_handoff_carries_the_workers_reason_and_the_log_end(self):
         out = self.directory("## Why this is not finished\nThe test X fails with Y.", "a\nb\nFAIL here")
         fake = Gh()
         with mock.patch.object(swarm, "gh", fake):
             swarm.report_worker_handoff(self.TASK, "ok", "failed", "merged", out, "7")
         body = fake.created_args()[fake.created_args().index("--body") + 1]
-        for needle in ("swarm-handoff v1", "The test X fails with Y.", "<!-- swarm-task:CW-001 -->",
+        for needle in ("swarm-handoff v1", "The test X fails with Y.", "FAIL here", "<!-- swarm-task:CW-001 -->",
                        "<!-- swarm-pr:7 -->", "do not start over"):
             self.assertIn(needle, body)
-        self.assertNotIn("FAIL here", body)
         self.assertIn("worker-handoff", fake.created_args())
 
     def test_a_handoff_without_a_reason_says_so(self):
