@@ -5,6 +5,7 @@ import { MixedScriptText } from '../../components/MixedScriptText';
 import { formatCivilDate } from '../../i18n/format';
 import { useI18n } from '../../i18n/I18nProvider';
 import { useTheme } from '../../theme/ThemeProvider';
+import { AdminTableRegion } from './AdminTableRegion';
 import type { ConfigurationDraft, ConfigurationVersion } from './domain';
 import { effectiveVersion, isValidCivilDate, versionsFor } from './domain';
 import { adminText } from './messages';
@@ -60,57 +61,59 @@ export function ConfigEditor({
       <p>
         {text('configKey')}: <MixedScriptText text={configKey} lang="en" />
       </p>
-      <table style={{ borderCollapse: 'collapse', width: '100%' }}>
-        <caption style={{ textAlign: 'start', paddingBlock: tokens.spacing.sm }}>
-          {text('configurationVersions')}
-        </caption>
-        <thead>
-          <tr>
-            <th scope="col">{text('version')}</th>
-            <th scope="col">{text('configuredValue')}</th>
-            <th scope="col">{text('effectiveFrom')}</th>
-            <th scope="col">{text('approvalState')}</th>
-            <th scope="col">{text('approver')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {versions.length === 0 ? (
+      <AdminTableRegion label={text('configurationVersions')}>
+        <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+          <caption style={{ textAlign: 'start', paddingBlock: tokens.spacing.sm }}>
+            {text('configurationVersions')}
+          </caption>
+          <thead>
             <tr>
-              <td colSpan={5}>{text('noVersions')}</td>
+              <th scope="col">{text('version')}</th>
+              <th scope="col">{text('configuredValue')}</th>
+              <th scope="col">{text('effectiveFrom')}</th>
+              <th scope="col">{text('approvalState')}</th>
+              <th scope="col">{text('approver')}</th>
             </tr>
-          ) : (
-            versions.map((entry) => (
-              <tr key={`${entry.organizationId}:${entry.version}`}>
-                <th scope="row">{entry.version}</th>
-                <td>
-                  <MixedScriptText text={entry.value} lang="en" />
-                </td>
-                <td>
-                  <time dateTime={entry.effectiveFrom}>{formatCivilDate(entry.effectiveFrom, locale)}</time>
-                </td>
-                <td>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: tokens.spacing.sm }}>
-                    {entry.approved ? (
-                      <StateBadge glyph="✓" label={text('approved')} tone="approved" />
-                    ) : (
-                      <StateBadge glyph="○" label={text('pending')} tone="pending" />
-                    )}
-                    {effective && entry.version === effective.version ? (
-                      <StateBadge glyph="*" label={text('effectiveBadge')} tone="effective" />
-                    ) : null}
-                  </span>
-                </td>
-                <td>
-                  <MixedScriptText
-                    text={entry.approver ?? text('unknown')}
-                    lang={entry.approver ? 'en' : locale}
-                  />
-                </td>
+          </thead>
+          <tbody>
+            {versions.length === 0 ? (
+              <tr>
+                <td colSpan={5}>{text('noVersions')}</td>
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+            ) : (
+              versions.map((entry) => (
+                <tr key={`${entry.organizationId}:${entry.version}`}>
+                  <th scope="row">{entry.version}</th>
+                  <td>
+                    <MixedScriptText text={entry.value} lang="en" />
+                  </td>
+                  <td>
+                    <time dateTime={entry.effectiveFrom}>{formatCivilDate(entry.effectiveFrom, locale)}</time>
+                  </td>
+                  <td>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: tokens.spacing.sm }}>
+                      {entry.approved ? (
+                        <StateBadge glyph="✓" label={text('approved')} tone="approved" />
+                      ) : (
+                        <StateBadge glyph="○" label={text('pending')} tone="pending" />
+                      )}
+                      {effective && entry.version === effective.version ? (
+                        <StateBadge glyph="*" label={text('effectiveBadge')} tone="effective" />
+                      ) : null}
+                    </span>
+                  </td>
+                  <td>
+                    <MixedScriptText
+                      text={entry.approver ?? text('unknown')}
+                      lang={entry.approver ? 'en' : locale}
+                    />
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </AdminTableRegion>
       <Form label={text('configurationEditor')} submitLabel={text('propose')} onSubmit={submit}>
         <FormField
           id="admin-config-value"
