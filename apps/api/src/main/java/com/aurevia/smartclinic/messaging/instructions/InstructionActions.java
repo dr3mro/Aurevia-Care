@@ -38,7 +38,7 @@ public class InstructionActions {
             case SEND, WITHDRAW -> staffSender(role);
             case CLINICAL_SEND -> "clinician".equals(role);
             case READ -> staffSender(role) || "tenant_admin".equals(role)
-                    || "privacy_auditor".equals(role);
+                    || "privacy_auditor".equals(role) || "patient".equals(role);
             default -> false;
         };
     }

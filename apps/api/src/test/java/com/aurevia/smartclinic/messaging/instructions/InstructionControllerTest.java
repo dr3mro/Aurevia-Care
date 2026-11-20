@@ -92,4 +92,24 @@ class InstructionControllerTest {
         assertEquals(422, assertThrows(ApiException.class, () -> controller.replace(threadId,
                 new ReplaceRequest("t", "b", "en", null, List.of(), "reason"), "bogus")).status());
     }
+
+    @Test
+    void patientReadsOwnInstructionContentThroughHttpRoutes() {
+        InMemory store = new InMemory();
+        InstructionController controller = controller(store);
+        TenantContext.set(new TenantContext(ORG, "clinician-a", "MSG04", "corr-1"));
+        store.seedMember("clinician-a", List.of("clinician"));
+        store.seedUnitStaff("clinician-a", UNIT);
+        store.seedConnection(CONNECTION, PATIENT, UNIT);
+        String threadId = controller.send(new SendRequest(PATIENT, CONNECTION, UNIT, null,
+                Kind.GENERAL, "Pickup instructions", "Collect after 2pm.", "en", null, null, null,
+                List.of())).getBody().threadId();
+
+        store.seedMember("patient-a", List.of("patient"));
+        store.linkPatientChart("patient-a", PATIENT);
+        TenantContext.set(new TenantContext(ORG, "patient-a", "MSG04", "corr-1"));
+
+        assertEquals("Pickup instructions", controller.get(threadId).current().title());
+        assertEquals(1, controller.listForPatient(PATIENT).size());
+    }
 }

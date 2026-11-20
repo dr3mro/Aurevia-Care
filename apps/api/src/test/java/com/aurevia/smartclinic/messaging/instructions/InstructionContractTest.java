@@ -170,6 +170,8 @@ class InstructionContractTest {
         assertTrue(actions.allows(InstructionActions.WITHDRAW, "pt_clinician"));
         assertTrue(actions.allows(InstructionActions.READ, "privacy_auditor"));
         assertTrue(actions.allows(InstructionActions.READ, "tenant_admin"));
+        // A verified patient may read its own instruction content (MSG-04/05, PAT-02).
+        assertTrue(actions.allows(InstructionActions.READ, "patient"));
         assertTrue(actions.allows(InstructionActions.SEND, "clinical_assistant"));
         assertTrue(actions.allows(InstructionActions.SEND, "lab_collector"));
         assertTrue(actions.allows(InstructionActions.SEND, "radiology_staff"));

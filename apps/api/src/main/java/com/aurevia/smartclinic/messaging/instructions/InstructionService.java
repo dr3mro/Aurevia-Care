@@ -234,8 +234,11 @@ public class InstructionService {
     public View get(String threadId) {
         String thread = InstructionInputs.key(threadId, "threadId");
         return execute(InstructionActions.READ, thread, () -> {
+            String subject = context().subject();
             Revision current = store.current(thread).orElseThrow(this::notFound);
-            if (!store.staffAssignedToUnit(context().subject(), current.unitId())) {
+            if (isPatient()) {
+                requirePatientChartAccess(subject, current);
+            } else if (!store.staffAssignedToUnit(subject, current.unitId())) {
                 throw forbidden("the reader is not assigned to the care unit");
             }
             return new View(current, store.history(thread), store.facts(thread));
@@ -253,6 +256,18 @@ public class InstructionService {
         String patient = InstructionInputs.uuid(patientId, "patientId");
         return execute(InstructionActions.READ, patient, () -> {
             String subject = context().subject();
+            if (isPatient()) {
+                // A patient is bound to its own verified charts (IAM-05): the
+                // caller-supplied chart identifier is checked against the charts
+                // linked to the authenticated account, never trusted on its own.
+                if (!store.verifiedPatientCharts(subject).contains(patient)) {
+                    throw notFound();
+                }
+                return store.forPatient(patient).stream()
+                        .filter(revision -> store.connectionActive(
+                                revision.connectionId(), revision.patientId(), revision.unitId()))
+                        .toList();
+            }
             // READ permission is not a care relationship. Mirror get() and the
             // mutation guards: a caller only sees revisions from units they are
             // assigned to over a still-active, verified patient connection
@@ -263,6 +278,29 @@ public class InstructionService {
                             revision.connectionId(), revision.patientId(), revision.unitId()))
                     .toList();
         });
+    }
+
+    /** @return whether the authenticated subject holds the bounded patient role */
+    private boolean isPatient() {
+        return store.activeRoles(context().subject()).stream().anyMatch("patient"::equals);
+    }
+
+    /**
+     * Bind a patient caller to a chart linked to its verified account and to an
+     * active patient-unit connection before releasing instruction content.
+     * Another patient's chart is concealed (404, ARC-04) and a revoked
+     * connection denies (403), per IAM-05, MSG-01, MSG-07 and PAT-02.
+     *
+     * @param subject  authenticated patient account subject
+     * @param revision current revision being read
+     */
+    private void requirePatientChartAccess(String subject, Revision revision) {
+        if (!store.verifiedPatientCharts(subject).contains(revision.patientId())) {
+            throw notFound();
+        }
+        if (!store.connectionActive(revision.connectionId(), revision.patientId(), revision.unitId())) {
+            throw forbidden("the patient-unit connection is not active for this context");
+        }
     }
 
     private <T> T execute(String action, String resourceId, Supplier<T> work) {

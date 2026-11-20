@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.stereotype.Repository;
@@ -26,6 +27,18 @@ public interface InstructionStore {
 
     /** @return active role keys for the authenticated subject */
     List<String> activeRoles(String subject);
+
+    /**
+     * Patient charts verified for a patient account subject (IAM-05).
+     *
+     * <p>A verified account may link to several independently verified charts;
+     * patient reads must bind the caller to one of these rather than trust a
+     * caller-supplied chart identifier. Scoped by the active tenant context.</p>
+     *
+     * @param subject authenticated patient account subject
+     * @return immutable set of linked patient chart identifiers, possibly empty
+     */
+    Set<String> verifiedPatientCharts(String subject);
 
     /** @return whether the subject is assigned to the sending care unit */
     boolean staffAssignedToUnit(String subject, String unitId);
@@ -71,6 +84,7 @@ public interface InstructionStore {
     class InMemory implements InstructionStore {
 
         private final ConcurrentHashMap<String, List<String>> roles = new ConcurrentHashMap<>();
+        private final ConcurrentHashMap<String, Set<String>> verifiedCharts = new ConcurrentHashMap<>();
         private final ConcurrentHashMap<String, List<String>> unitStaff = new ConcurrentHashMap<>();
         private final ConcurrentHashMap<String, Connection> connections = new ConcurrentHashMap<>();
         private final ConcurrentHashMap<String, Template> templates = new ConcurrentHashMap<>();
@@ -81,6 +95,11 @@ public interface InstructionStore {
         @Override
         public synchronized List<String> activeRoles(String subject) {
             return List.copyOf(roles.getOrDefault(key(subject), List.of()));
+        }
+
+        @Override
+        public synchronized Set<String> verifiedPatientCharts(String subject) {
+            return Set.copyOf(verifiedCharts.getOrDefault(key(subject), Set.of()));
         }
 
         @Override
@@ -182,6 +201,12 @@ public interface InstructionStore {
         /** Seed a synthetic member with the given active roles. */
         public synchronized void seedMember(String subject, List<String> roles) {
             this.roles.put(key(subject), List.copyOf(roles));
+        }
+
+        /** Link a verified patient chart to a patient account subject (IAM-05). */
+        public synchronized void linkPatientChart(String subject, String patientId) {
+            verifiedCharts.computeIfAbsent(key(subject), ignored -> ConcurrentHashMap.newKeySet())
+                    .add(patientId);
         }
 
         /** Seed a unit assignment for a synthetic subject. */
