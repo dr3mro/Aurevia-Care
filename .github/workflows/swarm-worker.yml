@@ -232,7 +232,6 @@ jobs:
             .agent/checks
             .agent/branch
             .agent/merge
-            .agent/check.log
             .agent/pr-notes.md
             .agent/result.bundle
           if-no-files-found: ignore
