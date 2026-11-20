@@ -1,55 +1,83 @@
-# DLV-01 — Repair integration tests: patient chart, chart entry and exchange task
+# FIX-IMAGES-01 — Prepared-image readiness must not depend on workflow run history
 
-Status: ready for integrator. Branch `swarm/DLV-01-222`, base `feb59df`. Six files changed, all inside `apps/api`; no migration, `.github/`, `scripts/` or shared tracker touched. All four named classes are green in the full `mvn verify` run. The remaining full-gate failures belong to the separate DLV-02/DLV-03 stories.
+## Requirement IDs and acceptance mapping
 
-## Requirements and acceptance mapping
+- **OPS-06** (delivery/gate automation). No application, patient-data or migration behaviour is touched.
+- Story scope only: `.github/workflows`, `scripts`. No trackers, `apps/api` or `db/` were edited.
 
-| Requirement | Acceptance repaired |
-|---|---|
-| CLN-03 | Chart records/entries can be captured with provenance, verification and tenant isolation against real PostgreSQL; audit and verification are observable (ChartRecordIntegrationTest, ChartEntryIntegrationTest). |
-| CLN-05 | Version-bound verification refuses a stale/concurrent write with 412; the winning revision is the only one applied. |
-| ARC-02 | Forced RLS and tenant context are respected by test SQL assertions (audit reads must bind the active organization); two tenants with identical local ids stay concealed. |
-| ARC-03 / ARC-04 (supporting) | `If-Match` version precondition is validated before the lifecycle state, so a stale version yields 412 while a current-version already-verified entry yields 409. |
-| XCH-02 (supporting) | `ExchangeTaskIsolationTest` proves the INSERT trigger normalises a forged review state; the fixture must leave the row free for the test to insert. |
+| Acceptance item | Where implemented | Evidence |
+|---|---|---|
+| Block a wave only when a build is queued or in progress, or when the newest completed run failed | `scripts/swarm.py::images_ready` (`IMAGE_BUILD_ACTIVE`, `failure` verdict) | `ImageReadinessTests.test_build_in_progress_blocks_even_when_images_exist`, `test_queued_build_blocks`, `test_latest_completed_failure_blocks` |
+| No run at all + images present → start wave | `images_ready([], True)` → `True`; `prepare_images` emits `ready=true`, no dispatch | `test_no_runs_and_images_present_is_ready`, `test_no_history_images_present_starts_the_wave_without_dispatch` |
+| No run at all + images missing → dispatch `agent-image.yml` once, skip wave | `prepare_images` → `gh workflow run agent-image.yml --ref main` + `emit dispatch=true` | `test_no_runs_and_images_missing_is_not_ready`, `test_no_history_images_missing_dispatches_agent_image_once` |
+| Check every slot image `ghcr.io/<owner>/<repo>-agent-<slot>:latest` from `.github/swarm/slots.json` | `slot_images_exist()` via GitHub packages API (fails closed); slots loaded by `load_slots` | `test_slot_images_exist_checks_every_slot_and_fails_closed`, `test_slot_images_exist_true_when_every_manifest_has_latest` |
+| Decision is a small tested Python function instead of workflow shell | `images-ready` subcommand replaces the `gh run list`/bash block in `swarm.yml` | `test_workflow_delegates_to_the_tested_python_decision`, `test_main_registers_the_images_ready_command` |
+| Latest completed build succeeded → ready | `images_ready` returns `True` | `test_latest_completed_success_is_ready_even_without_registry_proof` |
+| Cancelled/skipped-only history falls back to registry and can still dispatch a rebuild | `has_usable_image_history` shared by `images_ready` fallback and `prepare_images` registry/dispatch decision | `test_only_cancelled_runs_fall_back_to_the_registry`, `test_skipped_runs_fall_back_to_the_registry_too`, `test_usable_history_helper`, `test_cancelled_only_history_still_checks_the_registry`, `test_successful_history_starts_the_wave_without_a_registry_call` |
 
-Classification (`docs/WORKFLOW.md`): cross-boundary (production repository + service + integration fixtures), with a safety-critical verification precondition. Synthetic data only. No human or clinical participant; evidence is tool output plus one bounded read-only senior-backend review (simulated).
+## Root cause
 
-## Root cause per class (all reproduced RED first)
+The `images` step of the `plan` job read only the latest `agent-image.yml` / `swarm-images.yml` runs and set `ready=false` whenever `slot_conclusion != success`. When Actions run history is empty (cleaned, expired or deleted), `gh run list` returns `[]`, so `slot_conclusion` was empty, `!= success` was true, and every wave was skipped forever with "Prepared images are rebuilding or not green" even though the slot images existed in GHCR. As of 2026-11-20 this repository has no `agent-image.yml` or `swarm-images.yml` runs.
 
-| Class | Observed RED | Root cause | Fix |
-|---|---|---|---|
-| `ChartRecordIntegrationTest` | 5 × HTTP 500 on `POST /api/v1/chart/records/entries`. Server trace: `PSQLException: Can't infer the SQL type to use for an instance of java.time.Instant` at `chart.record.ChartRepository.insert:106`. | **Production defect.** The repository bound `Instant` values directly; PG JDBC 42.7.14 cannot infer a type for `java.time.Instant`. The failure happens at parameter binding, before SQL parsing. | `chart/record/ChartRepository` now binds ISO-8601 text via `instantText(Instant)` and casts it with `CAST(:param AS timestamptz)` in both `insert` and `verify` — the established pattern in `AppointmentRepository`, `WorklistRepository`, `ExchangeTaskRepository`. Same latent defect fixed in `patient/chart/ChartRepository` (the sibling slice would have 500'd once its fixture was repaired). |
-| `ChartEntryIntegrationTest` | `prepare -> seedPatient`: `new row for relation "patient_record" violates check constraint "patient_record_check"`. Also Flyway logged `Skipping filesystem location: .../it/s_g1_03/migrations (not found)`. | **Two fixture defects.** (1) `seedPatient` inserted neither `dob` nor `dob_unknown_reason`, violating V7 `CHECK ((dob IS NOT NULL) <> (dob_unknown_reason IS NOT NULL))`. (2) The package refactor moved the test migration directory to `it/patientchart/migrations` but left the stale `s_g1_03` Flyway location, so `chart_entry` was never created. | Seed synthetic `dob = DATE '1990-05-20'` (matches the already-fixed `ChartRecordIntegrationTest`); point Flyway at `it/patientchart/migrations`. No schema change: V7's invariant is correct. |
-| `ExchangeTaskIsolationTest` | `storageCannotForgeAReviewedTaskOrMoveTwoChannels`: `duplicate key value violates unique constraint "exchange_task_pkey"`. | **Fixture defect.** `@BeforeAll` seeded `FORGED` among the initial tasks, so the test's own `INSERT` of that id collided before the V20 `xch02_initialize_task_channels` trigger could be exercised. | Remove `FORGED` from the seeded id array; the test now inserts a fresh row and asserts the trigger resets workflow/transmission/clinical-review state. The production guard is correct and unchanged. |
-| `CheckInWorklistIntegrationTest` | Story reported 2 rows expected, 9 observed. | Already repaired on current `main` (commit `cd390df`): the assertion is scoped by appointment id and the ordering list is filtered. No change needed here. | Verified green (9/9) in the RED run and in every subsequent run; no edit made. |
-| `ChartRecordIntegrationTest` / `ChartEntryIntegrationTest` (second RED layer, after the 500s were fixed) | Audit count `expected: <4> but was: <0>`; race `expected: <1> but was: <0>` for a 412. | **Two more fixture/test defects plus one precondition-order defect.** (a) The audit-count SQL connection was opened as `smartclinic_migrate` without setting `app.current_org`; `audit_event` has `FORCE RLS`, so the owner saw zero rows (the same connection also calls `audit_verify_chain`, which requires the active tenant). (b) The concurrent loser returned 409 when its read followed the winner's commit because `ChartService.verify` checked `ALREADY_VERIFIED` before the `If-Match` version. | (a) Set `SET app.current_org = ORG_A` on that connection before both queries. (b) Validate `existing.version() != expected` **before** the verified-state check in both `ChartService.verify` methods, so a stale precondition always returns 412 and a current-version verified entry still returns 409. The original strict 412 assertions were kept — no test was weakened, skipped, deleted or re-tagged. |
+## Change
 
-## Decisions
+- `scripts/swarm.py`
+  - Added constants `IMAGE_BUILD_WORKFLOWS`, `IMAGE_BUILD_ACTIVE`.
+  - Added pure function `images_ready(runs, manifests_exist)`: active build blocks; completed `failure` verdict blocks; cancelled/skipped-only or empty history falls back to the registry; a green verdict is authoritative.
+  - Added `image_build_runs()` (latest run per image workflow, empty when history is gone).
+  - Added `slot_images_exist(slots)` using `gh api repos/{owner}/{repo}/packages/container/{package}/versions --jq 'any(.[]; (.metadata.container.tags // []) | index("latest"))'` with `check=False` so a missing/unreadable package fails closed. No registry login needed.
+  - Added `prepare_images()` subcommand: gathers runs, checks GHCR only when history is empty, emits `ready`, prints a clear reason, and dispatches `agent-image.yml` once only in the "no history + no images" case. `agent-image.yml` chains into `swarm-images.yml` on success.
+  - Registered `images-ready --slots` in `main()`.
+- `.github/workflows/swarm.yml`
+  - Replaced the shell `latest()`/`gh run list` block with `python3 -I scripts/swarm.py images-ready`.
+  - Plan job permissions: `actions: read` → `actions: write` (workflow dispatch) and added `packages: read` (GHCR versions API).
+  - Clarified the skip message in the `plan` step.
 
-- No new migration: V7's patient invariant and V20's channel trigger are correct; every observed defect was in test fixtures or Java bindings. Already-applied migrations were not edited.
-- Kept the two-line `instantText` helper local to each repository (five existing copies in the codebase) instead of adding a shared utility; a new shared class would widen a repair story and need its own coverage. Confirmed by the bounded senior-backend review.
-- Both halves of the Instant fix are required: wrapping to text fixes the driver binding; `CAST(... AS timestamptz)` makes the text unambiguous. Dropping either reintroduces the 500.
-- `encounterId` is a `text` column in both test-scoped V13 migrations and is bound as a `String`; no UUID cast was added.
-- The senior-backend reviewer noted a non-blocking parity gap (`patient.chart.ChartService` does not normalise a blank `unknownReason` like the record slice). It yields a translated 409, not a 500, is not asserted by the patient test, and is outside DLV-01; left for a follow-up story.
+## Entry-point-to-test trace
 
-## Exact commands and results
+`.github/workflows/swarm.yml` plan job → step `images` → `python3 -I scripts/swarm.py images-ready` → `swarm.main()` (`elif a.cmd == "images-ready"`) → `prepare_images()` → `image_build_runs()` + `slot_images_exist(load_slots(...))` → `images_ready()` → `emit ready`. Tests drive `images_ready` directly and `prepare_images`/`slot_images_exist`/`main` with `unittest.mock` fakes for `gh`, `gh_json`, `load_slots` and `emit`; no network or credentials are used.
 
-Environment: Java 21.0.13 Temurin, Maven 3.10.0, PostgreSQL 17.12 via `SMARTCLINIC_PG_ADMIN`; tools executed by the primary agent, not delegated.
+## Commands run and results (evidence source: executed tool commands)
 
-| Command | Result |
-|---|---|
-| `cd apps/api && mvn -B test -Pno-security -Dtest=ChartRecordIntegrationTest,ChartEntryIntegrationTest,ExchangeTaskIsolationTest,CheckInWorklistIntegrationTest` (before fixes) | exit 1 — Tests run 24, Failures 5, Errors 2 (5 × 500, duplicate key, V7 CHECK) |
-| Same command after binding/fixture fixes | exit 1 — Tests run 27, Failures 4, Errors 0 (audit count 0, race 412 count 0 in both chart classes) |
-| Temporary instrumentation of race outcomes (removed afterwards) | combined run `[409, 200]` / `[200, 409]`; isolated run `[412, 200]`. Established the timing-dependent precondition-order root cause. |
-| Same command after audit-context and precondition-order fixes, run A | exit 0 — Tests run 27, Failures 0, Errors 0 (5 + 9 + 4 + 9) |
-| Same command, run B (repeat for flake check) | exit 0 — Tests run 27, Failures 0, Errors 0 |
-| `mvn -B test -Pfast` | exit 0 — Tests run 1844, Failures 0, Errors 0 |
-| `mvn -B spotbugs:check -DskipTests` | exit 0 — `BugInstance size is 0` |
-| `bash apps/api/check.sh` (full `mvn -B verify`, default security profile) after final code | exit 1 overall — Tests run 2087, Failures 63, Errors 4. Surefire reports for all four DLV-01 classes: 5/5, 9/9, 4/4, 9/9 green with zero failures/errors. |
-| `git diff --check` | exit 0 |
+Run from repo root on branch `swarm/FIX-IMAGES-01-230`, HEAD `43e915b451c3dd498ba54702771adf0afb99aeff` before my edits.
 
-Evidence provenance: all command results above are **tool-generated** by this worker; the bounded senior-backend review is **simulated reviewer** evidence (file reads only, no commands run by that subagent). No simulated-user or human/clinical evidence was available or claimed.
+- Baseline before changes:
+  - `python3 -I -m unittest discover -s scripts/tests -q` → `Ran 234 tests`, `FAILED (failures=8, errors=10)`.
+  - All 18 baseline failures/errors were pre-existing local-environment issues: 12 yaml-dependent tests plus `test_fast_tier`/`test_workflow_concurrency` loader errors (PyYAML is not installed locally and there is no pip/ensurepip/network); 3 `test_check_pack` failures (the worktree `opencode.json` is the CI profile copied under `skip-worktree`, a known measurement artifact documented in the delivery skill and BUGS OPS-CW-003-01); 3 `test_agent_run` failures/errors from local temp-repo git state. None touch this change.
+- After writing the tests, before implementation (red):
+  - `python3 -I -m unittest discover -s scripts/tests -p 'test_swarm.py' -k ImageReadiness -q` → `Ran 15 tests`, `FAILED (failures=1, errors=14)` — `AttributeError: module 'swarm' has no attribute 'images_ready'` and the workflow still contained the `gh run list` shell block.
+- After implementation (green):
+  - `python3 -I -m unittest discover -s scripts/tests -p 'test_swarm.py' -k ImageReadiness -q` → `Ran 17 tests`, `OK`.
+  - `python3 -I -m unittest discover -s scripts/tests -q` → `Ran 249 tests`, `FAILED (failures=8, errors=10)` — the exact same 18 pre-existing environment failures as baseline, with 15 net-new passing tests. No new failure.
+  - `python3 -I -m py_compile scripts/swarm.py scripts/tests/test_swarm.py` → exit 0.
+  - `python3 -I scripts/swarm.py images-ready --help` → exit 0, shows `--slots`.
+  - `bash -n scripts/quick-check.sh` → exit 0.
+- Line coverage of new production code (stdlib `trace --count`, because `coverage.py` is unavailable): a runner exercising every branch of the four new functions and the `main` dispatch showed a non-zero execution count on **every** executable line of `images_ready`, `image_build_runs`, `slot_images_exist`, `prepare_images` and the `images-ready` CLI branch in `scripts/swarm.py` (0 unexecuted lines). Evidence file: `/tmp/opencode/cov-fix-images-01/swarm.cover` (local scratch, not committed).
+- Simulated user execution: none. Human clinical evidence: none. Two specialist reviews were requested (GitHub Workflow and Senior Python); their findings and disposition are recorded under "Review" below when received.
 
-## Out-of-scope remainder (for the integrator / DLV-02 / DLV-03)
+## Defects found
 
-The full gate is still red because of 11 classes owned by the other repair stories, none touched here: `IdentityProofingIsolationTest`, `StaleInvitationIntegrationTest`, `ConsolidationIsolationTest`, `ConversationFlowTest`, `ClinicalNoteRevisionIntegrationTest`, `ResultRoutingIntegrationTest`, `AccessIntegrationTest`, `DocumentIsolationTest`, `SpecimenAccessionIsolationTest`, `TrendingTest`, `RxTransmissionFlowTest`. Their reported causes (the `set_link_actor()` trigger, Spring 7 `UNPROCESSABLE_CONTENT` rename, `uuid = character varying`, prescription transmission 500s) match the DLV-02/DLV-03 descriptions. Because surefire fails before the verify-phase plugins, the final full-run JaCoCo 100% gate and OWASP check could not be observed on this checkout; SpotBugs was run separately and is green. The integrator's full `scripts/check.sh` on the merged SHA remains the authoritative gate.
+- **Original defect (fixed):** empty Actions run history permanently disabled every swarm wave even with healthy GHCR images.
+- No new defect found in the changed scope during implementation or targeted review, except the intentionally unverified item below.
+
+## Decisions and residual risks
+
+- The registry check uses the GitHub packages API rather than `docker manifest inspect` so the plan job needs no registry login; `packages: read` was added to the plan job. `--jq` checks specifically for the `latest` tag, not merely any version.
+- `conclusion: cancelled`/`skipped`/`null` runs are treated as "no usable verdict" and fall back to the registry, so a cancelled newest run cannot strand the swarm the way an empty history did. An explicit `failure` verdict always blocks (the repair/watchdog pipeline handles failed image builds).
+- Dispatch is limited to the single "no runs + no images" case; a running or failed build is never re-dispatched by this step. A brief race between dispatch and the run appearing in history could dispatch more than once across overlapping hourly plan jobs; the `agent-image` concurrency group with `queue: max` serializes the resulting builds, so this is accepted.
+- `docs/SWARM.md` still describes the "while `agent-image` or `swarm-images` is running, or the last slot build is not green, it starts no workers" rule and does not mention the registry fallback. It is outside this story's declared scope (`.github/workflows`, `scripts`), so it is left for a follow-up documentation task and is flagged here rather than silently changed.
+- Not verified locally: live `gh api` packages response shape and a real workflow dispatch (no network/gh/credentials available in this worker, and the task forbids calling `gh`). The jq expression and command construction are covered by mocked unit tests; the integrator/CI will exercise the workflow in GitHub Actions.
+- Delivery-path note for the integrator: this repair PR changes `.github/workflows/swarm.yml`. `scripts/swarm.py::publish()` refuses to push workflow-file changes unless `SWARM_WORKFLOW_PUSH=true` (i.e. a `SWARM_TOKEN` with workflow scope is configured). This is an existing documented swarm limitation (docs/SWARM.md, "Not verified yet"), not something this story changes. If the publish job reports `blocked=workflow-files`, the orchestrator must supply the workflow-scoped token or merge the branch manually; no source change is needed for image readiness itself.
+
+## Review
+
+Two bounded specialist reviews were requested. Evidence source for findings: **simulated specialist review** (read-only static inspection; the Python reviewer had no shell tool, so it could not execute tests — the findings were independently reproduced and fixed by the primary agent with executed tool commands below).
+
+- **HIGH (both reviewers, same finding): cancelled/skipped-only history fail-open/strand.** `prepare_images` originally consulted the registry only when `runs` was empty and gated dispatch on `not runs`. With a cancelled newest run, `runs` is non-empty, so `manifests_exist` was hard-coded `True` → `images_ready` fell back to `True` → the wave started against possibly missing images; a naive "real registry check" fix would instead skip forever with no dispatch. **Fixed** by adding the pure helper `has_usable_image_history(runs)` and using it for both the registry lookup and the single dispatch decision. Added command-level tests for cancelled with images present/missing and for skipped. Re-ran `python3 -I -m unittest discover -s scripts/tests -p 'test_swarm.py' -k ImageReadiness -q` → `Ran 22 tests, OK`.
+- **MEDIUM (Python reviewer): test gap.** Command-level tests did not cover cancelled/skipped history. **Fixed** by the new tests above plus a pure `skipped` case and a helper test.
+- **Endpoint correction (primary agent, tool evidence):** the GitHub reviewer's note assumed a repo-scoped `repos/{owner}/{repo}/packages/container/{package}/versions` endpoint. I verified against the GitHub REST docs (webfetch, 2026-11-20): the versions endpoint is **owner-scoped only** — `GET /orgs/{org}/packages/{package_type}/{package_name}/versions` and `GET /users/{username}/packages/{package_type}/{package_name}/versions` both exist; no repo-scoped versions endpoint is documented. `slot_images_exist` therefore tries both owner scopes and fails closed; the response schema confirms `metadata.container.tags` is the correct field for the `latest` tag check. The repo owner (`dr3mro`) is a user account, so the `users` scope is the one that resolves.
+- **LOW (GitHub reviewer): possible duplicate dispatch across overlapping plan triggers.** A queued run may appear in `gh run list` after a plan reads empty history, so two overlapping plans could both dispatch. Accepted: `agent-image.yml`/`swarm-images.yml` use `concurrency: queue: max`, so builds serialize rather than race; the extra build costs minutes but cannot corrupt the images. Re-checking history immediately before dispatch was considered but adds API calls and a new race of its own; left as a documented residual risk.
+- **LOW (Python reviewer): robustness of `r.get()` / `repo_slug().split()`.** Inputs are guaranteed by `image_build_runs()` and a valid `GITHUB_REPOSITORY`; no realistic path to a non-mapping run or a slug without `/`. No change.
+- Positive review confirmations: plan permissions (`packages: read`, `actions: write`) are correct; the `agent-image.yml → swarm-images.yml → swarm.yml` chain has no cycle; package naming and the `latest`-tag jq filter are correct; `emit ready` maps to `IMAGES_READY`; no YAML syntax defect observed.
+
+Post-fix verification (executed tool evidence): `python3 -I -m unittest discover -s scripts/tests -q` → `Ran 256 tests`, `FAILED (failures=8, errors=10)` — the identical pre-existing environment failure set as the 234-test baseline, with 22 net-new passing tests; `python3 -m trace --count --coverdir /tmp/opencode/cov-fix-images-02 /tmp/opencode/cov_runner_fix_images.py` → exit 0 with zero unexecuted lines in all five new functions and the CLI branch.
