@@ -668,21 +668,23 @@ Independent modules scoped to their own paths so workers cannot collide with bac
 
 ## Improvement ideas
 
-- [ ] REFACTOR-PACKAGES-02 · Rename the remaining story-ID Java packages (`api/x_01`–`api/x_04`) to business-domain packages with no behavior change (dispatch-69).
+- [ ] REFACTOR-PACKAGES-02 · Rename the remaining story-ID Java packages (`api/x_01`–`api/x_03`) to business-domain packages with no behavior change (dispatch-69).
   - requirements: none (refactor of CODING_STYLE.md package naming)
-  - details: inventory complete, **no file moved** — dispatch-69 rule 2 requires owner approval of the mapping first. No `s_g0_*`…`s_g4_*` or `it/s_*` packages remain (earlier run: `.agent/pr-notes/REFACTOR-PACKAGES-20261119-201815.md`). Deliberately has no `scope:` so no swarm worker picks it up while it waits. Full inventory, 35-file move list, collisions, near-duplicates and every old-path reference: `.agent/pr-notes/REFACTOR-PACKAGES.md`.
-  - proposed mapping (main packages; test mirrors follow them):
+  - depends: DLV-04
+  - attempts: 0
+  - scope: apps/api, contracts
+  - details:
+    Owner decisions (2026-11-20, delegated to the orchestrator): the mapping below is approved; the mechanical update of every reference, including the files under `contracts/`, is allowed (option A); the stale Flyway path in `ChartEntryIntegrationTest` is already fixed on `main`; renaming the test database `smartclinic_s_g1_02_it` is not part of this task.
+    Why it waits: it moves about 30 files in `apps/api`, the same scope as DLV-02 to DLV-04, so it runs only after main is green again. Do not start it while any integration suite is red.
+    Mapping (main packages under `apps/api/src/main/java/com/aurevia/smartclinic`; the test mirrors under `apps/api/src/test/java/...` follow them). `api/x_04` no longer exists, so it is not part of this task.
     | Old | New |
     |---|---|
     | `api/x_01` | `api/contract` |
     | `api/x_02` | `events` |
-    | `api/x_03` | `documents` (merge; `DocumentInputs` → `ArtifactInputs`) |
-    | `api/x_04` | `api/authorization` |
-  - question (needs an owner decision before any `git mv`):
-    1. Is the mapping above approved?
-    2. dispatch-69 rule 3 says update every reference to the old paths, rule 5 says do not touch `contracts/`. Renaming `x_01`–`x_04` leaves `contracts/x_01/README.md`, `contracts/x_02/README.md`, `contracts/x_03/document-artifacts.md`, `contracts/x_04/README.md` and `contracts/x_04/generated/{client.ts,manifest.json}` naming dead FQNs, and `CommandClientGenerator --check` / `contracts/x_04/check.py` only stay green if the generator's `GENERATOR` literal is unchanged. Options: (A) allow the mechanical contract-reference update and regeneration (recommended); (B) leave `contracts/` untouched and keep the old identity strings, recording them as a BUGS.md entry; (C) exclude `x_04` from this refactor.
-    3. `it/patientchart/ChartEntryIntegrationTest.java:76` still points Flyway at `it/s_g1_03/migrations`, which no longer exists (the SQL is at `it/patientchart/migrations/V13__longitudinal_chart.sql` and `db/migrations` has no V13). Fixing it changes which migrations apply, so it needs a PostgreSQL run; none is available on this workstation. Fix now or record as a separate defect?
-    4. Optional: rename the test database `smartclinic_s_g1_02_it` (`CheckInWorklistIntegrationTest`) to a story-ID-free name?
+    | `api/x_03` | `documents` (merge into the existing package; `DocumentInputs` becomes `ArtifactInputs`) |
+    How: use `git mv` so history follows, change only `package` and `import` lines and the class rename above, and update every reference to the old paths: Java sources and tests, `contracts/x_01`, `contracts/x_02` and `contracts/x_03` (rename the folders to match the new names and fix the links to them), docs and generator or check scripts under `contracts/`. Keep each contract check green (run them), and do not change the generated output's content except for the renamed names. No behavior change: no logic edits, no test edits beyond imports and package lines, and never weaken, skip or delete a test.
+    Read first: `.agent/pr-notes/REFACTOR-PACKAGES.md` (35-file move list, name collisions, near-duplicates, every old-path reference). Check for a collision before merging a package into an existing one.
+    Done means: no `x_0` package or folder is left under `apps/api` or `contracts`, a search for the old paths finds nothing, and `mvn verify` with the integration tier, `bash apps/api/check.sh`, `db/check.sh` and the contract checks all pass. Record the commands and results in `.agent/pr-notes/<story-id>.md`.
 
 - [x] IMP-03 · Stop concurrency-cancelling swarm delivery runs. `delivery.yml` (per-ref group, `cancel-in-progress: false`), `heavy-check.yml`, `agent-image.yml` and `swarm-images.yml` now queue; `swarm.yml`, `swarm-integrator.yml`, `main-watchdog.yml` and `opencode-team.yml` already queued. README-SETUP.md updated.
   - evidence: `scripts/tests/test_workflow_concurrency.py` (red first: 5 failures) now green — parses every `.github/workflows/*.yml`, asserts each declares a non-empty group and `cancel-in-progress: false`, and locks delivery to a per-ref group. `scripts/quick-check.sh` exit 0, 125 tooling tests OK, all eight workflow YAMLs parse. GitHub Workflow reviewer (simulated) found that a SHA-scoped group would remove serialization and allow unbounded parallel full verification; that was reverted to a per-ref group. Its heavy-check SHA-attribution finding is deferred as IMP-04 / CW-IMP03-01. `check.sh`/`docs.sh` remain red on pre-existing G1 SpotBugs and Doxygen defects, unrelated to this change. Evidence source: tool commands plus simulated reviewer; no human or clinical evidence.
