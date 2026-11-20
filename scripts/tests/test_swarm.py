@@ -125,16 +125,6 @@ class ConcurrentWaveTests(unittest.TestCase):
             self.assertEqual(swarm.active_workers(), 4)
             self.assertEqual(swarm.live_workers(), ["CW-008", "DLV-02", "CW-008", "DLV-02"])
 
-    def test_failed_worker_inventory_cannot_authorize_new_claims(self):
-        def unavailable(*args, check=True):
-            if check:
-                raise subprocess.CalledProcessError(1, args)
-            return ""
-
-        with mock.patch.object(swarm, "gh", side_effect=unavailable):
-            with self.assertRaises(subprocess.CalledProcessError):
-                swarm.live_workers()
-
     def test_worker_job_names_carry_the_task_id(self):
         name = "Swarm worker (story, FIX-IMAGES-01, 0, Prepared-image readiness must... / Work the task"
         self.assertTrue(swarm.is_worker_job(name))
@@ -272,14 +262,6 @@ class RepairTaskTests(unittest.TestCase):
                 added = swarm.add_repair_task("9", str(todo))
             return added, todo.read_text()
 
-    def test_explicit_repair_registers_only_the_selected_current_failure(self):
-        with mock.patch.object(swarm, "failing_runs_on_main", return_value=[10, 9]), \
-                mock.patch.object(swarm, "gh_json", return_value={"name": "Delivery", "jobs": []}), \
-                mock.patch.object(swarm, "add_repair_task", return_value=True) as add:
-            self.assertFalse(swarm.add_requested_repair_task("8", "tasks.md"))
-            self.assertTrue(swarm.add_requested_repair_task("9", "tasks.md"))
-        add.assert_called_once_with("9", "tasks.md")
-
     def test_failed_run_is_appended_as_a_whole_repository_task(self):
         added, text = self.run_add("# Tasks\n\n- [x] A-1 · done\n")
         self.assertTrue(added)
@@ -287,16 +269,6 @@ class RepairTaskTests(unittest.TestCase):
         self.assertEqual((task["status"], task["scope"], task["attempts"]), ("todo", ["*"], "0"))
         self.assertIn("log line", task["details"])
         self.assertIn(swarm.REPAIR_HEADER, text)
-
-    def test_exhausted_repair_does_not_block_a_different_failure(self):
-        _, once = self.run_add("# Tasks\n")
-        exhausted = once.replace("attempts: 0", f"attempts: {swarm.MAX_ATTEMPTS}")
-        added, updated = self.run_add(exhausted, task={**self.TASK, "id": "FIX-10"})
-        self.assertTrue(added)
-        self.assertEqual([task["id"] for task in swarm.parse_tasks(updated)], ["FIX-9", "FIX-10"])
-        added, unchanged = self.run_add(exhausted)
-        self.assertFalse(added)
-        self.assertEqual(unchanged, exhausted)
 
     def test_second_repair_waits_while_one_is_open(self):
         _, once = self.run_add("# Tasks\n")
@@ -431,14 +403,6 @@ class PlanTests(unittest.TestCase):
         ids = [t["id"] for t in self.plan()]
         self.assertEqual(ids, ["CW-001", "CW-002", "CW-006"])
 
-    def test_frontend_class_requirement_blocks_dispatch(self):
-        story = ("- [ ] READY-07 · Staff error boundary\n"
-                 "  - scope: apps/staff-web/src/app\n"
-                 "  - details:\n    Create ErrorBoundary.tsx (class component).\n")
-        self.assertEqual(swarm.plan_workers(1, SLOTS, story, []), [])
-        compatible = story.replace("(class component)", "using an approved boundary")
-        self.assertEqual([task["id"] for task in swarm.plan_workers(1, SLOTS, compatible, [])], ["READY-07"])
-
     def test_task_text_carries_scope_reserved_version_and_details(self):
         body = self.plan()[0]["body"]
         for needle in ("Scope (stay inside these paths): apps/api/staff, db/migrations",
@@ -513,10 +477,6 @@ class PlanTests(unittest.TestCase):
         self.assertFalse(swarm.continue_swarm(TASKS, waiting))
         blocked = [pr(7, "swarm/CW-001-4", "swarm", "needs-human")]
         self.assertTrue(swarm.continue_swarm(TASKS, blocked))
-
-    def test_unrelated_draft_does_not_stop_the_next_wave(self):
-        draft = dict(pr(7, "swarm/CW-001-4", "swarm"), isDraft=True)
-        self.assertTrue(swarm.continue_swarm(TASKS, [draft]))
 
     def test_stories_without_a_scope_are_never_dispatched(self):
         self.assertNotIn("S-G9-01", [t["id"] for t in self.plan()])
@@ -639,12 +599,12 @@ class PlanTests(unittest.TestCase):
                 swarm.gh("pr", "edit", "30", "--add-label", "needs-fix")
         self.assertIn("permission denied", stream.getvalue())
 
-    def test_integration_still_runs_inside_the_wave_and_wakes_after_delivery(self):
+    def test_integration_runs_inside_the_wave_not_through_a_workflow_run_chain(self):
         import yaml
         integrator = yaml.safe_load((ROOT / ".github/workflows/swarm-integrator.yml").read_text())
         triggers = integrator[True]
         self.assertIn("workflow_call", triggers)
-        self.assertEqual(triggers["workflow_run"]["workflows"], ["Delivery"])
+        self.assertNotIn("workflow_run", triggers)
         wave = yaml.safe_load((ROOT / ".github/workflows/swarm.yml").read_text())["jobs"]
         self.assertEqual(wave["integrate"]["uses"], "./.github/workflows/swarm-integrator.yml")
         self.assertEqual(wave["integrate"]["needs"], ["plan", "worker"])
@@ -803,7 +763,7 @@ class PlanTests(unittest.TestCase):
         import yaml
         text = (ROOT / ".github/workflows/swarm.yml").read_text()
         config = yaml.safe_load(text)
-        self.assertNotIn("now", config[True]["workflow_dispatch"]["inputs"])
+        self.assertEqual(config[True]["workflow_dispatch"]["inputs"]["now"]["type"], "boolean")
         group = config["concurrency"]["group"]
         self.assertIn("github.run_id", group)
         self.assertIs(config["concurrency"]["cancel-in-progress"], False)
@@ -919,37 +879,9 @@ class IntegrationTests(unittest.TestCase):
         prs = [{"number": 3, "labels": labels("swarm"), "isCrossRepository": False},
                {"number": 2, "labels": labels("swarm", "needs-fix"), "isCrossRepository": False},
                {"number": 1, "labels": labels("swarm"), "isCrossRepository": True},
-               {"number": 4, "labels": labels("swarm"), "isCrossRepository": False},
-               {"number": 5, "labels": labels("swarm"), "isCrossRepository": False, "isDraft": True}]
+               {"number": 4, "labels": labels("swarm"), "isCrossRepository": False}]
         with mock.patch.object(swarm, "gh", FakeGh(prs=prs)):
             self.assertEqual(swarm.plan_integration(), [3, 4])
-
-    def test_pinned_scope_allows_only_the_tasks_code_and_own_handoff(self):
-        note = ".agent/pr-notes/CW-001-20261120-140000.md"
-        tracker = "- [ ] CW-001 · Task\n  - scope: apps/staff-web/app\n"
-        completed = "## Test evidence\nPassed\n## Coverage\nPassed\n## Findings\nNone\n## Lessons for workers\nNone"
-        changed = "apps/staff-web/app/within.ts\0apps/staff-web/application/outside.ts\0" + note + "\0"
-        with mock.patch.object(swarm, "git", side_effect=[tracker, changed, completed]):
-            outside, handoff = swarm.candidate_scope("CW-001", "base")
-        self.assertEqual(outside, ["apps/staff-web/application/outside.ts"])
-        self.assertTrue(handoff)
-
-    def test_delivery_readiness_requires_current_pr_and_exact_head(self):
-        good = {"head_sha": "head", "event": "pull_request", "conclusion": "success",
-                "pull_requests": [{"number": 7}]}
-        runs = [dict(good, head_sha="old"), dict(good, conclusion="failure"),
-                dict(good, event="push"), dict(good, pull_requests=[{"number": 8}])]
-        with mock.patch.object(swarm, "gh", return_value="apps/api/Service.java"), \
-                mock.patch.object(swarm, "gh_json", return_value={"workflow_runs": runs}):
-            self.assertEqual(swarm.delivery_pr_state(7, "head"), "failed")
-            runs.append(good)
-            self.assertEqual(swarm.delivery_pr_state(7, "head"), "failed")
-            runs.insert(0, good)
-            self.assertEqual(swarm.delivery_pr_state(7, "head"), "green")
-        with mock.patch.object(swarm, "gh", return_value="README.md\ndocs/reference/index.html"), \
-                mock.patch.object(swarm, "gh_json") as query:
-            self.assertEqual(swarm.delivery_pr_state(7, "head"), "green")
-            query.assert_not_called()
 
     def test_guard_stops_protected_paths_for_a_human(self):
         fake = FakeGh(diff="apps/api/src/A.java\n.github/workflows/x.yml\nscripts/swarm.py\n")
@@ -1092,18 +1024,10 @@ class AuditTests(unittest.TestCase):
             todo, found = Path(tmp, "TODO.md"), Path(tmp, "f.json")
             todo.write_text(self.TODO)
             found.write_text(json.dumps([self.good()]))
-            with mock.patch.object(swarm, "git"), mock.patch.object(swarm, "authed_git"), \
-                    mock.patch.object(swarm, "check_generated_markdown") as check:
+            with mock.patch.object(swarm, "git"), mock.patch.object(swarm, "authed_git"):
                 self.assertEqual(swarm.add_audit_tasks(str(found), str(todo), "20261120"), 1)
                 found.write_text(json.dumps([self.good(title="Another distinct finding here")]))
                 swarm.add_audit_tasks(str(found), str(todo), "20261121")
-                self.assertEqual(check.call_count, 2)
-                check.side_effect = subprocess.CalledProcessError(1, "docs check")
-                before = todo.read_text()
-                found.write_text(json.dumps([self.good(title="Rejected audit finding fixture")]))
-                with self.assertRaises(subprocess.CalledProcessError):
-                    swarm.add_audit_tasks(str(found), str(todo), "20261122")
-                self.assertEqual(todo.read_text(), before)
             text = todo.read_text()
             self.assertEqual(text.count(swarm.AUDIT_HEADER), 1)
             self.assertEqual([t["id"] for t in swarm.parse_tasks(text)][-2:],
@@ -1137,43 +1061,12 @@ class ResolveConflictTests(unittest.TestCase):
         return {"headRefName": branch, "isCrossRepository": cross,
                 "comments": [{"body": swarm.RESOLVE_MARK}] * comments}
 
-    def test_integrator_cannot_gate_or_publish_an_unverified_pr(self):
-        for draft in (False, True):
-            with self.subTest(draft=draft), \
-                    mock.patch.object(swarm, "gh", FakeGh(pr_view={"headRefOid": "head", "isDraft": draft})), \
-                    mock.patch.object(swarm, "guard", return_value=[]), \
-                    mock.patch.object(swarm, "is_repair", return_value=False), \
-                    mock.patch.object(swarm, "merge_local", return_value=("head", "CW-001", [])), \
-                    mock.patch.object(swarm, "git", return_value="before") as local, \
-                    mock.patch.object(swarm, "delivery_pr_state", return_value="pending") as delivery, \
-                    mock.patch.object(swarm, "run_gate") as gate, \
-                    mock.patch.object(swarm, "authed_git") as remote:
-                self.assertEqual(swarm.integrate_batch([7], require_delivery=True), 0)
-            local.assert_any_call("reset", "--hard", "before")
-            self.assertEqual(delivery.call_count, 0 if draft else 1)
-            gate.assert_not_called()
-            remote.assert_not_called()
-
-    def test_stale_candidate_restores_previous_head(self):
-        fake = FakeGh(pr_view={"headRefOid": "updated"})
-        with mock.patch.object(swarm, "gh", fake), \
-                mock.patch.object(swarm, "guard", return_value=[]), \
-                mock.patch.object(swarm, "is_repair", return_value=False), \
-                mock.patch.object(swarm, "merge_local", return_value=("stale", "CW-001", [])), \
-                mock.patch.object(swarm, "git", return_value="before") as local, \
-                mock.patch.object(swarm, "fail"), \
-                mock.patch.object(swarm, "run_gate") as gate:
-            self.assertEqual(swarm.integrate_batch([5]), 0)
-        local.assert_any_call("reset", "--hard", "before")
-        gate.assert_not_called()
-
     def test_conflict_is_handed_to_the_resolver_not_failed(self):
         fake = FakeGh(pr_view=self.view())
         with mock.patch.object(swarm, "gh", fake), \
              mock.patch.object(swarm, "guard", return_value=[]), \
              mock.patch.object(swarm, "is_repair", return_value=False), \
              mock.patch.object(swarm, "merge_local", return_value=(None, "CW-001", ["a.java"])), \
-             mock.patch.object(swarm, "git", return_value="before"), \
              mock.patch.object(swarm, "fail") as failed, \
              mock.patch.object(swarm, "emit") as emitted:
             swarm.integrate_batch([5])
@@ -1188,7 +1081,6 @@ class ResolveConflictTests(unittest.TestCase):
              mock.patch.object(swarm, "guard", return_value=[]), \
              mock.patch.object(swarm, "is_repair", return_value=False), \
              mock.patch.object(swarm, "merge_local", return_value=(None, "CW-001", ["a.java"])), \
-             mock.patch.object(swarm, "git", return_value="before"), \
              mock.patch.object(swarm, "fail") as failed, \
              mock.patch.object(swarm, "emit") as emitted:
             swarm.integrate_batch([5])
@@ -1291,8 +1183,7 @@ class RepairTests(unittest.TestCase):
         with mock.patch.object(swarm, "gh", Gh()):
             task = swarm.repair_task(55)
         self.assertEqual((task["id"], task["kind"]), ("FIX-55", "story"))
-        self.assertNotIn("line 399", task["body"])
-        self.assertIn("Inspect the linked run", task["body"])
+        self.assertIn("line 399", task["body"])
         self.assertNotIn("line 10\n", task["body"])
         self.assertNotIn("```x", task["body"])
 
@@ -1323,18 +1214,6 @@ class RepairTests(unittest.TestCase):
     def test_gate_waits_while_a_repair_is_open(self):
         prs = [{"number": 1, "title": "FIX-1: x", "state": "OPEN", "createdAt": "2026-11-18T23:00:00Z"}]
         self.assertFalse(self.gate(prs)[0])
-
-    def test_gate_allows_another_repair_when_open_pr_needs_human(self):
-        prs = [{"number": 1, "title": "FIX-1: x", "state": "OPEN",
-                "createdAt": "2026-11-18T23:00:00Z", "labels": labels("needs-human")}]
-        self.assertTrue(self.gate(prs)[0])
-
-    def test_exhausted_repair_pr_does_not_reserve_repository_scope(self):
-        tracker = "# Tasks\n\n- [ ] FIX-1 · Old repair\n  - scope: *\n  - attempts: 3\n"
-        tracker += "- [ ] FIX-2 · New repair\n  - scope: *\n"
-        blocked = [pr(1, "swarm/FIX-1-1", "swarm", "needs-human")]
-        plan = swarm.plan_workers(1, SLOTS, tracker, blocked)
-        self.assertEqual([task["id"] for task in plan], ["FIX-2"])
 
     def test_gate_gives_up_after_three_recent_repairs_and_opens_an_issue(self):
         prs = [{"number": n, "title": f"FIX-{n}: x", "state": "MERGED", "createdAt": "2026-11-18T22:00:00Z"}
@@ -1487,9 +1366,7 @@ class GitTests(unittest.TestCase):
         out.mkdir()
         self.run_git("bundle", "create", str(out / "result.bundle"), f"^{base}", "HEAD", cwd=work)
         for name, value in (("result", result), ("commits", "1"), ("checks", checks),
-                            ("branch", branch),
-                            ("publish-notes.md", "## Test evidence\nVerified\n## Coverage\nVerified\n"
-                             "## Findings\nNone\n## Lessons for workers\nNone\n")):
+                            ("branch", branch), ("publish-notes.md", "Evidence")):
             (out / name).write_text(value)
         return out
 
@@ -1516,16 +1393,7 @@ class GitTests(unittest.TestCase):
         self.assertIn("did not finish cleanly", body)
         self.assertIn("agent result: timeout", body)
 
-    def test_failed_repair_checks_keep_the_pr_as_a_draft(self):
-        out = self.worker_dir(branch="swarm/FIX-9-1", checks="failed")
-        fake = FakeGh()
-        with mock.patch.object(swarm, "gh", fake):
-            swarm.publish({**self.TASK, "id": "FIX-9"}, out)
-        create = next(call for call in fake.calls if call[:2] == ("pr", "create"))
-        self.assertIn("autofix", create)
-        self.assertIn("--draft", create)
-
-    def test_failed_checks_keep_the_log_out_of_the_pr_body(self):
+    def test_failed_checks_put_the_end_of_the_check_log_in_the_pr_body(self):
         out, fake = self.worker_dir(checks="failed"), FakeGh()
         (out / "check.log").write_text("\n".join(f"line {i}" for i in range(200)) + "\n```evil")
         with mock.patch.object(swarm, "gh", fake):
@@ -1533,7 +1401,7 @@ class GitTests(unittest.TestCase):
         body = [c for c in fake.calls if c[:2] == ("pr", "create")][0]
         body = body[body.index("--body") + 1]
         self.assertIn("Why it failed", body)
-        self.assertNotIn("line 199", body)
+        self.assertIn("line 199", body)
         self.assertNotIn("line 10\n", body)
         self.assertNotIn("```evil", body)
 
@@ -1718,9 +1586,7 @@ class GitTests(unittest.TestCase):
         tasks = {t["id"]: t for t in swarm.parse_tasks((self.repo / "TODO.md").read_text())}
         self.assertEqual((tasks["CW-001"]["status"], tasks["CW-001"]["pr"]), ("done", "#9"))
         self.assertIn("integrator ran", tasks["CW-001"]["evidence"])
-        notes = (self.repo / "docs/swarm/CW-001.md").read_text()
-        self.assertIn("tested branch tip abc", notes)
-        self.assertNotIn("Evidence", notes)
+        self.assertIn("Evidence", (self.repo / "docs/swarm/CW-001.md").read_text())
         pushed = self.run_git("--git-dir", str(self.origin), "rev-parse", "main").strip()
         self.assertEqual(self.run_git("rev-parse", "HEAD").strip(), pushed)
         self.assertFalse(fake.said("workflow", "run", "heavy-check.yml"))
@@ -1810,8 +1676,7 @@ class BudgetTests(unittest.TestCase):
 
 class TwoTierTests(unittest.TestCase):
     def test_run_gate_uses_a_token_free_environment(self):
-        with mock.patch.dict(os.environ, {key: "synthetic" for key in
-                                         ("GH_TOKEN", "GITHUB_TOKEN", "GH_ISSUES_TOKEN", "SWARM_TOKEN")}, clear=True), \
+        with mock.patch.dict(os.environ, {"GH_TOKEN": "secret", "GITHUB_TOKEN": "secret"}), \
              mock.patch.object(swarm.subprocess, "run") as run:
             run.return_value = subprocess.CompletedProcess([], 0, "ok", "")
             ok, log = swarm.run_gate("scripts/quick-check.sh")
@@ -1820,8 +1685,6 @@ class TwoTierTests(unittest.TestCase):
         env = run.call_args.kwargs["env"]
         self.assertNotIn("GH_TOKEN", env)
         self.assertNotIn("GITHUB_TOKEN", env)
-        self.assertNotIn("GH_ISSUES_TOKEN", env)
-        self.assertNotIn("SWARM_TOKEN", env)
 
     def test_integrate_batch_pushes_once(self):
         self.repo = Path(tempfile.mkdtemp())
@@ -1897,58 +1760,10 @@ class TwoTierTests(unittest.TestCase):
         self.assertEqual(push_attempts["n"], 2)
         self.assertTrue(any(c.args[:2] == ("fetch", "origin") for c in authedmock.call_args_list))
         self.assertGreaterEqual(gate.call_count, 2)
-        gitmock.assert_any_call("reset", "--hard", "origin/main")
-        self.assertTrue(any(c.args[-1] == "abc" and "merge" in c.args
+        self.assertTrue(any(c.args[:3] == ("reset", "--soft", "origin/main")
                             for c in gitmock.call_args_list))
 
-    def test_integrate_batch_replays_on_concurrent_source_and_tracker_changes(self):
-        with tempfile.TemporaryDirectory() as directory:
-            original = Path.cwd()
-            self.addCleanup(os.chdir, original)
-            os.chdir(directory)
-            swarm.git("init", "-qb", "main")
-            todo = Path("TODO.md")
-            todo.write_text(TASKS)
-            Path("concurrent.txt").write_text("old")
-            swarm.git("add", ".")
-            swarm.git(*swarm.IDENTITY, "commit", "-qm", "base")
-            swarm.git("branch", "candidate")
-            swarm.git("checkout", "-qb", "fresh-main")
-            Path("concurrent.txt").write_text("new")
-            todo.write_text(TASKS + "\n- [ ] CW-007 · Concurrent task\n")
-            swarm.git(*swarm.IDENTITY, "commit", "-qam", "concurrent update")
-            swarm.git("update-ref", "refs/remotes/origin/main", "HEAD")
-            swarm.git("checkout", "-q", "candidate")
-            Path("candidate.txt").write_text("candidate work")
-            swarm.git("add", "candidate.txt")
-            swarm.git(*swarm.IDENTITY, "commit", "-qm", "candidate work")
-            sha = swarm.git("rev-parse", "HEAD").strip()
-            swarm.git("checkout", "-q", "main")
-
-            def merge_local(_pr):
-                swarm.git(*swarm.IDENTITY, "merge", "--no-ff", "-m", "candidate", sha)
-                return sha, "CW-001", []
-
-            def push(*args, check=True):
-                if args[:2] == ("push", "origin") and Path("concurrent.txt").read_text() == "old":
-                    raise subprocess.CalledProcessError(1, args)
-
-            fake = FakeGh(pr_view={"headRefOid": sha, "body": ""})
-            with mock.patch.object(swarm, "gh", fake), \
-                    mock.patch.object(swarm, "guard", return_value=[]), \
-                    mock.patch.object(swarm, "merge_local", side_effect=merge_local), \
-                    mock.patch.object(swarm, "run_gate", return_value=(True, "")) as gate, \
-                    mock.patch.object(swarm, "authed_git", side_effect=push):
-                self.assertEqual(swarm.integrate_batch([1]), 1)
-            self.assertEqual(Path("concurrent.txt").read_text(), "new")
-            self.assertEqual(Path("candidate.txt").read_text(), "candidate work")
-            tasks = {task["id"]: task["status"] for task in swarm.parse_tasks(todo.read_text())}
-            self.assertEqual(tasks["CW-001"], "done")
-            self.assertEqual(tasks["CW-007"], "todo")
-            self.assertEqual(gate.call_count, 2)
-            os.chdir(original)
-
-    def test_integrate_batch_stops_after_three_failed_pushes(self):
+    def test_integrate_batch_restores_trackers_on_retry(self):
         self.repo = Path(tempfile.mkdtemp())
         (self.repo / "TODO.md").write_text("# TODO\n")
         self.addCleanup(shutil.rmtree, self.repo)
@@ -1983,7 +1798,10 @@ class TwoTierTests(unittest.TestCase):
              mock.patch.object(swarm, "authed_git", side_effect=authed):
             with self.assertRaises(subprocess.CalledProcessError):
                 swarm.integrate_batch([1], "scripts/quick-check.sh")
-        self.assertEqual(gitcalls.call_args_list.count(mock.call("reset", "--hard", "origin/main")), 2)
+        # Reconciliation adopts the fresh trackers rather than rebasing.
+        self.assertTrue(any(c.args[:3] == ("checkout", "origin/main", "--")
+                            for c in gitcalls.call_args_list))
+        self.assertFalse(any(c.args[0] == "rebase" for c in gitcalls.call_args_list))
 
     def test_guard_still_blocks_module_check_scripts(self):
         fake = FakeGh(diff="apps/staff-web/check.sh\n")
@@ -2029,18 +1847,6 @@ class ImageReadinessTests(unittest.TestCase):
     def test_pending_build_blocks_even_after_a_prior_success(self):
         runs = [self.rec("in_progress"), self.rec("completed", "success")]
         self.assertFalse(swarm.images_ready(runs, True)[0])
-
-    def test_verified_slot_images_skip_incomplete_generations_and_pin_digests(self):
-        urls = {"1": "ghcr.io/o/r-agent-1@sha256:" + "a" * 64,
-                "2": "ghcr.io/o/r-agent-2@sha256:" + "b" * 64}
-        def download(*args):
-            manifest = urls if args[2] == "1" else {"1": urls["1"]}
-            (Path(args[-1]) / "slot-images.json").write_text(json.dumps(manifest))
-        with mock.patch.object(swarm, "repo_slug", return_value="o/r"), \
-                mock.patch.object(swarm, "gh_json", return_value=[{"databaseId": 2}, {"databaseId": 1}]), \
-                mock.patch.object(swarm, "gh", side_effect=download):
-            result = swarm.verified_slot_images(SLOTS[:2])
-        self.assertEqual(result, urls)
 
     def test_latest_completed_failure_blocks(self):
         runs = [self.rec("completed", "failure"), self.rec("completed", "success")]

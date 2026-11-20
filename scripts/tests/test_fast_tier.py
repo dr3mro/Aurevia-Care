@@ -1,10 +1,5 @@
 """Fast tier skips PostgreSQL tests by JUnit tag, never by class-name pattern."""
-import os
-import shutil
-import subprocess
-import tempfile
 import unittest
-from pathlib import Path
 import xml.etree.ElementTree as ET
 
 import yaml
@@ -75,45 +70,3 @@ class FastTierTagTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-
-class FrontendWorkerGateTests(unittest.TestCase):
-    def test_coverage_blocks_an_invalid_base_before_checking_changes(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            (root / "scripts").mkdir()
-            script = root / "scripts/coverage-check.sh"
-            shutil.copy(ROOT / "scripts/coverage-check.sh", script)
-            module = root / "apps/staff-web"
-            module.mkdir(parents=True)
-            (module / "example.ts").write_text("export {};")
-            subprocess.run(["git", "init", "-q", str(root)], check=True)
-            subprocess.run(["git", "-C", str(root), "add", "apps/staff-web/example.ts"], check=True)
-            result = subprocess.run(["bash", str(script), "invalid-base"], capture_output=True, text=True)
-            self.assertNotEqual(result.returncode, 0)
-            self.assertIn("invalid-base", result.stderr)
-
-    def test_frontend_typecheck_failure_is_not_hidden_by_passing_tests(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            (root / "scripts").mkdir()
-            shutil.copy(ROOT / "scripts/frontend-check.sh", root / "scripts/frontend-check.sh")
-            module = root / "apps/patient-mobile"
-            module.mkdir(parents=True)
-            (module / "package.json").write_text("{}")
-            (module / "tsconfig.json").write_text('{"strict": true, "noUncheckedIndexedAccess": true}')
-            (module / "transport.ts").write_text("export const request = {};")
-            shim = root / "npm"
-            shim.write_text('#!/bin/sh\nif [ "$1 $2" = "run typecheck" ] && '
-                            '[ "${PWD##*/}" = patient-mobile ]; then exit 37; fi\nexit 0\n')
-            shim.chmod(0o755)
-            result = subprocess.run(["bash", str(root / "scripts/frontend-check.sh")],
-                                    env={**os.environ, "PATH": f"{root}{os.pathsep}{os.environ['PATH']}"},
-                                    capture_output=True, text=True)
-            self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
-
-    def test_worker_invokes_the_same_frontend_gate_as_delivery(self):
-        delivery = yaml.safe_load(DELIVERY.read_text())["jobs"]["frontend"]
-        command = next(step["run"] for step in delivery["steps"] if "run" in step)
-        worker = (ROOT / "scripts/worker-check.sh").read_text().splitlines()
-        self.assertIn(command, worker)

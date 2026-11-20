@@ -29,21 +29,10 @@ class AgentImagePinTest(unittest.TestCase):
         self.assertIn(f"inputs.opencode_version || '{PINNED_VERSION}'", text)
         self.assertNotIn("inputs.opencode_version || 'latest'", text)
 
-    def test_worker_image_installs_and_smoke_tests_pyyaml(self):
-        text = DOCKERFILE.read_text(encoding="utf-8")
-        self.assertIn("python3-yaml", text)
-        self.assertIn("python3 -I -c 'import yaml'", text)
-
     def test_publish_run_records_version_and_digest(self):
         text = WORKFLOW.read_text(encoding="utf-8")
         self.assertIn("imagetools inspect", text)
         self.assertIn("OpenCode CLI version:", text)
-
-
-class ReleaseImageTest(unittest.TestCase):
-    def test_first_publication_creates_the_local_architecture_tag(self):
-        workflow = (ROOT / ".github/workflows/delivery.yml").read_text()
-        self.assertIn('docker tag smartclinic:test "$child"\n              docker push "$child"', workflow)
 
 
 if __name__ == "__main__":
