@@ -25,13 +25,21 @@ mkdir -p "$HOME"
 git config --global --add safe.directory "$PWD"
 out=.agent
 mkdir -p "$out"
-# Each story writes its notes to its own committed file,
-# .agent/pr-notes/<story-id>.md, so parallel workers never edit the same file. Fix runs keep the scratch file.
+# Each task writes its notes to its own committed file under .agent/pr-notes/, named
+# with the task id and a UTC timestamp, so no two runs (parallel workers, a retry or a
+# fix pass) ever touch the same path and pull requests never conflict. The stamp is
+# fixed once per job in .agent/notes-stamp (ignored) so every work segment of one run
+# keeps writing to the same file. Nothing is ever written to the shared
+# .agent/pr-notes.md: that path is only the ignored copy the publish job reads.
+mkdir -p "$out/pr-notes"
+[[ -s "$out/notes-stamp" ]] || date -u +%Y%m%d-%H%M%S > "$out/notes-stamp"
+notes_stamp=$(<"$out/notes-stamp")
 if [[ "${MODE:-story}" != fix && -n "${STORY_ID:-}" ]]; then
-  notes_file=".agent/pr-notes/$(printf '%s' "$STORY_ID" | tr -c 'A-Za-z0-9._-' '-').md"
+  notes_name=$(printf '%s' "$STORY_ID" | tr -c 'A-Za-z0-9._-' '-')
 else
-  notes_file=".agent/pr-notes/fix-$(date -u +%Y%m%d-%H%M%S).md"
+  notes_name=fix
 fi
+notes_file=".agent/pr-notes/${notes_name}-${notes_stamp}.md"
 REVIEWERS=${REVIEWERS:-"smartclinic-qa-reviewer smartclinic-devsecops smartclinic-physician-reviewer"}
 
 emit() { # name value: expose a step output when running in Actions
