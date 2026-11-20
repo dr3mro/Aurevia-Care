@@ -170,14 +170,16 @@ public class ChartService {
                 failure.set(new ApiException(404, "NOT_FOUND", "chart entry not found"));
                 return null;
             }
-            if (existing.verification() == VerificationState.VERIFIED) {
-                audit.append(context, VERIFY_ACTION, VERIFY_ACTION, RESOURCE, SCOPE, id, "CONFLICT");
-                failure.set(new ApiException(409, "ALREADY_VERIFIED", "entry is already verified"));
-                return null;
-            }
+            // A stale precondition takes precedence over the already-verified state:
+            // a concurrent verifier that read version N reports 412, not 409 (ARC-04).
             if (existing.version() != expected) {
                 audit.append(context, VERIFY_ACTION, VERIFY_ACTION, RESOURCE, SCOPE, id, "CONFLICT");
                 failure.set(new ApiException(412, "STALE_VERSION", "entry version has changed"));
+                return null;
+            }
+            if (existing.verification() == VerificationState.VERIFIED) {
+                audit.append(context, VERIFY_ACTION, VERIFY_ACTION, RESOURCE, SCOPE, id, "CONFLICT");
+                failure.set(new ApiException(409, "ALREADY_VERIFIED", "entry is already verified"));
                 return null;
             }
             Instant at = clock.instant();
