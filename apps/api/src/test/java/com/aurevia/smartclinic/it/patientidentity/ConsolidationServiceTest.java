@@ -17,6 +17,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -36,9 +37,12 @@ import org.springframework.transaction.support.DefaultTransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import tools.jackson.databind.ObjectMapper;
+
 import com.aurevia.smartclinic.api.ApiException;
 import com.aurevia.smartclinic.patient.consolidation.Consolidation;
 import com.aurevia.smartclinic.patient.consolidation.ConsolidationController;
+import com.aurevia.smartclinic.patient.consolidation.ConsolidationController.ConsolidationApprovalRequest;
 import com.aurevia.smartclinic.patient.consolidation.ConsolidationService;
 import com.aurevia.smartclinic.patient.consolidation.DuplicatePolicy;
 import com.aurevia.smartclinic.patient.consolidation.DuplicateRepository;
@@ -115,6 +119,11 @@ class ConsolidationServiceTest {
     private void authorized(String subject, String... roles) {
         when(repository.hasActiveMembership(subject)).thenReturn(true);
         when(repository.activeRoles(subject)).thenReturn(List.of(roles));
+    }
+
+    /** Synthetic issuer-scoped identifiers confirmed as one person (IAM-04). */
+    private java.util.List<String> validConfirmation() {
+        return List.of("MRN-1@CLINIC-A", "MRN-2@CLINIC-B");
     }
 
     private Patient survivor() {
@@ -312,23 +321,23 @@ class ConsolidationServiceTest {
 
     @Test
     void consolidateValidatesInputsAndAuthorization() {
-        assertEquals(422, assertThrows(ApiException.class, () -> service.consolidate("bad", 1, "reason")).status());
-        assertEquals(422, assertThrows(ApiException.class, () -> service.consolidate(REVIEW, 1, "!")).status());
+        assertEquals(422, assertThrows(ApiException.class, () -> service.consolidate("bad", 1, "reason", validConfirmation(), null)).status());
+        assertEquals(422, assertThrows(ApiException.class, () -> service.consolidate(REVIEW, 1, "!", validConfirmation(), null)).status());
         when(repository.hasActiveMembership(REVIEWER_A)).thenReturn(false);
-        assertEquals(403, assertThrows(ApiException.class, () -> service.consolidate(REVIEW, 1, "reason")).status());
+        assertEquals(403, assertThrows(ApiException.class, () -> service.consolidate(REVIEW, 1, "reason", validConfirmation(), null)).status());
         when(repository.hasActiveMembership(REVIEWER_A)).thenReturn(true);
         when(repository.activeRoles(REVIEWER_A)).thenReturn(List.of("reception"));
-        assertEquals(403, assertThrows(ApiException.class, () -> service.consolidate(REVIEW, 1, "reason")).status());
+        assertEquals(403, assertThrows(ApiException.class, () -> service.consolidate(REVIEW, 1, "reason", validConfirmation(), null)).status());
     }
 
     @Test
     void consolidateEnforcesSecondReviewerAndStaleVersion() {
         authorized(REVIEWER_A, "tenant_admin");
         when(repository.findReviewById(REVIEW)).thenReturn(Optional.empty());
-        assertEquals(404, assertThrows(ApiException.class, () -> service.consolidate(REVIEW, 2, "reason")).status());
+        assertEquals(404, assertThrows(ApiException.class, () -> service.consolidate(REVIEW, 2, "reason", validConfirmation(), null)).status());
 
         when(repository.findReviewById(REVIEW)).thenReturn(Optional.of(openReview()));
-        assertEquals(409, assertThrows(ApiException.class, () -> service.consolidate(REVIEW, 2, "reason")).status());
+        assertEquals(409, assertThrows(ApiException.class, () -> service.consolidate(REVIEW, 2, "reason", validConfirmation(), null)).status());
         verify(repository).appendAudit(TenantContext.current(), "CONSOLIDATE", REVIEW, "DENIED");
 
         bind(REVIEWER_B);
@@ -337,7 +346,7 @@ class ConsolidationServiceTest {
         when(repository.findPatient(SURVIVOR)).thenReturn(Optional.of(survivor()));
         when(repository.findPatient(DUPLICATE)).thenReturn(Optional.of(duplicate()));
         when(repository.lockPair(SURVIVOR, DUPLICATE)).thenReturn(2);
-        assertEquals(412, assertThrows(ApiException.class, () -> service.consolidate(REVIEW, 1, "reason")).status());
+        assertEquals(412, assertThrows(ApiException.class, () -> service.consolidate(REVIEW, 1, "reason", validConfirmation(), null)).status());
         verify(repository).appendAudit(TenantContext.current(), "CONSOLIDATE", REVIEW, "STALE");
     }
 
@@ -351,7 +360,7 @@ class ConsolidationServiceTest {
         when(repository.findPatient(DUPLICATE)).thenReturn(Optional.of(duplicate()));
         when(repository.lockPair(SURVIVOR, DUPLICATE)).thenReturn(2);
         when(repository.hasUnresolvedBlockers(DUPLICATE)).thenReturn(1);
-        assertEquals(409, assertThrows(ApiException.class, () -> service.consolidate(REVIEW, 2, "reason")).status());
+        assertEquals(409, assertThrows(ApiException.class, () -> service.consolidate(REVIEW, 2, "reason", validConfirmation(), null)).status());
         verify(repository, never()).insertAssociation(anyString(), anyString(), anyString(), anyInt(), anyString(),
                 anyString(), anyString(), anyString(), anyString(), anyString(), anyString());
         verify(repository, never()).insertConsolidation(anyString(), anyString(), anyString(), anyString(),
@@ -367,15 +376,15 @@ class ConsolidationServiceTest {
         Consolidation done = new Consolidation("cons-1", REVIEW, SURVIVOR, DUPLICATE, 1,
                 "CONSOLIDATED", REVIEWER_A, REVIEWER_A, "duplicate", null);
         when(repository.findCurrentConsolidation(REVIEW)).thenReturn(Optional.of(done));
-        assertEquals(409, assertThrows(ApiException.class, () -> service.consolidate(REVIEW, 2, "reason")).status());
+        assertEquals(409, assertThrows(ApiException.class, () -> service.consolidate(REVIEW, 2, "reason", validConfirmation(), null)).status());
 
         when(repository.findCurrentConsolidation(REVIEW)).thenReturn(Optional.empty());
         when(repository.lockPair(SURVIVOR, DUPLICATE)).thenReturn(2);
         when(repository.findPatient(SURVIVOR)).thenReturn(Optional.empty());
-        assertEquals(404, assertThrows(ApiException.class, () -> service.consolidate(REVIEW, 2, "reason")).status());
+        assertEquals(404, assertThrows(ApiException.class, () -> service.consolidate(REVIEW, 2, "reason", validConfirmation(), null)).status());
         when(repository.findPatient(SURVIVOR)).thenReturn(Optional.of(survivor()));
         when(repository.findPatient(DUPLICATE)).thenReturn(Optional.empty());
-        assertEquals(404, assertThrows(ApiException.class, () -> service.consolidate(REVIEW, 2, "reason")).status());
+        assertEquals(404, assertThrows(ApiException.class, () -> service.consolidate(REVIEW, 2, "reason", validConfirmation(), null)).status());
     }
 
     @Test
@@ -394,7 +403,7 @@ class ConsolidationServiceTest {
                 REVIEWER_B, REVIEWER_A, "reason", null)).thenReturn(1);
         when(repository.newId()).thenReturn("assoc-1", "cons-1");
 
-        Consolidation result = service.consolidate(REVIEW, 2, "reason");
+        Consolidation result = service.consolidate(REVIEW, 2, "reason", validConfirmation(), null);
         assertEquals("cons-1", result.id());
         assertEquals("CONSOLIDATED", result.status());
         assertEquals(REVIEWER_B, result.approverSubject());
@@ -413,7 +422,7 @@ class ConsolidationServiceTest {
         when(repository.findPatient(SURVIVOR)).thenReturn(Optional.of(survivor()));
         when(repository.findPatient(DUPLICATE)).thenReturn(Optional.of(duplicate()));
         when(repository.lockPair(SURVIVOR, DUPLICATE)).thenReturn(1);
-        assertEquals(409, assertThrows(ApiException.class, () -> service.consolidate(REVIEW, 2, "reason")).status());
+        assertEquals(409, assertThrows(ApiException.class, () -> service.consolidate(REVIEW, 2, "reason", validConfirmation(), null)).status());
         verify(repository, never()).insertConsolidation(anyString(), anyString(), anyString(), anyString(),
                 anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), anyString());
     }
@@ -430,7 +439,7 @@ class ConsolidationServiceTest {
         when(repository.insertConsolidation(anyString(), anyString(), anyString(), anyString(), anyString(),
                 anyString(), anyString(), anyString(), anyString(), anyString(), any()))
                 .thenThrow(new DuplicateKeyException("concurrent"));
-        assertEquals(409, assertThrows(ApiException.class, () -> service.consolidate(REVIEW, 2, "reason")).status());
+        assertEquals(409, assertThrows(ApiException.class, () -> service.consolidate(REVIEW, 2, "reason", validConfirmation(), null)).status());
     }
 
     @Test
@@ -448,7 +457,7 @@ class ConsolidationServiceTest {
                 .thenThrow(new DuplicateKeyException("dup"));
 
         ApiException thrown = assertThrows(ApiException.class,
-                () -> realTransactionService().consolidate(REVIEW, 2, "reason"));
+                () -> realTransactionService().consolidate(REVIEW, 2, "reason", validConfirmation(), null));
         assertEquals(409, thrown.status());
     }
 
@@ -504,7 +513,7 @@ class ConsolidationServiceTest {
         when(repository.newId()).thenReturn("assoc-1", "cons-1");
 
         ApiException thrown = assertThrows(ApiException.class,
-                () -> service.consolidate(REVIEW, 2, "reason"));
+                () -> service.consolidate(REVIEW, 2, "reason", validConfirmation(), null));
         assertEquals(409, thrown.status());
         verify(repository, never()).insertAssociation(anyString(), anyString(), anyString(), anyInt(),
                 anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), anyString());
@@ -530,7 +539,7 @@ class ConsolidationServiceTest {
         when(repository.newId()).thenReturn("assoc-1", "cons-1");
 
         ApiException thrown = assertThrows(ApiException.class,
-                () -> service.consolidate(REVIEW, 2, "reason"));
+                () -> service.consolidate(REVIEW, 2, "reason", validConfirmation(), null));
         assertEquals(409, thrown.status());
         verify(repository, never()).insertAssociation(anyString(), anyString(), anyString(), anyInt(),
                 anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), anyString());
@@ -555,13 +564,165 @@ class ConsolidationServiceTest {
         when(repository.newId()).thenReturn("assoc-1", "cons-1");
 
         ApiException thrown = assertThrows(ApiException.class,
-                () -> service.consolidate(REVIEW, 2, "reason"));
+                () -> service.consolidate(REVIEW, 2, "reason", validConfirmation(), null));
         assertEquals(409, thrown.status());
         verify(repository, never()).insertAssociation(anyString(), anyString(), anyString(), anyInt(),
                 anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), anyString());
         verify(repository, never()).insertConsolidation(anyString(), anyString(), anyString(), anyString(),
                 anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), anyString());
         verify(repository).appendAudit(TenantContext.current(), "CONSOLIDATE", REVIEW, "CONFLICT");
+    }
+
+    private void stubConsolidationReady() {
+        bind(REVIEWER_B);
+        authorized(REVIEWER_B, "tenant_admin");
+        when(repository.findReviewById(REVIEW)).thenReturn(Optional.of(openReview()));
+        when(repository.findCurrentConsolidation(REVIEW)).thenReturn(Optional.empty());
+        when(repository.findPatient(SURVIVOR)).thenReturn(Optional.of(survivor()));
+        when(repository.findPatient(DUPLICATE)).thenReturn(Optional.of(duplicate()));
+        when(repository.lockPair(SURVIVOR, DUPLICATE)).thenReturn(2);
+        when(repository.hasUnresolvedBlockers(DUPLICATE)).thenReturn(0);
+    }
+
+    @Test
+    void consolidateRequiresTwoIdentifiersConfirmedFromBothRecords() {
+        stubConsolidationReady();
+        ApiException thrown = assertThrows(ApiException.class,
+                () -> service.consolidate(REVIEW, 2, "reason", List.of("MRN-1@CLINIC-A"), null));
+        assertEquals(422, thrown.status());
+        assertEquals("IDENTIFIER_CONFIRMATION_REQUIRED", thrown.code());
+        verify(repository, never()).insertAssociation(anyString(), anyString(), anyString(), anyInt(),
+                anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), anyString());
+        verify(repository).appendAudit(TenantContext.current(), "CONSOLIDATION_IDENTIFIER_CONFIRM", REVIEW, "DENIED");
+    }
+
+    @Test
+    void consolidateRejectsRepeatedConfirmedIdentifier() {
+        stubConsolidationReady();
+        ApiException thrown = assertThrows(ApiException.class,
+                () -> service.consolidate(REVIEW, 2, "reason",
+                        List.of("MRN-1@CLINIC-A", "MRN-1@CLINIC-A"), null));
+        assertEquals(422, thrown.status());
+        assertEquals("IDENTIFIER_CONFIRMATION_REQUIRED", thrown.code());
+    }
+
+    @Test
+    void consolidateRejectsMalformedConfirmedIdentifier() {
+        stubConsolidationReady();
+        ApiException thrown = assertThrows(ApiException.class,
+                () -> service.consolidate(REVIEW, 2, "reason",
+                        List.of("MRN-1@CLINIC-A", "not an identifier"), null));
+        assertEquals(422, thrown.status());
+        assertEquals("INVALID_IDENTIFIER_CONFIRMATION", thrown.code());
+    }
+
+    @Test
+    void consolidateRejectsConfirmedIdentifierAbsentFromBothRecords() {
+        stubConsolidationReady();
+        ApiException thrown = assertThrows(ApiException.class,
+                () -> service.consolidate(REVIEW, 2, "reason",
+                        List.of("OTHER-1@CLINIC-Z", "OTHER-2@CLINIC-Y"), null));
+        assertEquals(422, thrown.status());
+        assertEquals("IDENTIFIER_MISMATCH", thrown.code());
+        verify(repository, never()).insertConsolidation(anyString(), anyString(), anyString(), anyString(),
+                anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), anyString());
+    }
+
+    @Test
+    void consolidateRejectsConfirmationCombinedWithAlternateProcess() {
+        stubConsolidationReady();
+        ApiException thrown = assertThrows(ApiException.class,
+                () -> service.consolidate(REVIEW, 2, "reason", validConfirmation(), "site_witness"));
+        assertEquals(422, thrown.status());
+        assertEquals("CONFLICTING_CONFIRMATION", thrown.code());
+    }
+
+    @Test
+    void consolidateRejectsMalformedAlternateProcess() {
+        stubConsolidationReady();
+        ApiException thrown = assertThrows(ApiException.class,
+                () -> service.consolidate(REVIEW, 2, "reason", null, "!!"));
+        assertEquals(422, thrown.status());
+        assertEquals("INVALID_ALTERNATE_PROCESS", thrown.code());
+    }
+
+    @Test
+    void consolidateAcceptsDocumentedAlternateProcess() {
+        stubConsolidationReady();
+        when(repository.newId()).thenReturn("assoc-1", "cons-1");
+        Consolidation result = service.consolidate(REVIEW, 2, "reason", null, "site_witness");
+        assertEquals("CONSOLIDATED", result.status());
+        verify(repository).appendAudit(TenantContext.current(), "CONSOLIDATION_IDENTIFIER_CONFIRM",
+                REVIEW, "ALTERNATE:site_witness");
+    }
+
+    @Test
+    void controllerBindsAndFreezesIdentifierConfirmation() {
+        ConsolidationApprovalRequest request = new ConsolidationApprovalRequest(
+                "reason", new java.util.ArrayList<>(validConfirmation()), null);
+        assertEquals("reason", request.reason());
+        assertEquals(2, request.confirmedIdentifiers().size());
+        assertThrows(UnsupportedOperationException.class, () -> request.confirmedIdentifiers().clear());
+        ConsolidationApprovalRequest absent = new ConsolidationApprovalRequest("reason", null, null);
+        assertTrue(absent.confirmedIdentifiers().isEmpty());
+        assertEquals(request, new ConsolidationApprovalRequest(
+                "reason", validConfirmation(), null));
+        assertEquals(request.hashCode(), new ConsolidationApprovalRequest(
+                "reason", validConfirmation(), null).hashCode());
+        assertEquals(request.toString(), new ConsolidationApprovalRequest(
+                "reason", validConfirmation(), null).toString());
+    }
+
+    @Test
+    void consolidateRequiresConfirmationWhenListIsNullOrEmpty() {
+        stubConsolidationReady();
+        assertEquals("IDENTIFIER_CONFIRMATION_REQUIRED", assertThrows(ApiException.class,
+                () -> service.consolidate(REVIEW, 2, "reason", null, null)).code());
+        assertEquals("IDENTIFIER_CONFIRMATION_REQUIRED", assertThrows(ApiException.class,
+                () -> service.consolidate(REVIEW, 2, "reason", List.of(), null)).code());
+    }
+
+    @Test
+    void consolidateRejectsNullConfirmedIdentifierElement() {
+        stubConsolidationReady();
+        ApiException thrown = assertThrows(ApiException.class,
+                () -> service.consolidate(REVIEW, 2, "reason",
+                        Arrays.asList("MRN-1@CLINIC-A", null), null));
+        assertEquals("INVALID_IDENTIFIER_CONFIRMATION", thrown.code());
+    }
+
+    @Test
+    void consolidateRejectsConfirmationMissingOneRecordsIdentifier() {
+        stubConsolidationReady();
+        ApiException thrown = assertThrows(ApiException.class,
+                () -> service.consolidate(REVIEW, 2, "reason",
+                        List.of("MRN-1@CLINIC-A", "OTHER-2@CLINIC-Y"), null));
+        assertEquals("IDENTIFIER_MISMATCH", thrown.code());
+    }
+
+    @Test
+    void consolidateTreatsBlankAlternateAsAbsent() {
+        stubConsolidationReady();
+        when(repository.newId()).thenReturn("assoc-1", "cons-1");
+        Consolidation result = service.consolidate(REVIEW, 2, "reason", validConfirmation(), "  ");
+        assertEquals("CONSOLIDATED", result.status());
+        verify(repository).appendAudit(TenantContext.current(), "CONSOLIDATION_IDENTIFIER_CONFIRM",
+                REVIEW, "CONFIRMED:MRN-1@CLINIC-A;MRN-2@CLINIC-B");
+    }
+
+    @Test
+    void approvalRequestDeserializesTheHttpContract() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        ConsolidationApprovalRequest full = mapper.readValue(
+                "{\"reason\":\"merge\",\"confirmedIdentifiers\":[\"MRN-1@CLINIC-A\",\"MRN-2@CLINIC-B\"],"
+                        + "\"alternateProcess\":null}", ConsolidationApprovalRequest.class);
+        assertEquals("merge", full.reason());
+        assertEquals(List.of("MRN-1@CLINIC-A", "MRN-2@CLINIC-B"), full.confirmedIdentifiers());
+        ConsolidationApprovalRequest alternateOnly = mapper.readValue(
+                "{\"reason\":\"merge\",\"alternateProcess\":\"site_witness\"}",
+                ConsolidationApprovalRequest.class);
+        assertEquals("site_witness", alternateOnly.alternateProcess());
+        assertTrue(alternateOnly.confirmedIdentifiers().isEmpty());
     }
 
     @Test
@@ -662,8 +823,8 @@ class ConsolidationServiceTest {
     void coversRareFailureAndNullInputBranches() {
         assertEquals(422, assertThrows(ApiException.class, () -> service.review(null, DUPLICATE)).status());
         assertEquals(422, assertThrows(ApiException.class, () -> service.review(SURVIVOR, SURVIVOR)).status());
-        assertEquals(422, assertThrows(ApiException.class, () -> service.consolidate(null, 1, "reason")).status());
-        assertEquals(422, assertThrows(ApiException.class, () -> service.consolidate(REVIEW, 1, null)).status());
+        assertEquals(422, assertThrows(ApiException.class, () -> service.consolidate(null, 1, "reason", validConfirmation(), null)).status());
+        assertEquals(422, assertThrows(ApiException.class, () -> service.consolidate(REVIEW, 1, null, validConfirmation(), null)).status());
         assertEquals(422, assertThrows(ApiException.class, () -> service.correct(REVIEW, 1, null)).status());
 
         authorized(REVIEWER_A, "tenant_admin");
@@ -799,7 +960,7 @@ class ConsolidationServiceTest {
         when(repository.newId()).thenReturn("assoc-1", "cons-1");
 
         Consolidation result = controller.consolidate(REVIEW, "\"2\"",
-                new ConsolidationController.ReasonRequest("reason"));
+                new ConsolidationController.ConsolidationApprovalRequest("reason", validConfirmation(), null));
         assertEquals("cons-1", result.id());
         assertTrue(controller.worklist().isEmpty());
 

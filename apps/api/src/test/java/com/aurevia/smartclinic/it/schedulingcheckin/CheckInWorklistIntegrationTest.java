@@ -393,14 +393,25 @@ class CheckInWorklistIntegrationTest {
                     .getStatusCode());
             assertEquals(HttpStatus.OK, checkIn(id, "1", "reception-a", ORG_A).getStatusCode());
         }
-        assertEquals(2, count(ORG_A, "SELECT count(*) FROM public.worklist_entry"));
+        // The ledgers are append-only and this suite shares one database across all
+        // test methods, so earlier check-ins and walk-ins remain on the worklist.
+        // Scope every assertion to the two appointments created by this test rather
+        // than assuming an empty table; the repository still orders the whole
+        // worklist, so filtering by id preserves the relative order under test.
+        assertEquals(2, count(ORG_A, "SELECT count(*) FROM public.worklist_entry "
+                + "WHERE appointment_id IN ('" + firstId + "','" + secondId + "')"));
         ResponseEntity<String> list = send(HttpMethod.GET, "/api/v1/clinic/worklist?facilityCode=MAIN",
                 null, "reception-a", ORG_A);
         assertEquals(HttpStatus.OK, list.getStatusCode(), list.getBody());
-        JsonNode items = json(list);
-        assertEquals(2, items.size());
-        assertEquals(firstId, items.at("/0/appointmentId").asText(),
-                "earlier scheduled time sorts first");
+        List<String> ordered = new ArrayList<>();
+        for (JsonNode item : json(list)) {
+            String appointment = item.at("/appointmentId").asText();
+            if (firstId.equals(appointment) || secondId.equals(appointment)) {
+                ordered.add(appointment);
+            }
+        }
+        assertEquals(List.of(firstId, secondId), ordered,
+                "earlier scheduled time sorts before the later one");
         assertEquals(422, send(HttpMethod.GET, "/api/v1/clinic/worklist?facilityCode=main", null,
                 "reception-a", ORG_A).getStatusCode().value());
         assertEquals(422, send(HttpMethod.GET,

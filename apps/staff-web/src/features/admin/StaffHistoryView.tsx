@@ -2,6 +2,7 @@ import { MixedScriptText } from '../../components/MixedScriptText';
 import { formatInstant } from '../../i18n/format';
 import { useI18n } from '../../i18n/I18nProvider';
 import { useTheme } from '../../theme/ThemeProvider';
+import { AdminTableRegion } from './AdminTableRegion';
 import type { StaffHistoryEvent } from './domain';
 import { currentRoles, historyFor, isDeactivated } from './domain';
 import { adminText, staffEventMessageKey } from './messages';
@@ -49,72 +50,74 @@ export function StaffHistoryView({ events, organizationId, subject }: StaffHisto
           <MixedScriptText text={text('noRoles')} lang={locale} />
         )}
       </p>
-      <table style={{ borderCollapse: 'collapse', width: '100%' }}>
-        <caption style={{ textAlign: 'start', paddingBlock: tokens.spacing.sm }}>
-          {text('staffHistory')}
-        </caption>
-        <thead>
-          <tr>
-            <th scope="col">{text('sequence')}</th>
-            <th scope="col">{text('subject')}</th>
-            <th scope="col">{text('event')}</th>
-            <th scope="col">{text('actor')}</th>
-            <th scope="col">{text('grantor')}</th>
-            <th scope="col">{text('role')}</th>
-            <th scope="col">{text('effectiveAtUtc')}</th>
-            <th scope="col">{text('deactivationReason')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {history.length === 0 ? (
+      <AdminTableRegion label={text('staffHistory')}>
+        <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+          <caption style={{ textAlign: 'start', paddingBlock: tokens.spacing.sm }}>
+            {text('staffHistory')}
+          </caption>
+          <thead>
             <tr>
-              <td colSpan={8}>{text('noHistory')}</td>
+              <th scope="col">{text('sequence')}</th>
+              <th scope="col">{text('subject')}</th>
+              <th scope="col">{text('event')}</th>
+              <th scope="col">{text('actor')}</th>
+              <th scope="col">{text('grantor')}</th>
+              <th scope="col">{text('role')}</th>
+              <th scope="col">{text('effectiveAtUtc')}</th>
+              <th scope="col">{text('deactivationReason')}</th>
             </tr>
-          ) : (
-            history.map((event) => (
-              <tr key={`${event.organizationId}:${event.subject}:${event.sequence}`}>
-                <th scope="row">{event.sequence}</th>
-                <td>
-                  <MixedScriptText text={event.subject} lang="en" />
-                </td>
-                <td>
-                  <StateBadge
-                    glyph={eventGlyph[event.kind]}
-                    label={adminText(locale, staffEventMessageKey[event.kind])}
-                    tone={event.kind}
-                  />
-                </td>
-                <td>
-                  <MixedScriptText text={event.actor} lang="en" />
-                </td>
-                <td>
-                  <MixedScriptText
-                    text={event.kind === 'role_granted' ? event.actor : text('notApplicable')}
-                    lang={event.kind === 'role_granted' ? 'en' : locale}
-                  />
-                </td>
-                <td>
-                  <MixedScriptText
-                    text={event.kind === 'role_granted' ? event.role : text('notApplicable')}
-                    lang={event.kind === 'role_granted' ? 'en' : locale}
-                  />
-                </td>
-                <td>
-                  <time dateTime={event.effectiveFrom}>
-                    {formatInstant(event.effectiveFrom, 'UTC', locale)}
-                  </time>
-                </td>
-                <td>
-                  <MixedScriptText
-                    text={event.kind === 'deactivated' ? event.reason : text('notApplicable')}
-                    lang={event.kind === 'deactivated' ? 'en' : locale}
-                  />
-                </td>
+          </thead>
+          <tbody>
+            {history.length === 0 ? (
+              <tr>
+                <td colSpan={8}>{text('noHistory')}</td>
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+            ) : (
+              history.map((event) => (
+                <tr key={`${event.organizationId}:${event.subject}:${event.sequence}`}>
+                  <th scope="row">{event.sequence}</th>
+                  <td>
+                    <MixedScriptText text={event.subject} lang="en" />
+                  </td>
+                  <td>
+                    <StateBadge
+                      glyph={eventGlyph[event.kind]}
+                      label={adminText(locale, staffEventMessageKey[event.kind])}
+                      tone={event.kind}
+                    />
+                  </td>
+                  <td>
+                    <MixedScriptText text={event.actor} lang="en" />
+                  </td>
+                  <td>
+                    <MixedScriptText
+                      text={event.kind === 'role_granted' ? event.actor : text('notApplicable')}
+                      lang={event.kind === 'role_granted' ? 'en' : locale}
+                    />
+                  </td>
+                  <td>
+                    <MixedScriptText
+                      text={event.kind === 'role_granted' ? event.role : text('notApplicable')}
+                      lang={event.kind === 'role_granted' ? 'en' : locale}
+                    />
+                  </td>
+                  <td>
+                    <time dateTime={event.effectiveFrom}>
+                      {formatInstant(event.effectiveFrom, 'UTC', locale)}
+                    </time>
+                  </td>
+                  <td>
+                    <MixedScriptText
+                      text={event.kind === 'deactivated' ? event.reason : text('notApplicable')}
+                      lang={event.kind === 'deactivated' ? 'en' : locale}
+                    />
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </AdminTableRegion>
     </section>
   );
 }

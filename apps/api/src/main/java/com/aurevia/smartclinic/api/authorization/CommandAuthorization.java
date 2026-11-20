@@ -208,10 +208,17 @@ public final class CommandAuthorization {
         }
         CommandDefinition definition = catalog.find(commandId).orElse(null);
         if (definition == null) {
-            record(commandId, "", identity, false, "UNKNOWN_COMMAND", List.of());
+            // The identifier is untrusted here: bound it before it reaches the OPS-02 ledger.
+            record(auditableCommandId(commandId), "", identity, false, "UNKNOWN_COMMAND", List.of());
             throw new ApiException(422, "UNKNOWN_COMMAND", "command is not in the catalog");
         }
-        MemberContext member = resolver.resolve(identity);
+        MemberContext member;
+        try {
+            member = resolver.resolve(identity);
+        } catch (RuntimeException failure) {
+            record(commandId, definition.action(), identity, false, "MEMBERSHIP_UNAVAILABLE", List.of());
+            throw new ApiException(403, "FORBIDDEN", "membership could not be resolved");
+        }
         if (member == null) {
             record(commandId, definition.action(), identity, false, "MEMBERSHIP_UNAVAILABLE", List.of());
             throw new ApiException(403, "FORBIDDEN", "membership could not be resolved");
@@ -226,7 +233,13 @@ public final class CommandAuthorization {
             record(commandId, definition.action(), identity, false, "POLICY_UNAVAILABLE", roles);
             throw new ApiException(403, "FORBIDDEN", "command owner is not registered");
         }
-        boolean allowed = permits(owner, definition.action(), roles);
+        boolean allowed;
+        try {
+            allowed = permits(owner, definition.action(), roles);
+        } catch (RuntimeException failure) {
+            record(commandId, definition.action(), identity, false, "POLICY_UNAVAILABLE", roles);
+            throw new ApiException(403, "FORBIDDEN", "command owner could not decide");
+        }
         Decision decision = record(commandId, definition.action(), identity, allowed,
                 allowed ? "ALLOWED" : "COMMAND_FORBIDDEN", roles);
         if (!allowed) {
@@ -285,6 +298,24 @@ public final class CommandAuthorization {
      */
     private static boolean token(String value) {
         return value != null && !value.isBlank();
+    }
+
+    /**
+     * Bound an untrusted command identifier before writing it to the append-only ledger.
+     *
+     * <p>The value is only evidence for an {@code UNKNOWN_COMMAND} denial; it never selects
+     * a policy or a role. Truncation and control-character removal prevent log forging and
+     * unbounded growth of an audit field while keeping the 422 outcome unchanged.</p>
+     *
+     * @param commandId client-supplied identifier, already checked non-blank
+     * @return a bounded, control-character-free audit value
+     */
+    private static String auditableCommandId(String commandId) {
+        String bounded = commandId.trim();
+        if (bounded.length() > 128) {
+            bounded = bounded.substring(0, 128);
+        }
+        return bounded.replaceAll("\\p{Cntrl}", "");
     }
 
     /**
