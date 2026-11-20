@@ -15,6 +15,8 @@ import {
 import { displayLocalName, formatMeasurement } from '../i18n/format';
 import { useI18n } from '../i18n/I18nProvider';
 import { useTheme } from '../theme/ThemeProvider';
+import { groupLabelKey, navigationGroupsFor, navigationLabel } from './navigation';
+import type { Role } from './navigation';
 import { OrgSwitcher } from './OrgSwitcher';
 import { ProtectedRoute } from './ProtectedRoute';
 import { SignInPlaceholder } from './SignInPlaceholder';
@@ -23,10 +25,15 @@ import { SignInPlaceholder } from './SignInPlaceholder';
 export interface AppShellProps {
   /** Route content rendered inside the main landmark. */
   children?: ReactNode;
+  /**
+   * Signed-in role. Defaults to the synthetic reception fixture so the demo
+   * shell renders a rail; the real shell story sources it from authentication.
+   */
+  role?: Role;
 }
 
 /** Root visual layout for the staff portal; all content is synthetic. */
-export function AppShell({ children }: AppShellProps) {
+export function AppShell({ children, role = 'reception' }: AppShellProps) {
   const { locale, t, toggleLocale } = useI18n();
   const { mode, tokens, toggleMode } = useTheme();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -50,49 +57,72 @@ export function AppShell({ children }: AppShellProps) {
         </Button>
       </header>
 
-      <main id="main" tabIndex={-1} style={{ padding: tokens.spacing.lg }}>
-        <h2>{t('mixedScriptNote')}</h2>
-        <p>
-          <MixedScriptText text={mixedScriptLabel} lang={locale} />
-        </p>
-        <p>
-          <MixedScriptText text={displayLocalName(syntheticPerson, locale)} lang={locale} />
-        </p>
-        <p>{formatMeasurement(12.5, 'cm', locale)}</p>
-
-        <DataTable
-          caption={t('facilities')}
-          columns={[
-            { key: 'code', header: t('code') },
-            { key: 'name', header: t('name') },
-          ]}
-          rows={[{ code: syntheticFacility.code, name: syntheticFacility.name }]}
-          emptyLabel={t('facilities')}
-        />
-
-        <Button onClick={() => setDialogOpen(true)}>{t('showDetails')}</Button>
-        <Dialog
-          open={dialogOpen}
-          title={t('facilityDetails')}
-          closeLabel={t('closeDialog')}
-          onClose={() => setDialogOpen(false)}
+      <div style={{ display: 'flex', flexDirection: 'row', gap: tokens.spacing.lg }}>
+        <div
+          role="group"
+          aria-label={navigationLabel(locale, 'navigation')}
+          style={{ flex: '0 0 auto' }}
         >
-          <MixedScriptText text={syntheticFacility.name} lang={locale} />
-        </Dialog>
+          {navigationGroupsFor(role).map((group) => {
+            const label = navigationLabel(locale, groupLabelKey(group.group));
+            return (
+              <section key={group.group} aria-labelledby={`nav-heading-${group.group}`}>
+                <h2 id={`nav-heading-${group.group}`}>{label}</h2>
+                <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+                  {group.items.map((item) => (
+                    <li key={item.id}>
+                      <a href={item.route}>{navigationLabel(locale, item.labelKey)}</a>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            );
+          })}
+        </div>
+        <main id="main" tabIndex={-1} style={{ padding: tokens.spacing.lg }}>
+          <h2>{t('mixedScriptNote')}</h2>
+          <p>
+            <MixedScriptText text={mixedScriptLabel} lang={locale} />
+          </p>
+          <p>
+            <MixedScriptText text={displayLocalName(syntheticPerson, locale)} lang={locale} />
+          </p>
+          <p>{formatMeasurement(12.5, 'cm', locale)}</p>
 
-        <Form label={t('noteForm')} submitLabel={t('saveNote')} onSubmit={() => setNote(note)}>
-          <FormField id="shift-note" label={t('shiftNote')} value={note} onChange={setNote} />
-        </Form>
-        <output aria-label={t('echo')} role="status">
-          {note}
-        </output>
+          <DataTable
+            caption={t('facilities')}
+            columns={[
+              { key: 'code', header: t('code') },
+              { key: 'name', header: t('name') },
+            ]}
+            rows={[{ code: syntheticFacility.code, name: syntheticFacility.name }]}
+            emptyLabel={t('facilities')}
+          />
 
-        <SignInPlaceholder />
-        <ProtectedRoute>
-          <p>synthetic protected content</p>
-        </ProtectedRoute>
-        {children}
-      </main>
+          <Button onClick={() => setDialogOpen(true)}>{t('showDetails')}</Button>
+          <Dialog
+            open={dialogOpen}
+            title={t('facilityDetails')}
+            closeLabel={t('closeDialog')}
+            onClose={() => setDialogOpen(false)}
+          >
+            <MixedScriptText text={syntheticFacility.name} lang={locale} />
+          </Dialog>
+
+          <Form label={t('noteForm')} submitLabel={t('saveNote')} onSubmit={() => setNote(note)}>
+            <FormField id="shift-note" label={t('shiftNote')} value={note} onChange={setNote} />
+          </Form>
+          <output aria-label={t('echo')} role="status">
+            {note}
+          </output>
+
+          <SignInPlaceholder />
+          <ProtectedRoute>
+            <p>synthetic protected content</p>
+          </ProtectedRoute>
+          {children}
+        </main>
+      </div>
 
       <footer role="contentinfo" style={{ padding: tokens.spacing.lg }}>
         <MixedScriptText text={t('signInNote')} lang={locale} />
