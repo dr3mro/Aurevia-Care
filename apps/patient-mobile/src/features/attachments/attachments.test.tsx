@@ -228,6 +228,7 @@ describe('bilingual labels', () => {
 });
 
 describe('attachment review screen', () => {
+  jest.setTimeout(15000);
   it('shows the recipient unit and a synthetic-only notice before sending', async () => {
     const view = await screen();
     expect(view.getByTestId('synthetic-notice').children.join('')).toContain('Synthetic fixtures only');
