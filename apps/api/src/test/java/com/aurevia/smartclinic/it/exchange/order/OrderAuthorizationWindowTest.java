@@ -14,9 +14,11 @@ import static org.mockito.Mockito.when;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -51,12 +53,13 @@ class OrderAuthorizationWindowTest {
 
     private OrderRepository repository;
     private OrderService service;
+    private TransactionTemplate transactions;
 
     @BeforeEach
     void setUp() {
         repository = mock(OrderRepository.class);
         AuditAppender audit = mock(AuditAppender.class);
-        TransactionTemplate transactions = mock(TransactionTemplate.class);
+        transactions = mock(TransactionTemplate.class);
         service = new OrderService(repository, audit, transactions, Clock.fixed(NOW, ZoneOffset.UTC));
         doAnswer(invocation -> {
             TransactionCallback<?> callback = invocation.getArgument(0);
@@ -123,6 +126,42 @@ class OrderAuthorizationWindowTest {
 
         assertNotNull(released);
         verify(repository).insertOrder(released);
+        verify(repository).appendDisclosure(eq(released.disclosureId()), eq(released.id()), eq(DEST),
+                eq("lab review"), eq(5), eq(NOW.plusSeconds(300)), eq(released.snapshotFingerprint()));
+    }
+
+    @Test
+    void theRecordedDisclosureExpiryUsesTheSameInstantThatAuthorizedTheWindow() {
+        // A live clock advances between reads. The grant window check and the
+        // disclosure expiry stamp must share one instant: if the check uses an
+        // earlier read than the stamp, a release that exactly fits the grant at
+        // check time is recorded as outliving it (XCH-01 duration fail-open).
+        AtomicInteger reads = new AtomicInteger();
+        Clock advancing = new Clock() {
+            @Override
+            public ZoneId getZone() {
+                return ZoneOffset.UTC;
+            }
+
+            @Override
+            public Clock withZone(ZoneId zone) {
+                return this;
+            }
+
+            @Override
+            public Instant instant() {
+                return reads.getAndIncrement() == 0 ? NOW : NOW.plusSeconds(1);
+            }
+        };
+        OrderService advancingService =
+                new OrderService(repository, mock(AuditAppender.class), transactions, advancing);
+        when(repository.authorization(GRANT)).thenReturn(Optional.of(grantExpiringAt(NOW.plusSeconds(300))));
+
+        OrderView released = advancingService.create(request(5));
+
+        assertNotNull(released);
+        // The grant expires at NOW+300s; the 5-minute release fits it exactly when
+        // checked at NOW and must not be stamped one second past it.
         verify(repository).appendDisclosure(eq(released.disclosureId()), eq(released.id()), eq(DEST),
                 eq("lab review"), eq(5), eq(NOW.plusSeconds(300)), eq(released.snapshotFingerprint()));
     }

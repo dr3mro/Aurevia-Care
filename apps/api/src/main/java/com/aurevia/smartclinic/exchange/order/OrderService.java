@@ -99,15 +99,18 @@ public class OrderService {
                 return null;
             }
             AuthorizationView grant = repository.authorization(authorizationId).orElse(null);
+            // One instant for the window check and the ledger stamp: a live clock
+            // advancing between two reads could otherwise record a disclosure
+            // expiry past the authorization that was just validated (XCH-01).
+            Instant now = clock.instant();
             ApiException grantFailure = checkGrant(grant, context, CREATE_ACTION, authorizationId,
-                    orderCode, destination, purpose, duration);
+                    orderCode, destination, purpose, duration, now);
             if (grantFailure != null) {
                 failure.set(grantFailure);
                 return null;
             }
             OrderRepository.PatientIdentity identity = repository.patientIdentity(patientId)
                     .orElseThrow(() -> new ApiException(404, "NOT_FOUND", "patient not found"));
-            Instant now = clock.instant();
             String id = UUID.randomUUID().toString();
             String snapshotId = UUID.randomUUID().toString();
             String disclosureId = UUID.randomUUID().toString();
@@ -122,7 +125,7 @@ public class OrderService {
             repository.insertOrder(order);
             repository.appendSnapshot(snapshotId, id, 1, content, fingerprint);
             repository.appendDisclosure(disclosureId, id, destination, purpose, duration,
-                    now.plusSeconds(duration * 60L), fingerprint);
+                    disclosureExpiry(now, duration), fingerprint);
             repository.insertWorkItem(workItemId, destination, authorizationId, id, patientId,
                     identity.mrn(), identity.issuer(), priority, question, workQueue, fingerprint);
             audit.append(context, SCOPE, CREATE_ACTION, ORDER_RESOURCE, SCOPE, id, "SUCCESS");
@@ -281,14 +284,29 @@ public class OrderService {
         return null;
     }
 
+    /**
+     * Compute the instant at which a released disclosure stops being valid.
+     *
+     * <p>Validation and the ledger stamp call this single helper so the value
+     * checked against the authorization is structurally the value recorded.</p>
+     *
+     * @param now      the single release instant shared by validation and recording
+     * @param duration authorized validity in minutes
+     * @return the disclosure expiry instant
+     */
+    private static Instant disclosureExpiry(Instant now, int duration) {
+        return now.plusSeconds(duration * 60L);
+    }
+
     private ApiException checkGrant(AuthorizationView grant, TenantContext context, String action,
                                     String resourceId, String orderCode, String destination,
-                                    String purpose, int duration) {
-        Instant now = clock.instant();
+                                    String purpose, int duration, Instant now) {
         // The disclosure must stop being valid when the authorization that
         // permitted it stops applying; otherwise a still-effective grant could
         // authorize sharing past its own expiry (XCH-01 duration boundary).
-        Instant disclosureExpiresAt = now.plusSeconds(duration * 60L);
+        // The caller supplies the same instant used to stamp the disclosure, so
+        // clock drift between validation and recording cannot widen the window.
+        Instant disclosureExpiresAt = disclosureExpiry(now, duration);
         if (grant == null || !grant.active() || grant.effectiveFrom().isAfter(now)
                 || (grant.expiresAt() != null && !grant.expiresAt().isAfter(now))
                 || (grant.expiresAt() != null && disclosureExpiresAt.isAfter(grant.expiresAt()))
