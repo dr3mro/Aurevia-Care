@@ -125,9 +125,6 @@ import json,sys
 d=json.load(sys.stdin)
 for r in d:
     st = r.get('conclusion') or r.get('status') or ''
-    # Hide successful swarm runs to reduce noise.
-    if st == 'success':
-        continue
     col = {'success':'\033[32m','failure':'\033[31m','completed':'\033[32m','in_progress':'\033[33m','queued':'\033[33m','cancelled':'\033[2m','skipped':'\033[2m'}.get(st,'\033[37m')
     emoji = {'success':'✅','failure':'❌','in_progress':'🔄','queued':'⏳','cancelled':'⚪','skipped':'⏭️'}.get(st,'•')
     print(f\"  {col}{emoji}  {r['databaseId']}  {r['workflowName'][:26]:26}  {st:12}  {r['headSha'][:8]}\033[0m\")

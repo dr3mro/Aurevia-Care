@@ -76,7 +76,7 @@ Delivery fails the whole run on a single uncovered line or branch, in Java (JaCo
 
 ## Frontend standards
 
-- In patient-mobile tests write `import { jest } from '@jest/globals';` before using `jest.fn()` or `jest.mock()`; the bare `jest` namespace fails the type check (Delivery run 531). Run `bash apps/patient-mobile/check.sh` before you finish.
+- In `apps/patient-mobile` (and any frontend module configured with `verbatimModuleSyntax: true`), `jest` cannot be used as an ambient global object/value. Any direct use of `jest` methods (such as `jest.fn()`, `jest.mock()`, `jest.spyOn()`, `jest.setTimeout()`) requires `import { jest } from '@jest/globals';`. For per-test timeouts in Jest or Vitest, pass the timeout as the optional argument to `it('...', fn, timeoutMs)` instead of `jest.setTimeout()`. Run `bash apps/patient-mobile/check.sh` (or `npm run typecheck`) before you finish.
 - TypeScript only: .ts/.tsx, never .js/.jsx. tsconfig must have "strict": true, "noUncheckedIndexedAccess": true; no `any`, no `@ts-ignore`.
 - React: function components and hooks only, typed props, small single-purpose components, no business logic in JSX, data fetching via one typed API client.
 - Before finishing any task run `tsc --noEmit`, `eslint . --max-warnings=0`, `prettier --check .` and the tests, and fix every failure. Never disable a rule to pass.
