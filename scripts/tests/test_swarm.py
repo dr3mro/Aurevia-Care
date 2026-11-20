@@ -1349,6 +1349,17 @@ class GitTests(unittest.TestCase):
         self.assertIn("--draft", create)
         self.assertIn("unresolved conflicts", create[create.index("--body") + 1])
 
+    def test_image_runs_passes_only_string_arguments_to_gh(self):
+        seen = []
+        def fake(*args):
+            seen.append(args)
+            return []
+        with mock.patch.object(swarm, "gh_json", fake):
+            swarm.image_runs()
+        self.assertEqual(len(seen), 2)
+        for args in seen:
+            self.assertTrue(all(isinstance(a, str) for a in args), args)
+
     def test_a_fix_worker_whose_pull_request_is_gone_publishes_nothing(self):
         out = self.worker_dir()
         task = {**self.TASK, "kind": "fix", "number": 193, "branch": "swarm/CW-001-1"}
