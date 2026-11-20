@@ -325,9 +325,19 @@ def report_worker_handoff(task, result, checks, merged, directory, pr=""):
                         markers={"task": task["id"], "pr": pr or "none"})
 
 
-def classify_failure(log):
-    """infra and credentials need a person; anything else may be code an agent can fix."""
-    if CREDENTIALS.search(log or ""):
+def classify_failure(log, failed=None):
+    """infra and credentials need a person; anything else may be code an agent can fix.
+
+    A credential classification is only trusted when an auth-related step actually
+    failed, or the log contains a precise auth error. Expected errors from the
+    database policy checks (for example the duplicate-approval assertion in
+    db/check.sh) otherwise misclassify the run as a credentials problem."""
+    failed = failed or []
+    auth_step = any(re.search(r"auth|credential|token|login|permission", job + " " + step, re.I)
+                    for job, step in failed)
+    precise_auth = re.search(r"Bad credentials|Resource not accessible|Requires authentication|"
+                             r"permission denied|HTTP 40[13]|token (?:expired|invalid)", log or "")
+    if (auth_step or precise_auth) and CREDENTIALS.search(log or ""):
         return "credentials"
     if QUOTA.search(log or ""):
         return "quota"
@@ -383,7 +393,7 @@ def run_event(run_id):
               for s in j.get("steps", []) if s.get("conclusion") == "failure"] \
         or [(j["name"], "") for j in info.get("jobs", []) if j.get("conclusion") == "failure"]
     where = "; ".join(f"{job} / {step}".strip(" /") for job, step in failed[:6]) or "run level"
-    kind = classify_failure(log)
+    kind = classify_failure(log, failed)
     body = (f"**Workflow:** {name} · **Event:** {info.get('event')} · **Branch:** {info.get('headBranch')} "
             f"· **Commit:** {str(info.get('headSha'))[:7]}\n**Run:** {info.get('url')}\n"
             f"**Failed:** {where}\n**Class:** {kind}"
