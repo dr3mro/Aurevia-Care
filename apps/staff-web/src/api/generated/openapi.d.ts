@@ -261,6 +261,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/appointments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List appointments by scheduled-start range with cursor pagination */
+        get: operations["listAppointments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/orders": {
         parameters: {
             query?: never;
@@ -413,6 +430,54 @@ export interface components {
         };
         AuditPage: {
             events?: components["schemas"]["AuditEvent"][];
+            nextCursor?: string | null;
+        };
+        Appointment: {
+            /** Format: uuid */
+            id?: string;
+            version?: number;
+            /** Format: uuid */
+            patientId?: string;
+            facilityCode?: string;
+            clinicianCode?: string;
+            roomCode?: string | null;
+            visitType?: string;
+            /** Format: date-time */
+            startsAt?: string;
+            /** Format: date-time */
+            endsAt?: string;
+            /** @enum {string} */
+            state?: "held" | "booked" | "checked_in" | "in_progress" | "completed" | "cancelled" | "no_show" | "expired";
+            /** Format: uuid */
+            seriesId?: string | null;
+            /** Format: date-time */
+            expiresAt?: string | null;
+            overrideReason?: string | null;
+        };
+        /** @description Immutable history entry bound to one appointment revision. */
+        AppointmentEvent: {
+            /** Format: uuid */
+            id?: string;
+            appointmentVersion?: number;
+            action?: string;
+            fromState?: string | null;
+            toState?: string;
+            reason?: string | null;
+            /** Format: date-time */
+            previousStartsAt?: string | null;
+            /** Format: date-time */
+            previousEndsAt?: string | null;
+            /** Format: uuid */
+            actorId?: string;
+            /** Format: date-time */
+            occurredAt?: string;
+        };
+        AppointmentView: {
+            appointment?: components["schemas"]["Appointment"];
+            history?: components["schemas"]["AppointmentEvent"][];
+        };
+        AppointmentPage: {
+            items?: components["schemas"]["AppointmentView"][];
             nextCursor?: string | null;
         };
         OrderView: {
@@ -1163,6 +1228,59 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             /** @description Not found or inaccessible; existence is concealed */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listAppointments: {
+        parameters: {
+            query: {
+                /** @description Opaque startsAt:id cursor for the next page */
+                cursor?: string;
+                /** @description Page size 1-200 */
+                limit?: number;
+                /** @description Inclusive lower UTC instant */
+                from: string;
+                /** @description Inclusive upper UTC instant */
+                to: string;
+                /** @description Clinician or room resource code */
+                resource?: string;
+                /** @description Effective appointment state */
+                state?: "held" | "booked" | "checked_in" | "in_progress" | "completed" | "cancelled" | "no_show" | "expired";
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of appointments ordered by scheduled start ascending */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppointmentPage"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            /** @description Invalid cursor */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
