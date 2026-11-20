@@ -100,8 +100,7 @@ public class NoteRepository {
      * @return the current revision when visible, otherwise empty
      */
     public Optional<ClinicalNoteRevision> current(String id) {
-        return jdbc.query("""
-                SELECT """ + COLUMNS + """
+        return jdbc.query("SELECT " + COLUMNS + """
                   FROM public.current_clinical_note_revision() WHERE id = CAST(:id AS uuid)
                 """, Map.of("id", id), MAPPER).stream().findFirst();
     }
@@ -113,8 +112,7 @@ public class NoteRepository {
      * @return the complete immutable history
      */
     public List<ClinicalNoteRevision> history(String id) {
-        return jdbc.query("""
-                SELECT """ + COLUMNS + """
+        return jdbc.query("SELECT " + COLUMNS + """
                   FROM public.clinical_note_revision WHERE id = CAST(:id AS uuid)
                  ORDER BY version
                 """, Map.of("id", id), MAPPER);

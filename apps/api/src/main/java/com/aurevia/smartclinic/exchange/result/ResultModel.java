@@ -2,6 +2,9 @@ package com.aurevia.smartclinic.exchange.result;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
+
+import com.fasterxml.jackson.annotation.JsonValue;
 
 /**
  * Public value contracts for the XCH-04 result-routing slice (S-G2-04).
@@ -27,6 +30,16 @@ public final class ResultModel {
         CRITICAL;
 
         /**
+         * Return the lower-case wire form used by the API and the database.
+         *
+         * @return wire form such as {@code corrected}
+         */
+        @JsonValue
+        public String wire() {
+            return name().toLowerCase(Locale.ROOT);
+        }
+
+        /**
          * Whether this disposition is a correction of a prior revision.
          *
          * @return {@code true} only for {@code CORRECTED}
@@ -50,7 +63,17 @@ public final class ResultModel {
         /** Awaiting human review; every new correction revision starts here. */
         UNREVIEWED,
         /** An authorized human has acknowledged this exact revision. */
-        ACKNOWLEDGED
+        ACKNOWLEDGED;
+
+        /**
+         * Return the lower-case wire form used by the API and the database.
+         *
+         * @return wire form such as {@code unreviewed}
+         */
+        @JsonValue
+        public String wire() {
+            return name().toLowerCase(Locale.ROOT);
+        }
     }
 
     /** Outcome of matching an inbound result against its expected order. */
@@ -68,7 +91,17 @@ public final class ResultModel {
         /** The order could not be found in the active tenant. */
         UNMATCHED,
         /** The order was found but identifiers disagreed or the lineage was incomplete. */
-        CONFLICT
+        CONFLICT;
+
+        /**
+         * Return the lower-case wire form used by the API and the database.
+         *
+         * @return wire form such as {@code unmatched}
+         */
+        @JsonValue
+        public String wire() {
+            return name().toLowerCase(Locale.ROOT);
+        }
     }
 
     /** Lifecycle of a reconciliation-queue entry. */
@@ -76,7 +109,17 @@ public final class ResultModel {
         /** Waiting for an authorized reviewer. */
         OPEN,
         /** Reviewed and closed. */
-        RESOLVED
+        RESOLVED;
+
+        /**
+         * Return the lower-case wire form used by the API and the database.
+         *
+         * @return wire form such as {@code resolved}
+         */
+        @JsonValue
+        public String wire() {
+            return name().toLowerCase(Locale.ROOT);
+        }
     }
 
     /**
