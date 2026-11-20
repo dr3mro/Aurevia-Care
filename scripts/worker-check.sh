@@ -15,6 +15,11 @@ if ! pg_isready -q -h 127.0.0.1 -p 5432; then
   else
     # An agent image built before PostgreSQL was added: say so loudly, skip the
     # database part. The integrator gate still runs it before anything merges.
+    # The integrator's repair gate sets REQUIRE_POSTGRES and may not skip it.
+    if [[ -n "${REQUIRE_POSTGRES:-}" ]]; then
+      printf 'worker check: PostgreSQL is required here and is not available\n' >&2
+      exit 1
+    fi
     printf 'worker check: WARNING PostgreSQL is not available in this image; integration tests and db/check.sh were NOT run\n' >&2
     exit 0
   fi
