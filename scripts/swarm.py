@@ -544,7 +544,9 @@ def task_text(task):
                               "A new worker will take the next one."),
               ("Requirements", task.get("requirements", "")),
               ("Scope (stay inside these paths)", ", ".join(task["scope"])),
-              ("Reserved migration version", task.get("reserved", ""))]
+              ("Reserved migration version", task.get("reserved", "")),
+              ("Naming rule", "Name every new folder and Java package after its business domain, "
+                              "never after a task, story or gate ID; the build fails otherwise.")]
     head = "\n".join(f"{k}: {v}" for k, v in fields if v and v != "-")
     return clip(f"{head}\n\n{task['details']}")
 
