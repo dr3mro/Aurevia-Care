@@ -417,8 +417,8 @@ Found while extending the specification (section 8.1 and docs/design/screens-and
     Do NOT raise the limit, do NOT remove dependencies to make it pass without noting it, and do NOT add third-party scripts.
 
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` (API tasks) or `bash apps/staff-web/check.sh` (staff web tasks) must pass. Synthetic data only; write the failing test first; stay inside the declared scope; name folders and packages after what they hold, never a task ID; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
-- [-] READY-09 · Mark the staff web non-indexable (WEB-13)
-  - agent: swarm-2
+- [x] READY-09 · Mark the staff web non-indexable (WEB-13)
+  - pr: #200
   - attempts: 1
   - scope: apps/staff-web/index.html, apps/staff-web/public, apps/staff-web/tests
   - details:
@@ -981,8 +981,8 @@ Do these after part 2 where `depends` says so. Persistence tasks run one at a ti
     5. Run `apps/staff-web/check.sh` (must still pass) and `python3 -I scripts/check-docs.py`.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT change files outside `scope`, add patient data to logs, or edit any existing migration.
-- [-] READY-46 · Launch checklist document with the owner of every item that needs a person
-  - agent: swarm-3
+- [x] READY-46 · Launch checklist document with the owner of every item that needs a person
+  - pr: #202
   - attempts: 1
   - requirements: WEB-01, WEB-11, WEB-12
   - scope: docs/operations/production-readiness
