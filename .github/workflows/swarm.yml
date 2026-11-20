@@ -144,7 +144,7 @@ jobs:
       # publishes its own pull request when it ends (see swarm-worker.yml).
       max-parallel: 10
       fail-fast: false
-      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix || '{"include":[]}') }}
     # A called workflow gets at most the permissions its caller grants.
     permissions:
       contents: write
