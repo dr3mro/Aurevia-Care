@@ -99,6 +99,26 @@ def pr(number, branch, *names, cross=False, comments=()):
             "labels": labels(*names), "comments": [{"body": c} for c in comments]}
 
 
+class ConcurrentWaveTests(unittest.TestCase):
+    def test_combined_worker_cap_is_twenty(self):
+        self.assertEqual(swarm.MAX_ACTIVE_WORKERS, 20)
+
+    def test_slots_rotate_past_the_ones_in_use(self):
+        slots = [{"slot": n} for n in range(1, 11)]
+        self.assertEqual([s["slot"] for s in swarm.rotate_slots(slots, 0)][:2], [1, 2])
+        self.assertEqual([s["slot"] for s in swarm.rotate_slots(slots, 10)][:2], [1, 2])
+        self.assertEqual([s["slot"] for s in swarm.rotate_slots(slots, 4)][:2], [5, 6])
+        self.assertEqual(swarm.rotate_slots([], 3), [])
+
+    def test_active_workers_counts_only_worker_jobs_of_unfinished_runs(self):
+        def fake(*args, check=True):
+            if args[0] == "run":
+                return "11\n12\n"
+            return "Plan the wave\nSwarm worker / Work the task\nSwarm worker / Publish\n"
+        with mock.patch.object(swarm, "gh", fake), mock.patch.object(swarm, "repo_slug", lambda: "o/r"):
+            self.assertEqual(swarm.active_workers(), 4)
+
+
 class PlanTests(unittest.TestCase):
     def plan(self, prs=(), workers=10, slots=SLOTS):
         return swarm.plan_workers(workers, slots, TASKS, list(prs))
@@ -404,14 +424,13 @@ class PlanTests(unittest.TestCase):
         self.assertIn("needs: work", worker)
         self.assertIn("workflow_call:", worker)
 
-    def test_a_manual_run_can_skip_the_queue_but_planning_stays_serial(self):
+    def test_waves_overlap_but_planning_stays_serial(self):
         import yaml
         text = (ROOT / ".github/workflows/swarm.yml").read_text()
         config = yaml.safe_load(text)
         self.assertEqual(config[True]["workflow_dispatch"]["inputs"]["now"]["type"], "boolean")
         group = config["concurrency"]["group"]
-        self.assertIn("inputs.now", group)
-        self.assertIn("'agent-swarm'", group)
+        self.assertIn("github.run_id", group)
         self.assertIs(config["concurrency"]["cancel-in-progress"], False)
         plan = config["jobs"]["plan"]["concurrency"]
         self.assertEqual(plan["group"], "agent-swarm-plan")
