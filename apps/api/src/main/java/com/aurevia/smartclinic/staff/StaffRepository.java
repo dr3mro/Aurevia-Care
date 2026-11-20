@@ -32,6 +32,7 @@ public class StaffRepository {
     public static final String SCOPE = "STAFF";
 
     private static final RowMapper<StaffMember> MEMBER_MAPPER = StaffRepository::mapMember;
+    private static final RowMapper<StaffRow> STAFF_ROW_MAPPER = StaffRepository::mapRow;
     private static final RowMapper<StaffHistory.MembershipEvent> MEMBERSHIP_MAPPER =
             StaffRepository::mapMembership;
     private static final RowMapper<StaffHistory.RoleGrant> ROLE_GRANT_MAPPER = StaffRepository::mapRoleGrant;
@@ -214,6 +215,50 @@ public class StaffRepository {
     }
 
     /**
+     * Read one cursor-paged slice of the active tenant's staff members.
+     *
+     * <p>Forced RLS confines the query to the active organization, so no manual
+     * organization predicate is needed. Ordering by subject with the immutable
+     * user id as tie-break makes the cursor stable even when subjects repeat.</p>
+     *
+     * @param cursorSubject    exclusive lower subject bound, or {@code null} for the first page
+     * @param cursorId         immutable id that breaks a tie at the cursor subject
+     * @param membershipStatus optional exact database membership status filter
+     * @param limit            maximum rows to fetch (one more than the requested page size)
+     * @return members with their immutable row id, in subject-ascending order
+     */
+    public List<StaffRow> query(String cursorSubject, String cursorId, String membershipStatus, int limit) {
+        MapSqlParameterSource params = new MapSqlParameterSource().addValue("limit", limit);
+        StringBuilder sql = new StringBuilder("""
+                SELECT u.subject, u.display_name, cm.status,
+                       coalesce((SELECT array_agg(ra.role_key ORDER BY ra.role_key)
+                                   FROM public.role_assignment ra
+                                  WHERE ra.organization_id = cm.organization_id
+                                    AND ra.membership_id = cm.membership_id
+                                    AND ra.valid_from <= now()
+                                    AND (ra.valid_to IS NULL OR ra.valid_to > now())), '{}') AS roles,
+                       u.id::text AS id
+                  FROM public.user_identity u
+                  JOIN public.current_membership() cm
+                    ON cm.organization_id = u.organization_id AND cm.user_id = u.id
+                 WHERE 1=1
+                """);
+        if (cursorSubject != null) {
+            sql.append("""
+                     AND (u.subject > :cursorSubject
+                          OR (u.subject = :cursorSubject AND u.id > CAST(:cursorId AS uuid)))
+                    """);
+            params.addValue("cursorSubject", cursorSubject).addValue("cursorId", cursorId);
+        }
+        if (membershipStatus != null) {
+            sql.append(" AND cm.status = :membershipStatus");
+            params.addValue("membershipStatus", membershipStatus);
+        }
+        sql.append(" ORDER BY u.subject, u.id LIMIT :limit");
+        return jdbc.query(sql.toString(), params, STAFF_ROW_MAPPER);
+    }
+
+    /**
      * Append one OPS-02 audit event inside the caller's transaction.
      *
      * @param context    active tenant context
@@ -240,6 +285,20 @@ public class StaffRepository {
 
     private MapSqlParameterSource params(String organizationId) {
         return new MapSqlParameterSource().addValue("organizationId", organizationId);
+    }
+
+    private static StaffRow mapRow(ResultSet resultSet, int rowNumber) throws SQLException {
+        return new StaffRow(mapMember(resultSet, rowNumber), resultSet.getString("id"));
+    }
+
+    /**
+     * One paged row: the effective member projection and its immutable row id.
+     *
+     * @param member effective staff projection
+     * @param id     immutable user-identity id used as the cursor tie-break
+     * @return this record
+     */
+    public record StaffRow(StaffMember member, String id) {
     }
 
     private static StaffMember mapMember(ResultSet resultSet, int rowNumber) throws SQLException {
