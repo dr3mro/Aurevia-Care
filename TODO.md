@@ -295,8 +295,8 @@ Cadence and limits:
     Do NOT change production code, migrations or the OpenAPI files.
 
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` must pass for the classes you touched. Synthetic data only; write the failing test first; stay inside the declared scope; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
-- [-] AUD-20261120-09 · Add HTTP tests for the finance, prescription, specialty and conversation endpoints that no test calls
-  - agent: swarm-3
+- [x] AUD-20261120-09 · Add HTTP tests for the finance, prescription, specialty and conversation endpoints that no test calls
+  - pr: #214
   - attempts: 1
   - scope: apps/api/src/test/java/com/aurevia/smartclinic/it/finance, apps/api/src/test/java/com/aurevia/smartclinic/it/prescription, apps/api/src/test/java/com/aurevia/smartclinic/it/authz, apps/api/src/test/java/com/aurevia/smartclinic/it/messaging
   - depends: DLV-04
@@ -437,8 +437,8 @@ Found while extending the specification (section 8.1 and docs/design/screens-and
     Do NOT add analytics, tracking or any external script tag.
 
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` (API tasks) or `bash apps/staff-web/check.sh` (staff web tasks) must pass. Synthetic data only; write the failing test first; stay inside the declared scope; name folders and packages after what they hold, never a task ID; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
-- [-] READY-10 · Staff web navigation model from the screen map (design contract)
-  - agent: swarm-4
+- [x] READY-10 · Staff web navigation model from the screen map (design contract)
+  - pr: #212
   - attempts: 1
   - scope: apps/staff-web/src/app
   - depends: DLV-04
@@ -490,8 +490,8 @@ Order of work for the whole production-readiness effort: (1) security and platfo
     Do NOT change existing endpoints, response shapes or migrations.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
-- [-] READY-14 · List staff (GET /api/v1/staff)
-  - agent: swarm-5
+- [x] READY-14 · List staff (GET /api/v1/staff)
+  - pr: #213
   - attempts: 1
   - requirements: ARC-03
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/staff, apps/api/src/test/java/com/aurevia/smartclinic/staff, contracts/openapi
@@ -509,8 +509,8 @@ Order of work for the whole production-readiness effort: (1) security and platfo
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
 - [ ] READY-15 · List facilities (GET /api/v1/facilities)
+  - attempts: 1
   - requirements: ARC-03
-  - attempts: 0
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/tenancy, apps/api/src/test/java/com/aurevia/smartclinic/tenancy, contracts/openapi
   - depends: DLV-04
   - details:
