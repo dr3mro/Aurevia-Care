@@ -17,6 +17,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.aurevia.smartclinic.api.ApiException;
+import com.aurevia.smartclinic.messaging.conversations.PatientConnectionVerifier;
+import com.aurevia.smartclinic.messaging.conversations.PatientConnectionVerifier.VerifiedConnection;
 import com.aurevia.smartclinic.messaging.units.MessagingContract.CareUnit;
 import com.aurevia.smartclinic.messaging.units.MessagingContract.ConnectRequest;
 import com.aurevia.smartclinic.messaging.units.MessagingContract.ConnectionContext;
@@ -63,9 +65,9 @@ class CareUnitDirectoryServiceTest {
         store.addPatient(ORG, PATIENT);
         store.addPatient(ORG, OTHER_PATIENT);
         store.linkPatient(ORG, SUBJECT, PATIENT);
-        store.addUnit(unit(UNIT, ORG, "Synthetic Laboratory", true));
-        store.addUnit(unit(OTHER_UNIT, ORG, "Synthetic Radiology", true));
-        store.addUnit(unit(CROSS_ORG_UNIT, OTHER_ORG, "Foreign Unit", true));
+        store.addUnit(unit(UNIT, ORG, "Synthetic Laboratory", "lab", true));
+        store.addUnit(unit(OTHER_UNIT, ORG, "Synthetic Radiology", "radiology", true));
+        store.addUnit(unit(CROSS_ORG_UNIT, OTHER_ORG, "Foreign Unit", "clinic", true));
         store.addRelationship(relationship("rel-1", PATIENT, UNIT, ConnectionContext.ORDER, REFERENCE,
                 true, null, false));
     }
@@ -95,7 +97,7 @@ class CareUnitDirectoryServiceTest {
 
     @Test
     void inactiveUnitIsNotListedEvenWithAnActiveRelationship() {
-        store.addUnit(unit(OTHER_UNIT, ORG, "Synthetic Radiology", false));
+        store.addUnit(unit(OTHER_UNIT, ORG, "Synthetic Radiology", "radiology", false));
         store.addRelationship(relationship("rel-2", PATIENT, OTHER_UNIT, ConnectionContext.REFERRAL,
                 "referral-ref", true, null, false));
         assertEquals(1, service.eligibleUnits().units().size());
@@ -328,6 +330,75 @@ class CareUnitDirectoryServiceTest {
     }
 
     @Test
+    void requireActiveResolvesServerDerivedIdentitiesForTheExactConnection() {
+        String connectionId = service.connect(request(PATIENT, UNIT, "order", REFERENCE)).id();
+        PatientConnectionVerifier verifier = service;
+        VerifiedConnection verified = verifier.requireActive(PATIENT, "lab", connectionId);
+        assertEquals(PATIENT, verified.patientId());
+        assertEquals(connectionId, verified.connectionId());
+        assertEquals("lab", verified.unitKey());
+    }
+
+    @Test
+    void requireActiveDeniesAnUnknownConnection() {
+        ApiException error = assertThrows(ApiException.class,
+                () -> service.requireActive(PATIENT, "lab", "99999999-9999-9999-9999-999999999999"));
+        assertEquals(403, error.status());
+        assertEquals("FORBIDDEN", error.code());
+        assertEquals("DENIED", store.auditEvents(ORG).stream()
+                .filter(audit -> "CONNECTION_USE".equals(audit.action())).findFirst().orElseThrow().outcome());
+    }
+
+    @Test
+    void requireActiveDeniesAConnectionOwnedByAnotherChart() {
+        String connectionId = service.connect(request(PATIENT, UNIT, "order", REFERENCE)).id();
+        assertEquals(403, assertThrows(ApiException.class,
+                () -> service.requireActive(OTHER_PATIENT, "lab", connectionId)).status());
+    }
+
+    @Test
+    void requireActiveDeniesAConnectionUsedForTheWrongUnitKind() {
+        String connectionId = service.connect(request(PATIENT, UNIT, "order", REFERENCE)).id();
+        assertEquals(403, assertThrows(ApiException.class,
+                () -> service.requireActive(PATIENT, "clinic", connectionId)).status());
+    }
+
+    @Test
+    void requireActiveDeniesARevokedConnection() {
+        String connectionId = service.connect(request(PATIENT, UNIT, "order", REFERENCE)).id();
+        service.revoke(connectionId);
+        assertEquals(403, assertThrows(ApiException.class,
+                () -> service.requireActive(PATIENT, "lab", connectionId)).status());
+    }
+
+    @Test
+    void requireActiveDeniesConnectionsWhoseUnitIsMissingOrInactive() {
+        String missingUnit = "55555555-5555-5555-5555-555555555555";
+        String inactiveUnit = "66666666-6666-6666-6666-666666666666";
+        store.addUnit(unit(inactiveUnit, ORG, "Closed Lab", "lab", false));
+        store.insertConnection(ORG, connection("conn-missing", missingUnit));
+        store.insertConnection(ORG, connection("conn-inactive", inactiveUnit));
+        assertEquals(403, assertThrows(ApiException.class,
+                () -> service.requireActive(PATIENT, "lab", "conn-missing")).status());
+        assertEquals(403, assertThrows(ApiException.class,
+                () -> service.requireActive(PATIENT, "lab", "conn-inactive")).status());
+    }
+
+    @Test
+    void requireActiveRejectsAnUnknownUnitKeyBeforeAnyLookup() {
+        assertEquals(422, assertThrows(ApiException.class,
+                () -> service.requireActive(PATIENT, "demographics", "conn-1")).status());
+        assertTrue(store.auditEvents(ORG).isEmpty());
+    }
+
+    @Test
+    void requireActiveFailsClosedWithoutTenantContext() {
+        TenantContext.clear();
+        assertEquals(401, assertThrows(ApiException.class,
+                () -> service.requireActive(PATIENT, "lab", "conn-1")).status());
+    }
+
+    @Test
     void invalidCommandFieldsAreRejectedBeforeAnyStoreAccess() {
         assertEquals(422, assertThrows(ApiException.class,
                 () -> service.connect(request("bad", UNIT, "order", REFERENCE))).status());
@@ -444,8 +515,13 @@ class CareUnitDirectoryServiceTest {
         }
     }
 
-    private static CareUnit unit(String id, String org, String name, boolean active) {
-        return new CareUnit(id, org, "facility-1", name, List.of("collection", "results"), active);
+    private static CareUnit unit(String id, String org, String name, String kind, boolean active) {
+        return new CareUnit(id, org, "facility-1", name, kind, List.of("collection", "results"), active);
+    }
+
+    private PatientUnitConnection connection(String id, String unitId) {
+        return new PatientUnitConnection(id, ORG, PATIENT, unitId, ConnectionContext.ORDER, "ref-" + id,
+                "rel-" + id, ConnectionState.ACTIVE, SUBJECT, NOW, NOW, null);
     }
 
     private static EligibleRelationship relationship(String id, String patient, String unit,

@@ -25,6 +25,7 @@ import com.aurevia.smartclinic.messaging.conversations.ConversationContract.Unit
 import com.aurevia.smartclinic.messaging.conversations.ConversationContract.View;
 import com.aurevia.smartclinic.messaging.conversations.ConversationContract.WorkEventType;
 import com.aurevia.smartclinic.messaging.conversations.ConversationContract.WorkQueue;
+import com.aurevia.smartclinic.messaging.conversations.PatientConnectionVerifier.VerifiedConnection;
 import com.aurevia.smartclinic.tenant.TenantContext;
 
 /**
@@ -47,6 +48,7 @@ public class ConversationService {
     private final ConversationActions actions;
     private final TransactionTemplate transactions;
     private final AuditAppender audit;
+    private final PatientConnectionVerifier connections;
 
     /**
      * Create the service.
@@ -55,15 +57,18 @@ public class ConversationService {
      * @param actions      bounded action and unit matrix
      * @param transactions tenant-guarded transaction template
      * @param audit        transactional audit appender
+     * @param connections  verified patient-unit connection resolver
      */
     @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
             value = "EI_EXPOSE_REP2", justification = "Spring-managed singleton collaborators")
     public ConversationService(ConversationRepository repository, ConversationActions actions,
-                               TransactionTemplate transactions, AuditAppender audit) {
+                               TransactionTemplate transactions, AuditAppender audit,
+                               PatientConnectionVerifier connections) {
         this.repository = repository;
         this.actions = actions;
         this.transactions = transactions;
         this.audit = audit;
+        this.connections = connections;
     }
 
     /**
@@ -95,9 +100,21 @@ public class ConversationService {
             if (!caller.patient() && !actions.allowsUnit(unit, caller.role())) {
                 throw forbidden("the caller is not eligible for this care unit");
             }
+            String persistedPatient = patientId;
+            String persistedUnit = unit.wire();
+            String persistedConnection = connectionId;
+            if (caller.patient()) {
+                // MSG-01: a patient may only address a unit through a verified
+                // connection. Persist the identities the server resolved from
+                // that connection, never the ones the client merely named.
+                VerifiedConnection verified = connections.requireActive(patientId, unit.wire(), connectionId);
+                persistedPatient = verified.patientId();
+                persistedUnit = verified.unitKey();
+                persistedConnection = verified.connectionId();
+            }
             State state = caller.patient() ? State.AWAITING_STAFF : State.AWAITING_PATIENT;
-            repository.insertConversation(id, patientId, patientSubject, unit.wire(), connectionId,
-                    topic, state.wire());
+            repository.insertConversation(id, persistedPatient, patientSubject, persistedUnit,
+                    persistedConnection, topic, state.wire());
             repository.appendEvent(id, 1, WorkEventType.CREATED.wire(), caller.subject(), null,
                     state.wire(), "conversation opened");
             success(ConversationActions.CONVERSATION_OPEN, id);
@@ -129,6 +146,11 @@ public class ConversationService {
             // messaging, and MSG-07 stops messaging entirely once it is revoked.
             if (!repository.patientLinkActive(current.patientSubject(), current.patientId())) {
                 throw notFound("verified patient link not found");
+            }
+            if (caller.patient()) {
+                // MSG-07: a revoked connection stops new messaging on the next
+                // patient reply, including the reopen of a resolved thread.
+                connections.requireActive(current.patientId(), current.unitKey(), current.connectionId());
             }
             SenderKind kind = caller.patient() ? SenderKind.PATIENT : SenderKind.STAFF;
             State next = caller.patient() ? State.AWAITING_STAFF : State.AWAITING_PATIENT;

@@ -10,6 +10,7 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
@@ -42,6 +43,8 @@ import com.aurevia.smartclinic.messaging.conversations.ConversationContract.View
 import com.aurevia.smartclinic.messaging.conversations.ConversationContract.WorkItemEvent;
 import com.aurevia.smartclinic.messaging.conversations.ConversationRepository;
 import com.aurevia.smartclinic.messaging.conversations.ConversationService;
+import com.aurevia.smartclinic.messaging.conversations.PatientConnectionVerifier;
+import com.aurevia.smartclinic.messaging.conversations.PatientConnectionVerifier.VerifiedConnection;
 import com.aurevia.smartclinic.tenant.TenantContext;
 
 /**
@@ -62,6 +65,8 @@ class ConversationServiceTest {
     private TransactionTemplate transactions;
     @Mock
     private AuditAppender audit;
+    @Mock
+    private PatientConnectionVerifier connections;
 
     private ConversationService service;
 
@@ -72,7 +77,7 @@ class ConversationServiceTest {
     @SuppressWarnings("unchecked")
     @BeforeEach
     void setUp() {
-        service = new ConversationService(repository, new ConversationActions(), transactions, audit);
+        service = new ConversationService(repository, new ConversationActions(), transactions, audit, connections);
         lenient().when(transactions.execute(any(TransactionCallback.class))).thenAnswer(invocation ->
                 ((TransactionCallback<Object>) invocation.getArgument(0)).doInTransaction(null));
         bind("patient-a");
@@ -100,6 +105,11 @@ class ConversationServiceTest {
         when(repository.activeRoles(subject)).thenReturn(List.of(role));
     }
 
+    private void asConnectedPatient(String patientId, String unitKey, String connectionId) {
+        when(connections.requireActive(patientId, unitKey, connectionId))
+                .thenReturn(new VerifiedConnection(patientId, connectionId, unitKey));
+    }
+
     private static Conversation conversation(State state, int version, String patientSubject,
                                              String unitKey, String assignee) {
         return new Conversation(ID, version, PATIENT_ID, patientSubject, unitKey, "conn-1",
@@ -116,6 +126,7 @@ class ConversationServiceTest {
         when(repository.patientExists(PATIENT_ID)).thenReturn(true);
         when(repository.patientLinkActive("patient-a", PATIENT_ID)).thenReturn(true);
         when(repository.find(any())).thenReturn(Optional.of(conversation(State.AWAITING_STAFF, 1, "patient-a", "lab", null)));
+        asConnectedPatient(PATIENT_ID, "lab", "conn-1");
 
         Conversation created = service.open(new OpenRequest(PATIENT_ID, "patient-a", "lab", "conn-1", " topic "));
 
@@ -171,6 +182,7 @@ class ConversationServiceTest {
         verify(repository, never()).patientExists(any());
         verify(repository, never()).patientLinkActive(any(), any());
         verify(repository, never()).insertConversation(any(), any(), any(), any(), any(), any(), any());
+        verifyNoInteractions(connections);
     }
 
     @Test
@@ -183,11 +195,56 @@ class ConversationServiceTest {
     }
 
     @Test
+    void patientOpenIsDeniedWhenNoActiveConnectionBindsThePatientToTheUnit() {
+        asPatient("patient-a");
+        when(repository.patientExists(PATIENT_ID)).thenReturn(true);
+        when(repository.patientLinkActive("patient-a", PATIENT_ID)).thenReturn(true);
+        when(connections.requireActive(PATIENT_ID, "lab", "conn-1"))
+                .thenThrow(new ApiException(403, "FORBIDDEN", "no active connection for this patient and unit"));
+
+        ApiException failure = assertThrows(ApiException.class,
+                () -> service.open(new OpenRequest(PATIENT_ID, "patient-a", "lab", "conn-1", null)));
+
+        assertEquals(403, failure.status());
+        verify(repository, never()).insertConversation(any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void patientOpenPersistsTheServerDerivedConnectionIdentities() {
+        asPatient("patient-a");
+        when(repository.patientExists(PATIENT_ID)).thenReturn(true);
+        when(repository.patientLinkActive("patient-a", PATIENT_ID)).thenReturn(true);
+        when(connections.requireActive(PATIENT_ID, "lab", "client-conn"))
+                .thenReturn(new VerifiedConnection(PATIENT_ID, "server-conn", "lab"));
+        when(repository.find(any())).thenReturn(Optional.of(
+                conversation(State.AWAITING_STAFF, 1, "patient-a", "lab", null)));
+
+        service.open(new OpenRequest(PATIENT_ID, "patient-a", "lab", "client-conn", null));
+
+        verify(repository).insertConversation(any(), eq(PATIENT_ID), eq("patient-a"), eq("lab"),
+                eq("server-conn"), isNull(), eq("awaiting_staff"));
+    }
+
+    @Test
+    void staffOpenNeverConsultsThePatientConnectionVerifier() {
+        asStaff("lab-a", "lab_verifier");
+        when(repository.patientExists(PATIENT_ID)).thenReturn(true);
+        when(repository.patientLinkActive("patient-a", PATIENT_ID)).thenReturn(true);
+        when(repository.find(any())).thenReturn(Optional.of(
+                conversation(State.AWAITING_PATIENT, 1, "patient-a", "lab", null)));
+
+        service.open(new OpenRequest(PATIENT_ID, "patient-a", "lab", "conn-1", null));
+
+        verifyNoInteractions(connections);
+    }
+
+    @Test
     void patientReplyAppendsMessageAndMovesToAwaitingStaff() {
         asPatient("patient-a");
         when(repository.loadForUpdate(ID)).thenReturn(Optional.of(conversation(State.AWAITING_PATIENT, 1, "patient-a", "lab", null)));
         when(repository.patientLinkActive("patient-a", PATIENT_ID)).thenReturn(true);
         when(repository.nextSequence(ID)).thenReturn(2);
+        asConnectedPatient(PATIENT_ID, "lab", "conn-1");
         stubView(State.AWAITING_STAFF, 2, List.of());
 
         View view = service.reply(ID, new ReplyRequest(" hello "), 1);
@@ -248,6 +305,7 @@ class ConversationServiceTest {
         when(repository.loadForUpdate(ID)).thenReturn(Optional.of(conversation(State.RESOLVED, 2, "patient-a", "lab", null)));
         when(repository.patientLinkActive("patient-a", PATIENT_ID)).thenReturn(true);
         when(repository.nextSequence(ID)).thenReturn(4);
+        asConnectedPatient(PATIENT_ID, "lab", "conn-1");
         stubView(State.AWAITING_STAFF, 3, List.of());
 
         service.reply(ID, new ReplyRequest("one more question"), 2);
@@ -263,6 +321,23 @@ class ConversationServiceTest {
         when(repository.patientLinkActive("patient-a", PATIENT_ID)).thenReturn(false);
         assertEquals(404, assertThrows(ApiException.class,
                 () -> service.reply(ID, new ReplyRequest("hello"), 2)).status());
+    }
+
+    @Test
+    void patientReplyIsDeniedWhenTheConnectionWasRevoked() {
+        asPatient("patient-a");
+        when(repository.loadForUpdate(ID)).thenReturn(Optional.of(
+                conversation(State.AWAITING_STAFF, 1, "patient-a", "lab", null)));
+        when(repository.patientLinkActive("patient-a", PATIENT_ID)).thenReturn(true);
+        when(connections.requireActive(PATIENT_ID, "lab", "conn-1"))
+                .thenThrow(new ApiException(403, "FORBIDDEN", "no active connection for this patient and unit"));
+
+        ApiException failure = assertThrows(ApiException.class,
+                () -> service.reply(ID, new ReplyRequest("hello"), 1));
+
+        assertEquals(403, failure.status());
+        verify(repository, never()).insertMessage(any(), anyInt(), any(), any(), any(), any());
+        verify(repository, never()).updateState(any(), anyInt(), any());
     }
 
     @Test

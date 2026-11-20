@@ -11,6 +11,9 @@ import java.util.Set;
 import org.springframework.stereotype.Service;
 
 import com.aurevia.smartclinic.api.ApiException;
+import com.aurevia.smartclinic.messaging.conversations.ConversationContract.UnitKey;
+import com.aurevia.smartclinic.messaging.conversations.PatientConnectionVerifier;
+import com.aurevia.smartclinic.messaging.conversations.PatientConnectionVerifier.VerifiedConnection;
 import com.aurevia.smartclinic.messaging.units.MessagingContract.CareUnit;
 import com.aurevia.smartclinic.messaging.units.MessagingContract.ConnectRequest;
 import com.aurevia.smartclinic.messaging.units.MessagingContract.ConnectionContext;
@@ -33,7 +36,7 @@ import com.aurevia.smartclinic.tenant.TenantContext;
  * that exact patient to that exact unit in the active organization.</p>
  */
 @Service
-public class CareUnitDirectoryService {
+public class CareUnitDirectoryService implements PatientConnectionVerifier {
 
     private static final String RESOURCE_TYPE = "PATIENT_UNIT_CONNECTION";
 
@@ -218,6 +221,41 @@ public class CareUnitDirectoryService {
             throw deny(context, MessagingActions.CONNECTION_USE, unit, 403, "FORBIDDEN",
                     "no active connection for this patient and unit");
         }
+    }
+
+    @Override
+    public VerifiedConnection requireActive(String patientId, String unitKey, String connectionId) {
+        String chart = MessagingInputs.uuid(patientId, "patientId");
+        String key = requireUnitKey(unitKey);
+        String connection = MessagingInputs.text(connectionId, "connectionId", 128);
+        TenantContext context = requireContext();
+        PatientUnitConnection candidate = store.findConnection(context.organizationId(), connection)
+                .filter(found -> found.state() == ConnectionState.ACTIVE)
+                .filter(found -> chart.equals(found.patientId()))
+                .orElseThrow(() -> denyConnection(context, key));
+        CareUnit unit = store.findUnit(context.organizationId(), candidate.unitId())
+                .filter(CareUnit::active)
+                .orElseThrow(() -> denyConnection(context, key));
+        if (!key.equals(unit.kind())) {
+            throw denyConnection(context, key);
+        }
+        // Reuse the authoritative connection-use rule so membership, verified
+        // chart and active binding are checked in exactly one place.
+        requireActiveConnection(patientId, candidate.unitId());
+        return new VerifiedConnection(candidate.patientId(), candidate.id(), key);
+    }
+
+    private static String requireUnitKey(String value) {
+        try {
+            return UnitKey.from(value).wire();
+        } catch (IllegalArgumentException exception) {
+            throw new ApiException(422, "INVALID_UNITKEY", "unitKey must be an approved care unit");
+        }
+    }
+
+    private ApiException denyConnection(TenantContext context, String unitKey) {
+        return deny(context, MessagingActions.CONNECTION_USE, unitKey, 403, "FORBIDDEN",
+                "no active connection for this patient and unit");
     }
 
     private boolean isUsable(EligibleRelationship relationship) {

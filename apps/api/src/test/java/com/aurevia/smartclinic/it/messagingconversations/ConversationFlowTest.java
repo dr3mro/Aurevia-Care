@@ -11,6 +11,8 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.AfterAll;
@@ -19,6 +21,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpHeaders;
@@ -30,6 +33,12 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.client.RestClient;
 
 import org.flywaydb.core.Flyway;
+
+import com.aurevia.smartclinic.messaging.units.InMemoryMessagingStore;
+import com.aurevia.smartclinic.messaging.units.MessagingContract.CareUnit;
+import com.aurevia.smartclinic.messaging.units.MessagingContract.ConnectionContext;
+import com.aurevia.smartclinic.messaging.units.MessagingContract.ConnectionState;
+import com.aurevia.smartclinic.messaging.units.MessagingContract.PatientUnitConnection;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -61,6 +70,41 @@ class ConversationFlowTest {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private RestClient rest;
+
+    @Autowired
+    private InMemoryMessagingStore messagingStore;
+
+    /**
+     * Seed a verified lab and clinic connection for each tenant's patient.
+     *
+     * <p>The connection directory is the synthetic in-memory adapter; every
+     * fixture here is a synthetic identifier shared across two isolated
+     * organizations so connection binding and tenant scoping are both exercised.</p>
+     */
+    @BeforeEach
+    void seedConnections() {
+        Instant now = Instant.now();
+        for (String org : new String[] {ORG_A, ORG_B}) {
+            String s = org.substring(0, 4);
+            String subject = "patient-" + s;
+            String chart = patientId(org);
+            String labUnit = "aaaaaaaa-0000-0000-0000-" + s + "00000001";
+            String clinicUnit = "aaaaaaaa-0000-0000-0000-" + s + "00000002";
+            messagingStore.addMember(org, subject, "patient", true);
+            messagingStore.addPatient(org, chart);
+            messagingStore.linkPatient(org, subject, chart);
+            messagingStore.addUnit(new CareUnit(labUnit, org, "facility-1", "Synthetic Lab", "lab",
+                    List.of("results"), true));
+            messagingStore.addUnit(new CareUnit(clinicUnit, org, "facility-1", "Synthetic Clinic", "clinic",
+                    List.of("visits"), true));
+            messagingStore.insertConnection(org, new PatientUnitConnection("conn-lab", org, chart, labUnit,
+                    ConnectionContext.CARE_RELATIONSHIP, "order-lab", "rel-lab", ConnectionState.ACTIVE,
+                    subject, now, now, null));
+            messagingStore.insertConnection(org, new PatientUnitConnection("conn-clinic", org, chart, clinicUnit,
+                    ConnectionContext.CARE_RELATIONSHIP, "order-clinic", "rel-clinic", ConnectionState.ACTIVE,
+                    subject, now, now, null));
+        }
+    }
 
     /**
      * Create the HTTP client against the random server port.
@@ -188,7 +232,8 @@ class ConversationFlowTest {
 
     private String open(String org, String subject, String patientSubject, String unit) {
         String body = "{\"patientId\":\"" + patientId(org) + "\",\"patientSubject\":\"" + patientSubject
-                + "\",\"unitKey\":\"" + unit + "\",\"connectionId\":\"conn-1\",\"topic\":\"follow up\"}";
+                + "\",\"unitKey\":\"" + unit + "\",\"connectionId\":\"conn-" + unit
+                + "\",\"topic\":\"follow up\"}";
         ResponseEntity<String> response = send(HttpMethod.POST, "/api/v1/conversations", body, subject, org);
         assertEquals(HttpStatus.CREATED, response.getStatusCode(), response.getBody());
         return text(response, "id");
@@ -362,6 +407,26 @@ class ConversationFlowTest {
         assertFalse(id.equals(idB));
         ResponseEntity<String> inboxA = send(HttpMethod.GET, "/api/v1/conversations/inbox", null, PATIENT, ORG_A);
         assertFalse(tree(inboxA).get("entries").toString().contains(idB));
+    }
+
+    @Test
+    void patientCannotOpenWithAConnectionNotBoundToThem() throws Exception {
+        // A verified patient who names a unit and an arbitrary connection id must
+        // be denied: no active PatientUnitConnection binds this chart to that unit.
+        String body = "{\"patientId\":\"" + patientId(ORG_A) + "\",\"patientSubject\":\"" + PATIENT
+                + "\",\"unitKey\":\"lab\",\"connectionId\":\"forged-conn\"}";
+        ResponseEntity<String> denied = send(HttpMethod.POST, "/api/v1/conversations", body, PATIENT, ORG_A);
+        assertEquals(HttpStatus.FORBIDDEN, denied.getStatusCode(), denied.getBody());
+    }
+
+    @Test
+    void patientCannotOpenWithAUnitTheyHaveNoConnectionTo() throws Exception {
+        // The same patient is bound to the lab unit but never connected to the
+        // pharmacy unit; naming that unit must not create a thread.
+        String body = "{\"patientId\":\"" + patientId(ORG_A) + "\",\"patientSubject\":\"" + PATIENT
+                + "\",\"unitKey\":\"pharmacy\",\"connectionId\":\"conn-1\"}";
+        ResponseEntity<String> denied = send(HttpMethod.POST, "/api/v1/conversations", body, PATIENT, ORG_A);
+        assertEquals(HttpStatus.FORBIDDEN, denied.getStatusCode(), denied.getBody());
     }
 
     @Test

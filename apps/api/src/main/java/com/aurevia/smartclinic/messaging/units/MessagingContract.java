@@ -5,6 +5,8 @@ import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonValue;
 
+import com.aurevia.smartclinic.messaging.conversations.ConversationContract.UnitKey;
+
 /**
  * Domain contract for the MSG-01 / ARC-07 care-unit directory and patient-unit
  * connections.
@@ -123,15 +125,21 @@ public final class MessagingContract {
     /**
      * One staffed inbox a verified patient may connect to (MSG-01, MSG-06).
      *
+     * <p>{@code kind} is the bounded clinical unit key this inbox serves. It
+     * binds the directory identity to the conversation unit vocabulary so a
+     * connection to one kind cannot be used to address another kind.</p>
+     *
      * @return the immutable value
      */
     public record CareUnit(String id, String organizationId, String facilityId, String name,
-                           List<String> topics, boolean active) {
+                           String kind, List<String> topics, boolean active) {
         /**
-         * Defensively copy the topic list.
+         * Validate the unit kind and defensively copy the topic list.
          *
+         * @throws IllegalArgumentException when the kind is not an approved care unit key
          */
         public CareUnit {
+            UnitKey.from(kind);
             topics = List.copyOf(topics);
         }
     }
