@@ -146,8 +146,7 @@ Cadence and limits:
 
 ## Audit findings
 
-- [-] AUD-20261119-03 · Expose required workflows through HTTP entry points instead of orphan services
-  - agent: swarm-3
+- [ ] AUD-20261119-03 · Expose required workflows through HTTP entry points instead of orphan services
   - attempts: 4
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/messaging, apps/api/src/main/java/com/aurevia/smartclinic/therapy, apps/api/src/main/java/com/aurevia/smartclinic/radiology
   - details:
@@ -157,8 +156,7 @@ Cadence and limits:
 
 ## Audit 2026-11-20 (whole-project audit)
 
-- [-] AUD-20261120-01 · Return HTTP 201 from patient registration and catalog entry creation, as the contract says
-  - agent: swarm-4
+- [ ] AUD-20261120-01 · Return HTTP 201 from patient registration and catalog entry creation, as the contract says
   - attempts: 4
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/web
   - depends: DLV-04
@@ -199,8 +197,9 @@ Cadence and limits:
     Done when: `ClaimsTenantResolverTest` has at least 7 tests (happy path, missing sub, blank sub, missing orgs, malformed org list, org not in token, malformed header) and passes.
 
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` must pass for the classes you touched. Synthetic data only; write the failing test first; stay inside the declared scope; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
-- [ ] AUD-20261120-03 · Production authentication, part 2: validate OIDC bearer tokens and bind the tenant context
-  - attempts: 2
+- [-] AUD-20261120-03 · Production authentication, part 2: validate OIDC bearer tokens and bind the tenant context
+  - agent: swarm-3
+  - attempts: 3
   - scope: apps/api/pom.xml, apps/api/src/main/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/web, apps/api/src/main/resources
   - depends: AUD-20261120-02
   - details:
@@ -242,8 +241,7 @@ Cadence and limits:
     Done when: `bash db/check.sh` passes, the two new assertions run, and the notes list any table you had to except together with the reason.
 
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` must pass for the classes you touched. Synthetic data only; write the failing test first; stay inside the declared scope; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
-- [-] AUD-20261120-05 · Rename the story-ID folders under infra/ and docs/operations/ to business names
-  - agent: swarm-5
+- [ ] AUD-20261120-05 · Rename the story-ID folders under infra/ and docs/operations/ to business names
   - attempts: 4
   - scope: infra, docs/operations
   - depends: REFACTOR-PACKAGES-02
@@ -267,8 +265,7 @@ Cadence and limits:
     Done when: no path `s_g5_` remains outside `TODO.md` and `.agent/`, all seven `check.sh` scripts pass, and both Python checks pass.
 
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` must pass for the classes you touched. Synthetic data only; write the failing test first; stay inside the declared scope; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
-- [-] AUD-20261120-06 · Replace the in-memory delivery outbox store with a PostgreSQL-backed store
-  - agent: swarm-6
+- [ ] AUD-20261120-06 · Replace the in-memory delivery outbox store with a PostgreSQL-backed store
   - attempts: 4
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/events, apps/api/src/test/java/com/aurevia/smartclinic/events, apps/api/src/test/java/com/aurevia/smartclinic/it
   - depends: REFACTOR-PACKAGES-02
@@ -399,8 +396,7 @@ Found while extending the specification (section 8.1 and docs/design/screens-and
     Do NOT store tokens or any response data in `localStorage` or `sessionStorage`, and do NOT add a dependency.
 
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` (API tasks) or `bash apps/staff-web/check.sh` (staff web tasks) must pass. Synthetic data only; write the failing test first; stay inside the declared scope; name folders and packages after what they hold, never a task ID; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
-- [-] READY-07 · Staff web state views and a global error boundary (WEB-09)
-  - agent: swarm-7
+- [ ] READY-07 · Staff web state views and a global error boundary (WEB-09)
   - attempts: 4
   - scope: apps/staff-web/src/components, apps/staff-web/src/app, apps/staff-web/src/features
   - depends: READY-06
@@ -800,8 +796,7 @@ Order of work for the whole production-readiness effort: (1) security and platfo
     Do NOT add a dependency and do NOT run `expo prebuild`.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
-- [-] READY-34 · Patient app: four-tab navigation (Appointments, Reports, Messages, Account)
-  - agent: swarm-8
+- [ ] READY-34 · Patient app: four-tab navigation (Appointments, Reports, Messages, Account)
   - attempts: 4
   - requirements: PAT-01, PAT-02, PAT-03, UX-01
   - scope: apps/patient-mobile/src/app, apps/patient-mobile/App.tsx
@@ -1017,8 +1012,7 @@ Do these after part 2 where `depends` says so. Persistence tasks run one at a ti
 
 ### Phase C — Patient app connection to the API
 
-- [-] READY-47 · Patient app API transport and secure token storage (no login screen yet)
-  - agent: swarm-9
+- [ ] READY-47 · Patient app API transport and secure token storage (no login screen yet)
   - attempts: 4
   - requirements: PAT-01, ARC-03
   - scope: apps/patient-mobile/src/api, apps/patient-mobile/tests/api
