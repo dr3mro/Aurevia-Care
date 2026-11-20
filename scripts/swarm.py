@@ -2282,7 +2282,7 @@ def integrate_batch(queue, gate="scripts/quick-check.sh"):
     files = ["TODO.md"] + [f"docs/swarm/{t}.md" for _, t, _ in merged]
     git("add", *files)
     try:
-        git(*IDENTITY, "commit", "-qm", f"Integrate {len(merged)} swarm pull request(s)")
+        git(*IDENTITY, "commit", "-qm", "--allow-empty", f"Integrate {len(merged)} swarm pull request(s)")
     except subprocess.CalledProcessError as error:
         status = git("status", "--short", check=False)
         staged = git("diff", "--cached", "--stat", check=False)
