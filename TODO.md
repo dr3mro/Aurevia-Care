@@ -49,7 +49,7 @@ Current source state (2026-11-19T07:19Z, from `main` at `311d69a`): 7 Flyway mig
 - [x] S-G0-05 · Patient registration, identity confirmation and likely-duplicate warnings (IAM-03). V7 append-only patient records, issuer-scoped MRN, normalized name search, non-linking duplicate warnings, `/api/v1/patients`; 184 tests at delivery, JaCoCo 100%, local gates green, code on `main`. Current source (2026-11-19): Surefire reports 191 Java tests, 0 failures/errors across the suite; V7 and `/api/v1/patients` present.
 - [-] S-G0-06 · Same-tenant duplicate review and all-or-nothing chart consolidation (IAM-04).
   - agent: swarm-2
-  - attempts: 2
+  - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/patient/consolidation, apps/api/src/test/java/com/aurevia/smartclinic/it/patient/consolidation
   - reserved: V9
   - details:
@@ -58,7 +58,7 @@ Current source state (2026-11-19T07:19Z, from `main` at `311d69a`): 7 Flyway mig
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [-] S-G0-07 · Patient identity proofing, verified chart linking and unlinking (IAM-05).
   - agent: swarm-3
-  - attempts: 2
+  - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/patient/identity, apps/api/src/test/java/com/aurevia/smartclinic/it/patient/identity
   - reserved: V10
   - details:
@@ -67,7 +67,7 @@ Current source state (2026-11-19T07:19Z, from `main` at `311d69a`): 7 Flyway mig
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [-] S-G0-08 · Emergency access and platform support access controls (IAM-06).
   - agent: swarm-4
-  - attempts: 2
+  - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/authz/emergency, apps/api/src/test/java/com/aurevia/smartclinic/it/authz/emergency
   - reserved: V11
   - details:
@@ -79,8 +79,7 @@ Current source state (2026-11-19T07:19Z, from `main` at `311d69a`): 7 Flyway mig
 
 Gate evidence: competing bookings enforce one protected slot; stale drafts cannot overwrite signed records; corrections preserve the signed original; English and Arabic PDFs validated; consolidation is all-or-nothing.
 
-- [-] S-G1-01 · Facility, clinician and room/resource availability, recurrence, holds and transactional booking with history (CLN-01).
-  - agent: opencode-delivery-dispatch-4
+- [ ] S-G1-01 · Facility, clinician and room/resource availability, recurrence, holds and transactional booking with history (CLN-01).
   - requirements: CLN-01, ARC-01, ARC-02, ARC-03, OPS-02
   - reserved: V8
   - details:
@@ -89,7 +88,7 @@ Gate evidence: competing bookings enforce one protected slot; stale drafts canno
     Out of scope for this slice: staff worklist/assignment/handoff (S-G1-02), clinical chart (S-G1-03), equipment resources and paid booking rules.
 - [-] S-G1-02 · Identity verification, check-in, organization/facility worklist, assignment and handoff (CLN-02).
   - agent: swarm-5
-  - attempts: 2
+  - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/scheduling/checkin, apps/api/src/test/java/com/aurevia/smartclinic/it/scheduling/checkin
   - reserved: V12
   - details:
@@ -98,7 +97,7 @@ Gate evidence: competing bookings enforce one protected slot; stale drafts canno
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [-] S-G1-03 · Longitudinal chart: problems, allergies, medications, vitals, source and verification states (CLN-03).
   - agent: swarm-6
-  - attempts: 2
+  - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/chart/record, apps/api/src/test/java/com/aurevia/smartclinic/it/chart/record
   - reserved: V13
   - details:
@@ -117,7 +116,7 @@ Gate evidence: competing bookings enforce one protected slot; stale drafts canno
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [-] S-G1-05 · Draft to signed, amendments, signed addenda and entered-in-error with preserved originals (CLN-05).
   - agent: swarm-7
-  - attempts: 2
+  - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/chart/signing, apps/api/src/test/java/com/aurevia/smartclinic/it/chart/signing
   - reserved: V15
   - details:
@@ -136,7 +135,7 @@ Gate evidence: competing bookings enforce one protected slot; stale drafts canno
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [-] S-G1-07 · Original PDF/image associations and immutable, localized, versioned PDF rendering (CLN-07).
   - agent: swarm-8
-  - attempts: 2
+  - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/chart/documents, apps/api/src/test/java/com/aurevia/smartclinic/it/chart/documents
   - reserved: V17
   - details:
@@ -145,7 +144,7 @@ Gate evidence: competing bookings enforce one protected slot; stale drafts canno
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [-] S-G1-08 · Clinical dictionaries, diagnosis/procedure catalogs and RTL mixed-script operation (PRD-05, UX-01).
   - agent: swarm-9
-  - attempts: 2
+  - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/catalog/dictionary, apps/api/src/test/java/com/aurevia/smartclinic/it/catalog/dictionary
   - reserved: V18
   - details:
@@ -160,7 +159,7 @@ Gate evidence: rejected or recollected specimens trace to the right order; dupli
 
 - [-] S-G2-01 · Order creation with authorization, snapshot, disclosure record and destination work item (XCH-01).
   - agent: swarm-10
-  - attempts: 2
+  - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/exchange/order, apps/api/src/test/java/com/aurevia/smartclinic/it/exchange/order
   - reserved: V19
   - details:
@@ -544,6 +543,33 @@ Delivered inside the stories above, not scheduled separately.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 
+## Delivery repair (swarm tasks)
+
+Main's Delivery run is red; these tasks restore it. They share `apps/api`, so the swarm runs them one at a time.
+
+- [ ] DLV-01 · Repair integration tests: patient chart, chart entry and exchange task
+  - requirements: CLN-03, CLN-05, ARC-02
+  - scope: apps/api, db
+  - details:
+    Classes: `ChartRecordIntegrationTest` and `ChartEntryIntegrationTest` (`seedPatient` inserts a `patient_record` with neither `dob` nor `dob_unknown_reason`, which violates the V7 CHECK that requires exactly one), `ExchangeTaskIsolationTest` (duplicate key on `exchange_task_pkey` in `storageCannotForgeAReviewedTaskOrMoveTwoChannels`), `CheckInWorklistIntegrationTest` (`worklistOrdersByScheduledTimeAndConfiguredPriority` expects 2 rows but sees 9, so check for leaked state between tests).
+    Delivery on `main` has been red since about 23:36 on 2026-11-19: the `Java and database verification` job fails in `mvn verify` (run 44658087355, commit 3cd3443: Tests run 2012, Failures 62, Errors 7). Every failure is a PostgreSQL integration test (`@Tag("integration")`). Pull requests only run the fast tier, so these suites never ran before merge. Start from a clean checkout of current `main` and run the real suite (`bash apps/api/check.sh`, with PostgreSQL via `SMARTCLINIC_PG_ADMIN`), not only the fast tier. Reproduce each failure red first, find whether the test or the production code is wrong, and fix the real cause. Never weaken, skip, delete or re-tag a test, and never exclude a class from the gate. Read the surefire reports in `apps/api/target/surefire-reports` for the server stack trace behind each 404/500. Do not edit migrations that are already applied on main; add a new migration only when the schema is genuinely wrong. Do NOT edit `.github/`, `scripts/` or shared trackers. Record the root cause per class, commands and results in `.agent/pr-notes/<story-id>.md`. Done means the classes below pass in the full `mvn verify` run.
+
+- [ ] DLV-02 · Repair integration tests: patient identity, consolidation and messaging
+  - requirements: IAM-03, IAM-04, IAM-05, MSG-07
+  - depends: DLV-01
+  - scope: apps/api, db
+  - details:
+    Classes: `IdentityProofingIsolationTest` (500 on `/api/v1/patient-identity/links/claim`; `invalidInputsReturnUnprocessableEntity` compares HttpStatus `UNPROCESSABLE_ENTITY` with `UNPROCESSABLE_CONTENT`, a Spring 7 rename, so compare the numeric value 422; `expiredInvitationIsUnusable` violates `account_invitation_check`), `ConsolidationIsolationTest` (404 on `/api/v1/duplicate-reviews`, 500 when creating a review), `ConversationFlowTest` (`uuid = character varying` in a test SQL statement, and missing JSON fields in responses).
+    Delivery on `main` has been red since about 23:36 on 2026-11-19: the `Java and database verification` job fails in `mvn verify` (run 44658087355, commit 3cd3443: Tests run 2012, Failures 62, Errors 7). Every failure is a PostgreSQL integration test (`@Tag("integration")`). Pull requests only run the fast tier, so these suites never ran before merge. Start from a clean checkout of current `main` and run the real suite (`bash apps/api/check.sh`, with PostgreSQL via `SMARTCLINIC_PG_ADMIN`), not only the fast tier. Reproduce each failure red first, find whether the test or the production code is wrong, and fix the real cause. Never weaken, skip, delete or re-tag a test, and never exclude a class from the gate. Read the surefire reports in `apps/api/target/surefire-reports` for the server stack trace behind each 404/500. Do not edit migrations that are already applied on main; add a new migration only when the schema is genuinely wrong. Do NOT edit `.github/`, `scripts/` or shared trackers. Record the root cause per class, commands and results in `.agent/pr-notes/<story-id>.md`. Done means the classes below pass in the full `mvn verify` run.
+
+- [ ] DLV-03 · Repair integration tests: prescription transmission
+  - requirements: RX-02, IAM-01, ARC-02
+  - depends: DLV-02
+  - scope: apps/api, db
+  - details:
+    Class: `RxTransmissionFlowTest` (500 on `/api/v1/prescriptions/{id}/transmit` with no `submissionId`; STALE_VERSION where FORBIDDEN is expected for non-prescriber attestation; tenant concealment returns 200 instead of 404; RENEW_REQUIRES_TRANSMISSION where INVALID_TRANSITION is expected). Treat each as a possible production defect, since authorization and tenant isolation must fail closed.
+    Delivery on `main` has been red since about 23:36 on 2026-11-19: the `Java and database verification` job fails in `mvn verify` (run 44658087355, commit 3cd3443: Tests run 2012, Failures 62, Errors 7). Every failure is a PostgreSQL integration test (`@Tag("integration")`). Pull requests only run the fast tier, so these suites never ran before merge. Start from a clean checkout of current `main` and run the real suite (`bash apps/api/check.sh`, with PostgreSQL via `SMARTCLINIC_PG_ADMIN`), not only the fast tier. Reproduce each failure red first, find whether the test or the production code is wrong, and fix the real cause. Never weaken, skip, delete or re-tag a test, and never exclude a class from the gate. Read the surefire reports in `apps/api/target/surefire-reports` for the server stack trace behind each 404/500. Do not edit migrations that are already applied on main; add a new migration only when the schema is genuinely wrong. Do NOT edit `.github/`, `scripts/` or shared trackers. Record the root cause per class, commands and results in `.agent/pr-notes/<story-id>.md`. Done means the classes below pass in the full `mvn verify` run.
+
 ## Frontend and design foundations (swarm tasks)
 
 Independent modules scoped to their own paths so workers cannot collide with backend work.
@@ -721,14 +747,14 @@ Cadence and limits:
 ## Audit findings
 
 - [ ] AUD-20261119-01 · Constrain patient released-revisions endpoint to the verified patient chart link
-  - attempts: 0
+  - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/exchange/release, apps/api/src/main/java/com/aurevia/smartclinic/messaging/reports
   - details:
     PatientReleasedRevisionsController exposes GET /api/v1/patients/{patientId}/released-revisions and passes the path patientId straight into ReleaseService.visibleRevisions (PatientReleasedRevisionsController.java:38-40). That method only calls authorize(context, RELEASE_ACCESS_QUERY, patientId) (ReleaseService.java:333-356), which checks active membership plus a role in {clinician, tenant_admin, reception, privacy_auditor} (ReleaseActionPolicy.java:33-50); it never verifies that the authenticated subject is linked to that patientId. Any receptionist or privacy auditor can therefore enumerate released report revision IDs for any patient by supplying its UUID, while a verified patient (role 'patient') is denied 403. The correct patient-facing service ReleasedReportService, which checks a verified + active chart link and release state on every list/download (messaging/reports/ReleasedReportService.java:62-129, 143-150), has no caller in main outside its own Javadoc/test references, so PAT-02 patient self-access is unreachable at runtime. Expected fix: route the endpoint through ReleasedReportService (or add equivalent verified-link and self-only checks to ReleaseService.visibleRevisions), drop reception/privacy_auditor from the patient-scoped read policy, and add negative tests for a staff reader requesting another patient's revisions and for a patient reading their own.
     Found by the daily audit. Synthetic fixtures only; failing tests first;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [ ] AUD-20261119-02 · Verify the patient-unit connection when opening a conversation
-  - attempts: 0
+  - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/messaging/conversations, apps/api/src/main/java/com/aurevia/smartclinic/messaging/units
   - details:
     ConversationService.open (ConversationService.java:76-105) accepts patientId, patientSubject, unitKey and connectionId from the JSON body. For a patient caller it only checks subject == patientSubject and repository.patientLinkActive (a patient-to-chart link); connectionId is merely format-validated at line 80 and persisted at line 99 with no check that an active PatientUnitConnection binds this patient to that unit. A verified patient can thus open a thread with any of the five units (clinic/lab/radiology/pt/pharmacy) just by naming the unitKey, violating MSG-01's requirement to validate patient, destination and context on the server at connection time and every protected action and to block arbitrary directory contact. The integration test ConversationFlowTest.java:331-343 even opens with unitKey 'lab' and a fixed 'conn-1' without proving a connection. CareUnitDirectoryService.requireActiveConnection (messaging/units/CareUnitDirectoryService.java:209-220) already implements the needed check but a repo-wide grep shows zero callers in main. Expected fix: call that check on open/reply using server-derived connection and unit identity, reject client-supplied connectionId values not bound to the caller, and add a no-connection/wrong-unit negative test.
@@ -742,7 +768,7 @@ Cadence and limits:
     Found by the daily audit. Synthetic fixtures only; failing tests first;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [ ] AUD-20261119-04 · Rename story-ID-named patient-mobile feature packages
-  - attempts: 0
+  - attempts: 1
   - scope: apps/patient-mobile/src/features
   - details:
     All 12 directories under apps/patient-mobile/src/features are named s_g3_01 through s_g3_12 (story IDs), for example features/s_g3_02/credentials.ts and features/s_g3_06/attachments.test.tsx. CODING_STYLE.md requires business-domain naming and the earlier refactor already removed Java s_g* packages; this mobile remainder is called out as out of scope in .agent/pr-notes/REFACTOR-PACKAGES.md section 6 but is not a tracked TODO entry. Expected fix: agree an owner-approved domain mapping (appointments, reports, enrollment, units, conversations, attachments, instructions, acknowledgments, service-profiles, governance, flows, evidence), git mv the folders and update imports and tests.
