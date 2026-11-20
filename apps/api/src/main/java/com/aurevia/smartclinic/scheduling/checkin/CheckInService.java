@@ -3,6 +3,7 @@ package com.aurevia.smartclinic.scheduling.checkin;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -94,9 +95,14 @@ public class CheckInService {
         String alternateReason = alternate
                 ? WorkflowInputs.text(request.alternateReason(), "alternateReason") : null;
         String id = WorkflowInputs.newId();
-        return transactions.execute(status -> {
+        AtomicReference<ApiException> failure = new AtomicReference<>();
+        Verification result = transactions.execute(status -> {
             TenantContext context = requireContext();
-            authorize(context, WorklistPolicy.IDENTITY_VERIFY, appointmentId);
+            ApiException denial = authorize(context, WorklistPolicy.IDENTITY_VERIFY, appointmentId);
+            if (denial != null) {
+                failure.set(denial);
+                return null;
+            }
             Appointment appointment = appointments.get(appointmentId).appointment();
             if (repository.hasVerification(appointmentId)) {
                 throw new ApiException(409, "DUPLICATE_VERIFICATION",
@@ -119,6 +125,10 @@ public class CheckInService {
                     appointment.facilityCode(), method, identifiers, alternateCode, alternateReason,
                     context.subject(), clock.instant());
         });
+        if (failure.get() != null) {
+            throw failure.get();
+        }
+        return result;
     }
 
     /**
@@ -131,9 +141,14 @@ public class CheckInService {
      */
     public WorklistItem checkIn(String appointmentId, int expectedVersion) {
         String id = WorkflowInputs.uuid(appointmentId, "appointmentId");
-        return transactions.execute(status -> {
+        AtomicReference<ApiException> failure = new AtomicReference<>();
+        WorklistItem result = transactions.execute(status -> {
             TenantContext context = requireContext();
-            authorize(context, WorklistPolicy.CHECK_IN, id);
+            ApiException denial = authorize(context, WorklistPolicy.CHECK_IN, id);
+            if (denial != null) {
+                failure.set(denial);
+                return null;
+            }
             if (!repository.hasVerification(id)) {
                 throw new ApiException(409, "VERIFICATION_REQUIRED",
                         "identity must be verified before check-in");
@@ -148,6 +163,10 @@ public class CheckInService {
                     id, "SUCCESS");
             return item(entryId, id, null, checkedIn, priority, null, null, 1);
         });
+        if (failure.get() != null) {
+            throw failure.get();
+        }
+        return result;
     }
 
     /**
@@ -164,14 +183,23 @@ public class CheckInService {
         if (size < 1 || size > MAX_LIMIT) {
             throw new ApiException(422, "INVALID_LIMIT", "limit must be 1-" + MAX_LIMIT);
         }
-        return transactions.execute(status -> {
+        AtomicReference<ApiException> failure = new AtomicReference<>();
+        List<WorklistItem> result = transactions.execute(status -> {
             TenantContext context = requireContext();
-            authorize(context, WorklistPolicy.WORKLIST_READ, code);
+            ApiException denial = authorize(context, WorklistPolicy.WORKLIST_READ, code);
+            if (denial != null) {
+                failure.set(denial);
+                return List.<WorklistItem>of();
+            }
             List<WorklistItem> items = repository.listWorklist(code, size);
             audit.append(context, "WORKLIST_READ", "WORKLIST_READ", RESOURCE_TYPE, SCOPE, code,
                     "SUCCESS");
             return List.copyOf(items);
         });
+        if (failure.get() != null) {
+            throw failure.get();
+        }
+        return result;
     }
 
     /**
@@ -186,9 +214,14 @@ public class CheckInService {
     public WorklistItem assign(String itemId, Assign request, int expectedVersion) {
         String id = WorkflowInputs.uuid(itemId, "itemId");
         String assignee = WorkflowInputs.text(request.assigneeSubject(), "assigneeSubject");
-        return transactions.execute(status -> {
+        AtomicReference<ApiException> failure = new AtomicReference<>();
+        WorklistItem result = transactions.execute(status -> {
             TenantContext context = requireContext();
-            authorize(context, WorklistPolicy.WORKLIST_ASSIGN, id);
+            ApiException denial = authorize(context, WorklistPolicy.WORKLIST_ASSIGN, id);
+            if (denial != null) {
+                failure.set(denial);
+                return null;
+            }
             WorklistItem current = repository.findItemForUpdate(id)
                     .orElseThrow(() -> new ApiException(404, "NOT_FOUND", "worklist item not found"));
             requireVersion(current.version(), expectedVersion);
@@ -206,6 +239,10 @@ public class CheckInService {
                     current.patientId(), current.facilityCode(), current.startsAt(), current.priority(),
                     assignee, now, expectedVersion + 1);
         });
+        if (failure.get() != null) {
+            throw failure.get();
+        }
+        return result;
     }
 
     /**
@@ -221,9 +258,14 @@ public class CheckInService {
         String id = WorkflowInputs.uuid(itemId, "itemId");
         String to = WorkflowInputs.text(request.toSubject(), "toSubject");
         String reason = WorkflowInputs.text(request.reason(), "reason");
-        return transactions.execute(status -> {
+        AtomicReference<ApiException> failure = new AtomicReference<>();
+        WorklistItem result = transactions.execute(status -> {
             TenantContext context = requireContext();
-            authorize(context, WorklistPolicy.HANDOFF, id);
+            ApiException denial = authorize(context, WorklistPolicy.HANDOFF, id);
+            if (denial != null) {
+                failure.set(denial);
+                return null;
+            }
             WorklistItem current = repository.findItemForUpdate(id)
                     .orElseThrow(() -> new ApiException(404, "NOT_FOUND", "worklist item not found"));
             requireVersion(current.version(), expectedVersion);
@@ -249,6 +291,10 @@ public class CheckInService {
                     current.patientId(), current.facilityCode(), current.startsAt(), current.priority(),
                     to, now, expectedVersion + 1);
         });
+        if (failure.get() != null) {
+            throw failure.get();
+        }
+        return result;
     }
 
     /**
@@ -262,9 +308,14 @@ public class CheckInService {
         String facilityCode = WorkflowInputs.code(request.facilityCode(), "facilityCode");
         String patientId = WorkflowInputs.uuid(request.patientId(), "patientId");
         String reason = WorkflowInputs.text(request.reason(), "reason");
-        return transactions.execute(status -> {
+        AtomicReference<ApiException> failure = new AtomicReference<>();
+        WorklistItem result = transactions.execute(status -> {
             TenantContext context = requireContext();
-            authorize(context, WorklistPolicy.INTAKE_LINK, patientId);
+            ApiException denial = authorize(context, WorklistPolicy.INTAKE_LINK, patientId);
+            if (denial != null) {
+                failure.set(denial);
+                return null;
+            }
             if (!repository.patientExists(patientId)) {
                 throw new ApiException(404, "NOT_FOUND", "patient not found");
             }
@@ -277,6 +328,10 @@ public class CheckInService {
             return new WorklistItem(id, null, reason, patientId, facilityCode, null, priority,
                     null, null, 1);
         });
+        if (failure.get() != null) {
+            throw failure.get();
+        }
+        return result;
     }
 
     /**
@@ -289,9 +344,14 @@ public class CheckInService {
      */
     public Appointment openEncounter(String appointmentId, int expectedVersion) {
         String id = WorkflowInputs.uuid(appointmentId, "appointmentId");
-        return transactions.execute(status -> {
+        AtomicReference<ApiException> failure = new AtomicReference<>();
+        Appointment result = transactions.execute(status -> {
             TenantContext context = requireContext();
-            authorize(context, WorklistPolicy.ENCOUNTER_OPEN, id);
+            ApiException denial = authorize(context, WorklistPolicy.ENCOUNTER_OPEN, id);
+            if (denial != null) {
+                failure.set(denial);
+                return null;
+            }
             if (!repository.hasVerification(id)) {
                 throw new ApiException(409, "VERIFICATION_REQUIRED",
                         "identity must be verified before the encounter opens");
@@ -301,6 +361,10 @@ public class CheckInService {
                     RESOURCE_TYPE, SCOPE, id, "SUCCESS");
             return opened;
         });
+        if (failure.get() != null) {
+            throw failure.get();
+        }
+        return result;
     }
 
     private int priorityFor(String visitType) {
@@ -317,16 +381,28 @@ public class CheckInService {
         return context;
     }
 
-    private void authorize(TenantContext context, String action, String resourceId) {
+    /**
+     * Authorize a command, returning (not throwing) the denial so the caller can
+     * commit the DENIED audit row before returning the failure to the client.
+     * Throwing inside the guarded transaction would roll that audit row back.
+     *
+     * @param context    active tenant context
+     * @param action     action key from
+     *                   {@link com.aurevia.smartclinic.scheduling.checkin.WorklistPolicy}
+     * @param resourceId resource the action targets
+     * @return the denial to throw after commit, or {@code null} when allowed
+     */
+    private ApiException authorize(TenantContext context, String action, String resourceId) {
         if (!scheduling.hasActiveMembership(context.subject())) {
             audit.append(context, action, action, RESOURCE_TYPE, SCOPE, resourceId, "DENIED");
-            throw new ApiException(403, "FORBIDDEN", "no active membership");
+            return new ApiException(403, "FORBIDDEN", "no active membership");
         }
         if (scheduling.activeRoles(context.subject()).stream()
                 .noneMatch(role -> policy.allows(action, role))) {
             audit.append(context, action, action, RESOURCE_TYPE, SCOPE, resourceId, "DENIED");
-            throw new ApiException(403, "FORBIDDEN", "missing worklist permission");
+            return new ApiException(403, "FORBIDDEN", "missing worklist permission");
         }
+        return null;
     }
 
     private void requireActiveMember(String subject) {
