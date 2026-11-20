@@ -203,6 +203,27 @@ class ClinicalCatalogAcceptanceTest {
     }
 
     @Test
+    void versionRejectsNullEntriesWithoutLeakingANullPointerException() {
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> new CatalogVersion<DictionaryField>(1, null, "author-1", null));
+        assertEquals("entries are required", error.getMessage());
+    }
+
+    @Test
+    void approvingAVersionRequiresANamedApprovalAndFailsClosed() {
+        CatalogVersion<DictionaryField> draft = new CatalogVersion<>(1,
+                List.of(new DictionaryField("chief_concern",
+                        new LocalizedText("Chief concern", "en"),
+                        Requiredness.REQUIRED, List.of())),
+                "author-1", null);
+
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> draft.approve(null));
+        assertEquals("approval is required", error.getMessage());
+        assertFalse(draft.isApproved());
+    }
+
+    @Test
     void malformedTimeAndZoneInputsAreRejectedWithDomainErrors() {
         IllegalArgumentException instantError = assertThrows(IllegalArgumentException.class,
                 () -> mixedScript.instantWithZone("not-an-instant", "UTC"));
