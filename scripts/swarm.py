@@ -787,7 +787,7 @@ def repair_task(run_id):
     body = (f"Repair the failed '{run['name']}' run on main ({run['url']}, commit {run['headSha'][:12]}).\n"
             "Reproduce it with the failing commands. When it is a real defect, write a failing test "
             "first, then make the smallest fix. When it is a transient or runner problem, say so in "
-            ".agent/pr-notes.md and change nothing.\n\nFailing log tail:\n```text\n" + tail + "\n```")
+            ".agent/pr-notes/<task-id>.md (never .agent/pr-notes.md) and change nothing.\n\nFailing log tail:\n```text\n" + tail + "\n```")
     return {"kind": "story", "id": f"FIX-{run_id}", "number": 0, "branch": "",
             "title": f"Repair main: {run['name']} failed", "body": clip(body), "fix": ""}
 
@@ -1044,7 +1044,7 @@ def guard(pr, repair=False):
     trackers = [f for f in files if any(fnmatch.fnmatch(f, pattern) for pattern in TRACKERS)]
     if trackers:
         fail(pr, "Shared trackers must not be edited by workers; revert " + ", ".join(trackers[:10])
-             + " and put the evidence in .agent/pr-notes.md")
+             + " and put the evidence in .agent/pr-notes/<task-id>.md (never .agent/pr-notes.md)")
         return trackers
     if len(files) > MAX_PR_FILES:
         add_labels(pr, "needs-human")
