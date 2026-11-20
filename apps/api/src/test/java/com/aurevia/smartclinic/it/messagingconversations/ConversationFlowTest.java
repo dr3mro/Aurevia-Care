@@ -6,12 +6,16 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.Instant;
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -19,6 +23,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpHeaders;
@@ -30,6 +35,13 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.client.RestClient;
 
 import org.flywaydb.core.Flyway;
+
+import com.aurevia.smartclinic.messaging.conversations.ConversationContract.UnitKey;
+import com.aurevia.smartclinic.messaging.units.InMemoryMessagingStore;
+import com.aurevia.smartclinic.messaging.units.MessagingContract.CareUnit;
+import com.aurevia.smartclinic.messaging.units.MessagingContract.ConnectionContext;
+import com.aurevia.smartclinic.messaging.units.MessagingContract.ConnectionState;
+import com.aurevia.smartclinic.messaging.units.MessagingContract.PatientUnitConnection;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -62,6 +74,10 @@ class ConversationFlowTest {
 
     private RestClient rest;
 
+    /** Synthetic messaging directory shared with the Spring context under test. */
+    @Autowired
+    private InMemoryMessagingStore messagingStore;
+
     /**
      * Create the HTTP client against the random server port.
      *
@@ -70,6 +86,13 @@ class ConversationFlowTest {
     @BeforeEach
     void initRestClient(@LocalServerPort int port) {
         rest = RestClient.builder().baseUrl("http://localhost:" + port).build();
+        for (String org : new String[] {ORG_A, ORG_B}) {
+            String s = org.substring(0, 4);
+            messagingStore.addMember(org, "patient-" + s, "patient", true);
+            messagingStore.addMember(org, "lab-a-" + s, "lab_verifier", true);
+            messagingStore.addMember(org, "clinic-a-" + s, "reception", true);
+            messagingStore.addMember(org, "admin-" + s, "tenant_admin", true);
+        }
     }
 
     /** Recreate the database, apply Flyway and seed two isolated tenants. */
@@ -187,11 +210,35 @@ class ConversationFlowTest {
     }
 
     private String open(String org, String subject, String patientSubject, String unit) {
-        String body = "{\"patientId\":\"" + patientId(org) + "\",\"patientSubject\":\"" + patientSubject
-                + "\",\"unitKey\":\"" + unit + "\",\"connectionId\":\"conn-1\",\"topic\":\"follow up\"}";
+        String patientId = patientId(org);
+        String connectionId = seedConnection(org, patientSubject, patientId, unit);
+        String body = "{\"patientId\":\"" + patientId + "\",\"patientSubject\":\"" + patientSubject
+                + "\",\"unitKey\":\"" + unit + "\",\"connectionId\":\"" + connectionId
+                + "\",\"topic\":\"follow up\"}";
         ResponseEntity<String> response = send(HttpMethod.POST, "/api/v1/conversations", body, subject, org);
         assertEquals(HttpStatus.CREATED, response.getStatusCode(), response.getBody());
         return text(response, "id");
+    }
+
+    /**
+     * Seed a verified connection and its tenant care unit in the synthetic
+     * messaging store so a patient can open a thread for that unit. The ids are
+     * deterministic so repeated calls in one Spring context are idempotent.
+     */
+    private String seedConnection(String org, String patientSubject, String patientId, String unit) {
+        UnitKey key = UnitKey.from(unit);
+        String unitId = UUID.nameUUIDFromBytes(
+                ("conversation-unit:" + key.wire()).getBytes(StandardCharsets.UTF_8)).toString();
+        String connectionId = UUID.nameUUIDFromBytes(
+                ("conversation-connection:" + org + ":" + unit).getBytes(StandardCharsets.UTF_8)).toString();
+        messagingStore.addMember(org, patientSubject, "patient", true);
+        messagingStore.linkPatient(org, patientSubject, patientId);
+        messagingStore.addUnit(new CareUnit(unitId, org, "facility-" + unit, "Synthetic " + unit,
+                List.of("messages"), true, unit));
+        messagingStore.insertConnection(org, new PatientUnitConnection(connectionId, org, patientId, unitId,
+                ConnectionContext.ORDER, "order-ref-" + unit, "rel-" + unit, ConnectionState.ACTIVE,
+                patientSubject, Instant.now(), Instant.now(), null));
+        return connectionId;
     }
 
     private String patientId(String org) {
