@@ -25,6 +25,8 @@ import com.aurevia.smartclinic.messaging.conversations.ConversationContract.Unit
 import com.aurevia.smartclinic.messaging.conversations.ConversationContract.View;
 import com.aurevia.smartclinic.messaging.conversations.ConversationContract.WorkEventType;
 import com.aurevia.smartclinic.messaging.conversations.ConversationContract.WorkQueue;
+import com.aurevia.smartclinic.messaging.units.CareUnitDirectoryService;
+import com.aurevia.smartclinic.messaging.units.MessagingContract.VerifiedConnection;
 import com.aurevia.smartclinic.tenant.TenantContext;
 
 /**
@@ -47,6 +49,7 @@ public class ConversationService {
     private final ConversationActions actions;
     private final TransactionTemplate transactions;
     private final AuditAppender audit;
+    private final CareUnitDirectoryService directory;
 
     /**
      * Create the service.
@@ -55,23 +58,31 @@ public class ConversationService {
      * @param actions      bounded action and unit matrix
      * @param transactions tenant-guarded transaction template
      * @param audit        transactional audit appender
+     * @param directory    verified patient-unit connection directory
      */
     @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
             value = "EI_EXPOSE_REP2", justification = "Spring-managed singleton collaborators")
     public ConversationService(ConversationRepository repository, ConversationActions actions,
-                               TransactionTemplate transactions, AuditAppender audit) {
+                               TransactionTemplate transactions, AuditAppender audit,
+                               CareUnitDirectoryService directory) {
         this.repository = repository;
         this.actions = actions;
         this.transactions = transactions;
         this.audit = audit;
+        this.directory = directory;
     }
 
     /**
      * Open a conversation through a verified patient connection.
      *
+     * <p>A patient caller must present a verified, active connection to the
+     * named unit; the unit and connection identity stored on the conversation
+     * are derived from that connection, never from the request body alone. A
+     * staff caller is authorized by the bounded role and unit matrix.</p>
+     *
      * @param request open command
      * @return the created conversation
-     * @throws ApiException on invalid input, denial or an invisible patient or link
+     * @throws ApiException on invalid input, denial or an invisible patient, link or connection
      */
     public Conversation open(OpenRequest request) {
         String patientId = ConversationInputs.uuid(request.patientId(), "patientId");
@@ -95,9 +106,16 @@ public class ConversationService {
             if (!caller.patient() && !actions.allowsUnit(unit, caller.role())) {
                 throw forbidden("the caller is not eligible for this care unit");
             }
+            VerifiedConnection verified = caller.patient()
+                    ? directory.requireActiveConnectionById(patientId, connectionId)
+                    : directory.requireUsableConnection(patientId, connectionId);
+            UnitKey boundUnit = ConversationUnitResolver.fromDirectory(verified.unitKey());
+            if (boundUnit != unit) {
+                throw forbidden("the connection is not bound to this care unit");
+            }
             State state = caller.patient() ? State.AWAITING_STAFF : State.AWAITING_PATIENT;
-            repository.insertConversation(id, patientId, patientSubject, unit.wire(), connectionId,
-                    topic, state.wire());
+            repository.insertConversation(id, patientId, patientSubject, boundUnit.wire(),
+                    verified.connection().id(), topic, state.wire());
             repository.appendEvent(id, 1, WorkEventType.CREATED.wire(), caller.subject(), null,
                     state.wire(), "conversation opened");
             success(ConversationActions.CONVERSATION_OPEN, id);
@@ -129,6 +147,16 @@ public class ConversationService {
             // messaging, and MSG-07 stops messaging entirely once it is revoked.
             if (!repository.patientLinkActive(current.patientSubject(), current.patientId())) {
                 throw notFound("verified patient link not found");
+            }
+            // Re-resolve the stored connection on every reply. The unit category
+            // is derived from the tenant directory, so a revoked connection or a
+            // route that no longer matches the verified unit cannot post a new
+            // message from either side (MSG-02, MSG-07).
+            VerifiedConnection verified = caller.patient()
+                    ? directory.requireActiveConnectionById(current.patientId(), current.connectionId())
+                    : directory.requireUsableConnection(current.patientId(), current.connectionId());
+            if (ConversationUnitResolver.fromDirectory(verified.unitKey()) != UnitKey.from(current.unitKey())) {
+                throw forbidden("the connection is not bound to this care unit");
             }
             SenderKind kind = caller.patient() ? SenderKind.PATIENT : SenderKind.STAFF;
             State next = caller.patient() ? State.AWAITING_STAFF : State.AWAITING_PATIENT;
