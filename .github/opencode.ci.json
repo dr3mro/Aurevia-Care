@@ -3,9 +3,21 @@
   "default_agent": "smartclinic-orchestrator",
   "instructions": [
     "AGENTS.md",
+    "README.md",
+    "README-SETUP.md",
     "CODING_STYLE.md",
+    "SMARTCLINIC_V1_SPEC.md",
     "docs/WORKFLOW.md",
-    "docs/SWARM.md"
+    "docs/SWARM.md",
+    "docs/decisions/*.md",
+    "docs/reference/*.md",
+    "contracts/README.md",
+    "db/migrations/README.md",
+    "infra/DEPLOYMENT.md",
+    "MEMORY.md",
+    "PROJECT.md",
+    "WORKSPACE.md",
+    "apps/*/README.md"
   ],
   "agents": {
     "smartclinic-orchestrator": {

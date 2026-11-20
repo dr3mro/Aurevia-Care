@@ -147,8 +147,9 @@ Cadence and limits:
 
 ## Audit findings
 
-- [-] AUD-20261119-03 · Expose required workflows through HTTP entry points instead of orphan services
-  - agent: swarm-1
+- [x] AUD-20261119-03 · Expose required workflows through HTTP entry points instead of orphan services
+  - pr: #236
+  - evidence: PR #236; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/AUD-20261119-03.md; simulated review only
   - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/messaging, apps/api/src/main/java/com/aurevia/smartclinic/therapy, apps/api/src/main/java/com/aurevia/smartclinic/radiology
   - details:
@@ -158,8 +159,9 @@ Cadence and limits:
 
 ## Audit 2026-11-20 (whole-project audit)
 
-- [-] AUD-20261120-01 · Return HTTP 201 from patient registration and catalog entry creation, as the contract says
-  - agent: swarm-2
+- [x] AUD-20261120-01 · Return HTTP 201 from patient registration and catalog entry creation, as the contract says
+  - pr: #238
+  - evidence: PR #238; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/AUD-20261120-01.md; simulated review only
   - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/web
   - depends: DLV-04
@@ -267,8 +269,9 @@ Cadence and limits:
     Done when: no path `s_g5_` remains outside `TODO.md` and `.agent/`, all seven `check.sh` scripts pass, and both Python checks pass.
 
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` must pass for the classes you touched. Synthetic data only; write the failing test first; stay inside the declared scope; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
-- [-] AUD-20261120-06 · Replace the in-memory delivery outbox store with a PostgreSQL-backed store
-  - agent: swarm-4
+- [x] AUD-20261120-06 · Replace the in-memory delivery outbox store with a PostgreSQL-backed store
+  - pr: #237
+  - evidence: PR #237; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/AUD-20261120-06.md; simulated review only
   - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/events, apps/api/src/test/java/com/aurevia/smartclinic/events, apps/api/src/test/java/com/aurevia/smartclinic/it
   - depends: REFACTOR-PACKAGES-02
@@ -807,8 +810,9 @@ Order of work for the whole production-readiness effort: (1) security and platfo
     Do NOT add a dependency and do NOT run `expo prebuild`.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
-- [-] READY-34 · Patient app: four-tab navigation (Appointments, Reports, Messages, Account)
-  - agent: swarm-6
+- [x] READY-34 · Patient app: four-tab navigation (Appointments, Reports, Messages, Account)
+  - pr: #234
+  - evidence: PR #234; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/READY-34.md; simulated review only
   - attempts: 1
   - requirements: PAT-01, PAT-02, PAT-03, UX-01
   - scope: apps/patient-mobile/src/app, apps/patient-mobile/App.tsx

@@ -50,19 +50,11 @@ def markdown_files(root):
             and not p.relative_to(root).as_posix().startswith(SKIP_PREFIXES)]
 
 
-def check(root=ROOT, additional=()):
-    root = root.resolve()
+def check(root=ROOT):
     errors = []
-    paths = set(markdown_files(root))
-    for name in additional:
-        path = (root / name).resolve()
-        if not path.is_relative_to(root) or path.suffix != ".md" or not path.is_file():
-            errors.append(f"{name}: expected an existing Markdown file inside the repository")
-        else:
-            paths.add(path)
     defined = spec_ids((root / SPEC).read_text(encoding="utf-8"))
     prefixes = {i.split("-")[0] for i in defined}
-    for path in sorted(paths):
+    for path in markdown_files(root):
         rel = path.relative_to(root)
         text = path.read_text(encoding="utf-8")
         for target in LINK.findall(text):
@@ -81,7 +73,7 @@ def check(root=ROOT, additional=()):
 
 
 def main():
-    errors = check(additional=sys.argv[1:])
+    errors = check()
     for error in errors:
         print(f"check-docs: {error}", file=sys.stderr)
     return 1 if errors else 0

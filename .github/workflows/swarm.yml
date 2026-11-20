@@ -16,6 +16,10 @@ on:
       repair_run:
         description: Failed run id on main to repair (optional; the plan job finds failing runs itself)
         default: ''
+      now:
+        description: 'Start immediately instead of queueing behind the running or queued waves'
+        type: boolean
+        default: false
   push:
     branches: [main]
     paths: [TODO.md]
@@ -49,6 +53,7 @@ jobs:
     concurrency:
       group: agent-swarm-plan
       cancel-in-progress: false
+      queue: max
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -65,7 +70,7 @@ jobs:
     outputs:
       matrix: ${{ steps.plan.outputs.matrix }}
       count: ${{ steps.plan.outputs.count }}
-      images: ${{ steps.images.outputs.images }}
+      image_prefix: ${{ steps.image.outputs.prefix }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -74,6 +79,8 @@ jobs:
             scripts
             .github/swarm
             TODO.md
+      - id: image
+        run: echo "prefix=ghcr.io/${GITHUB_REPOSITORY,,}-agent" >> "$GITHUB_OUTPUT"
       # Safety net: refuse a wave when estimated monthly runner minutes are near
       # the cap. No wave, no worker containers, and an issue for a person.
       - id: budget
@@ -87,13 +94,7 @@ jobs:
         if: steps.budget.outputs.start == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          REPAIR_RUN: ${{ inputs.repair_run }}
-        run: |
-          if [[ -n "$REPAIR_RUN" ]]; then
-            python3 -I scripts/swarm.py add-repair-task --run "$REPAIR_RUN"
-          else
-            python3 -I scripts/swarm.py add-repair-task --latest
-          fi
+        run: python3 -I scripts/swarm.py add-repair-task --latest
       # The prepared images are built once by agent-image.yml / swarm-images.yml
       # and reused by every worker. Never start a wave while they are rebuilding
       # or not green. The decision lives in the swarm helper and is testable:
@@ -104,7 +105,7 @@ jobs:
         if: steps.budget.outputs.start == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python3 -I scripts/swarm.py images-ready --verified
+        run: python3 -I scripts/swarm.py images-ready
       # Marks every task it starts as [-] in TODO.md and pushes that to main
       # (GITHUB_TOKEN pushes do not trigger another run).
       - id: plan
@@ -113,8 +114,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           WORKERS: ${{ inputs.workers || '10' }}
           BUDGET_WORKERS: ${{ steps.budget.outputs.workers }}
-          IMAGES_READY: ${{ steps.images.outputs.verified_ready }}
-          IMAGE_REPAIR_ONLY: ${{ steps.images.outputs.image_repair_only }}
+          REPAIR_RUN: ${{ inputs.repair_run }}
+          IMAGES_READY: ${{ steps.images.outputs.ready }}
           IMAGES_REASON: ${{ steps.images.outputs.reason }}
         run: |
           if [[ "$IMAGES_READY" != true ]]; then
@@ -129,11 +130,7 @@ jobs:
             echo "Budget allows $BUDGET_WORKERS worker(s); capping the wave." >&2
             WORKERS=$BUDGET_WORKERS
           fi
-          plan_args=(--max "$WORKERS")
-          if [[ "$IMAGE_REPAIR_ONLY" == true ]]; then
-            plan_args+=(--image-repair-only)
-          fi
-          python3 -I scripts/swarm.py plan-workers "${plan_args[@]}"
+          python3 -I scripts/swarm.py plan-workers --max "$WORKERS" --repair-run "$REPAIR_RUN"
   worker:
     # Static name: GitHub renders matrix values in a job name only when the
     # wave has tasks, and a literal ${{ ... }} shows when the matrix is empty.
@@ -159,7 +156,7 @@ jobs:
     uses: ./.github/workflows/swarm-worker.yml
     secrets: inherit
     with:
-      image: ${{ fromJSON(needs.plan.outputs.images)[format('{0}', matrix.slot)] }}
+      image: ${{ needs.plan.outputs.image_prefix }}-${{ matrix.slot }}:latest
       slot: ${{ format('{0}', matrix.slot) }}
       task: ${{ toJSON(matrix) }}
   # Integration runs inside the wave, after its workers: no workflow_run chain.

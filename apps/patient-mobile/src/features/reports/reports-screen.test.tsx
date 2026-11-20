@@ -1,4 +1,3 @@
-import { describe, expect, it } from '@jest/globals';
 import { Alert } from 'react-native';
 import type { AlertButton } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';

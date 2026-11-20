@@ -151,7 +151,7 @@ class DocumentIsolationTest {
                 + "-" + UUID.randomUUID() + "\",\"issuer\":\"CLINIC\",\"dob\":\"1990-05-20\",\"language\":\"en\","
                 + "\"contacts\":\"{}\",\"identifiers\":\"[]\",\"consents\":\"[]\"}";
         ResponseEntity<String> response = post("/api/v1/patients", body, reception, org);
-        assertEquals(HttpStatus.OK, response.getStatusCode(), response.getBody());
+        assertEquals(HttpStatus.CREATED, response.getStatusCode(), response.getBody());
         return field(response.getBody(), "id");
     }
 
