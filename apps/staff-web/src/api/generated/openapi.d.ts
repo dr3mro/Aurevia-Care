@@ -198,7 +198,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** List staff members in the active organization with cursor pagination */
+        get: operations["listStaff"];
         put?: never;
         /** Invite staff with one bounded role grant in the active organization */
         post: operations["inviteStaff"];
@@ -286,6 +287,10 @@ export interface components {
             /** @enum {string} */
             status?: "active" | "deactivated";
             roles?: string[];
+        };
+        StaffPage: {
+            items?: components["schemas"]["StaffMember"][];
+            nextCursor?: string | null;
         };
         StaffHistory: {
             subject?: string;
@@ -846,6 +851,53 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AuditPage"];
                 };
+            };
+            403: components["responses"]["Forbidden"];
+            /** @description Invalid cursor */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listStaff: {
+        parameters: {
+            query?: {
+                /** @description Opaque subject:id cursor for the next page */
+                cursor?: string;
+                /** @description Page size 1-200 */
+                limit?: number;
+                /** @description Effective membership status filter */
+                status?: "active" | "deactivated";
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of staff members ordered by subject ascending */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffPage"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             403: components["responses"]["Forbidden"];
             /** @description Invalid cursor */

@@ -93,7 +93,7 @@ run_agent() {
 
 tracker_rules() {
   if [[ "${SWARM:-0}" == 1 ]]; then
-    printf '%s' "You are one of several parallel workers. Follow AGENTS.md, CODING_STYLE.md and the specification, and use the .opencode specialists as AGENTS.md directs. Stay inside the task scope and use only the reserved migration version. Name Java packages and classes by business domain, never by story or task ID, and reuse existing domain types instead of duplicating them. Do not edit TODO.md, MEMORY.md, WORKSPACE.md, BUGS.md, PROJECT.md or docs/swarm: the orchestrator already marked your task [-] in TODO.md and the integrator marks it [x] after the merge. Write the requirement IDs, acceptance mapping, exact commands run and results, defects found and decisions to ${notes_file} (create the pr-notes folder if missing; the file is named after your story and is yours alone, so parallel workers never touch the same file). It is committed with your work and becomes the pull request description. Run the fast unit tests. The integrator runs the database and integration tests. If a decision or evidence is missing, stop and say so in ${notes_file}."
+    printf '%s' "You are one of several parallel workers. Follow AGENTS.md, CODING_STYLE.md and the specification, and use the .opencode specialists as AGENTS.md directs. Stay inside the task scope and use only the reserved migration version. Name Java packages and classes by business domain, never by story or task ID, and reuse existing domain types instead of duplicating them. Delivery requires 100% coverage: write a test for every branch and failure path you add, delete code that cannot run, never lower a coverage threshold, add an exclusion or skip a test, and list each new branch with its test in your notes (AGENTS.md, Coverage rules). Do not call the task complete until you have run the coverage command for every area you touched, confirmed 100% on every file you changed, and written the command and result in your notes; if you cannot reach 100%, say so in your notes instead of finishing. Do not edit TODO.md, MEMORY.md, WORKSPACE.md, BUGS.md, PROJECT.md or docs/swarm: the orchestrator already marked your task [-] in TODO.md and the integrator marks it [x] after the merge. Write the requirement IDs, acceptance mapping, exact commands run and results, defects found and decisions to ${notes_file} (create the pr-notes folder if missing; the file is named after your story and is yours alone, so parallel workers never touch the same file). It is committed with your work and becomes the pull request description. Run the fast unit tests. The integrator runs the database and integration tests. If a decision or evidence is missing, stop and say so in ${notes_file}."
   else
     printf '%s' "Update TODO.md and MEMORY.md. Mark your task [-] with your agent name before you start and [x] with evidence when every gate passes. If a decision or evidence is missing, put the task back to [ ] and write the question under it in TODO.md."
   fi
@@ -166,6 +166,22 @@ cmd_implement() {
   activate_ci_config
   result=$(run_agent smartclinic-orchestrator "$(story_prompt)" "$out/implement.log")
   restore_config
+  # Coverage gate before anything is committed: Delivery fails on one missed line
+  # or branch. On a miss the agent gets the report up to twice and must add the tests.
+  if [[ "$result" != rate_limited && "$result" != timeout ]]; then
+    attempt=0
+    until bash scripts/coverage-check.sh "$(cat "$out/base-sha")" > "$out/coverage.log" 2>&1; do
+      attempt=$((attempt + 1))
+      if [[ "$attempt" -gt 2 ]]; then
+        printf '%s\n' "coverage check still failing after two repair attempts" >> "$out/coverage.log"
+        break
+      fi
+      activate_ci_config
+      run_agent smartclinic-orchestrator "The coverage check failed, so this task is not complete (repair attempt ${attempt} of 2). Delivery requires 100% coverage. Read the failure below, add deterministic tests for every uncovered line and branch (or delete code that cannot run), never lower a threshold or add an exclusion, update ${notes_file} with the branch-to-test list, then stop. Failure output (tail):
+$(tail -n 60 "$out/coverage.log")" "$out/coverage-fix-${attempt}.log" > /dev/null
+      restore_config
+    done
+  fi
   # The publish job reads the notes from .agent/pr-notes.md in the artifact.
   [[ "$notes_file" != .agent/pr-notes.md && -f "$notes_file" ]] && cp "$notes_file" "$out/pr-notes.md"
   # Keep any uncommitted agent work so it is checked and published.
@@ -185,6 +201,10 @@ cmd_implement() {
     # pull request and on main, so the agent never pays for the expensive checks.
     gate=${CHECK_SCRIPT:-scripts/check.sh}
     if bash "$gate" > "$out/check.log" 2>&1; then checks=passed; else checks=failed; fi
+    # A coverage miss that survived the repair attempt keeps the pull request a draft.
+    if grep -q 'still failing after two repair' "$out/coverage.log" 2>/dev/null; then
+      checks=failed; cat "$out/coverage.log" >> "$out/check.log"
+    fi
   fi
   printf '%s' "$result" > "$out/result"
   printf '%s' "$checks" > "$out/checks"
