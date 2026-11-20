@@ -177,6 +177,109 @@ def slot_config(slots, number):
             "autoupdate": False, "share": "disabled", **slot.get("config", {})}
 
 
+# Build states that mean "not finished yet". While any of these is present a
+# wave must wait: the images may be mid-replacement on GHCR.
+BUILD_PENDING = {"queued", "in_progress", "waiting", "pending", "requested"}
+
+
+def images_ready(runs, manifests_exist):
+    """Decide whether prepared slot images are ready for a swarm wave.
+
+    `runs` is the newest `agent-image.yml` and `swarm-images.yml` run records,
+    ordered newest first; each record has `status` and `conclusion`. An empty
+    list means Actions kept no history (cleaned, expired or deleted runs).
+    `manifests_exist` is True when every slot's `:latest` image is in GHCR.
+
+    Returns `(ready, reason, dispatch)`:
+
+    - a queued/in-progress build blocks the wave (the images may be changing)
+      and needs no dispatch;
+    - a newest completed `success` allows the wave; a `failure` blocks it with
+      no dispatch (a genuinely broken build needs a person, not an hourly retry);
+    - otherwise — no history at all, or an inconclusive conclusion such as
+      `cancelled`/`skipped` — the registry decides: present images allow the wave,
+      missing images block it and request one `agent-image.yml` build.
+
+    History length never decides by itself, so clearing the run list (or a
+    cancelled run) cannot pause the swarm while usable images still exist.
+    """
+    if any((run or {}).get("status") in BUILD_PENDING for run in runs):
+        return False, "a prepared-image build is queued or in progress", False
+    completed = [run for run in runs if run and run.get("status") == "completed"]
+    if completed:
+        conclusion = completed[0].get("conclusion")
+        if conclusion == "success":
+            return True, "the newest prepared-image build succeeded", False
+        if conclusion == "failure":
+            return False, "the newest prepared-image build did not succeed", False
+    # No run history, or a completed run with an inconclusive conclusion: fall
+    # back to the registry rather than blocking a wave that has usable images.
+    if manifests_exist:
+        return True, "slot images are present in the registry", False
+    return False, "slot images are missing from the registry", True
+
+
+def image_runs():
+    """Newest build runs from both workflows, flattened newest first.
+
+    Each workflow contributes at most one record. An empty list means Actions
+    has no history for either workflow — the case the old shell check treated
+    as "not ready" forever.
+    """
+    runs = []
+    for workflow in ("agent-image.yml", "swarm-images.yml"):
+        found = gh_json("run", "list", "--workflow", workflow, "--limit", 1,
+                        "--json", "status,conclusion,createdAt") or []
+        # Tolerate a malformed record rather than crash the plan step (which
+        # would fail the job and queue a false repair task).
+        runs.extend(r for r in found if isinstance(r, dict))
+    return sorted(runs, key=lambda r: r.get("createdAt") or "", reverse=True)
+
+
+def slot_manifests_exist(slots, repo=None):
+    """True when every slot's `:latest` image exists in GHCR.
+
+    Uses the packages API with the plan job's `packages: read` permission rather
+    than `docker manifest inspect`, so the plan job needs no Docker login. A 404
+    (package never published) returns an empty body and is treated as a missing
+    image. Credentials are never written to the repository.
+    """
+    repo = repo or repo_slug()
+    owner, sep, name = repo.partition("/")
+    if not (owner and sep and name):
+        return False
+    for slot in slots:
+        package = f"{name}-agent-{slot['slot']}".lower()
+        try:
+            # check=True lets gh() retry transient 502/503/504 responses; a
+            # genuine 404 (package never published) is caught below as missing.
+            out = gh("api", f"repos/{owner}/{name}/packages/container/{package}/versions",
+                     "--jq", '[.[].metadata.container.tags[]?] | index("latest") != null').strip()
+        except subprocess.CalledProcessError:
+            return False
+        if out != "true":
+            return False
+    return True
+
+
+def images_ready_command(slots=None):
+    """Gather inputs, decide readiness, dispatch one build if needed, emit outputs.
+
+    Trusted call only (the plan job). The actual decision is the pure
+    `images_ready()` function so it can be tested without GitHub or the network.
+    """
+    runs = image_runs()
+    manifests = slot_manifests_exist(load_slots(slots or ".github/swarm/slots.json"))
+    ready, reason, dispatch = images_ready(runs, manifests)
+    if dispatch:
+        gh("workflow", "run", "agent-image.yml", "--ref", "main", check=False)
+    print(reason)
+    emit("ready", "true" if ready else "false")
+    emit("reason", reason)
+    emit("dispatch", "true" if dispatch else "false")
+    return ready, reason, dispatch
+
+
 def clip(text):
     return (text or "")[:BODY_LIMIT]
 
@@ -1124,6 +1227,8 @@ def main(argv=None):
     sub = parser.add_subparsers(dest="cmd", required=True)
     for name in ("ensure-labels", "plan-integration", "slot-matrix"):
         sub.add_parser(name)
+    p = sub.add_parser("images-ready")
+    p.add_argument("--slots", default=".github/swarm/slots.json")
     p = sub.add_parser("budget-gate")
     p.add_argument("--cap", type=int, default=DEFAULT_MONTHLY_MINUTES)
     p = sub.add_parser("integrate-batch")
@@ -1173,6 +1278,8 @@ def main(argv=None):
     a = parser.parse_args(argv)
     if a.cmd == "ensure-labels":
         ensure_labels()
+    elif a.cmd == "images-ready":
+        images_ready_command(a.slots)
     elif a.cmd == "slot-matrix":
         emit("matrix", json.dumps({"slot": [s["slot"] for s in load_slots(".github/swarm/slots.json")]},
                                   separators=(",", ":")))
