@@ -10,10 +10,12 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.aurevia.smartclinic.api.IfMatch;
 import com.aurevia.smartclinic.scheduling.Appointment;
+import com.aurevia.smartclinic.scheduling.AppointmentPage;
 import com.aurevia.smartclinic.scheduling.AppointmentService;
 import com.aurevia.smartclinic.scheduling.AppointmentView;
 import com.aurevia.smartclinic.scheduling.BookingRequest;
@@ -76,6 +78,28 @@ public class AppointmentController {
     @PostMapping("/series")
     public ResponseEntity<List<Appointment>> series(@RequestBody SeriesRequest request) {
         return ResponseEntity.status(201).body(service.bookSeries(request));
+    }
+
+    /**
+     * List appointments in the active organization by scheduled-start range.
+     *
+     * @param cursor   opaque cursor of the previous page's last row
+     * @param limit    page size, default 50 and at most 200
+     * @param from     inclusive lower UTC instant of the range
+     * @param to       inclusive upper UTC instant, after from and at most 31 days later
+     * @param resource optional clinician or room resource code
+     * @param state    optional appointment state filter
+     * @return one page of appointments ordered by scheduled start ascending
+     */
+    @GetMapping
+    public AppointmentPage list(
+            @RequestParam(required = false) String cursor,
+            @RequestParam(required = false) String limit,
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to,
+            @RequestParam(required = false) String resource,
+            @RequestParam(required = false) String state) {
+        return service.list(cursor, limit, from, to, resource, state);
     }
 
     /**
