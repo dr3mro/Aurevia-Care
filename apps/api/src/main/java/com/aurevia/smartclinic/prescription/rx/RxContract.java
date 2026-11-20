@@ -99,7 +99,7 @@ public final class RxContract {
             }
             return switch (this) {
                 case DRAFT -> next == ATTESTED || next == CANCELLED;
-                case ATTESTED -> next == SUBMITTED || next == PRINTED || next == CANCELLED;
+                case ATTESTED -> next == SUBMITTED || next == AMBIGUOUS || next == PRINTED || next == CANCELLED;
                 case SUBMITTED -> next == AMBIGUOUS || next == DELIVERY_CONFIRMED || next == CANCELLED;
                 case AMBIGUOUS -> next == SUBMITTED || next == DELIVERY_CONFIRMED || next == CANCELLED;
                 case DELIVERY_CONFIRMED -> next == ACCEPTED || next == REJECTED

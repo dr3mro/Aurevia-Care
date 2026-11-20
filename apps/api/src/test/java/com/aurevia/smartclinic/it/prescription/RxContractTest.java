@@ -45,7 +45,7 @@ class RxContractTest {
                 Map.entry(RxContract.State.DRAFT, set(RxContract.State.DRAFT, RxContract.State.ATTESTED,
                         RxContract.State.CANCELLED)),
                 Map.entry(RxContract.State.ATTESTED, set(RxContract.State.ATTESTED, RxContract.State.SUBMITTED,
-                        RxContract.State.PRINTED, RxContract.State.CANCELLED)),
+                        RxContract.State.AMBIGUOUS, RxContract.State.PRINTED, RxContract.State.CANCELLED)),
                 Map.entry(RxContract.State.SUBMITTED, set(RxContract.State.SUBMITTED, RxContract.State.AMBIGUOUS,
                         RxContract.State.DELIVERY_CONFIRMED, RxContract.State.CANCELLED)),
                 Map.entry(RxContract.State.AMBIGUOUS, set(RxContract.State.AMBIGUOUS, RxContract.State.SUBMITTED,

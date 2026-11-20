@@ -383,9 +383,24 @@ class RxTransmissionFlowTest {
         assertEquals("clinician-1111", field(inA, "/prescriberSubject"));
         assertEquals("clinician-2222", field(inB, "/prescriberSubject"));
 
-        assertEquals(HttpStatus.NOT_FOUND, get(ORG_B, "clinician-2222", sharedId).getStatusCode(),
-                "the other tenant's identical id is concealed");
-        assertEquals("NOT_FOUND", code(post(ORG_B, "clinician-2222", sharedId + "/attest", 1,
+        // Both tenants own a row with the identical local id. Forced RLS must
+        // resolve each read to that tenant's own row, never the peer's, so the
+        // shared id is asserted as visible to both with its local author.
+        ResponseEntity<String> aView = get(ORG_A, "clinician-1111", sharedId);
+        ResponseEntity<String> bView = get(ORG_B, "clinician-2222", sharedId);
+        assertEquals(HttpStatus.OK, aView.getStatusCode());
+        assertEquals(HttpStatus.OK, bView.getStatusCode());
+        assertEquals("clinician-1111", field(aView, "/prescription/prescriberSubject"));
+        assertEquals("clinician-2222", field(bView, "/prescription/prescriberSubject"));
+
+        // Concealment needs an id that exists only in the other tenant: when
+        // both tenants own the shared id, B has its own row and correctly sees
+        // it. A foreign-only id has no local row to mask the cross-tenant read.
+        String aOnlyId = newId();
+        create(ORG_A, "clinician-1111", aOnlyId, "clinician-1111");
+        assertEquals(HttpStatus.NOT_FOUND, get(ORG_B, "clinician-2222", aOnlyId).getStatusCode(),
+                "the other tenant's id is concealed");
+        assertEquals("NOT_FOUND", code(post(ORG_B, "clinician-2222", aOnlyId + "/attest", 1,
                 "{\"note\":\"cross tenant\"}")));
         assertEquals("NOT_FOUND", code(get(ORG_A, "clinician-1111", UUID.randomUUID().toString())));
         assertEquals("NOT_FOUND", code(create(ORG_A, "clinician-1111", newId(), "clinician-1111",
@@ -460,7 +475,10 @@ class RxTransmissionFlowTest {
         assertEquals("SUBMISSION_MISMATCH",
                 code(verify(org, prescriber, id, 3, UUID.randomUUID().toString(), "absent")));
         assertEquals("SUBMISSION_MISMATCH", code(retry(org, prescriber, id, 3, UUID.randomUUID().toString())));
-        assertEquals("INVALID_TRANSITION", code(post(org, prescriber, id + "/pharmacy-response", 3,
+        // Use the pharmacy role so role authorization passes and the state
+        // precondition is the behavior under test: an ambiguous prescription
+        // has not been delivered, so it cannot yet receive a pharmacy response.
+        assertEquals("INVALID_TRANSITION", code(post(org, "pharmacy-1111", id + "/pharmacy-response", 3,
                 "{\"submissionId\":\"" + sid + "\",\"outcome\":\"accepted\"}")));
 
         // The database is the second line of defence: the send row is append-only
