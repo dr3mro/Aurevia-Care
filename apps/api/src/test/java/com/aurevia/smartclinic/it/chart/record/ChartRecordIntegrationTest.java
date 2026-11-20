@@ -257,6 +257,9 @@ class ChartRecordIntegrationTest {
 
         try (Connection connection = DriverManager.getConnection(URL, "smartclinic_migrate", "");
              Statement statement = connection.createStatement()) {
+            // audit_event has forced RLS; a direct assertion must bind the tenant
+            // context or the append-only rows are concealed from the reader.
+            statement.execute("SET app.current_org = '" + ORG_A + "'");
             try (ResultSet result = statement.executeQuery(
                     "SELECT count(*) FROM public.audit_event WHERE action = 'CHART_RECORD' "
                     + "AND outcome = 'SUCCESS' AND correlation_id LIKE 'chart-record%'")) {

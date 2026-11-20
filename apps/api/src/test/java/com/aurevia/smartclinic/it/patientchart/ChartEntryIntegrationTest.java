@@ -73,7 +73,7 @@ class ChartEntryIntegrationTest {
         Flyway.configure()
                 .dataSource(URL, "smartclinic_migrate", "")
                 .locations("filesystem:../../db/migrations",
-                        "filesystem:src/test/java/com/aurevia/smartclinic/it/s_g1_03/migrations")
+                        "filesystem:src/test/java/com/aurevia/smartclinic/it/patientchart/migrations")
                 .load().migrate();
         try (Connection connection = DriverManager.getConnection(URL, "smartclinic_migrate", "");
              Statement statement = connection.createStatement()) {
@@ -134,10 +134,13 @@ class ChartEntryIntegrationTest {
     private static void seedPatient(Statement statement, String org, String name) throws Exception {
         statement.execute("SET app.current_org = '" + org + "'");
         statement.execute("SET app.actor = 'reception-" + (ORG_A.equals(org) ? "a" : "b") + "'");
+        // V7 requires exactly one of dob / dob_unknown_reason. Seed a synthetic
+        // civil date so the fixture satisfies the append-only patient invariant
+        // instead of failing @BeforeAll before any chart behaviour is exercised.
         statement.execute("INSERT INTO public.patient_record "
-                + "(organization_id, id, version, mrn, mrn_issuer, display_name, normalized_name) "
+                + "(organization_id, id, version, mrn, mrn_issuer, display_name, normalized_name, dob) "
                 + "VALUES ('" + org + "', '" + PATIENT + "', 1, 'MRN-CHART', 'CLINIC', '"
-                + name + "', '" + name.toLowerCase() + "')");
+                + name + "', '" + name.toLowerCase() + "', DATE '1990-05-20')");
     }
 
     @BeforeEach
@@ -254,6 +257,9 @@ class ChartEntryIntegrationTest {
 
         try (Connection connection = DriverManager.getConnection(URL, "smartclinic_migrate", "");
              Statement statement = connection.createStatement()) {
+            // audit_event has forced RLS; a direct assertion must bind the tenant
+            // context or the append-only rows are concealed from the reader.
+            statement.execute("SET app.current_org = '" + ORG_A + "'");
             try (ResultSet result = statement.executeQuery(
                     "SELECT count(*) FROM public.audit_event WHERE action = 'CHART_RECORD' "
                     + "AND outcome = 'SUCCESS' AND correlation_id LIKE 'chart-record%'")) {
