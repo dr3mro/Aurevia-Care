@@ -124,6 +124,18 @@ class DocumentValuesTest {
     }
 
     @Test
+    void renderRequestDefersInvalidLineListsToBoundaryValidation() {
+        RenderRequest absent = new RenderRequest("chart", "p-1", "en", "Title", null,
+                "SYS", "SRC", "2026-11-19T10:00:00Z", 0, null);
+        assertEquals(null, absent.lines());
+
+        RenderRequest withNullElement = new RenderRequest("chart", "p-1", "en", "Title",
+                java.util.Arrays.asList("ok", null), "SYS", "SRC", "2026-11-19T10:00:00Z", 0, null);
+        assertEquals(java.util.Arrays.asList("ok", null), withNullElement.lines());
+        assertThrows(UnsupportedOperationException.class, () -> withNullElement.lines().clear());
+    }
+
+    @Test
     void commandRecordsExposeEveryPart() {
         LinkRequest link = new LinkRequest("chart", "p-1", "scan.pdf", "application/pdf", "Ynl0ZXM=", 90);
         assertEquals("chart", link.subjectType());

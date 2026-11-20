@@ -3,6 +3,7 @@ package com.aurevia.smartclinic.it.documents;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.charset.StandardCharsets;
@@ -37,6 +38,20 @@ class PdfRendererTest {
 
     private static String asAscii(byte[] bytes) {
         return new String(bytes, StandardCharsets.ISO_8859_1);
+    }
+
+    private static String contentStream(byte[] pdf) {
+        String text = asAscii(pdf);
+        int begin = text.indexOf("BT\n");
+        int end = text.indexOf("ET\n", begin);
+        return text.substring(begin, end);
+    }
+
+    private static String fileId(byte[] pdf) {
+        String text = asAscii(pdf);
+        int begin = text.indexOf("/ID [<");
+        int end = text.indexOf(">", begin);
+        return text.substring(begin, end);
     }
 
     @Test
@@ -149,5 +164,51 @@ class PdfRendererTest {
         assertEquals("LTR", PdfRenderer.direction(null));
         assertEquals("LTR", PdfRenderer.direction("en"));
         assertEquals("RTL", PdfRenderer.direction("ar"));
+    }
+
+    @Test
+    void arabicLineKeepsNumericValueAndUnitAsOneLtrRun() {
+        String dose = "\u0627\u0644\u062c\u0631\u0639\u0629";
+        String value = "500";
+        String unit = "mg";
+        String daily = "\u064a\u0648\u0645\u064a\u0627";
+        byte[] pdf = RENDERER.render(spec("ar", 1, 0, "\u062a\u0642\u0631\u064a\u0631",
+                List.of(dose + " " + value + " " + unit + " " + daily)));
+        String content = contentStream(pdf);
+        assertTrue(content.indexOf(utf16Hex(value)) < content.indexOf(utf16Hex(unit)),
+                "a numeric value must stay immediately before its unit in an RTL line");
+        assertTrue(content.indexOf(utf16Hex(daily)) < content.indexOf(utf16Hex(dose)),
+                "Arabic words still follow RTL visual order");
+    }
+
+    @Test
+    void arabicLineWithATrailingValueUnitRunKeepsTheRunIntact() {
+        String daily = "\u064a\u0648\u0645\u064a\u0627";
+        String value = "12.5";
+        String unit = "mmol/L";
+        byte[] pdf = RENDERER.render(spec("ar", 1, 0, "\u062a\u0642\u0631\u064a\u0631",
+                List.of(daily + " " + value + " " + unit)));
+        String content = contentStream(pdf);
+        assertTrue(content.indexOf(utf16Hex(value)) < content.indexOf(utf16Hex(unit)),
+                "a trailing value/unit run must not be inverted");
+        assertTrue(content.indexOf(utf16Hex(value)) < content.indexOf(utf16Hex(daily)),
+                "the LTR run leads once its RTL group is reversed");
+    }
+
+    @Test
+    void distinctRevisionsDoNotShareThePdfFileIdentifier() {
+        String first = fileId(RENDERER.render(spec("en", 1, 0, "Same", List.of("line"))));
+        String second = fileId(RENDERER.render(spec("en", 2, 0, "Same", List.of("line"))));
+        String rotated = fileId(RENDERER.render(spec("en", 1, 90, "Same", List.of("line"))));
+        assertNotEquals(first, second, "each immutable version owns its PDF file identifier");
+        assertNotEquals(first, rotated, "a rotated artifact owns its PDF file identifier");
+    }
+
+    @Test
+    void repeatedSpacesDoNotEmitAnEmptyTextOperator() {
+        byte[] pdf = RENDERER.render(spec("ar", 1, 0, "\u062a\u0642\u0631\u064a\u0631",
+                List.of("\u0627\u0644\u062c\u0631\u0639\u0629  500")));
+        assertFalse(contentStream(pdf).contains("<> Tj"),
+                "collapsed spacing must not emit an empty text-showing operator");
     }
 }
