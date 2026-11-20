@@ -547,7 +547,9 @@ Delivered inside the stories above, not scheduled separately.
 
 Main's Delivery run is red; these tasks restore it. They share `apps/api`, so the swarm runs them one at a time.
 
-- [ ] DLV-01 · Repair integration tests: patient chart, chart entry and exchange task
+- [-] DLV-01 · Repair integration tests: patient chart, chart entry and exchange task
+  - agent: swarm-1
+  - attempts: 1
   - requirements: CLN-03, CLN-05, ARC-02
   - scope: apps/api, db
   - details:
@@ -753,8 +755,8 @@ Cadence and limits:
     PatientReleasedRevisionsController exposes GET /api/v1/patients/{patientId}/released-revisions and passes the path patientId straight into ReleaseService.visibleRevisions (PatientReleasedRevisionsController.java:38-40). That method only calls authorize(context, RELEASE_ACCESS_QUERY, patientId) (ReleaseService.java:333-356), which checks active membership plus a role in {clinician, tenant_admin, reception, privacy_auditor} (ReleaseActionPolicy.java:33-50); it never verifies that the authenticated subject is linked to that patientId. Any receptionist or privacy auditor can therefore enumerate released report revision IDs for any patient by supplying its UUID, while a verified patient (role 'patient') is denied 403. The correct patient-facing service ReleasedReportService, which checks a verified + active chart link and release state on every list/download (messaging/reports/ReleasedReportService.java:62-129, 143-150), has no caller in main outside its own Javadoc/test references, so PAT-02 patient self-access is unreachable at runtime. Expected fix: route the endpoint through ReleasedReportService (or add equivalent verified-link and self-only checks to ReleaseService.visibleRevisions), drop reception/privacy_auditor from the patient-scoped read policy, and add negative tests for a staff reader requesting another patient's revisions and for a patient reading their own.
     Found by the daily audit. Synthetic fixtures only; failing tests first;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [-] AUD-20261119-02 · Verify the patient-unit connection when opening a conversation
-  - agent: swarm-1
+- [x] AUD-20261119-02 · Verify the patient-unit connection when opening a conversation
+  - pr: #175
   - attempts: 2
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/messaging/conversations, apps/api/src/main/java/com/aurevia/smartclinic/messaging/units
   - details:
@@ -768,8 +770,8 @@ Cadence and limits:
     Several services implementing requirements marked [x] in TODO.md have no caller anywhere in apps/api/src/main/java (grep for each class name outside its own file returns zero): AttachmentService (MSG-03 upload/quarantine/scan/publish/download), PatientAppointmentService (PAT-01), ReleasedReportService (PAT-02), G3EvidenceService, plus TherapyService (PT-01) and ImagingService (RAD-01). No controller contains a multipart/@RequestPart upload endpoint, so patient document upload and mediated retrieval cannot occur at runtime; the patient app exercises these flows only with local fixtures. JaCoCo 100% is satisfied by unit tests of these classes, so the gate does not detect that no entry point exists. Expected fix: wire thin controllers (or otherwise expose each deliverable command through a real entry point) and add an HTTP-level test per workflow, or honestly mark the corresponding TODO entries pending instead of done.
     Found by the daily audit. Synthetic fixtures only; failing tests first;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [-] AUD-20261119-04 · Rename story-ID-named patient-mobile feature packages
-  - agent: swarm-2
+- [x] AUD-20261119-04 · Rename story-ID-named patient-mobile feature packages
+  - pr: #169
   - attempts: 2
   - scope: apps/patient-mobile/src/features
   - details:
