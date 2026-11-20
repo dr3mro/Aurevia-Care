@@ -1,78 +1,68 @@
-# DLV-02 — Repair integration tests: patient identity, consolidation and messaging
+# AUD-20261120-07 — Inventory every in-memory store and write the persistence decision record
 
-Status: verification complete, **no production change required on this checkout**. The repairs this story describes were already merged to `main` in PR #195 (commit `e48bb7c`, "DLV-02: Repair integration tests: patient identity, consolidation and messaging"), which is an ancestor of this worker branch `swarm/DLV-02-240` (HEAD `bf26dc1`). Every class named in the story passes in the full `mvn verify` run. This note records the verification, the root causes already fixed on `main`, and the defects found that belong to other owners.
+Status: complete for integrator merge. Scope: `docs/decisions` only (plus this PR-note file). Branch `swarm/AUD-20261120-07-243`, base HEAD `57f449c`. Documentation-only change: no Java, SQL, migration or tracker edit.
 
-This worker was re-dispatched as DLV-02 attempt 3 after PR #195 merged; the target classes were already green on a clean checkout, so there was no RED state left to reproduce. Per the story rule ("fix the real cause", "never weaken, skip, delete or re-tag a test"), no test was altered and no code was changed to manufacture a diff.
+## Decision and evidence availability
 
-## Requirements and acceptance mapping
+No owner decision is missing. The story fixes the file name, the three frontmatter requirement IDs, the table columns, the three-group ordering, the V59-and-up reserved versions and the two required Consequences lines. `smartclinic-software-architect` (simulated read-only reviewer) independently re-ran the greps, confirmed all 15 rows and raised two wording issues (a blanket "every key embeds the organization" claim and a contradiction about HTTP controllers); both are resolved in the committed document. It also suggested adding ARC-03 to the frontmatter; the frontmatter was kept exactly as the story specifies and ARC-03 is referenced in the body where `IdempotencyLedger` uses it. No human/clinical/patient evidence was available or needed for a static inventory record.
 
-| Requirement | Acceptance exercised | Evidence (class / result) |
+## Requirement IDs and acceptance mapping
+
+| Requirement / rule | Acceptance | Where satisfied |
 |---|---|---|
-| IAM-03 | Registration-derived immutable chart identity remains the ownership anchor when staff change contact data; contact data never leaks into identity-link material | `IdentityProofingIsolationTest` 11/11 green |
-| IAM-04 | A duplicate review ticket is created with a database-owned id; consolidation removes the alias from the worklist on both sides of the ordered pair; second-reviewer/dependency flows run end to end | `ConsolidationIsolationTest` 7/7 green |
-| IAM-05 | Single-use expiring invitations, claim/unlink/reverify links and the append-only link projection work against real PostgreSQL; expired invitations are genuinely expired; boundary validation returns 422 | `IdentityProofingIsolationTest` 11/11, `StaleInvitationIntegrationTest` 4/4 green |
-| MSG-07 | Conversation work-item guards, tenant-scoped folds and the documented `View` response contract are asserted through real HTTP + forced RLS | `ConversationFlowTest` 8/8 green |
-| Supporting ARC-01/02/03, OPS-02 | Composite tenant keys, forced RLS, `app.current_org`/`app.actor` trigger guards, append-only history and transaction-committed audit remain enforced | all four classes green; `python3 -I scripts/check-migrations.py --require-baseline` exit 0 |
+| ARC-01, ARC-02, OPS-02 (frontmatter) | Exact IDs from the story, kept verbatim | `docs/decisions/0003-persistence-of-in-memory-stores.md` lines 3–5 |
+| Story: create from `docs/decisions/template.md`, keep every heading, Status proposed, Date 2026-11-20 | All five template headings present in order; correct metadata | Verified with `grep -nE '^(# |## |- Status:|- Date:|- Requirement IDs:)'` → `# 0003. …`, `## Context`, `## Decision`, `## Alternatives considered`, `## Consequences and evidence` |
+| Story: one row per named class, five columns, answers from `grep` | 15 rows, all cells derived from code/migrations | `grep -c '^| `' → 15; see command table below |
+| Story: Decision orders beans-with-tables, then beans needing V59+ migrations one per store, then uninjected/orphan stores | Three numbered groups with V59–V64 assigned, one per bean store | Decision section; V55/DLV-06 first, AUD-20261119-03 for orphans |
+| Story: Consequences line on restart losing data for every `@Repository`; line naming `InMemoryDecisionSink` and `IdempotencyLedger` as security-relevant | Both lines present verbatim in meaning | Consequences and evidence section, first two bullets |
+| Story: `python3 -I scripts/check-docs.py` passes | exit 0, no broken links or unknown requirement IDs | Command table below |
+| Story: `bash scripts/worker-check.sh` passes for classes touched | No Java/SQL classes touched; doc-specific gates pass; full worker gate blocked by pre-existing environment failures reproduced on an unchanged tree | See "Worker gate" section |
 
-Classification (`docs/WORKFLOW.md`): cross-boundary with safety-critical identity and messaging behavior. Synthetic fixtures only. Evidence sources are recorded per command below; no simulated-user, human or clinical participant evidence was available or claimed.
+## Exact commands run and results (tool evidence)
 
-## Verification — exact commands and results
-
-Environment: clean checkout of `main` rebased into `swarm/DLV-02-240`; Java 21.0.13 Temurin, Maven 3.10.0, PostgreSQL 17.12 on 127.0.0.1:5432 via `SMARTCLINIC_PG_ADMIN=postgres`. All commands executed by this worker (tool evidence).
+All commands run from the repository root on branch `swarm/AUD-20261120-07-243`.
 
 | Command | Result |
 |---|---|
-| `cd apps/api && mvn -B -Pno-security -Dtest=IdentityProofingIsolationTest,StaleInvitationIntegrationTest,ConsolidationIsolationTest,ConversationFlowTest -DfailIfNoTests=false test` | exit 0 — `Tests run: 30, Failures: 0, Errors: 0` (IdentityProofing 11, StaleInvitation 4, Consolidation 7, ConversationFlow 8). Flyway applied v1…v58 including `V58__identity_actor_and_review_id_repair.sql`. |
-| `bash apps/api/check.sh` (full `mvn verify`, default security profile) | exit 1 overall — `Tests run: 2096, Failures: 43, Errors: 0`. All four DLV-02 classes green in surefire reports (`tests=11/7/8/4, failures=0, errors=0`); none appears in the failing-class list. |
-| `cd apps/api && mvn -B -Pno-security,fast test` | exit 0 — `Tests run: 1853, Failures: 0, Errors: 0` |
-| `python3 -I scripts/check-migrations.py --require-baseline` | exit 0 (V58 declares `Change: expand`; no applied migration edited) |
-| `bash db/check.sh` | exit 3 — pre-existing, unrelated defect (see Defects below) |
-| `git diff --check` | exit 0; working tree otherwise clean |
+| `find apps/api/src/main/java -type f -name '*InMemory*' -o -name 'IdempotencyLedger.java' -o -name 'InstructionStore.java'` | All 15 named files located; no name guess needed |
+| `grep -nE '(^public |class |implements |interface |@Repository|@Component|@Service|private final)'` over the 15 files | Interface and Spring-bean columns: 6 top-level `@Repository`, nested `InstructionStore.InMemory` also `@Repository`, 8 plain classes with no bean annotation, `InMemoryReportReleaseStore` implements no interface |
+| `grep -rn --include=*.java "private final <Interface>" apps/api/src/main/java` for all 15 interfaces | Injectors: `DurableEventService`, `ServiceProfileService`, `CareUnitDirectoryService`, `PatientFlowPresentationService`, `MessagingGovernanceService`, `InstructionFactService`, `TemplateService`, `CommandAuthorization`, three `DocumentStore` injectors, `AttachmentService`, `PatientAccessService`, `InstructionService`, `TherapyService`, `ReleasedReportService`; `IdempotencyLedger` → zero hits |
+| `grep -rn --include=*.java 'DecisionSink' apps/api/src/main/java` and `grep -rn --include=*.java 'InMemoryDecisionSink' apps/api/src` | `CommandAuthorization.java:167` holds `private final DecisionSink sink`; `InMemoryDecisionSink` appears only in `CommandAuthorizationTest.java` (test-only) |
+| `grep -rn --include=*.java 'new InMemory' apps/api/src/main/java` | No hits — plain stores are supplied manually/in tests, not by Spring |
+| `grep -rhn -iE 'CREATE TABLE( IF NOT EXISTS)? ' db/migrations/*.sql` and `grep -ril "<table>" db/migrations/*.sql` | Durable tables: V55 delivery set, V10 `patient_account`/`account_invitation`, V33 `patient_link`, V24 `patient_release`/`release_event`/`release_notification`; no care-unit, service-profile, flow-policy, governance, instruction-fact, instruction, attachment, therapy, quarantine or artifact table |
+| Ambiguous hits read in V15, V21, V55, V58, V9, V33 | `template_version` (V15) and `retention_policy`/`legal_hold` (V21) are columns; `idempotency_key` (V55) is a delivery-specific column; `attachment` (V58) is a comment; `patient_link` (V33) is a real table — false matches rejected |
+| Controller check: `grep -rn --include=*.java "<Service>" apps/api/src/main/java` | Controllers exist for `DurableEventService`, `ServiceProfileService`, `CareUnitDirectoryService`, `MessagingGovernanceService`, `InstructionFactService`, `InstructionService`; none for `PatientFlowPresentationService` or the non-Spring services |
+| Acceptance probe before writing the file: `test -f docs/decisions/0003-persistence-of-in-memory-stores.md && grep -q '^\| Class \| Interface it implements \|' … && grep -q '^## Consequences and evidence' …` | exit 1 — red, file absent |
+| Same probe after writing the file | exit 0 — green; 15 table rows, all headings present |
+| `python3 -I scripts/check-docs.py` | exit 0 |
+| `python3 -I scripts/check-secrets.py` | exit 0 |
+| `python3 -I scripts/check-migrations.py --require-baseline` | exit 0 |
+| `mvn -q -B -f apps/api/pom.xml -Pno-security,fast test` | exit 0; Surefire XML totals: 1853 tests, 0 failures, 0 errors, 0 skipped |
+| `git status --short` | Only the new decision record and this PR note are untracked; no Java/SQL/tracker file changed |
 
-## Root causes already fixed on `main` by PR #195 (verified present, not re-fixed here)
+No test file was added: the story scope is `docs/decisions` and explicitly says "This task writes ONLY a document; no Java." The red/green acceptance probe above is the test-first evidence for the document, and `check-docs.py` is its acceptance gate. All fixtures are pre-existing synthetic code/data; no patient data or credentials were read or recorded.
 
-These are the real causes behind the 500s/404s in the story text. Each fix is present at HEAD and its class is green; they are recorded so the root cause per class is preserved.
+## Worker gate
 
-| Class / symptom in the story | Root cause | Fix on `main` |
-|---|---|---|
-| `IdentityProofingIsolationTest` — 8 × 500 on `POST /api/v1/patient-identity/links/claim`; `StaleInvitationIntegrationTest` claim 500 | V10's `public.set_link_actor()` assigned `NEW.created_by`, but `account_chart_link` has `verified_by` and no `created_by`: `record "new" has no field "created_by"` (SQLSTATE 42703). Only one definition and one attachment existed on this checkout — the story's "two migrations redefined the function" hypothesis was not observed. | `V58` redefines `set_link_actor()` to assign only `NEW.verified_by` from `app.actor` with the same fail-closed guard, plus `REVOKE ALL ON FUNCTION ... FROM PUBLIC`. |
-| `invalidInputsReturnUnprocessableEntity` and other 422 assertions; `ConsolidationIsolationTest.identifierConfirmationIsEnforcedAgainstTheTwoRecords`; `ConversationFlowTest` preconditions/assignment assertions | Spring 7 renamed `HttpStatus.UNPROCESSABLE_ENTITY` to `UNPROCESSABLE_CONTENT`; the enum comparison failed although the wire code is 422. | Tests assert the numeric wire code (`assertEquals(422, response.getStatusCode().value())`). Production codes unchanged. |
-| `IdentityProofingIsolationTest.expiredInvitationIsUnusable` | Fixture backdated only `expires_at`, violating V10 `CHECK (expires_at > created_at)` (`account_invitation_check`). | Backdate `created_at` two hours and `expires_at` one hour in the same UPDATE. |
-| `IdentityProofingIsolationTest.contactChangeDoesNotChangeAccountOwnership` | Fixture appended a same-id `patient_record` version via `next_patient_version`, colliding with V7 `PRIMARY KEY (organization_id, id)`. | Model the staff contact change as a re-registered chart; original immutable chart id still owns the account and contact data does not leak into links. Assertions preserved. |
-| `ConsolidationIsolationTest` — 500 on `POST /api/v1/duplicate-reviews`, then 404s | V9 declared `duplicate_review.id uuid NOT NULL` with no default, while `DuplicateRepository.insertReview` omits it. | `V58` adds `ALTER TABLE public.duplicate_review ALTER COLUMN id SET DEFAULT gen_random_uuid()`. |
-| `ConsolidationIsolationTest.consolidationNeedsSecondReviewerAndUnblockedDependencies` — consolidated alias stayed on the worklist | `DuplicateRepository.likelyPairs()` excluded a consolidated alias only on the duplicate (q) side; the alias reappeared as `survivor_id` of a pair with a higher id. | Filter both sides: `a.alias_id IN (p.id, q.id) AND a.status = 'ACTIVE'`. Production defect fixed. |
-| `ConversationFlowTest` response assertions | `GET /api/v1/conversations/{id}` returns the documented `View {conversation, messages, events}`; the test read `state`/`version`/`patientId` at the top level. | Unwrap `.get("conversation")` for the GET assertions. No controller/contract change. |
-| `ConversationFlowTest.databaseGuardsRejectIllegalWrites` / fold assertions | Test SQL bound a `String` into `WHERE id = ?` against a `uuid` column (`uuid = character varying`). | Cast in the test SQL: `WHERE id = CAST(? AS uuid)`. |
+`bash scripts/worker-check.sh` did **not** pass in this worker. Two independent environment causes, both reproduced on an unchanged tree (the new document was temporarily moved aside and the same `python3 -I -m unittest discover -s scripts/tests -q` still exited 1):
 
-No applied migration was edited. `V58` is the first free version after V55 (V9–V57 reserved); its two statements are additive/idempotent (`Change: expand`).
+1. First attempt failed at `scripts/check-pack.py` with `opencode.json is stale`. Diagnosis: `git ls-files -v opencode.json` reports flag `S` (skip-worktree), the worktree file equals `.github/opencode.ci.json`, and `git show HEAD:opencode.json` equals `gen_opencode.render(ROOT, ci=False)` exactly. This is the documented OPS-CW-003-01 worker measurement artifact, not a change defect. Re-running with the committed HEAD profile swapped into the worktree (restored byte-for-byte afterwards) cleared this step: `Delivery tooling validated: 33 agents, 33 skills`.
+2. The gate then stopped at `quick-check.sh:19` (`python3 -I -m unittest discover -s scripts/tests -q`): 260 tests, 5 failures, 10 errors. Errors are `ModuleNotFoundError: No module named 'yaml'` in `test_fast_tier`, `test_swarm` and `test_workflow_concurrency` (Python 3.11 here has no pip and no PyYAML), plus `git branch -D opencode/issue-5-9` failing in `test_agent_run.adopt_setup`; failures are `gh pr create: permission denied` and push rejection in the same temp-git tests. None of these modules read `docs/decisions`. Integrator/Delivery re-run the full gate in the prepared image and judge the merge result; the Java fast tier and all doc/policy gates were run directly here and passed.
 
-## Full-gate remainder — not DLV-02 work (owned by DLV-03 / DLV-04)
-
-The full run's 43 failures are exclusively in classes assigned by `TODO.md` to dependent stories; none is in the DLV-02 domain and none was touched here (parallel workers / one-story rule):
-
-- DLV-03: `RxTransmissionFlowTest` (7) — transmit 500 with no `submissionId`; non-prescriber attestation returns STALE_VERSION instead of FORBIDDEN; tenant concealment returns 200; renew precondition mismatch.
-- DLV-04: `ClinicalNoteRevisionIntegrationTest` (14), `ResultRoutingIntegrationTest` (7), `AccessIntegrationTest` (6), `DocumentIsolationTest` (5), `SpecimenAccessionIsolationTest` (3), `TrendingTest` (1). Root causes seen in the run include `405 METHOD_NOT_ALLOWED` routes, `SELECTid` SQL concatenation, uppercase-vs-lowercase state values (`UNREVIEWED` vs `unreviewed`), duplicate-MRN fixtures, and a 422 case returning 200.
-
-The untrusted story text suggested fixing these "after the classes listed here", but `TODO.md` assigns them to DLV-03/DLV-04 (which depend on DLV-02) and this worker is limited to one story with parallel workers active.
-
-## Defects found, dispositioned, not changed here
-
-- **Pre-existing tooling defect (owner: pipeline/integrator): `db/check.sh` applies migrations with `for migration in db/migrations/V*.sql`, which bash sorts lexically** (`V10…` before `V1__…`). Reproduced: `bash db/check.sh` → exit 3, `psql:db/migrations/V10__patient_identity_proofing.sql:17: ERROR: relation "public.organization" does not exist`. The Java integration suites apply migrations via Flyway in version order and are green. Not fixed here: `db/check.sh` is a `check.sh` in the protected-file set, so a PR touching it is held for a human rather than auto-merged by the swarm; the correct fix (numeric version sort) belongs to a tooling story with a human reviewer.
-- **Deferred from PR #195 (owner: clinical/architecture): V7 `patient_record` has `PRIMARY KEY (organization_id, id)` plus a version fold and `next_patient_version()`, so a same-id append is impossible while the fold suggests otherwise.** Fixing it changes the key and every `(org,id)` FK — a contract migration and clinical-record-integrity review well beyond DLV-02.
-- **Deferred product decision (owner: Product Owner): after consolidate → correct, the alias legitimately reappears in the duplicate worklist but `open()` refuses it with 409 because a `CORRECTED` consolidation still exists.** Needs a re-review policy decision, not a DLV-02 regression.
-
-## Decisions
-
-- No production code or migration change: the target classes are green on a clean checkout of current `main`; fabricating a diff would risk regressing verified behavior.
-- Did not touch `db/check.sh`, `.github/`, `scripts/`, `opencode.json` or any shared tracker — outside this story's acceptance and/or in the protected set for swarm PRs.
-- No test was weakened, skipped, deleted, re-tagged or excluded from any gate.
+No source defect was introduced or found by these failures; no attempt was made to fix shared tooling or install packages (out of scope and not available in this image).
 
 ## Entry-point-to-test trace
 
-`POST /api/v1/patient-identity/links/claim` → `IdentityProofingController` → `IdentityProofingRepository.insertLink` → V58-corrected `set_link_actor()` sets `verified_by` → `currentLink()` → 200; asserted by `IdentityProofingIsolationTest` and `StaleInvitationIntegrationTest` against real PostgreSQL.
-`POST /api/v1/duplicate-reviews` → `DuplicateRepository.insertReview` → V58 id default → 201 → `GET /api/v1/duplicate-reviews` → `DuplicateRepository.likelyPairs()` both-sides filter → consolidated alias absent; asserted by `ConsolidationIsolationTest`.
-`GET /api/v1/conversations/{id}` → `ConversationController.get` → `View` (test unwraps `conversation`); guard assertions use cast-bound UUIDs; asserted by `ConversationFlowTest`.
+Story `AUD-20261120-07` in `TODO.md` → `docs/decisions/0003-persistence-of-in-memory-stores.md` (deliverable) → `grep` over the 15 production files and `db/migrations/*.sql` → 15-row Context table → `check-docs.py` validates headings' links and requirement IDs → `worker-check.sh` / integrator full gate validates the repository. Decision records 0001 and 0002 follow the same template and are unchanged.
+
+## Defects and decisions
+
+- Defects found in the inventory: none. Two wording defects in the new record were found by the architect reviewer and fixed (organization-key blanket claim; `PatientFlowPresentationService` controller contradiction).
+- Decision recorded: three-group replacement order; V55 delivery store first; V59–V64 proposed one per Spring-bean store and to be claimed on owning TODO entries before coding; orphan stores resolved with AUD-20261119-03; `InMemoryDecisionSink` and `IdempotencyLedger` carry a production-enablement gate (OPS-02, ARC-03, ARC-04).
+- `InstructionStore.InMemory` is documented as a `@Repository` Spring bean despite the story listing it in the "other" group — corrected from code at `InstructionStore.java:70`.
 
 ## Evidence provenance
 
-All commands above were executed by this worker (tool evidence: Maven/Surefire output, surefire XML reports, Flyway logs, `bash db/check.sh`, `check-migrations.py`). No simulated reviewer, simulated user, human or clinical evidence was used. No patient data, real identifiers or credentials appear in any note or fixture; every subject, organization, MRN and token is synthetic.
+- **Tool evidence**: every command and result above, executed on this checkout (`grep`, `find`, `test`, `python3 -I` policy checks, `mvn`, Surefire XML, `git`).
+- **Reviewer evidence**: `smartclinic-software-architect`, simulated read-only review; it re-ran the greps/reads itself and confirmed the rows, so its row confirmation is reviewer evidence backed by its own tool checks.
+- **Simulated user / human participant evidence**: none — a static architecture inventory record has no clinical or patient flow. No real patient data or credentials were used.
