@@ -1,4 +1,5 @@
-import type { ReactElement } from 'react';
+import { useLayoutEffect } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { I18nProvider } from '../../i18n/I18nProvider';
@@ -103,5 +104,47 @@ describe('AdminScreen', () => {
     expect(screen.getByRole('heading', { level: 2, name: adminText('ar', 'admin') })).toBeTruthy();
     expect(screen.getByRole('table', { name: adminText('ar', 'auditEvents') })).toBeTruthy();
     expect(screen.getByText(adminText('ar', 'chainVerified'))).toBeTruthy();
+  });
+
+  it('never paints the previous tenant proposal after an active-organization switch', () => {
+    // A layout effect reads the committed DOM during the commit phase, before
+    // passive effects flush. It therefore observes the first painted frame of
+    // a tenant switch, which is where a stale cross-tenant announcement leaks.
+    const statusAtCommit: string[] = [];
+    function CommitObserver({ children }: { children: ReactNode }) {
+      useLayoutEffect(() => {
+        statusAtCommit.push(document.querySelector('[data-testid="admin-status"]')?.textContent ?? '');
+      });
+      return <>{children}</>;
+    }
+    function frame(organizationId: string) {
+      return (
+        <ThemeProvider>
+          <I18nProvider initialLocale="en">
+            <CommitObserver>
+              <AdminScreen {...screenProps(organizationId)} />
+            </CommitObserver>
+          </I18nProvider>
+        </ThemeProvider>
+      );
+    }
+
+    const { rerender } = render(frame(alphaOrganizationId));
+    fireEvent.change(screen.getByLabelText(adminText('en', 'proposedValue')), {
+      target: { value: 'Synthetic proposed value' },
+    });
+    fireEvent.change(screen.getByLabelText(adminText('en', 'effectiveFrom')), {
+      target: { value: '2026-07-01' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: adminText('en', 'propose') }));
+    expect(screen.getByTestId('admin-status').textContent).toBe(proposalAnnouncement('en', 'MAIN', 5));
+
+    statusAtCommit.length = 0;
+    rerender(frame(betaOrganizationId));
+
+    // The first committed frame under the new tenant must not carry the old
+    // tenant's facility code/version in the status live region.
+    expect(statusAtCommit[0]).toBe('');
+    expect(screen.getByTestId('admin-status').textContent).toBe('');
   });
 });
