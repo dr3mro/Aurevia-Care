@@ -491,7 +491,7 @@ class PlanTests(unittest.TestCase):
 
     def test_label_editing_jobs_have_issues_write(self):
         import yaml
-        for name, job in (("swarm-integrator.yml", "integrate"), ("main-repair.yml", "validate")):
+        for name, job in (("swarm-integrator.yml", "integrate"), ("fix-pr-gate.yml", "validate")):
             config = yaml.safe_load((ROOT / ".github/workflows" / name).read_text())
             perms = config["jobs"][job]["permissions"]
             self.assertEqual(perms.get("issues"), "write", f"{name} {job}")
@@ -583,7 +583,7 @@ class PlanTests(unittest.TestCase):
         workflows = ROOT / ".github/workflows"
         self.assertFalse((workflows / "main-watchdog.yml").exists())
         self.assertFalse((workflows / "fix-pr-watchdog.yml").exists())
-        text = (workflows / "main-repair.yml").read_text()
+        text = (workflows / "fix-pr-gate.yml").read_text()
         self.assertIn("pull_request:", text)
         self.assertNotIn("workflow_run:", text)
         self.assertNotIn("cron:", text)
@@ -611,8 +611,8 @@ class PlanTests(unittest.TestCase):
             self.assertIn(name, swarm.REPAIR_WORKFLOWS)
         self.assertNotIn("Swarm integrator", swarm.REPAIR_WORKFLOWS)
 
-    def test_budget_workflows_include_single_repair_workflow(self):
-        self.assertIn("main-repair.yml", swarm.BUDGET_WORKFLOWS)
+    def test_budget_workflows_include_the_fix_pr_gate(self):
+        self.assertIn("fix-pr-gate.yml", swarm.BUDGET_WORKFLOWS)
         self.assertNotIn("fix-pr-watchdog.yml", swarm.BUDGET_WORKFLOWS)
         self.assertNotIn("main-watchdog.yml", swarm.BUDGET_WORKFLOWS)
 
