@@ -36,7 +36,7 @@ decision `docs/decisions/0002-ops06-migration-change-safety.md`. It enforces
 unique version numbers, a fail-closed non-empty migration directory and
 expand/contract discipline with a format-valid `Forward-fix:` and a real
 earlier `Change: expand` reference. The canonical
-[`check.sh`](../../../infra/s_g5_07/check.sh) runs that checker for real instead
+[`check.sh`](../../../infra/delivery-safety/check.sh) runs that checker for real instead
 of trusting the artifact's declared command. The runtime authority remains
 `db/check.sh`, which applies migrations to a real PostgreSQL instance.
 

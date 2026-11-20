@@ -9,11 +9,11 @@ sections: `environments`, `fixtures`, `ci_checks`, `signed_builds`,
 `reversible_deployments`. A `measured_deployment` artifact additionally requires
 a `provenance` object with six non-blank string fields: `tool`, `tool_version`,
 `command`, `utc_timestamp`, `environment` and `source_sha`. The
-[conforming fixture](../../../infra/s_g5_07/fixtures/synthetic_evidence.json) is
+[conforming fixture](../../../infra/delivery-safety/fixtures/synthetic_evidence.json) is
 the worked rehearsal example; there is no *conforming* measured-deployment
 fixture because real rollout provenance is produced and reviewed outside this
 repository. A negative
-[relabelled-rehearsal fixture](../../../infra/s_g5_07/fixtures/relabelled_violation_evidence.json)
+[relabelled-rehearsal fixture](../../../infra/delivery-safety/fixtures/relabelled_violation_evidence.json)
 does exist: it is the conforming rehearsal with only `kind` and `source`
 changed and no provenance, and the canonical gate requires it to be rejected.
 
@@ -54,14 +54,14 @@ rollout really happened, and G5 acceptance, remain human and cloud gated.
 ## Commands and exit codes
 
 ```bash
-bash infra/s_g5_07/check.sh
-python3 -I -m unittest discover -s infra/s_g5_07/tests -q
-python3 -I infra/s_g5_07/delivery_safety_evidence.py \
-  infra/s_g5_07/fixtures/synthetic_evidence.json
-python3 -I infra/s_g5_07/delivery_safety_evidence.py \
-  infra/s_g5_07/fixtures/violation_evidence.json   # exit 1 is expected
-python3 -I infra/s_g5_07/delivery_safety_evidence.py \
-  infra/s_g5_07/fixtures/relabelled_violation_evidence.json  # exit 1: relabelled rehearsal
+bash infra/delivery-safety/check.sh
+python3 -I -m unittest discover -s infra/delivery-safety/tests -q
+python3 -I infra/delivery-safety/delivery_safety_evidence.py \
+  infra/delivery-safety/fixtures/synthetic_evidence.json
+python3 -I infra/delivery-safety/delivery_safety_evidence.py \
+  infra/delivery-safety/fixtures/violation_evidence.json   # exit 1 is expected
+python3 -I infra/delivery-safety/delivery_safety_evidence.py \
+  infra/delivery-safety/fixtures/relabelled_violation_evidence.json  # exit 1: relabelled rehearsal
 ```
 
 `0` = every check passes, `1` = at least one failed check, `2` = wrong argument
@@ -74,9 +74,9 @@ The canonical gate also runs the real migration checker.
 with the standard library:
 
 ```bash
-python3 -m trace --count --coverdir /tmp/opencode/s_g5_07_cov \
-  infra/s_g5_07/tests/run_coverage.py
-grep '^>>>>>>' /tmp/opencode/s_g5_07_cov/*delivery_safety_evidence*.cover
+python3 -m trace --count --coverdir /tmp/opencode/delivery-safety_cov \
+  infra/delivery-safety/tests/run_coverage.py
+grep '^>>>>>>' /tmp/opencode/delivery-safety_cov/*delivery_safety_evidence*.cover
 ```
 
 The result is **248 executable lines, 0 uncovered** (100% line coverage of the

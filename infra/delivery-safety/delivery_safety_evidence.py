@@ -13,9 +13,9 @@ Two honesty rules matter more than the checks themselves:
 * The evaluator judges the *shape and completeness* of a declaration. It cannot
   prove that cloud accounts are isolated, that a binary was really signed, that
   a rollout was monitored or that production access actually expired. Those are
-  human/cloud-gated G5 items documented in ``docs/operations/s_g5_07``.
+  human/cloud-gated G5 items documented in ``docs/operations/delivery-safety``.
 
-Usage: ``python3 -I infra/s_g5_07/delivery_safety_evidence.py <artifact.json>``
+Usage: ``python3 -I infra/delivery-safety/delivery_safety_evidence.py <artifact.json>``
 Exit codes: 0 = artifact passes every OPS-06 check, 1 = it fails a check,
 2 = unreadable or unparsable input.
 """

@@ -28,8 +28,8 @@ No new threshold or requirement ID is introduced by this handoff.
 
 | Tier | What it is | What it proves | What it does not prove |
 |---|---|---|---|
-| Contract | The literals encoded in the [evaluator](../../../infra/s_g5_07/delivery_safety_evidence.py) and the [policy manifest](../../../infra/s_g5_07/delivery-safety-policy.json) | Fidelity of the encoding and fail-closed validation | That any environment, build or rollout exists |
-| Synthetic rehearsal | A seeded artifact run by [`check.sh`](../../../infra/s_g5_07/check.sh) in this repository | That the evaluator accepts a conforming artifact and rejects breaches | Isolation of real accounts, a real signature, a real rollout or real approval |
+| Contract | The literals encoded in the [evaluator](../../../infra/delivery-safety/delivery_safety_evidence.py) and the [policy manifest](../../../infra/delivery-safety/delivery-safety-policy.json) | Fidelity of the encoding and fail-closed validation | That any environment, build or rollout exists |
+| Synthetic rehearsal | A seeded artifact run by [`check.sh`](../../../infra/delivery-safety/check.sh) in this repository | That the evaluator accepts a conforming artifact and rejects breaches | Isolation of real accounts, a real signature, a real rollout or real approval |
 | Measured deployment | An authorized artifact produced outside this repository from real pipeline and cloud evidence, carrying run provenance | What the artifact *declares* about a real rollout | Independent verification of those claims or G5 clinical/operational acceptance |
 
 A passing synthetic artifact is explicitly labelled `final_evidence: false`. A
@@ -53,21 +53,21 @@ it carries no run provenance.
 | [Rollout and production access](rollout-and-production-access.md) | Progressive stages, health gates, monitoring, rollback and separated, audited, expiring approval |
 | [Evidence contract](evidence-contract.md) | Artifact schema, every named check, branch enumeration, commands and the honesty boundary |
 
-Executable material lives in `infra/s_g5_07`: the
-[evaluator](../../../infra/s_g5_07/delivery_safety_evidence.py), the
-[policy manifest](../../../infra/s_g5_07/delivery-safety-policy.json), the
-[conforming](../../../infra/s_g5_07/fixtures/synthetic_evidence.json),
-[violation](../../../infra/s_g5_07/fixtures/violation_evidence.json) and
-[relabelled-rehearsal](../../../infra/s_g5_07/fixtures/relabelled_violation_evidence.json)
+Executable material lives in `infra/delivery-safety`: the
+[evaluator](../../../infra/delivery-safety/delivery_safety_evidence.py), the
+[policy manifest](../../../infra/delivery-safety/delivery-safety-policy.json), the
+[conforming](../../../infra/delivery-safety/fixtures/synthetic_evidence.json),
+[violation](../../../infra/delivery-safety/fixtures/violation_evidence.json) and
+[relabelled-rehearsal](../../../infra/delivery-safety/fixtures/relabelled_violation_evidence.json)
 fixtures, the tests and the canonical gate.
 
 ## Verification
 
 | Check | Command | Proves |
 |---|---|---|
-| Unit and fixture gate | `bash infra/s_g5_07/check.sh` | 71 synthetic unit tests pass; the conforming fixture passes, both negative fixtures exit exactly 1, and the real migration gate is green |
-| Unit tests alone | `python3 -I -m unittest discover -s infra/s_g5_07/tests -q` | The evaluator's enumerated branches behave as specified |
-| Line coverage | `python3 -m trace --count --coverdir /tmp/opencode/s_g5_07_cov infra/s_g5_07/tests/run_coverage.py` | All 248 executable lines of the evaluator run; stdlib `trace` is used because `coverage.py` is not installed |
+| Unit and fixture gate | `bash infra/delivery-safety/check.sh` | 71 synthetic unit tests pass; the conforming fixture passes, both negative fixtures exit exactly 1, and the real migration gate is green |
+| Unit tests alone | `python3 -I -m unittest discover -s infra/delivery-safety/tests -q` | The evaluator's enumerated branches behave as specified |
+| Line coverage | `python3 -m trace --count --coverdir /tmp/opencode/delivery-safety_cov infra/delivery-safety/tests/run_coverage.py` | All 248 executable lines of the evaluator run; stdlib `trace` is used because `coverage.py` is not installed |
 | Links and requirement IDs | `python3 -I scripts/check-docs.py` | Relative links resolve and every requirement ID is defined in the specification |
 | Credential and PHI shapes | `python3 -I scripts/check-secrets.py` | No credential or patient-identifier pattern was introduced |
 
