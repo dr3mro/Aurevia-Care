@@ -30,7 +30,7 @@ BODY_LIMIT = 8000
 # Default monthly runner-minute cap for all swarm-related workflows. The guard
 # estimates usage from finished run durations and refuses a wave near the cap.
 DEFAULT_MONTHLY_MINUTES = 10000
-BUDGET_WORKFLOWS = ("swarm.yml", "swarm-integrator.yml", "heavy-check.yml",
+BUDGET_WORKFLOWS = ("swarm.yml", "swarm-integrator.yml",
                     "agent-image.yml", "swarm-images.yml", "main-repair.yml")
 BRANCH = re.compile(r"swarm/[A-Za-z0-9._-]+")
 LABELS = {
@@ -824,15 +824,10 @@ def record_merge(pr, task_id, sha, gate="scripts/quick-check.sh"):
     notes.write_text(f"# {task_id} · {title}\n\nPR #{pr}, tested branch tip {sha}.\n\n"
                      f"{clip(info['body'])}\n")
     evidence = (f"PR #{pr}; integrator ran {gate} on the merge result (tool evidence); "
-                f"heavy-check.yml re-verifies main after the push; notes in {notes}; "
+                f"Delivery re-verifies main after the push; notes in {notes}; "
                 "simulated review only")
     todo.write_text(set_task_status(todo.read_text(), task_id, "done", pr=f"#{pr}", evidence=evidence))
     return f"Merged to main by the integrator after {gate} passed on the merge result."
-
-
-def dispatch_heavy():
-    """Trigger the once-per-batch heavy verification on main."""
-    gh("workflow", "run", "heavy-check.yml", "--ref", "main", check=False)
 
 
 def dispatch_delivery():
@@ -930,7 +925,6 @@ def integrate_batch(queue, gate="scripts/quick-check.sh"):
                 raise subprocess.CalledProcessError(1, ("gate", gate), "", log)
     for (pr, _, _), comment in zip(merged, comments):
         gh("pr", "comment", str(pr), "--body", comment)
-    dispatch_heavy()
     dispatch_delivery()
     emit("merged", len(merged))
     return len(merged)
@@ -994,7 +988,6 @@ def finalize(pr, task_id, sha):
     git(*IDENTITY, "commit", "-qm", f"Record {task_id} as merged (PR #{pr})")
     authed_git("push", "origin", "HEAD:main")
     gh("pr", "comment", str(pr), "--body", comment)
-    dispatch_heavy()
 
 
 def main(argv=None):
