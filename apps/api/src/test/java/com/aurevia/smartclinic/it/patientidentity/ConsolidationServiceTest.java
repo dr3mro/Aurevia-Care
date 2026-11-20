@@ -3,7 +3,6 @@ package com.aurevia.smartclinic.it.patientidentity;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.atLeastOnce;
@@ -97,6 +96,10 @@ class ConsolidationServiceTest {
             TransactionCallback<?> callback = invocation.getArgument(0);
             return callback.doInTransaction(mock(TransactionStatus.class));
         }).when(transactions).execute(any());
+        // Default production state: a patient's chart resolves to itself until a
+        // consolidation moves it. Tests that simulate a moved chart override this.
+        when(repository.effectivePatientId(anyString()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
         bind(REVIEWER_A);
     }
 
@@ -246,6 +249,49 @@ class ConsolidationServiceTest {
         assertEquals(REVIEW, result.id());
         verify(repository, never()).insertReview(anyString(), anyString(), anyString(), anyString());
         verify(repository).appendAudit(TenantContext.current(), "DUPLICATE_REVIEW_OPEN", REVIEW, "SUCCESS");
+    }
+
+    @Test
+    void openRejectsReversedOrientationOfAnAlreadyConsolidatedPair() {
+        authorized(REVIEWER_A, "tenant_admin");
+        when(repository.findPatient(SURVIVOR)).thenReturn(Optional.of(survivor()));
+        when(repository.findPatient(DUPLICATE)).thenReturn(Optional.of(duplicate()));
+        Consolidation done = new Consolidation("cons-1", REVIEW, SURVIVOR, DUPLICATE, 1,
+                "CONSOLIDATED", REVIEWER_A, REVIEWER_A, "duplicate", null);
+        DuplicateReview canonical = new DuplicateReview(REVIEW, SURVIVOR, DUPLICATE,
+                REVIEWER_A, 1, "CONSOLIDATED");
+        DuplicateReview reversed = new DuplicateReview("review-reversed", DUPLICATE, SURVIVOR,
+                REVIEWER_A, 1, "OPEN");
+        // The forward lookup is empty, but a review for this unordered pair already
+        // exists in the canonical (A,B) orientation and is consolidated.
+        when(repository.findReviewByPair(DUPLICATE, SURVIVOR))
+                .thenReturn(Optional.empty(), Optional.of(reversed));
+        when(repository.findReviewByPair(SURVIVOR, DUPLICATE)).thenReturn(Optional.of(canonical));
+        when(repository.findCurrentConsolidation(REVIEW)).thenReturn(Optional.of(done));
+        when(repository.insertReview(ORG, DUPLICATE, SURVIVOR, REVIEWER_A)).thenReturn(1);
+
+        ApiException thrown = assertThrows(ApiException.class,
+                () -> service.open(DUPLICATE, SURVIVOR));
+        assertEquals(409, thrown.status());
+        verify(repository, never()).insertReview(anyString(), anyString(), anyString(), anyString());
+        verify(repository).appendAudit(TenantContext.current(), "DUPLICATE_REVIEW_OPEN", REVIEW, "CONFLICT");
+    }
+
+    @Test
+    void openFailsClosedWhenCreatedReviewIsNotVisible() {
+        authorized(REVIEWER_A, "tenant_admin");
+        when(repository.findPatient(SURVIVOR)).thenReturn(Optional.of(survivor()));
+        when(repository.findPatient(DUPLICATE)).thenReturn(Optional.of(duplicate()));
+        when(repository.findReviewByPair(SURVIVOR, DUPLICATE)).thenReturn(Optional.empty());
+        when(repository.insertReview(ORG, SURVIVOR, DUPLICATE, REVIEWER_A)).thenReturn(1);
+        // The insert commits but the read-back is empty: a command that promises a
+        // created resource must not report success with a null body.
+        when(repository.findReviewByPair(SURVIVOR, DUPLICATE))
+                .thenReturn(Optional.empty(), Optional.empty());
+
+        ApiException thrown = assertThrows(ApiException.class, () -> service.open(SURVIVOR, DUPLICATE));
+        assertEquals(409, thrown.status());
+        verify(repository).appendAudit(TenantContext.current(), "DUPLICATE_REVIEW_OPEN", DUPLICATE, "CONFLICT");
     }
 
     @Test
@@ -442,6 +488,58 @@ class ConsolidationServiceTest {
     }
 
     @Test
+    void consolidateRefusesDuplicateWhoseChartAlreadyMovedUnderAnotherReview() {
+        bind(REVIEWER_B);
+        authorized(REVIEWER_B, "tenant_admin");
+        when(repository.findReviewById(REVIEW)).thenReturn(Optional.of(openReview()));
+        when(repository.findCurrentConsolidation(REVIEW)).thenReturn(Optional.empty());
+        when(repository.findPatient(SURVIVOR)).thenReturn(Optional.of(survivor()));
+        when(repository.findPatient(DUPLICATE)).thenReturn(Optional.of(duplicate()));
+        when(repository.lockPair(SURVIVOR, DUPLICATE)).thenReturn(2);
+        when(repository.hasUnresolvedBlockers(DUPLICATE)).thenReturn(0);
+        // A different review already moved D's chart to another survivor. The
+        // append-only patient version is unchanged, so the version precondition
+        // alone cannot detect it; the current visibility must be checked too.
+        when(repository.effectivePatientId(DUPLICATE)).thenReturn(SURVIVOR);
+        when(repository.newId()).thenReturn("assoc-1", "cons-1");
+
+        ApiException thrown = assertThrows(ApiException.class,
+                () -> service.consolidate(REVIEW, 2, "reason"));
+        assertEquals(409, thrown.status());
+        verify(repository, never()).insertAssociation(anyString(), anyString(), anyString(), anyInt(),
+                anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), anyString());
+        verify(repository, never()).insertConsolidation(anyString(), anyString(), anyString(), anyString(),
+                anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), anyString());
+        verify(repository).appendAudit(TenantContext.current(), "CONSOLIDATE", REVIEW, "CONFLICT");
+    }
+
+    @Test
+    void consolidateRefusesSurvivorWhoseChartAlreadyMovedUnderAnotherReview() {
+        bind(REVIEWER_B);
+        authorized(REVIEWER_B, "tenant_admin");
+        when(repository.findReviewById(REVIEW)).thenReturn(Optional.of(openReview()));
+        when(repository.findCurrentConsolidation(REVIEW)).thenReturn(Optional.empty());
+        when(repository.findPatient(SURVIVOR)).thenReturn(Optional.of(survivor()));
+        when(repository.findPatient(DUPLICATE)).thenReturn(Optional.of(duplicate()));
+        when(repository.lockPair(SURVIVOR, DUPLICATE)).thenReturn(2);
+        when(repository.hasUnresolvedBlockers(DUPLICATE)).thenReturn(0);
+        // A reversed pair raced past open()'s orientation check: the intended
+        // survivor's own chart already points at another patient. Allowing this
+        // would close a two-node visibility cycle.
+        when(repository.effectivePatientId(SURVIVOR)).thenReturn(DUPLICATE);
+        when(repository.newId()).thenReturn("assoc-1", "cons-1");
+
+        ApiException thrown = assertThrows(ApiException.class,
+                () -> service.consolidate(REVIEW, 2, "reason"));
+        assertEquals(409, thrown.status());
+        verify(repository, never()).insertAssociation(anyString(), anyString(), anyString(), anyInt(),
+                anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), anyString());
+        verify(repository, never()).insertConsolidation(anyString(), anyString(), anyString(), anyString(),
+                anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), anyString());
+        verify(repository).appendAudit(TenantContext.current(), "CONSOLIDATE", REVIEW, "CONFLICT");
+    }
+
+    @Test
     void consolidateRechecksCurrentStateInsideThePairLock() {
         bind(REVIEWER_B);
         authorized(REVIEWER_B, "tenant_admin");
@@ -577,8 +675,8 @@ class ConsolidationServiceTest {
         assertEquals(409, assertThrows(ApiException.class, () -> service.open(SURVIVOR, DUPLICATE)).status());
 
         doReturn(1).when(repository).insertReview(anyString(), anyString(), anyString(), anyString());
-        assertNull(service.open(SURVIVOR, DUPLICATE));
-        verify(repository).appendAudit(TenantContext.current(), "DUPLICATE_REVIEW_OPEN", DUPLICATE, "SUCCESS");
+        assertEquals(409, assertThrows(ApiException.class, () -> service.open(SURVIVOR, DUPLICATE)).status());
+        verify(repository).appendAudit(TenantContext.current(), "DUPLICATE_REVIEW_OPEN", DUPLICATE, "CONFLICT");
 
         Consolidation done = new Consolidation("cons-1", REVIEW, SURVIVOR, DUPLICATE, 1,
                 "CONSOLIDATED", REVIEWER_B, REVIEWER_A, "duplicate", null);
