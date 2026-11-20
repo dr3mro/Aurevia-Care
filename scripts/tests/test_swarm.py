@@ -260,16 +260,58 @@ class RepairTaskTests(unittest.TestCase):
 
 
 class WaitingWaveTests(unittest.TestCase):
-    def test_counts_runs_in_every_not_started_state(self):
+    def stamps(self, *minutes_ago):
+        now = datetime.datetime.now(datetime.timezone.utc)
+        return "\n".join((now - datetime.timedelta(minutes=m)).strftime("%Y-%m-%dT%H:%M:%SZ")
+                          for m in minutes_ago) + "\n"
+
+    def test_counts_recent_runs_in_every_not_started_state(self):
         calls = []
+        recent = self.stamps(2, 10)
 
         def fake(*args, check=True):
             status = args[args.index("--status") + 1]
             calls.append(status)
-            return "7\n8\n" if status == "queued" else ""
+            return recent if status == "queued" else ""
         with mock.patch.object(swarm, "gh", fake):
             self.assertEqual(swarm.waiting_waves(), 2)
         self.assertEqual(calls, ["queued", "pending", "waiting", "requested"])
+
+    def test_runs_stuck_for_hours_do_not_block_the_loop(self):
+        zombies = self.stamps(300, 1200, 2600)
+        with mock.patch.object(swarm, "gh", lambda *a, check=True: zombies):
+            self.assertEqual(swarm.waiting_waves(), 0)
+
+
+class BudgetGateCliTests(unittest.TestCase):
+    def run_cli(self, public):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "out"
+            with mock.patch.dict(os.environ, {"GITHUB_OUTPUT": str(out)}), \
+                    mock.patch.object(swarm, "repo_is_public", lambda: public), \
+                    mock.patch.object(swarm, "monthly_minutes", lambda *a: 9900.0), \
+                    mock.patch.object(swarm, "gh", FakeGh()):
+                swarm.main(["budget-gate"])
+            return dict(line.split("=", 1) for line in out.read_text().split())
+
+    def test_public_repository_is_never_paused_by_the_minutes_estimate(self):
+        got = self.run_cli(public=True)
+        self.assertEqual(got["start"], "true")
+        self.assertEqual(int(got["workers"]), swarm.MAX_ACTIVE_WORKERS)
+
+    def test_private_repository_still_pauses_near_the_cap(self):
+        self.assertEqual(self.run_cli(public=False)["start"], "false")
+
+    def test_public_check_reads_the_private_flag(self):
+        with mock.patch.object(swarm, "repo_slug", lambda: "o/r"):
+            for out, expected in (("false\n", True), ("true\n", False), ("", False)):
+                with mock.patch.object(swarm, "gh", lambda *a, check=True, out=out: out):
+                    self.assertEqual(swarm.repo_is_public(), expected)
+
+    def test_plan_job_may_open_the_pause_issue(self):
+        import yaml
+        plan = yaml.safe_load((ROOT / ".github/workflows/swarm.yml").read_text())["jobs"]["plan"]
+        self.assertEqual(plan["permissions"].get("issues"), "write")
 
 
 class PlanTests(unittest.TestCase):
@@ -366,6 +408,11 @@ class PlanTests(unittest.TestCase):
         live = [{"number": 9, "headRefName": "swarm/CW-002-1", "state": "OPEN"}]
         kept = {t["id"]: t for t in swarm.parse_tasks(swarm.reclaim(text, live))}
         self.assertEqual(kept["CW-002"]["status"], "taken")
+
+    def test_reclaim_frees_stale_claims_of_the_older_opencode_dispatcher(self):
+        text = swarm.set_task_status(TASKS, "CW-001", "taken", agent="opencode-delivery-dispatch-4")
+        got = {t["id"]: t for t in swarm.parse_tasks(swarm.reclaim(text, []))}
+        self.assertEqual(got["CW-001"]["status"], "todo")
 
     def test_reclaim_releases_needs_human_claims(self):
         text = swarm.set_task_status(TASKS, "CW-001", "taken", agent="swarm-1")
