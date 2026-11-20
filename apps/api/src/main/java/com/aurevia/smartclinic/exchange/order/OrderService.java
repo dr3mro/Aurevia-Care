@@ -125,7 +125,7 @@ public class OrderService {
             repository.insertOrder(order);
             repository.appendSnapshot(snapshotId, id, 1, content, fingerprint);
             repository.appendDisclosure(disclosureId, id, destination, purpose, duration,
-                    now.plusSeconds(duration * 60L), fingerprint);
+                    disclosureExpiry(now, duration), fingerprint);
             repository.insertWorkItem(workItemId, destination, authorizationId, id, patientId,
                     identity.mrn(), identity.issuer(), priority, question, workQueue, fingerprint);
             audit.append(context, SCOPE, CREATE_ACTION, ORDER_RESOURCE, SCOPE, id, "SUCCESS");
@@ -284,6 +284,20 @@ public class OrderService {
         return null;
     }
 
+    /**
+     * Compute the instant at which a released disclosure stops being valid.
+     *
+     * <p>Validation and the ledger stamp call this single helper so the value
+     * checked against the authorization is structurally the value recorded.</p>
+     *
+     * @param now      the single release instant shared by validation and recording
+     * @param duration authorized validity in minutes
+     * @return the disclosure expiry instant
+     */
+    private static Instant disclosureExpiry(Instant now, int duration) {
+        return now.plusSeconds(duration * 60L);
+    }
+
     private ApiException checkGrant(AuthorizationView grant, TenantContext context, String action,
                                     String resourceId, String orderCode, String destination,
                                     String purpose, int duration, Instant now) {
@@ -292,7 +306,7 @@ public class OrderService {
         // authorize sharing past its own expiry (XCH-01 duration boundary).
         // The caller supplies the same instant used to stamp the disclosure, so
         // clock drift between validation and recording cannot widen the window.
-        Instant disclosureExpiresAt = now.plusSeconds(duration * 60L);
+        Instant disclosureExpiresAt = disclosureExpiry(now, duration);
         if (grant == null || !grant.active() || grant.effectiveFrom().isAfter(now)
                 || (grant.expiresAt() != null && !grant.expiresAt().isAfter(now))
                 || (grant.expiresAt() != null && disclosureExpiresAt.isAfter(grant.expiresAt()))
