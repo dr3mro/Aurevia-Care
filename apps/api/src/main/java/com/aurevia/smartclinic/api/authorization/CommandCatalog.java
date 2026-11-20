@@ -1,10 +1,12 @@
 package com.aurevia.smartclinic.api.authorization;
 
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 import com.aurevia.smartclinic.api.ApiException;
 import com.aurevia.smartclinic.authz.ActionPolicy;
@@ -54,14 +56,19 @@ public final class CommandCatalog {
      * Build a catalog with stable insertion order and no duplicate identifiers.
      *
      * @param commands definitions to register
-     * @throws IllegalArgumentException when two definitions share an identifier
+     * @throws IllegalArgumentException when two definitions share an identifier or a route
      */
     public CommandCatalog(List<CommandDefinition> commands) {
         Objects.requireNonNull(commands, "commands");
         Map<String, CommandDefinition> index = new LinkedHashMap<>();
+        Set<String> routes = new HashSet<>();
         for (CommandDefinition definition : commands) {
             if (index.putIfAbsent(definition.id(), definition) != null) {
                 throw new IllegalArgumentException("duplicate command id: " + definition.id());
+            }
+            // One OpenAPI path key per route; a duplicate would silently drop an operation.
+            if (!routes.add(definition.path())) {
+                throw new IllegalArgumentException("duplicate command path: " + definition.path());
             }
         }
         this.commands = List.copyOf(commands);
