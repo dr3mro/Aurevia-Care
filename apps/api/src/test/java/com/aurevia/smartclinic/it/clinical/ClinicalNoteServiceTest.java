@@ -470,6 +470,57 @@ class ClinicalNoteServiceTest {
     }
 
     @Test
+    void staleVersionAttemptAuditsConflictInASecondCommittedTransaction() {
+        authorized();
+        when(repository.current(NOTE)).thenReturn(Optional.of(revision(NoteState.DRAFT, 2)));
+        assertEquals(412, assertThrows(ApiException.class,
+                () -> service.sign(NOTE, 1, "attest")).status());
+        // A stale version that would otherwise advance an immutable chain is a
+        // clinically significant rejected write (G1: a stale draft must not
+        // overwrite a signed record). Its audit must outlive the rollback (OPS-02).
+        verify(transactions, times(2)).execute(any());
+        verify(audit).append(eq(TenantContext.current()), eq(ClinicalNoteService.PURPOSE),
+                eq(ClinicalNoteService.SIGN), eq(ClinicalNoteService.RESOURCE_TYPE),
+                eq(ClinicalNoteService.SCOPE), eq(NOTE), eq("CONFLICT"));
+    }
+
+    @Test
+    void immutableRevisionEditAttemptAuditsConflict() {
+        authorized();
+        when(repository.current(NOTE)).thenReturn(Optional.of(revision(NoteState.SIGNED, 1)));
+        assertEquals(409, assertThrows(ApiException.class,
+                () -> service.updateDraft(NOTE, 1, "Title", "Content")).status());
+        verify(audit).append(eq(TenantContext.current()), eq(ClinicalNoteService.PURPOSE),
+                eq(ClinicalNoteService.UPDATE), eq(ClinicalNoteService.RESOURCE_TYPE),
+                eq(ClinicalNoteService.SCOPE), eq(NOTE), eq("CONFLICT"));
+    }
+
+    @Test
+    void illegalTransitionAttemptAuditsConflict() {
+        authorized();
+        when(repository.current(NOTE)).thenReturn(Optional.of(revision(NoteState.SIGNED, 1)));
+        assertEquals(409, assertThrows(ApiException.class,
+                () -> service.sign(NOTE, 1, "attest")).status());
+        verify(audit).append(eq(TenantContext.current()), eq(ClinicalNoteService.PURPOSE),
+                eq(ClinicalNoteService.SIGN), eq(ClinicalNoteService.RESOURCE_TYPE),
+                eq(ClinicalNoteService.SCOPE), eq(NOTE), eq("CONFLICT"));
+    }
+
+    @Test
+    void concurrentInsertConflictAuditsInSecondTransaction() {
+        authorized();
+        when(repository.patientExists(PATIENT)).thenReturn(true);
+        when(repository.insert(eq(ORG), anyString(), any(RevisionInput.class)))
+                .thenThrow(new DuplicateKeyException("dup"));
+        assertEquals(409, assertThrows(ApiException.class, () -> service.createDraft(
+                PATIENT, null, "Title", "Content", "en", "SOAP", 1, "author-a", null)).status());
+        verify(transactions, times(2)).execute(any());
+        verify(audit).append(eq(TenantContext.current()), eq(ClinicalNoteService.PURPOSE),
+                eq(ClinicalNoteService.CREATE), eq(ClinicalNoteService.RESOURCE_TYPE),
+                eq(ClinicalNoteService.SCOPE), anyString(), eq("CONFLICT"));
+    }
+
+    @Test
     void allMutationCommandsDenyInactiveMembership() {
         when(repository.hasActiveMembership(ACTOR)).thenReturn(false);
         assertEquals(403, assertThrows(ApiException.class,

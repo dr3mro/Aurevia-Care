@@ -186,8 +186,8 @@ public class ClinicalNoteService {
             }
             repository.lockNote(id);
             ClinicalNoteRevision current = load(id, context, UPDATE);
-            requireVersion(current, expectedVersion);
-            requireEditable(current);
+            requireVersion(current, expectedVersion, context, UPDATE, id);
+            requireEditable(current, context, UPDATE, id);
             append(context, UPDATE, id, copy(current, current.state(), noteTitle, noteContent,
                     NoteChecksum.sha256(noteContent), current.version(), null, null, "[]"));
             return repository.current(id).orElse(null);
@@ -221,9 +221,10 @@ public class ClinicalNoteService {
             }
             repository.lockNote(id);
             ClinicalNoteRevision current = load(id, context, SIGN);
-            requireVersion(current, expectedVersion);
+            requireVersion(current, expectedVersion, context, SIGN, id);
             if (current.state() != NoteState.DRAFT) {
-                throw new ApiException(409, "INVALID_TRANSITION", "only an original draft can be signed");
+                throw auditFailure(context, SIGN, id, "CONFLICT", 409,
+                        "INVALID_TRANSITION", "only an original draft can be signed");
             }
             requireFields(current);
             requirePatient(current, context, SIGN);
@@ -261,9 +262,10 @@ public class ClinicalNoteService {
             }
             repository.lockNote(id);
             ClinicalNoteRevision current = load(id, context, SIGN_ADDENDUM);
-            requireVersion(current, expectedVersion);
+            requireVersion(current, expectedVersion, context, SIGN_ADDENDUM, id);
             if (current.state() != NoteState.AMENDMENT_DRAFT) {
-                throw new ApiException(409, "INVALID_TRANSITION", "only an amendment draft can become an addendum");
+                throw auditFailure(context, SIGN_ADDENDUM, id, "CONFLICT", 409,
+                        "INVALID_TRANSITION", "only an amendment draft can become an addendum");
             }
             requireFields(current);
             requirePatient(current, context, SIGN_ADDENDUM);
@@ -298,9 +300,10 @@ public class ClinicalNoteService {
             }
             repository.lockNote(id);
             ClinicalNoteRevision current = load(id, context, AMEND);
-            requireVersion(current, expectedVersion);
+            requireVersion(current, expectedVersion, context, AMEND, id);
             if (!current.state().signatureBearing()) {
-                throw new ApiException(409, "INVALID_TRANSITION", "only a signed revision can be amended");
+                throw auditFailure(context, AMEND, id, "CONFLICT", 409,
+                        "INVALID_TRANSITION", "only a signed revision can be amended");
             }
             append(context, AMEND, id, copy(current, NoteState.AMENDMENT_DRAFT, current.title(),
                     current.content(), current.contentChecksum(), current.version(), null, null,
@@ -338,10 +341,10 @@ public class ClinicalNoteService {
             }
             repository.lockNote(id);
             ClinicalNoteRevision current = load(id, context, ENTERED_IN_ERROR);
-            requireVersion(current, expectedVersion);
+            requireVersion(current, expectedVersion, context, ENTERED_IN_ERROR, id);
             if (!current.state().signatureBearing()) {
-                throw new ApiException(409, "INVALID_TRANSITION",
-                        "only a signed revision can be marked entered-in-error");
+                throw auditFailure(context, ENTERED_IN_ERROR, id, "CONFLICT", 409,
+                        "INVALID_TRANSITION", "only a signed revision can be marked entered-in-error");
             }
             append(context, ENTERED_IN_ERROR, id, copy(current, NoteState.ENTERED_IN_ERROR,
                     current.title(), current.content(), current.contentChecksum(), current.version(),
@@ -402,9 +405,11 @@ public class ClinicalNoteService {
             written = repository.insert(context.organizationId(), id, input);
         } catch (DuplicateKeyException exception) {
             // A concurrent writer can win the per-note version uniqueness even
-            // after the advisory lock; the transaction is aborted, so only the
-            // conflict is reported and no success audit can survive.
-            throw new ApiException(409, "CONFLICT", "the note conflicts with the stored record");
+            // after the advisory lock. The transaction is aborted, so no success
+            // audit can survive; re-append a CONFLICT audit in the committed
+            // second transaction owned by audited(...) (OPS-02).
+            throw auditFailure(context, action, id, "CONFLICT", 409,
+                    "CONFLICT", "the note conflicts with the stored record");
         }
         if (written == 0) {
             throw auditFailure(context, action, id, "CONFLICT", 412,
@@ -462,15 +467,19 @@ public class ClinicalNoteService {
         }
     }
 
-    private static void requireVersion(ClinicalNoteRevision current, int expectedVersion) {
+    private void requireVersion(ClinicalNoteRevision current, int expectedVersion,
+                                TenantContext context, String action, String id) {
         if (current.version() != expectedVersion) {
-            throw new ApiException(412, "STALE_VERSION", "the note changed since it was read");
+            throw auditFailure(context, action, id, "CONFLICT", 412,
+                    "STALE_VERSION", "the note changed since it was read");
         }
     }
 
-    private static void requireEditable(ClinicalNoteRevision current) {
+    private void requireEditable(ClinicalNoteRevision current, TenantContext context,
+                                 String action, String id) {
         if (!current.state().editable()) {
-            throw new ApiException(409, "IMMUTABLE_REVISION", "a signed revision cannot be edited");
+            throw auditFailure(context, action, id, "CONFLICT", 409,
+                    "IMMUTABLE_REVISION", "a signed revision cannot be edited");
         }
     }
 

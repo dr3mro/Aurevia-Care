@@ -372,6 +372,22 @@ class ClinicalNoteRevisionIntegrationTest {
     }
 
     @Test
+    void staleVersionAuditIsCommittedAfterRollback() throws Exception {
+        String id = field(create("clinician-a", ORG_A).getBody(), "id");
+        assertEquals(HttpStatus.OK, request(HttpMethod.POST, "/api/v1/clinical-notes/" + id + "/sign",
+                "{\"attestation\":\"attested\"}", "clinician-a", ORG_A, "\"1\"").getStatusCode());
+        long before = auditCount("NOTE_EDIT", "CONFLICT", ORG_A);
+        // A stale edit of a signed note is a rejected clinical write. Its
+        // CONFLICT audit must survive the command rollback and be committed in
+        // the caller's tenant (OPS-02), naming the requested note.
+        ResponseEntity<String> stale = request(HttpMethod.PUT, "/api/v1/clinical-notes/" + id,
+                "{\"title\":\"Late\",\"content\":\"Late content\"}", "clinician-a", ORG_A, "\"1\"");
+        assertEquals(HttpStatus.PRECONDITION_FAILED, stale.getStatusCode());
+        assertEquals("STALE_VERSION", field(stale.getBody(), "code"));
+        assertEquals(before + 1, auditCount("NOTE_EDIT", "CONFLICT", ORG_A));
+    }
+
+    @Test
     void revisionRowsAreAppendOnlyForEveryRole() throws Exception {
         String id = field(create("clinician-a", ORG_A).getBody(), "id");
         assertMutationRejected("smartclinic_migrate", "UPDATE public.clinical_note_revision "
