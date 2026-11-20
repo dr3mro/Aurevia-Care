@@ -33,8 +33,8 @@ originates. They do not create new ADM-02 requirements.
 
 | Tier | What it is | What it proves | What it does not prove |
 |---|---|---|---|
-| Contract | The literals and rules encoded in the [evaluator](../../../infra/s_g5_11/ops_queues.py) | Fidelity of the encoding and fail-closed validation | That any queue was staffed or any action really happened |
-| Synthetic rehearsal | A seeded artifact run by [`check.sh`](../../../infra/s_g5_11/check.sh) in this repository | That the evaluator accepts a conforming snapshot and rejects breaches | Real queues, operators, exports or response times; no site action was observed |
+| Contract | The literals and rules encoded in the [evaluator](../../../infra/ops-queues/ops_queues.py) | Fidelity of the encoding and fail-closed validation | That any queue was staffed or any action really happened |
+| Synthetic rehearsal | A seeded artifact run by [`check.sh`](../../../infra/ops-queues/check.sh) in this repository | That the evaluator accepts a conforming snapshot and rejects breaches | Real queues, operators, exports or response times; no site action was observed |
 | Operator-attested | An artifact attested by an authorized site operator, produced outside this repository | The artifact's own claim of completeness at a site | Independent verification of the claim or human G5 acceptance |
 
 A passing synthetic artifact is explicitly labelled `final_evidence: false`. The
@@ -48,19 +48,19 @@ that names a synthetic source is rejected as a conflict.
 | [Queue catalog](queue-catalog.md) | The seven required queues, work-item states, operator actions, claimed assumptions and audit facts |
 | [Evidence contract](evidence-contract.md) | Artifact schema, named checks, commands, the observed rehearsal result, the honesty boundary and the remaining gate |
 
-Executable material lives in `infra/s_g5_11`: the
-[evaluator](../../../infra/s_g5_11/ops_queues.py), the
-[conforming](../../../infra/s_g5_11/fixtures/synthetic_ops_queues_evidence.json)
-and [violation](../../../infra/s_g5_11/fixtures/violation_ops_queues_evidence.json)
+Executable material lives in `infra/ops-queues`: the
+[evaluator](../../../infra/ops-queues/ops_queues.py), the
+[conforming](../../../infra/ops-queues/fixtures/synthetic_ops_queues_evidence.json)
+and [violation](../../../infra/ops-queues/fixtures/violation_ops_queues_evidence.json)
 fixtures, and the unit tests.
 
 ## Verification
 
 | Check | Command | Proves |
 |---|---|---|
-| Unit and fixture gate | `bash infra/s_g5_11/check.sh` | 103 synthetic unit tests pass; the conforming fixture passes and the violation fixture fails |
-| Unit tests alone | `python3 -I -m unittest discover -s infra/s_g5_11/tests -q` | The evaluator's enumerated branches behave as specified |
-| Line coverage | `python3 -m trace --count --coverdir /tmp/opencode/s_g5_11_cov infra/s_g5_11/tests/run_coverage.py` | Every executable line of the evaluator runs; stdlib `trace` is used because `coverage.py` is not installed |
+| Unit and fixture gate | `bash infra/ops-queues/check.sh` | 103 synthetic unit tests pass; the conforming fixture passes and the violation fixture fails |
+| Unit tests alone | `python3 -I -m unittest discover -s infra/ops-queues/tests -q` | The evaluator's enumerated branches behave as specified |
+| Line coverage | `python3 -m trace --count --coverdir /tmp/opencode/ops-queues_cov infra/ops-queues/tests/run_coverage.py` | Every executable line of the evaluator runs; stdlib `trace` is used because `coverage.py` is not installed |
 | Links and requirement IDs | `python3 -I scripts/check-docs.py` | Relative links resolve and every requirement ID is defined in the specification |
 | Credential and PHI shapes | `python3 -I scripts/check-secrets.py` | No credential or patient-identifier pattern was introduced |
 

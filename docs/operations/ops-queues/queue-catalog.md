@@ -1,7 +1,7 @@
 # Queue catalog and operator actions (ADM-02)
 
 - Requirement: **ADM-02**
-- Machine source of truth: [ops_queues.py](../../../infra/s_g5_11/ops_queues.py).
+- Machine source of truth: [ops_queues.py](../../../infra/ops-queues/ops_queues.py).
   The constants there are the single enforced copy of this contract; this page
   explains them and must be kept in step with that module.
 - Back to the [S-G5-11 handoff](README.md).

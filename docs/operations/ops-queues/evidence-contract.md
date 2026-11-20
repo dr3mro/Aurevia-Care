@@ -23,8 +23,8 @@ A work item carries `id`, `queue`, `created_at`, `state`, optional `owner` and a
 An export carries `scope` (`organization_id` and `queues`), `created_at`,
 `expires_at`, `actor` and `audit_id`.
 
-The [conforming fixture](../../../infra/s_g5_11/fixtures/synthetic_ops_queues_evidence.json)
-is a complete example. The [violation fixture](../../../infra/s_g5_11/fixtures/violation_ops_queues_evidence.json)
+The [conforming fixture](../../../infra/ops-queues/fixtures/synthetic_ops_queues_evidence.json)
+is a complete example. The [violation fixture](../../../infra/ops-queues/fixtures/violation_ops_queues_evidence.json)
 deliberately breaks several fields to demonstrate fail-closed reporting.
 
 ## Named checks
@@ -63,7 +63,7 @@ failed check here.
 ## Commands and results observed here
 
 ```
-$ python3 -I infra/s_g5_11/ops_queues.py infra/s_g5_11/fixtures/synthetic_ops_queues_evidence.json
+$ python3 -I infra/ops-queues/ops_queues.py infra/ops-queues/fixtures/synthetic_ops_queues_evidence.json
 ADM-02 operational queues: PASS
   evidence class: rehearsal (final: False)
   ... 25 named checks, all PASS
@@ -71,7 +71,7 @@ exit 0
 ```
 
 ```
-$ python3 -I infra/s_g5_11/ops_queues.py infra/s_g5_11/fixtures/violation_ops_queues_evidence.json
+$ python3 -I infra/ops-queues/ops_queues.py infra/ops-queues/fixtures/violation_ops_queues_evidence.json
 ADM-02 operational queues: FAIL
   evidence class: operator-attested (final: False)
   [FAIL] evidence_conflict: an operator-attested artifact cannot name a synthetic source
@@ -87,7 +87,7 @@ exit 1
 ```
 
 ```
-$ bash infra/s_g5_11/check.sh
+$ bash infra/ops-queues/check.sh
 Ran 103 tests in 0.009s
 OK
 S-G5-11: ADM-02 evaluator unit tests and fixture checks passed
@@ -95,7 +95,7 @@ exit 0
 ```
 
 Line coverage of the evaluator is 100% under stdlib `trace`
-(`python3 -m trace --count --coverdir <dir> infra/s_g5_11/tests/run_coverage.py`,
+(`python3 -m trace --count --coverdir <dir> infra/ops-queues/tests/run_coverage.py`,
 no executable line uncovered); branch coverage is by exhaustive enumeration of
 every conditional in the 103 unit tests, because `coverage.py` is not installed. Evidence source: executed tool commands in this repository.
 

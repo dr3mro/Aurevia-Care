@@ -17,7 +17,7 @@ supplied snapshot meets ADM-02 and that its declared envelope is complete; it
 cannot prove an operator really acted or that a queue really existed at a site.
 Human acceptance of live operational evidence is a separate G5 gate.
 
-Usage: ``python3 -I infra/s_g5_11/ops_queues.py <artifact.json>``
+Usage: ``python3 -I infra/ops-queues/ops_queues.py <artifact.json>``
 Exit codes: 0 = artifact passes the ADM-02 checks, 1 = it fails a check,
 2 = unreadable input.
 """
