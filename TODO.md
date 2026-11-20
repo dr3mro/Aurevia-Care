@@ -1778,8 +1778,9 @@ Every entry below is finished and verified. Do not take them again; they stay he
     The X-04 server-side authorization control is inert in production. CommandAuthorization plus its 24-command CommandCatalog, generated OpenAPI contract and generated TypeScript client are never invoked by a request: `grep -rln CommandAuthorization apps/api/src/main/java` returns only CommandAuthorization.java and InMemoryDecisionSink.java; `new CommandAuthorization(` appears only at CommandAuthorization.java:359 inside the test-only factory `synthetic(...)`; `contracts/openapi/generated/client.ts` is imported by no source under apps/staff-web/src or apps/patient-mobile/src. contracts/openapi/README.md itself records that wiring the gate and a POST-mapping-to-catalog parity test are unowned follow-on work, and TODO has no entry for it (READY-41 only adds a durable DecisionSink). The documented IAM-01/PRD-06/ARC-03/ARC-04/OPS-02 gate and its decision ledger therefore never run; each controller relies solely on its own policy and no command yields an authorization decision. Expected fix: provide CommandAuthorization as a Spring bean with the durable sink from READY-41, call it from each owning write endpoint for the 24 catalog commands, and add a build-failing parity test that fails CI when a catalog command has no production caller.
     Found by the daily audit. Synthetic fixtures only; failing tests first;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [-] AUD-20261120-15 · Remove the duplicate legacy chart slice and its unhardened write path
-  - agent: swarm-7
+- [x] AUD-20261120-15 · Remove the duplicate legacy chart slice and its unhardened write path
+  - pr: #225
+  - evidence: PR #225; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/AUD-20261120-15.md; simulated review only
   - attempts: 2
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/chart, apps/api/src/main/java/com/aurevia/smartclinic/patient/chart
   - details:
