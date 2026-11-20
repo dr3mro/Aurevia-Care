@@ -279,8 +279,9 @@ Cadence and limits:
     Do NOT change `DeliveryStore` method signatures, the controllers or any migration. If the interface cannot be implemented with the V55 tables, STOP, write exactly which method and which missing column in `.agent/pr-notes/<story-id>.md`, and finish without code changes.
 
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` must pass for the classes you touched. Synthetic data only; write the failing test first; stay inside the declared scope; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
-- [-] AUD-20261120-08 · Add HTTP tests for the scheduling, audit and appointment endpoints that no test calls
-  - agent: swarm-2
+- [x] AUD-20261120-08 · Add HTTP tests for the scheduling, audit and appointment endpoints that no test calls
+  - pr: #210
+  - evidence: PR #210; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/AUD-20261120-08.md; simulated review only
   - attempts: 1
   - scope: apps/api/src/test/java/com/aurevia/smartclinic/it/scheduling, apps/api/src/test/java/com/aurevia/smartclinic/it/audit
   - depends: DLV-04
