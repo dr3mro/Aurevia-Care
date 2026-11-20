@@ -30,7 +30,7 @@ BODY_LIMIT = 8000
 # Default monthly runner-minute cap for all swarm-related workflows. The guard
 # estimates usage from finished run durations and refuses a wave near the cap.
 DEFAULT_MONTHLY_MINUTES = 10000
-BUDGET_WORKFLOWS = ("swarm.yml", "swarm-integrator.yml", "heavy-check.yml",
+BUDGET_WORKFLOWS = ("swarm.yml", "swarm-integrator.yml",
                     "agent-image.yml", "swarm-images.yml", "main-repair.yml")
 BRANCH = re.compile(r"swarm/[A-Za-z0-9._-]+")
 LABELS = {
@@ -324,7 +324,9 @@ def reclaim(text, prs):
     A claim with only a merged pull request was merged by a person, so it is done;
     one with no pull request, or only closed ones, goes back to open."""
     for task in parse_tasks(text):
-        if task["status"] != "taken" or not task["agent"].startswith("swarm"):
+        # `opencode-` claims come from the older dispatch system; with no pull request
+        # behind them they would hold their scope (and block repairs) forever.
+        if task["status"] != "taken" or not task["agent"].startswith(("swarm", "opencode")):
             continue
         mine = [p for p in prs if task_id_of(p["headRefName"]) in {task["id"], *task["aliases"]}]
         # An open PR still in progress keeps the claim. A needs-human PR is a
@@ -430,7 +432,8 @@ def plan_workers(max_workers, slots, text, open_prs, repair=None):
                          "fix": clip(notes[-1] if notes else "Integration failed.")})
     in_flight = {task_id_of(p["headRefName"]) for p in open_prs}
     done = {name for t in tasks if t["status"] == "done" for name in (t["id"], *t["aliases"])}
-    for task in tasks:
+    # Repairs of main come first: a red main blocks every other merge.
+    for task in sorted(tasks, key=lambda t: not is_repair_task(t)):
         if task["status"] != "todo" or not task["scope"] or task["id"] in in_flight \
                 or attempts_of(task) >= MAX_ATTEMPTS:
             continue
@@ -586,10 +589,24 @@ def plan_integration(red=False):
             and (not red or p.get("title", "").startswith("FIX-"))]
 
 
+def only_worker_failures(run):
+    """True when an Agent swarm run failed only in its worker jobs.
+
+    A worker that times out or is rate limited is routine and its task is retried
+    by the planner; main is not broken, so it must not start a repair that blocks
+    the whole swarm. Failures in planning, integration or the loop still count."""
+    if run.get("name") != "Agent swarm":
+        return False
+    failed = [j["name"] for j in run.get("jobs", []) if j.get("conclusion") == "failure"]
+    return bool(failed) and all(name.startswith("Swarm worker /") for name in failed)
+
+
 def repair_task(run_id):
     """Build the worker task that repairs a failed run on main."""
-    run = gh_json("run", "view", str(run_id), "--json", "name,headBranch,headSha,conclusion,url")
+    run = gh_json("run", "view", str(run_id), "--json", "name,headBranch,headSha,conclusion,url,jobs")
     if run["headBranch"] != "main" or run["conclusion"] != "failure":
+        return None
+    if only_worker_failures(run):
         return None
     log = gh("run", "view", str(run_id), "--log-failed", check=False)
     tail = "\n".join(log.splitlines()[-150:])[-5000:].replace("```", "'''")
@@ -599,6 +616,102 @@ def repair_task(run_id):
             ".agent/pr-notes.md and change nothing.\n\nFailing log tail:\n```text\n" + tail + "\n```")
     return {"kind": "story", "id": f"FIX-{run_id}", "number": 0, "branch": "",
             "title": f"Repair main: {run['name']} failed", "body": clip(body), "fix": ""}
+
+
+REPAIR_HEADER = "## Repairs (automatic)"
+# Tasks whose id starts with one of these repair main: planned first, and while
+# one is open no second automatic repair is added (it would repeat the work).
+REPAIR_PREFIXES = ("FIX-", "DLV-")
+
+
+def is_repair_task(task):
+    return task["id"].startswith(REPAIR_PREFIXES)
+
+
+def repair_entry(task):
+    """TODO.md entry for a repair. Scope `*` overlaps every other task, so while a
+    repair is taken the swarm works on nothing else."""
+    body = "\n".join(f"    {line}" for line in task["body"].splitlines() if line.strip())
+    return (f"- [ ] {task['id']} · {task['title']}\n"
+            f"  - attempts: 0\n  - scope: *\n  - details:\n{body}\n"
+            "    Repair PRs may touch workflow and script files. Reproduce first, fix the cause,\n"
+            "    never weaken, skip or delete a test; record results in .agent/pr-notes/<story-id>.md.")
+
+
+def add_repair_task(run_id, path="TODO.md"):
+    """Turn a failed run on main into a repair task in TODO.md. Returns True when added.
+
+    Bounded like the old watchdog: nothing while a repair pull request or task is
+    still open, and an issue for a person after three repairs in a day."""
+    start, why = repair_gate(run_id)
+    print(why)
+    if not start:
+        return False
+    task = repair_task(run_id)
+    if task is None:
+        print("The run is not a failed run on main; nothing to repair.")
+        return False
+    added = []
+
+    def edit(text):
+        if any(is_repair_task(t) and t["status"] != "done" for t in parse_tasks(text)):
+            print("A repair task is already open.")
+            return text
+        head = "" if REPAIR_HEADER in text else f"\n{REPAIR_HEADER}\n\n"
+        added.append(task["id"])
+        return text.rstrip("\n") + "\n" + head + repair_entry(task) + "\n"
+    update_todo(edit, f"Repair task for run {run_id}", path)
+    return bool(added)
+
+
+MAX_ACTIVE_WORKERS = 20  # workers running at once across every wave
+
+
+WAITING_WAVE_MAX_AGE_MIN = 30
+
+
+def waiting_waves():
+    """Agent swarm runs that exist but have not started: queued, pending or waiting.
+
+    Every wave plans against current TODO.md state, so one waiting wave already
+    covers any work the others would take. Starting more only fills the queue."""
+    now = datetime.datetime.now(datetime.timezone.utc)
+    total = 0
+    for status in ("queued", "pending", "waiting", "requested"):
+        out = gh("run", "list", "--workflow", "swarm.yml", "--status", status, "--limit", "50",
+                 "--json", "createdAt", "-q", ".[].createdAt", check=False)
+        for stamp in out.split():
+            created = datetime.datetime.fromisoformat(stamp.replace("Z", "+00:00"))
+            # Runs stuck for hours are zombies from an older concurrency group; counting
+            # them would stop the loop from ever starting another wave.
+            if now - created < datetime.timedelta(minutes=WAITING_WAVE_MAX_AGE_MIN):
+                total += 1
+    return total
+
+
+def active_workers():
+    """Worker jobs running or queued in any Agent swarm run right now.
+
+    Waves may overlap, so a new wave may only use what is left of the
+    combined cap. Returns 0 when the API call fails (the per-wave cap and
+    the budget gate still apply)."""
+    runs = gh("run", "list", "--workflow", "swarm.yml", "--limit", "30",
+              "--json", "databaseId,status", "-q",
+              '.[] | select(.status != "completed") | .databaseId', check=False)
+    total = 0
+    for run_id in runs.split():
+        out = gh("api", f"repos/{repo_slug()}/actions/runs/{run_id}/jobs?per_page=100", "--paginate",
+                 "--jq", '.jobs[] | select(.status != "completed") | .name', check=False)
+        total += sum(1 for name in out.splitlines() if name.startswith("Swarm worker /"))
+    return total
+
+
+def rotate_slots(slots, busy):
+    """Start after the slots already in use so overlapping waves spread over accounts."""
+    if not slots:
+        return slots
+    start = busy % len(slots)
+    return slots[start:] + slots[:start]
 
 
 WORKER_MINUTES = 190  # one worker: 175 min of agent work, merge, bundle and publish
@@ -650,6 +763,12 @@ def monthly_minutes(now=None):
                 minutes = max(minutes, run_job_minutes(run["databaseId"]) or 0)
             total += minutes
     return total
+
+
+def repo_is_public():
+    """Standard GitHub-hosted runners are free and unlimited in a public repository."""
+    out = gh("api", f"repos/{repo_slug()}", "--jq", ".private", check=False).strip()
+    return out == "false"
 
 
 def budget_gate(cap=DEFAULT_MONTHLY_MINUTES, now=None, used=None):
@@ -743,15 +862,10 @@ def record_merge(pr, task_id, sha, gate="scripts/quick-check.sh"):
     notes.write_text(f"# {task_id} · {title}\n\nPR #{pr}, tested branch tip {sha}.\n\n"
                      f"{clip(info['body'])}\n")
     evidence = (f"PR #{pr}; integrator ran {gate} on the merge result (tool evidence); "
-                f"heavy-check.yml re-verifies main after the push; notes in {notes}; "
+                f"Delivery re-verifies main after the push; notes in {notes}; "
                 "simulated review only")
     todo.write_text(set_task_status(todo.read_text(), task_id, "done", pr=f"#{pr}", evidence=evidence))
     return f"Merged to main by the integrator after {gate} passed on the merge result."
-
-
-def dispatch_heavy():
-    """Trigger the once-per-batch heavy verification on main."""
-    gh("workflow", "run", "heavy-check.yml", "--ref", "main", check=False)
 
 
 def dispatch_delivery():
@@ -849,7 +963,6 @@ def integrate_batch(queue, gate="scripts/quick-check.sh"):
                 raise subprocess.CalledProcessError(1, ("gate", gate), "", log)
     for (pr, _, _), comment in zip(merged, comments):
         gh("pr", "comment", str(pr), "--body", comment)
-    dispatch_heavy()
     dispatch_delivery()
     emit("merged", len(merged))
     return len(merged)
@@ -913,7 +1026,6 @@ def finalize(pr, task_id, sha):
     git(*IDENTITY, "commit", "-qm", f"Record {task_id} as merged (PR #{pr})")
     authed_git("push", "origin", "HEAD:main")
     gh("pr", "comment", str(pr), "--body", comment)
-    dispatch_heavy()
 
 
 def main(argv=None):
@@ -943,6 +1055,9 @@ def main(argv=None):
     p.add_argument("--file", default="TODO.md")
     p = sub.add_parser("repair-gate")
     p.add_argument("--run", required=True)
+    p = sub.add_parser("add-repair-task")
+    p.add_argument("--run", required=True)
+    p.add_argument("--file", default="TODO.md")
     for name in ("release", "publish"):
         p = sub.add_parser(name)
         p.add_argument("--task", required=True, help="task JSON")
@@ -977,7 +1092,11 @@ def main(argv=None):
         everything = gh_json("pr", "list", "--state", "all", "--label", "swarm", "--limit", "200",
                              "--json", "number,headRefName,state,labels") or []
         text = reclaim(Path(a.file).read_text(), everything)
-        include = plan_workers(a.max, load_slots(a.slots), text, prs, repair)
+        busy = active_workers()
+        room = max(0, MAX_ACTIVE_WORKERS - busy)
+        print(f"{busy} worker(s) already running; room for {room} of {MAX_ACTIVE_WORKERS}.")
+        include = plan_workers(min(a.max, room), rotate_slots(load_slots(a.slots), busy),
+                               text, prs, repair)
         claims = {t["id"]: f"swarm-{t['slot']}" for t in include if t["kind"] == "story"}
 
         def mark(current):
@@ -992,6 +1111,9 @@ def main(argv=None):
         prs = gh_json("pr", "list", "--state", "open", "--label", "swarm", "--limit", "100",
                       "--json", "number,title,headRefName,isCrossRepository,labels,comments") or []
         go = continue_swarm(Path(a.file).read_text(), prs)
+        if go and waiting_waves():
+            go = False
+            print("A wave is already waiting; not queueing another.")
         print("Starting the next wave." if go else "No further wave to start now.")
         if go:
             gh("workflow", "run", "swarm.yml", "--ref", "main", check=False)
@@ -1001,6 +1123,8 @@ def main(argv=None):
         publish(json.loads(a.task), a.dir)
     elif a.cmd == "add-audit-tasks":
         add_audit_tasks(a.findings, a.file)
+    elif a.cmd == "add-repair-task":
+        emit("added", "true" if add_repair_task(a.run, a.file) else "false")
     elif a.cmd == "repair-gate":
         start, why = repair_gate(a.run)
         print(why)
@@ -1010,6 +1134,12 @@ def main(argv=None):
         emit("queue", json.dumps(queue))
         emit("count", len(queue))
     elif a.cmd == "budget-gate":
+        if repo_is_public():
+            # No minutes budget to protect: the estimate only ever paused a free swarm.
+            print("Public repository: runner minutes are free; the budget gate is off.")
+            emit("start", "true")
+            emit("workers", MAX_ACTIVE_WORKERS)
+            return 0
         used = monthly_minutes()
         allowed, why = budget_gate(a.cap, used=used)
         print(why)

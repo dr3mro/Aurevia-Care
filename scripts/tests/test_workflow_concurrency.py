@@ -33,10 +33,10 @@ class WorkflowConcurrencyTest(unittest.TestCase):
                 self.assertTrue(concurrency.get("group"))
                 self.assertIs(concurrency.get("cancel-in-progress"), False)
 
-    def test_swarm_queues_unlimited_waves(self):
-        """Queued waves must not be superseded by newer queued requests."""
+    def test_swarm_waves_overlap_with_a_group_per_run(self):
+        """Waves run side by side; the plan job and the 20-worker cap keep them safe."""
         concurrency = load(WORKFLOWS / "swarm.yml")["concurrency"]
-        self.assertEqual(concurrency.get("queue"), "max")
+        self.assertIn("github.run_id", concurrency["group"])
 
     def test_delivery_is_scoped_per_ref_not_per_sha(self):
         """Per-ref groups serialize; per-SHA groups would run fully in parallel."""
