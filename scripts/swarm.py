@@ -1055,8 +1055,8 @@ def guard(pr, repair=False):
     return []
 
 
-IDENTITY = ["-c", "user.name=" + os.environ.get("SWARM_GIT_NAME", "swarm-integrator"),
-            "-c", "user.email=" + os.environ.get("SWARM_GIT_EMAIL", "swarm@users.noreply.github.com")]
+IDENTITY = ["-c", "user.name=" + (os.environ.get("SWARM_GIT_NAME") or "swarm-integrator"),
+            "-c", "user.email=" + (os.environ.get("SWARM_GIT_EMAIL") or "swarm@users.noreply.github.com")]
 
 
 def merge_local(pr):
