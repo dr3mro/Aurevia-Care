@@ -1,6 +1,6 @@
 name: Agent swarm
 # The orchestrator. It reads TODO.md, splits the open tasks across up to
-# 10 worker slots, and starts one prepared container per slot. Each worker runs
+# 10 worker slots per wave (20 workers across overlapping waves), and starts one prepared container per slot. Each worker runs
 # the agent with no GitHub token on its own branch, uploads its commits, and
 # exits (the container is discarded, nothing idles). A separate trusted job
 # pushes the branch and opens the pull request. The integrator merges later.
@@ -32,15 +32,12 @@ on:
     branches: [main]
 permissions:
   contents: read
-# Waves queue behind each other. A manual run with `now` ticked gets a group of
-# its own, so it starts at once; only the short plan job below is serialized, so
-# two waves can never claim the same task.
+# Waves may overlap: each run has a group of its own. Only the short plan job
+# below is serialized, so two waves can never claim the same task, and the plan
+# job caps the workers running across all waves at 20 (scripts/swarm.py).
 concurrency:
-  group: ${{ inputs.now && format('agent-swarm-now-{0}', github.run_id) || 'agent-swarm' }}
+  group: ${{ format('agent-swarm-{0}', github.run_id) }}
   cancel-in-progress: false
-  # Keep every queued wave: a newer queued request must not supersede an older
-  # one, and the running wave is never cancelled.
-  queue: max
 jobs:
   plan:
     name: Plan the wave
