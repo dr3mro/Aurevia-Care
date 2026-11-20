@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -43,6 +44,21 @@ public class OrderController {
     public ResponseEntity<OrderView> create(@RequestBody OrderRequest request) {
         OrderView created = service.create(request);
         return ResponseEntity.created(URI.create("/api/v1/orders/" + created.id())).body(created);
+    }
+
+    /**
+     * List one cursor-paginated page of released orders of the active tenant.
+     *
+     * @param cursor opaque {@code <createdAt>:<id>} of the previous page's last row
+     * @param limit  page size, or {@code null} for the default of 50
+     * @param status optional exact work-item state filter
+     * @return HTTP 200 with one page of orders
+     */
+    @GetMapping("/orders")
+    public OrderPage list(@RequestParam(required = false) String cursor,
+                          @RequestParam(required = false) String limit,
+                          @RequestParam(required = false) String status) {
+        return service.list(cursor, limit, status);
     }
 
     /**
