@@ -1039,8 +1039,8 @@ Do these after part 2 where `depends` says so. Persistence tasks run one at a ti
     4. Tests: each state per screen with a fake transport; session-expired clears the token.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT change files outside `scope`, add patient data to logs, or edit any existing migration.
-- [-] READY-49 · Add HTTP tests for the remaining controllers named in no test
-  - agent: swarm-3
+- [x] READY-49 · Add HTTP tests for the remaining controllers named in no test
+  - pr: #217
   - attempts: 1
   - requirements: ARC-03, ARC-04
   - scope: apps/api/src/test/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/it
@@ -1735,29 +1735,33 @@ Every entry below is finished and verified. Do not take them again; they stay he
     Do NOT invent evidence, links or owners, and do NOT mark any row done.
 
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` (API tasks) or `bash apps/staff-web/check.sh` (staff web tasks) must pass. Synthetic data only; write the failing test first; stay inside the declared scope; name folders and packages after what they hold, never a task ID; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
-- [ ] AUD-20261120-10 · Attachment event history returns every event in the tenant, not the requested file's trail
-  - attempts: 0
+- [-] AUD-20261120-10 · Attachment event history returns every event in the tenant, not the requested file's trail
+  - agent: swarm-2
+  - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/messaging/attachments, apps/api/src/test/java/com/aurevia/smartclinic/messaging/attachments
   - details:
     AttachmentService.events(actor, id) in apps/api/src/main/java/com/aurevia/smartclinic/messaging/attachments/AttachmentService.java:293 returns store.events(actor.organizationId()).stream().toList() - the entire tenant-wide attachment event log - after checking visibility only for the one file named by id. Its sibling view() at line 273 correctly filters with fileId.equals(fact.attachmentId()). AttachmentEvent.detail (AttachmentContract.java:349-351) carries scanner detail and void/rejection free text, so a caller authorized for one file receives other files' event details across conversations in the same tenant (MSG-07, ARC-07). InMemoryAttachmentStore.events(String organizationId) at line 66 confirms the store query is per-organization, so this is a cross-file/cross-conversation leak within a tenant, not a cross-tenant one. The existing test twoTenantsWithIdenticalLocalIdentifiersStayIsolated in AttachmentAcceptanceTest.java:428-431 only asserts every returned event has the caller's organizationId, so it never catches the missing per-file filter and 100% line coverage still passes. The service currently has no HTTP controller (already tracked as TODO AUD-20261119-03), so the leak is latent until that entry point is wired. Expected fix: filter the store events by attachmentId in events() exactly as view() does, and add a test that creates two attachments in one tenant and asserts events(a.id()) contains only a's events.
     Found by the daily audit. Synthetic fixtures only; failing tests first;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [ ] AUD-20261120-11 · Reserved migration V59 is already used by the DLV-03 repair; READY-35 will collide
-  - attempts: 0
+- [-] AUD-20261120-11 · Reserved migration V59 is already used by the DLV-03 repair; READY-35 will collide
+  - agent: swarm-3
+  - attempts: 1
   - scope: db/migrations
   - details:
     db/migrations/V59__rx02_ambiguous_transition.sql already exists (added by the DLV-03 repair; its header is 'Change: expand' and .agent/pr-notes/DLV-03.md records V59 as consumed). However TODO.md line 817 says the persistence tasks reserve V59 to V66, and READY-35 (lines 821-830) reserves V59 and tells the worker to create db/migrations/V59__service_profiles.sql. When that worker runs, Flyway will see two migrations with version 59 and scripts/check-migrations.py will fail with 'duplicate migration version V59', so the first persistence story cannot go green until the tracker is corrected. Expected fix by the tracker owner: reassign READY-35..READY-42 to unused versions (for example V60..V67) and update each reserved: field, the 'V59 to V66' sentence, the V59__service_profiles.sql path in READY-35, and the proposed V59..V64 mapping in docs/decisions/0003-persistence-of-in-memory-stores.md before dispatching READY-35.
     Found by the daily audit. Synthetic fixtures only; failing tests first;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [ ] AUD-20261120-12 · Patients cannot read instruction content: the only instruction reads deny the patient role
-  - attempts: 0
+- [-] AUD-20261120-12 · Patients cannot read instruction content: the only instruction reads deny the patient role
+  - agent: swarm-4
+  - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/messaging/instructions, apps/api/src/test/java/com/aurevia/smartclinic/messaging/instructions
   - details:
     GET /api/v1/patient-instructions (InstructionController.java:120-123, listForPatient) and GET /api/v1/patient-instructions/{threadId} (line 109) both go through InstructionService.execute with action InstructionActions.READ. InstructionActions.java:40-41 grants READ only to staffSender roles plus tenant_admin and privacy_auditor; 'patient' is not in that set, so a verified patient gets 403 on every instruction-content read, even though the endpoint Javadoc says 'visible to a verified patient' and MSG-04/MSG-05/PAT-02 require patients to receive and acknowledge instructions. The only patient-reachable instruction route, /api/v1/instructions/{id}/facts served by InstructionFactService.facts, returns dispatch/view/acknowledgment fact metadata but never the instruction title or body. Every other messaging action matrix in main (ConversationActions, ServiceProfileActions, MessagingActions, InstructionFactActions) explicitly grants the patient role; this one does not. Also, listForPatient takes any patientId from the query string and filters by staffAssignedToUnit after authorization, so simply adding the role would still return nothing for a patient. Expected fix: add a patient-authorized read branch that binds the caller to the chart link/connection (for example allow READ for 'patient' and resolve patientId from the authenticated subject rather than the request parameter), keep the staff branch, and add negative and positive tests for patient self-read and wrong-patient denial.
     Found by the daily audit. Synthetic fixtures only; failing tests first;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [ ] AUD-20261120-13 · Document link accepts order or result subjects without verifying they exist
-  - attempts: 0
+- [-] AUD-20261120-13 · Document link accepts order or result subjects without verifying they exist
+  - agent: swarm-5
+  - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/documents, apps/api/src/test/java/com/aurevia/smartclinic/documents
   - details:
     DocumentService.link in apps/api/src/main/java/com/aurevia/smartclinic/documents/DocumentService.java:75-112 validates subjectType as chart/order/result (DocumentInputs.java:62-66) but only checks target existence for CHART: 'if (CHART.equals(subjectType) && !repository.chartExists(subjectId))' at line 91. DocumentRepository.java:74 exposes only chartExists, so there is no existence check for the order and result cases. An authorized caller can therefore create an original-document association bound to a non-existent order or result identifier, leaving orphan clinical artifacts that violate ARC-01's tenant-owned key model and CLN-07's 'link original PDFs and images to chart, order or result'. Expected fix: add RLS-bounded SELECT EXISTS checks for order and result targets (or a single subjectExists method covering all three types) and return 404 when absent, with a test per subject type asserting the rejection.
