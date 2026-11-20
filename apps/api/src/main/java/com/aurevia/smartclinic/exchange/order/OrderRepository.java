@@ -303,6 +303,47 @@ public class OrderRepository {
     }
 
     /**
+     * Read one cursor-paged slice of the active tenant's released orders.
+     *
+     * <p>Forced RLS confines both the order and the projected work item to the
+     * active organization, so no manual organization predicate is needed. The
+     * immutable id breaks a creation-time tie, which makes descending paging
+     * stable even when two orders share a release instant. The caller fetches one
+     * extra row to decide whether another page exists.</p>
+     *
+     * @param cursorCreatedAt exclusive upper creation-time bound, or {@code null}
+     * @param cursorId        immutable id that breaks a tie at the cursor instant
+     * @param status          optional exact work-item state filter
+     * @param limit           maximum rows to fetch (one more than the page size)
+     * @return released orders in creation-time descending order
+     */
+    public List<OrderView> query(String cursorCreatedAt, String cursorId, String status, int limit) {
+        MapSqlParameterSource params = new MapSqlParameterSource().addValue("limit", limit);
+        StringBuilder sql = new StringBuilder(SELECT_ORDER);
+        if (status != null) {
+            sql.append("""
+                     JOIN public.exchange_work_item w
+                       ON w.organization_id = o.organization_id AND w.id = o.work_item_id
+                    """);
+        }
+        sql.append(" WHERE 1=1");
+        if (cursorCreatedAt != null) {
+            sql.append("""
+                        AND (o.created_at < CAST(:cursorCreatedAt AS timestamptz)
+                             OR (o.created_at = CAST(:cursorCreatedAt AS timestamptz)
+                                 AND o.id < CAST(:cursorId AS uuid)))
+                       """);
+            params.addValue("cursorCreatedAt", cursorCreatedAt).addValue("cursorId", cursorId);
+        }
+        if (status != null) {
+            sql.append(" AND w.state = :status");
+            params.addValue("status", status);
+        }
+        sql.append(" ORDER BY o.created_at DESC, o.id DESC LIMIT :limit");
+        return jdbc.query(sql.toString(), params, ORDER_MAPPER);
+    }
+
+    /**
      * List bounded work items projected to the active receiving organization.
      *
      * @return the destination's exchange work items

@@ -260,6 +260,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List released orders in the active organization with cursor pagination */
+        get: operations["listOrders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -391,6 +408,39 @@ export interface components {
         };
         AuditPage: {
             events?: components["schemas"]["AuditEvent"][];
+            nextCursor?: string | null;
+        };
+        OrderView: {
+            /** Format: uuid */
+            id?: string;
+            version?: number;
+            /** Format: uuid */
+            patientId?: string;
+            encounterRef?: string;
+            orderCode?: string;
+            /** @enum {string} */
+            priority?: "routine" | "urgent" | "stat";
+            clinicalQuestion?: string;
+            /** Format: uuid */
+            destinationOrg?: string;
+            sourceActor?: string;
+            responsibleClinician?: string;
+            workQueue?: string;
+            /** Format: uuid */
+            authorizationId?: string;
+            /** Format: uuid */
+            snapshotId?: string;
+            /** Format: uuid */
+            snapshotFingerprint?: string;
+            /** Format: uuid */
+            disclosureId?: string;
+            /** Format: uuid */
+            workItemId?: string;
+            /** Format: date-time */
+            createdAt?: string;
+        };
+        OrderPage: {
+            items?: components["schemas"]["OrderView"][];
             nextCursor?: string | null;
         };
         Error: {
@@ -1063,6 +1113,53 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             /** @description Not found or inaccessible; existence is concealed */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listOrders: {
+        parameters: {
+            query?: {
+                /** @description Opaque createdAt:id cursor for the next page */
+                cursor?: string;
+                /** @description Page size 1-200 */
+                limit?: number;
+                /** @description Projected work-item state filter */
+                status?: "awaiting_local_patient" | "ready";
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of released orders ordered by creation time descending */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderPage"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            /** @description Invalid cursor */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
