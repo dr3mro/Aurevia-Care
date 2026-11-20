@@ -49,3 +49,5 @@ Up to 10 OpenCode workers run in parallel on GitHub-hosted runners. An orchestra
 ## Not verified yet
 
 Written and unit tested (scripts/tests) but never run on GitHub: the image builds, the container jobs, per-slot secrets, OpenCode reading the baked slot config and auth file, pushing to protected `main`, and the integrator check timing. Start the first wave with `workers=1` (a manual dispatch input); waves default to 10 workers, and each worker publishes its own pull request when it finishes.
+
+**Budget gate.** `swarm.py budget-gate` pauses waves near an estimated monthly runner-minute cap (default 10000). It is off for public repositories, where standard GitHub-hosted runners are free; it was pausing a free swarm. The plan job has `issues: write`, so a pause opens an issue instead of failing silently.
