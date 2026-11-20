@@ -54,9 +54,9 @@ export function DocumentList({ documents, locale, onVoid, onRotate }: DocumentLi
               const shown = locale === 'ar' && document.titleLocal ? document.titleLocal : document.title;
               return (
                 <tr key={key}>
-                  <td>
+                  <th scope="row">
                     <MixedScriptText text={shown} lang={locale} />
-                  </td>
+                  </th>
                   <td>{document.kind.toUpperCase()}</td>
                   <td>{document.version}</td>
                   <td>
