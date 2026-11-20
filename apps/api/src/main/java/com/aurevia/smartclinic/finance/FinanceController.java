@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.aurevia.smartclinic.api.IfMatch;
@@ -53,6 +54,23 @@ public class FinanceController {
         View created = service.create(request);
         return ResponseEntity.created(
                 URI.create("/api/v1/finance/invoices/" + created.invoice().id())).body(created);
+    }
+
+    /**
+     * List one cursor-paginated page of the active tenant's invoices.
+     *
+     * @param cursor    opaque {@code <createdAt>:<id>} of the previous page's last row
+     * @param limit     page size, or {@code null} for the default of 50
+     * @param status    optional exact invoice state filter
+     * @param patientId optional exact owning patient identifier filter
+     * @return HTTP 200 with one page of invoices
+     */
+    @GetMapping("/invoices")
+    public InvoicePage list(@RequestParam(required = false) String cursor,
+                            @RequestParam(required = false) String limit,
+                            @RequestParam(required = false) String status,
+                            @RequestParam(required = false) String patientId) {
+        return service.list(cursor, limit, status, patientId);
     }
 
     /**
