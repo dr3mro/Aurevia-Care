@@ -1,6 +1,6 @@
 {
   "generator": "com.aurevia.smartclinic.api.authorization.CommandClientGenerator",
-  "contractSha256": "56a6ba8557d585dfb7470f6f1bdbf2ebf3ad8efaf5fb04bc94ad1ef463019d3d",
+  "contractSha256": "bf99cc4432eed41c949d27a37f13b343a801820e1ba7279193d8f2eeccad096d",
   "clientSha256": "c884e7c4468849bba7cd4a84f90a6b3c5ae6c2c68a3fe736f961d8bea6d419d8",
   "commands": [
     {"id": "createFacility", "action": "FACILITY_WRITE", "method": "POST", "path": "/api/v1/facilities", "policy": "ActionPolicy"},

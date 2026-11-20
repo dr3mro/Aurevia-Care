@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Story runner used by .github/workflows/opencode-team.yml inside the prepared
+# Story runner used by the swarm workflows inside the prepared
 # agent image. Each subcommand is its own workflow step so GH_TOKEN exists only
 # in the steps that publish. The agent step never sees a GitHub token.
 #
@@ -173,8 +173,8 @@ cmd_implement() {
     printf '%s\n' "Worker stopped early: $result; no check run" >> "$out/check.log"
   elif [[ "$commits" -gt 0 ]]; then
     # The worker runs only the fast check. The integrator repeats it on the merge
-    # result and heavy-check.yml runs OWASP, SpotBugs, coverage and PostgreSQL once
-    # per batch on main, so the agent never pays for the expensive checks.
+    # result and Delivery runs OWASP, SpotBugs, coverage and PostgreSQL on every
+    # pull request and on main, so the agent never pays for the expensive checks.
     gate=${CHECK_SCRIPT:-scripts/check.sh}
     if bash "$gate" > "$out/check.log" 2>&1; then checks=passed; else checks=failed; fi
   fi

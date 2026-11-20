@@ -81,8 +81,9 @@ public class ConsolidationController {
     @PostMapping("/{reviewId}/consolidate")
     public Consolidation consolidate(@PathVariable String reviewId,
                                      @RequestHeader("If-Match") String ifMatch,
-                                     @RequestBody ReasonRequest request) {
-        return service.consolidate(reviewId, IfMatch.parse(ifMatch), request.reason());
+                                     @RequestBody ConsolidationApprovalRequest request) {
+        return service.consolidate(reviewId, IfMatch.parse(ifMatch), request.reason(),
+                request.confirmedIdentifiers(), request.alternateProcess());
     }
 
     /**
@@ -117,5 +118,39 @@ public class ConsolidationController {
      * @return the immutable request
      */
     public record ReasonRequest(String reason) {
+    }
+
+    /**
+     * Consolidation approval carrying the IAM-04 identifier confirmation.
+     *
+     * <p>The two issuer-scoped identifiers must be confirmed to belong to one
+     * person before charts are merged; when they cannot be confirmed, the
+     * caller must name a documented approved alternate process. Organization
+     * and actor are never accepted from the client.</p>
+     *
+     * @param reason               recorded business reason
+     * @param confirmedIdentifiers issuer-scoped identifiers confirmed as one person
+     * @param alternateProcess     documented approved process when identifiers are unavailable
+     * @return the immutable request
+     */
+    public record ConsolidationApprovalRequest(String reason, List<String> confirmedIdentifiers,
+                                               String alternateProcess) {
+        /**
+         * Freeze the confirmation list on construction; an absent list is empty.
+         */
+        public ConsolidationApprovalRequest {
+            confirmedIdentifiers = confirmedIdentifiers == null
+                    ? List.of() : List.copyOf(confirmedIdentifiers);
+        }
+
+        /**
+         * Return the immutable confirmation list.
+         *
+         * @return confirmed issuer-scoped identifiers
+         */
+        @Override
+        public List<String> confirmedIdentifiers() {
+            return List.copyOf(confirmedIdentifiers);
+        }
     }
 }

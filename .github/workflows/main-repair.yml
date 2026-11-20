@@ -3,7 +3,7 @@ name: Fix PR repair
 # It validates that exact fix with the full gate and hands a green PR to the
 # integrator; a red fix goes back through swarm.py fail() for one bounded retry.
 # There is deliberately no failed-run or cron trigger: a repair exists only
-# A fix PR matches autofix label, FIX- title, or a fix/copilot-fix branch.
+# A fix PR has the autofix label or a FIX- title; nothing else matches.
 on:
   pull_request:
     types: [opened, synchronize, reopened, labeled]
@@ -16,12 +16,12 @@ concurrency:
 jobs:
   validate:
     name: Validate fix PR
+    # Only real fix PRs: the autofix label or a FIX- title. A substring test on
+    # "fix" also matched story titles such as "fixtures" and started a 45-minute
+    # full gate for every one of them.
     if: >-
       contains(github.event.pull_request.labels.*.name, 'autofix')
       || startsWith(github.event.pull_request.title, 'FIX-')
-      || contains(github.event.pull_request.title, 'Fix')
-      || contains(github.event.pull_request.head.ref, 'fix-')
-      || contains(github.event.pull_request.head.ref, '/fix')
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     permissions:

@@ -31,6 +31,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/InvalidInput' }
         '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/DecisionNotRecorded' }
   /api/v1/staff:
     post:
       operationId: inviteStaff
@@ -53,6 +54,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/InvalidInput' }
         '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/DecisionNotRecorded' }
   /api/v1/staff/{subject}/deactivate:
     post:
       operationId: deactivateStaff
@@ -75,6 +77,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/InvalidInput' }
         '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/DecisionNotRecorded' }
   /api/v1/configuration:
     post:
       operationId: createConfiguration
@@ -97,6 +100,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/InvalidInput' }
         '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/DecisionNotRecorded' }
   /api/v1/configuration/{key}/versions/{version}/approve:
     post:
       operationId: approveConfiguration
@@ -119,6 +123,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/InvalidInput' }
         '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/DecisionNotRecorded' }
   /api/v1/patients:
     post:
       operationId: registerPatient
@@ -141,6 +146,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/InvalidInput' }
         '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/DecisionNotRecorded' }
   /api/v1/appointments:
     post:
       operationId: bookAppointment
@@ -163,6 +169,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/InvalidInput' }
         '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/DecisionNotRecorded' }
   /api/v1/checkin/{id}/identity:
     post:
       operationId: verifyIdentity
@@ -185,6 +192,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/InvalidInput' }
         '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/DecisionNotRecorded' }
   /api/v1/checkin/{id}/complete:
     post:
       operationId: checkIn
@@ -207,6 +215,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/InvalidInput' }
         '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/DecisionNotRecorded' }
   /api/v1/worklist/{id}/assign:
     post:
       operationId: assignWorkItem
@@ -229,6 +238,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/InvalidInput' }
         '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/DecisionNotRecorded' }
   /api/v1/lab/accessions:
     post:
       operationId: accessionRequisition
@@ -251,6 +261,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/InvalidInput' }
         '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/DecisionNotRecorded' }
   /api/v1/lab/specimens/{id}/collect:
     post:
       operationId: collectSpecimen
@@ -273,6 +284,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/InvalidInput' }
         '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/DecisionNotRecorded' }
   /api/v1/lab/results/{id}/verify:
     post:
       operationId: verifyLabResult
@@ -295,6 +307,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/InvalidInput' }
         '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/DecisionNotRecorded' }
   /api/v1/radiology/interpretations/{id}/sign:
     post:
       operationId: signInterpretation
@@ -317,6 +330,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/InvalidInput' }
         '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/DecisionNotRecorded' }
   /api/v1/therapy/referrals/{id}/accept:
     post:
       operationId: acceptTherapyReferral
@@ -339,6 +353,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/InvalidInput' }
         '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/DecisionNotRecorded' }
   /api/v1/specialty/attestations:
     post:
       operationId: attestClinicalDecision
@@ -361,6 +376,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/InvalidInput' }
         '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/DecisionNotRecorded' }
   /api/v1/orders/{id}/accept:
     post:
       operationId: acceptOrder
@@ -383,6 +399,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/InvalidInput' }
         '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/DecisionNotRecorded' }
   /api/v1/orders/{id}/reject:
     post:
       operationId: rejectOrder
@@ -405,6 +422,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/InvalidInput' }
         '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/DecisionNotRecorded' }
   /api/v1/releases/{id}/authorize:
     post:
       operationId: authorizeRelease
@@ -427,6 +445,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/InvalidInput' }
         '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/DecisionNotRecorded' }
   /api/v1/releases/{id}/correct:
     post:
       operationId: correctRelease
@@ -449,6 +468,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/InvalidInput' }
         '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/DecisionNotRecorded' }
   /api/v1/releases/{id}/withdraw:
     post:
       operationId: withdrawRelease
@@ -471,6 +491,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/InvalidInput' }
         '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/DecisionNotRecorded' }
   /api/v1/critical/{id}/acknowledge:
     post:
       operationId: acknowledgeCriticalResult
@@ -493,6 +514,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/InvalidInput' }
         '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/DecisionNotRecorded' }
   /api/v1/invoices:
     post:
       operationId: issueInvoice
@@ -515,6 +537,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/InvalidInput' }
         '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/DecisionNotRecorded' }
   /api/v1/instructions/{id}/acknowledge:
     post:
       operationId: acknowledgeInstruction
@@ -537,6 +560,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/InvalidInput' }
         '428': { $ref: '#/components/responses/PreconditionRequired' }
+        '500': { $ref: '#/components/responses/DecisionNotRecorded' }
 components:
   parameters:
     ActiveOrganization:
@@ -593,6 +617,11 @@ components:
           schema: { $ref: '#/components/schemas/ErrorBody' }
     PreconditionRequired:
       description: Idempotency key or version precondition is missing.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorBody' }
+    DecisionNotRecorded:
+      description: Authorization decision could not be recorded; the command is denied.
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ErrorBody' }
