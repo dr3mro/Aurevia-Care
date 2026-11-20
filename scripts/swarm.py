@@ -604,6 +604,19 @@ def repair_task(run_id):
 MAX_ACTIVE_WORKERS = 20  # workers running at once across every wave
 
 
+def waiting_waves():
+    """Agent swarm runs that exist but have not started: queued, pending or waiting.
+
+    Every wave plans against current TODO.md state, so one waiting wave already
+    covers any work the others would take. Starting more only fills the queue."""
+    total = 0
+    for status in ("queued", "pending", "waiting", "requested"):
+        out = gh("run", "list", "--workflow", "swarm.yml", "--status", status, "--limit", "50",
+                 "--json", "databaseId", "-q", ".[].databaseId", check=False)
+        total += len(out.split())
+    return total
+
+
 def active_workers():
     """Worker jobs running or queued in any Agent swarm run right now.
 
@@ -1024,6 +1037,9 @@ def main(argv=None):
         prs = gh_json("pr", "list", "--state", "open", "--label", "swarm", "--limit", "100",
                       "--json", "number,title,headRefName,isCrossRepository,labels,comments") or []
         go = continue_swarm(Path(a.file).read_text(), prs)
+        if go and waiting_waves():
+            go = False
+            print("A wave is already waiting; not queueing another.")
         print("Starting the next wave." if go else "No further wave to start now.")
         if go:
             gh("workflow", "run", "swarm.yml", "--ref", "main", check=False)
