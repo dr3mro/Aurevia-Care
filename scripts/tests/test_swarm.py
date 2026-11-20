@@ -1359,6 +1359,25 @@ class GitTests(unittest.TestCase):
         self.assertIn("did not finish cleanly", body)
         self.assertIn("agent result: timeout", body)
 
+    def test_failed_checks_put_the_end_of_the_check_log_in_the_pr_body(self):
+        out, fake = self.worker_dir(checks="failed"), FakeGh()
+        (out / "check.log").write_text("\n".join(f"line {i}" for i in range(200)) + "\n```evil")
+        with mock.patch.object(swarm, "gh", fake):
+            swarm.publish(self.TASK, out)
+        body = [c for c in fake.calls if c[:2] == ("pr", "create")][0]
+        body = body[body.index("--body") + 1]
+        self.assertIn("Why it failed", body)
+        self.assertIn("line 199", body)
+        self.assertNotIn("line 10\n", body)
+        self.assertNotIn("```evil", body)
+
+    def test_failed_checks_without_a_log_say_so(self):
+        out, fake = self.worker_dir(checks="failed"), FakeGh()
+        with mock.patch.object(swarm, "gh", fake):
+            swarm.publish(self.TASK, out)
+        body = [c for c in fake.calls if c[:2] == ("pr", "create")][0]
+        self.assertIn("no check log was kept", body[body.index("--body") + 1])
+
     def test_unresolved_merge_conflict_publishes_a_draft(self):
         out, fake = self.worker_dir(), FakeGh()
         (out / "merge").write_text("conflict")
