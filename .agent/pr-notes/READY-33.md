@@ -10,8 +10,8 @@
 |---|---|---|
 | 1. `index.ts` registers the root component | `apps/patient-mobile/index.ts` | Test `index registers App as the root component` asserts `registerRootComponent` was called with `App`; 100% line/branch coverage of `index.ts`. |
 | 2. `App.tsx` renders `<RootNavigator />`; placeholder shows `appTitle` in en/ar | `apps/patient-mobile/App.tsx`, `src/app/RootNavigator.tsx`, `src/app/messages.ts` | Tests render English and Arabic titles and assert the header role and active accessibility language; `App renders the placeholder root navigator`. |
-| 3. `app.json` from `project.json` with no secrets | `apps/patient-mobile/app.json` | `appConfig.test.ts` asserts name `Aurevia Care`, slug `aurevia-care`, version `0.1.0`, placeholder ids, and recursively fails on `apiKey`/`token`/`secret`/`password` in any key or value. Orientation `portrait`, `userInterfaceStyle: automatic`, `ios.supportsTablet: false`. |
-| 4. Tests | `src/app/RootNavigator.test.tsx`, `src/app/appConfig.test.ts` | Jest + `@testing-library/react-native`; 7 new tests, all passing. |
+| 3. `app.json` from `project.json` with no secrets | `apps/patient-mobile/app.json` | `appConfig.test.ts` asserts name `Aurevia Care`, slug `aurevia-care`, version `0.1.0`, placeholder ids, and recursively fails on `apiKey`/`token`/`secret`/`password` (separator variants normalized) or any URL scheme in a key or value. Orientation `portrait`, `userInterfaceStyle: automatic`, `ios.supportsTablet: false`. |
+| 4. Tests | `src/app/RootNavigator.test.tsx`, `src/app/appConfig.test.ts` | Jest + `@testing-library/react-native`; 8 new tests, all passing. |
 
 No dependency was added and `expo prebuild` was not run. `package.json` is
 unchanged (`main` was already `index.ts`).
@@ -28,11 +28,11 @@ From `apps/patient-mobile` unless noted.
    'src/app/RootNavigator.test.tsx'`. Confirmed the tests fail for the missing
    production behavior before implementation.
 3. **Green** `npx jest src/app --no-coverage` → `Test Suites: 2 passed, 2 total;
-   Tests: 7 passed, 7 total`.
+   Tests: 8 passed, 8 total`.
 4. `npm run typecheck` → exit 0, no diagnostics.
 5. `bash check.sh` (canonical module gate: shellcheck, `npm ci`, typecheck,
    ESLint, `jest --coverage --ci`) → exit 0. `Test Suites: 29 passed, 29 total;
-   Tests: 290 passed, 290 total; Snapshots: 0 total`. Global coverage
+   Tests: 291 passed, 291 total; Snapshots: 0 total`. Global coverage
    `All files 100% / 100% / 100% / 100%` (lines/branches/functions/statements).
 6. `npx jest --coverage --ci` filtered for new files → `App.tsx 100%`,
    `index.ts 100%`, `messages.ts 100%` (shell and src/app), `All files 100%`.
@@ -76,7 +76,17 @@ patient-app work; it passed. The integrator runs database and integration tests.
 
 - Tool evidence: all commands above were executed locally; results are from
   their actual output, not summarized from a reviewer.
-- Simulated reviewer: `smartclinic-senior-mobile` bounded read-only review — see
-  the review disposition appended below when received.
+- Simulated reviewer: `smartclinic-senior-mobile` bounded read-only review —
+  **accept, no blocking findings**. It verified scope, Expo SDK 58 registration,
+  valid RN 0.88 accessibility props, TS strictness and coverage reachability by
+  reading files and installed types; it ran no commands itself and did not
+  independently re-run the implementer's checks. Low/info findings: the
+  patient-mobile developer reference remains a "pending" page because
+  `docs.sh`/`typedoc.json` key off `src/index.ts` (out of scope); `jest.config.ts`
+  lists dead root-level test paths (out of scope); Arabic is test-only at runtime
+  until READY-34 adds locale state; `accessibilityLanguage` is iOS-only and does
+  not set layout direction (harmless for a centered, direction-neutral title).
+  The reviewer's optional in-scope hardening was applied: the secret test now
+  normalizes separators (`api_key`, `api-key`) and rejects URL schemes.
 - Human/clinical/patient participant evidence: none. This is a synthetic,
   non-clinical entry-point slice; no patient data was used.
