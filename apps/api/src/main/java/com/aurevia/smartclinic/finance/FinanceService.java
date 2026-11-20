@@ -183,28 +183,25 @@ public class FinanceService {
             long refunded = current.refundedMinor();
             long credited = current.creditedMinor();
             long balance = current.balanceMinor();
-            switch (type) {
-                case PAYMENT -> {
-                    if (amount > balance) {
-                        throw new ApiException(422, "INSUFFICIENT_BALANCE", "the payment exceeds the balance");
-                    }
-                    paid += amount;
-                    balance -= amount;
+            if (type == EntryType.PAYMENT) {
+                if (amount > balance) {
+                    throw new ApiException(422, "INSUFFICIENT_BALANCE", "the payment exceeds the balance");
                 }
-                case CREDIT -> {
-                    if (amount > balance) {
-                        throw new ApiException(422, "INSUFFICIENT_BALANCE", "the credit exceeds the balance");
-                    }
-                    credited += amount;
-                    balance -= amount;
+                paid += amount;
+                balance -= amount;
+            } else if (type == EntryType.CREDIT) {
+                if (amount > balance) {
+                    throw new ApiException(422, "INSUFFICIENT_BALANCE", "the credit exceeds the balance");
                 }
-                case REFUND -> {
-                    if (amount > paid - refunded) {
-                        throw new ApiException(422, "EXCESS_REFUND", "the refund exceeds the net collected amount");
-                    }
-                    refunded += amount;
-                    balance += amount;
+                credited += amount;
+                balance -= amount;
+            } else {
+                // The only remaining entry type is a refund.
+                if (amount > paid - refunded) {
+                    throw new ApiException(422, "EXCESS_REFUND", "the refund exceeds the net collected amount");
                 }
+                refunded += amount;
+                balance += amount;
             }
             InvoiceState target = targetState(balance, current.totalMinor());
             long receiptNo = repository.nextReceiptNo();
