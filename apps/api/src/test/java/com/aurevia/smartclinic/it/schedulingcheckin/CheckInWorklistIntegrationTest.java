@@ -371,6 +371,19 @@ class CheckInWorklistIntegrationTest {
     }
 
     @Test
+    void denialAuditRowIsCommittedNotRolledBack() throws Exception {
+        String appointmentId = book(ORG_A, "reception-a", utcDay(2, 14, 0));
+        ResponseEntity<String> denied = verify(appointmentId, "auditor-a", ORG_A,
+                verificationBody(appointmentId, "[\"MRN\",\"DOB\"]", "two_identifiers", null, null));
+        assertEquals(HttpStatus.FORBIDDEN, denied.getStatusCode(), denied.getBody());
+
+        assertEquals(1, count(ORG_A, "SELECT count(*) FROM public.audit_event "
+                + "WHERE action = 'IDENTITY_VERIFY' AND outcome = 'DENIED' "
+                + "AND resource_id = '" + appointmentId + "'"),
+                "a forbidden command must leave a committed DENIED audit row (OPS-02)");
+    }
+
+    @Test
     void worklistOrdersByScheduledTimeAndConfiguredPriority() throws Exception {
         String firstId = book(ORG_A, "reception-a", utcDay(3, 9, 0));
         String secondId = book(ORG_A, "reception-a", utcDay(3, 11, 0));
