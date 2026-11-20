@@ -70,6 +70,9 @@ class DocumentServiceTest {
         }).when(transactions).execute(any());
         service = new DocumentService(repository, new DocumentPolicy(), audit, transactions, renderer);
         when(renderer.render(any())).thenReturn(new byte[] { '%', 'P', 'D', 'F' });
+        // Order/result renders and every rendered-version listing now probe the
+        // subject through the RLS-bounded fold; default the existing cases to present.
+        when(repository.subjectExists(anyString(), anyString())).thenReturn(true);
         TenantContext.set(new TenantContext(ORG, ACTOR, "DOCUMENT_ADMIN", "corr-1"));
     }
 
