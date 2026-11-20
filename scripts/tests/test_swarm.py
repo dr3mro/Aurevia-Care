@@ -119,6 +119,201 @@ class ConcurrentWaveTests(unittest.TestCase):
             self.assertEqual(swarm.active_workers(), 4)
 
 
+class WorkerPostgresTests(unittest.TestCase):
+    """Workers must be able to run the PostgreSQL integration suites themselves."""
+
+    def test_agent_image_carries_postgresql_17_and_a_starter(self):
+        dockerfile = (ROOT / ".github/agent-image/Dockerfile").read_text()
+        self.assertIn("postgresql-17", dockerfile)
+        self.assertIn("apt.postgresql.org", dockerfile)
+        self.assertIn("COPY start-postgres.sh /usr/local/bin/start-postgres", dockerfile)
+        self.assertIn("SMARTCLINIC_PG_ADMIN=postgres", dockerfile)
+        starter = (ROOT / ".github/agent-image/start-postgres.sh").read_text()
+        self.assertIn("127.0.0.1", starter)
+        self.assertIn("-A trust", starter)
+        self.assertIn(".github/agent-image/**", (ROOT / ".github/workflows/agent-image.yml").read_text())
+
+    def test_worker_starts_postgresql_and_runs_the_worker_check(self):
+        text = (ROOT / ".github/workflows/swarm-worker.yml").read_text()
+        self.assertIn("CHECK_SCRIPT: scripts/worker-check.sh", text)
+        self.assertIn("SMARTCLINIC_PG_ADMIN: postgres", text)
+        self.assertLess(text.index("if command -v start-postgres"), text.index("id: s1"))
+
+    def test_worker_check_runs_integration_tests_and_database_policy(self):
+        script = (ROOT / "scripts/worker-check.sh").read_text()
+        self.assertIn("bash scripts/quick-check.sh", script)
+        self.assertIn("-Dgroups=integration", script)
+        self.assertIn("bash db/check.sh", script)
+        self.assertNotIn("NVD", script)
+
+
+class WorkerGateTests(unittest.TestCase):
+    def setUp(self):
+        import sys
+        sys.path.insert(0, str(ROOT / "scripts"))
+        import worker_gate
+        self.gate = worker_gate
+
+    def suite(self, tmp, name, failures=0, errors=0):
+        (Path(tmp) / f"TEST-{name}.xml").write_text(
+            f'<testsuite name="{name}" tests="3" failures="{failures}" errors="{errors}"/>')
+
+    def test_failing_classes_come_from_surefire_xml(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.suite(tmp, "com.x.GoodTest")
+            self.suite(tmp, "com.x.RxTransmissionFlowTest", failures=2)
+            self.suite(tmp, "com.x.ChartRecordIntegrationTest", errors=1)
+            self.assertEqual(self.gate.failing_classes(tmp),
+                             {"RxTransmissionFlowTest", "ChartRecordIntegrationTest"})
+
+    def test_ordinary_task_ignores_red_suites_it_did_not_touch(self):
+        ok, msg = self.gate.decide({"RxTransmissionFlowTest"},
+                                   ["apps/api/src/main/java/a/ChartService.java"], "S-G1-03")
+        self.assertTrue(ok)
+        self.assertIn("WARNING", msg)
+
+    def test_ordinary_task_fails_on_a_related_suite(self):
+        for changed in (["apps/api/src/test/java/a/RxTransmissionFlowTest.java"],
+                        ["apps/api/src/main/java/a/RxTransmission.java"]):
+            with self.subTest(changed=changed):
+                ok, _ = self.gate.decide({"RxTransmissionFlowTest"}, changed, "S-G2-01")
+                self.assertFalse(ok)
+
+    def test_repair_tasks_are_strict(self):
+        for story in ("FIX-123", "DLV-02"):
+            ok, _ = self.gate.decide({"RxTransmissionFlowTest"}, [], story)
+            self.assertFalse(ok)
+
+    def test_passing_run_is_ok(self):
+        self.assertTrue(self.gate.decide(set(), [], "S-G1-03")[0])
+
+
+class RepairFilterTests(unittest.TestCase):
+    def run_of(self, name, *jobs):
+        return {"name": name, "jobs": [{"name": n, "conclusion": c} for n, c in jobs]}
+
+    def test_a_failed_worker_alone_is_not_a_repair(self):
+        run = self.run_of("Agent swarm", ("Plan the wave", "success"),
+                          ("Swarm worker / Work the task", "failure"))
+        self.assertTrue(swarm.only_worker_failures(run))
+
+    def test_planning_or_integration_failures_still_count(self):
+        for bad in ("Plan the wave", "Swarm integrator / Integrate the ready batch"):
+            run = self.run_of("Agent swarm", (bad, "failure"), ("Swarm worker / Work the task", "failure"))
+            self.assertFalse(swarm.only_worker_failures(run))
+
+    def test_other_workflows_always_count(self):
+        self.assertFalse(swarm.only_worker_failures(
+            self.run_of("Delivery", ("Swarm worker / x", "failure"))))
+
+
+class RepairTaskTests(unittest.TestCase):
+    TASK = {"id": "FIX-9", "title": "Repair main: Delivery failed", "body": "Reproduce.\n\nlog line"}
+
+    def run_add(self, text, gate=(True, "ok"), task=TASK):
+        with tempfile.TemporaryDirectory() as tmp:
+            todo = Path(tmp) / "TODO.md"
+            todo.write_text(text)
+
+            def fake_update(edit, message, path="TODO.md", attempts=8):
+                new = edit(Path(path).read_text())
+                Path(path).write_text(new)
+                return new != text
+            with mock.patch.object(swarm, "repair_gate", lambda run: gate), \
+                    mock.patch.object(swarm, "repair_task", lambda run: task), \
+                    mock.patch.object(swarm, "update_todo", fake_update):
+                added = swarm.add_repair_task("9", str(todo))
+            return added, todo.read_text()
+
+    def test_failed_run_is_appended_as_a_whole_repository_task(self):
+        added, text = self.run_add("# Tasks\n\n- [x] A-1 · done\n")
+        self.assertTrue(added)
+        task = next(t for t in swarm.parse_tasks(text) if t["id"] == "FIX-9")
+        self.assertEqual((task["status"], task["scope"], task["attempts"]), ("todo", ["*"], "0"))
+        self.assertIn("log line", task["details"])
+        self.assertIn(swarm.REPAIR_HEADER, text)
+
+    def test_second_repair_waits_while_one_is_open(self):
+        _, once = self.run_add("# Tasks\n")
+        added, again = self.run_add(once, task={**self.TASK, "id": "FIX-10"})
+        self.assertFalse(added)
+        self.assertEqual(once, again)
+
+    def test_an_open_manual_repair_task_also_blocks_a_duplicate(self):
+        text = ("- [ ] DLV-01 · Repair integration tests\n  - scope: apps/api\n  - details:\n    fix\n")
+        added, again = self.run_add(text)
+        self.assertFalse(added)
+        self.assertEqual(text, again)
+        done = text.replace("[ ]", "[x]")
+        self.assertTrue(self.run_add(done)[0])
+
+    def test_gate_and_non_main_runs_add_nothing(self):
+        self.assertFalse(self.run_add("# Tasks\n", gate=(False, "no"))[0])
+        self.assertFalse(self.run_add("# Tasks\n", task=None)[0])
+
+    def test_repair_is_planned_before_other_tasks_and_blocks_them(self):
+        text = ("- [ ] A-1 · feature\n  - scope: apps/api\n  - details:\n    do it\n"
+                "- [ ] FIX-9 · Repair main\n  - scope: *\n  - details:\n    fix it\n"
+                "- [ ] B-1 · other\n  - scope: docs\n  - details:\n    do it\n")
+        plan = swarm.plan_workers(10, [{"slot": n, "model": "m"} for n in range(1, 4)], text, [])
+        self.assertEqual([t["id"] for t in plan], ["FIX-9"])
+
+
+class WaitingWaveTests(unittest.TestCase):
+    def stamps(self, *minutes_ago):
+        now = datetime.datetime.now(datetime.timezone.utc)
+        return "\n".join((now - datetime.timedelta(minutes=m)).strftime("%Y-%m-%dT%H:%M:%SZ")
+                          for m in minutes_ago) + "\n"
+
+    def test_counts_recent_runs_in_every_not_started_state(self):
+        calls = []
+        recent = self.stamps(2, 10)
+
+        def fake(*args, check=True):
+            status = args[args.index("--status") + 1]
+            calls.append(status)
+            return recent if status == "queued" else ""
+        with mock.patch.object(swarm, "gh", fake):
+            self.assertEqual(swarm.waiting_waves(), 2)
+        self.assertEqual(calls, ["queued", "pending", "waiting", "requested"])
+
+    def test_runs_stuck_for_hours_do_not_block_the_loop(self):
+        zombies = self.stamps(300, 1200, 2600)
+        with mock.patch.object(swarm, "gh", lambda *a, check=True: zombies):
+            self.assertEqual(swarm.waiting_waves(), 0)
+
+
+class BudgetGateCliTests(unittest.TestCase):
+    def run_cli(self, public):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "out"
+            with mock.patch.dict(os.environ, {"GITHUB_OUTPUT": str(out)}), \
+                    mock.patch.object(swarm, "repo_is_public", lambda: public), \
+                    mock.patch.object(swarm, "monthly_minutes", lambda *a: 9900.0), \
+                    mock.patch.object(swarm, "gh", FakeGh()):
+                swarm.main(["budget-gate"])
+            return dict(line.split("=", 1) for line in out.read_text().split())
+
+    def test_public_repository_is_never_paused_by_the_minutes_estimate(self):
+        got = self.run_cli(public=True)
+        self.assertEqual(got["start"], "true")
+        self.assertEqual(int(got["workers"]), swarm.MAX_ACTIVE_WORKERS)
+
+    def test_private_repository_still_pauses_near_the_cap(self):
+        self.assertEqual(self.run_cli(public=False)["start"], "false")
+
+    def test_public_check_reads_the_private_flag(self):
+        with mock.patch.object(swarm, "repo_slug", lambda: "o/r"):
+            for out, expected in (("false\n", True), ("true\n", False), ("", False)):
+                with mock.patch.object(swarm, "gh", lambda *a, check=True, out=out: out):
+                    self.assertEqual(swarm.repo_is_public(), expected)
+
+    def test_plan_job_may_open_the_pause_issue(self):
+        import yaml
+        plan = yaml.safe_load((ROOT / ".github/workflows/swarm.yml").read_text())["jobs"]["plan"]
+        self.assertEqual(plan["permissions"].get("issues"), "write")
+
+
 class PlanTests(unittest.TestCase):
     def plan(self, prs=(), workers=10, slots=SLOTS):
         return swarm.plan_workers(workers, slots, TASKS, list(prs))
@@ -214,6 +409,11 @@ class PlanTests(unittest.TestCase):
         kept = {t["id"]: t for t in swarm.parse_tasks(swarm.reclaim(text, live))}
         self.assertEqual(kept["CW-002"]["status"], "taken")
 
+    def test_reclaim_frees_stale_claims_of_the_older_opencode_dispatcher(self):
+        text = swarm.set_task_status(TASKS, "CW-001", "taken", agent="opencode-delivery-dispatch-4")
+        got = {t["id"]: t for t in swarm.parse_tasks(swarm.reclaim(text, []))}
+        self.assertEqual(got["CW-001"]["status"], "todo")
+
     def test_reclaim_releases_needs_human_claims(self):
         text = swarm.set_task_status(TASKS, "CW-001", "taken", agent="swarm-1")
         prs = [{"number": 9, "headRefName": "swarm/CW-001-1", "state": "OPEN",
@@ -283,10 +483,19 @@ class PlanTests(unittest.TestCase):
                 swarm.gh("pr", "edit", "30", "--add-label", "needs-fix")
         self.assertIn("permission denied", stream.getvalue())
 
-    def test_integrator_only_runs_for_successful_swarm_waves(self):
-        text = (ROOT / ".github/workflows/swarm-integrator.yml").read_text()
-        pick = text.split("  pick:\n", 1)[1].split("  integrate:\n", 1)[0]
-        self.assertIn("github.event.workflow_run.conclusion == 'success'", pick)
+    def test_integration_runs_inside_the_wave_not_through_a_workflow_run_chain(self):
+        import yaml
+        integrator = yaml.safe_load((ROOT / ".github/workflows/swarm-integrator.yml").read_text())
+        triggers = integrator[True]
+        self.assertIn("workflow_call", triggers)
+        self.assertNotIn("workflow_run", triggers)
+        wave = yaml.safe_load((ROOT / ".github/workflows/swarm.yml").read_text())["jobs"]
+        self.assertEqual(wave["integrate"]["uses"], "./.github/workflows/swarm-integrator.yml")
+        self.assertEqual(wave["integrate"]["needs"], ["plan", "worker"])
+        self.assertEqual(wave["loop"]["needs"], ["plan", "worker", "integrate"])
+        self.assertNotIn("swarm.py continue", (ROOT / ".github/workflows/swarm-integrator.yml").read_text())
+        for perm in ("contents", "pull-requests", "issues", "actions", "packages"):
+            self.assertIn(perm, wave["integrate"]["permissions"])
 
     def test_integrator_gate_is_the_full_check(self):
         text = (ROOT / ".github/workflows/swarm-integrator.yml").read_text()
@@ -317,7 +526,9 @@ class PlanTests(unittest.TestCase):
         dispatchable = [t for t in tasks
                         if t["status"] in ("todo", "taken") and t["scope"] and t["details"]
                         and swarm.attempts_of(t) < swarm.MAX_ATTEMPTS]
-        self.assertGreaterEqual(len(dispatchable), 9)
+        # The count shrinks as the swarm finishes tasks; it only has to stay non-empty
+        # while TODO.md still lists open work.
+        self.assertGreaterEqual(len(dispatchable), 1)
 
     def test_worker_name_is_static_not_matrix_expression(self):
         text = (ROOT / ".github/workflows/swarm.yml").read_text()
@@ -335,18 +546,25 @@ class PlanTests(unittest.TestCase):
         self.assertIn("autofix", text)
         self.assertIn("scripts/check.sh", text)
         self.assertIn("swarm-integrator.yml", text)
-        self.assertIn("github.event.pull_request.head.ref", text)
         self.assertIn("gh pr ready", text)
+        condition = text.split("    if: >-", 1)[1].split("runs-on:", 1)[0]
+        self.assertIn("'autofix'", condition)
+        self.assertIn("startsWith(github.event.pull_request.title, 'FIX-')", condition)
+        # "contains(title, 'fix')" is case-insensitive and matched story titles
+        # such as "...synthetic fixtures)", starting a full gate for each.
+        self.assertNotIn("contains(github.event.pull_request.title", condition)
+        self.assertNotIn("head.ref", condition)
         self.assertIn("api", text)
 
-    def test_any_failed_main_run_starts_a_repair_worker(self):
+    def test_any_failed_main_run_becomes_a_repair_task(self):
         text = (ROOT / ".github/workflows/failed-run-repair.yml").read_text()
         self.assertIn("workflow_run:", text)
         self.assertIn("conclusion == 'failure'", text)
-        self.assertIn("swarm.py repair-gate", text)
-        self.assertIn("-f repair_run=", text)
-        for name in ("Delivery", "Heavy verification", "Swarm integrator", "Agent swarm"):
+        self.assertIn("swarm.py add-repair-task", text)
+        self.assertNotIn("repair_run", text)
+        for name in ("Delivery", "Agent swarm"):
             self.assertIn(f"- {name}", text)
+        self.assertNotIn("- Swarm integrator", text)
 
     def test_budget_workflows_include_single_repair_workflow(self):
         self.assertIn("main-repair.yml", swarm.BUDGET_WORKFLOWS)
@@ -791,17 +1009,6 @@ class ResolveConflictTests(unittest.TestCase):
         step = resolve.split("scripts/agent-run.sh resolve")[0].rsplit("- name:", 1)[1]
         self.assertNotIn("GH_TOKEN", step)
 
-    def test_opencode_team_agent_job_has_no_write_token_and_publishes_elsewhere(self):
-        text = (ROOT / ".github/workflows/opencode-team.yml").read_text()
-        story = text.split("\n  story:\n    name:")[1].split("\n  publish:\n")[0]
-        publish = text.split("\n  publish:\n")[1]
-        self.assertIn("contents: read", story)
-        for secret in ("github.token", "SWARM_TOKEN", "contents: write"):
-            self.assertNotIn(secret, story)
-        self.assertNotIn("agent-run.sh implement", publish)
-        self.assertIn("agent-run.sh adopt", publish)
-        self.assertIn("ref: ${{ github.event.repository.default_branch }}", publish)
-
     def test_swarm_worker_uses_its_token_only_before_the_agent_runs(self):
         text = (ROOT / ".github/workflows/swarm-worker.yml").read_text()
         worker = text.split("  publish:\n", 1)[0]
@@ -1071,7 +1278,7 @@ class GitTests(unittest.TestCase):
         self.assertIn("Evidence", (self.repo / "docs/swarm/CW-001.md").read_text())
         pushed = self.run_git("--git-dir", str(self.origin), "rev-parse", "main").strip()
         self.assertEqual(self.run_git("rev-parse", "HEAD").strip(), pushed)
-        self.assertTrue(fake.said("workflow", "run", "heavy-check.yml"))
+        self.assertFalse(fake.said("workflow", "run", "heavy-check.yml"))
 
     def origin_todo(self):
         return self.run_git("--git-dir", str(self.origin), "show", "main:TODO.md")
@@ -1134,8 +1341,8 @@ class BudgetTests(unittest.TestCase):
         with mock.patch.object(swarm, "gh", Gh()):
             minutes = swarm.monthly_minutes(now)
         # 2 min + max(1 min, 20s) = 3 min per workflow, October ignored,
-        # six budgeted workflows queried = 18 billed minutes this month.
-        self.assertEqual(minutes, 18.0)
+        # five budgeted workflows queried = 15 billed minutes this month.
+        self.assertEqual(minutes, 15.0)
 
     def test_budget_gate_allows_well_under_cap(self):
         with mock.patch.object(swarm, "monthly_minutes", return_value=100):
@@ -1168,7 +1375,7 @@ class TwoTierTests(unittest.TestCase):
         self.assertNotIn("GH_TOKEN", env)
         self.assertNotIn("GITHUB_TOKEN", env)
 
-    def test_integrate_batch_pushes_once_and_dispatches_heavy(self):
+    def test_integrate_batch_pushes_once(self):
         self.repo = Path(tempfile.mkdtemp())
         (self.repo / "TODO.md").write_text("# TODO\n")
         self.addCleanup(shutil.rmtree, self.repo)
@@ -1201,7 +1408,7 @@ class TwoTierTests(unittest.TestCase):
             count = swarm.integrate_batch([1, 2], "scripts/quick-check.sh")
         self.assertEqual(count, 2)
         pushes = [c for c in fake.calls if c[:2] == ("workflow", "run")
-                  and c[2] == "heavy-check.yml"]
+                  and c[2] == "delivery.yml"]
         self.assertEqual(len(pushes), 1)
 
     def test_integrate_batch_retries_when_main_advanced(self):
@@ -1294,9 +1501,7 @@ class TwoTierTests(unittest.TestCase):
     def test_efficiency_doc_and_quick_script_exist(self):
         self.assertTrue((ROOT / "docs/swarm/EFFICIENCY.md").exists())
         self.assertTrue((ROOT / "scripts/quick-check.sh").exists())
-        heavy = (ROOT / ".github/workflows/heavy-check.yml").read_text()
-        self.assertIn("owasp-nvd", heavy)
-        self.assertIn("check.sh", heavy)
+        self.assertFalse((ROOT / ".github/workflows/heavy-check.yml").exists())
 
 
 if __name__ == "__main__":
