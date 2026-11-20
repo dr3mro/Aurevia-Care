@@ -329,7 +329,9 @@ public class IdentityProofingService {
             ApiException denial = denyUnlessSelfOrStaff(context, subject, chartId);
             if (denial != null) {
                 failure.set(denial);
-                return null;
+                // A non-null value keeps the Boolean-returning lambda total; the
+                // recorded denial is still thrown after the transaction ends.
+                return Boolean.FALSE;
             }
             return repository.hasAccess(subject, chartId);
         });
