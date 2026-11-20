@@ -236,10 +236,18 @@ public class IdentityProofingRepository {
      * @return the current event when one exists, otherwise empty
      */
     public Optional<ChartLink> currentLink(String subject, String chartId) {
+        // The fold exposes account_id and seq, not the event id: join the
+        // append-only table on the fold's database-owned seq to recover it.
         return jdbc.query("""
-                SELECT id::text, account_subject, chart_id::text, event, method, reason, occurred_at::text
-                  FROM public.current_chart_links()
-                 WHERE account_subject = :subject AND chart_id = CAST(:chartId AS uuid)
+                SELECT l.id::text AS id, c.account_subject, c.chart_id::text,
+                       c.event, c.method, c.reason, c.occurred_at::text
+                  FROM public.current_chart_links() c
+                  JOIN public.account_chart_link l
+                    ON l.organization_id = c.organization_id
+                   AND l.account_id = c.account_id
+                   AND l.chart_id = c.chart_id
+                   AND l.seq = c.seq
+                 WHERE c.account_subject = :subject AND c.chart_id = CAST(:chartId AS uuid)
                 """, new MapSqlParameterSource().addValue("subject", subject).addValue("chartId", chartId),
                 LINK_MAPPER).stream().findFirst();
     }
@@ -266,10 +274,19 @@ public class IdentityProofingRepository {
      * @return current link events ordered by chart
      */
     public List<ChartLink> links(String subject) {
+        // Same projection contract as currentLink: the event id comes from the
+        // append-only table, never from the current-link fold.
         return jdbc.query("""
-                SELECT id::text, account_subject, chart_id::text, event, method, reason, occurred_at::text
-                  FROM public.current_chart_links() WHERE account_subject = :subject
-                 ORDER BY chart_id
+                SELECT l.id::text AS id, c.account_subject, c.chart_id::text,
+                       c.event, c.method, c.reason, c.occurred_at::text
+                  FROM public.current_chart_links() c
+                  JOIN public.account_chart_link l
+                    ON l.organization_id = c.organization_id
+                   AND l.account_id = c.account_id
+                   AND l.chart_id = c.chart_id
+                   AND l.seq = c.seq
+                 WHERE c.account_subject = :subject
+                 ORDER BY c.chart_id
                 """, Map.of("subject", subject), LINK_MAPPER);
     }
 
