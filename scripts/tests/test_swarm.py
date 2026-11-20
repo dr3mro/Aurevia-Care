@@ -1349,6 +1349,18 @@ class GitTests(unittest.TestCase):
         self.assertIn("--draft", create)
         self.assertIn("unresolved conflicts", create[create.index("--body") + 1])
 
+    def test_a_fix_worker_whose_pull_request_is_gone_publishes_nothing(self):
+        out = self.worker_dir()
+        task = {**self.TASK, "kind": "fix", "number": 193, "branch": "swarm/CW-001-1"}
+        for state in ("MERGED", "CLOSED"):
+            with self.subTest(state=state):
+                fake = FakeGh(pr_view={".state": state})
+                with mock.patch.object(swarm, "gh", fake), \
+                        mock.patch.object(swarm, "authed_git") as git_call:
+                    swarm.publish(task, out)
+                git_call.assert_not_called()
+                self.assertFalse(fake.said("issue", "create"))
+
     def test_pull_request_failure_after_push_opens_an_issue(self):
         out = self.worker_dir()
 
