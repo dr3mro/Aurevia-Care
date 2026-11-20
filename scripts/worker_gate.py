@@ -4,8 +4,11 @@ Main can already carry red integration suites that have nothing to do with the
 task at hand. Failing every worker for those would turn every pull request into a
 draft, so an ordinary task only fails on test classes it is related to: a test
 file it changed, or a test whose name matches a changed source file. Repair tasks
-(FIX-, DLV-) are strict: any failing class fails the check. The integrator's full
-gate still runs everything before anything merges.
+(FIX-, DLV-) are judged on the test classes their task names: every named class
+must pass, and failures in other classes belong to other repair tasks, so they do
+not fail this one (otherwise the first of several repair tasks could never pass
+while the others are still open). A repair task that names no class stays strict.
+The integrator's full gate still runs everything before anything merges.
 """
 import os
 import re
@@ -59,12 +62,24 @@ def changed_paths(base="origin/main"):
     return paths
 
 
-def decide(failing, changed, story_id):
+def named_classes(text):
+    """Test class names a task mentions in backticks, such as `ChartRecordIntegrationTest`."""
+    return set(re.findall(r"`([A-Z][A-Za-z0-9]*(?:Test|IT))`", text or ""))
+
+
+def decide(failing, changed, story_id, task_text=""):
     """(ok, message)."""
     if not failing:
         return True, "integration tests passed"
     if story_id.startswith(STRICT_PREFIXES):
-        return False, "repair task: failing classes " + ", ".join(sorted(failing))
+        named = named_classes(task_text)
+        if not named:
+            return False, "repair task: failing classes " + ", ".join(sorted(failing))
+        mine = failing & named
+        if mine:
+            return False, "repair task: still failing " + ", ".join(sorted(mine))
+        return True, ("repair task: its classes pass; other classes still red (other repair tasks): "
+                      + ", ".join(sorted(failing)))
     mine = related(failing, changed)
     if mine:
         return False, "failing classes related to this change: " + ", ".join(sorted(mine))
@@ -79,7 +94,8 @@ def main(argv=None):
     if mvn_failed and not failing:
         print("integration run failed without a failing test class (compile or setup error)")
         return 1
-    ok, message = decide(failing, changed_paths(), os.environ.get("STORY_ID", ""))
+    ok, message = decide(failing, changed_paths(), os.environ.get("STORY_ID", ""),
+                         os.environ.get("STORY_BODY", ""))
     print(message)
     return 0 if ok else 1
 
