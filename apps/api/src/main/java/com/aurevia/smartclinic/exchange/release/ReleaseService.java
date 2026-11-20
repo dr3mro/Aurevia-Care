@@ -206,12 +206,8 @@ public class ReleaseService {
                 failure.set(new ApiException(409, "INVALID_TRANSITION", "release cannot be corrected in its current state"));
                 return null;
             }
-            // A held release has not passed review; lifting it is a separate decision.
-            if (current.state() != ReleaseState.AUTHORIZED) {
-                repository.appendAudit(context, ReleaseActionPolicy.CORRECT, id, "CONFLICT");
-                failure.set(new ApiException(409, "INVALID_TRANSITION", "a held release must be lifted before correction"));
-                return null;
-            }
+            // Only an authorized release can be corrected: ReleaseState.canTransitionTo rejects a
+            // held one above, so lifting a hold stays a separate decision.
             // A correction must point at a different immutable revision. Re-pointing at the row
             // just marked CORRECTED would re-authorize the retracted result.
             if (correctedRevisionId.equals(current.revisionId())) {
