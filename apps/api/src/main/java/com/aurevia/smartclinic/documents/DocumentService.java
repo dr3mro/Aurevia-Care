@@ -70,7 +70,8 @@ public class DocumentService {
      *
      * @param request link command
      * @return the stored association without its bytes
-     * @throws ApiException on invalid input, denial, an unknown chart or a conflict
+     * @throws ApiException on invalid input, denial, an unknown chart, order or
+     *                      result subject, or a conflict
      */
     public DocumentAssoc link(LinkRequest request) {
         String subjectType = DocumentInputs.subjectType(request.subjectType());
@@ -93,11 +94,16 @@ public class DocumentService {
                 return null;
             }
             String id = DocumentInputs.newId();
+            int written;
             try {
-                repository.insert(context.organizationId(), id, subjectType, subjectId, fileName,
-                        mediaType, content, rotation);
+                written = repository.insert(context.organizationId(), id, subjectType, subjectId,
+                        fileName, mediaType, content, rotation);
             } catch (DuplicateKeyException exception) {
                 failure.set(new ApiException(409, "CONFLICT", "association already exists"));
+                return null;
+            }
+            if (written == 0) {
+                failure.set(new ApiException(404, "NOT_FOUND", "subject not found"));
                 return null;
             }
             repository.appendEvent(id, "link", null);
