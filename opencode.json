@@ -13,7 +13,11 @@
     "docs/reference/*.md",
     "contracts/README.md",
     "db/migrations/README.md",
-    "infra/DEPLOYMENT.md"
+    "infra/DEPLOYMENT.md",
+    "MEMORY.md",
+    "PROJECT.md",
+    "WORKSPACE.md",
+    "apps/*/README.md"
   ],
   "agents": {
     "smartclinic-orchestrator": {
