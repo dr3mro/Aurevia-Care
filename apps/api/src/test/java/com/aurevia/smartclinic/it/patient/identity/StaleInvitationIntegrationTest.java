@@ -179,6 +179,23 @@ class StaleInvitationIntegrationTest {
     }
 
     @Test
+    void anUnspentInvitationCannotBeRedeemedAfterARejectedUnlink() {
+        String subject = uniqueSubject("norevoke");
+        assertEquals(HttpStatus.CREATED, enroll(subject).getStatusCode());
+        String stale = issue(subject);
+        assertEquals("false", access(subject), "an unspent invitation is not yet access");
+
+        ResponseEntity<String> unlinked = request(HttpMethod.POST, "/api/v1/patient-identity/links/unlink",
+                "{\"subject\":\"" + subject + "\",\"chartId\":\"" + CHART
+                        + "\",\"reason\":\"disputed link\"}", subject);
+        assertEquals(HttpStatus.NOT_FOUND, unlinked.getStatusCode(), unlinked.getBody());
+
+        assertEquals(HttpStatus.CONFLICT, request(HttpMethod.POST, "/api/v1/patient-identity/links/claim",
+                "{\"token\":\"" + stale + "\"}", subject).getStatusCode());
+        assertEquals("false", access(subject), "a rejected unlink must still retire the unspent invitation");
+    }
+
+    @Test
     void reverificationInvalidatesPriorInvitationsButHonoursTheFreshOne() {
         String subject = uniqueSubject("rev");
         assertEquals(HttpStatus.CREATED, enroll(subject).getStatusCode());
