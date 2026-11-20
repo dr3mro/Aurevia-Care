@@ -15,7 +15,18 @@ from pathlib import Path
 
 GENERATED = Path(__file__).resolve().parent / "generated"
 DIGEST_PARTS = ("x-04-generator", "x-04-manifest-v1")
-FORBIDDEN = ("claimedRole", "claimedPermissions", "permission:", "role:", "scope:", "@ts-ignore", ": any")
+# Authority declarations are matched anywhere in an identifier and case-insensitively:
+# `userRole`, `grantedScopes` and `Role :` are as forbidden as `role:`.
+AUTHORITY_FIELD = re.compile(r"(?i)(?:actor|role|permission|scope)s?\s*:")
+AUTHORITY_HEADER = re.compile(r"(?i)['\"]X-(?:actor|role|permission|scope)s?['\"]")
+FUNCTION = re.compile(r"^export function ([A-Za-z_$][A-Za-z0-9_$]*)\(", re.MULTILINE)
+REQUIRED_ARGUMENTS = (
+    "  idempotencyKey: string,",
+    "  ifMatch: string,",
+    "  body: unknown,",
+    "  transport: CommandTransport,",
+)
+FORBIDDEN = ("claimedrole", "claimedpermissions", "@ts-ignore", ": any")
 
 
 def canonical_checksum(artifact: str) -> str:
@@ -27,16 +38,25 @@ def canonical_checksum(artifact: str) -> str:
     return hashlib.sha256(stream).hexdigest()
 
 
-def main() -> int:
-    """Verify the committed artifacts against their manifest; return a process status."""
-    errors = []
+def function_blocks(client: str) -> dict[str, str]:
+    """Split a generated client into one source block per exported command function."""
+    matches = list(FUNCTION.finditer(client))
+    blocks: dict[str, str] = {}
+    for index, match in enumerate(matches):
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(client)
+        blocks[match.group(1)] = client[match.start():end]
+    return blocks
+
+
+def verify(directory: Path = GENERATED) -> tuple[list[str], int]:
+    """Return ``(errors, command_count)`` for the generated artifacts in a directory."""
+    errors: list[str] = []
     try:
-        manifest = json.loads((GENERATED / "manifest.json").read_text(encoding="utf-8"))
-        contract = (GENERATED / "openapi.yaml").read_text(encoding="utf-8")
-        client = (GENERATED / "client.ts").read_text(encoding="utf-8")
+        manifest = json.loads((directory / "manifest.json").read_text(encoding="utf-8"))
+        contract = (directory / "openapi.yaml").read_text(encoding="utf-8")
+        client = (directory / "client.ts").read_text(encoding="utf-8")
     except (OSError, ValueError) as exc:
-        print(f"FAIL x-04: cannot read generated artifacts: {exc}")
-        return 1
+        return [f"cannot read generated artifacts: {exc}"], 0
 
     for field, text in (("contractSha256", contract), ("clientSha256", client)):
         expected = canonical_checksum(text)
@@ -47,6 +67,7 @@ def main() -> int:
     identifiers = [item.get("id", "") for item in commands]
     if not identifiers or len(identifiers) != len(set(identifiers)):
         errors.append("manifest commands must be non-empty and unique")
+    blocks = function_blocks(client)
     for command in commands:
         identifier = command.get("id", "")
         action = command.get("action", "")
@@ -54,21 +75,47 @@ def main() -> int:
             errors.append(f"contract missing operationId {identifier}")
         if f"x-smartclinic-action: {action}" not in contract:
             errors.append(f"contract missing action {action} for {identifier}")
-        if f"export function {identifier}(" not in client:
+        block = blocks.get(identifier)
+        if block is None:
             errors.append(f"client missing function {identifier}")
+            continue
+        for required in REQUIRED_ARGUMENTS:
+            if required not in block:
+                errors.append(
+                    f"client function {identifier} is missing required precondition argument "
+                    f"{required.strip()}"
+                )
         for parameter in re.findall(r"\{([A-Za-z][A-Za-z0-9]*)\}", command.get("path", "")):
-            if f"encodeURIComponent({parameter})" not in client or f"  {parameter}: string," not in client:
-                errors.append(f"client does not encode path parameter {parameter} for {identifier}")
+            if f"encodeURIComponent({parameter})" not in block or f"  {parameter}: string," not in block:
+                errors.append(f"client function {identifier} does not encode path parameter {parameter}")
+    field = AUTHORITY_FIELD.search(client)
+    if field is not None:
+        errors.append(f"client exposes forbidden authority field token {field.group(0)!r}")
+    header = AUTHORITY_HEADER.search(client)
+    if header is not None:
+        errors.append(f"client exposes forbidden authority header token {header.group(0)!r}")
+    lowered = client.lower()
     for forbidden in FORBIDDEN:
-        if forbidden in client:
+        if forbidden in lowered:
             errors.append(f"client exposes forbidden authority token {forbidden}")
 
+    return errors, len(identifiers)
+
+
+def check(directory: Path = GENERATED) -> int:
+    """Print the result of verifying one artifact directory and return a process status."""
+    errors, count = verify(directory)
     if errors:
         for error in errors:
             print(f"FAIL x-04: {error}")
         return 1
-    print(f"x-04 drift check OK: {len(identifiers)} commands, contract and client match manifest")
+    print(f"x-04 drift check OK: {count} commands, contract and client match manifest")
     return 0
+
+
+def main() -> int:
+    """Verify the committed artifacts against their manifest; return a process status."""
+    return check()
 
 
 if __name__ == "__main__":
