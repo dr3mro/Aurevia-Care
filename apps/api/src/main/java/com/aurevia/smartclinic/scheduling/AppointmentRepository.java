@@ -44,6 +44,7 @@ public class AppointmentRepository {
 
     private static final RowMapper<Appointment> APPOINTMENT_MAPPER = AppointmentRepository::mapAppointment;
     private static final RowMapper<AppointmentEvent> EVENT_MAPPER = AppointmentRepository::mapEvent;
+    private static final RowMapper<AppointmentRow> APPOINTMENT_ROW_MAPPER = AppointmentRepository::mapRow;
 
     private final NamedParameterJdbcTemplate jdbc;
 
@@ -195,6 +196,54 @@ public class AppointmentRepository {
     }
 
     /**
+     * Read one cursor-paged slice of the active tenant's appointments.
+     *
+     * <p>Forced RLS confines the query to the active organization, so no manual
+     * organization predicate is needed. Ordering by scheduled start with the
+     * immutable appointment id as tie-break makes the cursor stable even when two
+     * appointments share a start instant. The state filter uses the same lapsed-hold
+     * fold as the projection so a stale hold is filtered as {@code expired}.</p>
+     *
+     * @param from        inclusive lower bound of the scheduled-start range
+     * @param to          inclusive upper bound of the scheduled-start range
+     * @param resource    optional tenant-local clinician or room code, or {@code null}
+     * @param state       optional effective appointment state, or {@code null}
+     * @param cursorStart exclusive lower start bound from the previous page, or {@code null}
+     * @param cursorId    immutable id that breaks a tie at the cursor start
+     * @param limit       maximum rows to fetch (one more than the requested page size)
+     * @return appointments with their immutable row id, in scheduled-start order
+     */
+    public List<AppointmentRow> query(Instant from, Instant to, String resource, AppointmentState state,
+                                      Instant cursorStart, String cursorId, int limit) {
+        MapSqlParameterSource params = new MapSqlParameterSource()
+                .addValue("from", from.toString())
+                .addValue("to", to.toString())
+                .addValue("limit", limit);
+        StringBuilder sql = new StringBuilder(SELECT_APPOINTMENT)
+                .append(" WHERE a.starts_at >= CAST(:from AS timestamptz)")
+                .append(" AND a.starts_at <= CAST(:to AS timestamptz)");
+        if (resource != null) {
+            sql.append(" AND (c.code = :resource OR r.code = :resource)");
+            params.addValue("resource", resource);
+        }
+        if (state != null) {
+            sql.append(" AND (CASE WHEN a.state = 'held' AND a.expires_at <= now() "
+                    + "THEN 'expired' ELSE a.state END) = :state");
+            params.addValue("state", state.wire());
+        }
+        if (cursorStart != null) {
+            sql.append("""
+                     AND (a.starts_at > CAST(:cursorStart AS timestamptz)
+                          OR (a.starts_at = CAST(:cursorStart AS timestamptz)
+                              AND a.id > CAST(:cursorId AS uuid)))
+                     """);
+            params.addValue("cursorStart", cursorStart.toString()).addValue("cursorId", cursorId);
+        }
+        sql.append(" ORDER BY a.starts_at, a.id LIMIT :limit");
+        return jdbc.query(sql.toString(), params, APPOINTMENT_ROW_MAPPER);
+    }
+
+    /**
      * Move an appointment to a new state, enforcing the expected version.
      *
      * @param id              appointment identifier
@@ -304,12 +353,26 @@ public class AppointmentRepository {
                 resultSet.getString("override_reason"));
     }
 
+    private static AppointmentRow mapRow(ResultSet resultSet, int rowNumber) throws SQLException {
+        return new AppointmentRow(mapAppointment(resultSet, rowNumber), resultSet.getString("id"));
+    }
+
     private static AppointmentEvent mapEvent(ResultSet resultSet, int rowNumber) throws SQLException {
         return new AppointmentEvent(resultSet.getString("id"), resultSet.getInt("appointment_version"),
                 resultSet.getString("action"), resultSet.getString("from_state"),
                 resultSet.getString("to_state"), resultSet.getString("reason"),
                 instant(resultSet, "previous_starts_at"), instant(resultSet, "previous_ends_at"),
                 resultSet.getString("actor_id"), instant(resultSet, "occurred_at"));
+    }
+
+    /**
+     * One paged row: the appointment projection and its immutable row id.
+     *
+     * @param appointment appointment projection
+     * @param id          immutable appointment id used as the cursor tie-break
+     * @return this record
+     */
+    public record AppointmentRow(Appointment appointment, String id) {
     }
 
     /**

@@ -4,9 +4,12 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -39,6 +42,11 @@ public class AppointmentService {
     private static final String RESOURCE_TYPE = "APPOINTMENT";
     private static final int MAX_OCCURRENCES = 52;
     private static final int MAX_REPEAT_WEEKS = 4;
+    private static final int DEFAULT_LIMIT = 50;
+    private static final int MAX_LIMIT = 200;
+    private static final Duration MAX_RANGE = Duration.ofDays(31);
+    private static final Pattern CURSOR = Pattern.compile(
+            "(.+):([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})");
 
     private final AppointmentRepository appointments;
     private final SchedulingRepository scheduling;
@@ -163,6 +171,65 @@ public class AppointmentService {
             throw failure.get();
         }
         return view;
+    }
+
+    /**
+     * Read one cursor-paginated page of appointments in the active organization.
+     *
+     * <p>The single-record read action is reused: a caller who may read one
+     * appointment may list the same tenant's appointments. Validation happens
+     * before any transaction and the read itself is audited inside the guarded
+     * transaction. The range is inclusive at both ends and at most 31 days wide;
+     * a resource code matches either the clinician or the room of an appointment.</p>
+     *
+     * @param cursor   opaque {@code <startsAt>:<id>} of the previous page's last row, or {@code null}
+     * @param limit    page size, or {@code null} for the default of 50
+     * @param from     required inclusive lower UTC instant of the scheduled-start range
+     * @param to       required inclusive upper UTC instant, after {@code from} and at most 31 days later
+     * @param resource optional tenant-local clinician or room code
+     * @param state    optional appointment state wire value
+     * @return one page with an opaque next cursor when more rows exist
+     * @throws ApiException on invalid input or denied access
+     */
+    public AppointmentPage list(String cursor, String limit, String from, String to,
+                                String resource, String state) {
+        AppointmentCursor parsedCursor = parseCursor(cursor);
+        int parsedLimit = parseLimit(limit);
+        Instant parsedFrom = requireInstant(from);
+        Instant parsedTo = requireInstant(to);
+        validateRange(parsedFrom, parsedTo);
+        String parsedResource = parseResource(resource);
+        AppointmentState parsedState = parseState(state);
+        AtomicReference<ApiException> failure = new AtomicReference<>();
+        AppointmentPage page = transactions.execute(status -> {
+            TenantContext context = TenantContext.current();
+            ApiException denial = authorize(context, ActionPolicy.APPOINTMENT_READ, "ALL");
+            if (denial != null) {
+                failure.set(denial);
+                return null;
+            }
+            List<AppointmentRepository.AppointmentRow> rows = appointments.query(
+                    parsedFrom, parsedTo, parsedResource, parsedState,
+                    parsedCursor == null ? null : parsedCursor.startsAt(),
+                    parsedCursor == null ? null : parsedCursor.id(), parsedLimit + 1);
+            boolean hasMore = rows.size() > parsedLimit;
+            List<AppointmentRepository.AppointmentRow> pageRows = hasMore ? rows.subList(0, parsedLimit) : rows;
+            List<AppointmentView> items = pageRows.stream()
+                    .map(row -> new AppointmentView(row.appointment(),
+                            appointments.history(row.appointment().id())))
+                    .toList();
+            String next = hasMore
+                    ? pageRows.get(pageRows.size() - 1).appointment().startsAt() + ":"
+                            + pageRows.get(pageRows.size() - 1).id()
+                    : null;
+            audit.append(context, ActionPolicy.APPOINTMENT_READ, ActionPolicy.APPOINTMENT_READ,
+                    RESOURCE_TYPE, SCOPE, "ALL", "SUCCESS");
+            return new AppointmentPage(items, next);
+        });
+        if (failure.get() != null) {
+            throw failure.get();
+        }
+        return page;
     }
 
     /**
@@ -457,6 +524,86 @@ public class AppointmentService {
         }
         appointments.lockResources(resources);
         appointments.expireStaleHolds(now, clinicianId, roomId, startsAt, endsAt);
+    }
+
+    private AppointmentCursor parseCursor(String cursor) {
+        if (cursor == null || cursor.isBlank()) {
+            return null;
+        }
+        Matcher matcher = CURSOR.matcher(cursor);
+        if (!matcher.matches()) {
+            throw invalidCursor();
+        }
+        Instant startsAt;
+        try {
+            startsAt = Instant.parse(matcher.group(1));
+        } catch (DateTimeParseException exception) {
+            throw invalidCursor();
+        }
+        return new AppointmentCursor(startsAt, matcher.group(2));
+    }
+
+    private static ApiException invalidCursor() {
+        return new ApiException(422, "INVALID_CURSOR", "cursor must be <startsAt>:<id>");
+    }
+
+    private static int parseLimit(String limit) {
+        if (limit == null || limit.isBlank()) {
+            return DEFAULT_LIMIT;
+        }
+        try {
+            int value = Integer.parseInt(limit);
+            if (value < 1 || value > MAX_LIMIT) {
+                throw new NumberFormatException("limit out of range");
+            }
+            return value;
+        } catch (NumberFormatException exception) {
+            throw new ApiException(422, "INVALID_LIMIT", "limit must be 1-200");
+        }
+    }
+
+    private static Instant requireInstant(String value) {
+        if (value == null || value.isBlank()) {
+            throw invalidRange();
+        }
+        try {
+            return Instant.parse(value);
+        } catch (DateTimeParseException exception) {
+            throw invalidRange();
+        }
+    }
+
+    private static void validateRange(Instant from, Instant to) {
+        if (!to.isAfter(from) || to.isAfter(from.plus(MAX_RANGE))) {
+            throw invalidRange();
+        }
+    }
+
+    private static ApiException invalidRange() {
+        return new ApiException(422, "INVALID_RANGE",
+                "from and to must be ISO-8601 instants, with to after from and at most 31 days later");
+    }
+
+    private static String parseResource(String resource) {
+        if (resource == null || resource.isBlank()) {
+            return null;
+        }
+        return SchedulingInputs.code(resource, "resource");
+    }
+
+    private static AppointmentState parseState(String state) {
+        if (state == null || state.isBlank()) {
+            return null;
+        }
+        try {
+            return AppointmentState.from(state);
+        } catch (IllegalArgumentException exception) {
+            throw new ApiException(422, "INVALID_STATE", "state must be an appointment state");
+        }
+    }
+
+    /** Parsed opaque cursor: the exclusive scheduled-start bound and the immutable row id. */
+    private record AppointmentCursor(Instant startsAt, String id) {
     }
 
     private ApiException authorize(TenantContext context, String action, String resourceId) {
