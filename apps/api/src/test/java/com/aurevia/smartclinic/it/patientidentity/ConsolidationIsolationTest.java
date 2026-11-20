@@ -354,8 +354,9 @@ class ConsolidationIsolationTest {
         // A name+DOB warning alone is not grounds for a merge: two identifiers
         // must be confirmed and must match the two records being consolidated.
         String wrong = "{\"reason\":\"merge\",\"confirmedIdentifiers\":[\"X-1@CLINIC-Z\",\"X-2@CLINIC-Y\"]}";
-        assertEquals(HttpStatus.UNPROCESSABLE_ENTITY,
-                request(HttpMethod.POST, command, wrong, "approver-a", ORG_A, "\"1\"").getStatusCode());
+        // Compare the wire code: Spring 7 renamed the 422 enum constant.
+        assertEquals(422, request(HttpMethod.POST, command, wrong, "approver-a", ORG_A, "\"1\"")
+                .getStatusCode().value());
         assertEquals(0, count("chart_association", "alias_id = '" + pair[1] + "'"));
         assertEquals(0, count("consolidation", "review_id = '" + reviewId + "'"));
 

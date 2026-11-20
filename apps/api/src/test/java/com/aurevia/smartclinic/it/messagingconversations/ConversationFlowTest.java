@@ -277,7 +277,11 @@ class ConversationFlowTest {
     @Test
     void patientOpenStaffReplyUnreadMarkReadReopenAndClose() throws Exception {
         String id = open(ORG_A, PATIENT, PATIENT, "lab");
-        JsonNode opened = tree(send(HttpMethod.GET, "/api/v1/conversations/" + id, null, PATIENT, ORG_A));
+        // GET returns a View {conversation, messages, events}; the mutable
+        // projection is nested under "conversation" (the reply command does
+        // the same). Assert against that documented shape.
+        JsonNode opened = tree(send(HttpMethod.GET, "/api/v1/conversations/" + id, null, PATIENT, ORG_A))
+                .get("conversation");
         assertEquals("awaiting_staff", opened.get("state").asString());
         assertEquals(1, opened.get("version").asInt());
 
@@ -338,7 +342,7 @@ class ConversationFlowTest {
         ResponseEntity<String> crossUnit = send(HttpMethod.POST, "/api/v1/conversations/" + id + "/assign",
                 "{\"assigneeSubject\":\"clinic-a-1111\",\"reason\":\"cover\"}", LAB_STAFF, ORG_A,
                 Map.of("If-Match", "3"));
-        assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, crossUnit.getStatusCode());
+        assertEquals(422, crossUnit.getStatusCode().value());
         assertEquals("INVALID_ASSIGNEE", tree(crossUnit).get("code").asString());
     }
 
@@ -380,7 +384,7 @@ class ConversationFlowTest {
         ResponseEntity<String> badUuid = send(HttpMethod.POST, "/api/v1/conversations",
                 "{\"patientId\":\"nope\",\"patientSubject\":\"" + PATIENT
                         + "\",\"unitKey\":\"lab\",\"connectionId\":\"conn-1\"}", PATIENT, ORG_A);
-        assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, badUuid.getStatusCode());
+        assertEquals(422, badUuid.getStatusCode().value());
 
         ResponseEntity<String> missingPatient = send(HttpMethod.POST, "/api/v1/conversations",
                 "{\"patientId\":\"99999999-9999-9999-9999-999999999999\",\"patientSubject\":\"" + PATIENT
@@ -443,7 +447,8 @@ class ConversationFlowTest {
                             + "'lab', 'conn-2', 'awaiting_staff')"));
         }
         // The guarded row still holds its original version and patient.
-        JsonNode after = tree(send(HttpMethod.GET, "/api/v1/conversations/" + id, null, PATIENT, ORG_A));
+        JsonNode after = tree(send(HttpMethod.GET, "/api/v1/conversations/" + id, null, PATIENT, ORG_A))
+                .get("conversation");
         assertEquals(1, after.get("version").asInt());
         assertEquals(patientId(ORG_A), after.get("patientId").asString());
     }
@@ -453,7 +458,7 @@ class ConversationFlowTest {
         String id = open(ORG_A, PATIENT, PATIENT, "lab");
         try (Connection connection = DriverManager.getConnection(URL, "smartclinic_migrate", "");
              PreparedStatement visible = connection.prepareStatement(
-                     "SELECT count(*) FROM public.conversation WHERE id = ?");
+                     "SELECT count(*) FROM public.conversation WHERE id = CAST(? AS uuid)");
              PreparedStatement hidden = connection.prepareStatement(
                      "SELECT public.patient_link_active(?, CAST(? AS uuid))")) {
             connection.createStatement().execute("SET app.current_org = '" + ORG_A + "'");
