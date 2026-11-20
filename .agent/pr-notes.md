@@ -1,67 +1,72 @@
-# DLV-04 — Repair integration tests: clinical notes, result routing, access, documents, specimens and trending
+# READY-06 — Staff web API transport with CSRF, timeouts and typed errors
 
-Status: ready for integrator. Branch `swarm/DLV-04-255`, base `fefe4cd` (= `origin/main`, clean tree, 0/0). Changes are confined to `apps/api` (4 production files, 4 integration-test fixtures); no migration added or edited, no `.github/`, `scripts/`, `opencode.json` or shared tracker touched. All six named classes pass in the full real-PostgreSQL `mvn verify` run (49/49) and in the canonical `bash apps/api/check.sh` test phase (2096/2096 tests, 0 failures, 0 errors). Synthetic data only. No test was skipped, deleted, re-tagged or excluded from a gate, and no assertion was weakened.
+- Story: READY-06
+- Branch: `swarm/READY-06-260`
+- Scope: `apps/staff-web/src/api` only. No generated types, trackers, workflows or shared files changed.
+- Evidence source: executed tool commands (tool evidence) and a simulated read-only specialist review. No human, clinical or patient evidence.
 
-## Requirements and acceptance mapping
+## Requirements
 
-| Requirement | Acceptance exercised | Classes / result |
+- WEB-03 — Browser security/sessions: CSRF token on state-changing requests, generic error content, no stored tokens.
+- WEB-09 — Resilient screens: typed failure kinds that let the UI present the required states (session-expired, forbidden, conflict, invalid, offline, timeout, etc.) with a correlation id.
+- ARC-03 (context) — correlation id and machine-readable error codes on API responses.
+
+## Acceptance mapping
+
+| Story item | Implementation | Test |
 |---|---|---|
-| CLN-03, CLN-05 | Clinical note drafts, version-bound edits, signing metadata, amendment/addendum, entered-in-error history, append-only revisions and audit-after-rollback | `ClinicalNoteRevisionIntegrationTest` 14/14 |
-| LAB-02, XCH-04 | Identifier matching, import/routing, reconciliation, corrections with reopened review and notifications, critical routing, trend identity | `ResultRoutingIntegrationTest` 12/12; `SpecimenAccessionIsolationTest` 4/4; `TrendingTest` 5/5 |
-| IAM-03, IAM-06, ARC-02 | Registration/issuer-scoped MRN, emergency and support access grants, tenant isolation, actor/reason audit | `AccessIntegrationTest` 8/8; `DocumentIsolationTest` 6/6 |
-| CLN-07, ARC-01/02/03/04 (supporting) | Originals/renders with checksums, forced RLS concealment, version preconditions, machine-readable errors, atomic audit | `DocumentIsolationTest`, all classes above |
+| `send(descriptor, options?)` calls `fetch(descriptor.url, …)` | `transport.ts` `send` → `attempt` → `fetch(url, init)` | `send — request construction` (all) |
+| `credentials: 'include'` | `init.credentials = 'include'` | GET construction test |
+| `X-Correlation-Id` = fresh `crypto.randomUUID()` unless descriptor has one | `descriptor.headers[CORRELATION_HEADER] ?? crypto.randomUUID()`, computed once per `send` call and reused across a single retry | generated-id, reuse-supplied-id, fresh-per-call tests |
+| JSON body | `JSON.stringify(descriptor.body)` plus `Content-Type: application/json` when a body exists | POST header/body test; GET has no body |
+| `AbortController` timeout 15000 ms | `setTimeout(() => controller.abort(), timeoutMs)`, default `15_000`, cleared in `finally`; `SendOptions.timeoutMs` override only for deterministic tests | abort→timeout test (15_000), timeout-retry test (25 ms) |
+| non-GET adds `X-XSRF-TOKEN` from `XSRF-TOKEN` cookie | `csrfToken()` parses `document.cookie` and sets `CSRF_HEADER` | POST header test |
+| missing cookie → `TransportError` kind `csrf-missing` before sending | guard in `attempt` before the timer/fetch | csrf-missing test asserts `fetch` not called |
+| 401→session-expired, 403→forbidden, 404→not-found, 409/412→conflict, 422→invalid, 428→precondition-required, 429→rate-limited, other/non-ok→server | `kindForStatus` + default | `describe.each` status matrix (401,403,404,409,412,422,428,500,400) |
+| 429 `retryAfterSeconds` from `Retry-After` | numeric parse in `retryAfterSeconds` | 3 tests: numeric, absent, non-numeric |
+| network failure→offline, abort→timeout | `attempt` catch: `controller.signal.aborted` first, then rethrow `TransportError`, else offline | offline POST test, timeout POST test |
+| keep response `correlationId` and server `code` | `toTransportError` reads `X-Correlation-Id` header (falls back to request id) and body `.code` | status matrix, fallback test, no-code tests |
+| never put response body text in the message | `TransportError` message is `Request failed: <kind>` only | "never includes response body text" test |
+| retry only GET once on offline/timeout; POST never | `send` catch retries `attempt` once for GET+offline/timeout | GET-offline-once, GET-timeout-once, GET-twice-fails, GET-no-retry-401, POST-offline, POST-timeout |
+| no token/response data in localStorage/sessionStorage; no dependency | code review — none used; `package.json` unchanged | — (static: no storage calls, no new package) |
 
-Classification (`docs/WORKFLOW.md`): cross-boundary (SQL boundary, domain enums, HTTP contract, integration fixtures), with a safety-critical authorization/isolation component. Evidence sources are recorded per command below.
+## Commands run and results
 
-## Reproduction (RED) and root cause per class
+All commands run from `apps/staff-web` unless stated.
 
-Environment: Java 21.0.13 Temurin, Maven 3.10.0, PostgreSQL 17 on 127.0.0.1:5432 via `SMARTCLINIC_PG_ADMIN=postgres`. All commands executed by this worker (tool evidence). RED baseline — `cd apps/api && mvn -B -Pno-security -Dtest=ClinicalNoteRevisionIntegrationTest,ResultRoutingIntegrationTest,AccessIntegrationTest,DocumentIsolationTest,SpecimenAccessionIsolationTest,TrendingTest -DfailIfNoTests=false test`: **Tests run 49, Failures 36** (server stack traces read from `apps/api/target/surefire-reports` and a captured full Maven log).
+1. `npm ci --no-audit --no-fund` — added 312 packages, exit 0 (dependencies were not installed in the checkout).
+2. `npx vitest run src/api/transport.test.ts` (before implementation) — RED: `Failed to resolve import "./transport"`, 1 test file failed, no tests.
+3. `npx vitest run src/api/transport.test.ts` (after first implementation) — 28 passed but Vitest reported 1 unhandled rejection in the fake-timer timeout test. Defect D1 below; fixed in the test by attaching the rejection handler synchronously before advancing timers.
+4. `npx vitest run src/api/transport.test.ts` (after D1 fix) — `Test Files 1 passed (1)`, `Tests 28 passed (28)`, no errors. After the F-1/D3 fix the focused file has 29 tests.
+5. `bash check.sh` — applicable staff-web gate (the story's `worker-check.sh` alternative is for API tasks). Final lines:
+   - `gen:api: generated client matches the contract`
+   - typecheck and lint: exit 0 (no diagnostics)
+   - `Test Files 31 passed (31)`, `Tests 228 passed (228)`
+   - `No files with missing coverage.` / `46 files fully covered.`
+   - `Statements 100% (622/622)`, `Branches 100% (334/334)`, `Functions 100% (226/226)`, `Lines 100% (591/591)`
+   - The console stack traces in the output are expected `console.error` assertions from the existing `tests/theme/ThemeProvider.test.tsx` negative test; the suite result is all-passed.
 
-The story's two shared causes were already fixed on this base: V58 redefines `set_link_actor()` and gives `duplicate_review.id` a default (DLV-02), and V59 widens the prescription transition (DLV-03). Only the six DLV-04 classes remained red. The `SELECTid` cause was *not* pre-fixed — it was still present at HEAD and is fixed here at its source.
+## Defects found
 
-| Class | Observed RED | Root cause | Fix |
-|---|---|---|---|
-| `ClinicalNoteRevisionIntegrationTest` (14) | One 500 on `POST /api/v1/clinical-notes`, cascading into 13 `405`/`404`/empty-id failures; the 500 trace showed `PSQLException: syntax error at or near "SELECTid"` at `NoteRepository.current:103`. | **Production defect.** Java text blocks strip trailing whitespace, so `SELECT """ + COLUMNS` produced `SELECTid::text, ...`. Both `current()` and `history()` used the pattern. A further RED layer, unmasked once create worked: `/entered-in-error` returned 400. | `NoteRepository`: replaced the text-block concatenation with `"SELECT " + COLUMNS + """` in both queries. Kept the test's intent but corrected its `affectedRecipients` fixtures: `ErrorRequest.affectedRecipients` is a `String` holding string-encoded JSON (validated by `NoteInputs.recipients`, unit-tested in `ClinicalNoteServiceTest`), so the test now sends `"[\"lab-a\"]"` / `"[]"` instead of a native array that Jackson could not bind to `String`. |
-| `AccessIntegrationTest` (6) | 500 on `/api/v1/access/emergency` and `/active`; trace: `PSQLException: conversion to class java.time.Instant from timestamptz not supported` at `AccessRepository.mapGrant:339`. | **Production defect.** pgjdbc maps `timestamptz` to `OffsetDateTime`, not `Instant`; `getObject(col, Instant.class)` fails on every grant/incident read. | `AccessRepository`: added `instant()` and null-safe `nullableInstant()` helpers using `getObject(col, OffsetDateTime.class).toInstant()`, matching the established pattern in `OrderRepository`, `RxRepository` and `ConversationRepository`. Required columns (`granted_at`, `expires_at`, `created_at`) use `instant`; nullable ones (`revoked_at`, `reviewed_at`, `approved_at`) use `nullableInstant`. |
-| `ResultRoutingIntegrationTest` (7) | Response fields compared as `unreviewed`/`final`/`critical`/`conflict`/`unmatched`/`acknowledged` but returned as `UNREVIEWED`/`FINAL`/...; one `missing field /patientId`; one concurrent-registration assertion expecting a fixed winner. | **Production defect (wire values) + two test-fixture defects.** The public `ResultModel` enums had no `@JsonValue wire()`, so Jackson emitted uppercase enum names although V22 stores lowercase and the repository reads lowercase wire values. `ResultReport.patientId` lives under `identifiers`, never at the top level. The concurrency test assumed the first submitted `Future` always wins the registration race. | Added `@JsonValue wire()` (lowercase `name()`) to `ResultKind`, `ReviewState`, `ReconciliationReason`, `ReconciliationStatus` — the same contract pattern as `NoteState` and `ClinicalReviewState`; DB binding is unchanged (`ResultRepository` uses explicit lower/upper-case conversion). Pointed the two assertions at `/identifiers/patientId`. Rewrote the race assertion to require exactly one 201 and one 409 without assuming which future wins; the production check-then-insert + unique-key null return already returns 409 to the loser and was left unchanged. |
-| `SpecimenAccessionIsolationTest` (3) | `expected: <accessioned> but was: <ACCESSIONED>` (and rejected/recollected). | **Production defect.** `AccessionState.wire()` returns lowercase and is the documented DB/API value, but lacked `@JsonValue`, so Jackson serialized the enum name. | Added `@JsonValue` to the existing `wire()` method. No behavior or DB value change. |
-| `DocumentIsolationTest` (5 → after first fix, 2) | All 5 failed at `registerChart` with 409 `MRN already exists for this issuer`; after unique MRNs, 2 failed with `expected: <422 UNPROCESSABLE_ENTITY> but was: <422 UNPROCESSABLE_CONTENT>`. | **Test-fixture defects.** V7 makes `(organization_id, mrn_issuer, mrn, version)` unique and the fixture re-registered the same MRN on every test method against a shared database. Spring 7 renamed the `HttpStatus` reason phrase, so enum comparison fails although the wire code is 422 (same cause DLV-02 fixed elsewhere). | `registerChart` now appends `UUID.randomUUID()` to the issuer-scoped MRN. The three 422 assertions now compare the numeric wire code (`assertEquals(422, ...getStatusCode().value())`). |
-| `TrendingTest` (1) | `invalidInputsFailAtTheBoundary`: blank `testCode=%20` returned 200 with body `{"testCode":"%20",...}` instead of 422. | **Test-fixture defect, proven by a temporary diagnostic (added, run, removed).** RestClient re-encodes the `%`, so the server receives the literal string `%20`, which is not blank; `TrendService.code()` correctly rejects only blank values. | Send an empty value `?testCode=` so the boundary receives a genuinely blank string. Production validation unchanged. |
+- D1 (test harness, resolved): a fake-timer timeout test created `send(...)` and only attached its rejection assertion after `advanceTimersByTimeAsync`, producing a `PromiseRejectionHandledWarning` and an unhandled-rejection error that would fail the gate. Fixed by converting the promise to a resolved value with `.catch((reason) => reason)` before advancing timers, then asserting on the resolved value.
+- D2 (type gate, resolved): `exactOptionalPropertyTypes` rejected passing `body: string | undefined` to `fetch`'s `RequestInit`, and `crypto.randomUUID` has a UUID template-literal return type. Fixed by building `RequestInit` and assigning `body` only when defined, and by typing the test's UUID mock as `typeof crypto.randomUUID` with UUID-shaped values.
 
-No applied migration was edited. No new migration was needed: every observed defect was in Java bindings, enum serialization or test fixtures; the V7/V15/V22/V26 schema invariants and triggers were correct.
-
-## Exact commands and results
-
-| Command | Result |
-|---|---|
-| `cd apps/api && mvn -B -Pno-security -Dtest=<six classes> -DfailIfNoTests=false test` (before fixes) | exit 1 — Tests run 49, Failures 36, Errors 0 |
-| Same command after the SQL/binding/enum/fixture fixes | exit 1 — Tests run 49, Failures 4 (entered-in-error 400, two Spring-7 422 enum comparisons, one race assumption) |
-| Same command after the four remaining fixture fixes | exit 0 — **Tests run 49, Failures 0, Errors 0** (Trending 5, ClinicalNote 14, Specimen 4, Access 8, ResultRouting 12, Document 6) |
-| `cd apps/api && mvn -B -Pno-security,fast test` | exit 0 — Tests run 1853, Failures 0, Errors 0 |
-| `bash apps/api/check.sh` (full `mvn -q -B verify`) | test phase: **2096 tests, 0 failures, 0 errors**; `mvn verify` then exit 1 at `jacoco:check` for **pre-existing coverage gaps in untouched classes** (see Defects). All six target classes green in that same run. |
-| `mvn -q -B -Pno-security -Dtest=ResultRoutingIntegrationTest -DfailIfNoTests=false test` × 3 | exit 0, exit 0, exit 0 — race fix is stable |
-| `python3 -I scripts/check-migrations.py --require-baseline` | exit 0 |
-| `python3 -I scripts/check-docs.py`, `check-secrets.py`, `check-names.py`, `python3 -I -m unittest discover -s scripts/tests -q` | all exit 0 |
-| `git diff --check` | exit 0 |
-| `bash scripts/worker-check.sh` | exit 1 at `check-pack: opencode.json is stale` — **environmental artifact, not caused by this change** (see Defects) |
-| `bash db/check.sh` | exit 3 — pre-existing, unrelated tooling defect (see Defects) |
-
-Entry-point-to-test trace: `POST /api/v1/clinical-notes` → `ClinicalNoteController.create` → `ClinicalNoteService.createDraft` → `NoteRepository.current` (fixed SQL) → 200; asserted by `createDraftAndReadFullHistory`. `POST /api/v1/access/emergency` → `AccessController.grant` → `EmergencyAccessService.grant` → `AccessRepository.insertGrant`/`mapGrant` (fixed instant mapping) → 201; asserted by `qualifiedClinicianGrantsAndChecksActiveAccess`. `POST /api/v1/xch04/results` → `ResultController.importResult` → `ResultRoutingService` → `ResultReport` with `@JsonValue` enums → lowercase wire values; asserted by `matchedResultIsImportedRoutedAndAudited`.
-
-## Defects found and disposition
-
-- **Pre-existing JaCoCo gaps, not changed here (owner: Delivery / owning stories).** Now that surefire reaches `verify`, `jacoco:check` reports three untouched classes below 100%: `ReleaseService` (lines 211–213, `held release must be lifted before correction` branch), `patient.chart.ChartRepository` (`verify`, line 171 partial branch) and one `FinanceService.postEntry` conflict branch. None of these classes is in `git diff`; none imports a modified enum. They are unrelated to DLV-04 and are outside the one-story rule. DLV repair PRs merge through `scripts/repair-gate.sh` (which excludes JaCoCo); JaCoCo/OWASP/SpotBugs run in Delivery after merge.
-- **Pre-existing `db/check.sh` defect (owner: pipeline/integrator).** It applies migrations with `for migration in db/migrations/V*.sql`, which bash sorts lexically (`V10` before `V1`), failing with `relation "public.organization" does not exist`. Documented in DLV-02/DLV-03 notes. `db/check.sh` is a protected check file; not edited here. The Java integration suites apply migrations in Flyway version order and are green.
-- **Environmental `opencode.json` artifact (owner: worker harness).** `git ls-files -v opencode.json` shows flag `S` (skip-worktree): the worktree holds the CI profile copied by `agent-run.sh`, so `check-pack.py`/`gen-opencode.py --check` judge that, not the committed local profile. Verified programmatically that `git show HEAD:opencode.json` equals `gen-opencode.py`'s generated local profile (`True`) while the worktree copy differs (`False`). This is the known OPS-CW-003-01 false positive; no regeneration was performed.
-- No `BUGS.md` entry added: every defect in scope was reproduced and fixed in this change; workers do not edit shared trackers.
+- D3 (review finding F-1, resolved): `csrfToken()` returned `''` for a present-but-blank `XSRF-TOKEN=` cookie, so a non-GET request would be sent with an empty `X-XSRF-TOKEN` header instead of failing closed. Fixed by trimming the cookie value and mapping blank to `undefined`; added a regression test asserting `csrf-missing` and zero `fetch` calls for a blank cookie.
 
 ## Decisions
 
-- Fixed the real cause in each case rather than re-tagging or weakening tests: SQL concatenation, JDBC type mapping and enum wire serialization were production defects; MRN reuse, a wrongly encoded query parameter, a wrong JSON field path, a native-vs-string JSON array, Spring-7 enum comparisons and a fixed-winner race assumption were fixture defects.
-- Added `@JsonValue` to existing/new `wire()` methods rather than changing tests to expect uppercase: lowercase is the documented DB and API value across the codebase, and DB binding paths are unaffected.
-- Did not add a migration: every schema invariant exercised by these tests was already correct.
-- Did not touch the three pre-existing JaCoCo gaps or `db/check.sh`; both are outside this story's acceptance and one of them is a protected file.
+- One correlation id is generated per `send` call and reused across the single GET retry, so a logical request (including its retry) has one trace id; a fresh id is generated on the next call.
+- Correlation id for an HTTP error is taken from the response `X-Correlation-Id` header, falling back to the request id when the header is absent; offline/timeout errors carry the request id.
+- `Retry-After` is parsed as numeric seconds; HTTP-date form is intentionally ignored (`retryAfterSeconds` undefined).
+- Any non-ok status without a specific mapping (including 4xx other than the listed ones) maps to `server`, keeping the `TransportErrorKind` union closed so READY-07 can map all kinds exhaustively.
+- The 15 s deadline applies per attempt, so a retried GET has up to 30 s total.
+- `SendOptions.timeoutMs` exists only to make timeout tests deterministic; the production default remains 15000 ms.
+- The success path returns parsed JSON as `T`; no response data is persisted to browser storage.
 
-## Evidence provenance
+## Review
 
-All command results, stack traces and the temporary diagnostic were **tool-generated** by this worker (Maven/Surefire, surefire XML/TXT reports, JaCoCo XML/CSV, git, policy scripts). No reviewer, simulated-user, human or clinical evidence was used or claimed. Every subject, organization, patient, MRN, accession and token in the fixtures is synthetic; no credentials, patient data or raw logs appear in this note.
+A read-only bounded review was returned by the Senior TypeScript specialist (simulated reviewer, not human or clinical). It confirmed every other acceptance criterion is met and raised one finding, F-1 (low severity, security relevant): a blank `XSRF-TOKEN=` cookie produced an empty CSRF header instead of the fail-closed `csrf-missing` error. F-1 was fixed in `csrfToken()` with a blank-value regression test (defect D3). All other observations were non-blocking.
+
+## Blockers / missing evidence
+
+None. All acceptance items were implemented and the applicable gate (`bash apps/staff-web/check.sh`) passed locally. Database and integration tests are the integrator's responsibility per the swarm workflow and are not applicable to this staff-web-only change.
