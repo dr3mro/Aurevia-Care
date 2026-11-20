@@ -336,6 +336,16 @@ def run_event(run_id):
     slug = workflow_slug(name)
     if conclusion == "success":
         closed = close_issues("workflow", slug, f"The next run is green: {info.get('url')}", by="workflow")
+        # Close any open run-level failure issue for this workflow: those are
+        # recorded under the "ci" fingerprint and would otherwise never match
+        # the "workflow" fingerprint used above.
+        for issue in gh_json("issue", "list", "--state", "open",
+                             "--search", f"{name} failed in:title", "--limit", "30",
+                             "--json", "number,title") or []:
+            if issue.get("title", "").startswith(f"{name} failed:"):
+                gh("issue", "close", str(issue["number"]),
+                   "--comment", f"{MARK}\nThe next run is green: {info.get('url')}", check=False)
+                closed = closed + [str(issue["number"])]
         # The repair gate opens "Main is red and automatic repair gave up" when three
         # repair attempts fail in 24 hours. It has no fingerprint, so close it here
         # once a Delivery run on main is green again.
