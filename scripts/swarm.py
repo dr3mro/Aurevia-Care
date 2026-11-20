@@ -127,11 +127,13 @@ def report_issue(title, body):
     time instead; otherwise open one."""
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     text = f"{MARK}\n**{stamp}**\n\n{body}"
-    found = gh_json("issue", "list", "--state", "open", "--search", f"{title} in:title",
-                    "--limit", "30", "--json", "number,title") or []
+    found = gh_json("issue", "list", "--state", "all", "--search", f"{title} in:title",
+                    "--limit", "30", "--json", "number,title,state") or []
     same = [i for i in found if i.get("title") == title]
     if same:
         number = str(min(i["number"] for i in same))
+        if any(i.get("state") == "CLOSED" for i in same if str(i.get("number")) == number):
+            gh("issue", "reopen", number, check=False)
         gh("issue", "comment", number, "--body", text, check=False)
         return number
     gh("issue", "create", "--title", title, "--body", text, check=False)
@@ -227,6 +229,19 @@ def record_issue(kind, parts, title, body, labels=(), markers=None):
     fp = fingerprint(kind, *parts)
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     existing = issues_with("fingerprint", fp)
+    if not existing:
+        # Reopen a previously closed issue with the same fingerprint instead of
+        # opening a duplicate when the problem comes back.
+        closed = gh_json("issue", "list", "--state", "closed",
+                         "--search", f"{fp} in:body", "--limit", "10",
+                         "--json", "number,title,body") or []
+        closed = [i for i in closed if f"<!-- swarm-fingerprint:{fp} -->" in (i.get("body") or "")]
+        if closed:
+            number = str(min(i["number"] for i in closed))
+            gh("issue", "reopen", number, check=False)
+            text = clip_to(f"{MARK}\n**{stamp}** seen again.\n\n{body}", ISSUE_BODY_LIMIT)
+            gh("issue", "comment", number, "--body", text, check=False)
+            return number
     if existing:
         number = str(min(i["number"] for i in existing))
         text = clip_to(f"{MARK}\n**{stamp}** seen again.\n\n{body}", ISSUE_BODY_LIMIT)
