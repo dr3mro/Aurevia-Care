@@ -119,6 +119,34 @@ class ConcurrentWaveTests(unittest.TestCase):
             self.assertEqual(swarm.active_workers(), 4)
 
 
+class WorkerPostgresTests(unittest.TestCase):
+    """Workers must be able to run the PostgreSQL integration suites themselves."""
+
+    def test_agent_image_carries_postgresql_17_and_a_starter(self):
+        dockerfile = (ROOT / ".github/agent-image/Dockerfile").read_text()
+        self.assertIn("postgresql-17", dockerfile)
+        self.assertIn("apt.postgresql.org", dockerfile)
+        self.assertIn("COPY start-postgres.sh /usr/local/bin/start-postgres", dockerfile)
+        self.assertIn("SMARTCLINIC_PG_ADMIN=postgres", dockerfile)
+        starter = (ROOT / ".github/agent-image/start-postgres.sh").read_text()
+        self.assertIn("127.0.0.1", starter)
+        self.assertIn("-A trust", starter)
+        self.assertIn(".github/agent-image/**", (ROOT / ".github/workflows/agent-image.yml").read_text())
+
+    def test_worker_starts_postgresql_and_runs_the_worker_check(self):
+        text = (ROOT / ".github/workflows/swarm-worker.yml").read_text()
+        self.assertIn("CHECK_SCRIPT: scripts/worker-check.sh", text)
+        self.assertIn("SMARTCLINIC_PG_ADMIN: postgres", text)
+        self.assertLess(text.index("if command -v start-postgres"), text.index("id: s1"))
+
+    def test_worker_check_runs_integration_tests_and_database_policy(self):
+        script = (ROOT / "scripts/worker-check.sh").read_text()
+        self.assertIn("bash scripts/quick-check.sh", script)
+        self.assertIn("-Dgroups=integration", script)
+        self.assertIn("bash db/check.sh", script)
+        self.assertNotIn("NVD", script)
+
+
 class RepairTaskTests(unittest.TestCase):
     TASK = {"id": "FIX-9", "title": "Repair main: Delivery failed", "body": "Reproduce.\n\nlog line"}
 
@@ -150,6 +178,14 @@ class RepairTaskTests(unittest.TestCase):
         added, again = self.run_add(once, task={**self.TASK, "id": "FIX-10"})
         self.assertFalse(added)
         self.assertEqual(once, again)
+
+    def test_an_open_manual_repair_task_also_blocks_a_duplicate(self):
+        text = ("- [ ] DLV-01 · Repair integration tests\n  - scope: apps/api\n  - details:\n    fix\n")
+        added, again = self.run_add(text)
+        self.assertFalse(added)
+        self.assertEqual(text, again)
+        done = text.replace("[ ]", "[x]")
+        self.assertTrue(self.run_add(done)[0])
 
     def test_gate_and_non_main_runs_add_nothing(self):
         self.assertFalse(self.run_add("# Tasks\n", gate=(False, "no"))[0])
@@ -403,8 +439,14 @@ class PlanTests(unittest.TestCase):
         self.assertIn("autofix", text)
         self.assertIn("scripts/check.sh", text)
         self.assertIn("swarm-integrator.yml", text)
-        self.assertIn("github.event.pull_request.head.ref", text)
         self.assertIn("gh pr ready", text)
+        condition = text.split("    if: >-", 1)[1].split("runs-on:", 1)[0]
+        self.assertIn("'autofix'", condition)
+        self.assertIn("startsWith(github.event.pull_request.title, 'FIX-')", condition)
+        # "contains(title, 'fix')" is case-insensitive and matched story titles
+        # such as "...synthetic fixtures)", starting a full gate for each.
+        self.assertNotIn("contains(github.event.pull_request.title", condition)
+        self.assertNotIn("head.ref", condition)
         self.assertIn("api", text)
 
     def test_any_failed_main_run_becomes_a_repair_task(self):
