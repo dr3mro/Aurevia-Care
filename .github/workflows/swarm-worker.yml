@@ -19,6 +19,10 @@ permissions:
 concurrency:
   group: swarm-worker-${{ github.run_id }}-${{ inputs.slot }}
   cancel-in-progress: false
+env:
+  SWARM_GIT_NAME: ${{ vars.SWARM_GIT_NAME }}
+  SWARM_GIT_EMAIL: ${{ vars.SWARM_GIT_EMAIL }}
+
 jobs:
   work:
     name: Work the task

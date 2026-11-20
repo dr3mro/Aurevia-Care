@@ -12,6 +12,10 @@ permissions:
 concurrency:
   group: daily-audit
   cancel-in-progress: false
+env:
+  SWARM_GIT_NAME: ${{ vars.SWARM_GIT_NAME }}
+  SWARM_GIT_EMAIL: ${{ vars.SWARM_GIT_EMAIL }}
+
 jobs:
   prep:
     name: Prepare
