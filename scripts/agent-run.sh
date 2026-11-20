@@ -136,8 +136,8 @@ PROMPT
 
 cmd_implement() {
   configure_auth
-  git config user.name "github-actions[bot]"
-  git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+  git config user.name "${SWARM_GIT_NAME:-github-actions[bot]}"
+  git config user.email "${SWARM_GIT_EMAIL:-41898282+github-actions[bot]@users.noreply.github.com}"
   local slug branch seg=${SEGMENT:-1} segs=${SEGMENTS:-1}
   if [[ $seg -gt 1 && -s "$out/branch" && -s "$out/base-sha" ]]; then
     # A later segment of the same worker: the branch and its base already exist.
@@ -233,8 +233,8 @@ PROMPT
 cmd_merge_main() {
   finish_merge() { printf '%s' "$1" > "$out/merge"; emit merge "$1"; }
   configure_auth
-  git config user.name "github-actions[bot]"
-  git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+  git config user.name "${SWARM_GIT_NAME:-github-actions[bot]}"
+  git config user.email "${SWARM_GIT_EMAIL:-41898282+github-actions[bot]@users.noreply.github.com}"
   local base="origin/${BASE_BRANCH:-main}" max=${MERGE_ATTEMPTS:-5} attempt=0 outcome pre files result
   local -a conflicted_files
   if [[ "$(cat "$out/commits" 2>/dev/null || echo 0)" -eq 0 ]] || ! git rev-parse -q --verify "$base" > /dev/null; then
