@@ -69,14 +69,14 @@ render() {
   local pad1=$((W - ${#t1} - 1)); [[ $pad1 -lt 0 ]] && pad1=0
   local pad2=$((W - ${#t2} - 1)); [[ $pad2 -lt 0 ]] && pad2=0
   echo -e "${BOLD}${CYAN}+$(printf '=%.0s' $(seq 1 $W))+${RST}"
-  echo -e "${BOLD}${CYAN}|${t1}$(printf ' %.0s' $(seq 1 $pad1))|${RST}"
-  echo -e "${BOLD}${CYAN}|${t2}$(printf ' %.0s' $(seq 1 $pad2))|${RST}"
+  echo -e "${BOLD}${CYAN}${t1}${RST}"
+  echo -e "${DIM}  ${t2}${RST}"
   echo -e "${BOLD}${CYAN}+$(printf '=%.0s' $(seq 1 $W))+${RST}"
 
   echo -e "${BOLD}${MAGENTA}📋 Open Issues${RST}"
-  echo -e "${DIM}──────────────────────────────────────────────────────${RST}"
+  echo -e "${DIM}──────────────────────────────────────────────────────────────────────${RST}"
   local issues
-  issues=$(gh issue list --state open --limit 20 --json number,title,labels 2>/dev/null)
+  issues=$(gh issue list --state open --limit 20 --json number,title,labels,url 2>/dev/null)
   if [[ -z "$issues" || "$issues" == "[]" ]]; then
     echo -e "  ${GREEN}✅ None — all clear${RST}"
   else
@@ -87,15 +87,17 @@ for i in d:
     labels=','.join(l['name'] for l in i.get('labels',[]))
     print(f\"  {i['number']:>4}  {i['title'][:70]}\")
     print(f\"       [{labels}]\")
+    print(f\"       {i.get('url','')}\")
+    print()
 "
   fi
   echo
 
   # ---- PRs ----
   echo -e "${BOLD}${BLUE}🔀 Open Pull Requests${RST}"
-  echo -e "${DIM}──────────────────────────────────────────────────────${RST}"
+  echo -e "${DIM}──────────────────────────────────────────────────────────────────────${RST}"
   local prs
-  prs=$(gh pr list --state open --limit 20 --json number,title,isDraft,state 2>/dev/null)
+  prs=$(gh pr list --state open --limit 20 --json number,title,isDraft,state,url 2>/dev/null)
   if [[ -z "$prs" || "$prs" == "[]" ]]; then
     echo -e "  ${GREEN}✅ None${RST}"
   else
@@ -105,15 +107,16 @@ d=json.load(sys.stdin)
 for p in d:
     draft='📝 DRAFT' if p.get('isDraft') else '✅ ready'
     print(f\"  {p['number']:>4}  {p['title'][:55]:55}  {draft}\")
+    print(f\"       {p.get('url','')}\")
 "
   fi
   echo
 
   # ---- Workflow runs ----
   echo -e "${BOLD}${YELLOW}⚙️  Recent Workflow Runs${RST}"
-  echo -e "${DIM}──────────────────────────────────────────────────────${RST}"
+  echo -e "${DIM}──────────────────────────────────────────────────────────────────────${RST}"
   local runs
-  runs=$(gh run list --limit 15 --json databaseId,workflowName,conclusion,status,headSha,createdAt 2>/dev/null)
+  runs=$(gh run list --limit 30 --json databaseId,workflowName,conclusion,status,headSha,createdAt,url 2>/dev/null)
   if [[ -z "$runs" || "$runs" == "[]" ]]; then
     echo -e "  ${DIM}(none)${RST}"
   else
@@ -122,9 +125,13 @@ import json,sys
 d=json.load(sys.stdin)
 for r in d:
     st = r.get('conclusion') or r.get('status') or ''
+    # Hide successful swarm runs to reduce noise.
+    if st == 'success':
+        continue
     col = {'success':'\033[32m','failure':'\033[31m','completed':'\033[32m','in_progress':'\033[33m','queued':'\033[33m','cancelled':'\033[2m','skipped':'\033[2m'}.get(st,'\033[37m')
     emoji = {'success':'✅','failure':'❌','in_progress':'🔄','queued':'⏳','cancelled':'⚪','skipped':'⏭️'}.get(st,'•')
-    print(f\"  {col}{emoji} {r['databaseId']}  {r['workflowName'][:26]:26}  {st:12}  {r['headSha'][:8]}\033[0m\")
+    print(f\"  {col}{emoji}  {r['databaseId']}  {r['workflowName'][:26]:26}  {st:12}  {r['headSha'][:8]}\033[0m\")
+    print(f\"       {r.get('url','')}\")
 "
   fi
   echo
@@ -137,7 +144,7 @@ need_gh
 PREV=""
 while true; do
   render
-  CUR=$(gh run list --limit 5 --json databaseId,conclusion 2>/dev/null)
+  CUR=$(gh run list --limit 30 --json databaseId,conclusion 2>/dev/null)
   if [[ "$CUR" != "$PREV" ]]; then
     # play sound if any new failure
     if echo "$CUR" | grep -q '"conclusion":"failure"'; then
