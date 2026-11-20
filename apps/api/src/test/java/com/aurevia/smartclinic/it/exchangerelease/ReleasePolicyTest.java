@@ -83,12 +83,25 @@ class ReleasePolicyTest {
     @Test
     void readerActionsAllowCareTeamAndAuditorButNotDecisions() {
         ReleaseActionPolicy policy = new ReleaseActionPolicy();
-        for (String action : new String[]{ReleaseActionPolicy.READ, ReleaseActionPolicy.HISTORY,
-                ReleaseActionPolicy.ACCESS}) {
+        for (String action : new String[]{ReleaseActionPolicy.READ, ReleaseActionPolicy.HISTORY}) {
             assertTrue(policy.allows(action, "reception"));
             assertTrue(policy.allows(action, "privacy_auditor"));
             assertFalse(policy.allows(action, "unknown_role"));
         }
+    }
+
+    @Test
+    void patientScopedReadPolicyExcludesReceptionAndAuditor() {
+        // AUD-20261119-01: a patient-scoped revision query must not be usable as
+        // a staff-wide enumeration surface. A verified patient is authorized by
+        // the chart-link check, not by a staff role.
+        ReleaseActionPolicy policy = new ReleaseActionPolicy();
+        assertTrue(policy.allows(ReleaseActionPolicy.ACCESS, "clinician"));
+        assertTrue(policy.allows(ReleaseActionPolicy.ACCESS, "tenant_admin"));
+        assertFalse(policy.allows(ReleaseActionPolicy.ACCESS, "reception"));
+        assertFalse(policy.allows(ReleaseActionPolicy.ACCESS, "privacy_auditor"));
+        assertFalse(policy.allows(ReleaseActionPolicy.ACCESS, "patient"));
+        assertFalse(policy.allows(ReleaseActionPolicy.ACCESS, "unknown_role"));
     }
 
     @Test
