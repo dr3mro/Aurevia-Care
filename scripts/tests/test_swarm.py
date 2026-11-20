@@ -247,6 +247,50 @@ class RepairTaskTests(unittest.TestCase):
         done = text.replace("[ ]", "[x]")
         self.assertTrue(self.run_add(done)[0])
 
+    def runs(self, *items):
+        return [dict(zip(("databaseId", "name", "status", "conclusion", "createdAt"), i)) for i in items]
+
+    def test_only_the_newest_finished_run_of_each_workflow_counts(self):
+        data = self.runs(
+            (5, "Delivery", "completed", "failure", "2026-11-20T05:00:00Z"),
+            (4, "Delivery", "completed", "success", "2026-11-20T04:00:00Z"),
+            (3, "Agent swarm", "completed", "failure", "2026-11-20T03:00:00Z"),
+            (2, "Agent swarm", "completed", "success", "2026-11-20T02:00:00Z"),
+            (9, "Delivery", "in_progress", None, "2026-11-20T06:00:00Z"),
+            (8, "Agent image", "completed", "cancelled", "2026-11-20T05:30:00Z"),
+            (1, "Swarm integrator", "completed", "failure", "2026-11-20T01:00:00Z"))
+        with mock.patch.object(swarm, "gh_json", lambda *a: data):
+            self.assertEqual(swarm.failing_runs_on_main(), [5, 3])
+        healed = self.runs((6, "Delivery", "completed", "success", "2026-11-20T06:00:00Z"),
+                           (5, "Delivery", "completed", "failure", "2026-11-20T05:00:00Z"))
+        with mock.patch.object(swarm, "gh_json", lambda *a: healed):
+            self.assertEqual(swarm.failing_runs_on_main(), [])
+
+    def run_latest(self, text, failing, jobs, added_for=None):
+        calls = []
+        with tempfile.TemporaryDirectory() as tmp:
+            todo = Path(tmp) / "TODO.md"
+            todo.write_text(text)
+
+            def fake_add(run_id, path="TODO.md"):
+                calls.append(run_id)
+                return True
+            with mock.patch.object(swarm, "failing_runs_on_main", lambda: failing), \
+                    mock.patch.object(swarm, "gh_json", lambda *a: jobs[int(a[2])]), \
+                    mock.patch.object(swarm, "add_repair_task", fake_add):
+                added = swarm.add_latest_repair_task(str(todo))
+        return added, calls
+
+    def test_latest_repair_skips_handled_runs_and_worker_only_failures(self):
+        worker_only = {"name": "Agent swarm", "jobs": [{"name": "Swarm worker / Work", "conclusion": "failure"}]}
+        real = {"name": "Delivery", "jobs": [{"name": "Java and database verification", "conclusion": "failure"}]}
+        text = "- [x] FIX-7 · Repair main: Delivery failed\n  - scope: *\n"
+        added, calls = self.run_latest(text, [7, 6, 5], {6: worker_only, 5: real})
+        self.assertEqual((added, calls), (True, [5]))
+        added, calls = self.run_latest(text, [7, 6], {6: worker_only})
+        self.assertEqual((added, calls), (False, []))
+        self.assertEqual(self.run_latest("", [], {}), (False, []))
+
     def test_gate_and_non_main_runs_add_nothing(self):
         self.assertFalse(self.run_add("# Tasks\n", gate=(False, "no"))[0])
         self.assertFalse(self.run_add("# Tasks\n", task=None)[0])
@@ -556,15 +600,16 @@ class PlanTests(unittest.TestCase):
         self.assertNotIn("head.ref", condition)
         self.assertIn("api", text)
 
-    def test_any_failed_main_run_becomes_a_repair_task(self):
-        text = (ROOT / ".github/workflows/failed-run-repair.yml").read_text()
-        self.assertIn("workflow_run:", text)
-        self.assertIn("conclusion == 'failure'", text)
-        self.assertIn("swarm.py add-repair-task", text)
-        self.assertNotIn("repair_run", text)
-        for name in ("Delivery", "Agent swarm"):
-            self.assertIn(f"- {name}", text)
-        self.assertNotIn("- Swarm integrator", text)
+    def test_failed_main_runs_become_repair_tasks_inside_the_scheduler(self):
+        # No separate watchdog workflow: it ran once per failure and cluttered
+        # the Actions list. The scheduler's plan job queues the repair itself.
+        self.assertFalse((ROOT / ".github/workflows/failed-run-repair.yml").exists())
+        text = (ROOT / ".github/workflows/swarm.yml").read_text()
+        self.assertIn("swarm.py add-repair-task --latest", text)
+        self.assertLess(text.index("add-repair-task --latest"), text.index("swarm.py plan-workers"))
+        for name in ("Delivery", "Agent swarm", "Agent image", "Swarm slot images"):
+            self.assertIn(name, swarm.REPAIR_WORKFLOWS)
+        self.assertNotIn("Swarm integrator", swarm.REPAIR_WORKFLOWS)
 
     def test_budget_workflows_include_single_repair_workflow(self):
         self.assertIn("main-repair.yml", swarm.BUDGET_WORKFLOWS)
