@@ -514,6 +514,22 @@ def update_todo(edit, message, path="TODO.md", attempts=8):
     return False
 
 
+def claim_open(text, claims):
+    """Mark the still-open tasks in `claims` ({id: agent}) taken.
+
+    Returns `(new_text, granted_ids)`. A task that is already taken or done in
+    `text` is left alone and not granted: two plan jobs that read TODO.md a few
+    seconds apart (two pushes) must not both start a worker for it.
+    """
+    status = {t["id"]: t["status"] for t in parse_tasks(text)}
+    granted = set()
+    for task_id, agent in claims.items():
+        if status.get(task_id) == "todo":
+            text = set_task_status(text, task_id, "taken", agent=agent)
+            granted.add(task_id)
+    return text, granted
+
+
 def prefix(pattern):
     return re.split(r"[*?\[]", pattern)[0].rstrip("/")
 
@@ -1343,12 +1359,18 @@ def main(argv=None):
                                text, prs, repair)
         claims = {t["id"]: f"swarm-{t['slot']}" for t in include if t["kind"] == "story"}
 
+        granted = set()
+
         def mark(current):
+            # Re-evaluated on every push retry against the newest TODO.md, so a
+            # task another plan job claimed meanwhile is not started twice.
             current = reclaim(current, everything, live)
-            for task_id, agent in claims.items():
-                current = set_task_status(current, task_id, "taken", agent=agent)
+            current, won = claim_open(current, claims)
+            granted.clear()
+            granted.update(won)
             return current
         update_todo(mark, f"Take {len(claims)} task(s) for the swarm", a.file)
+        include = [t for t in include if t["kind"] != "story" or t["id"] in granted]
         emit("matrix", json.dumps({"include": include}, separators=(",", ":")))
         emit("count", len(include))
     elif a.cmd == "continue":
