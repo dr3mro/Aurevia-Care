@@ -87,7 +87,7 @@ Main's Delivery run is red; these tasks restore it. They share `apps/api`, so th
 
 - [x] DLV-04 · Repair integration tests: clinical notes, result routing, access, documents, specimens and trending
   - pr: #203
-  - attempts: 2
+  - attempts: 0
   - requirements: CLN-03, LAB-02, IAM-03, DOC-01
   - depends: DLV-03
   - scope: apps/api, db
@@ -103,7 +103,7 @@ Independent modules scoped to their own paths so workers cannot collide with bac
 
 - [x] REFACTOR-PACKAGES-02 · Rename the remaining story-ID Java packages (`api/x_01`–`api/x_03`) to business-domain packages with no behavior change (dispatch-69).
   - pr: #208
-  - attempts: 1
+  - attempts: 0
   - requirements: none (refactor of CODING_STYLE.md package naming)
   - depends: DLV-04
   - scope: apps/api, contracts
@@ -181,7 +181,7 @@ Cadence and limits:
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` must pass for the classes you touched. Synthetic data only; write the failing test first; stay inside the declared scope; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
 - [x] AUD-20261120-02 · Production authentication, part 1: a pure JWT-claims-to-TenantContext resolver with tests
   - pr: #211
-  - attempts: 1
+  - attempts: 0
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/web
   - depends: DLV-04
   - details:
@@ -220,7 +220,7 @@ Cadence and limits:
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` must pass for the classes you touched. Synthetic data only; write the failing test first; stay inside the declared scope; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
 - [x] AUD-20261120-04 · Add a database gate that fails when any tenant table lacks forced row-level security
   - pr: #204
-  - attempts: 1
+  - attempts: 0
   - scope: db/check.sh
   - depends: DLV-04
   - details:
@@ -287,7 +287,7 @@ Cadence and limits:
 - [x] AUD-20261120-08 · Add HTTP tests for the scheduling, audit and appointment endpoints that no test calls
   - pr: #210
   - evidence: PR #210; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/AUD-20261120-08.md; simulated review only
-  - attempts: 1
+  - attempts: 0
   - scope: apps/api/src/test/java/com/aurevia/smartclinic/it/scheduling, apps/api/src/test/java/com/aurevia/smartclinic/it/audit
   - depends: DLV-04
   - details:
@@ -302,7 +302,7 @@ Cadence and limits:
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` must pass for the classes you touched. Synthetic data only; write the failing test first; stay inside the declared scope; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
 - [x] AUD-20261120-09 · Add HTTP tests for the finance, prescription, specialty and conversation endpoints that no test calls
   - pr: #214
-  - attempts: 1
+  - attempts: 0
   - scope: apps/api/src/test/java/com/aurevia/smartclinic/it/finance, apps/api/src/test/java/com/aurevia/smartclinic/it/prescription, apps/api/src/test/java/com/aurevia/smartclinic/it/authz, apps/api/src/test/java/com/aurevia/smartclinic/it/messaging
   - depends: DLV-04
   - details:
@@ -387,7 +387,7 @@ Found while extending the specification (section 8.1 and docs/design/screens-and
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` (API tasks) or `bash apps/staff-web/check.sh` (staff web tasks) must pass. Synthetic data only; write the failing test first; stay inside the declared scope; name folders and packages after what they hold, never a task ID; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
 - [x] READY-06 · Staff web API transport with CSRF, timeouts and typed errors (WEB-03, WEB-09)
   - pr: #206
-  - attempts: 1
+  - attempts: 0
   - scope: apps/staff-web/src/api
   - depends: DLV-04
   - details:
@@ -418,7 +418,7 @@ Found while extending the specification (section 8.1 and docs/design/screens-and
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` (API tasks) or `bash apps/staff-web/check.sh` (staff web tasks) must pass. Synthetic data only; write the failing test first; stay inside the declared scope; name folders and packages after what they hold, never a task ID; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
 - [x] READY-08 · Staff web route code-splitting and a bundle-size budget (WEB-08)
   - pr: #207
-  - attempts: 1
+  - attempts: 0
   - scope: apps/staff-web/src/App.tsx, apps/staff-web/src/app, apps/staff-web/scripts, apps/staff-web/check.sh, apps/staff-web/vite.config.ts
   - depends: DLV-04
   - details:
@@ -433,7 +433,7 @@ Found while extending the specification (section 8.1 and docs/design/screens-and
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` (API tasks) or `bash apps/staff-web/check.sh` (staff web tasks) must pass. Synthetic data only; write the failing test first; stay inside the declared scope; name folders and packages after what they hold, never a task ID; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
 - [x] READY-09 · Mark the staff web non-indexable (WEB-13)
   - pr: #200
-  - attempts: 1
+  - attempts: 0
   - scope: apps/staff-web/index.html, apps/staff-web/public, apps/staff-web/tests
   - details:
     Spec rule WEB-13: authenticated applications are `noindex` and crawling is disallowed.
@@ -445,7 +445,7 @@ Found while extending the specification (section 8.1 and docs/design/screens-and
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` (API tasks) or `bash apps/staff-web/check.sh` (staff web tasks) must pass. Synthetic data only; write the failing test first; stay inside the declared scope; name folders and packages after what they hold, never a task ID; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
 - [x] READY-10 · Staff web navigation model from the screen map (design contract)
   - pr: #212
-  - attempts: 1
+  - attempts: 0
   - scope: apps/staff-web/src/app
   - depends: DLV-04
   - details:
@@ -482,7 +482,7 @@ Order of work for the whole production-readiness effort: (1) security and platfo
 - [x] READY-13 · List appointments by date range (GET /api/v1/appointments)
   - pr: #226
   - evidence: PR #226; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/READY-13.md; simulated review only
-  - attempts: 1
+  - attempts: 0
   - requirements: ARC-03
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/scheduling, apps/api/src/test/java/com/aurevia/smartclinic/scheduling, contracts/openapi
   - depends: DLV-04
@@ -500,7 +500,7 @@ Order of work for the whole production-readiness effort: (1) security and platfo
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
 - [x] READY-14 · List staff (GET /api/v1/staff)
   - pr: #213
-  - attempts: 1
+  - attempts: 0
   - requirements: ARC-03
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/staff, apps/api/src/test/java/com/aurevia/smartclinic/staff, contracts/openapi
   - depends: DLV-04
@@ -519,7 +519,7 @@ Order of work for the whole production-readiness effort: (1) security and platfo
 - [x] READY-15 · List facilities (GET /api/v1/facilities)
   - pr: #216
   - evidence: PR #216; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/READY-15.md; simulated review only
-  - attempts: 4
+  - attempts: 0
   - requirements: ARC-03
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/tenancy, apps/api/src/test/java/com/aurevia/smartclinic/tenancy, contracts/openapi
   - depends: DLV-04
@@ -537,7 +537,7 @@ Order of work for the whole production-readiness effort: (1) security and platfo
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
 - [x] READY-16 · List orders (GET /api/v1/orders)
   - pr: #221
-  - attempts: 1
+  - attempts: 0
   - requirements: ARC-03
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/exchange/order, apps/api/src/test/java/com/aurevia/smartclinic/exchange/order, contracts/openapi
   - depends: DLV-04
@@ -556,7 +556,7 @@ Order of work for the whole production-readiness effort: (1) security and platfo
 - [x] READY-17 · List lab accessions (GET /api/v1/lab/accessions)
   - pr: #227
   - evidence: PR #227; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/READY-17.md; simulated review only
-  - attempts: 1
+  - attempts: 0
   - requirements: ARC-03
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/lab/accession, apps/api/src/test/java/com/aurevia/smartclinic/lab/accession, contracts/openapi
   - depends: DLV-04
@@ -575,7 +575,7 @@ Order of work for the whole production-readiness effort: (1) security and platfo
 - [x] READY-18 · List invoices (GET /api/v1/finance/invoices)
   - pr: #228
   - evidence: PR #228; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/READY-18.md; simulated review only
-  - attempts: 1
+  - attempts: 0
   - requirements: ARC-03
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/finance, apps/api/src/test/java/com/aurevia/smartclinic/finance, contracts/openapi
   - depends: DLV-04
@@ -795,7 +795,7 @@ Order of work for the whole production-readiness effort: (1) security and platfo
 
 - [x] READY-33 · Patient app: Expo entry point and app configuration
   - pr: #205
-  - attempts: 1
+  - attempts: 0
   - requirements: PAT-01, UX-01
   - scope: apps/patient-mobile/index.ts, apps/patient-mobile/App.tsx, apps/patient-mobile/app.json, apps/patient-mobile/src/app, apps/patient-mobile/package.json
   - depends: DLV-04
@@ -1010,7 +1010,7 @@ Do these after part 2 where `depends` says so. Persistence tasks run one at a ti
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT change files outside `scope`, add patient data to logs, or edit any existing migration.
 - [x] READY-46 · Launch checklist document with the owner of every item that needs a person
   - pr: #202
-  - attempts: 1
+  - attempts: 0
   - requirements: WEB-01, WEB-11, WEB-12
   - scope: docs/operations/production-readiness
   - details:
@@ -1056,7 +1056,7 @@ Do these after part 2 where `depends` says so. Persistence tasks run one at a ti
 - [x] READY-49 · Add HTTP tests for the remaining controllers named in no test
   - pr: #217
   - evidence: PR #217; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/READY-49.md; simulated review only
-  - attempts: 1
+  - attempts: 0
   - requirements: ARC-03, ARC-04
   - scope: apps/api/src/test/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/it
   - depends: AUD-20261120-09
@@ -1106,7 +1106,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
 - [x] S-G0-05 · Patient registration, identity confirmation and likely-duplicate warnings (IAM-03). V7 append-only patient records, issuer-scoped MRN, normalized name search, non-linking duplicate warnings, `/api/v1/patients`; 184 tests at delivery, JaCoCo 100%, local gates green, code on `main`. Current source (2026-11-19): Surefire reports 191 Java tests, 0 failures/errors across the suite; V7 and `/api/v1/patients` present.
 - [x] S-G0-06 · Same-tenant duplicate review and all-or-nothing chart consolidation (IAM-04).
   - pr: #160
-  - attempts: 3
+  - attempts: 0
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/patient/consolidation, apps/api/src/test/java/com/aurevia/smartclinic/it/patient/consolidation
   - reserved: V9
   - details:
@@ -1115,7 +1115,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [x] S-G0-07 · Patient identity proofing, verified chart linking and unlinking (IAM-05).
   - pr: #161
-  - attempts: 3
+  - attempts: 0
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/patient/identity, apps/api/src/test/java/com/aurevia/smartclinic/it/patient/identity
   - reserved: V10
   - details:
@@ -1124,7 +1124,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [x] S-G0-08 · Emergency access and platform support access controls (IAM-06).
   - pr: #162
-  - attempts: 3
+  - attempts: 0
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/authz/emergency, apps/api/src/test/java/com/aurevia/smartclinic/it/authz/emergency
   - reserved: V11
   - details:
@@ -1141,7 +1141,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     Out of scope for this slice: staff worklist/assignment/handoff (S-G1-02), clinical chart (S-G1-03), equipment resources and paid booking rules.
 - [x] S-G1-02 · Identity verification, check-in, organization/facility worklist, assignment and handoff (CLN-02).
   - pr: #163
-  - attempts: 3
+  - attempts: 0
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/scheduling/checkin, apps/api/src/test/java/com/aurevia/smartclinic/it/scheduling/checkin
   - reserved: V12
   - details:
@@ -1150,7 +1150,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [x] S-G1-03 · Longitudinal chart: problems, allergies, medications, vitals, source and verification states (CLN-03).
   - pr: #164
-  - attempts: 3
+  - attempts: 0
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/chart/record, apps/api/src/test/java/com/aurevia/smartclinic/it/chart/record
   - reserved: V13
   - details:
@@ -1160,7 +1160,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
 - [x] S-G1-04 · Versioned SOAP, operative, OB/GYN, perinatal and pediatric development templates (CLN-04).
   - pr: #38
   - evidence: PR #38; integrator ran scripts/check.sh on the merge result (tool evidence); heavy-check.yml re-verifies main after the push; notes in docs/swarm/S-G1-04.md; simulated review only
-  - attempts: 3
+  - attempts: 0
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/clinical/templates, apps/api/src/test/java/com/aurevia/smartclinic/it/clinical
   - reserved: V14
   - details:
@@ -1169,7 +1169,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [x] S-G1-05 · Draft to signed, amendments, signed addenda and entered-in-error with preserved originals (CLN-05).
   - pr: #165
-  - attempts: 3
+  - attempts: 0
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/chart/signing, apps/api/src/test/java/com/aurevia/smartclinic/it/chart/signing
   - reserved: V15
   - details:
@@ -1179,7 +1179,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
 - [x] S-G1-06 · Follow-up suggestions with rule explanation and care-team tasks (CLN-06).
   - pr: #40
   - evidence: PR #40; integrator ran scripts/check.sh on the merge result (tool evidence); heavy-check.yml re-verifies main after the push; notes in docs/swarm/S-G1-06.md; simulated review only
-  - attempts: 3
+  - attempts: 0
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/scheduling/followup, apps/api/src/test/java/com/aurevia/smartclinic/it/schedulingfollowup
   - reserved: V16
   - details:
@@ -1188,7 +1188,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [x] S-G1-07 · Original PDF/image associations and immutable, localized, versioned PDF rendering (CLN-07).
   - pr: #166
-  - attempts: 3
+  - attempts: 0
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/chart/documents, apps/api/src/test/java/com/aurevia/smartclinic/it/chart/documents
   - reserved: V17
   - details:
@@ -1197,7 +1197,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [x] S-G1-08 · Clinical dictionaries, diagnosis/procedure catalogs and RTL mixed-script operation (PRD-05, UX-01).
   - pr: #167
-  - attempts: 3
+  - attempts: 0
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/catalog/dictionary, apps/api/src/test/java/com/aurevia/smartclinic/it/catalog/dictionary
   - reserved: V18
   - details:
@@ -1206,7 +1206,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [x] S-G2-01 · Order creation with authorization, snapshot, disclosure record and destination work item (XCH-01).
   - pr: #168
-  - attempts: 3
+  - attempts: 0
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/exchange/order, apps/api/src/test/java/com/aurevia/smartclinic/it/exchange/order
   - reserved: V19
   - details:
@@ -1215,7 +1215,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [x] S-G2-02 · Separate workflow, transmission and clinical review states with human acknowledgment (XCH-02).
   - pr: #121
-  - attempts: 13
+  - attempts: 0
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/exchange/task, apps/api/src/test/java/com/aurevia/smartclinic/it/exchangetask
   - reserved: V20
   - details:
@@ -1224,7 +1224,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [x] S-G2-03 · Accept, reject with reason, clarify, linked changes, cancellations and revocation (XCH-03).
   - pr: #122
-  - attempts: 7
+  - attempts: 0
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/exchange/response, apps/api/src/test/java/com/aurevia/smartclinic/it/exchange/response
   - reserved: V21
   - details:
@@ -1233,7 +1233,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [x] S-G2-04 · Result routing, identifier matching, reconciliation queue and correction versions (XCH-04).
   - pr: #123
-  - attempts: 5
+  - attempts: 0
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/exchange/result, apps/api/src/test/java/com/aurevia/smartclinic/it/exchange/result
   - reserved: V22
   - details:
@@ -1243,7 +1243,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
 - [x] S-G2-05 · Critical-result verification, owner, due time, escalation attempts and read-back (XCH-05).
   - pr: #47
   - evidence: PR #47; integrator ran scripts/check.sh on the merge result (tool evidence); heavy-check.yml re-verifies main after the push; notes in docs/swarm/S-G2-05.md; simulated review only
-  - attempts: 2
+  - attempts: 0
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/exchange/critical, apps/api/src/test/java/com/aurevia/smartclinic/it/exchangeresult
   - reserved: V23
   - details:
@@ -1252,7 +1252,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [x] S-G2-06 · Patient release authorization, timed/hold policies and withdrawn releases (XCH-06).
   - pr: #124
-  - attempts: 4
+  - attempts: 0
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/exchange/release, apps/api/src/test/java/com/aurevia/smartclinic/it/exchange/release
   - reserved: V24
   - details:
@@ -1261,7 +1261,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [x] S-G2-07 · Trending only comparable observations with units, ranges, time and qualifiers visible (XCH-07).
   - pr: #113
-  - attempts: 5
+  - attempts: 0
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/exchange/trend, apps/api/src/test/java/com/aurevia/smartclinic/it/exchangetrend
   - reserved: V25
   - details:
@@ -1270,7 +1270,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [x] S-G2-08 · Requisition accession, specimen identification, rejection and linked recollection (LAB-01).
   - pr: #50
-  - attempts: 2
+  - attempts: 0
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/lab/accession, apps/api/src/test/java/com/aurevia/smartclinic/it/lab
   - reserved: V26
   - details:
@@ -1280,7 +1280,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
 - [x] S-G2-09 · Numeric, qualified, text and coded observations, verification states and issued revisions (LAB-02).
   - pr: #51
   - evidence: PR #51; integrator ran scripts/check.sh on the merge result (tool evidence); heavy-check.yml re-verifies main after the push; notes in docs/swarm/S-G2-09.md; simulated review only
-  - attempts: 2
+  - attempts: 0
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/lab/result, apps/api/src/test/java/com/aurevia/smartclinic/it/lab
   - reserved: V27
   - details:
@@ -1290,7 +1290,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
 - [x] S-G2-10 · Synthetic partner conformance fixtures including duplicates, corrections and partial outages (XCH-01–07, LAB-01, LAB-02).
   - pr: #52
   - evidence: PR #52; integrator ran scripts/check.sh on the merge result (tool evidence); heavy-check.yml re-verifies main after the push; notes in docs/swarm/S-G2-10.md; simulated review only
-  - attempts: 2
+  - attempts: 0
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/exchange/conformance, apps/api/src/test/java/com/aurevia/smartclinic/it/exchange
   - reserved: V28
   - details:
@@ -1299,7 +1299,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [x] S-G3-01 · Patient appointment list, confirmation, generic push notifications and device revocation (PAT-01).
   - pr: #114
-  - attempts: 4
+  - attempts: 0
   - scope: apps/patient-mobile/src/features/appointments, apps/api/src/main/java/com/aurevia/smartclinic/messaging/appointments
   - reserved: V29
   - details:
@@ -1309,7 +1309,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
 - [x] S-G3-02 · Released reports with revision and correction context, authorized downloads and protected local credentials (PAT-02).
   - pr: #54
   - evidence: PR #54; integrator ran scripts/check.sh on the merge result (tool evidence); heavy-check.yml re-verifies main after the push; notes in docs/swarm/S-G3-02.md; simulated review only
-  - attempts: 1
+  - attempts: 0
   - scope: apps/patient-mobile/src/features/reports, apps/api/src/main/java/com/aurevia/smartclinic/messaging/reports
   - reserved: V30
   - details:
@@ -1319,7 +1319,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
 - [x] S-G3-03 · Privacy-safe enrollment, recovery, lockout and identity-dispute support channel (PAT-03).
   - pr: #60
   - evidence: PR #60; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); heavy-check.yml re-verifies main after the push; notes in docs/swarm/S-G3-03.md; simulated review only
-  - attempts: 2
+  - attempts: 0
   - scope: apps/patient-mobile/src/features/enrollment, apps/api/src/main/java/com/aurevia/smartclinic/messaging/enrollment
   - reserved: V31
   - details:
@@ -1329,7 +1329,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
 - [x] S-G3-04 · Care unit directory and verified, connection-scoped patient-unit relationships (MSG-01, ARC-07).
   - pr: #61
   - evidence: PR #61; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); heavy-check.yml re-verifies main after the push; notes in docs/swarm/S-G3-04.md; simulated review only
-  - attempts: 2
+  - attempts: 0
   - scope: apps/patient-mobile/src/features/units, apps/api/src/main/java/com/aurevia/smartclinic/messaging/units
   - reserved: V32
   - details:
@@ -1338,7 +1338,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [x] S-G3-05 · Conversation lifecycle, unread counts, staff work queue, assignment and reopen states (MSG-02).
   - pr: #125
-  - attempts: 6
+  - attempts: 0
   - scope: apps/patient-mobile/src/features/conversations, apps/api/src/main/java/com/aurevia/smartclinic/messaging/conversation
   - reserved: V33
   - details:
@@ -1347,7 +1347,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [x] S-G3-06 · PDF/JPEG/PNG attachments, sender binding, quarantine scans and clean-verdict access (MSG-03, ARC-06).
   - pr: #58
-  - attempts: 1
+  - attempts: 0
   - scope: apps/patient-mobile/src/features/attachments, apps/api/src/main/java/com/aurevia/smartclinic/messaging/attachments
   - reserved: V34
   - details:
@@ -1356,7 +1356,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [x] S-G3-07 · Typed patient instructions with templates, revisions, withdrawal and units (MSG-04).
   - pr: #59
-  - attempts: 1
+  - attempts: 0
   - scope: apps/patient-mobile/src/features/instructions, apps/api/src/main/java/com/aurevia/smartclinic/messaging/instructions
   - reserved: V35
   - details:
@@ -1365,7 +1365,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [x] S-G3-08 · Publication, dispatch, first view and revision-bound acknowledgment as separate facts (MSG-05).
   - pr: #126
-  - attempts: 4
+  - attempts: 0
   - scope: apps/patient-mobile/src/features/acknowledgments, apps/api/src/main/java/com/aurevia/smartclinic/messaging/acknowledgment
   - reserved: V36
   - details:
@@ -1374,7 +1374,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [x] S-G3-09 · Service hours, response targets, named owners, backup coverage and after-hours guidance (MSG-06).
   - pr: #127
-  - attempts: 4
+  - attempts: 0
   - scope: apps/patient-mobile/src/features/service-profiles, apps/api/src/main/java/com/aurevia/smartclinic/messaging/service
   - reserved: V37
   - details:
@@ -1383,7 +1383,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [x] S-G3-10 · Messaging audit, retention, legal hold, provenance and revocation effects (MSG-07).
   - pr: #98
-  - attempts: 3
+  - attempts: 0
   - scope: apps/patient-mobile/src/features/governance, apps/api/src/main/java/com/aurevia/smartclinic/messaging/governance
   - reserved: V38
   - details:
@@ -1392,7 +1392,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [x] S-G3-11 · iOS and Android patient flows with accessibility and RTL operation (PAT-01–03, MSG-01–07, UX-01).
   - pr: #80
-  - attempts: 10
+  - attempts: 0
   - scope: apps/patient-mobile/src/features/flows, apps/api/src/main/java/com/aurevia/smartclinic/messaging/flows
   - reserved: V39
   - details:
@@ -1401,7 +1401,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [x] S-G3-12 · Restore, downtime, load, accessibility and audit evidence (G3).
   - pr: #81
-  - attempts: 8
+  - attempts: 0
   - scope: apps/patient-mobile/src/features/evidence, apps/api/src/main/java/com/aurevia/smartclinic/messaging/evidence
   - reserved: V40
   - details:
@@ -1410,7 +1410,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [x] S-G4-01 · Imaging order intake, urgency, accession, study association, signed interpretation and addenda (RAD-01).
   - pr: #82
-  - attempts: 8
+  - attempts: 0
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/radiology, apps/api/src/test/java/com/aurevia/smartclinic/it/radiology
   - reserved: V41
   - details:
@@ -1419,7 +1419,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [x] S-G4-02 · Therapy episode, evaluation, goals, interventions, outcomes, signed progress and discharge (PT-01).
   - pr: #83
-  - attempts: 8
+  - attempts: 0
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/therapy, apps/api/src/test/java/com/aurevia/smartclinic/it/therapy
   - reserved: V42
   - details:
@@ -1428,7 +1428,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [x] S-G4-03 · Prescription draft, versioned drug catalog, alternatives and verified allergy checks (RX-01).
   - pr: #84
-  - attempts: 8
+  - attempts: 0
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/prescription, apps/api/src/test/java/com/aurevia/smartclinic/it/prescription
   - reserved: V43
   - details:
@@ -1437,7 +1437,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [x] S-G4-04 · Prescriber attestation, approved routing channel, transmission events and ambiguity reconciliation (RX-02).
   - pr: #85
-  - attempts: 8
+  - attempts: 0
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/prescription/rx, apps/api/src/test/java/com/aurevia/smartclinic/it/prescription
   - reserved: V44
   - details:
@@ -1446,7 +1446,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [x] S-G4-05 · Itemized self-pay invoices, payments, refunds, receipts and daily reconciliation (FIN-01).
   - pr: #86
-  - attempts: 7
+  - attempts: 0
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/finance, apps/api/src/test/java/com/aurevia/smartclinic/it/finance
   - reserved: V45
   - details:
@@ -1455,7 +1455,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [x] S-G4-06 · Specialty role permissions and end-to-end flow evidence (PRD-06).
   - pr: #87
-  - attempts: 6
+  - attempts: 0
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/authz/specialty, apps/api/src/test/java/com/aurevia/smartclinic/it/authz
   - reserved: V46
   - details:
@@ -1464,7 +1464,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [x] S-G5-05 · Capacity targets, pilot load profile and measured performance evidence (OPS-03).
   - pr: #88
-  - attempts: 5
+  - attempts: 0
   - scope: infra/capacity, docs/operations/capacity
   - reserved: V47
   - details:
@@ -1473,7 +1473,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [x] S-G5-06 · Recovery targets, restore into clean environment and operational runbooks (OPS-04, OPS-05).
   - pr: #128
-  - attempts: 5
+  - attempts: 0
   - scope: infra/recovery, docs/operations/recovery
   - reserved: V48
   - details:
@@ -1482,7 +1482,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [x] S-G5-07 · Separate environments, synthetic fixtures, signed builds, migration checks and progressive rollout (OPS-06).
   - pr: #129
-  - attempts: 3
+  - attempts: 0
   - scope: infra/delivery-safety, docs/operations/delivery-safety
   - reserved: V49
   - details:
@@ -1491,7 +1491,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [x] S-G5-08 · Tenant export manifest, retention, legal hold, deletion and offboarding (OPS-07).
   - pr: #130
-  - attempts: 3
+  - attempts: 0
   - scope: infra/tenant-lifecycle, docs/operations/tenant-lifecycle
   - reserved: V50
   - details:
@@ -1500,7 +1500,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [x] S-G5-09 · Onboarding dataset manifest, dry run, controlled batches and authorized sign-off (OPS-08).
   - pr: #111
-  - attempts: 2
+  - attempts: 0
   - scope: infra/onboarding, docs/operations/onboarding
   - reserved: V51
   - details:
@@ -1509,7 +1509,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [x] S-G5-10 · English and Arabic, RTL, time zones, WCAG 2.2 AA and native screen-reader flows (UX-01).
   - pr: #115
-  - attempts: 2
+  - attempts: 0
   - scope: infra/accessibility, docs/operations/accessibility
   - reserved: V52
   - details:
@@ -1518,7 +1518,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [x] S-G5-11 · Operational queues for unsigned work, unmatched reports, critical findings, failures and revoked accounts (ADM-02).
   - pr: #116
-  - attempts: 2
+  - attempts: 0
   - scope: infra/ops-queues, docs/operations/ops-queues
   - reserved: V53
   - details:
@@ -1527,7 +1527,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [x] X-01 · API versioning, idempotency, cursor pagination, correlation IDs and machine-readable errors (ARC-03, ARC-04).
   - pr: #101
-  - attempts: 1
+  - attempts: 0
   - scope: contracts/x_01, apps/api/src/main/java/com/aurevia/smartclinic/api/x_01
   - reserved: V54
   - details:
@@ -1536,7 +1536,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [x] X-02 · Durable events, outbox, deduplication, replay and dead-letter review (ARC-05).
   - pr: #102
-  - attempts: 1
+  - attempts: 0
   - scope: contracts/x_02, apps/api/src/main/java/com/aurevia/smartclinic/api/x_02
   - reserved: V55
   - details:
@@ -1545,7 +1545,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [x] X-03 · Upload validation, quarantine, mediated downloads and PDF binding to immutable revisions (ARC-06).
   - pr: #112
-  - attempts: 4
+  - attempts: 0
   - scope: contracts/upload, apps/api/src/main/java/com/aurevia/smartclinic/api/upload
   - reserved: V56
   - details:
@@ -1554,7 +1554,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [x] X-04 · Generated OpenAPI clients and server-side authorization for every command (PRD-06).
   - pr: #155
-  - attempts: 3
+  - attempts: 0
   - scope: contracts/openapi, apps/api/src/main/java/com/aurevia/smartclinic/api/authorization
   - reserved: V57
   - details:
@@ -1563,7 +1563,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [x] DLV-01 · Repair integration tests: patient chart, chart entry and exchange task
   - agent: swarm-1
-  - attempts: 2
+  - attempts: 0
   - requirements: CLN-03, CLN-05, ARC-02
   - scope: apps/api, db
   - details:
@@ -1571,7 +1571,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     Delivery on `main` has been red since about 23:36 on 2026-11-19: the `Java and database verification` job fails in `mvn verify` (run 44658087355, commit 3cd3443: Tests run 2012, Failures 62, Errors 7). Every failure is a PostgreSQL integration test (`@Tag("integration")`). Pull requests only run the fast tier, so these suites never ran before merge. Start from a clean checkout of current `main` and run the real suite (`bash apps/api/check.sh`, with PostgreSQL via `SMARTCLINIC_PG_ADMIN`), not only the fast tier. Reproduce each failure red first, find whether the test or the production code is wrong, and fix the real cause. Never weaken, skip, delete or re-tag a test, and never exclude a class from the gate. Read the surefire reports in `apps/api/target/surefire-reports` for the server stack trace behind each 404/500. Do not edit migrations that are already applied on main; add a new migration only when the schema is genuinely wrong. Do NOT edit `.github/`, `scripts/` or shared trackers. Record the root cause per class, commands and results in `.agent/pr-notes/<story-id>.md`. Done means the classes below pass in the full `mvn verify` run.
 - [x] DLV-02 · Repair integration tests: patient identity, consolidation and messaging
   - pr: #196
-  - attempts: 3
+  - attempts: 0
   - requirements: IAM-03, IAM-04, IAM-05, MSG-07
   - depends: DLV-01
   - scope: apps/api, db
@@ -1581,7 +1581,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     Delivery on `main` has been red since about 23:36 on 2026-11-19: the `Java and database verification` job fails in `mvn verify` (run 44658087355, commit 3cd3443: Tests run 2012, Failures 62, Errors 7). Every failure is a PostgreSQL integration test (`@Tag("integration")`). Pull requests only run the fast tier, so these suites never ran before merge. Start from a clean checkout of current `main` and run the real suite (`bash apps/api/check.sh`, with PostgreSQL via `SMARTCLINIC_PG_ADMIN`), not only the fast tier. Reproduce each failure red first, find whether the test or the production code is wrong, and fix the real cause. Never weaken, skip, delete or re-tag a test, and never exclude a class from the gate. Read the surefire reports in `apps/api/target/surefire-reports` for the server stack trace behind each 404/500. Do not edit migrations that are already applied on main; add a new migration only when the schema is genuinely wrong. Do NOT edit `.github/`, `scripts/` or shared trackers. Record the root cause per class, commands and results in `.agent/pr-notes/<story-id>.md`. Done means the classes below pass in the full `mvn verify` run.
 - [x] DLV-03 · Repair integration tests: prescription transmission
   - pr: #198
-  - attempts: 1
+  - attempts: 0
   - requirements: RX-02, IAM-01, ARC-02
   - depends: DLV-02
   - scope: apps/api, db
@@ -1590,7 +1590,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     Delivery on `main` has been red since about 23:36 on 2026-11-19: the `Java and database verification` job fails in `mvn verify` (run 44658087355, commit 3cd3443: Tests run 2012, Failures 62, Errors 7). Every failure is a PostgreSQL integration test (`@Tag("integration")`). Pull requests only run the fast tier, so these suites never ran before merge. Start from a clean checkout of current `main` and run the real suite (`bash apps/api/check.sh`, with PostgreSQL via `SMARTCLINIC_PG_ADMIN`), not only the fast tier. Reproduce each failure red first, find whether the test or the production code is wrong, and fix the real cause. Never weaken, skip, delete or re-tag a test, and never exclude a class from the gate. Read the surefire reports in `apps/api/target/surefire-reports` for the server stack trace behind each 404/500. Do not edit migrations that are already applied on main; add a new migration only when the schema is genuinely wrong. Do NOT edit `.github/`, `scripts/` or shared trackers. Record the root cause per class, commands and results in `.agent/pr-notes/<story-id>.md`. Done means the classes below pass in the full `mvn verify` run.
 - [x] FIX-IMAGES-01 · Prepared-image readiness must not depend on workflow run history
   - pr: #193
-  - attempts: 2
+  - attempts: 0
   - requirements: OPS-06
   - scope: .github/workflows, scripts
   - details:
@@ -1620,7 +1620,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     ReactJS staff-web scheduling screens, in `apps/staff-web/src/features/scheduling` only. Depends on CW-004's scaffold, so reuse its React/Vite/TS setup, component set, theme, i18n bundles and generated OpenAPI client types. Build synthetic-only screens: a day/week appointment worklist ordered by scheduled time, a booking form with protected-resource conflict hint, check-in and assignment controls, and visit-state badges (booked → checked in → in progress → completed, plus cancelled/no-show). Use local fixture data with two tenants sharing the same local IDs to prove the UI never merges tenants; no real endpoints and no clinical data. Keep strict TypeScript, accessible labels and RTL-correct layout, and 100% coverage with Vitest. Do NOT touch `apps/api`, `db/`, `contracts/`, `apps/staff-web/check.sh`, `.github/`, `scripts/`, or shared trackers. Record requirement IDs, commands, results and decisions in `.agent/pr-notes/<story-id>.md`.
 - [x] CW-008 · Staff web React chart and document screens (synthetic fixtures)
   - pr: #156
-  - attempts: 3
+  - attempts: 0
   - requirements: CLN-03, CLN-05, CLN-07, UX-01
   - depends: CW-004
   - scope: apps/staff-web/src/features/chart
@@ -1628,7 +1628,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     ReactJS staff-web chart and document screens, in `apps/staff-web/src/features/chart` only. Depends on CW-004's scaffold. Build synthetic-only screens: a longitudinal chart view (problems, allergies, medications, vitals with units), a SOAP note draft with draft/signed states and an entered-in-error banner, and a document list showing PDF/image associations with version and language. Never allow editing a signed revision in the UI; show read-only state and an amendment action instead. Use local fixtures with two tenants sharing local IDs; no real endpoints or patient data. Strict TypeScript, accessible labels, RTL-correct layout and 100% Vitest coverage. Do NOT touch `apps/api`, `db/`, `contracts/`, `apps/staff-web/check.sh`, `.github/`, `scripts/`, or shared trackers. Record evidence in `.agent/pr-notes/<story-id>.md`.
 - [x] CW-009 · Staff web React audit and access-review screens (synthetic fixtures)
   - pr: #157
-  - attempts: 3
+  - attempts: 0
   - requirements: ADM-02, OPS-02, UX-01
   - depends: CW-004
   - scope: apps/staff-web/src/features/admin
@@ -1700,7 +1700,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
   - evidence: run 44544369924 job 135631117346 log; local `bash scripts/docs.sh` exit 0 after fixes; 168 tooling tests OK, `check.sh`/`quick-check.sh`/`check-docs.py`/`check-secrets.py`/`gen-opencode.py --check`/shellcheck green, all workflow YAMLs parse. Evidence source: GitHub Actions log plus executed tool commands; no human or clinical evidence.
 - [x] AUD-20261119-01 · Constrain patient released-revisions endpoint to the verified patient chart link
   - pr: #174
-  - attempts: 1
+  - attempts: 0
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/exchange/release, apps/api/src/main/java/com/aurevia/smartclinic/messaging/reports
   - details:
     PatientReleasedRevisionsController exposes GET /api/v1/patients/{patientId}/released-revisions and passes the path patientId straight into ReleaseService.visibleRevisions (PatientReleasedRevisionsController.java:38-40). That method only calls authorize(context, RELEASE_ACCESS_QUERY, patientId) (ReleaseService.java:333-356), which checks active membership plus a role in {clinician, tenant_admin, reception, privacy_auditor} (ReleaseActionPolicy.java:33-50); it never verifies that the authenticated subject is linked to that patientId. Any receptionist or privacy auditor can therefore enumerate released report revision IDs for any patient by supplying its UUID, while a verified patient (role 'patient') is denied 403. The correct patient-facing service ReleasedReportService, which checks a verified + active chart link and release state on every list/download (messaging/reports/ReleasedReportService.java:62-129, 143-150), has no caller in main outside its own Javadoc/test references, so PAT-02 patient self-access is unreachable at runtime. Expected fix: route the endpoint through ReleasedReportService (or add equivalent verified-link and self-only checks to ReleaseService.visibleRevisions), drop reception/privacy_auditor from the patient-scoped read policy, and add negative tests for a staff reader requesting another patient's revisions and for a patient reading their own.
@@ -1708,7 +1708,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [x] AUD-20261119-02 · Verify the patient-unit connection when opening a conversation
   - pr: #175
-  - attempts: 2
+  - attempts: 0
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/messaging/conversations, apps/api/src/main/java/com/aurevia/smartclinic/messaging/units
   - details:
     ConversationService.open (ConversationService.java:76-105) accepts patientId, patientSubject, unitKey and connectionId from the JSON body. For a patient caller it only checks subject == patientSubject and repository.patientLinkActive (a patient-to-chart link); connectionId is merely format-validated at line 80 and persisted at line 99 with no check that an active PatientUnitConnection binds this patient to that unit. A verified patient can thus open a thread with any of the five units (clinic/lab/radiology/pt/pharmacy) just by naming the unitKey, violating MSG-01's requirement to validate patient, destination and context on the server at connection time and every protected action and to block arbitrary directory contact. The integration test ConversationFlowTest.java:331-343 even opens with unitKey 'lab' and a fixed 'conn-1' without proving a connection. CareUnitDirectoryService.requireActiveConnection (messaging/units/CareUnitDirectoryService.java:209-220) already implements the needed check but a repo-wide grep shows zero callers in main. Expected fix: call that check on open/reply using server-derived connection and unit identity, reject client-supplied connectionId values not bound to the caller, and add a no-connection/wrong-unit negative test.
@@ -1716,7 +1716,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [x] AUD-20261119-04 · Rename story-ID-named patient-mobile feature packages
   - pr: #169
-  - attempts: 2
+  - attempts: 0
   - scope: apps/patient-mobile/src/features
   - details:
     All 12 directories under apps/patient-mobile/src/features are named s_g3_01 through s_g3_12 (story IDs), for example features/s_g3_02/credentials.ts and features/s_g3_06/attachments.test.tsx. CODING_STYLE.md requires business-domain naming and the earlier refactor already removed Java s_g* packages; this mobile remainder is called out as out of scope in .agent/pr-notes/REFACTOR-PACKAGES.md section 6 but is not a tracked TODO entry. Expected fix: agree an owner-approved domain mapping (appointments, reports, enrollment, units, conversations, attachments, instructions, acknowledgments, service-profiles, governance, flows, evidence), git mv the folders and update imports and tests.
@@ -1724,7 +1724,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [x] AUD-20261120-07 · Inventory every in-memory store and write the persistence decision record
   - pr: #197
-  - attempts: 2
+  - attempts: 0
   - scope: docs/decisions
   - details:
     Problem (verified): production code has many in-memory implementations whose data disappears on restart. Spring beans (`@Repository`): `api/x_02/InMemoryDeliveryStore`, `messaging/service/InMemoryServiceProfileStore`, `messaging/units/InMemoryMessagingStore`, `messaging/flows/InMemoryFlowPolicyStore`, `messaging/governance/InMemoryMessagingGovernanceStore`, `messaging/acknowledgment/InMemoryInstructionFactStore`. Other in-memory classes (check whether anything wires them): `clinical/templates/InMemoryTemplateStore`, `api/authorization/InMemoryDecisionSink` (authorization decisions), `api/x_01/IdempotencyLedger.InMemoryIdempotencyLedger`, `api/x_03/InMemoryDocumentStore`, `messaging/attachments/InMemoryAttachmentStore`, `messaging/enrollment/InMemoryPatientAccessStore`, `messaging/reports/InMemoryReportReleaseStore`, `messaging/instructions/InstructionStore.InMemory`, `therapy/InMemoryTherapyStore`. This task writes ONLY a document; no Java.
@@ -1739,7 +1739,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` must pass for the classes you touched. Synthetic data only; write the failing test first; stay inside the declared scope; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
 - [x] READY-12 · Production-readiness evidence checklist for WEB-01 to WEB-13
   - pr: #201
-  - attempts: 1
+  - attempts: 0
   - scope: docs/operations/production-readiness
   - details:
     Create `docs/operations/production-readiness/README.md` that turns spec section 8.1 into an evidence checklist a person can sign. Documentation only: no code, no workflow changes.
@@ -1752,7 +1752,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` (API tasks) or `bash apps/staff-web/check.sh` (staff web tasks) must pass. Synthetic data only; write the failing test first; stay inside the declared scope; name folders and packages after what they hold, never a task ID; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
 - [x] AUD-20261120-10 · Attachment event history returns every event in the tenant, not the requested file's trail
   - pr: #220
-  - attempts: 1
+  - attempts: 0
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/messaging/attachments, apps/api/src/test/java/com/aurevia/smartclinic/messaging/attachments
   - details:
     AttachmentService.events(actor, id) in apps/api/src/main/java/com/aurevia/smartclinic/messaging/attachments/AttachmentService.java:293 returns store.events(actor.organizationId()).stream().toList() - the entire tenant-wide attachment event log - after checking visibility only for the one file named by id. Its sibling view() at line 273 correctly filters with fileId.equals(fact.attachmentId()). AttachmentEvent.detail (AttachmentContract.java:349-351) carries scanner detail and void/rejection free text, so a caller authorized for one file receives other files' event details across conversations in the same tenant (MSG-07, ARC-07). InMemoryAttachmentStore.events(String organizationId) at line 66 confirms the store query is per-organization, so this is a cross-file/cross-conversation leak within a tenant, not a cross-tenant one. The existing test twoTenantsWithIdenticalLocalIdentifiersStayIsolated in AttachmentAcceptanceTest.java:428-431 only asserts every returned event has the caller's organizationId, so it never catches the missing per-file filter and 100% line coverage still passes. The service currently has no HTTP controller (already tracked as TODO AUD-20261119-03), so the leak is latent until that entry point is wired. Expected fix: filter the store events by attachmentId in events() exactly as view() does, and add a test that creates two attachments in one tenant and asserts events(a.id()) contains only a's events.
@@ -1761,7 +1761,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
 - [x] AUD-20261120-11 · Reserved migration V59 is already used by the DLV-03 repair; READY-35 will collide
   - pr: #218
   - evidence: PR #218; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/AUD-20261120-11.md; simulated review only
-  - attempts: 1
+  - attempts: 0
   - scope: db/migrations
   - details:
     db/migrations/V59__rx02_ambiguous_transition.sql already exists (added by the DLV-03 repair; its header is 'Change: expand' and .agent/pr-notes/DLV-03.md records V59 as consumed). However TODO.md line 817 says the persistence tasks reserve V59 to V66, and READY-35 (lines 821-830) reserves V59 and tells the worker to create db/migrations/V59__service_profiles.sql. When that worker runs, Flyway will see two migrations with version 59 and scripts/check-migrations.py will fail with 'duplicate migration version V59', so the first persistence story cannot go green until the tracker is corrected. Expected fix by the tracker owner: reassign READY-35..READY-42 to unused versions (for example V60..V67) and update each reserved: field, the 'V59 to V66' sentence, the V59__service_profiles.sql path in READY-35, and the proposed V59..V64 mapping in docs/decisions/0003-persistence-of-in-memory-stores.md before dispatching READY-35.
@@ -1769,7 +1769,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
 - [x] AUD-20261120-12 · Patients cannot read instruction content: the only instruction reads deny the patient role
   - pr: #219
-  - attempts: 1
+  - attempts: 0
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/messaging/instructions, apps/api/src/test/java/com/aurevia/smartclinic/messaging/instructions
   - details:
     GET /api/v1/patient-instructions (InstructionController.java:120-123, listForPatient) and GET /api/v1/patient-instructions/{threadId} (line 109) both go through InstructionService.execute with action InstructionActions.READ. InstructionActions.java:40-41 grants READ only to staffSender roles plus tenant_admin and privacy_auditor; 'patient' is not in that set, so a verified patient gets 403 on every instruction-content read, even though the endpoint Javadoc says 'visible to a verified patient' and MSG-04/MSG-05/PAT-02 require patients to receive and acknowledge instructions. The only patient-reachable instruction route, /api/v1/instructions/{id}/facts served by InstructionFactService.facts, returns dispatch/view/acknowledgment fact metadata but never the instruction title or body. Every other messaging action matrix in main (ConversationActions, ServiceProfileActions, MessagingActions, InstructionFactActions) explicitly grants the patient role; this one does not. Also, listForPatient takes any patientId from the query string and filters by staffAssignedToUnit after authorization, so simply adding the role would still return nothing for a patient. Expected fix: add a patient-authorized read branch that binds the caller to the chart link/connection (for example allow READ for 'patient' and resolve patientId from the authenticated subject rather than the request parameter), keep the staff branch, and add negative and positive tests for patient self-read and wrong-patient denial.
@@ -1778,7 +1778,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
 - [x] AUD-20261120-13 · Document link accepts order or result subjects without verifying they exist
   - pr: #222
   - evidence: PR #222; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/AUD-20261120-13.md; simulated review only
-  - attempts: 1
+  - attempts: 0
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/documents, apps/api/src/test/java/com/aurevia/smartclinic/documents
   - details:
     DocumentService.link in apps/api/src/main/java/com/aurevia/smartclinic/documents/DocumentService.java:75-112 validates subjectType as chart/order/result (DocumentInputs.java:62-66) but only checks target existence for CHART: 'if (CHART.equals(subjectType) && !repository.chartExists(subjectId))' at line 91. DocumentRepository.java:74 exposes only chartExists, so there is no existence check for the order and result cases. An authorized caller can therefore create an original-document association bound to a non-existent order or result identifier, leaving orphan clinical artifacts that violate ARC-01's tenant-owned key model and CLN-07's 'link original PDFs and images to chart, order or result'. Expected fix: add RLS-bounded SELECT EXISTS checks for order and result targets (or a single subjectExists method covering all three types) and return 404 when absent, with a test per subject type asserting the rejection.
@@ -1787,7 +1787,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
 - [x] AUD-20261120-14 · Wire the generated command authorization gate into production write paths
   - pr: #229
   - evidence: PR #229; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/AUD-20261120-14.md; simulated review only
-  - attempts: 1
+  - attempts: 0
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/api/authorization, contracts/openapi
   - details:
     The X-04 server-side authorization control is inert in production. CommandAuthorization plus its 24-command CommandCatalog, generated OpenAPI contract and generated TypeScript client are never invoked by a request: `grep -rln CommandAuthorization apps/api/src/main/java` returns only CommandAuthorization.java and InMemoryDecisionSink.java; `new CommandAuthorization(` appears only at CommandAuthorization.java:359 inside the test-only factory `synthetic(...)`; `contracts/openapi/generated/client.ts` is imported by no source under apps/staff-web/src or apps/patient-mobile/src. contracts/openapi/README.md itself records that wiring the gate and a POST-mapping-to-catalog parity test are unowned follow-on work, and TODO has no entry for it (READY-41 only adds a durable DecisionSink). The documented IAM-01/PRD-06/ARC-03/ARC-04/OPS-02 gate and its decision ledger therefore never run; each controller relies solely on its own policy and no command yields an authorization decision. Expected fix: provide CommandAuthorization as a Spring bean with the durable sink from READY-41, call it from each owning write endpoint for the 24 catalog commands, and add a build-failing parity test that fails CI when a catalog command has no production caller.
@@ -1796,7 +1796,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
 - [x] AUD-20261120-15 · Remove the duplicate legacy chart slice and its unhardened write path
   - pr: #225
   - evidence: PR #225; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/AUD-20261120-15.md; simulated review only
-  - attempts: 2
+  - attempts: 0
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/chart, apps/api/src/main/java/com/aurevia/smartclinic/patient/chart
   - details:
     Two complete 11-class chart implementations coexist: chart/record (delivered by S-G1-03) and patient/chart, whose own comment at chart/record/ChartController.java:23 calls it 'a legacy chart slice'. Both expose live HTTP routes and write the same public.chart_entry table: POST /api/v1/chart/records/entries vs /api/v1/chart/entries, and GET .../patients/{patientId}/entries on each prefix. They have diverged in clinical-safety hardening. chart/record/ChartService.java:292-297 bounds free text before audit/catalog keys and normalizes blank reasons; chart/record/ChartRepository.java:178 sets `clinical_author = COALESCE(clinical_author, :actor)` on verification so a recorder-open entry gains an accountable clinical author. The patient/chart equivalents have neither: its ChartRepository.verify leaves clinical_author null and its ChartService has no requireBounded/normalizedReason. A record verified through the legacy route therefore violates CLN-03's separate clinical author and can hit DB CHECK failures on oversized text, with 100% coverage still passing because both slices are tested independently. Expected fix: keep one contract, delete or deprecate the legacy package and routes, consolidate the hardening, and add an integration test that verifies a null-clinical-author entry through the surviving public route.
@@ -1805,7 +1805,7 @@ Every entry below is finished and verified. Do not take them again; they stay he
 - [x] AUD-20261120-16 · Verify order and result subjects in document render and rendered-version reads
   - pr: #224
   - evidence: PR #224; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/AUD-20261120-16.md; simulated review only
-  - attempts: 1
+  - attempts: 0
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/documents, db/migrations
   - details:
     AUD-20261120-13 added RLS-bounded subjectExists checks to DocumentService.link, but the sibling paths are still unguarded. DocumentService.java:235 (render) repeats `if (CHART.equals(subjectType) && !repository.chartExists(subjectId))`, and renderedVersions at line 356 has no existence check at all, although both accept subjectType chart/order/result (DocumentInputs.java:62-66). V17__document_associations.sql:84-107 stores rendered_document.subject_id as a bare uuid with no FK to an order or result table. A clinician can therefore create an immutable rendered PDF bound to a non-existent order/result UUID when sourceAssociationId is omitted, or list renders for a bogus subject, producing exactly the orphan artifact link now rejects (ARC-01, CLN-07, XCH-01/XCH-04). Expected fix: call the existing subjectExists in render and renderedVersions, return 404 for a missing order/result target, and add a test per subject type asserting rejection without lowering any coverage threshold.
