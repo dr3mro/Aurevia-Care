@@ -559,7 +559,7 @@ Main's Delivery run is red; these tasks restore it. They share `apps/api`, so th
 
 - [-] DLV-02 · Repair integration tests: patient identity, consolidation and messaging
   - agent: swarm-1
-  - attempts: 1
+  - attempts: 2
   - requirements: IAM-03, IAM-04, IAM-05, MSG-07
   - depends: DLV-01
   - scope: apps/api, db
@@ -586,7 +586,7 @@ Main's Delivery run is red; these tasks restore it. They share `apps/api`, so th
 
 - [-] FIX-IMAGES-01 · Prepared-image readiness must not depend on workflow run history
   - agent: swarm-2
-  - attempts: 1
+  - attempts: 2
   - requirements: OPS-06
   - scope: .github/workflows, scripts
   - details:
