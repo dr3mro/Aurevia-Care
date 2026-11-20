@@ -20,8 +20,7 @@ import com.aurevia.smartclinic.api.IfMatch;
  * {@link com.aurevia.smartclinic.chart.record.ChartService}; this adapter only
  * parses the {@code If-Match} precondition and shapes responses.</p>
  */
-/* Explicit bean name and REST path: a legacy chart slice shares the default names. */
-@RestController("chartRecordController")
+@RestController
 @RequestMapping("/api/v1/chart/records")
 public class ChartController {
 

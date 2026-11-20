@@ -26,8 +26,7 @@ import com.aurevia.smartclinic.tenant.TenantContext;
  * roles are re-derived inside it, denials are audited before they are thrown,
  * and the outcome plus its audit event commit together.</p>
  */
-/* Explicit bean name: a legacy chart slice shares the default "chartService" name. */
-@Service("chartRecordService")
+@Service
 public class ChartService {
 
     private static final String SCOPE = "CHART";
