@@ -874,7 +874,7 @@ class WorkflowTests(unittest.TestCase):
             calls |= set(re.findall(r"swarm\.py ([a-z-]+)", path.read_text()))
         self.assertTrue({"plan-workers", "publish", "budget-gate", "integrate-batch",
                          "plan-integration", "slot-config", "slot-matrix",
-                         "ensure-labels"} <= calls)
+                         "images-ready", "ensure-labels"} <= calls)
         for command in calls:
             done = subprocess.run(["python3", "-I", str(ROOT / "scripts/swarm.py"), command, "--help"],
                                   capture_output=True, text=True)
@@ -1590,6 +1590,164 @@ class TwoTierTests(unittest.TestCase):
         self.assertTrue((ROOT / "docs/swarm/EFFICIENCY.md").exists())
         self.assertTrue((ROOT / "scripts/quick-check.sh").exists())
         self.assertFalse((ROOT / ".github/workflows/heavy-check.yml").exists())
+
+
+class ImageReadinessTests(unittest.TestCase):
+    """Prepared-image readiness must not depend on how much run history Actions keeps.
+
+    Empty history (cleaned, expired or deleted runs) used to make `ready` false
+    forever, skipping every wave even though the slot images existed in GHCR.
+    """
+
+    def rec(self, status, conclusion=None):
+        return {"status": status, "conclusion": conclusion}
+
+    def test_no_runs_and_images_present_is_ready(self):
+        ready, reason, dispatch = swarm.images_ready([], True)
+        self.assertTrue(ready)
+        self.assertFalse(dispatch)
+        self.assertIn("present", reason)
+
+    def test_no_runs_and_images_missing_blocks_and_dispatches(self):
+        ready, reason, dispatch = swarm.images_ready([], False)
+        self.assertFalse(ready)
+        self.assertTrue(dispatch)
+        self.assertIn("missing", reason)
+
+    def test_build_in_progress_blocks_without_dispatch(self):
+        for status in ("in_progress", "queued", "waiting", "pending", "requested"):
+            with self.subTest(status=status):
+                ready, _, dispatch = swarm.images_ready([self.rec(status)], True)
+                self.assertFalse(ready)
+                self.assertFalse(dispatch)
+
+    def test_pending_build_blocks_even_after_a_prior_success(self):
+        runs = [self.rec("in_progress"), self.rec("completed", "success")]
+        self.assertFalse(swarm.images_ready(runs, True)[0])
+
+    def test_latest_completed_failure_blocks(self):
+        runs = [self.rec("completed", "failure"), self.rec("completed", "success")]
+        ready, reason, dispatch = swarm.images_ready(runs, True)
+        self.assertFalse(ready)
+        self.assertFalse(dispatch)
+        self.assertIn("did not succeed", reason)
+
+    def test_failed_build_blocks_without_dispatch_even_without_images(self):
+        # A genuinely failed build is not the empty-history case: block it and
+        # let a person fix it instead of churning a new build every hour.
+        ready, _, dispatch = swarm.images_ready([self.rec("completed", "failure")], False)
+        self.assertFalse(ready)
+        self.assertFalse(dispatch)
+
+    def test_latest_completed_success_is_ready_without_a_manifest_check(self):
+        # A freshly built image is trusted; the registry scan is only the fallback
+        # for empty history. Newest-first order is established by the caller.
+        ready, _, dispatch = swarm.images_ready([self.rec("completed", "success")], False)
+        self.assertTrue(ready)
+        self.assertFalse(dispatch)
+
+    def test_inconclusive_conclusions_fall_back_to_the_registry(self):
+        # A cancelled/skipped build says nothing about image freshness. It must
+        # not stall every wave the way an empty run list used to.
+        for conclusion in ("cancelled", "skipped", "stale", None):
+            with self.subTest(conclusion=conclusion, images=True):
+                self.assertTrue(swarm.images_ready([self.rec("completed", conclusion)], True)[0])
+            with self.subTest(conclusion=conclusion, images=False):
+                ready, _, dispatch = swarm.images_ready([self.rec("completed", conclusion)], False)
+                self.assertFalse(ready)
+                self.assertTrue(dispatch)
+
+    def test_image_runs_merges_both_workflows_newest_first(self):
+        older = {"status": "completed", "conclusion": "success", "createdAt": "2026-11-19T10:00:00Z"}
+        newer = {"status": "in_progress", "conclusion": None, "createdAt": "2026-11-20T10:00:00Z"}
+        with mock.patch.object(swarm, "gh_json", side_effect=[[older], [newer]]) as listed:
+            runs = swarm.image_runs()
+        self.assertEqual(runs, [newer, older])
+        self.assertEqual(listed.call_count, 2)
+        self.assertIn("agent-image.yml", listed.call_args_list[0].args)
+        self.assertIn("swarm-images.yml", listed.call_args_list[1].args)
+        self.assertIn("--limit", listed.call_args_list[0].args)
+
+    def test_image_runs_with_no_history_is_empty(self):
+        with mock.patch.object(swarm, "gh_json", side_effect=[[], []]):
+            self.assertEqual(swarm.image_runs(), [])
+
+    def test_image_runs_drops_malformed_records(self):
+        good = {"status": "completed", "conclusion": "success", "createdAt": "2026-11-20T10:00:00Z"}
+        with mock.patch.object(swarm, "gh_json", side_effect=[[good, None, "junk"], []]):
+            self.assertEqual(swarm.image_runs(), [good])
+
+    def gh_with_answers(self, answers):
+        class Gh:
+            def __init__(self):
+                self.calls, self.queue = [], list(answers)
+
+            def __call__(self, *args, check=True):
+                self.calls.append(args)
+                return self.queue.pop(0) if self.queue else "false"
+        return Gh()
+
+    def test_manifest_check_covers_every_slot(self):
+        slots = [{"slot": 1}, {"slot": 2}, {"slot": 3}]
+        fake = self.gh_with_answers(["true", "true", "true"])
+        with mock.patch.object(swarm, "gh", fake), \
+                mock.patch.object(swarm, "repo_slug", lambda: "Owner/Repo"):
+            self.assertTrue(swarm.slot_manifests_exist(slots))
+        self.assertEqual(len(fake.calls), 3)
+        for call, slot in zip(fake.calls, slots):
+            self.assertIn("packages/container", call[1])
+            self.assertIn(f"repo-agent-{slot['slot']}", call[1].lower())
+        # Lock the full endpoint and the tag check: a wrong owner, package or
+        # `index(...) == null` would pass a substring check but miss every image.
+        self.assertEqual(fake.calls[0][:4], (
+            "api", "repos/Owner/Repo/packages/container/repo-agent-1/versions",
+            "--jq", '[.[].metadata.container.tags[]?] | index("latest") != null'))
+
+    def test_manifest_check_fails_when_one_slot_is_missing(self):
+        fake = self.gh_with_answers(["true", "false"])
+        with mock.patch.object(swarm, "gh", fake), \
+                mock.patch.object(swarm, "repo_slug", lambda: "o/r"):
+            self.assertFalse(swarm.slot_manifests_exist([{"slot": 1}, {"slot": 2}]))
+
+    def test_manifest_check_fails_without_a_repo_slug(self):
+        with mock.patch.object(swarm, "repo_slug", lambda: ""):
+            self.assertFalse(swarm.slot_manifests_exist([{"slot": 1}]))
+
+    def cli(self, manifests):
+        fake = FakeGh()
+        with mock.patch.object(swarm, "gh_json", side_effect=[[], []]), \
+                mock.patch.object(swarm, "slot_manifests_exist", return_value=manifests), \
+                mock.patch.object(swarm, "load_slots", return_value=[{"slot": 1}]), \
+                mock.patch.object(swarm, "gh", fake), \
+                mock.patch.object(swarm, "emit") as emitted:
+            result = swarm.images_ready_command(slots=None)
+        return result, fake, emitted
+
+    def test_cli_dispatches_and_emits_when_images_are_missing(self):
+        (ready, _, dispatch), fake, emitted = self.cli(False)
+        self.assertFalse(ready)
+        self.assertTrue(dispatch)
+        self.assertTrue(fake.said("workflow", "run", "agent-image.yml"))
+        emitted.assert_any_call("ready", "false")
+        emitted.assert_any_call("dispatch", "true")
+
+    def test_cli_starts_the_wave_when_history_is_empty_but_images_exist(self):
+        (ready, _, dispatch), fake, emitted = self.cli(True)
+        self.assertTrue(ready)
+        self.assertFalse(dispatch)
+        self.assertFalse(fake.said("workflow", "run", "agent-image.yml"))
+        emitted.assert_any_call("ready", "true")
+
+    def test_workflow_delegates_the_decision_to_python(self):
+        text = (ROOT / ".github/workflows/swarm.yml").read_text()
+        self.assertIn("swarm.py images-ready", text)
+        self.assertNotIn("gh run list --workflow", text)
+        plan = text.split("  plan:\n", 1)[1].split("  worker:\n", 1)[0]
+        perms = plan.split("    permissions:\n", 1)[1].split("    outputs:\n", 1)[0]
+        # Manifest checks need packages: read; dispatching a build needs
+        # actions: write. Both belong to the plan job, not just the workers.
+        self.assertIn("packages: read", perms)
+        self.assertIn("actions: write", perms)
 
 
 if __name__ == "__main__":
