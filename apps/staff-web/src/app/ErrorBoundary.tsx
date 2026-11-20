@@ -1,9 +1,5 @@
-// React 18 has no hook that catches render errors in descendant components, so
-// an error boundary is the one unavoidable class component. The frontend policy
-// bans ordinary class components; importing the base under an intent-revealing
-// alias keeps that ban in force everywhere else while naming this exception.
-import { Component as RenderErrorBoundaryBase } from 'react';
 import type { ReactNode } from 'react';
+import { ErrorBoundary as LibraryErrorBoundary } from 'react-error-boundary';
 import { ErrorState } from '../components/StateViews';
 
 /** Props for the application-wide render-error boundary. */
@@ -11,41 +7,62 @@ export interface ErrorBoundaryProps {
   children: ReactNode;
 }
 
-/** State carried after a render failure: an opaque ID and the failed flag. */
-export interface ErrorBoundaryState {
+/** One anonymised failure: an opaque ID and the thrown value's type name. */
+interface FailureRecord {
   correlationId: string;
-  failed: boolean;
+  errorName: string;
+}
+
+/**
+ * React discards in-progress hook state when a descendant throws and replays
+ * the render, so a ref inside the wrapper cannot hold the ID. There is exactly
+ * one global boundary and at most one active failure below it, so a single
+ * module-level record is sufficient and keeps one ID and one log line per
+ * failure across that replay.
+ */
+let activeFailure: FailureRecord | null = null;
+
+/** Return the active record, creating and logging it once on first sight. */
+function recordFor(error: unknown): FailureRecord {
+  if (activeFailure === null) {
+    activeFailure = {
+      correlationId: crypto.randomUUID(),
+      errorName: error instanceof Error ? error.name : 'Error',
+    };
+    // Only the opaque ID and the type name: props, state and error text may
+    // hold clinical data and are never logged (WEB-06, WEB-09).
+    console.error(`${activeFailure.correlationId} ${activeFailure.errorName}`);
+  }
+  return activeFailure;
+}
+
+/** Clear the active failure after recovery or an explicit boundary reset. */
+export function clearRenderFailure(): void {
+  activeFailure = null;
 }
 
 /**
  * Catches render errors anywhere below it and presents a safe error state.
- * Only the generated correlation ID and the error's class name are logged;
- * component props, state and error text can contain clinical data and are
- * deliberately never passed to `console.error` (WEB-06, WEB-09).
+ * The reviewed `react-error-boundary` dependency owns the class-based catcher;
+ * this module is a function component, as the frontend policy requires.
  */
-export class ErrorBoundary
-  extends RenderErrorBoundaryBase<ErrorBoundaryProps, ErrorBoundaryState> {
-  override state: ErrorBoundaryState = { correlationId: '', failed: false };
-
-  /** Generate the correlation ID before the failing tree is replaced. */
-  static getDerivedStateFromError(): ErrorBoundaryState {
-    return { correlationId: crypto.randomUUID(), failed: true };
-  }
-
-  /** Log a single, content-free line for the captured failure. */
-  override componentDidCatch(error: Error): void {
-    console.error(`${this.state.correlationId} ${error.name}`);
-  }
-
-  /** Clear the failure state so an explicit Retry remounts the healthy tree. */
-  private readonly retry = (): void => {
-    this.setState({ correlationId: '', failed: false });
-  };
-
-  override render(): ReactNode {
-    if (this.state.failed) {
-      return <ErrorState correlationId={this.state.correlationId} onRetry={this.retry} />;
-    }
-    return this.props.children;
-  }
+export function ErrorBoundary({ children }: ErrorBoundaryProps): ReactNode {
+  return (
+    <LibraryErrorBoundary
+      fallbackRender={({ error, resetErrorBoundary }) => {
+        const failure = recordFor(error);
+        return (
+          <ErrorState
+            correlationId={failure.correlationId}
+            onRetry={() => {
+              clearRenderFailure();
+              resetErrorBoundary();
+            }}
+          />
+        );
+      }}
+    >
+      {children}
+    </LibraryErrorBoundary>
+  );
 }
