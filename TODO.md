@@ -148,7 +148,7 @@ Cadence and limits:
 
 - [-] AUD-20261119-03 · Expose required workflows through HTTP entry points instead of orphan services
   - agent: swarm-1
-  - attempts: 2
+  - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/messaging, apps/api/src/main/java/com/aurevia/smartclinic/therapy, apps/api/src/main/java/com/aurevia/smartclinic/radiology
   - details:
     Several services implementing requirements marked [x] in TODO.md have no caller anywhere in apps/api/src/main/java (grep for each class name outside its own file returns zero): AttachmentService (MSG-03 upload/quarantine/scan/publish/download), PatientAppointmentService (PAT-01), ReleasedReportService (PAT-02), G3EvidenceService, plus TherapyService (PT-01) and ImagingService (RAD-01). No controller contains a multipart/@RequestPart upload endpoint, so patient document upload and mediated retrieval cannot occur at runtime; the patient app exercises these flows only with local fixtures. JaCoCo 100% is satisfied by unit tests of these classes, so the gate does not detect that no entry point exists. Expected fix: wire thin controllers (or otherwise expose each deliverable command through a real entry point) and add an HTTP-level test per workflow, or honestly mark the corresponding TODO entries pending instead of done.
@@ -159,7 +159,7 @@ Cadence and limits:
 
 - [-] AUD-20261120-01 · Return HTTP 201 from patient registration and catalog entry creation, as the contract says
   - agent: swarm-2
-  - attempts: 2
+  - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/web
   - depends: DLV-04
   - details:
@@ -243,7 +243,7 @@ Cadence and limits:
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` must pass for the classes you touched. Synthetic data only; write the failing test first; stay inside the declared scope; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
 - [-] AUD-20261120-05 · Rename the story-ID folders under infra/ and docs/operations/ to business names
   - agent: swarm-3
-  - attempts: 2
+  - attempts: 3
   - scope: infra, docs/operations
   - depends: REFACTOR-PACKAGES-02
   - details:
@@ -268,7 +268,7 @@ Cadence and limits:
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` must pass for the classes you touched. Synthetic data only; write the failing test first; stay inside the declared scope; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
 - [-] AUD-20261120-06 · Replace the in-memory delivery outbox store with a PostgreSQL-backed store
   - agent: swarm-4
-  - attempts: 2
+  - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/events, apps/api/src/test/java/com/aurevia/smartclinic/events, apps/api/src/test/java/com/aurevia/smartclinic/it
   - depends: REFACTOR-PACKAGES-02
   - details:
@@ -397,7 +397,7 @@ Found while extending the specification (section 8.1 and docs/design/screens-and
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` (API tasks) or `bash apps/staff-web/check.sh` (staff web tasks) must pass. Synthetic data only; write the failing test first; stay inside the declared scope; name folders and packages after what they hold, never a task ID; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
 - [-] READY-07 · Staff web state views and a global error boundary (WEB-09)
   - agent: swarm-5
-  - attempts: 2
+  - attempts: 3
   - scope: apps/staff-web/src/components, apps/staff-web/src/app, apps/staff-web/src/features
   - depends: READY-06
   - details:
@@ -475,7 +475,7 @@ Order of work for the whole production-readiness effort: (1) security and platfo
 
 - [-] READY-13 · List appointments by date range (GET /api/v1/appointments)
   - agent: swarm-6
-  - attempts: 2
+  - attempts: 3
   - requirements: ARC-03
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/scheduling, apps/api/src/test/java/com/aurevia/smartclinic/scheduling, contracts/openapi
   - depends: DLV-04
@@ -795,7 +795,7 @@ Order of work for the whole production-readiness effort: (1) security and platfo
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
 - [-] READY-34 · Patient app: four-tab navigation (Appointments, Reports, Messages, Account)
   - agent: swarm-7
-  - attempts: 2
+  - attempts: 3
   - requirements: PAT-01, PAT-02, PAT-03, UX-01
   - scope: apps/patient-mobile/src/app, apps/patient-mobile/App.tsx
   - depends: READY-33
@@ -1012,7 +1012,7 @@ Do these after part 2 where `depends` says so. Persistence tasks run one at a ti
 
 - [-] READY-47 · Patient app API transport and secure token storage (no login screen yet)
   - agent: swarm-8
-  - attempts: 2
+  - attempts: 3
   - requirements: PAT-01, ARC-03
   - scope: apps/patient-mobile/src/api, apps/patient-mobile/tests/api
   - depends: READY-33
