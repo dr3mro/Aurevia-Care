@@ -5,6 +5,7 @@
  * supported languages, the registered root component must be the application,
  * and the Expo entry point must register exactly that component.
  */
+import { jest } from '@jest/globals';
 import { render } from '@testing-library/react-native';
 import { registerRootComponent } from 'expo';
 
