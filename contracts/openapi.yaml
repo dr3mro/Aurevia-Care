@@ -26,6 +26,23 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { description: Not found or inaccessible; existence is concealed }
   /api/v1/facilities:
+    get:
+      operationId: listFacilities
+      summary: List facilities in the active organization with cursor pagination
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - { name: cursor, in: query, required: false, description: Opaque code:id cursor for the next page, schema: { type: string } }
+        - { name: limit, in: query, required: false, description: Page size 1-200, default 50, schema: { type: integer, minimum: 1, maximum: 200 } }
+      responses:
+        '200':
+          description: One page of facilities ordered by code ascending
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FacilityPage' }
+        '401': { description: Authentication required }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { description: Invalid cursor, limit or tenant selection }
     post:
       operationId: createFacility
       summary: Create a facility in the active organization
@@ -366,6 +383,13 @@ components:
         organizationId: { type: string, format: uuid }
         code: { type: string }
         name: { type: string }
+    FacilityPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Facility' }
+        nextCursor: { type: string, nullable: true }
     InviteStaff:
       type: object
       required: [subject, displayName, role]

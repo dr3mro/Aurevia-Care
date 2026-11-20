@@ -8,9 +8,11 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.aurevia.smartclinic.tenancy.Facility;
+import com.aurevia.smartclinic.tenancy.FacilityPage;
 import com.aurevia.smartclinic.tenancy.FacilityService;
 
 /**
@@ -43,6 +45,20 @@ public class FacilityController {
     @GetMapping("/{code}")
     public Facility get(@PathVariable String code) {
         return service.get(code);
+    }
+
+    /**
+     * List facilities in the active organization with cursor pagination.
+     *
+     * @param cursor opaque cursor of the previous page's last row
+     * @param limit  page size, default 50 and at most 200
+     * @return one page of facilities
+     */
+    @GetMapping
+    public FacilityPage list(
+            @RequestParam(required = false) String cursor,
+            @RequestParam(required = false) String limit) {
+        return service.list(cursor, limit);
     }
 
     /**
