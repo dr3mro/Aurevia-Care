@@ -601,6 +601,34 @@ def repair_task(run_id):
             "title": f"Repair main: {run['name']} failed", "body": clip(body), "fix": ""}
 
 
+MAX_ACTIVE_WORKERS = 20  # workers running at once across every wave
+
+
+def active_workers():
+    """Worker jobs running or queued in any Agent swarm run right now.
+
+    Waves may overlap, so a new wave may only use what is left of the
+    combined cap. Returns 0 when the API call fails (the per-wave cap and
+    the budget gate still apply)."""
+    runs = gh("run", "list", "--workflow", "swarm.yml", "--limit", "30",
+              "--json", "databaseId,status", "-q",
+              '.[] | select(.status != "completed") | .databaseId', check=False)
+    total = 0
+    for run_id in runs.split():
+        out = gh("api", f"repos/{repo_slug()}/actions/runs/{run_id}/jobs?per_page=100", "--paginate",
+                 "--jq", '.jobs[] | select(.status != "completed") | .name', check=False)
+        total += sum(1 for name in out.splitlines() if name.startswith("Swarm worker /"))
+    return total
+
+
+def rotate_slots(slots, busy):
+    """Start after the slots already in use so overlapping waves spread over accounts."""
+    if not slots:
+        return slots
+    start = busy % len(slots)
+    return slots[start:] + slots[:start]
+
+
 WORKER_MINUTES = 190  # one worker: 175 min of agent work, merge, bundle and publish
 
 
@@ -977,7 +1005,11 @@ def main(argv=None):
         everything = gh_json("pr", "list", "--state", "all", "--label", "swarm", "--limit", "200",
                              "--json", "number,headRefName,state,labels") or []
         text = reclaim(Path(a.file).read_text(), everything)
-        include = plan_workers(a.max, load_slots(a.slots), text, prs, repair)
+        busy = active_workers()
+        room = max(0, MAX_ACTIVE_WORKERS - busy)
+        print(f"{busy} worker(s) already running; room for {room} of {MAX_ACTIVE_WORKERS}.")
+        include = plan_workers(min(a.max, room), rotate_slots(load_slots(a.slots), busy),
+                               text, prs, repair)
         claims = {t["id"]: f"swarm-{t['slot']}" for t in include if t["kind"] == "story"}
 
         def mark(current):
