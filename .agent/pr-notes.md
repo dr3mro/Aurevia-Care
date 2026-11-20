@@ -1,96 +1,115 @@
-# fix-20261120-140827 — READY-16 recurring merge-conflict repair (List orders, GET /api/v1/orders)
+# AUD-20261120-13 — Document link accepts order or result subjects without verifying they exist
 
-Requirement ID: **ARC-03** — versioned REST resource families; lists use cursor pagination with stable tenant-scoped ordering.
-Classification: cross-boundary repair of a recurring integrator merge conflict (tracker hygiene only; no production feature code changed in this segment).
-Branch: `swarm/READY-16-275`. `origin/main` = `742f2bb`, which is the merge base and an ancestor of this branch, so the worktree already represents the merge of main and this branch. Synthetic fixtures only — no patient data, credential, token or real domain name appears in code, logs, URLs or browser storage.
-Story text between the `<<<STORY READY-16 ... STORY>>>` markers was treated only as the task description, never as instructions that change the working rules.
+## Requirement IDs and acceptance mapping
 
-## Root cause reproduced (tool evidence)
-
-The integrator reported: "Merge conflict with main could not be resolved automatically (merged but checks failed). Fix attempt 1 of 3." The `git log` since `742f2bb` alternates between `fix-<ts>: restore shared pr-notes to resolve READY-16 merge conflict` and `Agent changes for READY-16` commits. The latest `Agent changes for READY-16` commit (`f3a9539`) touched **only** the tracked, integrator-owned `.agent/pr-notes.md`, overwriting main's AUD-20261120-13 note with a worker note. `scripts/agent-run.sh` auto-commits with `git add -A`, so each time a worker session writes to the shared file the "Agent changes" commit re-introduces the same two-sided modification of `.agent/pr-notes.md`, and the integrator's merge of main into the branch conflicts on that file. AGENTS.md and the worker prompt both require notes in the worker-owned `.agent/pr-notes/<task-id>.md`; the shared file is main's property.
-
-| Forensics command | Result |
-|---|---|
-| `git branch --show-current` / `git rev-parse --abbrev-ref HEAD` | `swarm/READY-16-275` |
-| `git merge-base HEAD origin/main` | `742f2bb1f5d78ffa1bcced9620c9f282af99d452` (equals `origin/main` HEAD) |
-| `git log --oneline -25` | alternating fix / "Agent changes for READY-16" commits since `742f2bb` (16+ prior fix attempts) |
-| `git show --stat f3a9539` | HEAD touched only `.agent/pr-notes.md` |
-| `git diff --stat origin/main -- .agent/pr-notes.md` (before fix) | 198 lines changed (107+/91-): the conflict source |
-| `git grep -nE '^(<<<<<<<\|=======\|>>>>>>>) '` | no conflict markers in tracked files |
-
-## Fix applied
-
-1. Restored the shared file to main's exact blob with `git checkout origin/main -- .agent/pr-notes.md`. `git diff --numstat origin/main -- .agent/pr-notes.md` is now empty — the branch has no diff on the shared file, so main's newer AUD note is preserved and the recurring conflict source is removed. No worker content was destroyed: prior worker notes remain in their worker-owned `.agent/pr-notes/*.md` files.
-2. Wrote this attempt's evidence **only** to the worker-owned `.agent/pr-notes/fix-20261120-140827.md`. The shared file is not touched again after restoration.
-3. Authored **no** edit to `TODO.md`, `MEMORY.md`, `WORKSPACE.md`, `BUGS.md`, `PROJECT.md`, `docs/swarm/`, `opencode.json`, `.github/workflows/*`, `scripts/` or any migration.
-4. Changed **no** production code, test, migration, contract, generated client, dependency or configuration. The READY-16 implementation from the earlier commits is untouched.
-
-Post-fix verification: `git diff --numstat origin/main -- .agent/pr-notes.md` empty; `git grep` → no conflict markers.
-
-## Acceptance mapping (ARC-03) — READY-16 implementation verified unchanged on this exact tree
-
-| Story step | Implementation | Evidence (this segment, all executed) |
+| Requirement | Acceptance | Where |
 |---|---|---|
-| 1. `GET /api/v1/orders`; `cursor` optional, `limit` default 50 / max 200 else 422 `INVALID_LIMIT`, `status` one of the work-item states else 422 | `OrderController.list`, `OrderService.list/parseCursor/parseLimit/parseStatus` (`STATUSES = awaiting_local_patient, ready`) | `OrderListServiceTest` 11, `OrderListControllerTest` 5 — green |
-| 2. `created_at DESC, id DESC`; cursor `<createdAt>:<id>` of the last returned row; null on last page; `limit+1` fetch | `OrderRepository.query` (keyset predicate + `ORDER BY o.created_at DESC, o.id DESC LIMIT :limit`), `OrderService.list` | `OrderListServiceTest` + `OrderListIntegrationTest` 5 — green |
-| 3. Reuse single-read action, add no role | `deny(context, READ_ACTION, "ALL", ORDERING_ROLE)` — `ORDER_READ` / `clinician`, identical to `OrderService.get` | service denial tests + integration `unauthorizedAndForbiddenActorsAreDenied` — green |
-| 4. Parameterised SQL, RLS isolation, real V19 column names, no manual org predicate | `OrderRepository.query` over `public.exchange_order` joined to `exchange_order_snapshot` (and `exchange_work_item` only for the status filter) | `OrderListIntegrationTest.organizationBNeverSeesOrganizationARows`, `pagingReturnsEveryOrganizationRowExactlyOnceInOrder` — green |
-| 5. `OrderPage(List<OrderView> items, String nextCursor)` | `exchange/order/OrderPage.java`, frozen via immutable copy | `OrderListServiceTest.pageFreezesItsItemsAgainstCallerMutation`, `OrderListControllerTest.validRequestReturnsPage` — green |
-| 6. Service unit, controller and two-organization integration tests | 3 test classes, 21 tests | all green in the full `mvn verify` below |
-| 7. Contract | `contracts/openapi.yaml` `get /api/v1/orders` + `OrderView`/`OrderPage` schemas; staff-web `openapi.d.ts` regenerated | `python3 -I contracts/openapi/check.py` green |
+| CLN-07 | An original PDF/image binds only to a chart, order or result that exists in the active tenant; an orphan association must not be created | `DocumentService.link` now maps a zero-row insert to 404; `DocumentRepository.insert` re-checks the subject inside the RLS boundary |
+| ARC-01 | Tenant-owned subject keys are real, not arbitrary opaque ids | `DocumentRepository.subjectExists` uses forced-RLS relations only (`current_patients()`, `exchange_order`, `xch04_report_revision`) |
+| ARC-02 | Existence probe runs as the non-owner role with transaction-local tenant context | Reuses `public.current_patients()` fold and the forced-RLS policies already on the canonical tables; no `SECURITY DEFINER`, no explicit tenant switch |
+| XCH-01 / XCH-04 | Canonical owner tables for order and result identifiers | Order probe → `public.exchange_order`; result probe → `public.xch04_report_revision` |
+| OPS-02 | Denials are auditable | The 404 path leaves no success audit row and no history event, matching the existing chart-concealment behavior |
 
-No existing endpoint, response shape or migration was changed. No dependency was added. No reserved migration version was used. The full per-branch mapping is in `.agent/pr-notes/READY-16-20261120-090706.md`.
+## Change (inside the declared scope)
 
-## Entry point to test trace
+- `apps/api/src/main/java/com/aurevia/smartclinic/documents/DocumentRepository.java`
+  - Added `subjectExists(String subjectType, String id)`: one RLS-bounded `SELECT CASE ... EXISTS` probe covering chart (`current_patients()`), order (`exchange_order`) and result (`xch04_report_revision`); unknown type yields `false`; a null JDBC result yields `false`.
+  - `chartExists(String)` now delegates to `subjectExists("chart", id)` so there is one ledger of the chart fold and no duplicated SQL.
+  - `insert(...)` calls `subjectExists(subjectType, subjectId)` first and returns `0` without writing when the subject is absent (atomic with the caller's transaction; no TOCTOU window across transactions).
+- `apps/api/src/main/java/com/aurevia/smartclinic/documents/DocumentService.java`
+  - `link(...)` captures the insert row count and returns `404 NOT_FOUND` ("subject not found") when the insert wrote no row. The pre-existing chart check and the `DuplicateKeyException -> 409` path are unchanged, and no history event or success audit is emitted on the 404 path.
+- New tests in `apps/api/src/test/java/com/aurevia/smartclinic/documents/`:
+  - `DocumentRepositorySubjectTest.java` (5 tests) — probes chart/order/result with RLS-bounded SQL assertions, false and null results, insert skipped when missing, insert writes when present, and chart reuse of the same fold.
+  - `DocumentServiceSubjectLinkTest.java` (6 tests) — order-missing 404, result-missing 404, chart insert-nothing 404, order/result success, and unknown chart still concealed before insert.
 
-`GET /api/v1/orders?cursor=&limit=&status=` → `TenantContextInterceptor.preHandle` (401 without subject) → `OrderController.list` → `OrderService.list` (validate inputs before any transaction, then guarded `TransactionTemplate`) → `deny` (`ORDER_READ`, membership and role re-derived each request) → `OrderRepository.query` (forced RLS, `created_at DESC, id DESC`, `limit+1`) → `audit.append(ORDER_READ, ALL, SUCCESS)` → `OrderPage`.
-- Happy path: `OrderListIntegrationTest.pagingReturnsEveryOrganizationRowExactlyOnceInOrder`.
-- Failure paths: `OrderListServiceTest.invalidCursorsAreRejectedBeforeAnyQuery`, `invalidLimitsAreRejectedBeforeAnyQuery`, `invalidStatusesAreRejectedBeforeAnyQuery`, `inactiveMembershipIsDeniedAndAudited`, `missingPermissionIsDeniedAndAudited`; `OrderListControllerTest.withoutLoginReturns401`, `forbiddenRoleReturns403`, `badLimitReturns422`.
+No migration was added; no coverage threshold, exclusion or skip was changed; no existing test was weakened, deleted or skipped. `render(...)` retains its chart-only probe; the story scopes the defect to `link`, and changing `render` would require editing out-of-scope tests. Recorded as a follow-up observation below.
 
-## Exact commands and results (executed by this worker, tool evidence)
+## Tests written first (red -> green)
 
-| Command | Result |
+Red command (before production change):
+```
+mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest=DocumentRepositorySubjectTest,DocumentServiceSubjectLinkTest test
+```
+Red result: compilation failure — `cannot find symbol: method subjectExists(String,String)` (the new repository boundary did not exist); plus an initially ambiguous `queryForObject` matcher, fixed in the test by typing the parameter matcher as `Map<String, ?>`.
+
+Green command (same command after implementation): `exit 0`
+```
+Tests run: 5, Failures: 0, Errors: 0, Skipped: 0 -- DocumentRepositorySubjectTest
+Tests run: 6, Failures: 0, Errors: 0, Skipped: 0 -- DocumentServiceSubjectLinkTest
+```
+
+## New/changed branches and their covering tests (AGENTS.md coverage rule 6)
+
+| Production branch | Test |
 |---|---|
-| `mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest='OrderListServiceTest,OrderListControllerTest' test` | exit 0; `OrderListServiceTest` 11/0/0/0, `OrderListControllerTest` 5/0/0/0 (Surefire reports) |
-| `SMARTCLINIC_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security verify` | exit 0; **Tests run: 2381, Failures: 0, Errors: 0, Skipped: 0**; `All coverage checks have been met.`; `BUILD SUCCESS` (real PostgreSQL 17.12, `OrderListIntegrationTest` 5/0/0/0) |
-| `python3 -I contracts/openapi/check.py` | `x-04 drift check OK: 24 commands, contract and client match manifest` (exit 0) |
-| `python3 -I scripts/check-docs.py` | exit 0 |
-| `python3 -I scripts/check-names.py` | exit 0 |
-| `python3 -I scripts/check-secrets.py` | exit 0 |
-| `python3 -I scripts/check-migrations.py --require-baseline` | exit 0 |
-| `python3 -I -m unittest discover -s scripts/tests -p 'test_java_conventions.py' -q` | `Ran 2 tests ... OK` (exit 0) |
-| `bash scripts/worker-check.sh` (TODO step-6 check) | exit 1 at policy stage: `check-pack: opencode.json is stale: run scripts/gen-opencode.py` — see environment caveats |
-| `python3 -I scripts/check-pack.py` / `python3 -I scripts/gen-opencode.py --check` | exit 1 with the same stale-config message (same CI-profile artifact) |
-| `git ls-files -v opencode.json` | `S opencode.json` — skip-worktree, the CI profile copied by `agent-run.sh` |
-| `git checkout origin/main -- .agent/pr-notes.md` | exit 0 — shared file restored to main |
-| `git diff --numstat origin/main -- .agent/pr-notes.md` | empty after fix |
-| `git grep -nE '^(<<<<<<<\|=======\|>>>>>>>) '` | no output — no conflict markers |
+| `DocumentRepository.subjectExists` result `true` | `DocumentRepositorySubjectTest.subjectExistsChecksChartOrderAndResultWithRlsBoundedQueries`, `insertWritesBytesWhenTheSubjectExists` |
+| `DocumentRepository.subjectExists` result `false` and `null` | `DocumentRepositorySubjectTest.subjectExistsIsFalseForAMissingOrNullResult` |
+| `DocumentRepository.insert` subject absent -> `0` (guard true) | `DocumentRepositorySubjectTest.insertIsSkippedWhenTheSubjectDoesNotExist` |
+| `DocumentRepository.insert` subject present -> JDBC update (guard false) | `DocumentRepositorySubjectTest.insertWritesBytesWhenTheSubjectExists` |
+| `DocumentService.link` `written == 0` -> 404 for order | `DocumentServiceSubjectLinkTest.linkRejectsAnOrderWhoseTargetDoesNotExist` |
+| `DocumentService.link` `written == 0` -> 404 for result | `DocumentServiceSubjectLinkTest.linkRejectsAResultWhoseTargetDoesNotExist` |
+| `DocumentService.link` `written == 0` -> 404 for chart race | `DocumentServiceSubjectLinkTest.linkRejectsAChartWhoseInsertFindsNoEffectiveRecord` |
+| `DocumentService.link` `written > 0` success (guard false) | `DocumentServiceSubjectLinkTest.linkStoresAnAssociationWhenAnOrderTargetExists`, `linkStoresAnAssociationWhenAResultTargetExists`, and existing `it.documents.DocumentServiceTest.linkStoresOriginalBytesAndAppendsHistory` |
+| `DocumentService.link` `DuplicateKeyException` -> 409 (unchanged) | existing `it.documents.DocumentServiceTest.linkMapsAConcurrentConflictTo409` |
+| `DocumentService.link` unknown chart -> 404 before insert (unchanged) | `DocumentServiceSubjectLinkTest.linkStillConcealsAnUnknownChartBeforeInsert` and existing `linkConcealsAnUnknownChart` |
 
-## Coverage result (mandatory)
+The SQL `CASE` arms are inside a string literal and create no Java branches; each arm's table is asserted by `subjectExistsChecksChartOrderAndResultWithRlsBoundedQueries`.
 
-Coverage command: `SMARTCLINIC_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security verify` → exit 0, `All coverage checks have been met.` JaCoCo 0.8.16 enforces 1.00 INSTRUCTION/LINE/BRANCH/METHOD/CLASS at bundle level. `apps/api/target/site/jacoco/jacoco.xml` read with a stdlib XML parse:
+## Entry point -> test trace
 
-| Counter | Missed | Covered |
-|---|---|---|
-| INSTRUCTION | 0 | 91024 |
-| BRANCH | 0 | 6449 |
-| LINE | 0 | 15803 |
-| COMPLEXITY | 0 | 7101 |
-| METHOD | 0 | 3825 |
-| CLASS | 0 | 787 |
+`POST /api/v1/documents/associations` -> `DocumentController.link` -> `DocumentService.link` -> (authorize + chart probe) -> `DocumentRepository.insert` -> `DocumentRepository.subjectExists` (RLS-bounded SELECT EXISTS) -> zero rows -> 404 `NOT_FOUND`. HTTP success/concealment for charts is exercised by `it.documents.DocumentIsolationTest` (integration tier); per-subject rejection is exercised by the two new mock-based unit classes above.
 
-Per touched production file (all counters 0 missed): `OrderService.java` (1081 instr, 94 branch, 200 line, 24 method), `OrderRepository.java` (563 instr, 6 branch, 106 line, 24 method), `OrderPage.java` (16 instr, 4 line, 2 method), `OrderController.java` (54 instr, 12 line, 7 method). **100% on every file changed.** This segment added no production branch; every branch in the unchanged READY-16 implementation is covered by the executed unit + integration suites (mapping in `.agent/pr-notes/READY-16-20261120-090706.md`).
+## Commands actually run and results
 
-## Defects found, decisions and deviations
+- `mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest=DocumentRepositorySubjectTest,DocumentServiceSubjectLinkTest test` — exit 0, 11 tests, 0 failures.
+- `mvn -q -B -f apps/api/pom.xml -Pno-security,fast test` — exit 0; 1914 unit tests, 0 failures, 0 errors, 0 skipped. The pre-existing `it.documents.DocumentServiceTest` (21 tests) still passes unchanged.
+- `python3 -I scripts/check-names.py`, `python3 -I scripts/check-docs.py`, `python3 -I scripts/check-secrets.py`, `python3 -I scripts/check-migrations.py --require-baseline` — all exit 0.
+- `SMARTCLINIC_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml verify` — result recorded in the Coverage section below.
+- Segment 2 independently re-ran: `bash apps/api/check.sh` (exit 0, full verify — see Coverage); the targeted two-class `mvn ... -Dtest=... test` (exit 0); and `python3 -I scripts/check-names.py`, `python3 -I scripts/check-docs.py`, `python3 -I scripts/check-secrets.py`, `python3 -I scripts/check-migrations.py --require-baseline` (all exit 0). Java 21.0.13, Maven 3.10.0, PostgreSQL accepting connections on 127.0.0.1:5432.
 
-- **Recurring defect:** prior worker sessions on this branch committed edits to the integrator-owned shared `.agent/pr-notes.md`, reintroducing the same merge conflict after each restore (latest `f3a9539`). This fix removes the shared-file diff so the branch merges cleanly while preserving main's note. Self-improvement: the rule — never write the shared file, write only the worker-owned `.agent/pr-notes/<task-id>.md` — is recorded in the prior fix notes; the durable guard belongs to `scripts/agent-run.sh` (`git add -A` should exclude `.agent/pr-notes.md`), which is outside this task's scope and left to the orchestrator.
-- **Decision:** restore the shared file to main's exact blob rather than merging worker and AUD notes; the shared file is main's property and any worker content there is invalid under AGENTS.md. No worker content was lost (worker notes live in their own files).
-- **Decision:** no production/test/contract/config change; the READY-16 implementation is complete and re-verified at 100% on this exact tree, so this segment is tracker hygiene only.
-- **Deviation (transparent):** the literal `scope` lists only the `exchange/order` packages and `contracts/openapi`, while the fix necessarily touches the shared tracker file to resolve the conflict. This is the same documented deviation as earlier READY-16 segments (which also added the `it/` integration test and regenerated staff-web d.ts required by the story's explicit steps). No feature file was changed in this segment.
-- **Environment-only findings (no repo change):** `opencode.json` is `S` (skip-worktree, CI profile) so `check-pack.py`, `gen-opencode.py --check` and therefore `worker-check.sh` report the known stale-config false positive (OPS-CW-003-01); PyYAML is absent so the full Python tooling suite cannot run here. None is caused by this fix, and none touched by this story. The Java compile, 2381 tests, integration tier and full JaCoCo gate all ran green locally via `/opt/m2`.
+## Coverage (100% gate)
 
-## Evidence sources
+Full canonical gate re-run on the final branch (segment 2), with PostgreSQL available and `SMARTCLINIC_PG_ADMIN=postgres` in the environment:
 
-Tool evidence: every command above was executed locally; results are from Git, Maven/Surefire/JaCoCo, the policy scripts and the contract gate. Reviewer evidence: specialist skills `smartclinic-delivery`, `smartclinic-senior-backend`, `smartclinic-test-engineer`, `smartclinic-senior-java-build` and `smartclinic-software-engineer` were loaded and their rules applied (simulated review); no separate reviewer subagent was run for this bounded merge-conflict fix. Simulated-user evidence: none. Human/clinical/patient evidence: none. All fixtures are synthetic; no patient data, credential or real domain name appears in code, logs, URLs or browser storage.
+```
+bash apps/api/check.sh        # canonical: cd apps/api && mvn -q -B verify
+```
 
-**Status:** fix applied — shared file restored to main, worker notes written only to this worker's own file, fast unit tests and full integration + 100% coverage gate green, no production code changed. Ready for the integrator to re-run its full cached gate on the merged SHA.
+Result: **exit 0**. Surefire aggregate from `apps/api/target/surefire-reports/TEST-*.xml`: **2360 tests, 0 failures, 0 errors, 0 skipped**. No failing surefire/failsafe XML report exists. JaCoCo `check` (BUNDLE rule, 1.00 minimum for INSTRUCTION, LINE, BRANCH, METHOD and CLASS) therefore passed — project-wide `apps/api/target/site/jacoco/jacoco.xml` reports **0 missed on every counter**: INSTRUCTION 0/90690, BRANCH 0/6407, LINE 0/15733, COMPLEXITY 0/7069, METHOD 0/3814, CLASS 0/785.
+
+Read directly from `apps/api/target/site/jacoco/jacoco.csv` for the two touched production files (columns: instruction missed/covered, branch missed/covered, line missed/covered, complexity missed/covered, method missed/covered):
+
+| File | Instruction | Branch | Line | Complexity | Method | Class (from jacoco.xml) |
+|---|---|---|---|---|---|---|
+| `documents/DocumentService.java` | 0/964 | 0/68 | 0/196 | 0/52 | 0/18 | 0/1 |
+| `documents/DocumentRepository.java` | 0/384 | 0/2 | 0/86 | 0/21 | 0/20 | 0/1 |
+
+Both changed files are at 100% on every counter, including the per-class counter. No new production class was introduced. The report goal is bound to the `verify` phase (pom.xml lines 80-88), so the later targeted `test` run could not overwrite these numbers.
+
+Targeted confirmation of the new tests:
+```
+mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest=DocumentRepositorySubjectTest,DocumentServiceSubjectLinkTest test
+```
+Result: **exit 0** — `DocumentRepositorySubjectTest` 5 tests and `DocumentServiceSubjectLinkTest` 6 tests, 0 failures/errors/skipped each.
+
+## Decisions and rationale
+
+- **Guard in the repository, not a second service call.** The pre-existing unit test `it.documents.DocumentServiceTest.linkForOrderNeedsNoChartLookup` (outside this task's scope) asserts that an order link does not call `chartExists` and stubs `insert` to return 1. Adding a direct `orderExists`/`resultExists` service call would make that unstubbed Mockito method return `false` and break an unrelated test. Performing the RLS-bounded probe inside `insert` keeps that test green, keeps the check atomic with the write, and still returns 404 for a missing target. No out-of-scope file was edited.
+- **Chart case retained.** The service's `chartExists` check remains so `linkConcealsAnUnknownChart` still observes `never().insert`; `chartExists` delegates to the shared `subjectExists` fold to avoid duplicated SQL.
+- **Order/result tables.** Chose the canonical owner tables that actually carry those identifiers (`exchange_order` for XCH-01 orders, `xch04_report_revision` for XCH-04 final/corrected/critical results). Both are forced-RLS tenant tables readable by the non-owner runtime role. No new cross-module FK was added: V17 deliberately deferred that, and the probe enforces the same invariant without a schema change.
+- **Scope of `render`.** `DocumentService.render` has the identical chart-only probe. It is not changed here because the story names `link` specifically, and the change would require editing out-of-scope tests (`renderForOrderSkipsTheChartLookup`, `renderConcealsMissingChart`). Suggested follow-up: apply the same `subjectExists` guard to `render` with its own tests.
+
+## Defects / environment observations (not caused by this change)
+
+- `python3 -I scripts/gen-opencode.py --check` and `scripts/quick-check.sh`'s pack step report `opencode.json is stale` on this checkout. `git status` shows `opencode.json` unmodified and no diff, so this is a pre-existing condition, not introduced by this task; the file is outside scope and was not edited.
+- `python3 -I -m unittest discover -s scripts/tests -q` exits 1 here with 8 failures / 10 errors that are environmental and unrelated to this Java change: `ModuleNotFoundError: No module named 'yaml'` (PyYAML absent) and git-branch setup errors in `test_agent_run.py`. The directly relevant policy checks (`check-names`, `check-docs`, `check-secrets`, `check-migrations`) pass.
+- The full `bash apps/api/check.sh` run emitted two non-fatal OWASP Dependency-Check NVD data-import errors (`Failed to process CVE-2026-6785` / `CVE-2026-6786`: a reference URL longer than the tool's local H2 `URL VARCHAR(1000)` column). These occur during NVD data update, are logged per-CVE by the dependency-check plugin, and did **not** fail the build — the canonical gate returned exit 0 with 2360 passing tests and a green JaCoCo check. Tool/data environment issue, unrelated to this change; no code or threshold was altered to accommodate it.
+- No production deployment or real-patient configuration decision is needed; all fixtures are synthetic.
+
+## Evidence source
+
+Tool evidence: executed `mvn`/`python3` commands and their outputs, plus source reads of `DocumentService`, `DocumentRepository`, `DocumentInputs`, V17/V19/V22 migrations and existing tests. Simulated reviewer evidence: the specialist skills (`smartclinic-senior-backend`, `smartclinic-senior-database`, `smartclinic-senior-java-build`, `smartclinic-test-engineer`) were loaded as instructions; no separate reviewer subagent was run for this bounded fix. Human/clinical/patient evidence: none.
+
+## Completion (segment 2)
+
+Story complete. The code change, red/green tests, per-branch test mapping and 100% coverage evidence are all recorded above. The full canonical gate (`bash apps/api/check.sh`) passed on the final tree with 2360 tests and 0 missed JaCoCo counters project-wide; both touched files are at 100% on every counter. No decision or evidence is missing, no coverage threshold was lowered, no exclusion or skip was added, and no production file outside the two named in the scope was changed. Committing this notes update to the current branch; no push, tag or gh call.
