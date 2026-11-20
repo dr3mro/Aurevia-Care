@@ -280,18 +280,6 @@ def images_ready_command(slots=None):
     return ready, reason, dispatch
 
 
-def failure_report(directory):
-    """Why a worker's local check failed: the end of its check log, ready for the PR body.
-
-    The log is output of the repository's own scripts. It is clipped and its code fences
-    are neutralised so it cannot break out of the block it is shown in."""
-    log = read(Path(directory) / "check.log", "")
-    if not log:
-        return "**Why:** no check log was kept, see the worker run.\n\n"
-    tail = "\n".join(log.splitlines()[-60:])[-3000:].replace("```", "'''")
-    return f"**Why it failed** (end of the local check log):\n\n```text\n{tail}\n```\n\n"
-
-
 def clip(text):
     return (text or "")[:BODY_LIMIT]
 
@@ -716,8 +704,6 @@ def publish(task, directory):
                 status = ("**Draft: the worker did not finish cleanly** (" + "; ".join(why) +
                           "). Its work is saved here so nothing is lost; a fix worker or a "
                           "person continues from this branch.\n\n")
-            if incomplete:
-                status += failure_report(directory)
             body = (f"{status}Task: {task['id']}\n\nSwarm worker {task['slot']}. Local checks: {checks}. "
                     f"Agent result: {result}.\n\n{clip(notes)}")
             repair = task["id"].startswith("FIX-")
