@@ -160,6 +160,25 @@ class StaleInvitationIntegrationTest {
     }
 
     @Test
+    void aClaimedLinkAndAListingExposeTheAppendOnlyEventId() {
+        String subject = uniqueSubject("projection");
+        assertEquals(HttpStatus.CREATED, enroll(subject).getStatusCode());
+
+        ResponseEntity<String> claim = request(HttpMethod.POST, "/api/v1/patient-identity/links/claim",
+                "{\"token\":\"" + issue(subject) + "\"}", subject);
+        assertEquals(HttpStatus.OK, claim.getStatusCode(), claim.getBody());
+        String id = field(claim.getBody(), "id");
+        assertTrue(id.matches("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"),
+                "the link event id must be the account_chart_link UUID, not the fold's account id: " + claim.getBody());
+
+        ResponseEntity<String> links = request(HttpMethod.GET,
+                "/api/v1/patient-identity/accounts/" + subject + "/links", null, subject);
+        assertEquals(HttpStatus.OK, links.getStatusCode(), links.getBody());
+        assertTrue(links.getBody().contains("\"id\":\"" + id + "\""),
+                "the listing must project the same event id: " + links.getBody());
+    }
+
+    @Test
     void aStaleInvitationCannotUndoAnUnlink() {
         String subject = uniqueSubject("stale");
         assertEquals(HttpStatus.CREATED, enroll(subject).getStatusCode());
