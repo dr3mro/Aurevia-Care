@@ -31,6 +31,9 @@ public class ConsolidationService {
     private static final Pattern ID =
             Pattern.compile("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
     private static final Pattern REASON = Pattern.compile("[A-Za-z0-9 _.:'-]{3,200}");
+    private static final Pattern IDENTIFIER_REFERENCE =
+            Pattern.compile("[A-Za-z0-9_.:-]{2,64}@[A-Za-z0-9_.:-]{2,32}");
+    private static final Pattern ALTERNATE_PROCESS = Pattern.compile("[a-z_]{2,32}");
 
     private final DuplicateRepository repository;
     private final DuplicatePolicy policy;
@@ -201,13 +204,16 @@ public class ConsolidationService {
      * ambiguous dependencies block the command. All appends commit together or not
      * at all.</p>
      *
-     * @param reviewId       open review identifier
-     * @param expectedVersion current version of the duplicate patient
-     * @param reason         recorded business reason
+     * @param reviewId              open review identifier
+     * @param expectedVersion       current version of the duplicate patient
+     * @param reason                recorded business reason
+     * @param confirmedIdentifiers  issuer-scoped identifiers confirmed to belong to one person
+     * @param alternateProcess      documented approved process when identifiers cannot be confirmed
      * @return the appended consolidation event
      * @throws ApiException on invalid input, denial, stale version or a conflict
      */
-    public Consolidation consolidate(String reviewId, int expectedVersion, String reason) {
+    public Consolidation consolidate(String reviewId, int expectedVersion, String reason,
+                                     List<String> confirmedIdentifiers, String alternateProcess) {
         validateId(reviewId, "REVIEW");
         validateReason(reason);
         AtomicReference<ApiException> failure = new AtomicReference<>();
@@ -286,6 +292,20 @@ public class ConsolidationService {
                 failure.set(new ApiException(409, "CONFLICT", "survivor chart already moved by another review"));
                 return null;
             }
+            // IAM-04 requires two identifiers to be confirmed at a high-risk
+            // consolidation, or a documented approved process when none are
+            // available. Check against the two issuer-scoped MRNs read under the
+            // pair lock so a caller cannot attest identifiers absent from the
+            // records it is merging. The outcome records what was relied on.
+            ApiException invalidConfirmation = confirmationFailure(
+                    survivor, duplicate, confirmedIdentifiers, alternateProcess);
+            if (invalidConfirmation != null) {
+                repository.appendAudit(context, "CONSOLIDATION_IDENTIFIER_CONFIRM", reviewId, "DENIED");
+                failure.set(invalidConfirmation);
+                return null;
+            }
+            repository.appendAudit(context, "CONSOLIDATION_IDENTIFIER_CONFIRM", reviewId,
+                    confirmationOutcome(confirmedIdentifiers, alternateProcess));
             String associationId = repository.newId();
             String consolidationId = repository.newId();
             try {
@@ -451,5 +471,69 @@ public class ConsolidationService {
         if (reason == null || !REASON.matcher(reason).matches()) {
             throw new ApiException(422, "INVALID_REASON", "reason must be 3-200 bounded characters");
         }
+    }
+
+    /**
+     * Validate the IAM-04 high-risk identifier confirmation for a consolidation.
+     *
+     * <p>Either two distinct issuer-scoped identifiers, one from each record and
+     * both present on those records, or one bounded code naming the documented
+     * approved process used when identifiers cannot be confirmed. The two modes
+     * are mutually exclusive so a weak claim cannot be padded with an escape
+     * hatch.</p>
+     *
+     * @param survivor             surviving patient read under the pair lock
+     * @param duplicate            duplicate patient read under the pair lock
+     * @param confirmedIdentifiers identifiers the caller attests match
+     * @param alternateProcess     documented process when identifiers are unavailable
+     * @return the failure to report, or {@code null} when the confirmation is valid
+     */
+    private static ApiException confirmationFailure(Patient survivor, Patient duplicate,
+                                                    List<String> confirmedIdentifiers, String alternateProcess) {
+        boolean hasConfirmed = confirmedIdentifiers != null && !confirmedIdentifiers.isEmpty();
+        boolean hasAlternate = alternateProcess != null && !alternateProcess.isBlank();
+        if (hasAlternate && hasConfirmed) {
+            return new ApiException(422, "CONFLICTING_CONFIRMATION",
+                    "confirmed identifiers and an alternate process are mutually exclusive");
+        }
+        if (hasAlternate) {
+            if (!ALTERNATE_PROCESS.matcher(alternateProcess).matches()) {
+                return new ApiException(422, "INVALID_ALTERNATE_PROCESS",
+                        "alternate process must be a bounded coded reference");
+            }
+            return null;
+        }
+        if (!hasConfirmed || confirmedIdentifiers.size() < 2
+                || confirmedIdentifiers.stream().distinct().count() < 2) {
+            return new ApiException(422, "IDENTIFIER_CONFIRMATION_REQUIRED",
+                    "two distinct issuer-scoped identifiers must be confirmed");
+        }
+        if (confirmedIdentifiers.stream()
+                .anyMatch(identifier -> identifier == null || !IDENTIFIER_REFERENCE.matcher(identifier).matches())) {
+            return new ApiException(422, "INVALID_IDENTIFIER_CONFIRMATION",
+                    "confirmed identifiers must be issuer-scoped value@issuer references");
+        }
+        String survivorReference = survivor.mrn() + "@" + survivor.mrnIssuer();
+        String duplicateReference = duplicate.mrn() + "@" + duplicate.mrnIssuer();
+        if (!confirmedIdentifiers.contains(survivorReference)
+                || !confirmedIdentifiers.contains(duplicateReference)) {
+            return new ApiException(422, "IDENTIFIER_MISMATCH",
+                    "confirmed identifiers must match both patient records");
+        }
+        return null;
+    }
+
+    /**
+     * Build the durable audit outcome describing how identity was confirmed.
+     *
+     * @param confirmedIdentifiers confirmed issuer-scoped identifiers, or empty
+     * @param alternateProcess     documented alternate process, or {@code null}
+     * @return bounded audit outcome recording the confirmation basis
+     */
+    private static String confirmationOutcome(List<String> confirmedIdentifiers, String alternateProcess) {
+        if (alternateProcess != null && !alternateProcess.isBlank()) {
+            return "ALTERNATE:" + alternateProcess;
+        }
+        return "CONFIRMED:" + String.join(";", confirmedIdentifiers);
     }
 }

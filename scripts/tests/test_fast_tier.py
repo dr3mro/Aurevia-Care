@@ -22,9 +22,9 @@ NS = {"m": "http://maven.apache.org/POM/4.0.0"}
 
 
 def fast_commands():
-    steps = yaml.safe_load(DELIVERY.read_text(encoding="utf-8"))["jobs"]["quick"]["steps"]
-    lines = [line for step in steps for line in (step.get("run") or "").splitlines()]
-    lines += QUICK.read_text(encoding="utf-8").splitlines()
+    # Pull requests now run the full tier in delivery.yml; the fast tier survives
+    # only in the swarm's local and integrator pre-checks (scripts/quick-check.sh).
+    lines = QUICK.read_text(encoding="utf-8").splitlines()
     return [line for line in lines if "mvn " in line and "apps/api/pom.xml" in line]
 
 
