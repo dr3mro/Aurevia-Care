@@ -83,7 +83,9 @@ public class PdfRenderer {
             table.append(offset(offsets[index + 1])).append(" 00000 n \n");
         }
         pdf.writeBytes(ascii(table.toString()));
-        String id = documentId(content);
+        // Hash the whole body, not just the text stream: version, rotation and
+        // provenance live in the objects and must distinguish immutable revisions.
+        String id = documentId(pdf.toByteArray());
         pdf.writeBytes(ascii("trailer\n<< /Size " + (objects.size() + 1)
                 + " /Root 1 0 R /Info 8 0 R /ID [<" + id + "> <" + id + ">] >>\nstartxref\n"
                 + xrefOffset + "\n%%EOF\n"));
@@ -118,10 +120,11 @@ public class PdfRenderer {
     }
 
     /**
-     * Order a text run for visual display: RTL documents reverse the
-     * space-separated words, LTR documents keep them in logical order. The
-     * original logical string is still written to the Info dictionary and the
-     * %LOGICAL comment, so provenance and copy round-trip unchanged.
+     * Order a text run for visual display. RTL documents reverse the order of
+     * bidi runs, but an LTR run (digits, units and Latin identifiers) keeps its
+     * internal logical order so a value stays attached to its unit. The original
+     * logical string is still written to the Info dictionary and the %LOGICAL
+     * comment, so provenance and copy round-trip unchanged.
      *
      * @param text text in logical order
      * @param rtl  whether the document uses right-to-left layout
@@ -132,14 +135,48 @@ public class PdfRenderer {
             return text;
         }
         String[] words = text.split(" ");
+        List<String> runs = new ArrayList<>();
+        StringBuilder ltrRun = new StringBuilder();
+        for (String word : words) {
+            if (word.isEmpty()) {
+                continue;
+            }
+            if (isArabic(word)) {
+                if (ltrRun.length() > 0) {
+                    runs.add(ltrRun.toString());
+                    ltrRun.setLength(0);
+                }
+                runs.add(word);
+            } else {
+                if (ltrRun.length() > 0) {
+                    ltrRun.append(' ');
+                }
+                ltrRun.append(word);
+            }
+        }
+        if (ltrRun.length() > 0) {
+            runs.add(ltrRun.toString());
+        }
         StringBuilder ordered = new StringBuilder(text.length());
-        for (int index = words.length - 1; index >= 0; index--) {
+        for (int index = runs.size() - 1; index >= 0; index--) {
             if (ordered.length() > 0) {
                 ordered.append(' ');
             }
-            ordered.append(words[index]);
+            ordered.append(runs.get(index));
         }
         return ordered.toString();
+    }
+
+    /**
+     * Classify a token by its leading script. Arabic words are separate RTL
+     * runs; digits, units and Latin identifiers form LTR runs that must not be
+     * reordered internally (CLN-07, UX-01).
+     *
+     * @param word a non-empty space-delimited token
+     * @return {@code true} when the token starts with an Arabic character
+     */
+    private static boolean isArabic(String word) {
+        return Character.UnicodeBlock.of(word.codePointAt(0)) == Character.UnicodeBlock.ARABIC;
     }
 
     private static String hexOf(String text) {
