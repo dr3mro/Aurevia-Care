@@ -116,8 +116,7 @@ public class RxService {
         RxInputs.uuid(id, "id");
         String note = RxInputs.detail(request.note(), 500);
         return execute(RxActions.ATTEST, id, sink -> {
-            Prescription current = locked(id, expectedVersion, State.DRAFT);
-            requirePrescriber(context(), current);
+            Prescription current = lockedByPrescriber(id, expectedVersion, State.DRAFT);
             String market = requireEntitlement(current.prescriberSubject());
             repository.attest(id, expectedVersion);
             append(id, expectedVersion + 1, EventType.ATTESTED, null, null, "market=" + market, note);
@@ -143,8 +142,7 @@ public class RxService {
                 ? RxInputs.transmissionOutcome(request.outcome())
                 : RxInputs.printOutcome(request.outcome());
         return execute(RxActions.TRANSMIT, id, sink -> {
-            Prescription current = locked(id, expectedVersion, State.ATTESTED);
-            requirePrescriber(context(), current);
+            Prescription current = lockedByPrescriber(id, expectedVersion, State.ATTESTED);
             String market = requireEntitlement(current.prescriberSubject());
             requireApprovedChannel(channelKey);
             if (channel.isElectronic()) {
@@ -205,8 +203,7 @@ public class RxService {
         String submissionId = RxInputs.uuid(request.submissionId(), "submissionId");
         String status = RxInputs.partnerStatus(request.status());
         return execute(RxActions.VERIFY, id, sink -> {
-            Prescription current = locked(id, expectedVersion, State.AMBIGUOUS);
-            requirePrescriber(context(), current);
+            Prescription current = lockedByPrescriber(id, expectedVersion, State.AMBIGUOUS);
             requireEntitlement(current.prescriberSubject());
             requireSubmission(current, submissionId);
             State next = "present".equals(status) ? State.SUBMITTED : State.AMBIGUOUS;
@@ -232,8 +229,7 @@ public class RxService {
         String submissionId = RxInputs.uuid(request.submissionId(), "submissionId");
         String outcome = RxInputs.transmissionOutcome(request.outcome());
         return execute(RxActions.RETRY, id, sink -> {
-            Prescription current = locked(id, expectedVersion, State.AMBIGUOUS);
-            requirePrescriber(context(), current);
+            Prescription current = lockedByPrescriber(id, expectedVersion, State.AMBIGUOUS);
             requireEntitlement(current.prescriberSubject());
             requireSubmission(current, submissionId);
             if (!current.retryAllowed()) {
@@ -334,11 +330,10 @@ public class RxService {
         RxInputs.uuid(id, "id");
         String note = RxInputs.detail(request.note(), 500);
         return execute(RxActions.RENEW, id, sink -> {
-            Prescription current = locked(id, expectedVersion);
+            Prescription current = lockedByPrescriber(id, expectedVersion, null);
             if (current.state() == State.DRAFT) {
-                throw new ApiException(409, "RENEW_REQUIRES_TRANSMISSION", "a draft cannot be renewed");
+                throw new ApiException(409, "INVALID_TRANSITION", "a draft cannot be renewed");
             }
-            requirePrescriber(context(), current);
             requireEntitlement(current.prescriberSubject());
             repository.bumpVersion(id, expectedVersion);
             append(id, expectedVersion + 1, EventType.RENEWAL, current.channel(), current.submissionId(),
@@ -361,8 +356,7 @@ public class RxService {
         RxInputs.uuid(id, "id");
         String reason = RxInputs.text(request.reason(), "reason", 500);
         return execute(RxActions.CANCEL, id, sink -> {
-            Prescription current = locked(id, expectedVersion);
-            requirePrescriber(context(), current);
+            Prescription current = lockedByPrescriber(id, expectedVersion, null);
             if (!current.state().canTransitionTo(State.CANCELLED)) {
                 throw new ApiException(409, "INVALID_TRANSITION",
                         "a " + current.state().wire() + " prescription cannot be cancelled");
@@ -430,6 +424,32 @@ public class RxService {
     private Prescription locked(String id, int expectedVersion, State expected) {
         Prescription current = locked(id, expectedVersion);
         requireState(current, expected);
+        return current;
+    }
+
+    /**
+     * Load a prescriber-owned row and check ownership before any precondition.
+     *
+     * <p>Ownership is an authorization decision: a caller who is not the
+     * prescribing clinician must be denied regardless of the version or state
+     * they present. Checking it first gives a stable 403 for a wrong actor and
+     * keeps a stale version distinguishable as 412 for the real prescriber.
+     * The row is still loaded under forced RLS first, so a foreign id remains
+     * concealed as 404. A {@code null} expected state leaves state checking to
+     * the command, as renewal and cancellation permit more than one source state.</p>
+     *
+     * @param id              prescription identifier
+     * @param expectedVersion version read by the caller
+     * @param expected        required state, or {@code null} when the command decides
+     * @return the locked and authorized prescription
+     */
+    private Prescription lockedByPrescriber(String id, int expectedVersion, State expected) {
+        Prescription current = repository.loadForUpdate(id).orElseThrow(notFound());
+        requirePrescriber(context(), current);
+        requireVersion(current, expectedVersion);
+        if (expected != null) {
+            requireState(current, expected);
+        }
         return current;
     }
 
