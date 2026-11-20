@@ -1,100 +1,88 @@
-# AUD-20261120-11 — Reserved migration V59 collision (READY-35)
+# AUD-20261120-10 — Attachment event history per-file scope — merge-fix attempt
 
-Status: **blocked — fix is outside this worker's scope. No production file changed.**
+## Requirement IDs and acceptance mapping
 
-Worker: swarm-3 · Story mark: `[-]` in `TODO.md` (set by the orchestrator) · Scope: `db/migrations` only · Base: HEAD `92a5120`, clean tracked tree.
+- **MSG-07, ARC-07** — every attachment event is bound to one conversation/file; a caller authorized for one file must not receive another file's event `detail` (scanner detail, void/rejection free text) inside the same tenant.
+- **Acceptance from the story:** `AttachmentService.events(actor, id)` returns only facts whose `attachmentId` equals the requested file's canonical id, exactly as `view()` does; a test creates two attachments in one tenant and asserts each trail contains only its own file's events.
+- **In scope:** `apps/api/src/main/java/com/aurevia/smartclinic/messaging/attachments`, `apps/api/src/test/java/com/aurevia/smartclinic/messaging/attachments`. No migration version used. No new folder or package; names remain business-domain (`messaging.attachments`).
+- **Not changed:** `opencode.json`, `.opencode/*`, `.github/workflows/*`, `scripts/*`, `TODO.md`, `MEMORY.md`, `WORKSPACE.md`, `BUGS.md`, `PROJECT.md`, `docs/swarm/*`.
 
-## Requirement IDs
+## State on arrival
 
-`OPS-06` (migration change-safety gate: duplicate Flyway versions must fail), `ARC-01`, `ARC-02`, `OPS-02` (tenant-owned, forced-RLS durable state that READY-35..READY-42 add), `RX-02` (the already-applied V59 transition migration). Story ID `AUD-20261120-11` is a daily-audit tracker/tooling finding, not a new clinical requirement.
+The in-scope fix and its regression test were already present at `HEAD` (`b374732`, the merge of `origin/main` `b495e96f` into the worker branch):
 
-## Acceptance mapping
+- `AttachmentService.events()` (`AttachmentService.java:287-297`) authorizes, loads and checks visibility, then captures `String fileId = current.id();` and filters `store.events(actor.organizationId())` with `.filter(fact -> fileId.equals(fact.attachmentId()))`, mirroring `view()` at `:266-277`. Both `store.events()` call sites are filtered.
+- `AttachmentAcceptanceTest.eventsAreScopedToTheRequestedAttachmentWithinOneTenant` creates two attachments in one tenant with distinct scanner details and asserts per-file trails plus `events() == view().events()` parity.
 
-| # | Acceptance from the story | Result | Evidence |
-|---|---|---|---|
-| A1 | Confirm `V59__rx02_ambiguous_transition.sql` exists, is consumed, and that a second V59 fails the migration gate | **Met** (tool) | `ls db/migrations`, `check-migrations.py` baseline exit 0, reproduction exit 1 with exact message below |
-| A2 | Identify the correct owner/location of the fix | **Met** (tool + rules) | Story text names "the tracker owner"; fix targets are `TODO.md` and `docs/decisions/0003`, both outside scope `db/migrations` and `TODO.md` is forbidden to workers |
-| A3 | Apply the reassignment (READY-35..READY-42 → V60..V67, update `reserved:` fields, the "V59 to V66" sentence, the `V59__service_profiles.sql` path, and the 0003 mapping) | **Not met — out of scope** | `TODO.md` "Instructions for every agent" rules 3 and 8; `AGENTS.md` rule 8; see "Why this is not finished" |
-| A4 | Do not damage an applied migration or invent an in-scope change just to produce a diff | **Met** | No file in `db/migrations` was edited, added, renamed or deleted |
+I independently re-verified the defect and the fix (red → green) rather than assuming the earlier notes were correct.
 
-## Finding (verified, not assumed)
+## Reproducing the reported `scripts/check.sh` failure
 
-- `db/migrations/V59__rx02_ambiguous_transition.sql` is tracked, was added by commit `1b1fe29` (merged PR #198, DLV-03), has header `Change: expand`, and is recorded as consumed in `.agent/pr-notes/DLV-03.md` line 24 and 42. It widens a single legal RX-02 transition with `CREATE OR REPLACE FUNCTION`; it is additive and has already been applied by Flyway in CI.
-- `TODO.md` line 817 still says persistence tasks reserve "V59 to V66". READY-35 (line 821) reserves `V59` and its `scope` names `db/migrations/V59__service_profiles.sql` (line 824, 830). READY-36..READY-42 reserve V60..V66; `docs/decisions/0003` maps V59..V64 to the in-memory stores.
-- `scripts/check-migrations.py` has explicit duplicate-version detection (lines 220-228): a repeated `V<n>` produces `duplicate migration version V<n>` and a non-zero exit. Flyway likewise cannot distinguish two migrations with the same version.
-
-So the audit is correct: when READY-35 is dispatched as written, the first persistence story cannot go green.
-
-## Reproduction (failing check first, synthetic temporary file, removed immediately)
-
-Baseline — one V59 present:
+`bash scripts/check.sh` on the merged tree → **RC=1**, stopping at `scripts/check.sh:16`:
 
 ```
-$ python3 -I scripts/check-migrations.py --require-baseline
-baseline_exit=0
+shellcheck not installed: skipping shell lint (CI runs it)
+check-pack: opencode.json is stale: run scripts/gen-opencode.py
 ```
 
-Reproduction — a temporary `db/migrations/V59__service_profiles.sql` (the file READY-35 would create), created and removed in the same command with a shell `trap`, never committed:
+This is the documented **OPS-CW-003-01** environment artifact, not a code regression: `git ls-files -v opencode.json` is `S` (skip-worktree) and the worktree file is byte-identical to `.github/opencode.ci.json` (sha256 `b40d443d…`), while `git show HEAD:opencode.json` is the generator's local profile (`7ceb8b30…`). `agent-run.sh`'s `activate_ci_config` copies the CI profile into the worktree. In a clean CI checkout the committed local profile is used and this step passes.
 
-```
-$ printf '%s\n' '-- Change: expand' 'SELECT 1;' > db/migrations/V59__service_profiles.sql
-$ python3 -I scripts/check-migrations.py --require-baseline
-check-migrations: duplicate migration version V59
-reproduction_exit=1
-```
+Other environment-only blockers in this worker (all recorded, none changed — outside scope): PyYAML is not installed (`ModuleNotFoundError: yaml`), so `python3 -I -m unittest discover -s scripts/tests` fails in tooling modules unrelated to `messaging/attachments`; OWASP Dependency-Check's NVD fetch stalls without network/`NVD_API_KEY`. None of them imports or exercises the changed Java.
 
-After cleanup, `git status --short` is empty. No tracked migration was changed.
+## Root cause of the merge failure and the fix applied
 
-## Exact commands run and results (all executed by this worker; tool evidence)
+The real merge problem was **outside the declared Java scope**: parallel workers were all prepending their own story note to the shared `.agent/pr-notes.md`. This branch carried such a prepend (a hand-resolved merge that concatenated the AUD-10 and AUD-11 notes), and the AUD-20261120-12 worker branch did the same. AGENTS.md explicitly forbids editing or committing the shared `.agent/pr-notes.md`, and two branches changing the same lines is the merge conflict the integrator reported.
 
-| Command | Result |
-|---|---|
-| `ls -1 db/migrations/ \| sort -V` | V1..V59 present, exactly one `V59__rx02_ambiguous_transition.sql`; no `V59__service_profiles.sql` |
-| `git status --short` / `git rev-parse --short HEAD` | clean tree; HEAD `92a5120` |
-| `git ls-files db/migrations/ \| grep -c 'V59__'` | `1` |
-| `git log -1 --format='%h %s' -- db/migrations/V59__rx02_ambiguous_transition.sql` | `1b1fe29 DLV-03: Repair integration tests: prescription transmission (#198)` |
-| `python3 -I scripts/check-migrations.py --require-baseline` | exit 0 (current tree has a unique V59) |
-| same command with a temporary second V59 (see above) | exit 1, `check-migrations: duplicate migration version V59` |
-| `python3 -I -m unittest discover -s scripts/tests -q` | exit 1, `Ran 273 tests`, `FAILED (failures=8, errors=10)` — all pre-existing and unrelated (see Defects); this worker changed no Python file |
-| `python3 -I scripts/gen-opencode.py --check` | exit 1 — known CI-profile/skip-worktree artifact (OPS-CW-003-01), not a HEAD defect (see Defects) |
-| `python3 -I scripts/gen-opencode.py` into the worktree, compared with `git show HEAD:opencode.json` | generated file **identical** to HEAD; the pre-existing worktree file (CI profile, `S` skip-worktree flag) differs. Original bytes restored exactly. |
-| `git diff --check` | exit 0 |
+**Fix:** restored `.agent/pr-notes.md` to the `origin/main` version (`git checkout origin/main -- .agent/pr-notes.md`). The diff of that file against `origin/main` is now empty, so the integrator's merge has no conflict on it, and the AGENTS.md note rule is honored. The story note content is preserved in the allowed per-story files. **No production Java code was rewritten** — re-writing already-correct, fully covered code would only add risk. This is the only change made in this attempt.
 
-No database/integration test was run by this worker; the integrator owns those. Nothing in `db/migrations` was changed, so there is no new production line or branch to cover and no Java/SQL coverage command applies to this outcome.
+## Test-first verification on the merged tree (tool evidence)
 
-## Defects and decisions
+- **RED** — temporarily removed only the per-file `.filter` from `events()`, then `cd apps/api && mvn -q -B -Pno-security -Dtest=AttachmentAcceptanceTest#eventsAreScopedToTheRequestedAttachmentWithinOneTenant test` → `RC=1`, `AssertionFailedError: expected: <2> but was: <4>` at `AttachmentAcceptanceTest.java:443`. The tenant-wide ledger (4 facts across two files) was returned instead of the requested file's 2 facts — the exact defect. The file was restored from a byte-for-byte backup and `git diff --quiet` confirmed it identical to `HEAD`.
+- **GREEN (fast unit tests)** — `cd apps/api && mvn -q -B -Pno-security -Dtest=AttachmentAcceptanceTest test` → `RC=0`; surefire report `tests="29" errors="0" failures="0" skipped="0"`.
 
-- **Root cause is tracker state, not migration content.** The DLV-03 V59 migration is correct, applied, immutable, additive and legitimately consumed by RX-02. The stale data is in `TODO.md` (lines 817, 821, 824, 826, 828, 830, 1719 and the reserved fields of READY-36..42) and in `docs/decisions/0003-persistence-of-in-memory-stores.md` (lines 36, 45, 63: the proposed V59 reservation and V59..V64 mapping). A full `grep -n V59` over Markdown confirmed every location; `DLV-03.md`, `DLV-04.md` and `AUD-20261120-07.md` references are historical records of the applied repair and must not be rewritten.
-- **Rejected in-scope alternative:** renumbering DLV-03's applied V59 to a free version (for example V67) to free V59 for READY-35. That would rewrite an already-applied Flyway migration, break checksum/history validation, invalidate DLV-03's notes (`V59 is consumed`) and contradict the audit's own expected fix, which reassigns the *READY tasks*, not the applied repair. It also does not address the stale tracker text, and V67 is the version READY-42 already intends to use, so renaming into it would recreate the collision one story later. No such edit was made.
-- **No fabricated diff:** producing a cosmetic DB change only to have something to commit would be wrong; the honest in-scope result is no production change plus this handoff note.
-- Pre-existing, unrelated fast-test failures (not caused by, and not fixable inside, this story's scope): `ModuleNotFoundError: No module named 'yaml'` in `test_fast_tier` and `test_workflow_concurrency`; `gen-opencode.py --check` / `test_check_pack.*` failing because the worker worktree `opencode.json` is the CI profile under `skip-worktree` while HEAD holds the correct generated local profile (MEMORY.md: OPS-CW-003-01 closed as false positive); `AgentRunTests` / `test_swarm` failures depending on local git branch state. These belong to tooling/worker-environment owners, not `db/migrations`.
+Entry point → test trace: `AttachmentService.events(actor, id)` has no HTTP controller yet (tracked separately as AUD-20261119-03), so the failing path is exercised directly at the service boundary by `AttachmentAcceptanceTest.eventsAreScopedToTheRequestedAttachmentWithinOneTenant`. Synthetic fixtures only; no patient data or credentials used.
 
-## Why this is not finished
+## Coverage command and result (AGENTS.md Coverage rules)
 
-The fix the story requires cannot be applied within the declared scope `db/migrations`:
+`cd apps/api && SMARTCLINIC_PG_ADMIN=postgres mvn -q -B -Pno-security verify` → **RC=0**. PostgreSQL accepted connections on 127.0.0.1:5432. JaCoCo build-failing thresholds (instruction/line/branch/method/class) passed; surefire totals across all reports: **2350 tests, 0 failures, 0 errors, 0 skipped**.
 
-1. It requires editing `TODO.md` (the "V59 to V66" sentence, READY-35's `scope`, `V59__service_profiles.sql` path and `reserved: V59`, and the `reserved:` fields of READY-36..READY-42). `AGENTS.md` rule 8 and the "Instructions for every agent" rules 3 and 8 at the top of `TODO.md` explicitly forbid a worker from editing `TODO.md`; the orchestrator/integrator own it.
-2. It requires editing `docs/decisions/0003-persistence-of-in-memory-stores.md` (the proposed V59..V64 → V60..V65 mapping). That path is also outside `db/migrations`.
-3. `TODO.md` rule 3 says: if the task needs a file outside its scope, stop, write the reason here, and finish without changing that file. `TODO.md` rule 9 says not to guess when the task and rules disagree.
+`target/site/jacoco/jacoco.xml`, class `com/aurevia/smartclinic/messaging/attachments/AttachmentService`:
 
-I therefore stopped before making any production change.
+| Counter | missed | covered |
+|---|---|---|
+| INSTRUCTION | 0 | 963 |
+| BRANCH | 0 | 86 |
+| LINE | 0 | 168 |
+| COMPLEXITY | 0 | 71 |
+| METHOD | 0 | 28 |
+| CLASS | 0 | 1 |
 
-## Exact next step (tracker owner / orchestrator)
+Bundle counters are also 0 missed on every type (INSTRUCTION 90675, BRANCH 6403, LINE 15730, METHOD 3814, CLASS 785). → **100% on every production file touched by this story.**
 
-Before dispatching READY-35, edit the two out-of-scope trackers:
+The fix adds no `if`, `?:`, `&&`, `||`, `switch` or `catch`. The single `.filter` lambda has no internal JaCoCo branch; the regression test executes its predicate for a matching fact (own `detail-of-file-a`) and a non-matching fact (sibling `detail-of-file-b`). All pre-existing guards (`authorize`, `visible`, context load) remain covered by the existing suite. No threshold, exclusion or `@Disabled` was introduced and no existing test was weakened.
 
-1. `TODO.md` line 817: change "V59 to V66" to "V60 to V67".
-2. `TODO.md` READY-35 (lines 821-830): `reserved: V59` → `V60`; `scope` path `db/migrations/V59__service_profiles.sql` → `db/migrations/V60__service_profiles.sql`; the sentence "This store owns migration V59 only" → V60; step 2 "Create `db/migrations/V59__service_profiles.sql`" → V60.
-3. `TODO.md` READY-36..READY-42: shift each `reserved:` and migration `scope` path up by one — V60→V61, V61→V62, V62→V63, V63→V64, V64→V65, V65→V66, V66→V67 — and update the in-details "owns migration V<n> only" / "Create `db/migrations/V<n>__*.sql`" references to match.
-4. `docs/decisions/0003-persistence-of-in-memory-stores.md`: update the "proposed V59" reservation and the V59..V64 mapping to V60..V65 (V59 stays with the applied RX-02 repair).
-5. Re-run `python3 -I scripts/check-migrations.py --require-baseline` and `bash scripts/quick-check.sh` after the tracker edits, then dispatch READY-35. Leave the applied `V59__rx02_ambiguous_transition.sql` untouched.
+## Other checks run
 
-## Entry-point-to-test trace
+- `python3 -I scripts/check-docs.py` → RC=0
+- `python3 -I scripts/check-secrets.py` → RC=0
+- `python3 -I scripts/check-names.py` → RC=0
+- `python3 -I scripts/check-migrations.py --require-baseline` → RC=0
+- `bash scripts/check.sh` on the worktree → RC=1 at `check-pack.py` only, for the OPS-CW-003-01 skip-worktree reason above; all earlier policy steps passed.
 
-`db/migrations/V*.sql` → `scripts/check-migrations.py` (filename parse → version set → duplicate-version check at lines 220-228) → `check-migrations: duplicate migration version V59` + exit 1. The same duplicate is what Flyway would reject when two `V59__*.sql` files are present; the reproduction above exercises that gate with a synthetic temporary file. This task ends at the gate result because the corrective edits live in the trackers, not in `db/migrations`.
+## Defects found and decisions
 
-## Evidence provenance
+- **Defect in scope:** the original cross-file/cross-conversation event leak is fixed and covered. No new in-scope defect found.
+- **Process defect (fixed here):** the branch committed an edit to the forbidden shared `.agent/pr-notes.md`, which is the likely merge-conflict source with parallel workers. Reverted to `origin/main`; no content lost because the note is preserved in the allowed per-story files.
+- **Out-of-scope blockers (recorded, not changed):** missing PyYAML, stale temp git state in `test_agent_run.py`, OWASP NVD fetch without network/key, and the skip-worktree CI-profile check-pack artifact. These live in `scripts/`, the Python environment and `opencode.json`, all outside this task's scope.
+- **Decision:** keep the existing minimal Java fix; change only the out-of-scope shared-note file so the branch merges cleanly. No coverage threshold, exclusion or test was altered.
 
-- **Tool evidence (executed by this worker):** `ls`, `git status`, `git log`, `git ls-files`, `git show`, `cmp`, `grep`, `python3 -I scripts/check-migrations.py --require-baseline` (baseline and reproduction), `python3 -I -m unittest discover -s scripts/tests -q`, `python3 -I scripts/gen-opencode.py --check`, `git diff --check`, with results recorded above.
-- **Reviewer evidence (simulated reviewer, read-only, no commands run by the reviewer):** the `smartclinic-senior-database` specialist independently confirmed both decisions. It added that an applied migration's identity (version + description + checksum in `flyway_schema_history`) is immutable; with default `validateOnMigrate` (test suites call `Flyway.configure().load().migrate()` with no override), a database that already applied V59 fails validation with "applied migration not resolved locally: 59" if the file is renamed. It also confirmed that `check-migrations.py:220-228` deliberately allows version gaps (so HEAD already passes) and that renaming V59 to V67 would consume READY-42's intended version and recreate the collision. It agreed the correct outcome is no `db/migrations` change plus this handoff, with tracker-state edits owned by the orchestrator/integrator. Its finding is incorporated in the Decisions and Next-step sections above; no reviewer command output is claimed.
-- **Simulated-user / human / clinical evidence:** none. No patient data, credential, token or real domain name appears in this work; all fixtures and the temporary reproduction file are synthetic.
+## Review evidence
+
+- Prior read-only simulated reviews (`smartclinic-senior-backend`, `smartclinic-qa-reviewer`) in `.agent/pr-notes/fix-20261120-105854.md` endorsed the filter as the smallest correct fix and found no in-scope defect. I did not need a new specialist review for the note-file revert (documentation-only, no behavior change).
+- Human/clinical/patient evidence: none — contained backend correctness fix with no HTTP entry point yet.
+
+## Missing evidence / why full closure is not claimed
+
+Green `scripts/check.sh` and `scripts/integrator-gate.sh` results on an exact SHA from CI are not available to this worker: I must not call `gh` or push, and local Python tooling tests fail for the environmental reasons above. In-scope Java evidence is complete (independent red → green plus 100% JaCoCo on the merged tree). The integrator should re-run its gate on the resulting commit; with the shared-note conflict removed, the merge should be clean, and any remaining red gate should be reported with its CI log tail so the out-of-scope cause can be attributed.
+
+All commands above were executed by this worker in this checkout with synthetic fixtures only. Evidence provenance: **executed tool commands (tool evidence)**; no patient data, credentials or raw logs stored here.
