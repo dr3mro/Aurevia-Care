@@ -35,6 +35,7 @@ Keep notes short and cite exact requirement IDs, paths and evidence. Record whet
 
 Every change must meet all of the following before it is called done:
 
+- **Notes go only to `.agent/pr-notes/<task-id>.md`**, one file per task. Never create, edit or commit the shared `.agent/pr-notes.md` or any other file directly under `.agent/`: parallel workers overwrite it and every pull request then conflicts.
 - **100% coverage** of production lines, branches, methods and classes from the first production file, with build-failing gates and no fabricated or pending-as-covered results.
 - **Java coverage is enforced at 100% by JaCoCo in Delivery** (instruction, line, branch, method, class; one missed branch fails the whole run, as in run 518 and 520). The worker gate does not run JaCoCo, so you must prevent it yourself:
   - Every `if`, `?:`, `&&`, `||`, `switch` and `catch` you write needs a test that takes each side. A guard that can never be true is dead code: delete it (for example a check made impossible by an earlier `canTransitionTo` check) instead of leaving an uncoverable branch.
