@@ -1,115 +1,77 @@
-# AUD-20261120-13 — Document link accepts order or result subjects without verifying they exist
+# AUD-20261120-15 — Remove the duplicate legacy chart slice and its unhardened write path
 
-## Requirement IDs and acceptance mapping
+## Requirements and acceptance mapping
 
-| Requirement | Acceptance | Where |
+| Requirement | Acceptance | Evidence |
 |---|---|---|
-| CLN-07 | An original PDF/image binds only to a chart, order or result that exists in the active tenant; an orphan association must not be created | `DocumentService.link` now maps a zero-row insert to 404; `DocumentRepository.insert` re-checks the subject inside the RLS boundary |
-| ARC-01 | Tenant-owned subject keys are real, not arbitrary opaque ids | `DocumentRepository.subjectExists` uses forced-RLS relations only (`current_patients()`, `exchange_order`, `xch04_report_revision`) |
-| ARC-02 | Existence probe runs as the non-owner role with transaction-local tenant context | Reuses `public.current_patients()` fold and the forced-RLS policies already on the canonical tables; no `SECURITY DEFINER`, no explicit tenant switch |
-| XCH-01 / XCH-04 | Canonical owner tables for order and result identifiers | Order probe → `public.exchange_order`; result probe → `public.xch04_report_revision` |
-| OPS-02 | Denials are auditable | The 404 path leaves no success audit row and no history event, matching the existing chart-concealment behavior |
+| CLN-03 (clinical author separate from data entry actor) | A recorder-open entry verified through the surviving public route gains an accountable clinical author in both the response and the stored row | `verificationOfRecorderOpenEntryAssignsAccountableClinicalAuthor` (HTTP + SQL assertion) |
+| CLN-03 (bounded, provenance-safe chart writes) | Only the hardened slice remains reachable; the duplicate unhardened write path is gone | `legacyChartWriteRouteIsRemoved` (404 on both legacy paths); surviving slice keeps `requireBounded`, `normalizedReason` and `COALESCE` |
+| ARC-01 / ARC-02 | One chart contract writing the tenant-scoped `public.chart_entry` table under forced RLS | Integration test reads the row as `smartclinic_migrate` with `app.current_org` bound; 2324-test `mvn verify` green |
+| ARC-03 / OPS-02 | Version-bound verification and audit on the surviving route | Existing `ChartRecordIntegrationTest.verificationIsVersionBoundAndConcurrent` and audit-chain assertions remain green |
 
-## Change (inside the declared scope)
+## Change
 
-- `apps/api/src/main/java/com/aurevia/smartclinic/documents/DocumentRepository.java`
-  - Added `subjectExists(String subjectType, String id)`: one RLS-bounded `SELECT CASE ... EXISTS` probe covering chart (`current_patients()`), order (`exchange_order`) and result (`xch04_report_revision`); unknown type yields `false`; a null JDBC result yields `false`.
-  - `chartExists(String)` now delegates to `subjectExists("chart", id)` so there is one ledger of the chart fold and no duplicated SQL.
-  - `insert(...)` calls `subjectExists(subjectType, subjectId)` first and returns `0` without writing when the subject is absent (atomic with the caller's transaction; no TOCTOU window across transactions).
-- `apps/api/src/main/java/com/aurevia/smartclinic/documents/DocumentService.java`
-  - `link(...)` captures the insert row count and returns `404 NOT_FOUND` ("subject not found") when the insert wrote no row. The pre-existing chart check and the `DuplicateKeyException -> 409` path are unchanged, and no history event or success audit is emitted on the 404 path.
-- New tests in `apps/api/src/test/java/com/aurevia/smartclinic/documents/`:
-  - `DocumentRepositorySubjectTest.java` (5 tests) — probes chart/order/result with RLS-bounded SQL assertions, false and null results, insert skipped when missing, insert writes when present, and chart reuse of the same fold.
-  - `DocumentServiceSubjectLinkTest.java` (6 tests) — order-missing 404, result-missing 404, chart insert-nothing 404, order/result success, and unknown chart still concealed before insert.
+- Deleted the whole duplicate `apps/api/src/main/java/com/aurevia/smartclinic/patient/chart` package (11 classes) and its mirror tests (`apps/api/src/test/java/com/aurevia/smartclinic/patient/chart`, `apps/api/src/test/java/com/aurevia/smartclinic/it/patientchart`, including the duplicate `V13__longitudinal_chart.sql`). The duplicate exposed `POST /api/v1/chart/entries` and `GET /api/v1/chart/patients/{id}/entries` without bounded-text validation and without the clinical-author COALESCE on verification.
+- Kept the hardened S-G1-03 slice (`chart.record`) and its `/api/v1/chart/records` contract as the single surviving public route. No hardening logic was changed; deleting the duplicate consolidates it.
+- Removed the now-stale explicit bean names (`chartRecordService`, `chartRecordRepository`, `chartRecordController`, `chartRecordActionPolicy`) and their "a legacy chart slice shares the default name" comments from the four surviving classes. A repo-wide search found no reference to those names outside the deleted comments.
+- Added two tests to `apps/api/src/test/java/com/aurevia/smartclinic/it/chart/record/ChartRecordIntegrationTest.java`:
+  1. `legacyChartWriteRouteIsRemoved` — asserts both legacy paths now return 404.
+  2. `verificationOfRecorderOpenEntryAssignsAccountableClinicalAuthor` — records a VITAL as `assistant-a` with no `clinicalAuthor`, verifies as `clinician-a` at `If-Match: "1"`, and asserts response and persisted `clinical_author`/`verified_by` are `clinician-a` while `dataEntryActor` stays `assistant-a`.
 
-No migration was added; no coverage threshold, exclusion or skip was changed; no existing test was weakened, deleted or skipped. `render(...)` retains its chart-only probe; the story scopes the defect to `link`, and changing `render` would require editing out-of-scope tests. Recorded as a follow-up observation below.
+### Scope note
 
-## Tests written first (red -> green)
+The task `scope` names only the two `src/main/java` domain paths. The story explicitly requires failing tests first and an integration test, and deleting production classes makes their mirror tests uncompilable, so the test edits are confined to the mirrored chart test packages (`it/chart/record`, `patient/chart`, `it/patientchart`). No file outside the chart domain was changed. `db/migrations`, trackers, workflows, agents and generated config were not touched.
 
-Red command (before production change):
-```
-mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest=DocumentRepositorySubjectTest,DocumentServiceSubjectLinkTest test
-```
-Red result: compilation failure — `cannot find symbol: method subjectExists(String,String)` (the new repository boundary did not exist); plus an initially ambiguous `queryForObject` matcher, fixed in the test by typing the parameter matcher as `Map<String, ?>`.
+## Failing test first (red → green)
 
-Green command (same command after implementation): `exit 0`
-```
-Tests run: 5, Failures: 0, Errors: 0, Skipped: 0 -- DocumentRepositorySubjectTest
-Tests run: 6, Failures: 0, Errors: 0, Skipped: 0 -- DocumentServiceSubjectLinkTest
-```
+- RED command: `SMARTCLINIC_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security -Dgroups=integration -Dtest=ChartRecordIntegrationTest test`
+- RED result: `Tests run: 7, Failures: 1, Errors: 0, Skipped: 0` — `legacyChartWriteRouteIsRemoved` failed at line 427: `expected: <404 NOT_FOUND> but was: <201 CREATED>` (the legacy route was still live). The new null-author test passed but is the required acceptance evidence.
+- GREEN command: identical.
+- GREEN result: `Tests run: 7, Failures: 0, Errors: 0, Skipped: 0`, `BUILD SUCCESS`.
 
-## New/changed branches and their covering tests (AGENTS.md coverage rule 6)
+## Commands run and results (all observed via executed tool commands)
 
-| Production branch | Test |
+| Command | Result |
 |---|---|
-| `DocumentRepository.subjectExists` result `true` | `DocumentRepositorySubjectTest.subjectExistsChecksChartOrderAndResultWithRlsBoundedQueries`, `insertWritesBytesWhenTheSubjectExists` |
-| `DocumentRepository.subjectExists` result `false` and `null` | `DocumentRepositorySubjectTest.subjectExistsIsFalseForAMissingOrNullResult` |
-| `DocumentRepository.insert` subject absent -> `0` (guard true) | `DocumentRepositorySubjectTest.insertIsSkippedWhenTheSubjectDoesNotExist` |
-| `DocumentRepository.insert` subject present -> JDBC update (guard false) | `DocumentRepositorySubjectTest.insertWritesBytesWhenTheSubjectExists` |
-| `DocumentService.link` `written == 0` -> 404 for order | `DocumentServiceSubjectLinkTest.linkRejectsAnOrderWhoseTargetDoesNotExist` |
-| `DocumentService.link` `written == 0` -> 404 for result | `DocumentServiceSubjectLinkTest.linkRejectsAResultWhoseTargetDoesNotExist` |
-| `DocumentService.link` `written == 0` -> 404 for chart race | `DocumentServiceSubjectLinkTest.linkRejectsAChartWhoseInsertFindsNoEffectiveRecord` |
-| `DocumentService.link` `written > 0` success (guard false) | `DocumentServiceSubjectLinkTest.linkStoresAnAssociationWhenAnOrderTargetExists`, `linkStoresAnAssociationWhenAResultTargetExists`, and existing `it.documents.DocumentServiceTest.linkStoresOriginalBytesAndAppendsHistory` |
-| `DocumentService.link` `DuplicateKeyException` -> 409 (unchanged) | existing `it.documents.DocumentServiceTest.linkMapsAConcurrentConflictTo409` |
-| `DocumentService.link` unknown chart -> 404 before insert (unchanged) | `DocumentServiceSubjectLinkTest.linkStillConcealsAnUnknownChartBeforeInsert` and existing `linkConcealsAnUnknownChart` |
+| `mvn -q -B -f apps/api/pom.xml -Pno-security,fast test` | `BUILD SUCCESS`; Surefire reports total: **1887 tests, 0 failures, 0 errors, 0 skipped** (fast JVM unit tier) |
+| `SMARTCLINIC_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security verify` | `Tests run: 2324, Failures: 0, Errors: 0, Skipped: 0`; `jacoco:check` → **"All coverage checks have been met."** (773 classes); `BUILD SUCCESS` |
+| `SMARTCLINIC_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security clean verify` | Exit 0; Surefire totals `Tests run: 2324 Failures: 0 Errors: 0 Skipped: 0`; packaged jar contains no legacy `patient/chart` class (only an empty directory entry). Rules out stale build artifacts. |
+| SpotBugs: `mvn -B -f apps/api/pom.xml -DskipTests -Dowasp.skip=true spotbugs:check` | `BugInstance size is 0`, `Error size is 0`, `No errors/warnings found`, `BUILD SUCCESS` |
+| Per-file JaCoCo XML inspection (`apps/api/target/site/jacoco/jacoco.xml`, package `com.aurevia.smartclinic.chart.record`) | All 11 survivors 100% on every counter present: `ChartController` INSTRUCTION 36/36, LINE 8/8, METHOD 5/5, CLASS 1/1; `ChartService` 936/936, 196/196, BRANCH 112/112, 17/17, 1/1; `ChartRepository` 378/378, 85/85, BRANCH 6/6, 15/15, 1/1; `ChartActionPolicy` 35/35, 10/10, BRANCH 7/7, 3/3, 1/1; `ChartEntry`, `ChartView`, `RecordEntryCommand`, `EntryType`, `EntrySource`, `PresenceState`, `VerificationState` all 100%. No deleted `patient.chart` class appears in the report. |
+| `bash -n` + `shellcheck` on scripts, `scripts/project-name.py`, `python3 -I scripts/check-docs.py`, `check-secrets.py`, `check-names.py`, `check-migrations.py --require-baseline` | All passed (no findings) |
+| `python3 -I -m unittest discover -s scripts/tests -q` | **FAILED for worker-environment reasons only**: `Ran 271 tests, failures=8, errors=10`. 10 errors are `ModuleNotFoundError: No module named 'yaml'` (PyYAML absent in this image); 3 failures are `check_pack` reading the worktree CI `opencode.json` (see below); the rest are `test_agent_run` cases whose fake scripts call the same failing checks and a local git push rejected by the worker's git config. No Python file was changed by this story; no failure touches chart code. |
 
-The SQL `CASE` arms are inside a string literal and create no Java branches; each arm's table is asserted by `subjectExistsChecksChartOrderAndResultWithRlsBoundedQueries`.
+### Coverage rule compliance
 
-## Entry point -> test trace
+No production line or branch was added: the change is a deletion plus removal of four annotation/comment lines and two test methods. Every surviving production branch is still covered — per-file 100% is proven above, not just the bundle gate. No threshold, exclusion, `@Disabled`, `.skip` or generated-file rule was changed.
 
-`POST /api/v1/documents/associations` -> `DocumentController.link` -> `DocumentService.link` -> (authorize + chart probe) -> `DocumentRepository.insert` -> `DocumentRepository.subjectExists` (RLS-bounded SELECT EXISTS) -> zero rows -> 404 `NOT_FOUND`. HTTP success/concealment for charts is exercised by `it.documents.DocumentIsolationTest` (integration tier); per-subject rejection is exercised by the two new mock-based unit classes above.
+## New or changed branches and their tests
 
-## Commands actually run and results
+| Branch / path | Test |
+|---|---|
+| No new Java branch (deletion + annotation/comment removal only) | n/a |
+| Existing `ChartService.verified()` ternary, null-author side — `entry.clinicalAuthor() == null ? actor : ...` | New `verificationOfRecorderOpenEntryAssignsAccountableClinicalAuthor` (HTTP + DB) and existing unit test `verifyAssignsAccountableClinicalAuthorWhenRecorderLeftItOpen` |
+| Existing `ChartService.verified()` ternary, non-null side | Existing unit test `verifySuccessReturnsVerifiedEntryAtNextVersion` |
+| Existing `ChartRepository.verify()` SQL `COALESCE(clinical_author, :actor)` (not a Java branch) | New `verificationOfRecorderOpenEntryAssignsAccountableClinicalAuthor` asserts the persisted `clinical_author` equals the verifier |
+| Legacy route absence (Spring mapping, no Java branch) | New `legacyChartWriteRouteIsRemoved` |
 
-- `mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest=DocumentRepositorySubjectTest,DocumentServiceSubjectLinkTest test` — exit 0, 11 tests, 0 failures.
-- `mvn -q -B -f apps/api/pom.xml -Pno-security,fast test` — exit 0; 1914 unit tests, 0 failures, 0 errors, 0 skipped. The pre-existing `it.documents.DocumentServiceTest` (21 tests) still passes unchanged.
-- `python3 -I scripts/check-names.py`, `python3 -I scripts/check-docs.py`, `python3 -I scripts/check-secrets.py`, `python3 -I scripts/check-migrations.py --require-baseline` — all exit 0.
-- `SMARTCLINIC_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml verify` — result recorded in the Coverage section below.
-- Segment 2 independently re-ran: `bash apps/api/check.sh` (exit 0, full verify — see Coverage); the targeted two-class `mvn ... -Dtest=... test` (exit 0); and `python3 -I scripts/check-names.py`, `python3 -I scripts/check-docs.py`, `python3 -I scripts/check-secrets.py`, `python3 -I scripts/check-migrations.py --require-baseline` (all exit 0). Java 21.0.13, Maven 3.10.0, PostgreSQL accepting connections on 127.0.0.1:5432.
+## Known worker-environment artifacts (not defects in this change)
 
-## Coverage (100% gate)
+1. **`scripts/quick-check.sh` stops at `check-pack: opencode.json is stale`.** This worker's worktree `opencode.json` is the CI profile copied under `skip-worktree` (`git ls-files -v` shows `S`), so `check-pack.py`/`gen-opencode.py --check` judge the CI profile, not the committed local profile. I verified HEAD truth with the generator instead of regenerating or committing config (out of scope, orchestrator-owned): `HEAD:opencode.json == generator.render(local)` → True; `HEAD:.github/opencode.ci.json == generator.render(ci)` → True; worktree file == CI render → True. This is the already-closed OPS-CW-003-01 artifact. I did not edit `opencode.json`.
+2. **PyYAML is not installed**, so the workflow/swarm Python tests error on import. Unrelated to this Java-only change.
+3. **OWASP dependency analysis was skipped**: `dependency-check` could not transfer NVD metadata (`PKIX ... unable to find valid certification path`, HTTP 401 from Maven feeds) and reported "Skipping dependency-check". SpotBugs ran green locally; CI/integrator with the NVD cache owns the OWASP gate.
 
-Full canonical gate re-run on the final branch (segment 2), with PostgreSQL available and `SMARTCLINIC_PG_ADMIN=postgres` in the environment:
+## Defects found (out of scope, for the orchestrator)
 
-```
-bash apps/api/check.sh        # canonical: cd apps/api && mvn -q -B verify
-```
+- `CREATE TABLE public.chart_entry` exists only in the test-scoped `apps/api/src/test/java/com/aurevia/smartclinic/it/chart/record/migrations/V13__longitudinal_chart.sql`; `db/migrations` has no V13. `.agent/pr-notes/S-G1-03.md` records that the integrator was supposed to sequence V13 into `db/migrations`. I left the surviving test copy intact and did not touch `db/migrations` (outside this task's scope), so production still lacks the authoritative DDL. This predates this story and is unchanged by it.
 
-Result: **exit 0**. Surefire aggregate from `apps/api/target/surefire-reports/TEST-*.xml`: **2360 tests, 0 failures, 0 errors, 0 skipped**. No failing surefire/failsafe XML report exists. JaCoCo `check` (BUNDLE rule, 1.00 minimum for INSTRUCTION, LINE, BRANCH, METHOD and CLASS) therefore passed — project-wide `apps/api/target/site/jacoco/jacoco.xml` reports **0 missed on every counter**: INSTRUCTION 0/90690, BRANCH 0/6407, LINE 0/15733, COMPLEXITY 0/7069, METHOD 0/3814, CLASS 0/785.
+## Decisions
 
-Read directly from `apps/api/target/site/jacoco/jacoco.csv` for the two touched production files (columns: instruction missed/covered, branch missed/covered, line missed/covered, complexity missed/covered, method missed/covered):
+- Deleted rather than deprecated the duplicate: deprecation would leave the unhardened write path live and would contradict the 100%-coverage rule (dead code must be removed).
+- Kept `chart.record` and `/api/v1/chart/records` as the surviving contract: it is the S-G1-03-delivered, hardened slice; the duplicate is the one the story identifies as legacy.
+- Removed the explicit bean names: they existed only to disambiguate the two slices; a repo-wide search found no remaining reference.
 
-| File | Instruction | Branch | Line | Complexity | Method | Class (from jacoco.xml) |
-|---|---|---|---|---|---|---|
-| `documents/DocumentService.java` | 0/964 | 0/68 | 0/196 | 0/52 | 0/18 | 0/1 |
-| `documents/DocumentRepository.java` | 0/384 | 0/2 | 0/86 | 0/21 | 0/20 | 0/1 |
+## Evidence sources
 
-Both changed files are at 100% on every counter, including the per-class counter. No new production class was introduced. The report goal is bound to the `verify` phase (pom.xml lines 80-88), so the later targeted `test` run could not overwrite these numbers.
-
-Targeted confirmation of the new tests:
-```
-mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest=DocumentRepositorySubjectTest,DocumentServiceSubjectLinkTest test
-```
-Result: **exit 0** — `DocumentRepositorySubjectTest` 5 tests and `DocumentServiceSubjectLinkTest` 6 tests, 0 failures/errors/skipped each.
-
-## Decisions and rationale
-
-- **Guard in the repository, not a second service call.** The pre-existing unit test `it.documents.DocumentServiceTest.linkForOrderNeedsNoChartLookup` (outside this task's scope) asserts that an order link does not call `chartExists` and stubs `insert` to return 1. Adding a direct `orderExists`/`resultExists` service call would make that unstubbed Mockito method return `false` and break an unrelated test. Performing the RLS-bounded probe inside `insert` keeps that test green, keeps the check atomic with the write, and still returns 404 for a missing target. No out-of-scope file was edited.
-- **Chart case retained.** The service's `chartExists` check remains so `linkConcealsAnUnknownChart` still observes `never().insert`; `chartExists` delegates to the shared `subjectExists` fold to avoid duplicated SQL.
-- **Order/result tables.** Chose the canonical owner tables that actually carry those identifiers (`exchange_order` for XCH-01 orders, `xch04_report_revision` for XCH-04 final/corrected/critical results). Both are forced-RLS tenant tables readable by the non-owner runtime role. No new cross-module FK was added: V17 deliberately deferred that, and the probe enforces the same invariant without a schema change.
-- **Scope of `render`.** `DocumentService.render` has the identical chart-only probe. It is not changed here because the story names `link` specifically, and the change would require editing out-of-scope tests (`renderForOrderSkipsTheChartLookup`, `renderConcealsMissingChart`). Suggested follow-up: apply the same `subjectExists` guard to `render` with its own tests.
-
-## Defects / environment observations (not caused by this change)
-
-- `python3 -I scripts/gen-opencode.py --check` and `scripts/quick-check.sh`'s pack step report `opencode.json is stale` on this checkout. `git status` shows `opencode.json` unmodified and no diff, so this is a pre-existing condition, not introduced by this task; the file is outside scope and was not edited.
-- `python3 -I -m unittest discover -s scripts/tests -q` exits 1 here with 8 failures / 10 errors that are environmental and unrelated to this Java change: `ModuleNotFoundError: No module named 'yaml'` (PyYAML absent) and git-branch setup errors in `test_agent_run.py`. The directly relevant policy checks (`check-names`, `check-docs`, `check-secrets`, `check-migrations`) pass.
-- The full `bash apps/api/check.sh` run emitted two non-fatal OWASP Dependency-Check NVD data-import errors (`Failed to process CVE-2026-6785` / `CVE-2026-6786`: a reference URL longer than the tool's local H2 `URL VARCHAR(1000)` column). These occur during NVD data update, are logged per-CVE by the dependency-check plugin, and did **not** fail the build — the canonical gate returned exit 0 with 2360 passing tests and a green JaCoCo check. Tool/data environment issue, unrelated to this change; no code or threshold was altered to accommodate it.
-- No production deployment or real-patient configuration decision is needed; all fixtures are synthetic.
-
-## Evidence source
-
-Tool evidence: executed `mvn`/`python3` commands and their outputs, plus source reads of `DocumentService`, `DocumentRepository`, `DocumentInputs`, V17/V19/V22 migrations and existing tests. Simulated reviewer evidence: the specialist skills (`smartclinic-senior-backend`, `smartclinic-senior-database`, `smartclinic-senior-java-build`, `smartclinic-test-engineer`) were loaded as instructions; no separate reviewer subagent was run for this bounded fix. Human/clinical/patient evidence: none.
-
-## Completion (segment 2)
-
-Story complete. The code change, red/green tests, per-branch test mapping and 100% coverage evidence are all recorded above. The full canonical gate (`bash apps/api/check.sh`) passed on the final tree with 2360 tests and 0 missed JaCoCo counters project-wide; both touched files are at 100% on every counter. No decision or evidence is missing, no coverage threshold was lowered, no exclusion or skip was added, and no production file outside the two named in the scope was changed. Committing this notes update to the current branch; no push, tag or gh call.
+- Tool evidence: all commands above were executed in this worker; JaCoCo XML parsed programmatically; no logs pasted into trackers.
+- Reviewer evidence: bounded read-only review by the `smartclinic-senior-backend` specialist (simulated reviewer) — **no blocking findings**. It confirmed by static inspection: no dangling references to the deleted package/routes, all three CLN-03 hardening controls intact in `chart.record`, both new assertions correct with correctly bound RLS context (`app.current_org` set before the `FORCE ROW LEVEL SECURITY` read), and no bean-name/compile risk. It did not execute checks (no shell in its context); execution evidence above is mine. It noted that TODO.md:1780 is still `[-]` and must be closed by the orchestrator/integrator — tracker state, not a code defect (I am forbidden from editing TODO.md). No human, clinical or patient-participant evidence; no real patient data used (synthetic fixtures only).
