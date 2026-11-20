@@ -37,6 +37,14 @@ import com.aurevia.smartclinic.tenant.TenantContext;
  * its append-only facts and the audit event commit together. A patient reply to
  * a resolved thread reopens the work item only while the verified patient link
  * is still active; a closed thread is read-only.</p>
+ *
+ * <p>A patient must address a unit through a verified, active connection: the
+ * patient, unit and connection identities stored on the conversation are derived
+ * from that connection, never from the request body alone. The connection is
+ * re-resolved on every reply so a revoked connection stops new messaging, and a
+ * unit category that no longer matches the verified unit cannot post a message
+ * (MSG-01, MSG-02, MSG-07, ARC-07). A staff caller is authorized by the bounded
+ * role and unit matrix.</p>
  */
 @Service
 public class ConversationService {
@@ -74,9 +82,14 @@ public class ConversationService {
     /**
      * Open a conversation through a verified patient connection.
      *
+     * <p>A patient caller must present a verified, active connection to the
+     * named unit; the unit and connection identity stored on the conversation
+     * are derived from that connection, never from the request body alone. A
+     * staff caller is authorized by the bounded role and unit matrix.</p>
+     *
      * @param request open command
      * @return the created conversation
-     * @throws ApiException on invalid input, denial or an invisible patient or link
+     * @throws ApiException on invalid input, denial or an invisible patient, link or connection
      */
     public Conversation open(OpenRequest request) {
         String patientId = ConversationInputs.uuid(request.patientId(), "patientId");
@@ -148,8 +161,10 @@ public class ConversationService {
                 throw notFound("verified patient link not found");
             }
             if (caller.patient()) {
-                // MSG-07: a revoked connection stops new messaging on the next
-                // patient reply, including the reopen of a resolved thread.
+                // Re-resolve the stored connection on every patient reply. The
+                // unit category is derived from the tenant directory, so a
+                // revoked connection or a route that no longer matches the
+                // verified unit cannot post a new message from either side.
                 connections.requireActive(current.patientId(), current.unitKey(), current.connectionId());
             }
             SenderKind kind = caller.patient() ? SenderKind.PATIENT : SenderKind.STAFF;

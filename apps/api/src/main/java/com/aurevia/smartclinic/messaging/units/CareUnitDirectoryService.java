@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
@@ -12,8 +13,8 @@ import org.springframework.stereotype.Service;
 
 import com.aurevia.smartclinic.api.ApiException;
 import com.aurevia.smartclinic.messaging.conversations.ConversationContract.UnitKey;
+import com.aurevia.smartclinic.messaging.conversations.ConversationUnitResolver;
 import com.aurevia.smartclinic.messaging.conversations.PatientConnectionVerifier;
-import com.aurevia.smartclinic.messaging.conversations.PatientConnectionVerifier.VerifiedConnection;
 import com.aurevia.smartclinic.messaging.units.MessagingContract.CareUnit;
 import com.aurevia.smartclinic.messaging.units.MessagingContract.ConnectRequest;
 import com.aurevia.smartclinic.messaging.units.MessagingContract.ConnectionContext;
@@ -23,6 +24,7 @@ import com.aurevia.smartclinic.messaging.units.MessagingContract.EligibleRelatio
 import com.aurevia.smartclinic.messaging.units.MessagingContract.MessagingAudit;
 import com.aurevia.smartclinic.messaging.units.MessagingContract.PatientUnitConnection;
 import com.aurevia.smartclinic.messaging.units.MessagingContract.UnitDirectory;
+import com.aurevia.smartclinic.messaging.units.MessagingContract;
 import com.aurevia.smartclinic.tenant.TenantContext;
 
 /**
@@ -34,6 +36,13 @@ import com.aurevia.smartclinic.tenant.TenantContext;
  * verified chart link. A directory entry is never an authorization: a unit is
  * listed and connectable only when an independently verified relationship ties
  * that exact patient to that exact unit in the active organization.</p>
+ *
+ * <p>This service is the single authoritative resolver for protected messaging
+ * commands. It exposes both the conversation-domain
+ * {@link PatientConnectionVerifier} port and the directory-specific
+ * {@link #requireActiveConnectionById(String, String)} /
+ * {@link #requireUsableConnection(String, String)} methods; all of them share
+ * the same tenant-scoped resolution and fail closed on the same conditions.</p>
  */
 @Service
 public class CareUnitDirectoryService implements PatientConnectionVerifier {
@@ -223,39 +232,121 @@ public class CareUnitDirectoryService implements PatientConnectionVerifier {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>The expected unit key is validated first (before any lookup or audit),
+     * then the exact connection is resolved through the tenant directory by
+     * {@link #requireActiveConnectionById(String, String)}. The directory's unit
+     * category is parsed by {@link ConversationUnitResolver} and must equal the
+     * expected key; every derived identity in the returned value comes from the
+     * stored connection and directory, never from the caller.</p>
+     */
     @Override
-    public VerifiedConnection requireActive(String patientId, String unitKey, String connectionId) {
-        String chart = MessagingInputs.uuid(patientId, "patientId");
+    public PatientConnectionVerifier.VerifiedConnection requireActive(String patientId, String unitKey,
+                                                                      String connectionId) {
         String key = requireUnitKey(unitKey);
-        String connection = MessagingInputs.text(connectionId, "connectionId", 128);
-        TenantContext context = requireContext();
-        PatientUnitConnection candidate = store.findConnection(context.organizationId(), connection)
-                .filter(found -> found.state() == ConnectionState.ACTIVE)
-                .filter(found -> chart.equals(found.patientId()))
-                .orElseThrow(() -> denyConnection(context, key));
-        CareUnit unit = store.findUnit(context.organizationId(), candidate.unitId())
-                .filter(CareUnit::active)
-                .orElseThrow(() -> denyConnection(context, key));
-        if (!key.equals(unit.kind())) {
-            throw denyConnection(context, key);
+        MessagingContract.VerifiedConnection resolved = requireActiveConnectionById(patientId, connectionId);
+        UnitKey bound = ConversationUnitResolver.fromDirectory(resolved.unitKey());
+        if (!key.equals(bound.wire())) {
+            throw deny(requireContext(), MessagingActions.CONNECTION_USE, key, 403, "FORBIDDEN",
+                    "no active connection for this patient and unit");
         }
-        // Reuse the authoritative connection-use rule so membership, verified
-        // chart and active binding are checked in exactly one place.
-        requireActiveConnection(patientId, candidate.unitId());
-        return new VerifiedConnection(candidate.patientId(), candidate.id(), key);
+        return new PatientConnectionVerifier.VerifiedConnection(resolved.connection().patientId(),
+                resolved.connection().id(), bound.wire());
     }
 
+    /**
+     * Resolve a client-supplied connection identifier for a patient self-service
+     * action.
+     *
+     * <p>The connection is resolved inside the active tenant, its chart ownership
+     * and active state are asserted, and the existing
+     * {@link #requireActiveConnection(String, String)} check is reused so an
+     * inactive membership, a revoked chart link or a revoked connection fails
+     * closed. The resulting unit category comes from the tenant's care-unit
+     * directory, never from the client.</p>
+     *
+     * @param patientId    verified chart identifier
+     * @param connectionId connection identifier supplied by the caller
+     * @return the authoritative connection and its tenant unit category
+     * @throws ApiException on invalid input, concealment or an unusable connection
+     */
+    public MessagingContract.VerifiedConnection requireActiveConnectionById(String patientId, String connectionId) {
+        MessagingContract.VerifiedConnection verified = resolveConnection(patientId, connectionId);
+        requireActiveConnection(patientId, verified.connection().unitId());
+        return verified;
+    }
+
+    /**
+     * Resolve a connection identifier for a staff action in the caller's unit.
+     *
+     * <p>Staff act under a separate clinical role and do not have a patient
+     * chart link, so the patient-only {@code CONNECTION_USE} role gate is not
+     * applied. Membership, connection ownership, active state and the tenant
+     * directory unit are still enforced on every call.</p>
+     *
+     * @param patientId    owning chart identifier
+     * @param connectionId connection identifier carried by the conversation
+     * @return the authoritative connection and its tenant unit category
+     * @throws ApiException on invalid input, concealment, inactive membership or an unusable connection
+     */
+    public MessagingContract.VerifiedConnection requireUsableConnection(String patientId, String connectionId) {
+        MessagingContract.VerifiedConnection verified = resolveConnection(patientId, connectionId);
+        TenantContext context = requireContext();
+        if (!store.hasActiveMembership(context.organizationId(), context.subject())) {
+            throw deny(context, MessagingActions.CONNECTION_USE, connectionId, 403, "FORBIDDEN",
+                    "no active membership");
+        }
+        return verified;
+    }
+
+    /**
+     * Resolve and validate the exact connection inside the active tenant.
+     *
+     * @param patientId    owning chart identifier
+     * @param connectionId connection identifier
+     * @return the connection and the unit category from its recipient care unit
+     * @throws ApiException on malformed identifiers, concealment, a revoked
+     *                      connection or a unit that cannot serve conversations
+     */
+    private MessagingContract.VerifiedConnection resolveConnection(String patientId, String connectionId) {
+        String chart = MessagingInputs.uuid(patientId, "patientId");
+        String id = MessagingInputs.uuid(connectionId, "connectionId");
+        TenantContext context = requireContext();
+        PatientUnitConnection connection = store.findConnection(context.organizationId(), id)
+                .orElseThrow(() -> deny(context, MessagingActions.CONNECTION_USE, id, 404, "NOT_FOUND",
+                        "connection not found"));
+        if (!Objects.equals(chart, connection.patientId())) {
+            throw deny(context, MessagingActions.CONNECTION_USE, id, 404, "NOT_FOUND", "connection not found");
+        }
+        if (connection.state() != ConnectionState.ACTIVE) {
+            throw deny(context, MessagingActions.CONNECTION_USE, id, 403, "FORBIDDEN",
+                    "the connection is no longer active");
+        }
+        CareUnit unit = store.findUnit(context.organizationId(), connection.unitId())
+                .orElseThrow(() -> deny(context, MessagingActions.CONNECTION_USE, id, 404, "NOT_FOUND",
+                        "recipient care unit not found"));
+        if (!unit.active() || unit.unitKey() == null) {
+            throw deny(context, MessagingActions.CONNECTION_USE, id, 403, "FORBIDDEN",
+                    "the recipient care unit cannot serve conversations");
+        }
+        return new MessagingContract.VerifiedConnection(connection, unit.unitKey());
+    }
+
+    /**
+     * Validate the bounded conversation unit key before any directory lookup.
+     *
+     * @param value supplied unit key
+     * @return the canonical wire value
+     * @throws ApiException when the key is not an approved conversation unit
+     */
     private static String requireUnitKey(String value) {
         try {
             return UnitKey.from(value).wire();
         } catch (IllegalArgumentException exception) {
             throw new ApiException(422, "INVALID_UNITKEY", "unitKey must be an approved care unit");
         }
-    }
-
-    private ApiException denyConnection(TenantContext context, String unitKey) {
-        return deny(context, MessagingActions.CONNECTION_USE, unitKey, 403, "FORBIDDEN",
-                "no active connection for this patient and unit");
     }
 
     private boolean isUsable(EligibleRelationship relationship) {
