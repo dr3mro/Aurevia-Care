@@ -2281,7 +2281,15 @@ def integrate_batch(queue, gate="scripts/quick-check.sh"):
     comments = [record_merge(pr, task_id, sha, gates[pr][0]) for pr, task_id, sha in merged]
     files = ["TODO.md"] + [f"docs/swarm/{t}.md" for _, t, _ in merged]
     git("add", *files)
-    git(*IDENTITY, "commit", "-qm", f"Integrate {len(merged)} swarm pull request(s)")
+    try:
+        git(*IDENTITY, "commit", "-qm", f"Integrate {len(merged)} swarm pull request(s)")
+    except subprocess.CalledProcessError as error:
+        status = git("status", "--short", check=False)
+        staged = git("diff", "--cached", "--stat", check=False)
+        raise subprocess.CalledProcessError(
+            error.returncode, error.cmd,
+            (error.stdout or "") + "\n--- status ---\n" + status +
+            "\n--- staged ---\n" + staged, error.stderr)
     # A full gate can take many minutes; concurrent [skip ci] tracker commits
     # can advance main meanwhile. Integrators are serialized by their
     # concurrency group, so the only new commits are tracker-only. Move HEAD
