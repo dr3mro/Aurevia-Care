@@ -151,3 +151,7 @@ records the version it implements in its own README when it adopts one.
 - No application code, no schema, no API contract and no delivery change belongs
   in this directory. A token that needs a new value is added here first, then
   adopted by a module in its own change.
+
+## Screens and navigation
+
+The screen map, application shell, required screen states and layout rules are in [screens and navigation](screens-and-navigation.md).
