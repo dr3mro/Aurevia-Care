@@ -45,7 +45,7 @@ class CareUnitControllerTest {
     @Test
     void directoryRouteDelegatesToTheService() {
         UnitDirectory directory = new UnitDirectory(List.of(
-                new CareUnit(UNIT, ORG, "facility-1", "Synthetic Lab", List.of("lab"), true)));
+                new CareUnit(UNIT, ORG, "facility-1", "Synthetic Lab", "lab", List.of("lab"), true)));
         when(service.eligibleUnits()).thenReturn(directory);
         assertEquals(directory, controller.units());
         verify(service).eligibleUnits();

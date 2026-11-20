@@ -17,6 +17,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.aurevia.smartclinic.api.ApiException;
+import com.aurevia.smartclinic.messaging.conversations.PatientConnectionVerifier;
+import com.aurevia.smartclinic.messaging.conversations.PatientConnectionVerifier.VerifiedConnection;
 import com.aurevia.smartclinic.messaging.units.MessagingContract.CareUnit;
 import com.aurevia.smartclinic.messaging.units.MessagingContract.ConnectRequest;
 import com.aurevia.smartclinic.messaging.units.MessagingContract.ConnectionContext;
@@ -428,6 +430,77 @@ class CareUnitDirectoryServiceTest {
                 .findFirst().orElseThrow();
         assertEquals("CONNECTION_USE", denial.action());
         assertEquals(OTHER_UNIT, denial.resourceId());
+    }
+
+    @Test
+    void requireActiveResolvesServerDerivedIdentitiesForTheExactConnection() {
+        String connectionId = service.connect(request(PATIENT, UNIT, "order", REFERENCE)).id();
+        PatientConnectionVerifier verifier = service;
+        VerifiedConnection verified = verifier.requireActive(PATIENT, "lab", connectionId);
+        assertEquals(PATIENT, verified.patientId());
+        assertEquals(connectionId, verified.connectionId());
+        assertEquals("lab", verified.unitKey());
+    }
+
+    @Test
+    void requireActiveDeniesAnUnknownConnection() {
+        ApiException error = assertThrows(ApiException.class,
+                () -> service.requireActive(PATIENT, "lab", "99999999-9999-9999-9999-999999999999"));
+        assertEquals(404, error.status());
+        assertEquals("NOT_FOUND", error.code());
+        assertEquals("NOT_FOUND", store.auditEvents(ORG).stream()
+                .filter(audit -> "CONNECTION_USE".equals(audit.action())).findFirst().orElseThrow().outcome());
+    }
+
+    @Test
+    void requireActiveDeniesAConnectionOwnedByAnotherChart() {
+        String connectionId = service.connect(request(PATIENT, UNIT, "order", REFERENCE)).id();
+        assertEquals(404, assertThrows(ApiException.class,
+                () -> service.requireActive(OTHER_PATIENT, "lab", connectionId)).status());
+    }
+
+    @Test
+    void requireActiveDeniesAConnectionUsedForTheWrongUnitKind() {
+        String connectionId = service.connect(request(PATIENT, UNIT, "order", REFERENCE)).id();
+        assertEquals(403, assertThrows(ApiException.class,
+                () -> service.requireActive(PATIENT, "clinic", connectionId)).status());
+    }
+
+    @Test
+    void requireActiveDeniesARevokedConnection() {
+        String connectionId = service.connect(request(PATIENT, UNIT, "order", REFERENCE)).id();
+        service.revoke(connectionId);
+        assertEquals(403, assertThrows(ApiException.class,
+                () -> service.requireActive(PATIENT, "lab", connectionId)).status());
+    }
+
+    @Test
+    void requireActiveDeniesConnectionsWhoseUnitIsMissingOrInactive() {
+        String missingUnit = "55555555-5555-5555-5555-555555555555";
+        String inactiveUnit = "66666666-6666-6666-6666-666666666666";
+        store.addUnit(unit(inactiveUnit, ORG, "Closed Lab", false));
+        String missingConnection = "c0000000-0000-0000-0000-000000000001";
+        String inactiveConnection = "c0000000-0000-0000-0000-000000000002";
+        store.insertConnection(ORG, connection(missingConnection, PATIENT, missingUnit));
+        store.insertConnection(ORG, connection(inactiveConnection, PATIENT, inactiveUnit));
+        assertEquals(404, assertThrows(ApiException.class,
+                () -> service.requireActive(PATIENT, "lab", missingConnection)).status());
+        assertEquals(403, assertThrows(ApiException.class,
+                () -> service.requireActive(PATIENT, "lab", inactiveConnection)).status());
+    }
+
+    @Test
+    void requireActiveRejectsAnUnknownUnitKeyBeforeAnyLookup() {
+        assertEquals(422, assertThrows(ApiException.class,
+                () -> service.requireActive(PATIENT, "demographics", "conn-1")).status());
+        assertTrue(store.auditEvents(ORG).isEmpty());
+    }
+
+    @Test
+    void requireActiveFailsClosedWithoutTenantContext() {
+        TenantContext.clear();
+        assertEquals(401, assertThrows(ApiException.class,
+                () -> service.requireActive(PATIENT, "lab", "d0000000-0000-0000-0000-000000000001")).status());
     }
 
     @Test
