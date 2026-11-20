@@ -108,12 +108,13 @@ public class PdfRenderer {
         content.append(rtl ? "500" : "72").append(" 760 Tm\n");
         content.append(hexText(visualOrder(spec.title(), rtl))).append(" Tj\nT*\n");
         for (String line : spec.lines()) {
-            for (String token : visualOrder(line, rtl).split(" ")) {
-                content.append(hexText(token)).append(" Tj ");
-            }
+            // One show-text run per line: separate Tj operators place words
+            // side by side with no space glyph, which concatenates clinical
+            // text and can detach a value from its unit (CLN-07, UX-01).
+            content.append(hexText(visualOrder(line, rtl))).append(" Tj\n");
             // The logical line is retained as a comment so provenance tooling can
             // recover the original order without re-running the bidi layout.
-            content.append("\n%LOGICAL ").append(hexOf(line)).append("\nT*\n");
+            content.append("%LOGICAL ").append(hexOf(line)).append("\nT*\n");
         }
         content.append(hexText("Page 1 / 1")).append(" Tj\nET\n");
         return content.toString();
@@ -172,11 +173,21 @@ public class PdfRenderer {
      * runs; digits, units and Latin identifiers form LTR runs that must not be
      * reordered internally (CLN-07, UX-01).
      *
+     * <p>A numeric token is LTR even when it uses Arabic-Indic digits: those
+     * code points live in the Arabic Unicode block, so a block-only test would
+     * mark the value as RTL and reverse it away from its unit. Testing the
+     * digit property first also keeps Arabic-Indic and Extended Arabic-Indic
+     * digits consistent.</p>
+     *
      * @param word a non-empty space-delimited token
-     * @return {@code true} when the token starts with an Arabic character
+     * @return {@code true} when the token is an Arabic RTL run
      */
     private static boolean isArabic(String word) {
-        return Character.UnicodeBlock.of(word.codePointAt(0)) == Character.UnicodeBlock.ARABIC;
+        int first = word.codePointAt(0);
+        if (Character.isDigit(first)) {
+            return false;
+        }
+        return Character.UnicodeBlock.of(first) == Character.UnicodeBlock.ARABIC;
     }
 
     private static String hexOf(String text) {
