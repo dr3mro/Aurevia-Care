@@ -16,7 +16,7 @@ Up to 10 OpenCode workers run in parallel on GitHub-hosted runners. An orchestra
 
 **Continuous loop.** Start it once (run **Agent swarm**, or push a change to `TODO.md`). It then repeats wave, publish, integrate, next wave until every task is `[x]`. A task a worker has taken 3 times without finishing keeps `attempts: 3` in `TODO.md` and waits for a person, and the monthly minute cap in `budget-gate` (10000 minutes, about five full 10-worker waves) still applies, so the loop cannot run away.
 
-**Two-tier checks.** The worker runs `scripts/quick-check.sh` (policy, compile and unit tests) for fast feedback, and the trusted integrator runs the full `scripts/check.sh` on each merge result with a PostgreSQL service and cached NVD data, so SpotBugs, OWASP, JaCoCo and DB policy failures cannot reach `main`. Delivery re-verifies the merged commit on main. The expensive checks run once per batch, not once per worker.
+**Two-tier checks.** The worker runs `scripts/worker-check.sh` (the quick gate plus the PostgreSQL integration suites and `db/check.sh`; the agent image carries PostgreSQL 17 and `start-postgres` starts it) for fast feedback, and the trusted integrator runs the full `scripts/check.sh` on each merge result with a PostgreSQL service and cached NVD data, so SpotBugs, OWASP, JaCoCo and DB policy failures cannot reach `main`. Delivery re-verifies the merged commit on main. The expensive checks run once per batch, not once per worker.
 
 **Batching.** The integrator sets up Java/Maven once, merges every ready PR in one job, pushes once, and Delivery verifies the pushed commit on main. Publish is one job for all slots rather than a matrix; the worker keeps no GitHub token and only the trusted publish job holds one.
 
