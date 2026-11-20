@@ -208,7 +208,8 @@ public class DocumentService {
      *
      * @param request render command
      * @return metadata of the stored render
-     * @throws ApiException on invalid input, denial, concealment or conflict
+     * @throws ApiException on invalid input, denial, an unknown chart, order or
+     *                      result subject, or a conflict
      */
     public RenderedDocument render(RenderRequest request) {
         String subjectType = DocumentInputs.subjectType(request.subjectType());
@@ -234,6 +235,10 @@ public class DocumentService {
             }
             if (CHART.equals(subjectType) && !repository.chartExists(subjectId)) {
                 failure.set(new ApiException(404, "NOT_FOUND", "chart not found"));
+                return null;
+            }
+            if (!CHART.equals(subjectType) && !repository.subjectExists(subjectType, subjectId)) {
+                failure.set(new ApiException(404, "NOT_FOUND", "subject not found"));
                 return null;
             }
             if (sourceAssociationId != null) {
@@ -351,7 +356,7 @@ public class DocumentService {
      * @param subjectId   opaque target identifier
      * @param locale      en or ar
      * @return render metadata in version order
-     * @throws ApiException on invalid input or denial
+     * @throws ApiException on invalid input, denial or a concealed subject
      */
     public List<RenderedDocument> renderedVersions(String subjectType, String subjectId, String locale) {
         DocumentInputs.subjectType(subjectType);
@@ -363,6 +368,10 @@ public class DocumentService {
             ApiException denial = authorize(context, DocumentPolicy.DOCUMENT_READ, "LIST", READ_PURPOSE);
             if (denial != null) {
                 failure.set(denial);
+                return null;
+            }
+            if (!repository.subjectExists(subjectType, subjectId)) {
+                failure.set(new ApiException(404, "NOT_FOUND", "subject not found"));
                 return null;
             }
             List<RenderedDocument> found = repository.renderedVersions(subjectType, subjectId, locale);
