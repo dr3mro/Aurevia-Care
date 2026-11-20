@@ -561,6 +561,8 @@ def task_text(task):
               ("Requirements", task.get("requirements", "")),
               ("Scope (stay inside these paths)", ", ".join(task["scope"])),
               ("Reserved migration version", task.get("reserved", "")),
+              ("Read first", "The section 'Instructions for every agent' at the top of TODO.md, then "
+                             "AGENTS.md and CODING_STYLE.md."),
               ("Naming rule", "Name every new folder and Java package after its business domain, "
                               "never after a task, story or gate ID; the build fails otherwise.")]
     head = "\n".join(f"{k}: {v}" for k, v in fields if v and v != "-")
