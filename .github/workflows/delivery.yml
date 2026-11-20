@@ -59,29 +59,11 @@ jobs:
       # violates AGENTS.md because this is a required check.
       - run: bash scripts/frontend-check.sh
 
-  # Pull requests get the fast tier only (compile and unit tests). The full
-  # tier (coverage, OWASP, SpotBugs, PostgreSQL) runs on main, tags and merge
-  # groups, so a repair or swarm pull request is checked in minutes.
-  quick:
-    name: Java unit tests (pull request)
-    if: github.event_name == 'pull_request'
-    timeout-minutes: 15
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
-          cache: maven
-      - name: Compile and unit tests
-        run: mvn -q -B -f apps/api/pom.xml -Pno-security,fast test
-
+  # The same full verification (unit and PostgreSQL integration tests, JaCoCo,
+  # SpotBugs, OWASP) runs on pull requests, merge groups and main. A pull request
+  # that is green here cannot turn main red, whoever merges it.
   java-verify:
     name: Java and database verification
-    if: github.event_name != 'pull_request'
     needs: policy
     timeout-minutes: 30
     runs-on: ubuntu-24.04
@@ -106,7 +88,6 @@ jobs:
 
   docs:
     name: Developer reference
-    if: github.event_name != 'pull_request'
     timeout-minutes: 10
     runs-on: ubuntu-24.04
     steps:
@@ -225,3 +206,21 @@ jobs:
             if [[ "$VERSION" == *-* ]]; then args+=(--prerelease); fi
             gh release create "$VERSION" --verify-tag --repo "$GITHUB_REPOSITORY" --title "$VERSION" --notes-file release-notes.md "${args[@]}"
           fi
+
+  # One stable check name for branch protection and the merge queue. Require
+  # "Delivery gate" and nothing else: it fails when any verification job fails
+  # or is cancelled, and accepts the jobs that are skipped on purpose (the image
+  # smoke test and the release run only on main and tags).
+  gate:
+    name: Delivery gate
+    if: always()
+    needs: [policy, frontend, java-verify, docs, verify, release]
+    timeout-minutes: 5
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Require every verification job to pass
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          printf '%s\n' "$RESULTS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          printf '%s\n' "$RESULTS" | jq -e 'all(.[]; .result == "success" or .result == "skipped")' >/dev/null
