@@ -597,7 +597,7 @@ def task_text(task):
     return clip(f"{head}\n\n{task['details']}")
 
 
-def plan_workers(max_workers, slots, text, open_prs, repair=None):
+def plan_workers(max_workers, slots, text, open_prs, repair=None, live=()):
     """Main repairs, then fixes, then ready tasks whose scope is free."""
     tasks = parse_tasks(text)
     by_id = {t["id"]: t for t in tasks}
@@ -614,8 +614,10 @@ def plan_workers(max_workers, slots, text, open_prs, repair=None):
                     "requirements": "", "reserved": ""}
         if task:
             busy.append(task["scope"])
+        # One fix worker per pull request: overlapping waves used to each start one for
+        # the same PR, and every worker after the first was rejected as non-fast-forward.
         if "needs-fix" in label_names(pr) and "needs-human" not in label_names(pr) \
-                and not pr["isCrossRepository"] and task:
+                and not pr["isCrossRepository"] and task and task["id"] not in set(live):
             notes = [c["body"] for c in pr["comments"] if MARK in c["body"]]
             plan.append({"kind": "fix", "id": task["id"], "number": pr["number"],
                          "branch": pr["headRefName"], "title": task["task"],
@@ -700,7 +702,18 @@ def publish(task, directory):
                   "(GitHub App token cannot update workflow files)", file=sys.stderr)
             emit("blocked", "workflow-files")
             return
-        authed_git("push", "origin", f"swarm-incoming:refs/heads/{branch}")
+        try:
+            authed_git("push", "origin", f"swarm-incoming:refs/heads/{branch}")
+        except subprocess.CalledProcessError as error:
+            # A fix worker whose branch moved while it worked (another fix worker or the
+            # integrator pushed first) has nothing safe to push: force-pushing would drop
+            # their commits. The newer tip is retested by the integrator, so this is not
+            # a workflow failure.
+            if task["kind"] == "fix" and "non-fast-forward" in (error.stderr or ""):
+                print(f"publish: {branch} moved while {task['id']} worked; keeping the newer branch")
+                emit("blocked", "branch-moved")
+                return
+            raise
         checks = read(directory / "checks", "skipped")
         merged = read(directory / "merge", "skipped")
         # Work is always published, even when the worker did not finish: a
@@ -1396,7 +1409,7 @@ def main(argv=None):
         room = max(0, MAX_ACTIVE_WORKERS - busy)
         print(f"{busy} worker(s) already running; room for {room} of {MAX_ACTIVE_WORKERS}.")
         include = plan_workers(min(a.max, room), rotate_slots(load_slots(a.slots), busy),
-                               text, prs, repair)
+                               text, prs, repair, live)
         claims = {t["id"]: f"swarm-{t['slot']}" for t in include if t["kind"] == "story"}
 
         granted = set()
