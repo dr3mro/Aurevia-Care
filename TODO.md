@@ -1129,8 +1129,8 @@ Found while extending the specification (section 8.1 and docs/design/screens-and
     Do NOT store tokens in the browser, do NOT disable CSRF on the cookie chain, and do NOT touch the `synthetic-auth` profile.
 
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` (API tasks) or `bash apps/staff-web/check.sh` (staff web tasks) must pass. Synthetic data only; write the failing test first; stay inside the declared scope; name folders and packages after what they hold, never a task ID; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
-- [-] READY-12 · Production-readiness evidence checklist for WEB-01 to WEB-13
-  - agent: swarm-3
+- [x] READY-12 · Production-readiness evidence checklist for WEB-01 to WEB-13
+  - pr: #201
   - attempts: 1
   - scope: docs/operations/production-readiness
   - details:
