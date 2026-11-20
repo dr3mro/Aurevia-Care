@@ -12,11 +12,21 @@ ENV JAVA_HOME=/opt/java/openjdk \
     PATH=/opt/java/openjdk/bin:/usr/share/maven/bin:$PATH \
     MAVEN_OPTS=-Dmaven.repo.local=/opt/m2
 # Only what the runner uses: git/gh for the trusted tail, jq for the auth file,
-# python3 for checks, bash for shell features. shellcheck and curl are not used
-# inside the worker (the quick gate guards shellcheck with command -v).
+# python3 for checks, bash for shell features, and PostgreSQL 17 (same major as
+# CI) so workers can run the integration suites. curl and gnupg only fetch the
+# PostgreSQL apt key. shellcheck is not used inside the worker (the quick gate
+# guards it with command -v).
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
-      bash ca-certificates git gh jq python3 \
+      bash ca-certificates curl git gh gnupg jq python3 \
+ && install -d /usr/share/keyrings \
+ && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+      | gpg --dearmor -o /usr/share/keyrings/pgdg.gpg \
+ && echo "deb [signed-by=/usr/share/keyrings/pgdg.gpg] https://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" \
+      > /etc/apt/sources.list.d/pgdg.list \
+ && apt-get update \
+ && apt-get install -y --no-install-recommends postgresql-17 \
+ && (pg_dropcluster --stop 17 main || true) \
  && rm -rf /var/lib/apt/lists/* \
  && npm install -g "@opencode/cli@${OPENCODE_VERSION}" \
  && npm cache clean --force \
@@ -26,6 +36,10 @@ RUN apt-get update \
 # cache and removes the scratch pom; a failure only costs speed, never the image.
 COPY pom.xml /tmp/warm/pom.xml
 RUN mvn -B -q -f /tmp/warm/pom.xml dependency:go-offline >/dev/null 2>&1 || true; rm -rf /tmp/warm
-ENV OPENCODE_DISABLE_AUTOUPDATE=1 \
+COPY start-postgres.sh /usr/local/bin/start-postgres
+RUN chmod 0755 /usr/local/bin/start-postgres
+ENV PATH=/usr/lib/postgresql/17/bin:$PATH \
+    SMARTCLINIC_PG_ADMIN=postgres \
+    OPENCODE_DISABLE_AUTOUPDATE=1 \
     CI=true
 LABEL org.opencontainers.image.description="OpenCode agent runner"
