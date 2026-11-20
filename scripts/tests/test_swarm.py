@@ -179,10 +179,26 @@ class WorkerGateTests(unittest.TestCase):
                 ok, _ = self.gate.decide({"RxTransmissionFlowTest"}, changed, "S-G2-01")
                 self.assertFalse(ok)
 
-    def test_repair_tasks_are_strict(self):
+    def test_repair_task_without_named_classes_is_strict(self):
         for story in ("FIX-123", "DLV-02"):
-            ok, _ = self.gate.decide({"RxTransmissionFlowTest"}, [], story)
+            ok, _ = self.gate.decide({"RxTransmissionFlowTest"}, [], story, "Repair the failing build.")
             self.assertFalse(ok)
+
+    def test_repair_task_is_judged_on_the_classes_it_names(self):
+        body = "Classes: `ChartRecordIntegrationTest` and `ExchangeTaskIsolationTest` must pass."
+        # Other repair tasks' classes are still red: this one is not blamed for them.
+        ok, msg = self.gate.decide({"RxTransmissionFlowTest", "ConversationFlowTest"}, [], "DLV-01", body)
+        self.assertTrue(ok)
+        self.assertIn("other repair tasks", msg)
+        # Its own class still failing fails it, whatever else is red.
+        ok, msg = self.gate.decide({"ChartRecordIntegrationTest", "RxTransmissionFlowTest"}, [], "DLV-01", body)
+        self.assertFalse(ok)
+        self.assertIn("ChartRecordIntegrationTest", msg)
+        self.assertNotIn("RxTransmissionFlowTest", msg)
+
+    def test_named_classes_are_read_from_backticks_only(self):
+        self.assertEqual(self.gate.named_classes("`FooTest`, BarTest and `lowerTest` `BazIT` `Qux`"),
+                         {"FooTest", "BazIT"})
 
     def test_passing_run_is_ok(self):
         self.assertTrue(self.gate.decide(set(), [], "S-G1-03")[0])
