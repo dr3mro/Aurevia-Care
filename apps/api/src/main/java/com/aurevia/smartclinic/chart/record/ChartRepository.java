@@ -114,9 +114,13 @@ public class ChartRepository {
                     (CAST(:organizationId AS uuid), CAST(:id AS uuid), CAST(:patientId AS uuid),
                      :encounterId, :type, :originalText, :originalCode, :codeSystem,
                      :mappedCode, :mappedText, :catalogVersion, :source, :presence,
-                     :unknownReason, :verification, :verifiedBy, :verifiedAt,
-                     :effectiveFrom, :effectiveTo, :measuredAt, :value, :unit,
-                     :clinicalAuthor, :dataEntryActor, :version, :recordedAt)
+                     :unknownReason, :verification, :verifiedBy,
+                     CAST(:verifiedAt AS timestamptz),
+                     CAST(:effectiveFrom AS timestamptz),
+                     CAST(:effectiveTo AS timestamptz),
+                     CAST(:measuredAt AS timestamptz), :value, :unit,
+                     :clinicalAuthor, :dataEntryActor, :version,
+                     CAST(:recordedAt AS timestamptz))
                 """, new MapSqlParameterSource()
                 .addValue("organizationId", orgId())
                 .addValue("id", entry.id())
@@ -134,16 +138,16 @@ public class ChartRepository {
                 .addValue("unknownReason", entry.unknownReason())
                 .addValue("verification", entry.verification().name())
                 .addValue("verifiedBy", entry.verifiedBy())
-                .addValue("verifiedAt", entry.verifiedAt())
-                .addValue("effectiveFrom", entry.effectiveFrom())
-                .addValue("effectiveTo", entry.effectiveTo())
-                .addValue("measuredAt", entry.measuredAt())
+                .addValue("verifiedAt", instantText(entry.verifiedAt()))
+                .addValue("effectiveFrom", instantText(entry.effectiveFrom()))
+                .addValue("effectiveTo", instantText(entry.effectiveTo()))
+                .addValue("measuredAt", instantText(entry.measuredAt()))
                 .addValue("value", entry.value())
                 .addValue("unit", entry.unit())
                 .addValue("clinicalAuthor", entry.clinicalAuthor())
                 .addValue("dataEntryActor", entry.dataEntryActor())
                 .addValue("version", entry.version())
-                .addValue("recordedAt", entry.recordedAt()));
+                .addValue("recordedAt", instantText(entry.recordedAt())));
     }
 
     /**
@@ -165,7 +169,7 @@ public class ChartRepository {
         return jdbc.update("""
                 UPDATE public.chart_entry
                    SET verification = 'VERIFIED', verified_by = :actor,
-                       verified_at = :verifiedAt,
+                       verified_at = CAST(:verifiedAt AS timestamptz),
                        clinical_author = COALESCE(clinical_author, :actor),
                        version = version + 1
                  WHERE organization_id = CAST(:organizationId AS uuid)
@@ -177,7 +181,7 @@ public class ChartRepository {
                         .addValue("id", id)
                         .addValue("expected", expected)
                         .addValue("actor", actor)
-                        .addValue("verifiedAt", verifiedAt)) == 1;
+                        .addValue("verifiedAt", instantText(verifiedAt))) == 1;
     }
 
     /**
@@ -242,6 +246,12 @@ public class ChartRepository {
                 resultSet.getString("data_entry_actor"),
                 resultSet.getInt("version"),
                 instant(resultSet, "recorded_at"));
+    }
+
+    // PostgreSQL's JDBC driver cannot infer an SQL type for java.time.Instant;
+    // bind its ISO-8601 text and let the statement's explicit timestamptz cast apply.
+    private static String instantText(Instant instant) {
+        return instant == null ? null : instant.toString();
     }
 
     private static Instant instant(ResultSet resultSet, String column) throws SQLException {

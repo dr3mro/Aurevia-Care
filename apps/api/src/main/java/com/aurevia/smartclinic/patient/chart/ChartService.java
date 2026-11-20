@@ -169,14 +169,17 @@ public class ChartService {
                 failure.set(new ApiException(404, "NOT_FOUND", "chart entry not found"));
                 return null;
             }
-            if (existing.verification() == VerificationState.VERIFIED) {
-                audit.append(context, VERIFY_ACTION, VERIFY_ACTION, RESOURCE, SCOPE, id, "CONFLICT");
-                failure.set(new ApiException(409, "ALREADY_VERIFIED", "entry is already verified"));
-                return null;
-            }
+            // Check the If-Match precondition before the lifecycle state so a
+            // concurrent loser always gets 412, whether it read the entry before
+            // or after the winner's commit (ARC-04: 412 for stale versions).
             if (existing.version() != expected) {
                 audit.append(context, VERIFY_ACTION, VERIFY_ACTION, RESOURCE, SCOPE, id, "CONFLICT");
                 failure.set(new ApiException(412, "STALE_VERSION", "entry version has changed"));
+                return null;
+            }
+            if (existing.verification() == VerificationState.VERIFIED) {
+                audit.append(context, VERIFY_ACTION, VERIFY_ACTION, RESOURCE, SCOPE, id, "CONFLICT");
+                failure.set(new ApiException(409, "ALREADY_VERIFIED", "entry is already verified"));
                 return null;
             }
             Instant at = clock.instant();

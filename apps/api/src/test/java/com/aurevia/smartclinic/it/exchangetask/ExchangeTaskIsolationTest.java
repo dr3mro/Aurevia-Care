@@ -118,8 +118,10 @@ class ExchangeTaskIsolationTest {
                 seedMember(statement, org, "admin-" + suffix, "tenant_admin");
                 seedMember(statement, org, "revoke-" + suffix, "clinician");
             }
+            // FORGED is deliberately not seeded: the forgery test inserts that
+            // row itself to prove the INSERT trigger normalises poisoned state.
             String[] ids = {READ, WORKFLOW, SENT, FAILED, ACK, REVIEW, GUARD,
-                    FORGED, REVOKED_TASK, MUTATE};
+                    REVOKED_TASK, MUTATE};
             for (int index = 0; index < ids.length; index++) {
                 seedTask(statement, ORG_A, ids[index], "LOCAL-" + (index + 1));
             }
