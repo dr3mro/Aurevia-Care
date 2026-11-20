@@ -398,4 +398,18 @@ class ChartRecordIntegrationTest {
         assertTrue(unmapped.getBody().contains("\"mappedCode\":null"));
     }
 
+    @Test
+    void blankUnknownReasonIsNormalizedBeforeTheDatabaseCheck() {
+        ResponseEntity<String> created = request(HttpMethod.POST, "/api/v1/chart/records/entries",
+                "{\"patientId\":\"" + PATIENT + "\",\"type\":\"ALLERGY\""
+                        + ",\"originalText\":\"no known allergies\",\"source\":\"CLINICIAN_OBSERVED\""
+                        + ",\"presence\":\"ABSENT\",\"unknownReason\":\" \""
+                        + ",\"clinicalAuthor\":\"clinician-a\"}",
+                "clinician-a", ORG_A, "chart-blank-reason");
+        // V13 allows a reason only on UNKNOWN; a blank one must be normalized to
+        // null before INSERT or the CHECK would surface as a misleading 409.
+        assertEquals(HttpStatus.CREATED, created.getStatusCode(), created.getBody());
+        assertTrue(created.getBody().contains("\"unknownReason\":null"), created.getBody());
+    }
+
 }
