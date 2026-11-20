@@ -197,8 +197,7 @@ Cadence and limits:
     Done when: `ClaimsTenantResolverTest` has at least 7 tests (happy path, missing sub, blank sub, missing orgs, malformed org list, org not in token, malformed header) and passes.
 
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` must pass for the classes you touched. Synthetic data only; write the failing test first; stay inside the declared scope; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
-- [-] AUD-20261120-03 · Production authentication, part 2: validate OIDC bearer tokens and bind the tenant context
-  - agent: swarm-3
+- [ ] AUD-20261120-03 · Production authentication, part 2: validate OIDC bearer tokens and bind the tenant context
   - attempts: 3
   - scope: apps/api/pom.xml, apps/api/src/main/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/web, apps/api/src/main/resources
   - depends: AUD-20261120-02
@@ -1039,9 +1038,10 @@ Do these after part 2 where `depends` says so. Persistence tasks run one at a ti
     4. Tests: each state per screen with a fake transport; session-expired clears the token.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT change files outside `scope`, add patient data to logs, or edit any existing migration.
-- [ ] READY-49 · Add HTTP tests for the remaining controllers named in no test
+- [-] READY-49 · Add HTTP tests for the remaining controllers named in no test
+  - agent: swarm-3
+  - attempts: 1
   - requirements: ARC-03, ARC-04
-  - attempts: 0
   - scope: apps/api/src/test/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/it
   - depends: AUD-20261120-09
   - details:
