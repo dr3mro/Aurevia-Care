@@ -1,83 +1,78 @@
 # DLV-02 — Repair integration tests: patient identity, consolidation and messaging
 
-Status: ready for integrator. Branch `swarm/DLV-02-229`, base `9ac295a` (clean worker branch containing merged DLV-01). Scope respected: `apps/api` + `db` only. No tracker, `.github/`, `scripts/`, generated config or contract file was touched. No test was skipped, deleted, re-tagged or excluded from any gate.
+Status: verification complete, **no production change required on this checkout**. The repairs this story describes were already merged to `main` in PR #195 (commit `e48bb7c`, "DLV-02: Repair integration tests: patient identity, consolidation and messaging"), which is an ancestor of this worker branch `swarm/DLV-02-240` (HEAD `bf26dc1`). Every class named in the story passes in the full `mvn verify` run. This note records the verification, the root causes already fixed on `main`, and the defects found that belong to other owners.
+
+This worker was re-dispatched as DLV-02 attempt 3 after PR #195 merged; the target classes were already green on a clean checkout, so there was no RED state left to reproduce. Per the story rule ("fix the real cause", "never weaken, skip, delete or re-tag a test"), no test was altered and no code was changed to manufacture a diff.
 
 ## Requirements and acceptance mapping
 
-| Requirement | Acceptance repaired | Evidence (class / gate) |
+| Requirement | Acceptance exercised | Evidence (class / result) |
 |---|---|---|
-| IAM-03 | Registration-derived immutable chart identity remains the ownership anchor when staff change contact data; contacts never leak into identity-link material | `IdentityProofingIsolationTest.contactChangeDoesNotChangeAccountOwnership` |
-| IAM-04 | A duplicate review ticket can be opened (database-owned id), and once consolidated the alias leaves the duplicate worklist on **both** sides of the ordered pair; review/consolidation/correction flows run end to end | `ConsolidationIsolationTest` (7 tests) |
-| IAM-05 | Single-use expiring invitations, claim/unlink/reverify links and the append-only link projection work against real PostgreSQL; expired invitations are genuinely expired; boundary validation is 422 | `IdentityProofingIsolationTest` (11), `StaleInvitationIntegrationTest` (4) |
-| MSG-07 | Conversation work-item guards, tenant-scoped folds and the documented `View` response contract are asserted through real HTTP + forced RLS; work-item/assignment audit state is observable | `ConversationFlowTest` (8) |
-| Supporting ARC-01/02/03, OPS-02 | Composite tenant keys, forced RLS, `app.current_org`/`app.actor` trigger guards, append-only history and transaction-committed audit remain enforced; no guard was weakened | all four classes, `scripts/check-migrations.py`, `mvn spotbugs:check` |
+| IAM-03 | Registration-derived immutable chart identity remains the ownership anchor when staff change contact data; contact data never leaks into identity-link material | `IdentityProofingIsolationTest` 11/11 green |
+| IAM-04 | A duplicate review ticket is created with a database-owned id; consolidation removes the alias from the worklist on both sides of the ordered pair; second-reviewer/dependency flows run end to end | `ConsolidationIsolationTest` 7/7 green |
+| IAM-05 | Single-use expiring invitations, claim/unlink/reverify links and the append-only link projection work against real PostgreSQL; expired invitations are genuinely expired; boundary validation returns 422 | `IdentityProofingIsolationTest` 11/11, `StaleInvitationIntegrationTest` 4/4 green |
+| MSG-07 | Conversation work-item guards, tenant-scoped folds and the documented `View` response contract are asserted through real HTTP + forced RLS | `ConversationFlowTest` 8/8 green |
+| Supporting ARC-01/02/03, OPS-02 | Composite tenant keys, forced RLS, `app.current_org`/`app.actor` trigger guards, append-only history and transaction-committed audit remain enforced | all four classes green; `python3 -I scripts/check-migrations.py --require-baseline` exit 0 |
 
-Classification (`docs/WORKFLOW.md`): cross-boundary (SQL migration + production query + integration fixtures), with safety-critical identity/worklist behavior. Synthetic fixtures only. Evidence sources are recorded per command below: **tool** (commands executed by this worker), **simulated reviewer** (bounded read-only specialists), **direct SQL reproduction** (psql against scratch DB). No simulated-user, human or clinical participant evidence was available or claimed.
+Classification (`docs/WORKFLOW.md`): cross-boundary with safety-critical identity and messaging behavior. Synthetic fixtures only. Evidence sources are recorded per command below; no simulated-user, human or clinical participant evidence was available or claimed.
 
-## Root cause per class (all reproduced RED first)
+## Verification — exact commands and results
 
-RED command (exact):
-```
-cd apps/api && mvn -B -Pno-security \
-  -Dtest=IdentityProofingIsolationTest,StaleInvitationIntegrationTest,ConsolidationIsolationTest,ConversationFlowTest \
-  -DfailIfNoTests=false test
-```
-RED result: `Tests run: 30, Failures: 20, Errors: 4` (exit 1). Server traces read from `apps/api/target/surefire-reports/*.xml`.
-
-| Class / symptom | Root cause | Fix | Cause owner |
-|---|---|---|---|
-| `IdentityProofingIsolationTest` — 8 × HTTP 500 on `POST /links/claim`; `StaleInvitationIntegrationTest` — 500 on claim; cascading `false`/404 on access and reverify | V10's `public.set_link_actor()` assigns `NEW.created_by`, but `account_chart_link` has `verified_by` and **no `created_by`** column: `ERROR: record "new" has no field "created_by"` in the row BEFORE INSERT trigger, so every link write failed. The story's hypothesis that two migrations redefined the function was **not observed** on this checkout: repo-wide grep found exactly one definition (V10) and one attachment (`account_chart_link_created_by_actor`). | New forward-only migration `V58__identity_actor_and_review_id_repair.sql` redefines `set_link_actor()` to set only `NEW.verified_by` from `app.actor` (same fail-closed guard). Applied migrations were not edited. | Schema defect |
-| `IdentityProofingIsolationTest.invalidInputsReturnUnprocessableEntity` (3), `ConsolidationIsolationTest.identifierConfirmationIsEnforcedAgainstTheTwoRecords`, `ConversationFlowTest.assignTransferAndSameUnitConstraint` / `preconditionsValidationAndTenantIsolation` | Test defect: Spring 7 renamed `HttpStatus.UNPROCESSABLE_ENTITY` to `UNPROCESSABLE_CONTENT`; enum identity comparison failed although the wire code is 422 in both cases. | Assert the numeric wire code (`assertEquals(422, response.getStatusCode().value())`). Production status codes unchanged. | Test defect |
-| `IdentityProofingIsolationTest.expiredInvitationIsUnusable` | Test fixture backdated only `expires_at`, violating V10's `CHECK (expires_at > created_at)` (`account_invitation_check`). | Backdate `created_at` by two hours and `expires_at` by one hour in the same UPDATE, so the invitation is genuinely expired and the invariant holds. | Test defect |
-| `IdentityProofingIsolationTest.contactChangeDoesNotChangeAccountOwnership` | Test fixture tried to append a new `patient_record` version with the same id via `next_patient_version`, but V7 declares `PRIMARY KEY (organization_id, id)` — duplicate key on `patient_record_pkey`. | Keep every original assertion unchanged; model the staff contact change as a re-registered chart carrying the changed contact, so ownership must still follow the original immutable chart id and contact data must not leak into links. (Latent schema inconsistency between V7's PK and its version fold/`next_patient_version` is recorded as a follow-up defect below.) | Test defect |
-| `ConsolidationIsolationTest` — 500 on `POST /duplicate-reviews`, then 404s from empty review ids | V9 declares `duplicate_review.id uuid NOT NULL` with no default, while `DuplicateRepository.insertReview` deliberately omits the column and reads the ticket back by `(survivor, duplicate)`: `null value in column "id" ... violates not-null constraint`. | V58 adds `ALTER TABLE public.duplicate_review ALTER COLUMN id SET DEFAULT gen_random_uuid()`, matching the other append-only tables. Repository contract unchanged. | Schema defect |
-| `ConsolidationIsolationTest.consolidationNeedsSecondReviewerAndUnblockedDependencies` — `consolidated pair leaves the worklist` | Production defect in `DuplicateRepository.likelyPairs()`: `NOT EXISTS ... a.alias_id = q.id` excluded a consolidated alias only on the duplicate (q) side. With several same-name/DOB patients, the alias reappeared as `survivor_id` of a pair with a higher id. Reproduced with a scratch DB: after associating `bbbb…`, the worklist still returned `(bbbb…, cccc…)`. | Filter both sides: `a.alias_id IN (p.id, q.id) AND a.status = 'ACTIVE'`. Re-verified on the scratch DB: the row disappears. | Production defect |
-| `ConversationFlowTest.patientOpen…` / `databaseGuardsRejectIllegalWrites` — `NullPointerException` on `JsonNode.get(...)` | Test defect: `GET /api/v1/conversations/{id}` returns the documented `View {conversation, messages, events}`; the test read `state`/`version`/`patientId` at the top level (the reply command correctly unwraps `conversation`). | Unwrap `.get("conversation")` for both GET assertions. No controller/contract change. | Test defect |
-| `ConversationFlowTest.directFoldAssertionsConfirmVerifiedLinkAndForcedRls` | Test SQL bound a `String` into `WHERE id = ?` against a `uuid` column: `operator does not exist: uuid = character varying`. | Cast in the test SQL: `WHERE id = CAST(? AS uuid)`. | Test defect |
-
-The story's note about `set_link_actor()` being attached to `duplicate_review` is inaccurate for this checkout: V9 attaches `set_duplicate_created_by_from_actor()` only to tables that do have `created_by` (`chart_association`, `consolidation`, `consolidation_dependency`). The `duplicate_review` failure was the missing id default, fixed separately in V58.
-
-## Bounded specialist reviews (simulated reviewer evidence, no commands run by reviewers)
-
-- **Senior Database (V58):** no blocking findings. `CREATE OR REPLACE FUNCTION` preserves the function OID, so the single `account_chart_link_created_by_actor` trigger still resolves to the new body; signature, language and `SET search_path` are unchanged. The default touches only the surrogate half of the composite key, so forced RLS/`WITH CHECK`, append-only triggers and grants are preserved; `Change: expand` matches the two non-destructive statements; keeping the historical function name is preferred because a rename would need a destructive `DROP TRIGGER`/`DROP FUNCTION` contract for one attachment. Advisory (non-blocking): V10 omitted `REVOKE ... FROM PUBLIC` on `set_link_actor()` although it did so on its sibling actor functions. **Addressed:** V58 now adds `REVOKE ALL ON FUNCTION public.set_link_actor() FROM PUBLIC;` (trigger execution needs no PUBLIC EXECUTE; V10's sibling trigger functions already prove the pattern safe).
-- **Senior Backend (`likelyPairs()`):** no blocking findings. Correct domain fix: IAM-04 calls the worklist "pairs still visible as separate charts", and a consolidated alias is no longer separate, so excluding it on both sides of the ordered join is right. No regression for REVERSED corrections (status fold no longer ACTIVE, so the alias legitimately reappears), `open()` idempotency (never calls `likelyPairs()`), tenant scope (both folds are SECURITY INVOKER over forced-RLS tables) or other callers (only `worklist()`). Non-blocking pre-existing observation: after consolidate → correct the alias is advertised in the worklist but `open()` refuses it with 409 because a `CORRECTED` consolidation still exists; a product/owner decision on re-review policy is needed, not a DLV-02 regression.
-
-## Exact commands and results (evidence source: executed tool commands unless stated)
-
-Environment: Java 21.0.13 Temurin, Maven 3.10.0, PostgreSQL 17 on 127.0.0.1:5432 via `SMARTCLINIC_PG_ADMIN=postgres`; all commands executed by the primary agent.
+Environment: clean checkout of `main` rebased into `swarm/DLV-02-240`; Java 21.0.13 Temurin, Maven 3.10.0, PostgreSQL 17.12 on 127.0.0.1:5432 via `SMARTCLINIC_PG_ADMIN=postgres`. All commands executed by this worker (tool evidence).
 
 | Command | Result |
 |---|---|
-| Targeted four-class run (before fixes) | exit 1 — `Tests run: 30, Failures: 20, Errors: 4` |
-| `python3 -I scripts/check-migrations.py --require-baseline` after adding V58 | exit 0 |
-| Targeted four-class run after trigger/id/status/fixture fixes | exit 1 — `Tests run: 30, Failures: 1, Errors: 1` (worklist + patient_record duplicate key) |
-| Direct psql reproduction against scratch DB `dlv02_debug` (migrations applied in version order, two same-name/DOB patients, one ACTIVE association) | before fix: worklist returned `(bbbb…, cccc…)` although `current_chart_associations()` showed `bbbb… ACTIVE`; after applying the both-sides filter: 0 rows — tool/SQL evidence |
-| Targeted four-class run after final fixes | **exit 0 — `Tests run: 30, Failures: 0, Errors: 0`** (IdentityProofing 11/11, Consolidation 7/7, ConversationFlow 8/8, StaleInvitation 4/4) |
+| `cd apps/api && mvn -B -Pno-security -Dtest=IdentityProofingIsolationTest,StaleInvitationIntegrationTest,ConsolidationIsolationTest,ConversationFlowTest -DfailIfNoTests=false test` | exit 0 — `Tests run: 30, Failures: 0, Errors: 0` (IdentityProofing 11, StaleInvitation 4, Consolidation 7, ConversationFlow 8). Flyway applied v1…v58 including `V58__identity_actor_and_review_id_repair.sql`. |
+| `bash apps/api/check.sh` (full `mvn verify`, default security profile) | exit 1 overall — `Tests run: 2096, Failures: 43, Errors: 0`. All four DLV-02 classes green in surefire reports (`tests=11/7/8/4, failures=0, errors=0`); none appears in the failing-class list. |
 | `cd apps/api && mvn -B -Pno-security,fast test` | exit 0 — `Tests run: 1853, Failures: 0, Errors: 0` |
-| `bash apps/api/check.sh` (full `mvn verify`, default security profile) | exit 1 overall — first run `Tests run: 2096, Failures: 44, Errors: 0`, final run after the review advisory `Tests run: 2096, Failures: 43, Errors: 0` (one pre-existing DLV-04 failure is timing-dependent). All four DLV-02 classes green in both runs (11/11, 7/7, 8/8, 4/4); **none** appears in the failing-class list. |
-| `cd apps/api && mvn -B -q -Pno-security -DskipTests -Djacoco.skip=true -Dspotbugs.skip=false spotbugs:check` | exit 0 (no findings) |
-| `git diff --check` | exit 0 |
-| `bash db/check.sh` | exit 3, pre-existing and unrelated (see Defects below) |
+| `python3 -I scripts/check-migrations.py --require-baseline` | exit 0 (V58 declares `Change: expand`; no applied migration edited) |
+| `bash db/check.sh` | exit 3 — pre-existing, unrelated defect (see Defects below) |
+| `git diff --check` | exit 0; working tree otherwise clean |
 
-## Full-gate remainder (not DLV-02 work)
+## Root causes already fixed on `main` by PR #195 (verified present, not re-fixed here)
 
-The 44 remaining failures in the full run belong exclusively to the classes owned by the dependent stories: `RxTransmissionFlowTest` (DLV-03); `ClinicalNoteRevisionIntegrationTest`, `ResultRoutingIntegrationTest`, `AccessIntegrationTest`, `DocumentIsolationTest`, `SpecimenAccessionIsolationTest`, `TrendingTest` (DLV-04). The untrusted story text suggested fixing them "after the classes listed here", but `TODO.md` assigns them to DLV-03/DLV-04 (which depend on DLV-02) and this worker is explicitly limited to one story with parallel workers active. They were deliberately left untouched to avoid cross-worker conflicts. DLV-02's V58 migration also removes the shared `set_link_actor()` cause from those suites; their other causes (state casing, 405 routes, duplicate MRN fixtures, prescription transmission) remain with their owners.
+These are the real causes behind the 500s/404s in the story text. Each fix is present at HEAD and its class is green; they are recorded so the root cause per class is preserved.
 
-## Decisions and defects recorded
+| Class / symptom in the story | Root cause | Fix on `main` |
+|---|---|---|
+| `IdentityProofingIsolationTest` — 8 × 500 on `POST /api/v1/patient-identity/links/claim`; `StaleInvitationIntegrationTest` claim 500 | V10's `public.set_link_actor()` assigned `NEW.created_by`, but `account_chart_link` has `verified_by` and no `created_by`: `record "new" has no field "created_by"` (SQLSTATE 42703). Only one definition and one attachment existed on this checkout — the story's "two migrations redefined the function" hypothesis was not observed. | `V58` redefines `set_link_actor()` to assign only `NEW.verified_by` from `app.actor` with the same fail-closed guard, plus `REVOKE ALL ON FUNCTION ... FROM PUBLIC`. |
+| `invalidInputsReturnUnprocessableEntity` and other 422 assertions; `ConsolidationIsolationTest.identifierConfirmationIsEnforcedAgainstTheTwoRecords`; `ConversationFlowTest` preconditions/assignment assertions | Spring 7 renamed `HttpStatus.UNPROCESSABLE_ENTITY` to `UNPROCESSABLE_CONTENT`; the enum comparison failed although the wire code is 422. | Tests assert the numeric wire code (`assertEquals(422, response.getStatusCode().value())`). Production codes unchanged. |
+| `IdentityProofingIsolationTest.expiredInvitationIsUnusable` | Fixture backdated only `expires_at`, violating V10 `CHECK (expires_at > created_at)` (`account_invitation_check`). | Backdate `created_at` two hours and `expires_at` one hour in the same UPDATE. |
+| `IdentityProofingIsolationTest.contactChangeDoesNotChangeAccountOwnership` | Fixture appended a same-id `patient_record` version via `next_patient_version`, colliding with V7 `PRIMARY KEY (organization_id, id)`. | Model the staff contact change as a re-registered chart; original immutable chart id still owns the account and contact data does not leak into links. Assertions preserved. |
+| `ConsolidationIsolationTest` — 500 on `POST /api/v1/duplicate-reviews`, then 404s | V9 declared `duplicate_review.id uuid NOT NULL` with no default, while `DuplicateRepository.insertReview` omits it. | `V58` adds `ALTER TABLE public.duplicate_review ALTER COLUMN id SET DEFAULT gen_random_uuid()`. |
+| `ConsolidationIsolationTest.consolidationNeedsSecondReviewerAndUnblockedDependencies` — consolidated alias stayed on the worklist | `DuplicateRepository.likelyPairs()` excluded a consolidated alias only on the duplicate (q) side; the alias reappeared as `survivor_id` of a pair with a higher id. | Filter both sides: `a.alias_id IN (p.id, q.id) AND a.status = 'ACTIVE'`. Production defect fixed. |
+| `ConversationFlowTest` response assertions | `GET /api/v1/conversations/{id}` returns the documented `View {conversation, messages, events}`; the test read `state`/`version`/`patientId` at the top level. | Unwrap `.get("conversation")` for the GET assertions. No controller/contract change. |
+| `ConversationFlowTest.databaseGuardsRejectIllegalWrites` / fold assertions | Test SQL bound a `String` into `WHERE id = ?` against a `uuid` column (`uuid = character varying`). | Cast in the test SQL: `WHERE id = CAST(? AS uuid)`. |
 
-- **New migration V58, no applied migration edited.** Highest applied/reserved version is V55 (V9–V57 reserved by spec stories); V58 is the first free version and gaps are allowed by `check-migrations.py` (S-FIX-MIG-GAP-01). `Change: expand`: both statements are additive/idempotent (`CREATE OR REPLACE FUNCTION`, `ALTER COLUMN … SET DEFAULT`), not destructive.
-- **Kept the trigger function name.** Only one trigger references `set_link_actor()`; renaming it would require a destructive `DROP TRIGGER`/`DROP FUNCTION` contract for no behavioral gain. V58 documents why. No grant change is needed because `CREATE OR REPLACE` preserves function ACLs.
-- **No production code change for the 422 cases.** The server already returns 422 (`UNPROCESSABLE_CONTENT`); only the tests' enum comparison was stale.
-- **No schema change for the V7 PK/version inconsistency** (defect found, deferred with owner): `patient_record` has `PRIMARY KEY (organization_id, id)`, `UNIQUE (organization_id, id, version)` and `current_patients()` folds by version, so a same-id append is impossible while `next_patient_version()` suggests otherwise. Fixing it means changing the key and every `(org,id)` FK — a contract migration and clinical-record-integrity review well beyond DLV-02. The affected test's assertions were preserved and its fixture adapted.
-- **Pre-existing tooling defect found, not fixed:** `db/check.sh` applies migrations with `for migration in db/migrations/V*.sql`, which bash sorts lexically (`V10…` before `V1__…`). On this checkout it fails at `V10` with `relation "public.organization" does not exist` before any DLV-02 file matters. The Java integration suites apply migrations through Flyway (version order) and are green; the offline migration checker is green. Owner follow-up: sort numerically in `db/check.sh` (out of this worker's one-story boundary).
-- **Self-improvement:** agent/skill files were not edited because they are outside the declared `apps/api`, `db` scope and swarm story PRs touching `.opencode/` are held for a human. The reproduction commands and root causes above are the hand-off.
+No applied migration was edited. `V58` is the first free version after V55 (V9–V57 reserved); its two statements are additive/idempotent (`Change: expand`).
+
+## Full-gate remainder — not DLV-02 work (owned by DLV-03 / DLV-04)
+
+The full run's 43 failures are exclusively in classes assigned by `TODO.md` to dependent stories; none is in the DLV-02 domain and none was touched here (parallel workers / one-story rule):
+
+- DLV-03: `RxTransmissionFlowTest` (7) — transmit 500 with no `submissionId`; non-prescriber attestation returns STALE_VERSION instead of FORBIDDEN; tenant concealment returns 200; renew precondition mismatch.
+- DLV-04: `ClinicalNoteRevisionIntegrationTest` (14), `ResultRoutingIntegrationTest` (7), `AccessIntegrationTest` (6), `DocumentIsolationTest` (5), `SpecimenAccessionIsolationTest` (3), `TrendingTest` (1). Root causes seen in the run include `405 METHOD_NOT_ALLOWED` routes, `SELECTid` SQL concatenation, uppercase-vs-lowercase state values (`UNREVIEWED` vs `unreviewed`), duplicate-MRN fixtures, and a 422 case returning 200.
+
+The untrusted story text suggested fixing these "after the classes listed here", but `TODO.md` assigns them to DLV-03/DLV-04 (which depend on DLV-02) and this worker is limited to one story with parallel workers active.
+
+## Defects found, dispositioned, not changed here
+
+- **Pre-existing tooling defect (owner: pipeline/integrator): `db/check.sh` applies migrations with `for migration in db/migrations/V*.sql`, which bash sorts lexically** (`V10…` before `V1__…`). Reproduced: `bash db/check.sh` → exit 3, `psql:db/migrations/V10__patient_identity_proofing.sql:17: ERROR: relation "public.organization" does not exist`. The Java integration suites apply migrations via Flyway in version order and are green. Not fixed here: `db/check.sh` is a `check.sh` in the protected-file set, so a PR touching it is held for a human rather than auto-merged by the swarm; the correct fix (numeric version sort) belongs to a tooling story with a human reviewer.
+- **Deferred from PR #195 (owner: clinical/architecture): V7 `patient_record` has `PRIMARY KEY (organization_id, id)` plus a version fold and `next_patient_version()`, so a same-id append is impossible while the fold suggests otherwise.** Fixing it changes the key and every `(org,id)` FK — a contract migration and clinical-record-integrity review well beyond DLV-02.
+- **Deferred product decision (owner: Product Owner): after consolidate → correct, the alias legitimately reappears in the duplicate worklist but `open()` refuses it with 409 because a `CORRECTED` consolidation still exists.** Needs a re-review policy decision, not a DLV-02 regression.
+
+## Decisions
+
+- No production code or migration change: the target classes are green on a clean checkout of current `main`; fabricating a diff would risk regressing verified behavior.
+- Did not touch `db/check.sh`, `.github/`, `scripts/`, `opencode.json` or any shared tracker — outside this story's acceptance and/or in the protected set for swarm PRs.
+- No test was weakened, skipped, deleted, re-tagged or excluded from any gate.
 
 ## Entry-point-to-test trace
 
-`POST /api/v1/patient-identity/links/claim` → `IdentityProofingController` → `IdentityProofingRepository.insertLink` → (V58-corrected `set_link_actor()` sets `verified_by`) → `currentLink()` → 200 with the append-only event id; asserted by `IdentityProofingIsolationTest` and `StaleInvitationIntegrationTest` against real PostgreSQL.
-`POST /api/v1/duplicate-reviews` → `DuplicateRepository.insertReview` → (V58 id default) → 201 → `GET /api/v1/duplicate-reviews` → `DuplicateRepository.likelyPairs()` (both-sides filter) → consolidated alias absent; asserted by `ConsolidationIsolationTest`.
-`GET /api/v1/conversations/{id}` → `ConversationController.get` → `View` → test unwraps `conversation`; `databaseGuardsRejectIllegalWrites` and `directFoldAssertionsConfirmVerifiedLinkAndForcedRls` assert the forced-RLS/append-only guards with cast-bound UUIDs; asserted by `ConversationFlowTest`.
+`POST /api/v1/patient-identity/links/claim` → `IdentityProofingController` → `IdentityProofingRepository.insertLink` → V58-corrected `set_link_actor()` sets `verified_by` → `currentLink()` → 200; asserted by `IdentityProofingIsolationTest` and `StaleInvitationIntegrationTest` against real PostgreSQL.
+`POST /api/v1/duplicate-reviews` → `DuplicateRepository.insertReview` → V58 id default → 201 → `GET /api/v1/duplicate-reviews` → `DuplicateRepository.likelyPairs()` both-sides filter → consolidated alias absent; asserted by `ConsolidationIsolationTest`.
+`GET /api/v1/conversations/{id}` → `ConversationController.get` → `View` (test unwraps `conversation`); guard assertions use cast-bound UUIDs; asserted by `ConversationFlowTest`.
 
 ## Evidence provenance
 
-All commands above were executed by this worker (tool evidence); the scratch-DB worklist reproduction is tool/SQL evidence; the two bounded specialist reviews noted below are simulated reviewer evidence. No patient data, real identifiers or credentials appear in any fixture or note; every subject, organization, MRN and token is synthetic.
+All commands above were executed by this worker (tool evidence: Maven/Surefire output, surefire XML reports, Flyway logs, `bash db/check.sh`, `check-migrations.py`). No simulated reviewer, simulated user, human or clinical evidence was used. No patient data, real identifiers or credentials appear in any note or fixture; every subject, organization, MRN and token is synthetic.
