@@ -8,6 +8,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.aurevia.smartclinic.api.ApiException;
@@ -77,6 +78,34 @@ public class ClinicalNoteService {
     }
 
     /**
+     * Run one guarded command, committing its failure audit after a rollback.
+     *
+     * <p>A command that fails validation appends an audit row and then throws
+     * inside the guarded transaction. Because the transaction rolls back, that
+     * row would be lost. Such failures are signalled with an {@code AuditedFailure};
+     * this method re-appends their audit in a second committed transaction before
+     * rethrowing the public {@code ApiException}. Successes and authorization
+     * denials keep their existing single-transaction path.</p>
+     *
+     * @param callback the guarded command
+     * @param <T>      command result type
+     * @return the command result
+     * @throws ApiException on any command failure
+     */
+    private <T> T audited(TransactionCallback<T> callback) {
+        try {
+            return transactions.execute(callback);
+        } catch (AuditedFailure failure) {
+            transactions.execute(status -> {
+                audit.append(failure.context, PURPOSE, failure.action, RESOURCE_TYPE, SCOPE,
+                        failure.id, failure.outcome);
+                return null;
+            });
+            throw failure.failure;
+        }
+    }
+
+    /**
      * Create the first editable draft of a new note (A1).
      *
      * @param patientId             patient whose chart owns the note
@@ -106,7 +135,7 @@ public class ClinicalNoteService {
         String checksum = NoteChecksum.sha256(noteContent);
         String id = UUID.randomUUID().toString();
         AtomicReference<ApiException> failure = new AtomicReference<>();
-        ClinicalNoteRevision created = transactions.execute(status -> {
+        ClinicalNoteRevision created = audited(status -> {
             TenantContext context = TenantContext.current();
             ApiException denial = authorize(context, CREATE, id);
             if (denial != null) {
@@ -148,7 +177,7 @@ public class ClinicalNoteService {
         String noteTitle = NoteInputs.text(title, "title", 200);
         String noteContent = NoteInputs.text(content, "content", 20000);
         AtomicReference<ApiException> failure = new AtomicReference<>();
-        ClinicalNoteRevision updated = transactions.execute(status -> {
+        ClinicalNoteRevision updated = audited(status -> {
             TenantContext context = TenantContext.current();
             ApiException denial = authorize(context, UPDATE, id);
             if (denial != null) {
@@ -183,7 +212,7 @@ public class ClinicalNoteService {
         NoteInputs.uuid(id, "id");
         String attested = NoteInputs.text(attestation, "attestation", 500);
         AtomicReference<ApiException> failure = new AtomicReference<>();
-        ClinicalNoteRevision signed = transactions.execute(status -> {
+        ClinicalNoteRevision signed = audited(status -> {
             TenantContext context = TenantContext.current();
             ApiException denial = authorize(context, SIGN, id);
             if (denial != null) {
@@ -223,7 +252,7 @@ public class ClinicalNoteService {
         NoteInputs.uuid(id, "id");
         String attested = NoteInputs.text(attestation, "attestation", 500);
         AtomicReference<ApiException> failure = new AtomicReference<>();
-        ClinicalNoteRevision addendum = transactions.execute(status -> {
+        ClinicalNoteRevision addendum = audited(status -> {
             TenantContext context = TenantContext.current();
             ApiException denial = authorize(context, SIGN_ADDENDUM, id);
             if (denial != null) {
@@ -260,7 +289,7 @@ public class ClinicalNoteService {
     public ClinicalNoteRevision createAmendmentDraft(String id, int expectedVersion) {
         NoteInputs.uuid(id, "id");
         AtomicReference<ApiException> failure = new AtomicReference<>();
-        ClinicalNoteRevision amendment = transactions.execute(status -> {
+        ClinicalNoteRevision amendment = audited(status -> {
             TenantContext context = TenantContext.current();
             ApiException denial = authorize(context, AMEND, id);
             if (denial != null) {
@@ -300,7 +329,7 @@ public class ClinicalNoteService {
         String recordedReason = NoteInputs.reason(reason, "reason");
         String recordedRecipients = NoteInputs.recipients(recipients);
         AtomicReference<ApiException> failure = new AtomicReference<>();
-        ClinicalNoteRevision correction = transactions.execute(status -> {
+        ClinicalNoteRevision correction = audited(status -> {
             TenantContext context = TenantContext.current();
             ApiException denial = authorize(context, ENTERED_IN_ERROR, id);
             if (denial != null) {
@@ -335,7 +364,7 @@ public class ClinicalNoteService {
     public NoteView get(String id) {
         NoteInputs.uuid(id, "id");
         AtomicReference<ApiException> failure = new AtomicReference<>();
-        NoteView view = transactions.execute(status -> {
+        NoteView view = audited(status -> {
             TenantContext context = TenantContext.current();
             ApiException denial = authorize(context, READ, id);
             if (denial != null) {
@@ -361,8 +390,8 @@ public class ClinicalNoteService {
     private ClinicalNoteRevision load(String id, TenantContext context, String action) {
         ClinicalNoteRevision current = repository.current(id).orElse(null);
         if (current == null) {
-            conflict(context, action, id, "NOT_FOUND", "clinical note not found");
-            throw new ApiException(404, "NOT_FOUND", "clinical note not found");
+            throw auditFailure(context, action, id, "NOT_FOUND", 404,
+                    "NOT_FOUND", "clinical note not found");
         }
         return current;
     }
@@ -378,8 +407,8 @@ public class ClinicalNoteService {
             throw new ApiException(409, "CONFLICT", "the note conflicts with the stored record");
         }
         if (written == 0) {
-            conflict(context, action, id, "STALE_VERSION", "the note changed since it was read");
-            throw new ApiException(412, "STALE_VERSION", "the note changed since it was read");
+            throw auditFailure(context, action, id, "CONFLICT", 412,
+                    "STALE_VERSION", "the note changed since it was read");
         }
         audit.append(context, PURPOSE, action, RESOURCE_TYPE, SCOPE, id, "SUCCESS");
     }
@@ -387,6 +416,50 @@ public class ClinicalNoteService {
     private void conflict(TenantContext context, String action, String id, String code, String message) {
         String outcome = "NOT_FOUND".equals(code) ? "NOT_FOUND" : "CONFLICT";
         audit.append(context, PURPOSE, action, RESOURCE_TYPE, SCOPE, id, outcome);
+    }
+
+    /**
+     * Build a failure whose audit must outlive the rolling-back command transaction.
+     *
+     * @param context tenant context of the command
+     * @param action  audited action
+     * @param id      requested resource id
+     * @param outcome audited outcome
+     * @param status  public HTTP status
+     * @param code    public error code
+     * @param message public error message
+     * @return the signal to throw inside the guarded command
+     */
+    private static AuditedFailure auditFailure(TenantContext context, String action, String id,
+                                               String outcome, int status, String code, String message) {
+        return new AuditedFailure(new ApiException(status, code, message), context, action, id, outcome);
+    }
+
+    /**
+     * Internal signal for a command failure that already carries its audit facts.
+     *
+     * <p>Throwing this instead of writing the audit inline lets the audited
+     * command wrapper re-append the row in a committed transaction after the
+     * command rolls back.</p>
+     */
+    private static final class AuditedFailure extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+
+        private final ApiException failure;
+        private final TenantContext context;
+        private final String action;
+        private final String id;
+        private final String outcome;
+
+        private AuditedFailure(ApiException failure, TenantContext context, String action,
+                               String id, String outcome) {
+            super(failure);
+            this.failure = failure;
+            this.context = context;
+            this.action = action;
+            this.id = id;
+            this.outcome = outcome;
+        }
     }
 
     private static void requireVersion(ClinicalNoteRevision current, int expectedVersion) {
@@ -411,8 +484,8 @@ public class ClinicalNoteService {
 
     private void requirePatient(ClinicalNoteRevision current, TenantContext context, String action) {
         if (!repository.patientExists(current.patientId())) {
-            conflict(context, action, current.id(), "INVALID_PATIENT_CONTEXT", "patient context is invalid");
-            throw new ApiException(422, "INVALID_PATIENT_CONTEXT", "patient is not in the active organization");
+            throw auditFailure(context, action, current.id(), "CONFLICT", 422,
+                    "INVALID_PATIENT_CONTEXT", "patient is not in the active organization");
         }
     }
 

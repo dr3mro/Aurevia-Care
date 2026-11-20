@@ -3,6 +3,7 @@ package com.aurevia.smartclinic.it.patient.identity;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
@@ -129,6 +130,38 @@ class OutstandingInvitationRevocationTest {
     }
 
     @Test
+    void unlinkWithoutACurrentLinkStillRevokesOutstandingInvitations() {
+        staffAllowed(IdentityActionPolicy.LINK_UNLINK);
+        when(repository.consumeOutstandingInvitations("patient.one", CHART)).thenReturn(2);
+        when(repository.currentLink("patient.one", CHART)).thenReturn(Optional.empty());
+
+        ApiException denial = org.junit.jupiter.api.Assertions.assertThrows(ApiException.class,
+                () -> service.unlink("patient.one", CHART, "dispute"));
+
+        assertEquals(404, denial.status());
+        verify(repository).consumeOutstandingInvitations("patient.one", CHART);
+        verify(repository).appendAudit(any(), eq("INVITATION_RETIRE"), eq(CHART), eq("SUCCESS"));
+        verify(repository, never()).insertLink(any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void reverifyWithoutACurrentLinkStillRevokesOutstandingInvitations() {
+        staffAllowed(IdentityActionPolicy.LINK_REVERIFY);
+        when(repository.accountExists("patient.one")).thenReturn(true);
+        when(repository.chartExists(CHART)).thenReturn(true);
+        when(repository.consumeOutstandingInvitations("patient.one", CHART)).thenReturn(1);
+        when(repository.currentLink("patient.one", CHART)).thenReturn(Optional.empty());
+
+        ApiException denial = org.junit.jupiter.api.Assertions.assertThrows(ApiException.class,
+                () -> service.reverify("patient.one", CHART, "lost access"));
+
+        assertEquals(404, denial.status());
+        verify(repository).consumeOutstandingInvitations("patient.one", CHART);
+        verify(repository).appendAudit(any(), eq("INVITATION_RETIRE"), eq(CHART), eq("SUCCESS"));
+        verify(repository, never()).insertInvitation(any(), any(), any(), any(), any(), any(), anyLong());
+    }
+
+    @Test
     void aDeniedUnlinkDoesNotRevokeOutstandingInvitations() {
         when(repository.hasActiveMembership(STAFF)).thenReturn(true);
         when(repository.activeRoles(STAFF)).thenReturn(List.of("reception"));
@@ -138,6 +171,20 @@ class OutstandingInvitationRevocationTest {
                 () -> service.unlink("patient.one", CHART, "dispute"));
         assertEquals(403, denial.status());
         verify(repository, never()).consumeOutstandingInvitations(anyString(), anyString());
+        verify(repository, never()).appendAudit(any(), eq("INVITATION_RETIRE"), any(), any());
+    }
+
+    @Test
+    void aPatientWithoutAVerifiedAccountCannotRevokeInvitations() {
+        TenantContext.set(new TenantContext(ORG, "patient.one", "PATIENT_IDENTITY", "corr-self-denied"));
+        when(repository.accountExists("patient.one")).thenReturn(false);
+
+        ApiException denial = org.junit.jupiter.api.Assertions.assertThrows(ApiException.class,
+                () -> service.unlink("patient.one", CHART, "dispute"));
+
+        assertEquals(403, denial.status());
+        verify(repository, never()).consumeOutstandingInvitations(anyString(), anyString());
+        verify(repository, never()).appendAudit(any(), eq("INVITATION_RETIRE"), any(), any());
     }
 
     @Test
@@ -150,6 +197,7 @@ class OutstandingInvitationRevocationTest {
                 () -> service.reverify("patient.one", CHART, "lost access"));
         assertEquals(403, denial.status());
         verify(repository, never()).consumeOutstandingInvitations(anyString(), anyString());
+        verify(repository, never()).appendAudit(any(), eq("INVITATION_RETIRE"), any(), any());
     }
 
     private void staffAllowed(String action) {

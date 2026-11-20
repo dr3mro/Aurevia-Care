@@ -242,6 +242,12 @@ class DocumentServiceTest {
         assertEquals(422, status(assertThrows(ApiException.class,
                 () -> service.render(new RenderRequest("chart", SUBJECT, "en", "T", List.of("l"),
                         "S", "I", "E", 45, null)))));
+        assertEquals(422, status(assertThrows(ApiException.class,
+                () -> service.render(new RenderRequest("chart", SUBJECT, "en", "T", null,
+                        "S", "I", "E", 0, null)))));
+        assertEquals(422, status(assertThrows(ApiException.class,
+                () -> service.render(new RenderRequest("chart", SUBJECT, "en", "T",
+                        java.util.Arrays.asList("l", null), "S", "I", "E", 0, null)))));
         verify(repository, never()).nextRenderVersion(anyString(), anyString(), anyString());
     }
 

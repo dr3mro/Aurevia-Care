@@ -13,6 +13,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -449,6 +450,23 @@ class ClinicalNoteServiceTest {
         verify(audit).append(eq(TenantContext.current()), eq(ClinicalNoteService.PURPOSE),
                 eq(ClinicalNoteService.READ), eq(ClinicalNoteService.RESOURCE_TYPE),
                 eq(ClinicalNoteService.SCOPE), eq(NOTE), eq("DENIED"));
+    }
+
+    @Test
+    void missingNoteFailureAuditsInASecondCommittedTransaction() {
+        authorized();
+        when(repository.current(NOTE)).thenReturn(Optional.empty());
+        assertEquals(404, assertThrows(ApiException.class,
+                () -> service.sign(NOTE, 1, "attest")).status());
+        // The command transaction appends a NOT_FOUND audit and then throws, so
+        // that row is rolled back with the rest of the transaction. A second,
+        // committed transaction must re-append the audit with the requested
+        // resource id, action and outcome (OPS-02). Without the second transaction
+        // a failed read leaves no durable trace of the attempt.
+        verify(transactions, times(2)).execute(any());
+        verify(audit).append(eq(TenantContext.current()), eq(ClinicalNoteService.PURPOSE),
+                eq(ClinicalNoteService.SIGN), eq(ClinicalNoteService.RESOURCE_TYPE),
+                eq(ClinicalNoteService.SCOPE), eq(NOTE), eq("NOT_FOUND"));
     }
 
     @Test
