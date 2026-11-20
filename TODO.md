@@ -930,8 +930,9 @@ Cadence and limits:
     Do NOT change `DeliveryStore` method signatures, the controllers or any migration. If the interface cannot be implemented with the V55 tables, STOP, write exactly which method and which missing column in `.agent/pr-notes/<story-id>.md`, and finish without code changes.
 
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` must pass for the classes you touched. Synthetic data only; write the failing test first; stay inside the declared scope; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
-- [ ] AUD-20261120-07 · Inventory every in-memory store and write the persistence decision record
-  - attempts: 0
+- [-] AUD-20261120-07 · Inventory every in-memory store and write the persistence decision record
+  - agent: swarm-2
+  - attempts: 1
   - scope: docs/decisions
   - details:
     Problem (verified): production code has many in-memory implementations whose data disappears on restart. Spring beans (`@Repository`): `api/x_02/InMemoryDeliveryStore`, `messaging/service/InMemoryServiceProfileStore`, `messaging/units/InMemoryMessagingStore`, `messaging/flows/InMemoryFlowPolicyStore`, `messaging/governance/InMemoryMessagingGovernanceStore`, `messaging/acknowledgment/InMemoryInstructionFactStore`. Other in-memory classes (check whether anything wires them): `clinical/templates/InMemoryTemplateStore`, `api/authorization/InMemoryDecisionSink` (authorization decisions), `api/x_01/IdempotencyLedger.InMemoryIdempotencyLedger`, `api/x_03/InMemoryDocumentStore`, `messaging/attachments/InMemoryAttachmentStore`, `messaging/enrollment/InMemoryPatientAccessStore`, `messaging/reports/InMemoryReportReleaseStore`, `messaging/instructions/InstructionStore.InMemory`, `therapy/InMemoryTherapyStore`. This task writes ONLY a document; no Java.
