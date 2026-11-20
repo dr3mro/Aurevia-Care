@@ -806,6 +806,17 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual(self.release(self.story, "rate_limited").calls, [])
 
 
+class TaskFieldTests(unittest.TestCase):
+    """Workers read story text from TODO.md because the matrix carries ids only."""
+
+    def test_title_and_body_come_from_the_entry_and_unknown_ids_are_empty(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            todo = Path(tmp) / "TODO.md"
+            todo.write_text(TODO_SAMPLE if "TODO_SAMPLE" in globals() else "")
+            self.assertEqual(swarm.task_field("NOPE-1", "title", str(todo)), "")
+            self.assertEqual(swarm.task_field("NOPE-1", "body", str(Path(tmp) / "missing.md")), "")
+
+
 class FailTests(unittest.TestCase):
     def fail(self, existing):
         fake = FakeGh(pr_view={"labels": labels("swarm", *existing)})
