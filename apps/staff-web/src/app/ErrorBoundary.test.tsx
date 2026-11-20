@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { Component, useState } from 'react';
+import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
@@ -12,16 +12,14 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-class ThrowingChild extends Component<{ marker: string; fail?: boolean }> {
-  render(): ReactNode {
-    if (this.props.fail === false) {
-      return <p>synthetic recovered child</p>;
-    }
-    const failure = new Error('MARKER-THROW-MESSAGE');
-    failure.name = 'BoomFailure';
-    void this.props.marker;
-    throw failure;
+function ThrowingChild({ marker, fail }: { marker: string; fail?: boolean }): ReactNode {
+  if (fail === false) {
+    return <p>synthetic recovered child</p>;
   }
+  const failure = new Error('MARKER-THROW-MESSAGE');
+  failure.name = 'BoomFailure';
+  void marker;
+  throw failure;
 }
 
 /** Lets the test clear the failure cause outside the boundary before retrying. */
