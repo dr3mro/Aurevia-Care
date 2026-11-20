@@ -119,6 +119,19 @@ class ConcurrentWaveTests(unittest.TestCase):
             self.assertEqual(swarm.active_workers(), 4)
 
 
+class WaitingWaveTests(unittest.TestCase):
+    def test_counts_runs_in_every_not_started_state(self):
+        calls = []
+
+        def fake(*args, check=True):
+            status = args[args.index("--status") + 1]
+            calls.append(status)
+            return "7\n8\n" if status == "queued" else ""
+        with mock.patch.object(swarm, "gh", fake):
+            self.assertEqual(swarm.waiting_waves(), 2)
+        self.assertEqual(calls, ["queued", "pending", "waiting", "requested"])
+
+
 class PlanTests(unittest.TestCase):
     def plan(self, prs=(), workers=10, slots=SLOTS):
         return swarm.plan_workers(workers, slots, TASKS, list(prs))
@@ -317,7 +330,9 @@ class PlanTests(unittest.TestCase):
         dispatchable = [t for t in tasks
                         if t["status"] in ("todo", "taken") and t["scope"] and t["details"]
                         and swarm.attempts_of(t) < swarm.MAX_ATTEMPTS]
-        self.assertGreaterEqual(len(dispatchable), 9)
+        # The count shrinks as the swarm finishes tasks; it only has to stay non-empty
+        # while TODO.md still lists open work.
+        self.assertGreaterEqual(len(dispatchable), 1)
 
     def test_worker_name_is_static_not_matrix_expression(self):
         text = (ROOT / ".github/workflows/swarm.yml").read_text()
