@@ -822,6 +822,13 @@ class FailTests(unittest.TestCase):
         self.assertIn(swarm.MARK, comment)
         self.assertNotIn("```evil", comment)
 
+    def test_a_waiting_wave_means_no_second_dispatch(self):
+        fake = FakeGh(pr_view={"labels": labels("swarm")})
+        with mock.patch.object(swarm, "gh", fake), mock.patch.object(swarm, "waiting_waves", return_value=1):
+            more = swarm.fail(9, "Integration failed")
+        self.assertTrue(more)
+        self.assertFalse(fake.said("workflow", "run", "swarm.yml"))
+
     def test_attempts_are_counted_and_capped(self):
         self.assertTrue(self.fail(["fix-1"])[1].said("labels[]=fix-2"))
         more, fake = self.fail(["fix-1", "fix-2", "fix-3"])
