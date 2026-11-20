@@ -473,8 +473,9 @@ Order of work for the whole production-readiness effort: (1) security and platfo
 
 ### Phase 2 — API list endpoints the screens need (independent of each other)
 
-- [ ] READY-13 · List appointments by date range (GET /api/v1/appointments)
-  - attempts: 0
+- [-] READY-13 · List appointments by date range (GET /api/v1/appointments)
+  - agent: swarm-6
+  - attempts: 1
   - requirements: ARC-03
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/scheduling, apps/api/src/test/java/com/aurevia/smartclinic/scheduling, contracts/openapi
   - depends: DLV-04
@@ -527,8 +528,8 @@ Order of work for the whole production-readiness effort: (1) security and platfo
     Do NOT change existing endpoints, response shapes or migrations.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
-- [-] READY-16 · List orders (GET /api/v1/orders)
-  - agent: swarm-3
+- [x] READY-16 · List orders (GET /api/v1/orders)
+  - pr: #221
   - attempts: 1
   - requirements: ARC-03
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/exchange/order, apps/api/src/test/java/com/aurevia/smartclinic/exchange/order, contracts/openapi
@@ -1777,8 +1778,9 @@ Every entry below is finished and verified. Do not take them again; they stay he
     The X-04 server-side authorization control is inert in production. CommandAuthorization plus its 24-command CommandCatalog, generated OpenAPI contract and generated TypeScript client are never invoked by a request: `grep -rln CommandAuthorization apps/api/src/main/java` returns only CommandAuthorization.java and InMemoryDecisionSink.java; `new CommandAuthorization(` appears only at CommandAuthorization.java:359 inside the test-only factory `synthetic(...)`; `contracts/openapi/generated/client.ts` is imported by no source under apps/staff-web/src or apps/patient-mobile/src. contracts/openapi/README.md itself records that wiring the gate and a POST-mapping-to-catalog parity test are unowned follow-on work, and TODO has no entry for it (READY-41 only adds a durable DecisionSink). The documented IAM-01/PRD-06/ARC-03/ARC-04/OPS-02 gate and its decision ledger therefore never run; each controller relies solely on its own policy and no command yields an authorization decision. Expected fix: provide CommandAuthorization as a Spring bean with the durable sink from READY-41, call it from each owning write endpoint for the 24 catalog commands, and add a build-failing parity test that fails CI when a catalog command has no production caller.
     Found by the daily audit. Synthetic fixtures only; failing tests first;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [ ] AUD-20261120-15 · Remove the duplicate legacy chart slice and its unhardened write path
-  - attempts: 1
+- [-] AUD-20261120-15 · Remove the duplicate legacy chart slice and its unhardened write path
+  - agent: swarm-7
+  - attempts: 2
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/chart, apps/api/src/main/java/com/aurevia/smartclinic/patient/chart
   - details:
     Two complete 11-class chart implementations coexist: chart/record (delivered by S-G1-03) and patient/chart, whose own comment at chart/record/ChartController.java:23 calls it 'a legacy chart slice'. Both expose live HTTP routes and write the same public.chart_entry table: POST /api/v1/chart/records/entries vs /api/v1/chart/entries, and GET .../patients/{patientId}/entries on each prefix. They have diverged in clinical-safety hardening. chart/record/ChartService.java:292-297 bounds free text before audit/catalog keys and normalizes blank reasons; chart/record/ChartRepository.java:178 sets `clinical_author = COALESCE(clinical_author, :actor)` on verification so a recorder-open entry gains an accountable clinical author. The patient/chart equivalents have neither: its ChartRepository.verify leaves clinical_author null and its ChartService has no requireBounded/normalizedReason. A record verified through the legacy route therefore violates CLN-03's separate clinical author and can hit DB CHECK failures on oversized text, with 100% coverage still passing because both slices are tested independently. Expected fix: keep one contract, delete or deprecate the legacy package and routes, consolidate the hardening, and add an integration test that verifies a null-clinical-author entry through the surviving public route.
