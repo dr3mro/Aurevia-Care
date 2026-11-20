@@ -564,7 +564,11 @@ def task_text(task):
               ("Read first", "The section 'Instructions for every agent' at the top of TODO.md, then "
                              "AGENTS.md and CODING_STYLE.md."),
               ("Naming rule", "Name every new folder and Java package after its business domain, "
-                              "never after a task, story or gate ID; the build fails otherwise.")]
+                              "never after a task, story or gate ID; the build fails otherwise."),
+              ("Coverage rule", "Delivery requires 100% line, branch, method and class coverage. Test every "
+                                "branch and failure path you add, delete code that cannot run, and never "
+                                "lower a threshold, add an exclusion or skip a test (see AGENTS.md, "
+                                "Coverage rules).")]
     head = "\n".join(f"{k}: {v}" for k, v in fields if v and v != "-")
     return clip(f"{head}\n\n{task['details']}")
 
