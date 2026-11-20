@@ -28,6 +28,10 @@ INSTRUCTIONS = [
     "contracts/README.md",
     "db/migrations/README.md",
     "infra/DEPLOYMENT.md",
+    "MEMORY.md",
+    "PROJECT.md",
+    "WORKSPACE.md",
+    "apps/*/README.md",
 ]
 
 # Environment files may hold credentials. Rules are evaluated last match wins,
