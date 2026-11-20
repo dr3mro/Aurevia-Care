@@ -413,6 +413,11 @@ class PlanTests(unittest.TestCase):
         ids = [t["id"] for t in self.plan([pr(7, "swarm/CW-001-4")])]
         self.assertEqual(ids, ["CW-002", "CW-006"])
 
+    def test_a_pull_request_already_being_fixed_gets_no_second_fix_worker(self):
+        prs = [pr(9, "swarm/CW-002-4", "swarm", "needs-fix", comments=[swarm.MARK + "\nBroke"])]
+        plan = swarm.plan_workers(10, SLOTS, TASKS, prs, live=["CW-002"])
+        self.assertNotIn("fix", [t["kind"] for t in plan])
+
     def test_fixes_come_first_and_blocked_or_fork_prs_are_skipped(self):
         prs = [pr(9, "swarm/CW-002-4", "swarm", "needs-fix", comments=[swarm.MARK + "\nBroke"]),
                pr(8, "swarm/CW-001-4", "swarm", "needs-fix", "needs-human"),
@@ -1420,6 +1425,32 @@ class GitTests(unittest.TestCase):
         self.assertEqual(len(seen), 2)
         for args in seen:
             self.assertTrue(all(isinstance(a, str) for a in args), args)
+
+    def test_a_fix_worker_whose_branch_moved_is_not_a_failure(self):
+        out = self.worker_dir()
+        task = {**self.TASK, "kind": "fix", "number": 193, "branch": "swarm/CW-001-1"}
+        error = subprocess.CalledProcessError(1, "push", "", "! [rejected] (non-fast-forward)")
+
+        def push(*args, check=True):
+            if args[0] == "push":
+                raise error
+
+        with mock.patch.object(swarm, "gh", FakeGh(pr_view={".state": "OPEN"})), \
+                mock.patch.object(swarm, "authed_git", side_effect=push):
+            swarm.publish(task, out)
+
+    def test_a_story_push_failure_is_still_an_error(self):
+        out = self.worker_dir()
+        error = subprocess.CalledProcessError(1, "push", "", "! [rejected] (non-fast-forward)")
+
+        def push(*args, check=True):
+            if args[0] == "push":
+                raise error
+
+        with mock.patch.object(swarm, "gh", FakeGh()), mock.patch.object(swarm, "release_claim"), \
+                mock.patch.object(swarm, "authed_git", side_effect=push):
+            with self.assertRaises(subprocess.CalledProcessError):
+                swarm.publish(self.TASK, out)
 
     def test_a_fix_worker_whose_pull_request_is_gone_publishes_nothing(self):
         out = self.worker_dir()
