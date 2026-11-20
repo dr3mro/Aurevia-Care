@@ -38,9 +38,11 @@ public class WorklistPolicy {
     /** Link an unscheduled arrival to intake. */
     public static final String INTAKE_LINK = "INTAKE_LINK";
 
+    // Tenant administration is an organizational role: it may run the clerical
+    // worklist but holds no clinical permission. Opening an encounter or recording
+    // vitals follows separate clinical privileges (spec role table, IAM-01).
     private static final Set<String> ADMIN_ACTIONS = Set.of(
-            IDENTITY_VERIFY, CHECK_IN, WORKLIST_READ, WORKLIST_ASSIGN, HANDOFF,
-            VITALS_RECORD, ENCOUNTER_OPEN, INTAKE_LINK);
+            IDENTITY_VERIFY, CHECK_IN, WORKLIST_READ, WORKLIST_ASSIGN, HANDOFF, INTAKE_LINK);
     private static final Set<String> RECEPTION_ACTIONS = Set.of(
             IDENTITY_VERIFY, CHECK_IN, WORKLIST_READ, WORKLIST_ASSIGN, HANDOFF, INTAKE_LINK);
     private static final Set<String> ASSISTANT_ACTIONS = Set.of(
