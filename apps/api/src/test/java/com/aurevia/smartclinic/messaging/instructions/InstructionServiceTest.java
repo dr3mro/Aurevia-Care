@@ -475,4 +475,47 @@ class InstructionServiceTest {
                 () -> service.get(sent.threadId())).status());
         assertTrue(service.listForPatient(PATIENT).isEmpty());
     }
+
+    @Test
+    void multiRolePatientCallerStillUsesTheStricterPatientBranch() {
+        fixture();
+        bind(ORG_A, "clinician-a");
+        var own = service.send(sendRequest());
+        String otherPatient = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
+        store.seedConnection("other-conn", otherPatient, UNIT);
+        var other = service.send(new SendRequest(otherPatient, "other-conn", UNIT, null,
+                Kind.GENERAL, "Other title", "Other body", "en", null, null, null, List.of()));
+
+        // A subject holding both roles is unit-assigned, so the staff branch
+        // would let it read any thread in the unit. The patient role wins and
+        // forces verified-chart binding: only PATIENT is linked to this account.
+        store.seedMember("dual-a", List.of("clinician", "patient"));
+        store.seedUnitStaff("dual-a", UNIT);
+        store.linkPatientChart("dual-a", PATIENT);
+        bind(ORG_A, "dual-a");
+
+        assertEquals(own.threadId(), service.get(own.threadId()).current().threadId());
+        assertEquals(404, assertThrows(ApiException.class,
+                () -> service.get(other.threadId())).status());
+        assertEquals(404, assertThrows(ApiException.class,
+                () -> service.listForPatient(otherPatient)).status());
+    }
+
+    @Test
+    void patientAccountLinkedInOneTenantCannotReadTheSameLocalChartInAnother() {
+        fixture();
+        bind(ORG_A, "clinician-a");
+        var sent = service.send(sendRequest());
+
+        // Identical local subject, chart and connection identifiers in tenant B:
+        // the chart is verified-linked there too, but the thread belongs to A.
+        bind(ORG_B, "patient-b");
+        store.seedMember("patient-b", List.of("patient"));
+        store.linkPatientChart("patient-b", PATIENT);
+        store.seedConnectionOrg(ORG_B, CONNECTION, PATIENT, UNIT);
+
+        assertEquals(404, assertThrows(ApiException.class,
+                () -> service.get(sent.threadId())).status());
+        assertTrue(service.listForPatient(PATIENT).isEmpty());
+    }
 }
