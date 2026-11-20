@@ -359,6 +359,25 @@ paths:
         '401': { description: Authentication required }
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { description: Invalid cursor, limit, range, resource, state or tenant selection }
+  /api/v1/lab/accessions:
+    get:
+      operationId: listLabAccessions
+      summary: List laboratory accessions in the active organization with cursor pagination
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - { name: cursor, in: query, required: false, description: Opaque createdAt:id cursor for the next page, schema: { type: string } }
+        - { name: limit, in: query, required: false, description: Page size 1-200, default 50, schema: { type: integer, minimum: 1, maximum: 200 } }
+        - { name: state, in: query, required: false, description: Exact accession lifecycle state filter, schema: { type: string, enum: [accessioned, collected, received, rejected, recollected] } }
+      responses:
+        '200':
+          description: One page of accessions ordered by creation time descending
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccessionPage' }
+        '401': { description: Authentication required }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { description: Invalid cursor, limit, state or tenant selection }
   /api/v1/orders:
     get:
       operationId: listOrders
@@ -622,6 +641,51 @@ components:
         disclosureId: { type: string, format: uuid }
         workItemId: { type: string, format: uuid }
         createdAt: { type: string, format: date-time }
+    LabAccession:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        version: { type: integer }
+        accessionNo: { type: string }
+        accessionIssuer: { type: string }
+        patientId: { type: string, format: uuid }
+        sourceOrderRef: { type: string }
+        state: { type: string, enum: [accessioned, collected, received, rejected, recollected] }
+        specimenType: { type: string, nullable: true }
+        siteCode: { type: string, nullable: true }
+        collector: { type: string, nullable: true }
+        collectedAt: { type: string, format: date-time, nullable: true }
+        receivedAt: { type: string, format: date-time, nullable: true }
+        quality: { type: string, nullable: true }
+        rejectionReason: { type: string, nullable: true }
+        rejectionNotification: { type: string, nullable: true }
+        replacesAccessionId: { type: string, format: uuid, nullable: true }
+    AccessionEvent:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        accessionId: { type: string, format: uuid }
+        accessionVersion: { type: integer }
+        action: { type: string, enum: [accessioned, collected, received, rejected, recollected] }
+        fromState: { type: string, nullable: true }
+        toState: { type: string }
+        reason: { type: string, nullable: true }
+        matchedPatientId: { type: string, format: uuid, nullable: true }
+        occurredAt: { type: string, format: date-time }
+    AccessionView:
+      type: object
+      properties:
+        accession: { $ref: '#/components/schemas/LabAccession' }
+        events:
+          type: array
+          items: { $ref: '#/components/schemas/AccessionEvent' }
+    AccessionPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/AccessionView' }
+        nextCursor: { type: string, nullable: true }
     OrderPage:
       type: object
       properties:

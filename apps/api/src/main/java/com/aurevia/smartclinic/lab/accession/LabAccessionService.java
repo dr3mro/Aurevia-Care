@@ -1,9 +1,13 @@
 package com.aurevia.smartclinic.lab.accession;
 
 import java.time.Instant;
+import java.time.format.DateTimeParseException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -16,6 +20,7 @@ import com.aurevia.smartclinic.lab.accession.AccessionCommands.CollectRequest;
 import com.aurevia.smartclinic.lab.accession.AccessionCommands.ReceiveRequest;
 import com.aurevia.smartclinic.lab.accession.AccessionCommands.RejectRequest;
 import com.aurevia.smartclinic.lab.accession.AccessionCommands.RecollectRequest;
+import com.aurevia.smartclinic.lab.accession.LabAccessionRepository.AccessionRow;
 import com.aurevia.smartclinic.tenant.TenantContext;
 
 /**
@@ -33,6 +38,12 @@ public class LabAccessionService {
     private static final String PURPOSE = "LAB_ACCESSION";
     private static final String SCOPE = "LAB";
     private static final String RESOURCE_TYPE = "ACCESSION";
+    private static final Pattern CURSOR = Pattern.compile(
+            "(.+):([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})");
+    private static final int DEFAULT_LIMIT = 50;
+    private static final int MAX_LIMIT = 200;
+    private static final List<String> STATES = Arrays.stream(AccessionState.values())
+            .map(AccessionState::wire).toList();
 
     private final LabAccessionRepository repository;
     private final LabActionPolicy policy;
@@ -283,6 +294,103 @@ public class LabAccessionService {
             throw failure.get();
         }
         return view;
+    }
+
+    /**
+     * Read one cursor-paginated page of the active tenant's accessions.
+     *
+     * <p>The single-record read action is reused: a caller who may read one
+     * accession may list the same tenant's accessions. Input is validated before
+     * any transaction and the page read is audited inside the guarded transaction.
+     * One extra row is fetched to decide whether a next page exists; its last
+     * returned row carries the opaque cursor.</p>
+     *
+     * @param cursor opaque {@code <createdAt>:<id>} of the previous page's last row, or {@code null}
+     * @param limit  page size, or {@code null} for the default of 50
+     * @param state  optional exact accession lifecycle state filter
+     * @return one page with an opaque next cursor when more rows exist
+     * @throws ApiException on invalid input or denial
+     */
+    public AccessionPage list(String cursor, String limit, String state) {
+        AccessionCursor parsedCursor = parseCursor(cursor);
+        int parsedLimit = parseLimit(limit);
+        String parsedState = parseState(state);
+        AtomicReference<ApiException> failure = new AtomicReference<>();
+        AccessionPage page = transactions.execute(status -> {
+            TenantContext context = TenantContext.current();
+            ApiException denial = authorize(context, LabActionPolicy.ACCESSION_READ, "ALL");
+            if (denial != null) {
+                failure.set(denial);
+                return null;
+            }
+            List<AccessionRow> rows = repository.query(
+                    parsedCursor == null ? null : parsedCursor.createdAt(),
+                    parsedCursor == null ? null : parsedCursor.id(), parsedState, parsedLimit + 1);
+            boolean hasMore = rows.size() > parsedLimit;
+            List<AccessionRow> pageRows = hasMore ? rows.subList(0, parsedLimit) : rows;
+            String next = null;
+            if (hasMore) {
+                AccessionRow last = pageRows.get(pageRows.size() - 1);
+                next = last.createdAt() + ":" + last.accession().id();
+            }
+            audit.append(context, PURPOSE, LabActionPolicy.ACCESSION_READ, RESOURCE_TYPE,
+                    SCOPE, "ALL", "SUCCESS");
+            return new AccessionPage(pageRows.stream()
+                    .map(row -> new AccessionView(row.accession(), List.of())).toList(), next);
+        });
+        if (failure.get() != null) {
+            throw failure.get();
+        }
+        return page;
+    }
+
+    private AccessionCursor parseCursor(String cursor) {
+        if (cursor == null || cursor.isBlank()) {
+            return null;
+        }
+        Matcher matcher = CURSOR.matcher(cursor);
+        if (!matcher.matches()) {
+            throw new ApiException(422, "INVALID_CURSOR", "cursor must be <createdAt>:<id>");
+        }
+        String canonical;
+        try {
+            canonical = Instant.parse(matcher.group(1)).toString();
+        } catch (DateTimeParseException exception) {
+            throw new ApiException(422, "INVALID_CURSOR", "cursor must be <createdAt>:<id>");
+        }
+        if (!cursor.equals(canonical + ":" + matcher.group(2))) {
+            throw new ApiException(422, "INVALID_CURSOR", "cursor must be canonical <createdAt>:<id>");
+        }
+        return new AccessionCursor(canonical, matcher.group(2));
+    }
+
+    private int parseLimit(String limit) {
+        if (limit == null || limit.isBlank()) {
+            return DEFAULT_LIMIT;
+        }
+        try {
+            int value = Integer.parseInt(limit);
+            if (value < 1 || value > MAX_LIMIT) {
+                throw new NumberFormatException("limit out of range");
+            }
+            return value;
+        } catch (NumberFormatException exception) {
+            throw new ApiException(422, "INVALID_LIMIT", "limit must be 1-200");
+        }
+    }
+
+    private String parseState(String state) {
+        if (state == null || state.isBlank()) {
+            return null;
+        }
+        if (STATES.contains(state)) {
+            return state;
+        }
+        throw new ApiException(422, "INVALID_STATE", "state must be an accession lifecycle state");
+    }
+
+    /** Parsed opaque cursor: the canonical creation instant and the immutable row id. */
+    private record AccessionCursor(String createdAt, String id) {
     }
 
     private LabAccession transition(String specimenId, int expectedVersion, AccessionState target,

@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.aurevia.smartclinic.lab.accession.AccessionCommands.AccessionRequest;
@@ -45,6 +46,21 @@ public class LabAccessionController {
     @PostMapping
     public ResponseEntity<LabAccession> accession(@RequestBody AccessionRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.accession(request));
+    }
+
+    /**
+     * List one cursor-paginated page of the active tenant's accessions.
+     *
+     * @param cursor opaque {@code <createdAt>:<id>} of the previous page's last row
+     * @param limit  page size, or {@code null} for the default of 50
+     * @param state  optional exact accession lifecycle state filter
+     * @return HTTP 200 with one page of accessions
+     */
+    @GetMapping
+    public AccessionPage list(@RequestParam(required = false) String cursor,
+                              @RequestParam(required = false) String limit,
+                              @RequestParam(required = false) String state) {
+        return service.list(cursor, limit, state);
     }
 
     /**
