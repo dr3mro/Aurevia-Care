@@ -278,6 +278,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/lab/accessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List laboratory accessions in the active organization with cursor pagination */
+        get: operations["listLabAccessions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/orders": {
         parameters: {
             query?: never;
@@ -508,6 +525,54 @@ export interface components {
             workItemId?: string;
             /** Format: date-time */
             createdAt?: string;
+        };
+        LabAccession: {
+            /** Format: uuid */
+            id?: string;
+            version?: number;
+            accessionNo?: string;
+            accessionIssuer?: string;
+            /** Format: uuid */
+            patientId?: string;
+            sourceOrderRef?: string;
+            /** @enum {string} */
+            state?: "accessioned" | "collected" | "received" | "rejected" | "recollected";
+            specimenType?: string | null;
+            siteCode?: string | null;
+            collector?: string | null;
+            /** Format: date-time */
+            collectedAt?: string | null;
+            /** Format: date-time */
+            receivedAt?: string | null;
+            quality?: string | null;
+            rejectionReason?: string | null;
+            rejectionNotification?: string | null;
+            /** Format: uuid */
+            replacesAccessionId?: string | null;
+        };
+        AccessionEvent: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            accessionId?: string;
+            accessionVersion?: number;
+            /** @enum {string} */
+            action?: "accessioned" | "collected" | "received" | "rejected" | "recollected";
+            fromState?: string | null;
+            toState?: string;
+            reason?: string | null;
+            /** Format: uuid */
+            matchedPatientId?: string | null;
+            /** Format: date-time */
+            occurredAt?: string;
+        };
+        AccessionView: {
+            accession?: components["schemas"]["LabAccession"];
+            events?: components["schemas"]["AccessionEvent"][];
+        };
+        AccessionPage: {
+            items?: components["schemas"]["AccessionView"][];
+            nextCursor?: string | null;
         };
         OrderPage: {
             items?: components["schemas"]["OrderView"][];
@@ -1269,6 +1334,53 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AppointmentPage"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            /** @description Invalid cursor */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listLabAccessions: {
+        parameters: {
+            query?: {
+                /** @description Opaque createdAt:id cursor for the next page */
+                cursor?: string;
+                /** @description Page size 1-200 */
+                limit?: number;
+                /** @description Exact accession lifecycle state filter */
+                state?: "accessioned" | "collected" | "received" | "rejected" | "recollected";
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of accessions ordered by creation time descending */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessionPage"];
                 };
             };
             /** @description Authentication required */

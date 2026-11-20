@@ -2,6 +2,7 @@ package com.aurevia.smartclinic.lab.accession;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -24,6 +25,19 @@ public class LabAccessionRepository {
 
     private static final RowMapper<LabAccession> ACCESSION_MAPPER = LabAccessionRepository::mapAccession;
     private static final RowMapper<AccessionEvent> EVENT_MAPPER = LabAccessionRepository::mapEvent;
+    private static final RowMapper<AccessionRow> LIST_MAPPER = LabAccessionRepository::mapListRow;
+
+    /**
+     * One page row: the accession projection plus its canonical creation instant.
+     *
+     * <p>The instant is read from the row rather than reconstructed by the service
+     * so the opaque cursor always names the exact value the database sorted on.</p>
+     *
+     * @param accession the current accession projection
+     * @param createdAt canonical UTC creation instant used as the cursor sort value
+     */
+    record AccessionRow(LabAccession accession, String createdAt) {
+    }
 
     private final NamedParameterJdbcTemplate jdbc;
 
@@ -175,6 +189,46 @@ public class LabAccessionRepository {
     }
 
     /**
+     * Read one cursor-paged slice of the active tenant's accessions.
+     *
+     * <p>Forced RLS confines the query to the active organization, so no manual
+     * organization predicate is added. The immutable id breaks a creation-time
+     * tie, making descending paging stable. The caller fetches one extra row to
+     * decide whether a next page exists.</p>
+     *
+     * @param cursorCreatedAt exclusive upper creation-time bound, or {@code null}
+     * @param cursorId        immutable id that breaks a tie at the cursor instant
+     * @param state           optional exact lifecycle state filter
+     * @param limit           maximum rows to fetch (one more than the page size)
+     * @return accessions in creation-time descending order with their sort instant
+     */
+    public List<AccessionRow> query(String cursorCreatedAt, String cursorId, String state, int limit) {
+        MapSqlParameterSource params = new MapSqlParameterSource().addValue("limit", limit);
+        StringBuilder sql = new StringBuilder("""
+                SELECT id::text, version, accession_no, accession_issuer, patient_id::text,
+                       source_order_ref, state, specimen_type, site_code, collector,
+                       collected_at::text, received_at::text, quality, rejection_reason,
+                       rejection_notification, replaces_accession_id::text, created_at
+                  FROM public.lab_accession
+                 WHERE 1=1
+                """);
+        if (cursorCreatedAt != null) {
+            sql.append("""
+                        AND (created_at < CAST(:cursorCreatedAt AS timestamptz)
+                             OR (created_at = CAST(:cursorCreatedAt AS timestamptz)
+                                 AND id < CAST(:cursorId AS uuid)))
+                       """);
+            params.addValue("cursorCreatedAt", cursorCreatedAt).addValue("cursorId", cursorId);
+        }
+        if (state != null) {
+            sql.append(" AND state = :state");
+            params.addValue("state", state);
+        }
+        sql.append(" ORDER BY created_at DESC, id DESC LIMIT :limit");
+        return jdbc.query(sql.toString(), params, LIST_MAPPER);
+    }
+
+    /**
      * Append one immutable history event inside the caller's transaction.
      *
      * @param accessionId      specimen identifier
@@ -214,6 +268,11 @@ public class LabAccessionRepository {
                   FROM public.lab_accession_event WHERE accession_id = CAST(:id AS uuid)
                  ORDER BY occurred_at, id
                 """, Map.of("id", accessionId), EVENT_MAPPER);
+    }
+
+    private static AccessionRow mapListRow(ResultSet resultSet, int rowNumber) throws SQLException {
+        String createdAt = resultSet.getObject("created_at", OffsetDateTime.class).toInstant().toString();
+        return new AccessionRow(mapAccession(resultSet, rowNumber), createdAt);
     }
 
     private static LabAccession mapAccession(ResultSet resultSet, int rowNumber) throws SQLException {
