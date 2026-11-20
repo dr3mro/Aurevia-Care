@@ -101,7 +101,7 @@ operational truth. Real acceptance stays with the named G5 owners.
 |---|---|---|
 | Unit and fixture gate | `bash infra/tenant-lifecycle/check.sh` | 92 synthetic unit tests pass; conforming and measured fixtures pass; violation fixture exits 1 with all eight named breaches |
 | Unit tests alone | `python3 -I -m unittest discover -s infra/tenant-lifecycle/tests -q` | 92 tests, OK |
-| Line coverage | `python3 -m trace --count --coverdir /tmp/opencode/g5_08_cov2 infra/tenant-lifecycle/tests/run_coverage.py` | No `>>>>>>` lines in `tenant_lifecycle_evidence.cover` (stdlib `trace`; `coverage.py` unavailable) |
+| Line coverage | `python3 -m trace --count --coverdir /tmp/opencode/tenant_lifecycle_cov2 infra/tenant-lifecycle/tests/run_coverage.py` | No `>>>>>>` lines in `tenant_lifecycle_evidence.cover` (stdlib `trace`; `coverage.py` unavailable) |
 | Shell gate guard | `python3 -I -m unittest discover -s infra/tenant-lifecycle/tests -p test_check_gate.py -q` | 4 gate-alignment tests pass |
 | Links and requirement IDs | `python3 -I scripts/check-docs.py` | exit 0 |
 | Credential and PHI shapes | `python3 -I scripts/check-secrets.py` | exit 0 |
