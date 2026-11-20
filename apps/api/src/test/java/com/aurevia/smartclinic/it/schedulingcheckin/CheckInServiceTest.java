@@ -179,6 +179,55 @@ class CheckInServiceTest {
     }
 
     @Test
+    void everyGuardedCommandDeniesWithoutActiveMembership() {
+        // No authorized(...) call: each command must take its DENIED branch, record
+        // the audit and throw the captured denial after the transaction commits.
+        assertEquals(403, reject(() -> service.verify(twoIdentifiers())).status());
+        assertEquals(403, reject(() -> service.checkIn(APPOINTMENT, 1)).status());
+        assertEquals(403, reject(() -> service.worklist("MAIN", null)).status());
+        assertEquals(403, reject(() -> service.assign(ITEM, new Assign("nurse-a"), 1)).status());
+        assertEquals(403, reject(() -> service.handoff(ITEM, new Handoff("nurse-b", "r"), 1)).status());
+        assertEquals(403, reject(() -> service.linkIntake(new Intake("MAIN", PATIENT, "walk-in"))).status());
+        assertEquals(403, reject(() -> service.openEncounter(APPOINTMENT, 2)).status());
+    }
+
+    @Test
+    void denialAuditIsCommittedEvenThoughTheCommandFails() {
+        // A real TransactionTemplate rolls back on RuntimeException, so an audit row
+        // written inside a callback that then throws is lost. Model that here: only
+        // audits from callbacks that return normally are treated as committed.
+        java.util.List<String> committed = new java.util.ArrayList<>();
+        java.util.List<String> pending = new java.util.ArrayList<>();
+        AuditAppender recordingAudit = mock(AuditAppender.class);
+        doAnswer(invocation -> {
+            pending.add(invocation.getArgument(6));
+            return null;
+        }).when(recordingAudit).append(any(), anyString(), anyString(), anyString(), anyString(),
+                anyString(), anyString());
+        TransactionTemplate simulating = mock(TransactionTemplate.class);
+        doAnswer(invocation -> {
+            TransactionCallback<?> callback = invocation.getArgument(0);
+            pending.clear();
+            try {
+                Object value = callback.doInTransaction(mock(TransactionStatus.class));
+                committed.addAll(pending);
+                return value;
+            } catch (RuntimeException exception) {
+                pending.clear();
+                throw exception;
+            }
+        }).when(simulating).execute(any());
+        CheckInService local = new CheckInService(repository, appointments, scheduling,
+                new WorklistPolicy(), simulating, recordingAudit,
+                Clock.fixed(NOW, ZoneOffset.UTC));
+
+        ApiException denial = reject(() -> local.verify(twoIdentifiers()));
+        assertEquals(403, denial.status());
+        assertEquals(java.util.List.of("DENIED"), committed,
+                "the DENIED audit row must commit even though the command fails");
+    }
+
+    @Test
     void verifyConcealsMissingAppointmentAndRejectsDuplicates() {
         authorized("reception");
         doThrow(new ApiException(404, "NOT_FOUND", "missing"))
