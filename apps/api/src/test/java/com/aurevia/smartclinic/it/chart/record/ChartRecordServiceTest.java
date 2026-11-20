@@ -460,10 +460,12 @@ class ChartRecordServiceTest {
         failure(422, "INVALID_UNKNOWN_REASON", () -> service.record(new RecordEntryCommand(PATIENT,
                 null, EntryType.ALLERGY, "x", null, null, EntrySource.PATIENT_REPORTED,
                 PresenceState.UNKNOWN, " ", null, null, null, null, null, null)));
-        // A blank reason on a non-unknown assertion is ignored.
-        assertEquals(PresenceState.ABSENT, service.record(new RecordEntryCommand(PATIENT, null,
+        // A blank reason on a non-unknown assertion is normalized away, never stored.
+        ChartEntry absent = service.record(new RecordEntryCommand(PATIENT, null,
                 EntryType.ALLERGY, "x", null, null, EntrySource.PATIENT_REPORTED,
-                PresenceState.ABSENT, " ", null, null, null, null, null, null)).presence());
+                PresenceState.ABSENT, " ", null, null, null, null, null, null));
+        assertEquals(PresenceState.ABSENT, absent.presence());
+        assertNull(absent.unknownReason());
 
         // Effective window: only a start, a valid ordered window.
         assertEquals(null, service.record(new RecordEntryCommand(PATIENT, null, EntryType.PROBLEM,
@@ -480,6 +482,17 @@ class ChartRecordServiceTest {
         failure(422, "INVALID_VITAL", () -> service.record(new RecordEntryCommand(PATIENT, null,
                 EntryType.VITAL, "temp", null, null, EntrySource.DEVICE, PresenceState.PRESENT,
                 null, null, null, NOW, "37.1", " ", null)));
+    }
+
+    @Test
+    void blankUnknownReasonOnNonUnknownEntryIsNormalizedToNull() {
+        activeClinician();
+        when(entries.patientExists(PATIENT)).thenReturn(true);
+        ChartEntry created = service.record(new RecordEntryCommand(PATIENT, null,
+                EntryType.MEDICATION, "x", null, null, EntrySource.PATIENT_REPORTED,
+                PresenceState.PRESENT, "  ", null, null, null, null, null, null));
+        assertNull(created.unknownReason());
+        verify(entries).insert(created);
     }
 
     private static DataIntegrityViolationException integrity(String sqlState) {

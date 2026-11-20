@@ -113,7 +113,7 @@ public class ChartService {
                     catalogVersion,
                     command.source(),
                     command.presence(),
-                    command.unknownReason(),
+                    normalizedReason(command.unknownReason()),
                     VerificationState.UNVERIFIED,
                     null,
                     null,
@@ -296,12 +296,13 @@ public class ChartService {
         if (command.presence() == null) {
             throw new ApiException(422, "INVALID_PRESENCE", "presence is required");
         }
+        String reason = normalizedReason(command.unknownReason());
         if (command.presence() == PresenceState.UNKNOWN) {
-            if (command.unknownReason() == null || command.unknownReason().isBlank()) {
+            if (reason == null) {
                 throw new ApiException(422, "INVALID_UNKNOWN_REASON",
                         "an unknown assertion requires a reason");
             }
-        } else if (command.unknownReason() != null && !command.unknownReason().isBlank()) {
+        } else if (reason != null) {
             throw new ApiException(422, "INVALID_UNKNOWN_REASON",
                     "only an unknown assertion may carry a reason");
         }
@@ -343,6 +344,18 @@ public class ChartService {
                 entry.clinicalAuthor() == null ? actor : entry.clinicalAuthor(),
                 entry.dataEntryActor(), entry.version() + 1,
                 entry.recordedAt());
+    }
+
+    /**
+     * Treat a blank reason as absent so it is never persisted. V13 permits a
+     * reason only on an UNKNOWN assertion; storing an empty string on a
+     * PRESENT/ABSENT row would fail that CHECK and surface as a misleading 409.
+     *
+     * @param reason submitted reason, possibly {@code null} or blank
+     * @return the reason, or {@code null} when it is absent or blank
+     */
+    private static String normalizedReason(String reason) {
+        return reason == null || reason.isBlank() ? null : reason;
     }
 
     private static void requireBounded(String value, int max, String code) {
