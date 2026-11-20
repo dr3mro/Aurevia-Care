@@ -21,7 +21,7 @@ The evaluator judges an evidence artifact, not a running application. It can
 prove that supplied declarations meet UX-01 and that the envelope is complete;
 native screen-reader usability and WCAG conformance remain human-gated.
 
-Usage: ``python3 -I infra/s_g5_10/ux01_evidence.py <artifact.json>``
+Usage: ``python3 -I infra/accessibility/ux01_evidence.py <artifact.json>``
 Exit codes: 0 = artifact passes the UX-01 checks, 1 = it fails a check,
 2 = unreadable input.
 """

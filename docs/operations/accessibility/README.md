@@ -27,8 +27,8 @@ No new threshold or requirement ID is introduced by this handoff.
 
 | Tier | What it is | What it proves | What it does not prove |
 |---|---|---|---|
-| Contract | The spec literals encoded in [ux01_evidence.py](../../../infra/s_g5_10/ux01_evidence.py) and the [declared profile](../../../infra/s_g5_10/ux01-profile.json) | Fidelity of the encoding and fail-closed validation | That any clause was verified on a real system |
-| Synthetic rehearsal | Seeded, synthetic artifacts run by the [gate](../../../infra/s_g5_10/check-ux01.sh) in this repository | That the evaluator accepts a conforming artifact and rejects breaches | Real RTL rendering, real screen-reader usability or WCAG conformance; no device or user was involved |
+| Contract | The spec literals encoded in [ux01_evidence.py](../../../infra/accessibility/ux01_evidence.py) and the [declared profile](../../../infra/accessibility/ux01-profile.json) | Fidelity of the encoding and fail-closed validation | That any clause was verified on a real system |
+| Synthetic rehearsal | Seeded, synthetic artifacts run by the [gate](../../../infra/accessibility/check-ux01.sh) in this repository | That the evaluator accepts a conforming artifact and rejects breaches | Real RTL rendering, real screen-reader usability or WCAG conformance; no device or user was involved |
 | Measured acceptance | An authorized assistive-technology and localization review, produced outside this repository | Usability and conformance findings under the declared envelope | Clinical approval; that remains a G5 human gate |
 
 A passing synthetic artifact is explicitly labelled `final_evidence: false`. The
@@ -43,20 +43,20 @@ evaluator never promotes a rehearsal to measured acceptance.
 | [Accessibility and screen readers](accessibility-and-screen-readers.md) | WCAG 2.2 AA, VoiceOver, TalkBack and the human-verification boundary |
 | [Evidence artifact](evidence-artifact.md) | Artifact schema, commands, observed rehearsal result and remaining gate |
 
-Executable material lives in `infra/s_g5_10`: the
-[evaluator](../../../infra/s_g5_10/ux01_evidence.py), the
-[declared profile](../../../infra/s_g5_10/ux01-profile.json), the
-[conforming](../../../infra/s_g5_10/fixtures/synthetic_ux01_evidence.json) and
-[violation](../../../infra/s_g5_10/fixtures/violation_ux01_evidence.json)
+Executable material lives in `infra/accessibility`: the
+[evaluator](../../../infra/accessibility/ux01_evidence.py), the
+[declared profile](../../../infra/accessibility/ux01-profile.json), the
+[conforming](../../../infra/accessibility/fixtures/synthetic_ux01_evidence.json) and
+[violation](../../../infra/accessibility/fixtures/violation_ux01_evidence.json)
 fixtures, and the unit tests.
 
 ## Verification
 
 | Check | Command | Proves |
 |---|---|---|
-| Unit and fixture gate | `bash infra/s_g5_10/check-ux01.sh` | 54 synthetic unit tests pass; the conforming fixture passes and the violation fixture fails with the exact exit code 1 and a FAIL marker |
-| Unit tests alone | `python3 -I -m unittest discover -s infra/s_g5_10/tests -q` | The evaluator's enumerated branches behave as specified, including hostile JSON input |
-| Line coverage | `python3 -m trace --count --missing --coverdir /tmp/opencode/s_g5_10_cov infra/s_g5_10/tests/run_coverage.py` | No missed executable line in the evaluator, including the `if __name__ == "__main__"` CLI entry point; stdlib `trace` is used because `coverage.py` is not installed |
+| Unit and fixture gate | `bash infra/accessibility/check-ux01.sh` | 54 synthetic unit tests pass; the conforming fixture passes and the violation fixture fails with the exact exit code 1 and a FAIL marker |
+| Unit tests alone | `python3 -I -m unittest discover -s infra/accessibility/tests -q` | The evaluator's enumerated branches behave as specified, including hostile JSON input |
+| Line coverage | `python3 -m trace --count --missing --coverdir /tmp/opencode/accessibility_cov infra/accessibility/tests/run_coverage.py` | No missed executable line in the evaluator, including the `if __name__ == "__main__"` CLI entry point; stdlib `trace` is used because `coverage.py` is not installed |
 | Links and requirement IDs | `python3 -I scripts/check-docs.py` | Relative links resolve and every requirement ID is defined in the specification |
 | Credential and PHI shapes | `python3 -I scripts/check-secrets.py` | No credential or patient-identifier pattern was introduced |
 

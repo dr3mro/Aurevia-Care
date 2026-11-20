@@ -1,7 +1,7 @@
 # Accessibility and screen readers (UX-01)
 
 - Requirement: **UX-01**
-- Machine source of truth: [ux01_evidence.py](../../../infra/s_g5_10/ux01_evidence.py).
+- Machine source of truth: [ux01_evidence.py](../../../infra/accessibility/ux01_evidence.py).
 - Back to the [S-G5-10 handoff](README.md).
 
 ## Enforced declarations
@@ -31,7 +31,7 @@ even a measured artifact is not a substitute for the G5 sign-off.
 
 ## Synthetic breach coverage
 
-The [violation fixture](../../../infra/s_g5_10/fixtures/violation_ux01_evidence.json)
+The [violation fixture](../../../infra/accessibility/fixtures/violation_ux01_evidence.json)
 declares `WCAG 2.1` at level `A`, sets `tested` to `false` with an empty report,
 names an unknown Android reader and sets `flows_tested` to `false`; the
 evaluator reports both accessibility checks as failures. Unit cases cover each

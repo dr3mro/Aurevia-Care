@@ -1,7 +1,7 @@
 # Localization and RTL (UX-01)
 
 - Requirement: **UX-01**
-- Machine source of truth: [ux01_evidence.py](../../../infra/s_g5_10/ux01_evidence.py).
+- Machine source of truth: [ux01_evidence.py](../../../infra/accessibility/ux01_evidence.py).
   The constants there are the single enforced copy of these literals; this page
   explains them and must be kept in step with that module.
 - Back to the [S-G5-10 handoff](README.md).
@@ -28,7 +28,7 @@ into a single script, and mixed-script clinical text needs bidirectional-safe
 handling so that a Latin laboratory code cannot be visually attached to the
 wrong Arabic word. Each clause is therefore a distinct named check with a
 distinct synthetic fixture breach in
-[test_ux01_evidence.py](../../../infra/s_g5_10/tests/test_ux01_evidence.py).
+[test_ux01_evidence.py](../../../infra/accessibility/tests/test_ux01_evidence.py).
 
 ## What is deliberately not enforced
 
@@ -40,7 +40,7 @@ distinct synthetic fixture breach in
 
 ## Synthetic breach coverage
 
-The [violation fixture](../../../infra/s_g5_10/fixtures/violation_ux01_evidence.json)
+The [violation fixture](../../../infra/accessibility/fixtures/violation_ux01_evidence.json)
 omits `ar` and sets `navigation_mirrored` to `false`; the evaluator reports
 `localization.languages` and `localization.rtl` as failures. Additional unit
 cases cover duplicate and non-string languages, missing flags, truthy

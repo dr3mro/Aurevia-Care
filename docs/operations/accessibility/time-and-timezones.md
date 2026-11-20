@@ -1,7 +1,7 @@
 # Time zones and civil dates (UX-01)
 
 - Requirement: **UX-01**
-- Machine source of truth: [ux01_evidence.py](../../../infra/s_g5_10/ux01_evidence.py).
+- Machine source of truth: [ux01_evidence.py](../../../infra/accessibility/ux01_evidence.py).
 - Back to the [S-G5-10 handoff](README.md).
 
 ## Enforced declarations
@@ -40,7 +40,7 @@ item for engineering and operations.
 
 ## Synthetic breach coverage
 
-The [violation fixture](../../../infra/s_g5_10/fixtures/violation_ux01_evidence.json)
+The [violation fixture](../../../infra/accessibility/fixtures/violation_ux01_evidence.json)
 uses `instant_storage: "local"`, `iana_timezone_context: false` and a single
 fixed-offset zone; the evaluator reports the storage, context and DST checks as
 failures. Unit cases additionally cover an empty list, non-string members, an

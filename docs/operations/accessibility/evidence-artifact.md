@@ -1,7 +1,7 @@
 # Evidence artifact and commands (UX-01)
 
 - Requirement: **UX-01**
-- Machine source of truth: [ux01_evidence.py](../../../infra/s_g5_10/ux01_evidence.py).
+- Machine source of truth: [ux01_evidence.py](../../../infra/accessibility/ux01_evidence.py).
 - Back to the [S-G5-10 handoff](README.md).
 
 ## Artifact schema
@@ -41,11 +41,11 @@ light/dark presentation must be expressible without duplicating content.
 
 | Command | Result in this repository |
 |---|---|
-| `python3 -I -m unittest discover -s infra/s_g5_10/tests -q` | 54 tests, 0 failures, 0 errors |
-| `bash infra/s_g5_10/check-ux01.sh` | exit 0; conforming fixture passes, violation fixture fails with exit code 1 and a FAIL marker |
-| `python3 -I infra/s_g5_10/ux01_evidence.py infra/s_g5_10/fixtures/synthetic_ux01_evidence.json` | verdict `PASS`, class `rehearsal`, `final_evidence` false |
-| `python3 -I infra/s_g5_10/ux01_evidence.py infra/s_g5_10/fixtures/violation_ux01_evidence.json` | verdict `FAIL`, exit 1, eight failing checks |
-| `python3 -m trace --count --missing --coverdir /tmp/opencode/s_g5_10_cov infra/s_g5_10/tests/run_coverage.py` | no missed executable lines in `ux01_evidence.py`, including the CLI entry point |
+| `python3 -I -m unittest discover -s infra/accessibility/tests -q` | 54 tests, 0 failures, 0 errors |
+| `bash infra/accessibility/check-ux01.sh` | exit 0; conforming fixture passes, violation fixture fails with exit code 1 and a FAIL marker |
+| `python3 -I infra/accessibility/ux01_evidence.py infra/accessibility/fixtures/synthetic_ux01_evidence.json` | verdict `PASS`, class `rehearsal`, `final_evidence` false |
+| `python3 -I infra/accessibility/ux01_evidence.py infra/accessibility/fixtures/violation_ux01_evidence.json` | verdict `FAIL`, exit 1, eight failing checks |
+| `python3 -m trace --count --missing --coverdir /tmp/opencode/accessibility_cov infra/accessibility/tests/run_coverage.py` | no missed executable lines in `ux01_evidence.py`, including the CLI entry point |
 
 `coverage.py` is not installed in this environment, so line coverage is measured
 with the standard-library `trace` tool with `--missing`. The CLI bootstrap line
