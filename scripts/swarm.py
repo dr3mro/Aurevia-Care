@@ -17,6 +17,7 @@ import random
 import re
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -287,15 +288,13 @@ def notes_section(text, heading="Why this is not finished"):
 def report_worker_handoff(task, result, checks, merged, directory, pr=""):
     """A worker stopped before finishing: record what the next worker needs to continue."""
     notes = read(Path(directory) / "publish-notes.md", "")
-    why = notes_section(notes) or "(the worker wrote no reason; see the check log below)"
-    log = read(Path(directory) / "check.log", "")
+    why = notes_section(notes) or "(the worker wrote no reason; inspect the workflow run)"
     body = ("<!-- swarm-handoff v1 -->\n"
             f"**Task:** {task['id']} ({task['kind']}) **Branch:** `{task.get('branch') or 'new branch'}` "
             f"**PR:** {('#' + pr) if pr else 'none yet'}\n"
             f"**Result:** {result} · **Local checks:** {checks} · **Merge with main:** {merged}\n"
             f"**Run:** {run_url()}\n\n"
             f"**Why it did not finish (the worker's own words):**\n\n{clean(why, 2500, 40)}\n\n"
-            + (f"**End of the check log:**\n\n```text\n{clean(log)}\n```\n\n" if log else "")
             + "**Next worker:** continue on this branch from the notes in the pull request; "
               "do not start over. Findings you add to your notes are posted here.")
     if re.fullmatch(r"ISS-\d+", task["id"]):
@@ -352,7 +351,7 @@ def run_event(run_id):
             f"· **Commit:** {str(info.get('headSha'))[:7]}\n**Run:** {info.get('url')}\n"
             f"**Failed:** {where}\n**Class:** {kind}"
             + (" (a person must fix this: a token, permission or limit)" if kind != "unknown" else "")
-            + f"\n\n```text\n{clean(log)}\n```")
+            + "\nSee the workflow run for check output.")
     number = record_issue("ci", [name, *[f"{j}::{s}" for j, s in failed]],
                           f"{name} failed: {where}"[:200], body,
                           # Not agent-fixable: a red main already becomes a repair task, and the
@@ -903,6 +902,29 @@ def slot_manifests_exist(slots, repo=None):
     return True
 
 
+def verified_slot_images(slots):
+    """Return one complete successful run's digest map or no usable generation."""
+    runs = gh_json("run", "list", "--workflow", "swarm-images.yml", "--branch", "main",
+                   "--status", "success", "--limit", "5", "--json", "databaseId") or []
+    prefix = f"ghcr.io/{repo_slug().lower()}-agent"
+    expected = {str(slot["slot"]): re.compile(rf"{re.escape(prefix)}-{slot['slot']}@sha256:[0-9a-f]{{64}}")
+                for slot in slots}
+    for run in runs:
+        with tempfile.TemporaryDirectory() as directory:
+            try:
+                gh("run", "download", str(run["databaseId"]), "--name", "verified-slot-images",
+                   "--dir", directory)
+                images = json.loads((Path(directory) / "slot-images.json").read_text())
+            except (OSError, ValueError, subprocess.CalledProcessError):
+                continue
+        if isinstance(images, dict) and images.keys() == expected.keys() and all(
+            isinstance(images[slot], str) and pattern.fullmatch(images[slot])
+            for slot, pattern in expected.items()
+        ):
+            return images
+    return {}
+
+
 def images_ready_command(slots=None):
     """Gather inputs, decide readiness, dispatch one build if needed, emit outputs.
 
@@ -922,15 +944,11 @@ def images_ready_command(slots=None):
 
 
 def failure_report(directory):
-    """Why a worker's local check failed: the end of its check log, ready for the PR body.
-
-    The log is output of the repository's own scripts. It is clipped and its code fences
-    are neutralised so it cannot break out of the block it is shown in."""
-    log = read(Path(directory) / "check.log", "")
-    if not log:
+    """Link to worker diagnostics without copying raw logs into a PR."""
+    if not (Path(directory) / "check.log").is_file():
         return "**Why:** no check log was kept, see the worker run.\n\n"
-    tail = "\n".join(log.splitlines()[-60:])[-3000:].replace("```", "'''")
-    return f"**Why it failed** (end of the local check log):\n\n```text\n{tail}\n```\n\n"
+    return f"**Why it failed:** see the checks in the [worker run]({run_url()}).\n\n"
+
 
 
 def clip(text):
@@ -1109,7 +1127,7 @@ def add_audit_tasks(findings_path, path="TODO.md", today=None):
         if not entries:
             return text
         return add_under(text, AUDIT_HEADER, entries)
-    update_todo(edit, "Daily audit: add findings", path)
+    update_todo(edit, "Daily audit: add findings", path, validate=check_generated_markdown)
     print(f"Added {len(added)} audit task(s).")
     return len(added)
 
@@ -1211,7 +1229,13 @@ def release_claim(task_id, reason):
         f"Release {task_id}: {reason}")
 
 
-def update_todo(edit, message, path="TODO.md", attempts=8):
+def check_generated_markdown(paths=()):
+    """Validate generated Markdown before a trusted publisher writes it remotely."""
+    subprocess.run([sys.executable, "-I", "scripts/check-docs.py", *paths], check=True)
+    subprocess.run([sys.executable, "-I", "scripts/check-secrets.py"], check=True)
+
+
+def update_todo(edit, message, path="TODO.md", attempts=8, validate=None):
     """Apply `edit(text)` to TODO.md on main and push. Reapplied on fresh main if the push races."""
     for attempt in range(attempts):
         text = Path(path).read_text()
@@ -1219,6 +1243,12 @@ def update_todo(edit, message, path="TODO.md", attempts=8):
         if new == text:
             return False
         Path(path).write_text(new)
+        if validate is not None:
+            try:
+                validate()
+            except subprocess.CalledProcessError:
+                Path(path).write_text(text)
+                raise
         git("add", path)
         # [skip ci] keeps this TODO.md-only commit from triggering another
         # swarm.yml push event (which would spawn a wave for every claim).
@@ -1295,6 +1325,15 @@ def task_text(task):
     return clip(f"{head}\n\n{task['details']}")
 
 
+def frontend_task_conflict(task):
+    """Flag explicit class-component requirements that the frontend gate rejects."""
+    frontend = ("apps/staff-web", "apps/patient-mobile")
+    return any(path.startswith(frontend) for path in task["scope"]) and bool(
+        re.search(r"\(class component\)|\b(?:create|implement|write) a class component\b",
+                  task["details"], re.IGNORECASE)
+    )
+
+
 def plan_workers(max_workers, slots, text, open_prs, repair=None, live=()):
     """Main repairs, then fixes, then ready tasks whose scope is free."""
     tasks = parse_tasks(text)
@@ -1306,6 +1345,9 @@ def plan_workers(max_workers, slots, text, open_prs, repair=None, live=()):
     plan, busy = ([repair] if repair else []), [t["scope"] for t in tasks if t["status"] == "taken"]
     for pr in sorted(open_prs, key=lambda p: p["number"]):
         tid = task_id_of(pr["headRefName"])
+        pr_labels = label_names(pr)
+        if tid.startswith(REPAIR_PREFIXES) and "needs-human" in pr_labels:
+            continue
         task = by_id.get(tid)
         if task is None and tid.startswith("FIX-"):
             task = {"id": tid, "task": pr.get("title", tid), "scope": [], "details": "",
@@ -1314,7 +1356,7 @@ def plan_workers(max_workers, slots, text, open_prs, repair=None, live=()):
             busy.append(task["scope"])
         # One fix worker per pull request: overlapping waves used to each start one for
         # the same PR, and every worker after the first was rejected as non-fast-forward.
-        if "needs-fix" in label_names(pr) and "needs-human" not in label_names(pr) \
+        if "needs-fix" in pr_labels and "needs-human" not in pr_labels \
                 and not pr["isCrossRepository"] and task and task["id"] not in set(live):
             notes = [c["body"] for c in pr["comments"] if MARK in c["body"]]
             plan.append({"kind": "fix", "id": task["id"], "number": pr["number"],
@@ -1329,6 +1371,10 @@ def plan_workers(max_workers, slots, text, open_prs, repair=None, live=()):
                 or attempts_of(task) >= MAX_ATTEMPTS:
             continue
         if not set(task["depends"]) <= done:
+            continue
+        if frontend_task_conflict(task):
+            print(f"Task {task['id']} was not dispatched: the story requests a class component "
+                  "that the frontend gate rejects.", file=sys.stderr)
             continue
         if any(overlaps(task["scope"], other) for other in busy):
             continue
@@ -1361,6 +1407,13 @@ def read(path, default=""):
         return Path(path).read_text().strip()
     except OSError:
         return default
+
+
+HANDOFF_SECTIONS = ("Test evidence", "Coverage", "Findings", "Lessons for workers")
+
+
+def missing_handoff_sections(notes):
+    return [heading for heading in HANDOFF_SECTIONS if not notes_section(clip(notes), heading)]
 
 
 def publish(task, directory):
@@ -1419,14 +1472,17 @@ def publish(task, directory):
         merged = read(directory / "merge", "skipped")
         # Work is always published, even when the worker did not finish: a
         # draft pull request keeps it reviewable and lets a fix worker continue.
-        incomplete = result != "ok" or checks != "passed" or merged == "conflict"
+        notes = read(directory / "publish-notes.md", "No notes were written.")
+        missing = missing_handoff_sections(notes)
+        incomplete = result != "ok" or checks != "passed" or merged == "conflict" or bool(missing)
         if task["kind"] == "story":
-            notes = read(directory / "publish-notes.md", "No notes were written.")
             status = ""
             if incomplete:
                 why = [f"agent result: {result}", f"local checks: {checks}"]
                 if merged == "conflict":
                     why.append("merge with main left unresolved conflicts")
+                if missing:
+                    why.append("missing handoff sections: " + ", ".join(missing))
                 status = ("**Draft: the worker did not finish cleanly** (" + "; ".join(why) +
                           "). Its work is saved here so nothing is lost; a fix worker or a "
                           "person continues from this branch.\n\n")
@@ -1443,7 +1499,7 @@ def publish(task, directory):
                 gh("pr", "create", "--base", os.environ.get("BASE_BRANCH", "main"), "--head", branch,
                    "--title", f"{task['id']}: {task_field(task['id'], 'title') or task.get('title') or task['id']}", "--body", body, "--label", "swarm",
                    *(["--label", "autofix"] if repair else []),
-                   *(["--draft"] if incomplete and not repair else []))
+                   *(["--draft", "--label", "needs-fix"] if incomplete else []))
                 pr = gh("pr", "view", branch, "--json", "number", "--jq", ".number").strip()
             except subprocess.CalledProcessError:
                 # The branch is pushed, so the work is safe; make sure a person can find it.
@@ -1454,6 +1510,15 @@ def publish(task, directory):
                 pr = ""
         else:
             pr = str(task["number"])
+            published = git("rev-parse", "swarm-incoming").strip()
+            current = gh_json("pr", "view", pr, "--json", "headRefOid,isDraft") or {}
+            if current.get("headRefOid") == published:
+                if incomplete:
+                    fail(int(pr), "The repair worker did not pass its local checks")
+                else:
+                    if current.get("isDraft"):
+                        gh("pr", "ready", pr)
+                    remove_label(pr, "needs-fix")
             gh("pr", "comment", pr, "--body",
                f"Worker {task['slot']} pushed a fix (local checks: {checks}). The integrator will retest.")
     release(task, result, 1 if pr else 0, pr)
@@ -1498,7 +1563,8 @@ NOTES_DIR = ".agent/pr-notes"
 NOTES_ARCHIVE = "docs/archive/pr-notes"
 DAILY_NOTE = re.compile(r"\d{4}-\d{2}-\d{2}\.md")
 NOTE_STAMP = re.compile(r"-(\d{8})-(\d{6})\.md$")
-RULES_ALLOWED = (re.compile(r"AGENTS\.md"), re.compile(r"\.opencode/.+\.md"), re.compile(r"docs/[^/]+\.md"))
+RULES_ALLOWED = (re.compile(r"(?:AGENTS|MEMORY)\.md"),
+                 re.compile(r"\.opencode/.+\.md"), re.compile(r"docs/[^/]+\.md"))
 MAX_NOTE_DAYS = 7
 MAX_NOTE_FILES = 80
 # Input per night, so the reconciler's context never overflows on a free model. Files over
@@ -1586,6 +1652,8 @@ def push_main(message, edit, paths=(NOTES_DIR, NOTES_ARCHIVE), attempts=6):
         git("add", "-A", "--", *paths)
         if not git("diff", "--cached", "--name-only", check=False).strip():
             return False
+        staged = git("diff", "--cached", "--name-only", "--diff-filter=AM", "-z").split("\0")
+        check_generated_markdown([path for path in staged if path.endswith(".md")])
         git(*IDENTITY, "commit", "-qm", f"{message} [skip ci]")
         try:
             authed_git("push", "origin", "HEAD:main")
@@ -1658,14 +1726,17 @@ def notes_issue_entries(path):
     return good
 
 
+def rule_path_allowed(path):
+    return not path.startswith("docs/archive/") and any(pattern.fullmatch(path) for pattern in RULES_ALLOWED)
+
+
 def rules_patch_ok(patch_text):
     """True when a patch only touches allowed instruction documents."""
     paths = re.findall(r"^diff --git a/(\S+) b/(\S+)$", patch_text, re.M)
     if re.search(r"^(new file |deleted file |new |old )mode 120000|^GIT binary patch|^Binary files|^(rename|copy) ",
                  patch_text, re.M):
         return False
-    return bool(paths) and all(a == b and any(p.fullmatch(a) for p in RULES_ALLOWED)
-                               and not a.startswith("docs/archive/") for a, b in paths)
+    return bool(paths) and all(a == b and rule_path_allowed(a) for a, b in paths)
 
 
 def open_rules_pr(day, patch_path):
@@ -1676,20 +1747,29 @@ def open_rules_pr(day, patch_path):
     if not rules_patch_ok(patch.read_text()):
         print("notes: rules patch touches files outside the allowed set, dropped", file=sys.stderr)
         return ""
-    branch = f"notes/rules-{day}"
+    revision = hashlib.sha256(patch.read_bytes()).hexdigest()[:12]
+    branch = f"notes/rules-{day}-{revision}"
     authed_git("fetch", "origin", "main")
     git("checkout", "-q", "-B", branch, "origin/main")
     git("apply", "--index", str(patch.resolve()))
+    staged = git("diff", "--cached", "--name-only", "-z").rstrip("\0").split("\0")
+    memory_changes = git("diff", "--cached", "--numstat", "--", "MEMORY.md").split()
+    if not all(rule_path_allowed(path) for path in staged) or (memory_changes and memory_changes[1] != "0"):
+        print("notes: staged paths or memory changes are outside the review policy", file=sys.stderr)
+        git("reset", "-q", "--hard")
+        git("checkout", "-q", "-")
+        return ""
     # Delivery skips Markdown-only pull requests, so a broken link or an unknown requirement ID
     # would only turn main red on the next code push: check the docs here instead.
-    checked = subprocess.run([sys.executable, "-I", "scripts/check-docs.py"], capture_output=True, text=True)
-    if checked.returncode:
-        print(f"notes: rules patch fails the docs check, dropped:\n{checked.stderr[-2000:]}", file=sys.stderr)
+    try:
+        check_generated_markdown(staged)
+    except subprocess.CalledProcessError:
+        print("notes: rules patch failed validation; publication skipped", file=sys.stderr)
         git("reset", "-q", "--hard")
         git("checkout", "-q", "-")
         return ""
     git(*IDENTITY, "commit", "-qm", f"Notes {day}: instruction updates from the daily reconciliation")
-    authed_git("push", "--force", "origin", f"HEAD:refs/heads/{branch}")
+    authed_git("push", "origin", f"HEAD:refs/heads/{branch}")
     out = gh("pr", "create", "--draft", "--base", "main", "--head", branch,
              "--title", f"Notes {day}: instruction updates for review",
              "--body", f"{MARK}\nThe daily notes reconciliation for {day} suggests these edits to make workers "
@@ -1747,8 +1827,7 @@ def fail(pr, reason, log_text=""):
     """Send a pull request back to the workers, or stop after MAX_FIX attempts."""
     info = gh_json("pr", "view", str(pr), "--json", "labels")
     attempts = len([n for n in label_names(info) if re.fullmatch(r"fix-\d", n)])
-    tail = "\n".join(log_text.splitlines()[-80:])[-6000:].replace("```", "'''")
-    detail = f"\n\n```text\n{tail}\n```" if tail else ""
+    detail = f" See the checks in {run_url()}." if log_text else ""
     if attempts >= MAX_FIX:
         add_labels(pr, "needs-human")
         remove_label(pr, "needs-fix")
@@ -1756,8 +1835,7 @@ def fail(pr, reason, log_text=""):
            f"{MARK}\nIntegration still fails after {MAX_FIX} fix attempts: {reason}. "
            f"A person must take over.{detail}")
         report_pr_stuck(pr, f"still failing after {MAX_FIX} fix attempts",
-                        f"**Why it was stopped:** {reason}\n\n"
-                        + (f"```text\n{clean(log_text)}\n```" if log_text else ""))
+                        f"**Why it was stopped:** {reason}.{detail}")
         return False
     attempt = attempts + 1
     add_labels(pr, "needs-fix", f"fix-{attempt}")
@@ -1778,14 +1856,38 @@ def main_is_red(workflow="delivery.yml"):
     return bool(runs) and runs[0]["conclusion"] == "failure"
 
 
+def delivery_pr_state(pr, sha):
+    """Classify the latest Delivery result for this exact PR head."""
+    changed = gh("pr", "diff", str(pr), "--name-only").splitlines()
+    if changed and all(path.startswith("docs/") or path.endswith(".md") for path in changed):
+        return "green"
+    result = gh_json("api", "--method", "GET",
+                     f"repos/{repo_slug()}/actions/workflows/delivery.yml/runs",
+                     "-f", "event=pull_request", "-f", f"head_sha={sha}") or {}
+    latest = next((run for run in result.get("workflow_runs", [])
+                   if run["head_sha"] == sha and run["event"] == "pull_request"
+                   and any(item["number"] == pr for item in run["pull_requests"])), {})
+    if not latest:
+        return "missing"
+    conclusion = latest.get("conclusion")
+    if conclusion == "action_required":
+        return "approval-required"
+    if not conclusion:
+        return "pending"
+    if conclusion == "success":
+        return "green"
+    return "failed"
+
+
+
 def plan_integration(red=False):
     """Pull requests ready to integrate, oldest first. While main is red only
     repair pull requests (FIX-, DLV-) may merge, so ordinary work is not blamed for it."""
     prs = gh_json("pr", "list", "--state", "open", "--label", "swarm", "--limit", "50",
-                  "--json", "number,title,labels,isCrossRepository")
+                  "--json", "number,title,labels,isCrossRepository,isDraft")
     blocked = {"needs-fix", "needs-human"}
     return [p["number"] for p in sorted(prs, key=lambda p: p["number"])
-            if not p["isCrossRepository"] and not blocked & label_names(p)
+            if not p["isCrossRepository"] and not p.get("isDraft") and not blocked & label_names(p)
             and (not red or p.get("title", "").startswith(REPAIR_PREFIXES))]
 
 
@@ -1808,12 +1910,10 @@ def repair_task(run_id):
         return None
     if only_worker_failures(run):
         return None
-    log = gh("run", "view", str(run_id), "--log-failed", check=False)
-    tail = "\n".join(log.splitlines()[-150:])[-5000:].replace("```", "'''")
     body = (f"Repair the failed '{run['name']}' run on main ({run['url']}, commit {run['headSha'][:12]}).\n"
             "Reproduce it with the failing commands. When it is a real defect, write a failing test "
             "first, then make the smallest fix. When it is a transient or runner problem, say so in "
-            "your notes file (the path in your prompt, never .agent/pr-notes.md) and change nothing.\n\nFailing log tail:\n```text\n" + tail + "\n```")
+            "your notes file (the path in your prompt, never .agent/pr-notes.md) and change nothing. Inspect the linked run for failure output.")
     return {"kind": "story", "id": f"FIX-{run_id}", "number": 0, "branch": "",
             "title": f"Repair main: {run['name']} failed", "body": clip(body), "fix": ""}
 
@@ -1854,8 +1954,14 @@ def add_repair_task(run_id, path="TODO.md"):
     added = []
 
     def edit(text):
-        if any(is_repair_task(t) and t["status"] != "done" for t in parse_tasks(text)):
-            print("A repair task is already open.")
+        repairs = [entry for entry in parse_tasks(text) if is_repair_task(entry)]
+        if any(entry["id"] == task["id"] for entry in repairs):
+            print("A repair task for this run already exists.")
+            return text
+        if any(entry["status"] == "taken"
+               or (entry["status"] == "todo" and attempts_of(entry) < MAX_ATTEMPTS)
+               for entry in repairs):
+            print("A repair task is already open and eligible.")
             return text
         head = "" if REPAIR_HEADER in text else f"\n{REPAIR_HEADER}\n\n"
         added.append(task["id"])
@@ -1885,6 +1991,18 @@ def failing_runs_on_main():
         if run["conclusion"] == "failure":
             failing.append(run["databaseId"])
     return failing
+
+
+def add_requested_repair_task(run_id, path="TODO.md"):
+    """Register an explicitly selected run only while its workflow remains red."""
+    if str(run_id) not in {str(failing) for failing in failing_runs_on_main()}:
+        print(f"Run {run_id} is not a current repairable failure on main.")
+        return False
+    run = gh_json("run", "view", str(run_id), "--json", "name,jobs")
+    if only_worker_failures(run):
+        print(f"Run {run_id} only failed in swarm workers.")
+        return False
+    return add_repair_task(run_id, path)
 
 
 def add_latest_repair_task(path="TODO.md"):
@@ -1938,15 +2056,14 @@ def live_workers():
     The entry is the worker's task id (a worker's Work and Publish jobs count once;
     a name without a task id counts as its own entry). Waves may overlap, so this
     both bounds the combined worker cap and tells reclaim which claims are alive.
-    Returns [] when the API call fails (the per-wave cap and the budget gate still
-    apply)."""
+    API failures propagate so callers never reclaim work from an unknown inventory."""
     runs = gh("run", "list", "--workflow", "swarm.yml", "--limit", "30",
               "--json", "databaseId,status", "-q",
-              '.[] | select(.status != "completed") | .databaseId', check=False)
+              '.[] | select(.status != "completed") | .databaseId')
     live = []
     for run_id in runs.split():
         out = gh("api", f"repos/{repo_slug()}/actions/runs/{run_id}/jobs?per_page=100", "--paginate",
-                 "--jq", '.jobs[] | select(.status != "completed") | .name', check=False)
+                 "--jq", '.jobs[] | select(.status != "completed") | .name')
         keys = {worker_task_id(n) or n for n in out.splitlines() if is_worker_job(n)}
         live.extend(sorted(keys))
     return live
@@ -2037,9 +2154,9 @@ def budget_gate(cap=DEFAULT_MONTHLY_MINUTES, now=None, used=None):
 def repair_gate(run_id, now=None):
     """Decide whether to start a repair. Stops after three tries in a day."""
     prs = gh_json("pr", "list", "--state", "all", "--label", "swarm", "--limit", "100",
-                  "--json", "number,title,state,createdAt") or []
+                  "--json", "number,title,state,createdAt,labels") or []
     repairs = [p for p in prs if p["title"].startswith("FIX-")]
-    if any(p["state"] == "OPEN" for p in repairs):
+    if any(p["state"] == "OPEN" and "needs-human" not in label_names(p) for p in repairs):
         return False, "A repair pull request is already open."
     since = (now or datetime.datetime.now(datetime.timezone.utc)) - datetime.timedelta(hours=24)
     recent = [p for p in repairs
@@ -2109,7 +2226,7 @@ def merge_local(pr):
 
 def record_merge(pr, task_id, sha, gate="scripts/quick-check.sh"):
     """Record one already-gated merge in the shared trackers. No commit or push."""
-    info = gh_json("pr", "view", str(pr), "--json", "headRefOid,body")
+    info = gh_json("pr", "view", str(pr), "--json", "headRefOid")
     if info["headRefOid"] != sha:
         raise SystemExit("the branch changed after it was tested; it will be retested")
     todo = Path("TODO.md")
@@ -2117,8 +2234,8 @@ def record_merge(pr, task_id, sha, gate="scripts/quick-check.sh"):
     title = tasks.get(task_id, {}).get("task", task_id)
     Path("docs/swarm").mkdir(parents=True, exist_ok=True)
     notes = Path(f"docs/swarm/{task_id}.md")
-    notes.write_text(f"# {task_id} · {title}\n\nPR #{pr}, tested branch tip {sha}.\n\n"
-                     f"{clip(info['body'])}\n")
+    notes.write_text(f"# {task_id} · {title}\n\nPR #{pr}, tested branch tip {sha}.\n"
+                     f"Merge gate: `{gate}`. Review handoff evidence in the pull request.\n")
     evidence = (f"PR #{pr}; integrator ran {gate} on the merge result (tool evidence); "
                 f"Delivery re-verifies main after the push; notes in {notes}; "
                 "simulated review only")
@@ -2135,7 +2252,7 @@ def continue_swarm(text, prs):
     """True when another wave has work and nothing is waiting for the integrator,
     which starts the next wave itself after it merges."""
     ready = plan_workers(1, [{"slot": 1, "model": ""}], text, prs)
-    waiting = [p for p in prs if not p["isCrossRepository"]
+    waiting = [p for p in prs if not p["isCrossRepository"] and not p.get("isDraft")
                and not {"needs-fix", "needs-human"} & label_names(p)]
     return bool(ready) and not waiting
 
@@ -2166,17 +2283,32 @@ def task_id_of_title(title):
 
 def run_gate(gate, extra_env=None):
     """Run the fast gate on the current merge. Returns (ok, log tail)."""
-    # Agent-written code is already merged locally at this point. Strip every
-    # credential from the gate subprocess so it cannot read or leak a token.
-    env = {k: v for k, v in os.environ.items()
-           if k not in ("GH_TOKEN", "GITHUB_TOKEN", "SWARM_TOKEN")}
-    env.update(extra_env or {})
+    # Keep GitHub credentials out of the child environment. The runner
+    # still needs a separate validation job to isolate publication credentials.
+    env = {key: value for key, value in {**os.environ, **(extra_env or {})}.items()
+           if key not in ("GH_TOKEN", "GITHUB_TOKEN", "GH_ISSUES_TOKEN", "SWARM_TOKEN")}
     done = subprocess.run(["bash", gate], capture_output=True, text=True, env=env)
     log = (done.stdout + "\n" + done.stderr).strip()
     return done.returncode == 0, log
 
 
-def integrate_batch(queue, gate="scripts/quick-check.sh"):
+def candidate_scope(task_id, before_merge):
+    """Check the actual merge diff and read only the assigned task's own handoff."""
+    tasks = parse_tasks(git("show", f"{before_merge}:TODO.md"))
+    scope = next((task["scope"] for task in tasks if task["id"] == task_id or task_id in task["aliases"]), [])
+    changed = git("diff", "--no-renames", "--name-only", "-z", before_merge, "HEAD", "--")
+    notes_pattern = re.compile(rf"\.agent/pr-notes/{re.escape(task_id)}(?:-fix)?-\d{{8}}-\d{{6}}\.md")
+    outside, notes = [], []
+    for path in changed.rstrip("\0").split("\0"):
+        if notes_pattern.fullmatch(path):
+            notes.append(path)
+        elif path and not any(prefix == "*" or path == prefix.rstrip("/")
+                              or path.startswith(prefix.rstrip("/") + "/") for prefix in scope):
+            outside.append(path)
+    return outside, any(not missing_handoff_sections(git("show", f"HEAD:{path}")) for path in notes)
+
+
+def integrate_batch(queue, gate="scripts/quick-check.sh", *, require_delivery=False):
     """Merge every ready PR in one job, gate each, then push main once.
 
     One cache/Java setup serves the whole batch. A PR whose gate fails is sent
@@ -2184,9 +2316,11 @@ def integrate_batch(queue, gate="scripts/quick-check.sh"):
     bad PR never blocks the others. Returns the number of merged PRs."""
     merged, conflicted, gates = [], [], {}
     for pr in queue:
-        blocked = guard(pr, is_repair(pr))
+        repair = is_repair(pr)
+        blocked = guard(pr, repair)
         if blocked:
             continue
+        before_merge = git("rev-parse", "HEAD").strip()
         sha, task_id, conflicts = merge_local(pr)
         if sha is None:
             reason = (f"Merge conflict with main in {', '.join(conflicts[:10]) or 'unknown files'}; "
@@ -2201,16 +2335,35 @@ def integrate_batch(queue, gate="scripts/quick-check.sh"):
             else:
                 fail(pr, reason)
             continue
-        head = gh_json("pr", "view", str(pr), "--json", "headRefOid")["headRefOid"]
-        if head != sha:
+        current = gh_json("pr", "view", str(pr), "--json", "headRefOid,isDraft")
+        if current["headRefOid"] != sha:
             fail(pr, "the branch changed after planning; it will be retested")
-            git("merge", "--abort", check=False)
+            git("reset", "--hard", before_merge)
             continue
         pr_gate, pr_env = gate_for(pr, gate)
+        needs_delivery = require_delivery and pr_gate != REPAIR_GATE
+        readiness = "draft" if current.get("isDraft") else (
+            delivery_pr_state(pr, sha) if needs_delivery else "green")
+        if readiness != "green":
+            print(f"PR #{pr} is waiting for readiness or Delivery on {sha}: {readiness}.")
+            git("reset", "--hard", before_merge)
+            if readiness == "failed":
+                fail(pr, f"Delivery failed for the current branch tip {sha}")
+            continue
+        if needs_delivery:
+            outside, handoff = candidate_scope(task_id, before_merge)
+            if outside or not handoff:
+                git("reset", "--hard", before_merge)
+                if outside:
+                    add_labels(pr, "needs-human")
+                    print(f"PR #{pr} touches files outside {task_id}'s scope: {', '.join(outside)}")
+                else:
+                    fail(pr, "The committed worker handoff is missing required sections")
+                continue
         ok, log = run_gate(pr_gate, pr_env)
         if not ok:
             fail(pr, f"Merge gate ({pr_gate}) failed on the merge of main and this branch", log)
-            git("reset", "--hard", "HEAD~1", check=False)
+            git("reset", "--hard", before_merge)
             continue
         gates[pr] = (pr_gate, pr_env)
         merged.append((pr, task_id, sha))
@@ -2222,12 +2375,8 @@ def integrate_batch(queue, gate="scripts/quick-check.sh"):
     files = ["TODO.md"] + [f"docs/swarm/{t}.md" for _, t, _ in merged]
     git("add", *files)
     git(*IDENTITY, "commit", "-qm", f"Integrate {len(merged)} swarm pull request(s)")
-    # A full gate can take many minutes; concurrent [skip ci] tracker commits
-    # can advance main meanwhile. Integrators are serialized by their
-    # concurrency group, so the only new commits are tracker-only. Move HEAD
-    # onto fresh main with --soft (keeping the already-gated tree staged),
-    # adopt the fresh shared trackers, re-apply our merge records, re-gate and
-    # retry. No commit replay means no committer identity or rebase conflicts.
+    # Replay the verified PR tips on fresh main. Moving only the parent
+    # of the old tree would overwrite paths changed by a concurrent push.
     for attempt in range(3):
         try:
             authed_git("push", "origin", "HEAD:main")
@@ -2236,19 +2385,17 @@ def integrate_batch(queue, gate="scripts/quick-check.sh"):
             if attempt == 2:
                 raise
             authed_git("fetch", "origin", "main")
-            git("reset", "--soft", "origin/main")
-            git("checkout", "origin/main", "--", "TODO.md", "docs/swarm", check=False)
+            git("reset", "--hard", "origin/main")
+            for pr, _, sha in merged:
+                git(*IDENTITY, "merge", "--no-ff", "-m", f"Merge PR #{pr}", sha)
+                pr_gate, pr_env = gates[pr]
+                ok, log = run_gate(pr_gate, pr_env)
+                if not ok:
+                    raise subprocess.CalledProcessError(1, ("gate", pr_gate), "", log)
             for pr, task_id, sha in merged:
                 record_merge(pr, task_id, sha, gates[pr][0])
             git("add", *files)
-            git(*IDENTITY, "commit", "-qm", "Integrate swarm PRs (reconciled)",
-                "--allow-empty", check=False)
-            # Re-gate with the strictest gate the batch used: the full one if any PR needed it.
-            regate = gate if any(g == gate for g, _ in gates.values()) else REPAIR_GATE
-            renv = next((e for g, e in gates.values() if g == regate), {})
-            ok, log = run_gate(regate, renv)
-            if not ok:
-                raise subprocess.CalledProcessError(1, ("gate", regate), "", log)
+            git(*IDENTITY, "commit", "-qm", "Integrate swarm PRs (reconciled)")
     for (pr, _, _), comment in zip(merged, comments):
         gh("pr", "comment", str(pr), "--body", comment)
     close_merged_issues([(pr, task_id) for pr, task_id, _ in merged])
@@ -2337,6 +2484,7 @@ def main(argv=None):
         sub.add_parser(name)
     p = sub.add_parser("images-ready")
     p.add_argument("--slots", default=".github/swarm/slots.json")
+    p.add_argument("--verified", action="store_true")
     p = sub.add_parser("budget-gate")
     p.add_argument("--cap", type=int, default=DEFAULT_MONTHLY_MINUTES)
     p = sub.add_parser("integrate-batch")
@@ -2352,6 +2500,7 @@ def main(argv=None):
     p.add_argument("--slots", default=".github/swarm/slots.json")
     p.add_argument("--file", default="TODO.md")
     p.add_argument("--repair-run", default="")
+    p.add_argument("--image-repair-only", action="store_true")
     sub.add_parser("watchdog")
     p = sub.add_parser("run-event")
     p.add_argument("--run", required=True)
@@ -2410,7 +2559,13 @@ def main(argv=None):
     if a.cmd == "ensure-labels":
         ensure_labels()
     elif a.cmd == "images-ready":
-        images_ready_command(a.slots)
+        ready, reason, _ = images_ready_command(a.slots)
+        if a.verified:
+            images = verified_slot_images(load_slots(a.slots))
+            fallback = bool(images) and reason == "the newest prepared-image build did not succeed"
+            emit("images", json.dumps(images, separators=(",", ":")))
+            emit("verified_ready", "true" if images and (ready or fallback) else "false")
+            emit("image_repair_only", "true" if fallback else "false")
     elif a.cmd == "slot-matrix":
         emit("matrix", json.dumps({"slot": [s["slot"] for s in load_slots(".github/swarm/slots.json")]},
                                   separators=(",", ":")))
@@ -2429,6 +2584,10 @@ def main(argv=None):
         print(f"{busy} worker(s) already running; room for {room} of {MAX_ACTIVE_WORKERS}.")
         include = plan_workers(min(a.max, room), rotate_slots(load_slots(a.slots), busy),
                                text, prs, repair, live)
+        if a.image_repair_only:
+            image_repairs = {f"Repair main: {name} failed" for name in ("Agent image", "Swarm slot images")}
+            include = [task for task in include if task["title"].split(": ", 1)[-1] in image_repairs
+                       or task["title"] in image_repairs][:1]
         claims = {t["id"]: f"swarm-{t['slot']}" for t in include if t["kind"] == "story"}
 
         granted = set()
@@ -2460,7 +2619,7 @@ def main(argv=None):
         print(task_field(a.id, a.field, a.file))
     elif a.cmd == "continue":
         prs = gh_json("pr", "list", "--state", "open", "--label", "swarm", "--limit", "100",
-                      "--json", "number,title,headRefName,isCrossRepository,labels,comments") or []
+                      "--json", "number,title,headRefName,isCrossRepository,isDraft,labels,comments") or []
         # A task whose pull request merged is still marked taken until the next plan
         # reclaims it, and its dependants would look blocked: reclaim first so a merged
         # wave is seen as finished and the loop carries on.
@@ -2509,7 +2668,7 @@ def main(argv=None):
     elif a.cmd == "add-repair-task":
         if not a.run and not a.latest:
             sys.exit("add-repair-task needs --run <id> or --latest")
-        added = add_latest_repair_task(a.file) if a.latest else add_repair_task(a.run, a.file)
+        added = add_latest_repair_task(a.file) if a.latest else add_requested_repair_task(a.run, a.file)
         emit("added", "true" if added else "false")
     elif a.cmd == "repair-gate":
         start, why = repair_gate(a.run)
@@ -2533,7 +2692,7 @@ def main(argv=None):
         # A wave never starts more workers than the remaining budget can pay for.
         emit("workers", affordable_workers(used, a.cap))
     elif a.cmd == "integrate-batch":
-        integrate_batch(json.loads(a.queue), a.gate)
+        integrate_batch(json.loads(a.queue), a.gate, require_delivery=True)
     elif a.cmd == "resolve-publish":
         resolve_publish(a.dir)
     elif a.cmd == "guard":

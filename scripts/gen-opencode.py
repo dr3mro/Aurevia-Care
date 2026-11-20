@@ -6,6 +6,7 @@ With --check it exits 1 when the committed file differs from the generated one.
 """
 import argparse
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -33,6 +34,14 @@ INSTRUCTIONS = [
     "WORKSPACE.md",
     "apps/*/README.md",
 ]
+
+CI_INSTRUCTIONS = [
+    "AGENTS.md",
+    "CODING_STYLE.md",
+    "docs/WORKFLOW.md",
+    "docs/SWARM.md",
+]
+
 
 # Environment files may hold credentials. Rules are evaluated last match wins,
 # so the example file is re-allowed after the deny rules.
@@ -108,7 +117,7 @@ def build(names, ci=False):
         # Load the repository's durable working rules and documentation before
         # any task. AGENTS.md points at trackers and the delivery skill; the
         # docs globs carry workflow, code style, architecture and API conventions.
-        "instructions": INSTRUCTIONS,
+        "instructions": CI_INSTRUCTIONS if ci else INSTRUCTIONS,
         "agents": agents,
     }
 
@@ -121,6 +130,22 @@ def render(root=ROOT, ci=False):
     return json.dumps(build(names, ci), indent=2) + "\n"
 
 
+def profile_source(root, name):
+    """Read the canonical local profile from the index only during a verified CI swap."""
+    path = root / name
+    if not path.is_file():
+        return None
+    text = path.read_text()
+    if name == "opencode.json" and text == render(root, ci=True):
+        flag = subprocess.run(["git", "-C", str(root), "ls-files", "-v", "--", name],
+                              check=False, capture_output=True, text=True)
+        if flag.stdout.strip() == f"S {name}":
+            indexed = subprocess.run(["git", "-C", str(root), "show", f":{name}"],
+                                     check=True, capture_output=True, text=True)
+            return indexed.stdout
+    return text
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true")
@@ -130,7 +155,7 @@ def main(argv=None):
         target = ROOT / name
         text = render(ROOT, ci)
         if args.check:
-            if not target.exists() or target.read_text() != text:
+            if profile_source(ROOT, name) != text:
                 print(f"{name} is out of date: run scripts/gen-opencode.py",
                       file=sys.stderr)
                 status = 1

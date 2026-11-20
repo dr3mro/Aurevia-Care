@@ -6,6 +6,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+bash scripts/frontend-check.sh
 bash scripts/quick-check.sh
 
 export SMARTCLINIC_PG_ADMIN="${SMARTCLINIC_PG_ADMIN:-postgres}"

@@ -536,13 +536,31 @@ class NotesTests(unittest.TestCase):
     def test_the_rules_patch_may_only_touch_instruction_documents(self):
         def patch(*paths):
             return "".join(f"diff --git a/{p} b/{p}\n--- a/{p}\n+++ b/{p}\n" for p in paths)
-        self.assertTrue(swarm.rules_patch_ok(patch("AGENTS.md", ".opencode/agents/x.md", "docs/NOTES.md")))
+        self.assertTrue(swarm.rules_patch_ok(patch("AGENTS.md", "MEMORY.md", ".opencode/agents/x.md", "docs/NOTES.md")))
         for bad in (patch("scripts/swarm.py"), patch("AGENTS.md", ".github/workflows/x.yml"),
                     patch("docs/archive/pr-notes/x.md"), patch("docs/sub/x.md"), patch("check.sh"), "",
                     patch("AGENTS.md") + "new file mode 120000\n",
                     patch("AGENTS.md") + "GIT binary patch\n",
                     patch("AGENTS.md") + "rename from AGENTS.md\n"):
             self.assertFalse(swarm.rules_patch_ok(bad), bad)
+
+    def test_rules_publication_rejects_unapproved_staged_paths_and_memory_removals(self):
+        patch = self.dir / "rules.patch"
+        patch.write_text("diff --git a/MEMORY.md b/MEMORY.md\n")
+        for paths, memory in (("scripts/unapproved file.sh\0", ""),
+                              ("MEMORY.md\0", "1\t1\tMEMORY.md")):
+            def git(*args, check=True):
+                if "--name-only" in args:
+                    return paths
+                if "--numstat" in args:
+                    return memory
+                return ""
+            with mock.patch.object(swarm, "git", side_effect=git), \
+                    mock.patch.object(swarm, "authed_git") as remote, \
+                    mock.patch.object(swarm, "gh") as github:
+                self.assertEqual(swarm.open_rules_pr("2026-11-19", patch), "")
+                remote.assert_called_once_with("fetch", "origin", "main")
+                github.assert_not_called()
 
     def test_publish_stores_the_day_archives_and_opens_issues(self):
         collected, reconciled = self.dir / "in", self.dir / "out"

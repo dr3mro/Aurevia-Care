@@ -68,8 +68,9 @@ def check(root=ROOT):
         if not NAME.fullmatch(name):
             errors.append(f"agent {name}: name must be kebab-case")
         loaded = set(re.findall(r"Load (?:the )?`?(smartclinic-[a-z0-9-]+)`?", text))
-        if not loaded or not loaded <= set(skills):
-            errors.append(f"agent {name}: must load an existing skill, "
+        role_skill = "smartclinic-delivery" if name == primary else name
+        if role_skill not in loaded or not loaded <= set(skills):
+            errors.append(f"agent {name}: must load {role_skill} and only existing skills, "
                           f"found {sorted(loaded)}")
 
     allowed = {r["resource"] for r in agents[primary]["permissions"]
@@ -97,8 +98,7 @@ def check(root=ROOT):
 
     generator = load_generator(root)
     for name, ci in generator.OUTPUTS.items():
-        path = root / name
-        if not path.exists() or path.read_text() != generator.render(root, ci):
+        if generator.profile_source(root, name) != generator.render(root, ci):
             errors.append(f"{name} is stale: run scripts/gen-opencode.py")
     return errors
 

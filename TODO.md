@@ -243,12 +243,11 @@ Cadence and limits:
     Done when: `bash db/check.sh` passes, the two new assertions run, and the notes list any table you had to except together with the reason.
 
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` must pass for the classes you touched. Synthetic data only; write the failing test first; stay inside the declared scope; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
-- [-] AUD-20261120-05 · Rename the story-ID folders under infra/ and docs/operations/ to business names
-  - agent: swarm-3
+- [ ] AUD-20261120-05 · Rename the story-ID folders under infra/ and docs/operations/ to business names
   - attempts: 1
-  - scope: infra, docs/operations
   - depends: REFACTOR-PACKAGES-02
   - details:
+    Maintainer-owned because directory moves and protected script reference updates must land together.
     Problem (verified): `infra/s_g5_05` ... `infra/s_g5_11` and `docs/operations/s_g5_05` ... `s_g5_11` are named after stories, which CODING_STYLE.md forbids and the owner dislikes. Use `git mv` so history follows. Mapping (old -> new), apply it to BOTH `infra/` and `docs/operations/`:
     | Old | New |
     |---|---|
@@ -403,14 +402,14 @@ Found while extending the specification (section 8.1 and docs/design/screens-and
 - [-] READY-07 · Staff web state views and a global error boundary (WEB-09)
   - agent: swarm-5
   - attempts: 1
-  - scope: apps/staff-web/src/components, apps/staff-web/src/app, apps/staff-web/src/features
+  - scope: apps/staff-web/src/components, apps/staff-web/src/app, apps/staff-web/src/features, apps/staff-web/src/main.tsx, apps/staff-web/package.json, apps/staff-web/package-lock.json
   - depends: READY-06
   - details:
     Needs READY-06 (`TransportError` kinds). Spec rule WEB-09 and `docs/design/screens-and-navigation.md` section 4 list seven states every screen needs.
     1. Read an existing component under `src/components` and one screen (`src/features/scheduling/SchedulingScreen.tsx`) to copy the style and the message mechanism (`messages.ts` / `src/i18n`). All new text goes through the i18n messages in both English and Arabic.
     2. Create `src/components/StateViews.tsx` exporting `LoadingState`, `EmptyState`, `ErrorState`, `ForbiddenState`, `ConflictState`, `SessionExpiredState`. `ErrorState` shows the correlation ID and a Retry button; `ConflictState` has buttons Compare, Reload and Copy my changes (callbacks as props); `SessionExpiredState` has a Sign in button (callback prop). Use the tokens, never raw colours. Each has `role` and live-region semantics from `docs/design/accessibility-patterns.md`.
-    3. Create `src/app/ErrorBoundary.tsx` (class component) that renders `ErrorState` with a generated correlation ID and logs only the correlation ID and error name with `console.error`, never props or state.
-    4. Wrap the app in the boundary in `src/main.tsx` / `App.tsx`.
+    3. Use an owner-approved error-boundary dependency through a function component in `src/app/ErrorBoundary.tsx`. Pin the dependency through the staff-web lockfile and document the dependency review. The boundary renders `ErrorState` with a generated correlation ID and logs only the correlation ID and error name with `console.error`, never props or state.
+    4. Wrap the app in the boundary in `src/main.tsx`.
     5. Add `StateView.forTransportError(error)` helper mapping each `TransportError.kind` to the right state view.
     6. Tests: each view renders in English and Arabic (RTL), is keyboard reachable, the boundary catches a throwing child and shows the correlation ID, and the helper maps all kinds.
     Do NOT change existing screen logic in this task, and do NOT put patient data in any message.
@@ -1811,3 +1810,19 @@ Every entry below is finished and verified. Do not take them again; they stay he
     AUD-20261120-13 added RLS-bounded subjectExists checks to DocumentService.link, but the sibling paths are still unguarded. DocumentService.java:235 (render) repeats `if (CHART.equals(subjectType) && !repository.chartExists(subjectId))`, and renderedVersions at line 356 has no existence check at all, although both accept subjectType chart/order/result (DocumentInputs.java:62-66). V17__document_associations.sql:84-107 stores rendered_document.subject_id as a bare uuid with no FK to an order or result table. A clinician can therefore create an immutable rendered PDF bound to a non-existent order/result UUID when sourceAssociationId is omitted, or list renders for a bogus subject, producing exactly the orphan artifact link now rejects (ARC-01, CLN-07, XCH-01/XCH-04). Expected fix: call the existing subjectExists in render and renderedVersions, return 404 for a missing order/result target, and add a test per subject type asserting rejection without lowering any coverage threshold.
     Found by the daily audit. Synthetic fixtures only; failing tests first;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
+
+
+## Workflow audit remediation
+
+- [ ] OPS-WORKFLOW-AUDIT · Remediate swarm integration, repair, release and handoff findings (OPS-06).
+  - evidence: Local changes cover pinned-commit replay, repair registration and retry eligibility, exact-SHA release verification, dispatch cleanup, draft notes and memory proposals, issue variable propagation, and the story reading prompt. The synthetic Git replay and all seven release-filter cases passed. Tool results: 412 Python tooling tests passed, clean Maven verification passed, PostgreSQL checks passed and the developer reference built. GitHub verification is pending. No repository commit or push was made by request.
+  - details:
+    Pending: isolate candidate validation from publication credentials, publish immutable slot-image generations with last-good recovery, fix the missing local architecture tag on first release, reject unknown worker inventory, replace raw log tails with structured diagnostics, validate generated Markdown, and reconcile the remaining runbook policy. Verify affected workflows on GitHub only after delivery is authorized.
+
+
+- [ ] OPS-WORKER-QUALITY · Catch story-policy conflicts and frontend failures before swarm PRs reach Delivery (OPS-06).
+  - evidence: Local regression fixtures use READY-07’s class requirement and READY-47’s strict type-check failure. Worker and Delivery share the frontend command. The integrator checks ordinary PRs for current-head Delivery evidence, with the existing merge gate for documentation and the dedicated repair tier. Live verification remains pending. No commit or push was authorized.
+  - details:
+    Execute the shared senior engineering standard in docs/WORKFLOW.md. Locally added role-to-skill validation, fail-closed coverage base selection, coverage parity in the frontend gate, canonical staff coverage setup, and PyYAML in the worker image. Docker image rebuild and exact-SHA GitHub checks are pending.
+    Remaining audit work: distinguish failed, pending, missing and approval-required Delivery; recover ordinary drafts; validate scope and structured handoffs on the pinned candidate; add frontend dependency scanning and validate the runtime OpenCode profile separately.
+    After five swarm PRs, classify failures by task policy, missing tests, check parity or implementation, and add a regression at the layer that should catch each new failure.
