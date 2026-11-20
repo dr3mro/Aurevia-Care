@@ -1,91 +1,115 @@
-# AUD-20261120-16 — Verify order and result subjects in document render and rendered-version reads
+# AUD-20261120-13 — Document link accepts order or result subjects without verifying they exist
 
 ## Requirement IDs and acceptance mapping
 
 | Requirement | Acceptance | Where |
 |---|---|---|
-| CLN-07 | An immutable rendered PDF binds only to a chart, order or result that exists in the active tenant; listing renders must not answer for a bogus subject | `DocumentService.render` now returns 404 for a missing order/result; `DocumentService.renderedVersions` returns 404 for a missing chart/order/result |
-| ARC-01 | Tenant-owned subject keys are real, not arbitrary opaque ids | Both new guards call the existing RLS-bounded `DocumentRepository.subjectExists`, which probes `current_patients()`, `exchange_order` and `xch04_report_revision` |
-| ARC-02 | The probe runs as the non-owner role with transaction-local tenant context | Reuses the existing fold and forced-RLS policies; no `SECURITY DEFINER`, no new tenant switch |
-| XCH-01 / XCH-04 | Canonical owners of order and result identifiers | `subjectExists` probes `public.exchange_order` and `public.xch04_report_revision` |
-| OPS-02 | Denials leave no success audit | On the 404 path neither `insertRendered`/`renderedVersions` nor a `SUCCESS` audit row is produced |
+| CLN-07 | An original PDF/image binds only to a chart, order or result that exists in the active tenant; an orphan association must not be created | `DocumentService.link` now maps a zero-row insert to 404; `DocumentRepository.insert` re-checks the subject inside the RLS boundary |
+| ARC-01 | Tenant-owned subject keys are real, not arbitrary opaque ids | `DocumentRepository.subjectExists` uses forced-RLS relations only (`current_patients()`, `exchange_order`, `xch04_report_revision`) |
+| ARC-02 | Existence probe runs as the non-owner role with transaction-local tenant context | Reuses `public.current_patients()` fold and the forced-RLS policies already on the canonical tables; no `SECURITY DEFINER`, no explicit tenant switch |
+| XCH-01 / XCH-04 | Canonical owner tables for order and result identifiers | Order probe → `public.exchange_order`; result probe → `public.xch04_report_revision` |
+| OPS-02 | Denials are auditable | The 404 path leaves no success audit row and no history event, matching the existing chart-concealment behavior |
 
-## Change
+## Change (inside the declared scope)
 
+- `apps/api/src/main/java/com/aurevia/smartclinic/documents/DocumentRepository.java`
+  - Added `subjectExists(String subjectType, String id)`: one RLS-bounded `SELECT CASE ... EXISTS` probe covering chart (`current_patients()`), order (`exchange_order`) and result (`xch04_report_revision`); unknown type yields `false`; a null JDBC result yields `false`.
+  - `chartExists(String)` now delegates to `subjectExists("chart", id)` so there is one ledger of the chart fold and no duplicated SQL.
+  - `insert(...)` calls `subjectExists(subjectType, subjectId)` first and returns `0` without writing when the subject is absent (atomic with the caller's transaction; no TOCTOU window across transactions).
 - `apps/api/src/main/java/com/aurevia/smartclinic/documents/DocumentService.java`
-  - `render(...)`: after the unchanged chart-only `chartExists` guard, a missing order/result target now returns `404 NOT_FOUND` ("subject not found") before any version reservation, render or write.
-  - `renderedVersions(...)`: a missing chart/order/result target now returns `404 NOT_FOUND` before the repository listing and its `DOCUMENT_LIST/SUCCESS` audit.
-  - Javadoc `@throws` updated for both commands.
-- No new production class, no new method on `DocumentRepository`, no migration. `subjectExists` already exists (AUD-20261120-13) and is reused instead of duplicating SQL. V17's bare `rendered_document.subject_id` needs no new FK: the service guard enforces the same invariant at every entry point, preserving the predecessor's no-cross-module-FK decision.
-- No coverage threshold, exclusion, `@Disabled`, `.skip` or `xit` was added or changed.
+  - `link(...)` captures the insert row count and returns `404 NOT_FOUND` ("subject not found") when the insert wrote no row. The pre-existing chart check and the `DuplicateKeyException -> 409` path are unchanged, and no history event or success audit is emitted on the 404 path.
+- New tests in `apps/api/src/test/java/com/aurevia/smartclinic/documents/`:
+  - `DocumentRepositorySubjectTest.java` (5 tests) — probes chart/order/result with RLS-bounded SQL assertions, false and null results, insert skipped when missing, insert writes when present, and chart reuse of the same fold.
+  - `DocumentServiceSubjectLinkTest.java` (6 tests) — order-missing 404, result-missing 404, chart insert-nothing 404, order/result success, and unknown chart still concealed before insert.
 
-### Scope note (transparent deviation)
-
-The declared `scope` field lists only `apps/api/src/main/java/com/aurevia/smartclinic/documents` and `db/migrations`. The story's acceptance explicitly requires "a test per subject type asserting rejection" and AGENTS.md requires 100% coverage with a test for every new branch, so tests were necessarily added in the mirror test package `apps/api/src/test/java/com/aurevia/smartclinic/documents/` and one supporting default stub was added to `apps/api/src/test/java/com/aurevia/smartclinic/it/documents/DocumentServiceTest.java`. The production change is confined to the declared scope; no other worker owns the documents test package, so there is no collision. If the integrator treats the test paths as a strict scope violation, the production change is self-contained and the test files can be split into a separate change.
+No migration was added; no coverage threshold, exclusion or skip was changed; no existing test was weakened, deleted or skipped. `render(...)` retains its chart-only probe; the story scopes the defect to `link`, and changing `render` would require editing out-of-scope tests. Recorded as a follow-up observation below.
 
 ## Tests written first (red -> green)
 
-New test class: `apps/api/src/test/java/com/aurevia/smartclinic/documents/DocumentServiceSubjectRenderTest.java` (9 tests, synthetic identifiers, mocked repository).
+Red command (before production change):
+```
+mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest=DocumentRepositorySubjectTest,DocumentServiceSubjectLinkTest test
+```
+Red result: compilation failure — `cannot find symbol: method subjectExists(String,String)` (the new repository boundary did not exist); plus an initially ambiguous `queryForObject` matcher, fixed in the test by typing the parameter matcher as `Map<String, ?>`.
 
-Red command (before the production change):
+Green command (same command after implementation): `exit 0`
 ```
-mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest=DocumentServiceSubjectRenderTest test
+Tests run: 5, Failures: 0, Errors: 0, Skipped: 0 -- DocumentRepositorySubjectTest
+Tests run: 6, Failures: 0, Errors: 0, Skipped: 0 -- DocumentServiceSubjectLinkTest
 ```
-Red result: `Tests run: 9, Failures: 9, Errors: 0, Skipped: 0` — every test failed because production never called `subjectExists` in `render`/`renderedVersions` (either "Expected ApiException to be thrown, but nothing was thrown" or an unmet Mockito verification).
-
-Green command (same command after implementation, extended to the affected existing class):
-```
-mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest=DocumentServiceSubjectRenderTest,DocumentServiceTest,DocumentServiceSubjectLinkTest,DocumentRepositorySubjectTest test
-```
-Green result: exit 0 — `DocumentServiceSubjectRenderTest` 9 tests, `it.documents.DocumentServiceTest` 21 tests, both subject-link/repository classes from AUD-20261120-13 still green; 0 failures, 0 errors, 0 skipped.
 
 ## New/changed branches and their covering tests (AGENTS.md coverage rule 6)
 
 | Production branch | Test |
 |---|---|
-| `render`: `!CHART.equals(subjectType)` true (order/result) | `renderRejectsAnOrderWhoseTargetDoesNotExist`, `renderRejectsAResultWhoseTargetDoesNotExist`, `renderStoresAnOrderRenderWhenTheTargetExists`, `renderStoresAResultRenderWhenTheTargetExists` |
-| `render`: `!CHART.equals(subjectType)` false (chart short-circuit, no `subjectExists` call) | existing `it.documents.DocumentServiceTest.renderConcealsMissingChart`, `renderCreatesAVersionedImmutableArtifact` and other chart render tests; unchanged chart branch |
-| `render`: `!repository.subjectExists(...)` true -> 404 | `renderRejectsAnOrderWhoseTargetDoesNotExist`, `renderRejectsAResultWhoseTargetDoesNotExist` |
-| `render`: `!repository.subjectExists(...)` false -> render proceeds | `renderStoresAnOrderRenderWhenTheTargetExists`, `renderStoresAResultRenderWhenTheTargetExists` |
-| `renderedVersions`: `!repository.subjectExists(...)` true -> 404 | `renderedVersionsRejectsAnOrderWhoseTargetDoesNotExist`, `renderedVersionsRejectsAResultWhoseTargetDoesNotExist`, `renderedVersionsRejectsAChartWhoseTargetDoesNotExist` |
-| `renderedVersions`: `!repository.subjectExists(...)` false -> list returned | `renderedVersionsListsAnOrderWhenTheTargetExists`, `renderedVersionsListsAResultWhenTheTargetExists`, existing `renderedVersionListingValidatesAndAudits` (chart) |
-| `render`/`renderedVersions`: denial branch precedes subject probe (unchanged) | existing `renderDeniesInactiveMembershipAndMissingPermission`, `renderedReadsAreValidatedAuthorizedAndAudited` |
+| `DocumentRepository.subjectExists` result `true` | `DocumentRepositorySubjectTest.subjectExistsChecksChartOrderAndResultWithRlsBoundedQueries`, `insertWritesBytesWhenTheSubjectExists` |
+| `DocumentRepository.subjectExists` result `false` and `null` | `DocumentRepositorySubjectTest.subjectExistsIsFalseForAMissingOrNullResult` |
+| `DocumentRepository.insert` subject absent -> `0` (guard true) | `DocumentRepositorySubjectTest.insertIsSkippedWhenTheSubjectDoesNotExist` |
+| `DocumentRepository.insert` subject present -> JDBC update (guard false) | `DocumentRepositorySubjectTest.insertWritesBytesWhenTheSubjectExists` |
+| `DocumentService.link` `written == 0` -> 404 for order | `DocumentServiceSubjectLinkTest.linkRejectsAnOrderWhoseTargetDoesNotExist` |
+| `DocumentService.link` `written == 0` -> 404 for result | `DocumentServiceSubjectLinkTest.linkRejectsAResultWhoseTargetDoesNotExist` |
+| `DocumentService.link` `written == 0` -> 404 for chart race | `DocumentServiceSubjectLinkTest.linkRejectsAChartWhoseInsertFindsNoEffectiveRecord` |
+| `DocumentService.link` `written > 0` success (guard false) | `DocumentServiceSubjectLinkTest.linkStoresAnAssociationWhenAnOrderTargetExists`, `linkStoresAnAssociationWhenAResultTargetExists`, and existing `it.documents.DocumentServiceTest.linkStoresOriginalBytesAndAppendsHistory` |
+| `DocumentService.link` `DuplicateKeyException` -> 409 (unchanged) | existing `it.documents.DocumentServiceTest.linkMapsAConcurrentConflictTo409` |
+| `DocumentService.link` unknown chart -> 404 before insert (unchanged) | `DocumentServiceSubjectLinkTest.linkStillConcealsAnUnknownChartBeforeInsert` and existing `linkConcealsAnUnknownChart` |
 
-The `&&` short-circuit in `render` is covered on both sides as listed; the chart guard is unchanged from AUD-20261120-13.
-
-## Supporting test change (not a weakening)
-
-`it.documents.DocumentServiceTest.setUp` now stubs `repository.subjectExists(anyString(), anyString())` to `true` by default. This is the minimum change that lets the pre-existing order-render success case (`renderForOrderSkipsTheChartLookup`) and chart rendered-version listing case (`renderedVersionListingValidatesAndAudits`) keep asserting exactly what they asserted before; it adds no assertion, removes no assertion and skips no test. The dedicated new class overrides the stub to `false` per subject type to assert the new rejection. No existing test was deleted, disabled or rewritten to make a change pass.
+The SQL `CASE` arms are inside a string literal and create no Java branches; each arm's table is asserted by `subjectExistsChecksChartOrderAndResultWithRlsBoundedQueries`.
 
 ## Entry point -> test trace
 
-`POST /api/v1/documents/rendered` -> `DocumentController.render` -> `DocumentService.render` -> authorize -> chart guard or `subjectExists(subjectType, subjectId)` (RLS-bounded SELECT EXISTS) -> 404 `NOT_FOUND` when the target is absent, otherwise version reservation + immutable insert + audit. `GET /api/v1/documents/rendered?subjectType=...&subjectId=...` -> `DocumentController.renderedVersions` -> `DocumentService.renderedVersions` -> authorize -> `subjectExists` -> 404 or list. HTTP chart success/concealment remains exercised by `it.documents.DocumentIsolationTest`; per-subject rejection is exercised by `DocumentServiceSubjectRenderTest`.
+`POST /api/v1/documents/associations` -> `DocumentController.link` -> `DocumentService.link` -> (authorize + chart probe) -> `DocumentRepository.insert` -> `DocumentRepository.subjectExists` (RLS-bounded SELECT EXISTS) -> zero rows -> 404 `NOT_FOUND`. HTTP success/concealment for charts is exercised by `it.documents.DocumentIsolationTest` (integration tier); per-subject rejection is exercised by the two new mock-based unit classes above.
 
 ## Commands actually run and results
 
-- `mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest=DocumentServiceSubjectRenderTest test` — exit 1, 9/9 failures (red).
-- `mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest=DocumentServiceSubjectRenderTest,DocumentServiceTest,DocumentServiceSubjectLinkTest,DocumentRepositorySubjectTest test` — exit 0, 0 failures/errors/skipped (green).
+- `mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest=DocumentRepositorySubjectTest,DocumentServiceSubjectLinkTest test` — exit 0, 11 tests, 0 failures.
+- `mvn -q -B -f apps/api/pom.xml -Pno-security,fast test` — exit 0; 1914 unit tests, 0 failures, 0 errors, 0 skipped. The pre-existing `it.documents.DocumentServiceTest` (21 tests) still passes unchanged.
 - `python3 -I scripts/check-names.py`, `python3 -I scripts/check-docs.py`, `python3 -I scripts/check-secrets.py`, `python3 -I scripts/check-migrations.py --require-baseline` — all exit 0.
-- `python3 -I -m unittest discover -s scripts/tests -q` — 271 tests, 8 failures / 10 errors, pre-existing and environmental (`ModuleNotFoundError: No module named 'yaml'` plus git-branch setup errors in `test_agent_run.py`), matching AUD-20261120-13's observation; unrelated to this Java change.
-- Canonical gate `SMARTCLINIC_PG_ADMIN=postgres bash apps/api/check.sh` — see Coverage section.
+- `SMARTCLINIC_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml verify` — result recorded in the Coverage section below.
+- Segment 2 independently re-ran: `bash apps/api/check.sh` (exit 0, full verify — see Coverage); the targeted two-class `mvn ... -Dtest=... test` (exit 0); and `python3 -I scripts/check-names.py`, `python3 -I scripts/check-docs.py`, `python3 -I scripts/check-secrets.py`, `python3 -I scripts/check-migrations.py --require-baseline` (all exit 0). Java 21.0.13, Maven 3.10.0, PostgreSQL accepting connections on 127.0.0.1:5432.
 
 ## Coverage (100% gate)
 
-_Pending the canonical gate result; this section will be completed with the exact command and JaCoCo counters before completion._
+Full canonical gate re-run on the final branch (segment 2), with PostgreSQL available and `SMARTCLINIC_PG_ADMIN=postgres` in the environment:
+
+```
+bash apps/api/check.sh        # canonical: cd apps/api && mvn -q -B verify
+```
+
+Result: **exit 0**. Surefire aggregate from `apps/api/target/surefire-reports/TEST-*.xml`: **2360 tests, 0 failures, 0 errors, 0 skipped**. No failing surefire/failsafe XML report exists. JaCoCo `check` (BUNDLE rule, 1.00 minimum for INSTRUCTION, LINE, BRANCH, METHOD and CLASS) therefore passed — project-wide `apps/api/target/site/jacoco/jacoco.xml` reports **0 missed on every counter**: INSTRUCTION 0/90690, BRANCH 0/6407, LINE 0/15733, COMPLEXITY 0/7069, METHOD 0/3814, CLASS 0/785.
+
+Read directly from `apps/api/target/site/jacoco/jacoco.csv` for the two touched production files (columns: instruction missed/covered, branch missed/covered, line missed/covered, complexity missed/covered, method missed/covered):
+
+| File | Instruction | Branch | Line | Complexity | Method | Class (from jacoco.xml) |
+|---|---|---|---|---|---|---|
+| `documents/DocumentService.java` | 0/964 | 0/68 | 0/196 | 0/52 | 0/18 | 0/1 |
+| `documents/DocumentRepository.java` | 0/384 | 0/2 | 0/86 | 0/21 | 0/20 | 0/1 |
+
+Both changed files are at 100% on every counter, including the per-class counter. No new production class was introduced. The report goal is bound to the `verify` phase (pom.xml lines 80-88), so the later targeted `test` run could not overwrite these numbers.
+
+Targeted confirmation of the new tests:
+```
+mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest=DocumentRepositorySubjectTest,DocumentServiceSubjectLinkTest test
+```
+Result: **exit 0** — `DocumentRepositorySubjectTest` 5 tests and `DocumentServiceSubjectLinkTest` 6 tests, 0 failures/errors/skipped each.
 
 ## Decisions and rationale
 
-- **Guard in the service, not the repository.** The story names `render` and `renderedVersions` and requires a 404, so the RLS-bounded `subjectExists` probe is called directly in those service commands. `link` keeps its existing pattern (service chart check plus repository re-check in `insert`); no duplication of SQL was introduced.
-- **Chart branch kept as `chartExists`.** `chartExists` delegates to the same `subjectExists("chart", id)` fold, so the chart path is semantically identical. Keeping the existing branch avoids rewriting `renderConcealsMissingChart` and keeps the diff minimal; only the previously unguarded order/result paths change.
-- **`renderedVersions` checks all three types.** Listing renders for a bogus chart is the same class of orphan read as a bogus order/result, and the command already accepts all three types. The story's "return 404 for a missing order/result target" is a consequence, not a limitation.
-- **No migration.** The V17 bare UUID is intentional; adding cross-module FKs would require expand/contract review under OPS-06 and is outside the smallest safe fix. The service guard enforces the invariant at every entry point with the existing RLS fold.
-- **No clinical or real-patient decision is needed.** All fixtures are synthetic; no production deployment or site configuration is enabled by this change.
+- **Guard in the repository, not a second service call.** The pre-existing unit test `it.documents.DocumentServiceTest.linkForOrderNeedsNoChartLookup` (outside this task's scope) asserts that an order link does not call `chartExists` and stubs `insert` to return 1. Adding a direct `orderExists`/`resultExists` service call would make that unstubbed Mockito method return `false` and break an unrelated test. Performing the RLS-bounded probe inside `insert` keeps that test green, keeps the check atomic with the write, and still returns 404 for a missing target. No out-of-scope file was edited.
+- **Chart case retained.** The service's `chartExists` check remains so `linkConcealsAnUnknownChart` still observes `never().insert`; `chartExists` delegates to the shared `subjectExists` fold to avoid duplicated SQL.
+- **Order/result tables.** Chose the canonical owner tables that actually carry those identifiers (`exchange_order` for XCH-01 orders, `xch04_report_revision` for XCH-04 final/corrected/critical results). Both are forced-RLS tenant tables readable by the non-owner runtime role. No new cross-module FK was added: V17 deliberately deferred that, and the probe enforces the same invariant without a schema change.
+- **Scope of `render`.** `DocumentService.render` has the identical chart-only probe. It is not changed here because the story names `link` specifically, and the change would require editing out-of-scope tests (`renderForOrderSkipsTheChartLookup`, `renderConcealsMissingChart`). Suggested follow-up: apply the same `subjectExists` guard to `render` with its own tests.
 
 ## Defects / environment observations (not caused by this change)
 
-- The Python tooling suite has pre-existing environmental failures (PyYAML absent; git-branch setup in `test_agent_run.py`), unchanged by this task.
-- No new defect was found in the observed code. The two unsecured sibling paths named in the story were the defect and are fixed here.
+- `python3 -I scripts/gen-opencode.py --check` and `scripts/quick-check.sh`'s pack step report `opencode.json is stale` on this checkout. `git status` shows `opencode.json` unmodified and no diff, so this is a pre-existing condition, not introduced by this task; the file is outside scope and was not edited.
+- `python3 -I -m unittest discover -s scripts/tests -q` exits 1 here with 8 failures / 10 errors that are environmental and unrelated to this Java change: `ModuleNotFoundError: No module named 'yaml'` (PyYAML absent) and git-branch setup errors in `test_agent_run.py`. The directly relevant policy checks (`check-names`, `check-docs`, `check-secrets`, `check-migrations`) pass.
+- The full `bash apps/api/check.sh` run emitted two non-fatal OWASP Dependency-Check NVD data-import errors (`Failed to process CVE-2026-6785` / `CVE-2026-6786`: a reference URL longer than the tool's local H2 `URL VARCHAR(1000)` column). These occur during NVD data update, are logged per-CVE by the dependency-check plugin, and did **not** fail the build — the canonical gate returned exit 0 with 2360 passing tests and a green JaCoCo check. Tool/data environment issue, unrelated to this change; no code or threshold was altered to accommodate it.
+- No production deployment or real-patient configuration decision is needed; all fixtures are synthetic.
 
 ## Evidence source
 
-Tool evidence: executed `mvn`/`python3` commands and their outputs, plus source reads of `DocumentService`, `DocumentRepository`, `DocumentInputs`, `DocumentModel`, the documents tests and `.agent/pr-notes/AUD-20261120-13-20261120-101201.md`. Simulated reviewer evidence: the `smartclinic-delivery`, `smartclinic-senior-backend`, `smartclinic-senior-java-build` and `smartclinic-test-engineer` skills were loaded as instructions; a bounded read-only `smartclinic-senior-backend` subagent review was requested. Human/clinical/patient evidence: none.
+Tool evidence: executed `mvn`/`python3` commands and their outputs, plus source reads of `DocumentService`, `DocumentRepository`, `DocumentInputs`, V17/V19/V22 migrations and existing tests. Simulated reviewer evidence: the specialist skills (`smartclinic-senior-backend`, `smartclinic-senior-database`, `smartclinic-senior-java-build`, `smartclinic-test-engineer`) were loaded as instructions; no separate reviewer subagent was run for this bounded fix. Human/clinical/patient evidence: none.
+
+## Completion (segment 2)
+
+Story complete. The code change, red/green tests, per-branch test mapping and 100% coverage evidence are all recorded above. The full canonical gate (`bash apps/api/check.sh`) passed on the final tree with 2360 tests and 0 missed JaCoCo counters project-wide; both touched files are at 100% on every counter. No decision or evidence is missing, no coverage threshold was lowered, no exclusion or skip was added, and no production file outside the two named in the scope was changed. Committing this notes update to the current branch; no push, tag or gh call.
