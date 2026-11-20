@@ -64,6 +64,7 @@ public class FinanceRepository {
     private static final RowMapper<InvoiceItem> ITEM_MAPPER = FinanceRepository::mapItem;
     private static final RowMapper<LedgerEntry> ENTRY_MAPPER = FinanceRepository::mapEntry;
     private static final RowMapper<DailyTotal> DAY_MAPPER = FinanceRepository::mapDay;
+    private static final RowMapper<InvoiceRow> LIST_MAPPER = FinanceRepository::mapListRow;
 
     private final NamedParameterJdbcTemplate jdbc;
 
@@ -86,6 +87,20 @@ public class FinanceRepository {
      * @return the replay evidence
      */
     public record Replay(String digest, LedgerEntry entry) {
+    }
+
+    /**
+     * One list row: the invoice projection plus the canonical creation instant
+     * the database sorted on.
+     *
+     * <p>The instant is read from the row rather than reconstructed by the
+     * service so the opaque cursor always names the exact value used for the
+     * exclusive paging bound.</p>
+     *
+     * @param invoice   the current invoice projection
+     * @param createdAt canonical UTC creation instant used as the cursor sort value
+     */
+    record InvoiceRow(Invoice invoice, String createdAt) {
     }
 
     /**
@@ -258,6 +273,45 @@ public class FinanceRepository {
     }
 
     /**
+     * Read one cursor-paged slice of the active tenant's invoices.
+     *
+     * <p>Forced RLS confines the query to the active organization, so no manual
+     * organization predicate is added. The immutable id breaks a creation-time
+     * tie, making descending paging stable. The caller fetches one extra row to
+     * decide whether a next page exists.</p>
+     *
+     * @param cursorCreatedAt exclusive upper creation-time bound, or {@code null}
+     * @param cursorId        immutable id that breaks a tie at the cursor instant
+     * @param status          optional exact invoice state filter
+     * @param patientId       optional exact owning patient filter
+     * @param limit           maximum rows to fetch (one more than the page size)
+     * @return invoices in creation-time descending order with their sort instant
+     */
+    public List<InvoiceRow> query(String cursorCreatedAt, String cursorId, String status,
+                                  String patientId, int limit) {
+        MapSqlParameterSource params = new MapSqlParameterSource().addValue("limit", limit);
+        StringBuilder sql = new StringBuilder(INVOICE_SELECT).append(" WHERE 1=1\n");
+        if (cursorCreatedAt != null) {
+            sql.append("""
+                        AND (created_at < CAST(:cursorCreatedAt AS timestamptz)
+                             OR (created_at = CAST(:cursorCreatedAt AS timestamptz)
+                                 AND id < CAST(:cursorId AS uuid)))
+                        """);
+            params.addValue("cursorCreatedAt", cursorCreatedAt).addValue("cursorId", cursorId);
+        }
+        if (status != null) {
+            sql.append(" AND state = :status");
+            params.addValue("status", status);
+        }
+        if (patientId != null) {
+            sql.append(" AND patient_id = CAST(:patientId AS uuid)");
+            params.addValue("patientId", patientId);
+        }
+        sql.append(" ORDER BY created_at DESC, id DESC LIMIT :limit");
+        return jdbc.query(sql.toString(), params, LIST_MAPPER);
+    }
+
+    /**
      * List an invoice's immutable itemized lines in line-number order.
      *
      * @param invoiceId owning invoice
@@ -393,6 +447,11 @@ public class FinanceRepository {
     private static Instant instant(ResultSet resultSet, String column) throws SQLException {
         OffsetDateTime value = resultSet.getObject(column, OffsetDateTime.class);
         return value == null ? null : value.toInstant();
+    }
+
+    private static InvoiceRow mapListRow(ResultSet resultSet, int rowNumber) throws SQLException {
+        String createdAt = resultSet.getObject("created_at", OffsetDateTime.class).toInstant().toString();
+        return new InvoiceRow(mapInvoice(resultSet, rowNumber), createdAt);
     }
 
     private static Invoice mapInvoice(ResultSet resultSet, int rowNumber) throws SQLException {

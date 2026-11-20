@@ -1,9 +1,14 @@
 package com.aurevia.smartclinic.finance;
 
+import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -19,6 +24,7 @@ import com.aurevia.smartclinic.finance.FinanceContract.LineRequest;
 import com.aurevia.smartclinic.finance.FinanceContract.Reconciliation;
 import com.aurevia.smartclinic.finance.FinanceContract.VoidRequest;
 import com.aurevia.smartclinic.finance.FinanceContract.View;
+import com.aurevia.smartclinic.finance.FinanceRepository.InvoiceRow;
 import com.aurevia.smartclinic.finance.FinanceRepository.Replay;
 import com.aurevia.smartclinic.tenant.TenantContext;
 
@@ -41,6 +47,12 @@ public class FinanceService {
     private static final String RESOURCE_TYPE = "FINANCE_INVOICE";
     private static final int MAX_DESCRIPTION = 120;
     private static final int MAX_SERVICE_REFERENCE = 200;
+    private static final Pattern CURSOR = Pattern.compile(
+            "(.+):([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})");
+    private static final int DEFAULT_LIMIT = 50;
+    private static final int MAX_LIMIT = 200;
+    private static final List<String> STATES = Arrays.stream(InvoiceState.values())
+            .map(InvoiceState::wire).toList();
 
     private final FinanceRepository repository;
     private final FinanceActions actions;
@@ -269,6 +281,101 @@ public class FinanceService {
             success(FinanceActions.READ, id);
             return result;
         });
+    }
+
+    /**
+     * Read one cursor-paginated page of the active tenant's invoices.
+     *
+     * <p>The single-record read action is reused: a caller who may read one
+     * invoice may list the same tenant's invoices. Input is validated before
+     * any transaction and the page read is audited inside the guarded
+     * transaction. One extra row is fetched to decide whether a next page
+     * exists; its last returned row carries the opaque cursor.</p>
+     *
+     * @param cursor    opaque {@code <createdAt>:<id>} of the previous page's last row, or {@code null}
+     * @param limit     page size, or {@code null} for the default of 50
+     * @param status    optional exact invoice state filter
+     * @param patientId optional exact owning patient identifier filter
+     * @return one page with an opaque next cursor when more rows exist
+     * @throws ApiException on invalid input or denial
+     */
+    public InvoicePage list(String cursor, String limit, String status, String patientId) {
+        InvoiceCursor parsedCursor = parseCursor(cursor);
+        int parsedLimit = parseLimit(limit);
+        String parsedStatus = parseStatus(status);
+        String parsedPatientId = parsePatientId(patientId);
+        return execute(FinanceActions.READ, "ALL", sink -> {
+            List<InvoiceRow> rows = repository.query(
+                    parsedCursor == null ? null : parsedCursor.createdAt(),
+                    parsedCursor == null ? null : parsedCursor.id(),
+                    parsedStatus, parsedPatientId, parsedLimit + 1);
+            boolean hasMore = rows.size() > parsedLimit;
+            List<InvoiceRow> pageRows = hasMore ? rows.subList(0, parsedLimit) : rows;
+            String next = null;
+            if (hasMore) {
+                InvoiceRow last = pageRows.get(pageRows.size() - 1);
+                next = last.createdAt() + ":" + last.invoice().id();
+            }
+            success(FinanceActions.READ, "ALL");
+            return new InvoicePage(pageRows.stream()
+                    .map(row -> new View(row.invoice(), List.of(), List.of())).toList(), next);
+        });
+    }
+
+    private InvoiceCursor parseCursor(String cursor) {
+        if (cursor == null || cursor.isBlank()) {
+            return null;
+        }
+        Matcher matcher = CURSOR.matcher(cursor);
+        if (!matcher.matches()) {
+            throw new ApiException(422, "INVALID_CURSOR", "cursor must be <createdAt>:<id>");
+        }
+        String canonical;
+        try {
+            canonical = Instant.parse(matcher.group(1)).toString();
+        } catch (DateTimeParseException exception) {
+            throw new ApiException(422, "INVALID_CURSOR", "cursor must be <createdAt>:<id>");
+        }
+        if (!cursor.equals(canonical + ":" + matcher.group(2))) {
+            throw new ApiException(422, "INVALID_CURSOR", "cursor must be canonical <createdAt>:<id>");
+        }
+        return new InvoiceCursor(canonical, matcher.group(2));
+    }
+
+    private int parseLimit(String limit) {
+        if (limit == null || limit.isBlank()) {
+            return DEFAULT_LIMIT;
+        }
+        try {
+            int value = Integer.parseInt(limit);
+            if (value < 1 || value > MAX_LIMIT) {
+                throw new NumberFormatException("limit out of range");
+            }
+            return value;
+        } catch (NumberFormatException exception) {
+            throw new ApiException(422, "INVALID_LIMIT", "limit must be 1-200");
+        }
+    }
+
+    private String parseStatus(String status) {
+        if (status == null || status.isBlank()) {
+            return null;
+        }
+        if (STATES.contains(status)) {
+            return status;
+        }
+        throw new ApiException(422, "INVALID_STATUS", "status must be an invoice lifecycle state");
+    }
+
+    private String parsePatientId(String patientId) {
+        if (patientId == null || patientId.isBlank()) {
+            return null;
+        }
+        return FinanceInputs.uuid(patientId.trim(), "patientId");
+    }
+
+    /** Parsed opaque cursor: the canonical creation instant and the immutable row id. */
+    private record InvoiceCursor(String createdAt, String id) {
     }
 
     /**

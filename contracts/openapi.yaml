@@ -378,6 +378,26 @@ paths:
         '401': { description: Authentication required }
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { description: Invalid cursor, limit, state or tenant selection }
+  /api/v1/finance/invoices:
+    get:
+      operationId: listFinanceInvoices
+      summary: List self-pay invoices in the active organization with cursor pagination
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - { name: cursor, in: query, required: false, description: Opaque createdAt:id cursor for the next page, schema: { type: string } }
+        - { name: limit, in: query, required: false, description: Page size 1-200, default 50, schema: { type: integer, minimum: 1, maximum: 200 } }
+        - { name: status, in: query, required: false, description: Exact invoice lifecycle state filter, schema: { type: string, enum: [draft, issued, partially_paid, paid, void] } }
+        - { name: patientId, in: query, required: false, description: Owning patient identifier filter, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: One page of invoices ordered by creation time descending
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InvoicePage' }
+        '401': { description: Authentication required }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { description: Invalid cursor, limit, status, patientId or tenant selection }
   /api/v1/orders:
     get:
       operationId: listOrders
@@ -692,6 +712,66 @@ components:
         items:
           type: array
           items: { $ref: '#/components/schemas/OrderView' }
+        nextCursor: { type: string, nullable: true }
+    Invoice:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        version: { type: integer }
+        patientId: { type: string, format: uuid }
+        currency: { type: string }
+        state: { type: string, enum: [draft, issued, partially_paid, paid, void] }
+        totalMinor: { type: integer, format: int64 }
+        paidMinor: { type: integer, format: int64 }
+        refundedMinor: { type: integer, format: int64 }
+        creditedMinor: { type: integer, format: int64 }
+        balanceMinor: { type: integer, format: int64 }
+        serviceReference: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+        issuedAt: { type: string, format: date-time, nullable: true }
+        voidReason: { type: string, nullable: true }
+        voidedBySubject: { type: string, nullable: true }
+    InvoiceItem:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        invoiceId: { type: string, format: uuid }
+        lineNo: { type: integer }
+        description: { type: string }
+        quantity: { type: integer }
+        unitAmountMinor: { type: integer, format: int64 }
+        amountMinor: { type: integer, format: int64 }
+    LedgerEntry:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        invoiceId: { type: string, format: uuid }
+        invoiceVersion: { type: integer }
+        type: { type: string, enum: [payment, refund, credit] }
+        amountMinor: { type: integer, format: int64 }
+        currency: { type: string }
+        reference: { type: string }
+        reason: { type: string, nullable: true }
+        approverSubject: { type: string, nullable: true }
+        receiptNo: { type: integer, format: int64 }
+        actorId: { type: string, format: uuid }
+        occurredAt: { type: string, format: date-time }
+    InvoiceView:
+      type: object
+      properties:
+        invoice: { $ref: '#/components/schemas/Invoice' }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/InvoiceItem' }
+        entries:
+          type: array
+          items: { $ref: '#/components/schemas/LedgerEntry' }
+    InvoicePage:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/InvoiceView' }
         nextCursor: { type: string, nullable: true }
     Error:
       type: object

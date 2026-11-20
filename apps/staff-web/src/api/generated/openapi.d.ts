@@ -295,6 +295,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/invoices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List self-pay invoices in the active organization with cursor pagination */
+        get: operations["listFinanceInvoices"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/orders": {
         parameters: {
             query?: never;
@@ -576,6 +593,76 @@ export interface components {
         };
         OrderPage: {
             items?: components["schemas"]["OrderView"][];
+            nextCursor?: string | null;
+        };
+        Invoice: {
+            /** Format: uuid */
+            id?: string;
+            version?: number;
+            /** Format: uuid */
+            patientId?: string;
+            currency?: string;
+            /** @enum {string} */
+            state?: "draft" | "issued" | "partially_paid" | "paid" | "void";
+            /** Format: int64 */
+            totalMinor?: number;
+            /** Format: int64 */
+            paidMinor?: number;
+            /** Format: int64 */
+            refundedMinor?: number;
+            /** Format: int64 */
+            creditedMinor?: number;
+            /** Format: int64 */
+            balanceMinor?: number;
+            serviceReference?: string | null;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            issuedAt?: string | null;
+            voidReason?: string | null;
+            voidedBySubject?: string | null;
+        };
+        InvoiceItem: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            invoiceId?: string;
+            lineNo?: number;
+            description?: string;
+            quantity?: number;
+            /** Format: int64 */
+            unitAmountMinor?: number;
+            /** Format: int64 */
+            amountMinor?: number;
+        };
+        LedgerEntry: {
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            invoiceId?: string;
+            invoiceVersion?: number;
+            /** @enum {string} */
+            type?: "payment" | "refund" | "credit";
+            /** Format: int64 */
+            amountMinor?: number;
+            currency?: string;
+            reference?: string;
+            reason?: string | null;
+            approverSubject?: string | null;
+            /** Format: int64 */
+            receiptNo?: number;
+            /** Format: uuid */
+            actorId?: string;
+            /** Format: date-time */
+            occurredAt?: string;
+        };
+        InvoiceView: {
+            invoice?: components["schemas"]["Invoice"];
+            items?: components["schemas"]["InvoiceItem"][];
+            entries?: components["schemas"]["LedgerEntry"][];
+        };
+        InvoicePage: {
+            items?: components["schemas"]["InvoiceView"][];
             nextCursor?: string | null;
         };
         Error: {
@@ -1381,6 +1468,55 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AccessionPage"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            /** @description Invalid cursor */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listFinanceInvoices: {
+        parameters: {
+            query?: {
+                /** @description Opaque createdAt:id cursor for the next page */
+                cursor?: string;
+                /** @description Page size 1-200 */
+                limit?: number;
+                /** @description Exact invoice lifecycle state filter */
+                status?: "draft" | "issued" | "partially_paid" | "paid" | "void";
+                /** @description Owning patient identifier filter */
+                patientId?: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of invoices ordered by creation time descending */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoicePage"];
                 };
             };
             /** @description Authentication required */
