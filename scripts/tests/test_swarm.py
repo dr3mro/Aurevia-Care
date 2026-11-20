@@ -1,3 +1,4 @@
+import importlib.util
 import datetime
 import io
 import json
@@ -1348,6 +1349,20 @@ class GitTests(unittest.TestCase):
         create = [c for c in fake.calls if c[:2] == ("pr", "create")][0]
         self.assertIn("--draft", create)
         self.assertIn("unresolved conflicts", create[create.index("--body") + 1])
+
+    def test_open_tasks_never_scope_a_story_id_path(self):
+        spec = importlib.util.spec_from_file_location(
+            "check_names", ROOT / "scripts" / "check-names.py")
+        names = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(names)
+        for task in swarm.parse_tasks((ROOT / "TODO.md").read_text()):
+            if task["status"] == "done":
+                continue
+            for path in task["scope"]:
+                for part in path.split("/"):
+                    with self.subTest(task=task["id"], path=path):
+                        self.assertFalse(names.ID_NAME.match(part),
+                                         f"{task['id']} scope names a folder after an ID: {path}")
 
     def test_image_runs_passes_only_string_arguments_to_gh(self):
         seen = []
