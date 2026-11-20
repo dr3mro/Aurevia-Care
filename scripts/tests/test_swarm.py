@@ -114,9 +114,24 @@ class ConcurrentWaveTests(unittest.TestCase):
         def fake(*args, check=True):
             if args[0] == "run":
                 return "11\n12\n"
-            return "Plan the wave\nSwarm worker / Work the task\nSwarm worker / Publish\n"
+            return ("Plan the wave\n"
+                    "Swarm worker (story, DLV-02, 0, Repair integration tests: patient... / Work the task\n"
+                    "Swarm worker (story, DLV-02, 0, Repair integration tests: patient... / Publish result\n"
+                    "Swarm worker (fix, CW-008, 156, swarm/CW-008-122, Staff web... / Work the task\n"
+                    "Swarm integrator / Pick the queue\n")
         with mock.patch.object(swarm, "gh", fake), mock.patch.object(swarm, "repo_slug", lambda: "o/r"):
+            # Two runs, two workers each; a worker's Work and Publish jobs count once.
             self.assertEqual(swarm.active_workers(), 4)
+            self.assertEqual(swarm.live_workers(), ["CW-008", "DLV-02", "CW-008", "DLV-02"])
+
+    def test_worker_job_names_carry_the_task_id(self):
+        name = "Swarm worker (story, FIX-IMAGES-01, 0, Prepared-image readiness must... / Work the task"
+        self.assertTrue(swarm.is_worker_job(name))
+        self.assertEqual(swarm.worker_task_id(name), "FIX-IMAGES-01")
+        self.assertEqual(swarm.worker_task_id("Swarm worker (fix, CW-008, 156, b, T / Publish"), "CW-008")
+        self.assertEqual(swarm.worker_task_id("Swarm worker / Work the task"), "")
+        self.assertFalse(swarm.is_worker_job("Swarm integrator / Pick the queue"))
+        self.assertFalse(swarm.is_worker_job("Plan the wave"))
 
 
 class WorkerPostgresTests(unittest.TestCase):
@@ -207,6 +222,11 @@ class WorkerGateTests(unittest.TestCase):
 class RepairFilterTests(unittest.TestCase):
     def run_of(self, name, *jobs):
         return {"name": name, "jobs": [{"name": n, "conclusion": c} for n, c in jobs]}
+
+    def test_real_matrix_job_names_count_as_worker_jobs(self):
+        run = self.run_of("Agent swarm", ("Plan the wave", "success"),
+                          ("Swarm worker (story, DLV-02, 0, Repair integration tests... / Work the task", "failure"))
+        self.assertTrue(swarm.only_worker_failures(run))
 
     def test_a_failed_worker_alone_is_not_a_repair(self):
         run = self.run_of("Agent swarm", ("Plan the wave", "success"),
@@ -468,6 +488,15 @@ class PlanTests(unittest.TestCase):
         live = [{"number": 9, "headRefName": "swarm/CW-002-1", "state": "OPEN"}]
         kept = {t["id"]: t for t in swarm.parse_tasks(swarm.reclaim(text, live))}
         self.assertEqual(kept["CW-002"]["status"], "taken")
+
+    def test_reclaim_keeps_a_claim_whose_worker_is_still_running(self):
+        # A running worker has no pull request yet. Releasing its claim let an
+        # overlapping wave take the same task, so two workers did one task.
+        text = swarm.set_task_status(TASKS, "CW-001", "taken", agent="swarm-1")
+        kept = {t["id"]: t for t in swarm.parse_tasks(swarm.reclaim(text, [], live=["CW-001"]))}
+        self.assertEqual(kept["CW-001"]["status"], "taken")
+        freed = {t["id"]: t for t in swarm.parse_tasks(swarm.reclaim(text, [], live=["CW-002"]))}
+        self.assertEqual(freed["CW-001"]["status"], "todo")
 
     def test_reclaim_frees_stale_claims_of_the_older_opencode_dispatcher(self):
         text = swarm.set_task_status(TASKS, "CW-001", "taken", agent="opencode-delivery-dispatch-4")
