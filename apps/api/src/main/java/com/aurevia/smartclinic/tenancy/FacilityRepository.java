@@ -26,6 +26,9 @@ public class FacilityRepository {
                     resultSet.getString("code"), resultSet.getString("name"),
                     resultSet.getString("time_zone"));
 
+    private static final RowMapper<FacilityRow> FACILITY_ROW_MAPPER = (resultSet, rowNumber) ->
+            new FacilityRow(FACILITY_MAPPER.mapRow(resultSet, rowNumber), resultSet.getString("id"));
+
     private final NamedParameterJdbcTemplate jdbc;
 
     /**
@@ -49,6 +52,36 @@ public class FacilityRepository {
         return jdbc.query("""
                 SELECT organization_id, code, name, time_zone FROM public.facility WHERE code = :code
                 """, Map.of("code", code), FACILITY_MAPPER).stream().findFirst();
+    }
+
+    /**
+     * Read one cursor-paged slice of the active tenant's facilities.
+     *
+     * <p>Forced row-level security confines the query to the active organization,
+     * so no manual organization predicate is needed. Ordering by code with the
+     * immutable row id as tie-break keeps the cursor stable even when codes
+     * repeat across organizations.</p>
+     *
+     * @param cursorCode exclusive lower code bound, or {@code null} for the first page
+     * @param cursorId   immutable id that breaks a tie at the cursor code
+     * @param limit      maximum rows to fetch (one more than the requested page size)
+     * @return facilities with their immutable row id, in code-ascending order
+     */
+    public List<FacilityRow> query(String cursorCode, String cursorId, int limit) {
+        MapSqlParameterSource params = new MapSqlParameterSource().addValue("limit", limit);
+        StringBuilder sql = new StringBuilder("""
+                SELECT organization_id, code, name, time_zone, id::text AS id
+                  FROM public.facility
+                 WHERE 1=1
+                """);
+        if (cursorCode != null) {
+            sql.append("""
+                     AND (code > :cursorCode OR (code = :cursorCode AND id > CAST(:cursorId AS uuid)))
+                    """);
+            params.addValue("cursorCode", cursorCode).addValue("cursorId", cursorId);
+        }
+        sql.append(" ORDER BY code, id LIMIT :limit");
+        return jdbc.query(sql.toString(), params, FACILITY_ROW_MAPPER);
     }
 
     /**
@@ -117,5 +150,15 @@ public class FacilityRepository {
                 .addValue("scope", "FACILITY")
                 .addValue("correlationId", context.correlationId())
                 .addValue("outcome", outcome));
+    }
+
+    /**
+     * One paged row: the facility projection and its immutable row id.
+     *
+     * @param facility facility projection
+     * @param id       immutable facility id used as the cursor tie-break
+     * @return this record
+     */
+    public record FacilityRow(Facility facility, String id) {
     }
 }
