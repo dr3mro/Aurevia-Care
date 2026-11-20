@@ -413,7 +413,7 @@ class PlanTests(unittest.TestCase):
         self.assertIn("conclusion == 'failure'", text)
         self.assertIn("swarm.py add-repair-task", text)
         self.assertNotIn("repair_run", text)
-        for name in ("Delivery", "Heavy verification", "Agent swarm"):
+        for name in ("Delivery", "Agent swarm"):
             self.assertIn(f"- {name}", text)
         self.assertNotIn("- Swarm integrator", text)
 
@@ -860,17 +860,6 @@ class ResolveConflictTests(unittest.TestCase):
         step = resolve.split("scripts/agent-run.sh resolve")[0].rsplit("- name:", 1)[1]
         self.assertNotIn("GH_TOKEN", step)
 
-    def test_opencode_team_agent_job_has_no_write_token_and_publishes_elsewhere(self):
-        text = (ROOT / ".github/workflows/opencode-team.yml").read_text()
-        story = text.split("\n  story:\n    name:")[1].split("\n  publish:\n")[0]
-        publish = text.split("\n  publish:\n")[1]
-        self.assertIn("contents: read", story)
-        for secret in ("github.token", "SWARM_TOKEN", "contents: write"):
-            self.assertNotIn(secret, story)
-        self.assertNotIn("agent-run.sh implement", publish)
-        self.assertIn("agent-run.sh adopt", publish)
-        self.assertIn("ref: ${{ github.event.repository.default_branch }}", publish)
-
     def test_swarm_worker_uses_its_token_only_before_the_agent_runs(self):
         text = (ROOT / ".github/workflows/swarm-worker.yml").read_text()
         worker = text.split("  publish:\n", 1)[0]
@@ -1140,7 +1129,7 @@ class GitTests(unittest.TestCase):
         self.assertIn("Evidence", (self.repo / "docs/swarm/CW-001.md").read_text())
         pushed = self.run_git("--git-dir", str(self.origin), "rev-parse", "main").strip()
         self.assertEqual(self.run_git("rev-parse", "HEAD").strip(), pushed)
-        self.assertTrue(fake.said("workflow", "run", "heavy-check.yml"))
+        self.assertFalse(fake.said("workflow", "run", "heavy-check.yml"))
 
     def origin_todo(self):
         return self.run_git("--git-dir", str(self.origin), "show", "main:TODO.md")
@@ -1203,8 +1192,8 @@ class BudgetTests(unittest.TestCase):
         with mock.patch.object(swarm, "gh", Gh()):
             minutes = swarm.monthly_minutes(now)
         # 2 min + max(1 min, 20s) = 3 min per workflow, October ignored,
-        # six budgeted workflows queried = 18 billed minutes this month.
-        self.assertEqual(minutes, 18.0)
+        # five budgeted workflows queried = 15 billed minutes this month.
+        self.assertEqual(minutes, 15.0)
 
     def test_budget_gate_allows_well_under_cap(self):
         with mock.patch.object(swarm, "monthly_minutes", return_value=100):
@@ -1237,7 +1226,7 @@ class TwoTierTests(unittest.TestCase):
         self.assertNotIn("GH_TOKEN", env)
         self.assertNotIn("GITHUB_TOKEN", env)
 
-    def test_integrate_batch_pushes_once_and_dispatches_heavy(self):
+    def test_integrate_batch_pushes_once(self):
         self.repo = Path(tempfile.mkdtemp())
         (self.repo / "TODO.md").write_text("# TODO\n")
         self.addCleanup(shutil.rmtree, self.repo)
@@ -1270,7 +1259,7 @@ class TwoTierTests(unittest.TestCase):
             count = swarm.integrate_batch([1, 2], "scripts/quick-check.sh")
         self.assertEqual(count, 2)
         pushes = [c for c in fake.calls if c[:2] == ("workflow", "run")
-                  and c[2] == "heavy-check.yml"]
+                  and c[2] == "delivery.yml"]
         self.assertEqual(len(pushes), 1)
 
     def test_integrate_batch_retries_when_main_advanced(self):
@@ -1363,9 +1352,7 @@ class TwoTierTests(unittest.TestCase):
     def test_efficiency_doc_and_quick_script_exist(self):
         self.assertTrue((ROOT / "docs/swarm/EFFICIENCY.md").exists())
         self.assertTrue((ROOT / "scripts/quick-check.sh").exists())
-        heavy = (ROOT / ".github/workflows/heavy-check.yml").read_text()
-        self.assertIn("owasp-nvd", heavy)
-        self.assertIn("check.sh", heavy)
+        self.assertFalse((ROOT / ".github/workflows/heavy-check.yml").exists())
 
 
 if __name__ == "__main__":
