@@ -26,7 +26,8 @@ Agents run OpenCode on GitHub-hosted runners with a free OpenCode model. They co
 ## Why it stays fast and within limits
 
 - Nothing is installed during a run. OpenCode, Git, gh, jq, Python and shellcheck are in the image.
-- Runs queue behind one concurrency group (WIP one). The gate job is a few seconds on a stock runner, and the agent job only starts for a real trigger.
+- Swarm waves overlap (one concurrency group per run); the plan job is serialized and caps the workers running across all waves at 20. A wave is not queued while another is already waiting. The gate job is a few seconds on a stock runner, and the agent job only starts for a real trigger.
+- Pull requests run the same full Delivery verification as main (PostgreSQL integration tests, JaCoCo, SpotBugs, OWASP). Require the `Delivery gate` check in branch protection or a merge queue so a red pull request cannot be merged by anyone.
 - The workflow never polls and has no schedule other than the monthly image build, so idle repositories use no Actions minutes or API calls.
 - A model rate limit, a timeout (30 minutes per agent call, 75 for the job) or a failure ends the run, comments on the issue and skips the reviews. There are no retries.
 - The pull request is opened once and reviews are posted in three comments, not many small calls.
