@@ -1,6 +1,6 @@
 # S-G5-08 — tenant lifecycle evidence (OPS-07)
 
-The evaluator lives in `infra/s_g5_08/tenant_lifecycle_evidence.py`. It judges a
+The evaluator lives in `infra/tenant-lifecycle/tenant_lifecycle_evidence.py`. It judges a
 **synthetic evidence artifact**, not a running system: it proves that a claimed
 export, retention, offboarding and disputed-access envelope is complete and
 internally consistent, and that no clause of OPS-07 is contradicted. It cannot
@@ -14,19 +14,19 @@ prove that a real export, deletion, restore, review or revocation happened.
 ## Entry point to test trace
 
 ```
-infra/s_g5_08/check.sh
-  -> python3 -I -m unittest discover -s infra/s_g5_08/tests -q
-       -> infra/s_g5_08/tests/test_tenant_lifecycle_evidence.py
+infra/tenant-lifecycle/check.sh
+  -> python3 -I -m unittest discover -s infra/tenant-lifecycle/tests -q
+       -> infra/tenant-lifecycle/tests/test_tenant_lifecycle_evidence.py
             -> evaluate(artifact) -> _check_export / _check_retention /
                _check_offboarding / _check_disputed_access /
                _check_scenarios / _check_phi -> named checks -> verdict
-  -> python3 -I infra/s_g5_08/tenant_lifecycle_evidence.py <fixture.json>
+  -> python3 -I infra/tenant-lifecycle/tenant_lifecycle_evidence.py <fixture.json>
        -> fixtures/synthetic_lifecycle_evidence.json   (must pass)
        -> fixtures/measured_lifecycle_evidence.json    (synthetic; exercises the final-evidence path)
        -> fixtures/violation_lifecycle_evidence.json   (must fail)
 ```
 
-`infra/s_g5_08/tests/run_coverage.py` runs the same suite plus the CLI entry
+`infra/tenant-lifecycle/tests/run_coverage.py` runs the same suite plus the CLI entry
 point in one stdlib `trace` session for line-coverage evidence.
 
 ## Requirement-to-check map
@@ -99,10 +99,10 @@ operational truth. Real acceptance stays with the named G5 owners.
 
 | Check | Command | Result |
 |---|---|---|
-| Unit and fixture gate | `bash infra/s_g5_08/check.sh` | 92 synthetic unit tests pass; conforming and measured fixtures pass; violation fixture exits 1 with all eight named breaches |
-| Unit tests alone | `python3 -I -m unittest discover -s infra/s_g5_08/tests -q` | 92 tests, OK |
-| Line coverage | `python3 -m trace --count --coverdir /tmp/opencode/g5_08_cov2 infra/s_g5_08/tests/run_coverage.py` | No `>>>>>>` lines in `tenant_lifecycle_evidence.cover` (stdlib `trace`; `coverage.py` unavailable) |
-| Shell gate guard | `python3 -I -m unittest discover -s infra/s_g5_08/tests -p test_check_gate.py -q` | 4 gate-alignment tests pass |
+| Unit and fixture gate | `bash infra/tenant-lifecycle/check.sh` | 92 synthetic unit tests pass; conforming and measured fixtures pass; violation fixture exits 1 with all eight named breaches |
+| Unit tests alone | `python3 -I -m unittest discover -s infra/tenant-lifecycle/tests -q` | 92 tests, OK |
+| Line coverage | `python3 -m trace --count --coverdir /tmp/opencode/g5_08_cov2 infra/tenant-lifecycle/tests/run_coverage.py` | No `>>>>>>` lines in `tenant_lifecycle_evidence.cover` (stdlib `trace`; `coverage.py` unavailable) |
+| Shell gate guard | `python3 -I -m unittest discover -s infra/tenant-lifecycle/tests -p test_check_gate.py -q` | 4 gate-alignment tests pass |
 | Links and requirement IDs | `python3 -I scripts/check-docs.py` | exit 0 |
 | Credential and PHI shapes | `python3 -I scripts/check-secrets.py` | exit 0 |
 

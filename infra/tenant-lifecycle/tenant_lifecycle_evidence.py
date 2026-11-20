@@ -19,7 +19,7 @@ that supplied, synthetic facts meet OPS-07 and that the declared envelope is
 complete; it cannot prove an export, deletion or restore actually happened.
 Real operational acceptance is a separate, human-gated step.
 
-Usage: ``python3 -I infra/s_g5_08/tenant_lifecycle_evidence.py <artifact.json>``
+Usage: ``python3 -I infra/tenant-lifecycle/tenant_lifecycle_evidence.py <artifact.json>``
 Exit codes: 0 = artifact passes the OPS-07 checks, 1 = it fails a check,
 2 = unreadable input.
 """
