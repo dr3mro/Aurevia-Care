@@ -414,4 +414,65 @@ class InstructionServiceTest {
         TenantContext.set(new TenantContext(null, "clinician-a", "MSG04", "corr-1"));
         assertEquals(403, assertThrows(ApiException.class, () -> store.history("x")).status());
     }
+
+    @Test
+    void patientReadsOwnInstructionContentAndOwnThread() {
+        fixture();
+        bind(ORG_A, "clinician-a");
+        var sent = service.send(sendRequest());
+
+        // The patient account is linked to the verified chart (IAM-05) and the
+        // connection is active, so a patient subject may read its own content.
+        store.seedMember("patient-a", List.of("patient"));
+        store.linkPatientChart("patient-a", PATIENT);
+        bind(ORG_A, "patient-a");
+
+        var view = service.get(sent.threadId());
+        assertEquals(sent.threadId(), view.current().threadId());
+        assertEquals("Morning collection", view.current().title());
+        assertEquals("Please fast before 9am, 5 mL sample.", view.current().text());
+        assertEquals(List.of(sent.threadId()), service.listForPatient(PATIENT).stream()
+                .map(InstructionContract.Revision::threadId).toList());
+    }
+
+    @Test
+    void patientCannotReadAnotherPatientsInstructionContent() {
+        fixture();
+        bind(ORG_A, "clinician-a");
+        var own = service.send(sendRequest());
+
+        String otherPatient = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
+        store.seedConnection("other-conn", otherPatient, UNIT);
+        var other = service.send(new SendRequest(otherPatient, "other-conn", UNIT, null,
+                Kind.GENERAL, "Other title", "Other body", "en", null, null, null, List.of()));
+
+        store.seedMember("patient-a", List.of("patient"));
+        // Linked only to PATIENT, never to otherPatient.
+        store.linkPatientChart("patient-a", PATIENT);
+        bind(ORG_A, "patient-a");
+
+        // Own content remains readable, but a thread on a chart the account is
+        // not linked to is concealed and another chart's list is denied (404).
+        assertEquals(own.threadId(), service.get(own.threadId()).current().threadId());
+        assertEquals(404, assertThrows(ApiException.class,
+                () -> service.get(other.threadId())).status());
+        assertEquals(404, assertThrows(ApiException.class,
+                () -> service.listForPatient(otherPatient)).status());
+    }
+
+    @Test
+    void patientReadRequiresAnActiveVerifiedConnection() {
+        fixture();
+        bind(ORG_A, "clinician-a");
+        var sent = service.send(sendRequest());
+
+        store.seedMember("patient-a", List.of("patient"));
+        store.linkPatientChart("patient-a", PATIENT);
+        bind(ORG_A, "patient-a");
+
+        store.deactivateConnection(CONNECTION);
+        assertEquals(403, assertThrows(ApiException.class,
+                () -> service.get(sent.threadId())).status());
+        assertTrue(service.listForPatient(PATIENT).isEmpty());
+    }
 }
