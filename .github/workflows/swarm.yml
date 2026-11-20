@@ -41,6 +41,10 @@ permissions:
 concurrency:
   group: ${{ format('agent-swarm-{0}', github.run_id) }}
   cancel-in-progress: false
+env:
+  SWARM_GIT_NAME: ${{ vars.SWARM_GIT_NAME }}
+  SWARM_GIT_EMAIL: ${{ vars.SWARM_GIT_EMAIL }}
+
 jobs:
   plan:
     name: Plan the wave

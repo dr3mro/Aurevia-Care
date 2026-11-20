@@ -20,6 +20,10 @@ concurrency:
   group: swarm-images
   cancel-in-progress: false
   queue: max
+env:
+  SWARM_GIT_NAME: ${{ vars.SWARM_GIT_NAME }}
+  SWARM_GIT_EMAIL: ${{ vars.SWARM_GIT_EMAIL }}
+
 jobs:
   build:
     name: Slot images
