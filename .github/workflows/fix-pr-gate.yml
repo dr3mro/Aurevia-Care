@@ -95,7 +95,9 @@ jobs:
       actions: write
     env:
       GH_TOKEN: ${{ github.token }}
+      SWARM_ISSUES: ${{ vars.SWARM_ISSUES }}
       PR: ${{ github.event.pull_request.number }}
+      VALIDATED_HEAD: ${{ github.event.pull_request.head.sha }}
       PASSED: ${{ needs.validate.outputs.passed }}
     steps:
       # Trusted copy of the scripts: never the pull request's version.
@@ -113,6 +115,11 @@ jobs:
         run: |
           # The integrator runs its own full gate before main moves, so a forged
           # pass only queues the pull request; it never merges it.
+          current_head=$(gh pr view "$PR" --json headRefOid --jq .headRefOid)
+          if [[ "$current_head" != "$VALIDATED_HEAD" ]]; then
+            printf 'PR #%s changed after validation; leaving it for the current checks.\n' "$PR"
+            exit 0
+          fi
           if [[ "$PASSED" == true ]]; then
             gh pr ready "$PR" || true
             gh api --method POST "repos/$GITHUB_REPOSITORY/issues/$PR/labels" \

@@ -19,3 +19,25 @@ The orchestrator assigns the class once per story and sends reviewers only IDs, 
 5. Fix blockers or move them to a separate story with an owner and resume trigger. Feed observed clinician and unit feedback into the backlog. Distinguish simulated review from real user feedback.
 
 After five stories and after meaningful pipeline changes, review time to green CI, review time, flaky test reruns, and defects caught. Use the evidence to remove duplicate checks or redundant handoffs while retaining boundary verification and release gates.
+
+
+## Swarm frontend handoff
+
+Check each story against the repository gates before coding. If its acceptance
+criteria conflict with a gate, record the conflict and wait for a corrected task.
+For a frontend change, write a failing behavior test, make it pass, and record
+both results. Check the result with `bash scripts/frontend-check.sh` and the
+affected app's check before declaring the work ready.
+
+The worker runs the same frontend command as Delivery. A failed worker result
+opens a draft. The integrator skips drafts and waits for successful Delivery on
+the current head of ordinary PRs. Documentation-only PRs use the merge-result
+gate, and main-repair PRs use their dedicated validation tier.
+
+
+## Senior engineering standard
+
+- Confirm acceptance criteria, user-facing entry points, and allowed source and test paths before editing. Trace the current behavior and reuse domain rules already owned elsewhere.
+- Demonstrate the defect with a failing behavior test, then verify the smallest fix. Test the relevant failure and retry paths. Review the final diff for unrelated changes, unhandled failures, and compatibility.
+- Run the repository's canonical checks on the final code. Record the failing test and why it failed, the passing test, coverage results, and any pending checks. For dependency changes, record the scan result and review of the locked dependency.
+- Review changes against the agreed risk class. Name the file, observable impact, and regression test for each finding. Record who reviewed the work and what evidence they verified. Keep raw logs in run artifacts.
