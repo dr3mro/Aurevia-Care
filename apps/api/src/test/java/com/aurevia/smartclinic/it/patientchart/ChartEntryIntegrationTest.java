@@ -136,7 +136,7 @@ class ChartEntryIntegrationTest {
         statement.execute("SET app.actor = 'reception-" + (ORG_A.equals(org) ? "a" : "b") + "'");
         // V7 requires exactly one of dob / dob_unknown_reason. Seed a synthetic
         // civil date so the fixture satisfies the append-only patient invariant
-        // instead of failing @BeforeAll before any chart behaviour is exercised.
+        // before any chart behaviour is exercised, instead of failing @BeforeAll.
         statement.execute("INSERT INTO public.patient_record "
                 + "(organization_id, id, version, mrn, mrn_issuer, display_name, normalized_name, dob) "
                 + "VALUES ('" + org + "', '" + PATIENT + "', 1, 'MRN-CHART', 'CLINIC', '"
@@ -257,8 +257,10 @@ class ChartEntryIntegrationTest {
 
         try (Connection connection = DriverManager.getConnection(URL, "smartclinic_migrate", "");
              Statement statement = connection.createStatement()) {
-            // audit_event has forced RLS; a direct assertion must bind the tenant
-            // context or the append-only rows are concealed from the reader.
+            // audit_event has FORCE RLS: the migration owner still needs the
+            // transaction-local tenant context to see any rows at all. A direct
+            // assertion must bind the tenant context or the append-only rows are
+            // concealed from the reader.
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             try (ResultSet result = statement.executeQuery(
                     "SELECT count(*) FROM public.audit_event WHERE action = 'CHART_RECORD' "

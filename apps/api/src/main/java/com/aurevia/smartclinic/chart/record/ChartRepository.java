@@ -116,9 +116,13 @@ public class ChartRepository {
                     (CAST(:organizationId AS uuid), CAST(:id AS uuid), CAST(:patientId AS uuid),
                      :encounterId, :type, :originalText, :originalCode, :codeSystem,
                      :mappedCode, :mappedText, :catalogVersion, :source, :presence,
-                     :unknownReason, :verification, :verifiedBy, :verifiedAt,
-                     :effectiveFrom, :effectiveTo, :measuredAt, :value, :unit,
-                     :clinicalAuthor, :dataEntryActor, :version, :recordedAt)
+                     :unknownReason, :verification, :verifiedBy,
+                     CAST(:verifiedAt AS timestamptz),
+                     CAST(:effectiveFrom AS timestamptz),
+                     CAST(:effectiveTo AS timestamptz),
+                     CAST(:measuredAt AS timestamptz), :value, :unit,
+                     :clinicalAuthor, :dataEntryActor, :version,
+                     CAST(:recordedAt AS timestamptz))
                 """, new MapSqlParameterSource()
                 .addValue("organizationId", orgId())
                 .addValue("id", entry.id())
@@ -136,6 +140,9 @@ public class ChartRepository {
                 .addValue("unknownReason", entry.unknownReason())
                 .addValue("verification", entry.verification().name())
                 .addValue("verifiedBy", entry.verifiedBy())
+                // Bind instants as UTC OffsetDateTime (pgjdbc maps it to
+                // timestamptz); the explicit CAST in the SQL keeps the value
+                // unambiguous without a timezone-dependent shift.
                 .addValue("verifiedAt", instantValue(entry.verifiedAt()))
                 .addValue("effectiveFrom", instantValue(entry.effectiveFrom()))
                 .addValue("effectiveTo", instantValue(entry.effectiveTo()))
@@ -167,7 +174,7 @@ public class ChartRepository {
         return jdbc.update("""
                 UPDATE public.chart_entry
                    SET verification = 'VERIFIED', verified_by = :actor,
-                       verified_at = :verifiedAt,
+                       verified_at = CAST(:verifiedAt AS timestamptz),
                        clinical_author = COALESCE(clinical_author, :actor),
                        version = version + 1
                  WHERE organization_id = CAST(:organizationId AS uuid)
@@ -249,7 +256,8 @@ public class ChartRepository {
     // pgjdbc cannot infer a SQL type for a bare java.time.Instant parameter and
     // a text parameter is not implicitly cast to timestamptz on INSERT. Bind a
     // UTC OffsetDateTime instead: pgjdbc maps it to timestamptz without a
-    // timezone-dependent shift.
+    // timezone-dependent shift. The INSERT/UPDATE keep their explicit
+    // CAST(... AS timestamptz) so the bound value is unambiguous either way.
     private static OffsetDateTime instantValue(Instant instant) {
         return instant == null ? null : OffsetDateTime.ofInstant(instant, ZoneOffset.UTC);
     }
