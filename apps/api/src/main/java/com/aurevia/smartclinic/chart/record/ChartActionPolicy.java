@@ -11,8 +11,7 @@ import org.springframework.stereotype.Component;
  * of this story's scope. Tenant administration and privacy audit roles are
  * deliberately excluded: the specification keeps clinical access separate.</p>
  */
-/* Explicit bean name: a legacy chart slice shares the default "chartActionPolicy" name. */
-@Component("chartRecordActionPolicy")
+@Component
 public class ChartActionPolicy {
 
     /** Read a patient's chart or one chart entry. */
