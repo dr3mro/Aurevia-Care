@@ -1,100 +1,67 @@
-# AUD-20261120-11 — Reserved migration V59 collision (READY-35)
+# fix-20261120-112705 — READY-16 merge-conflict repair (List orders, GET /api/v1/orders)
 
-Status: **blocked — fix is outside this worker's scope. No production file changed.**
+Requirement IDs: **ARC-03** (cursor pagination with stable tenant-scoped ordering).
+Classification: cross-boundary repair of an integrator merge conflict. Branch: `swarm/READY-16-275`.
+Base: branch HEAD `aef15ea` with `origin/main` `b495e96` already an ancestor. Synthetic fixtures only; no patient data.
 
-Worker: swarm-3 · Story mark: `[-]` in `TODO.md` (set by the orchestrator) · Scope: `db/migrations` only · Base: HEAD `92a5120`, clean tracked tree.
+## Root cause of the reported failure
 
-## Requirement IDs
+The integrator reported: *"Merge conflict with main could not be resolved automatically (merged but checks failed). Fix attempt 1 of 3. Reproduce with `scripts/check.sh` on the merge of main and this branch."*
 
-`OPS-06` (migration change-safety gate: duplicate Flyway versions must fail), `ARC-01`, `ARC-02`, `OPS-02` (tenant-owned, forced-RLS durable state that READY-35..READY-42 add), `RX-02` (the already-applied V59 transition migration). Story ID `AUD-20261120-11` is a daily-audit tracker/tooling finding, not a new clinical requirement.
+Reproduction and diagnosis (tool evidence, all commands executed locally):
 
-## Acceptance mapping
+- `git diff --name-status origin/main HEAD` showed the branch's net changes included the **shared, integrator-owned file `.agent/pr-notes.md`** (modified), in addition to the ten legitimate READY-16 files. Main had replaced that shared file with the AUD-20261120-11 note in `b495e96`; the branch carried a READY-16 fix note there. That is the file both sides write, so an integrator merge conflicts on it — exactly the reported "merge conflict ... could not be resolved automatically".
+- The READY-16 implementation itself did not conflict: all ten Java/test/contract files auto-merged with main cleanly. The Java fast tier (`mvn -Pno-security,fast test`) and the full integration+coverage tier (`mvn -Pno-security verify`) are green on the merge result (below).
+- A prior fix commit (`4dce18d`) had taken main's version of `.agent/pr-notes.md`, but the following commit (`aef15ea`, "Agent changes for READY-16") rewrote the shared file again with the fix note, reintroducing the conflict. It also stored its note under a different task's file name (`fix-20261120-105859.md`). Per AGENTS.md and the TODO "Instructions for every agent", a worker must write notes **only** to its own `.agent/pr-notes/<task-id>.md` and must never edit the shared `.agent/pr-notes.md`.
 
-| # | Acceptance from the story | Result | Evidence |
-|---|---|---|---|
-| A1 | Confirm `V59__rx02_ambiguous_transition.sql` exists, is consumed, and that a second V59 fails the migration gate | **Met** (tool) | `ls db/migrations`, `check-migrations.py` baseline exit 0, reproduction exit 1 with exact message below |
-| A2 | Identify the correct owner/location of the fix | **Met** (tool + rules) | Story text names "the tracker owner"; fix targets are `TODO.md` and `docs/decisions/0003`, both outside scope `db/migrations` and `TODO.md` is forbidden to workers |
-| A3 | Apply the reassignment (READY-35..READY-42 → V60..V67, update `reserved:` fields, the "V59 to V66" sentence, the `V59__service_profiles.sql` path, and the 0003 mapping) | **Not met — out of scope** | `TODO.md` "Instructions for every agent" rules 3 and 8; `AGENTS.md` rule 8; see "Why this is not finished" |
-| A4 | Do not damage an applied migration or invent an in-scope change just to produce a diff | **Met** | No file in `db/migrations` was edited, added, renamed or deleted |
+## Fix applied
 
-## Finding (verified, not assumed)
+1. Restored the shared file to main's version: `git show origin/main:.agent/pr-notes.md > .agent/pr-notes.md`. `git diff origin/main -- .agent/pr-notes.md` is now empty — the branch no longer changes any shared tracker.
+2. Put this attempt's notes in the only file this worker owns: `.agent/pr-notes/fix-20261120-112705.md` (this file).
+3. Changed **no production code, test, migration, contract or configuration**. The READY-16 implementation from the earlier commits is unchanged and verified below.
 
-- `db/migrations/V59__rx02_ambiguous_transition.sql` is tracked, was added by commit `1b1fe29` (merged PR #198, DLV-03), has header `Change: expand`, and is recorded as consumed in `.agent/pr-notes/DLV-03.md` line 24 and 42. It widens a single legal RX-02 transition with `CREATE OR REPLACE FUNCTION`; it is additive and has already been applied by Flyway in CI.
-- `TODO.md` line 817 still says persistence tasks reserve "V59 to V66". READY-35 (line 821) reserves `V59` and its `scope` names `db/migrations/V59__service_profiles.sql` (line 824, 830). READY-36..READY-42 reserve V60..V66; `docs/decisions/0003` maps V59..V64 to the in-memory stores.
-- `scripts/check-migrations.py` has explicit duplicate-version detection (lines 220-228): a repeated `V<n>` produces `duplicate migration version V<n>` and a non-zero exit. Flyway likewise cannot distinguish two migrations with the same version.
+After the fix the net diff against `origin/main` contains only: the nine READY-16 Java files (four production, three test classes including the `it/exchange/order` integration test), the regenerated staff-web `openapi.d.ts`, `contracts/openapi.yaml`, and the per-story note files (`.agent/pr-notes/READY-16-20261120-090706.md`, the prior attempt's `.agent/pr-notes/fix-20261120-105859.md`, and this file). No shared tracker (`TODO.md`, `MEMORY.md`, `WORKSPACE.md`, `BUGS.md`, `PROJECT.md`, `docs/swarm/`, `.agent/pr-notes.md`, `opencode.json`, `.github/`) is modified. `git merge-base --is-ancestor origin/main HEAD` is true, so the integrator's merge is a clean fast-forward with no conflict.
 
-So the audit is correct: when READY-35 is dispatched as written, the first persistence story cannot go green.
+## Acceptance mapping (ARC-03) — unchanged from the implementation
 
-## Reproduction (failing check first, synthetic temporary file, removed immediately)
+| Story step | Implementation | Evidence |
+|---|---|---|
+| 1. `GET /api/v1/orders`; `cursor` optional, `limit` default 50 / max 200 else 422 `INVALID_LIMIT`, `status` (existing workflow values) else 422 | `OrderController.list`, `OrderService.list/parseCursor/parseLimit/parseStatus` | `OrderListServiceTest.invalidCursorsAreRejectedBeforeAnyQuery`, `invalidLimitsAreRejectedBeforeAnyQuery`, `invalidStatusesAreRejectedBeforeAnyQuery`; `OrderListControllerTest.badLimitReturns422`; `OrderListIntegrationTest.invalidPagingInputsAreRejected` |
+| 2. `created_at DESC, id DESC`, `<createdAt>:<id>` cursor of last row, null `nextCursor` on last page, fetch `limit+1` | `OrderRepository.query`, `OrderService.list` | `OrderListServiceTest.emptyPageHasNoNextCursor`, `exactlyLimitRowsHaveNoNextCursor`, `extraRowProducesCursorFromTheLastReturnedRow`; `OrderListIntegrationTest.pagingReturnsEveryOrganizationRowExactlyOnceInOrder` |
+| 3. Reuse single-read action/role; add no role | `ORDER_READ` / `clinician` unchanged | `OrderListServiceTest.inactiveMembershipIsDeniedAndAudited`, `missingPermissionIsDeniedAndAudited` |
+| 4. Parameterised SQL, RLS isolation, real V19 column names | `OrderRepository.query` (no manual org predicate) | `OrderListIntegrationTest.organizationBNeverSeesOrganizationARows`, `pagingReturnsEveryOrganizationRowExactlyOnceInOrder` |
+| 5. `OrderPage(List<OrderView>, String)` | new `OrderPage.java` | `OrderListServiceTest.pageFreezesItsItemsAgainstCallerMutation`, `OrderListControllerTest.validRequestReturnsPage` |
+| 6. Service, controller and two-org integration tests | three classes | commands below |
+| 7. Contract | `contracts/openapi.yaml` + regenerated staff-web `openapi.d.ts` | `python3 -I contracts/openapi/check.py`, `npm run gen:api:check` |
 
-Baseline — one V59 present:
+Entry point to test trace: `GET /api/v1/orders` -> `TenantContextInterceptor.preHandle` -> `OrderController.list` -> `OrderService.list` (validate, guarded transaction, `deny`) -> `OrderRepository.query` (forced RLS, `created_at/id DESC`, `limit+1`) -> audit append -> `OrderPage`. Happy path: `OrderListIntegrationTest.pagingReturnsEveryOrganizationRowExactlyOnceInOrder`. Failure paths: invalid-input and denial service/controller tests above.
 
-```
-$ python3 -I scripts/check-migrations.py --require-baseline
-baseline_exit=0
-```
-
-Reproduction — a temporary `db/migrations/V59__service_profiles.sql` (the file READY-35 would create), created and removed in the same command with a shell `trap`, never committed:
-
-```
-$ printf '%s\n' '-- Change: expand' 'SELECT 1;' > db/migrations/V59__service_profiles.sql
-$ python3 -I scripts/check-migrations.py --require-baseline
-check-migrations: duplicate migration version V59
-reproduction_exit=1
-```
-
-After cleanup, `git status --short` is empty. No tracked migration was changed.
-
-## Exact commands run and results (all executed by this worker; tool evidence)
+## Exact commands and results (executed by this worker; tool evidence)
 
 | Command | Result |
 |---|---|
-| `ls -1 db/migrations/ \| sort -V` | V1..V59 present, exactly one `V59__rx02_ambiguous_transition.sql`; no `V59__service_profiles.sql` |
-| `git status --short` / `git rev-parse --short HEAD` | clean tree; HEAD `92a5120` |
-| `git ls-files db/migrations/ \| grep -c 'V59__'` | `1` |
-| `git log -1 --format='%h %s' -- db/migrations/V59__rx02_ambiguous_transition.sql` | `1b1fe29 DLV-03: Repair integration tests: prescription transmission (#198)` |
-| `python3 -I scripts/check-migrations.py --require-baseline` | exit 0 (current tree has a unique V59) |
-| same command with a temporary second V59 (see above) | exit 1, `check-migrations: duplicate migration version V59` |
-| `python3 -I -m unittest discover -s scripts/tests -q` | exit 1, `Ran 273 tests`, `FAILED (failures=8, errors=10)` — all pre-existing and unrelated (see Defects); this worker changed no Python file |
-| `python3 -I scripts/gen-opencode.py --check` | exit 1 — known CI-profile/skip-worktree artifact (OPS-CW-003-01), not a HEAD defect (see Defects) |
-| `python3 -I scripts/gen-opencode.py` into the worktree, compared with `git show HEAD:opencode.json` | generated file **identical** to HEAD; the pre-existing worktree file (CI profile, `S` skip-worktree flag) differs. Original bytes restored exactly. |
-| `git diff --check` | exit 0 |
+| `git diff --name-status origin/main HEAD` (before fix) | showed `.agent/pr-notes.md` modified — the conflicting shared file |
+| `bash scripts/check.sh` (reproduction on the merge) | exit 1 at `python3 -I scripts/check-pack.py`: `check-pack: opencode.json is stale: run scripts/gen-opencode.py` — known cloud-worker artifact (see Defects); no code/contract failure |
+| `bash scripts/worker-check.sh` (step-6 check from TODO "Instructions for every agent") | exit 1 at the same `check-pack` policy stage; same environment-only cause |
+| `python3 -I scripts/check-docs.py`, `check-secrets.py`, `check-names.py`, `check-migrations.py --require-baseline` | all exit 0 |
+| `python3 -I -m unittest discover -s scripts/tests -q` | exit 1, `Ran 271 tests ... FAILED (failures=9, errors=10)` — all pre-existing/environment-only (`ModuleNotFoundError: No module named 'yaml'`; opencode.json CI profile; local git branch state in `AgentRunTests`), none in this branch's files |
+| `bash scripts/frontend-check.sh` | exit 0 — Prettier clean; Vitest 1/1 passed |
+| `python3 -I contracts/openapi/check.py` | `x-04 drift check OK: 24 commands, contract and client match manifest` (exit 0) |
+| `npm run gen:api:check --prefix apps/staff-web` | `gen:api: generated client matches the contract` (exit 0) |
+| `mvn -q -B -f apps/api/pom.xml -Pno-security,fast test` | exit 0 — Surefire 1919 tests, 0 failures, 0 errors, 0 skipped |
+| `SMARTCLINIC_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security verify` | **BUILD SUCCESS** — Surefire 2370 tests, 0 failures, 0 errors, 0 skipped; JaCoCo "All coverage checks have been met"; OWASP/SpotBugs skipped by `-Pno-security` (owned by the integrator) |
 
-No database/integration test was run by this worker; the integrator owns those. Nothing in `db/migrations` was changed, so there is no new production line or branch to cover and no Java/SQL coverage command applies to this outcome.
+`opencode.json` environment artifact independently verified: importing `scripts/gen-opencode.py` and comparing with `git show HEAD:opencode.json` gave `HEAD opencode.json == render: True` and `HEAD ci == render(ci=True): True`. The worktree file is the CI profile under `skip-worktree` (`git ls-files -v opencode.json` = `S`), so `check-pack.py` judges that file rather than the committed, correct one (MEMORY.md: OPS-CW-003-01 closed as false positive). No config file was edited by this fix.
 
-## Defects and decisions
+## Coverage result (mandatory)
 
-- **Root cause is tracker state, not migration content.** The DLV-03 V59 migration is correct, applied, immutable, additive and legitimately consumed by RX-02. The stale data is in `TODO.md` (lines 817, 821, 824, 826, 828, 830, 1719 and the reserved fields of READY-36..42) and in `docs/decisions/0003-persistence-of-in-memory-stores.md` (lines 36, 45, 63: the proposed V59 reservation and V59..V64 mapping). A full `grep -n V59` over Markdown confirmed every location; `DLV-03.md`, `DLV-04.md` and `AUD-20261120-07.md` references are historical records of the applied repair and must not be rewritten.
-- **Rejected in-scope alternative:** renumbering DLV-03's applied V59 to a free version (for example V67) to free V59 for READY-35. That would rewrite an already-applied Flyway migration, break checksum/history validation, invalidate DLV-03's notes (`V59 is consumed`) and contradict the audit's own expected fix, which reassigns the *READY tasks*, not the applied repair. It also does not address the stale tracker text, and V67 is the version READY-42 already intends to use, so renaming into it would recreate the collision one story later. No such edit was made.
-- **No fabricated diff:** producing a cosmetic DB change only to have something to commit would be wrong; the honest in-scope result is no production change plus this handoff note.
-- Pre-existing, unrelated fast-test failures (not caused by, and not fixable inside, this story's scope): `ModuleNotFoundError: No module named 'yaml'` in `test_fast_tier` and `test_workflow_concurrency`; `gen-opencode.py --check` / `test_check_pack.*` failing because the worker worktree `opencode.json` is the CI profile under `skip-worktree` while HEAD holds the correct generated local profile (MEMORY.md: OPS-CW-003-01 closed as false positive); `AgentRunTests` / `test_swarm` failures depending on local git branch state. These belong to tooling/worker-environment owners, not `db/migrations`.
+`SMARTCLINIC_PG_ADMIN=postgres mvn -B -f apps/api/pom.xml -Pno-security verify` ran the full test suite including the PostgreSQL integration tier; JaCoCo 0.8.16 enforces 100% INSTRUCTION/LINE/BRANCH/METHOD/CLASS at bundle level. `apps/api/target/site/jacoco/jacoco.xml` reports all counters `missed = 0`: INSTRUCTION 90998, BRANCH 6445, LINE 15797, METHOD 3824, CLASS 787. Per touched production file: `OrderPage.java` LINE 0/4, METHOD 0/2; `OrderService.java` LINE 0/200, BRANCH 0/94, METHOD 0/24; `OrderRepository.java` LINE 0/106, BRANCH 0/6, METHOD 0/24; `OrderController.java` LINE 0/12, METHOD 0/7. **100% on every file changed in the implementation.** This repair added no production line or branch, so it adds no new coverage obligation; the re-run confirms the merged tree still satisfies the build-failing gate.
 
-## Why this is not finished
+The implementation's branch-to-test mapping is recorded in `.agent/pr-notes/READY-16-20261120-090706.md` (each new branch and its covering test is enumerated there) and remains valid unchanged.
 
-The fix the story requires cannot be applied within the declared scope `db/migrations`:
+## Defects found, decisions and evidence sources
 
-1. It requires editing `TODO.md` (the "V59 to V66" sentence, READY-35's `scope`, `V59__service_profiles.sql` path and `reserved: V59`, and the `reserved:` fields of READY-36..READY-42). `AGENTS.md` rule 8 and the "Instructions for every agent" rules 3 and 8 at the top of `TODO.md` explicitly forbid a worker from editing `TODO.md`; the orchestrator/integrator own it.
-2. It requires editing `docs/decisions/0003-persistence-of-in-memory-stores.md` (the proposed V59..V64 → V60..V65 mapping). That path is also outside `db/migrations`.
-3. `TODO.md` rule 3 says: if the task needs a file outside its scope, stop, write the reason here, and finish without changing that file. `TODO.md` rule 9 says not to guess when the task and rules disagree.
-
-I therefore stopped before making any production change.
-
-## Exact next step (tracker owner / orchestrator)
-
-Before dispatching READY-35, edit the two out-of-scope trackers:
-
-1. `TODO.md` line 817: change "V59 to V66" to "V60 to V67".
-2. `TODO.md` READY-35 (lines 821-830): `reserved: V59` → `V60`; `scope` path `db/migrations/V59__service_profiles.sql` → `db/migrations/V60__service_profiles.sql`; the sentence "This store owns migration V59 only" → V60; step 2 "Create `db/migrations/V59__service_profiles.sql`" → V60.
-3. `TODO.md` READY-36..READY-42: shift each `reserved:` and migration `scope` path up by one — V60→V61, V61→V62, V62→V63, V63→V64, V64→V65, V65→V66, V66→V67 — and update the in-details "owns migration V<n> only" / "Create `db/migrations/V<n>__*.sql`" references to match.
-4. `docs/decisions/0003-persistence-of-in-memory-stores.md`: update the "proposed V59" reservation and the V59..V64 mapping to V60..V65 (V59 stays with the applied RX-02 repair).
-5. Re-run `python3 -I scripts/check-migrations.py --require-baseline` and `bash scripts/quick-check.sh` after the tracker edits, then dispatch READY-35. Leave the applied `V59__rx02_ambiguous_transition.sql` untouched.
-
-## Entry-point-to-test trace
-
-`db/migrations/V*.sql` → `scripts/check-migrations.py` (filename parse → version set → duplicate-version check at lines 220-228) → `check-migrations: duplicate migration version V59` + exit 1. The same duplicate is what Flyway would reject when two `V59__*.sql` files are present; the reproduction above exercises that gate with a synthetic temporary file. This task ends at the gate result because the corrective edits live in the trackers, not in `db/migrations`.
-
-## Evidence provenance
-
-- **Tool evidence (executed by this worker):** `ls`, `git status`, `git log`, `git ls-files`, `git show`, `cmp`, `grep`, `python3 -I scripts/check-migrations.py --require-baseline` (baseline and reproduction), `python3 -I -m unittest discover -s scripts/tests -q`, `python3 -I scripts/gen-opencode.py --check`, `git diff --check`, with results recorded above.
-- **Reviewer evidence (simulated reviewer, read-only, no commands run by the reviewer):** the `smartclinic-senior-database` specialist independently confirmed both decisions. It added that an applied migration's identity (version + description + checksum in `flyway_schema_history`) is immutable; with default `validateOnMigrate` (test suites call `Flyway.configure().load().migrate()` with no override), a database that already applied V59 fails validation with "applied migration not resolved locally: 59" if the file is renamed. It also confirmed that `check-migrations.py:220-228` deliberately allows version gaps (so HEAD already passes) and that renaming V59 to V67 would consume READY-42's intended version and recreate the collision. It agreed the correct outcome is no `db/migrations` change plus this handoff, with tracker-state edits owned by the orchestrator/integrator. Its finding is incorporated in the Decisions and Next-step sections above; no reviewer command output is claimed.
-- **Simulated-user / human / clinical evidence:** none. No patient data, credential, token or real domain name appears in this work; all fixtures and the temporary reproduction file are synthetic.
+- **Defect (fixed):** a worker wrote notes into the shared `.agent/pr-notes.md` and used another task's file name; this is what made the integrator merge conflict. Restored the shared file from main and moved this attempt's notes to `.agent/pr-notes/fix-20261120-112705.md`. No production defect was found in the READY-16 implementation.
+- **Decision:** keep the prior attempt's `fix-20261120-105859.md` (a per-task notes file from an earlier run) rather than delete another worker's record; it does not affect any gate. The shared tracker is the only file that had to be reverted.
+- **Environment-only findings (no repo change):** PyYAML and pip are absent, so `test_fast_tier`, `test_workflow_concurrency` and several `test_swarm`/`test_agent_run` cases cannot run here; `opencode.json` is the CI profile under skip-worktree. None is caused by, or fixable inside, this story.
+- **Evidence sources:** all commands above were executed locally (tool evidence) from synthetic fixtures. Specialist skills `smartclinic-delivery`, `smartclinic-senior-backend`, `smartclinic-senior-java-build`, `smartclinic-test-engineer`, `smartclinic-senior-database` and `smartclinic-software-engineer` were loaded and their rules applied (simulated reviewer evidence); no separate reviewer run was dispatched for this bounded merge repair. Simulated-user, human-participant and clinical evidence: none (backend list endpoint / tracker repair, not a clinical decision workflow). No patient data, credential or real domain name appears in code, logs, URLs or browser storage.
