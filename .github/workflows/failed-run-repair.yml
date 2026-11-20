@@ -1,22 +1,21 @@
 name: Failed run repair
-# When any pipeline workflow fails on main, start a swarm worker that reads the
-# failed logs and tries to fix it. swarm.py repair-gate keeps it bounded: one
-# repair PR at a time and at most three attempts per day, then an issue for a
-# person. The swarm plans the repair ahead of every TODO.md task.
+# When a pipeline workflow fails on main, record the failure as a repair task in
+# TODO.md and start a wave. The scheduler plans repairs ahead of every other task
+# and gives them the whole repository as scope, so nothing else runs while main
+# is being repaired. swarm.py add-repair-task keeps it bounded: one open repair at
+# a time and at most three per day, then an issue for a person.
 on:
   workflow_run:
     workflows:
       - Delivery
       - Heavy verification
-      - Swarm integrator
       - Agent swarm
       - Agent image
       - Swarm slot images
-      - Fix PR repair
     types: [completed]
     branches: [main]
 permissions:
-  contents: read
+  contents: write
   pull-requests: read
   issues: write
   actions: write
@@ -26,7 +25,7 @@ concurrency:
   queue: max
 jobs:
   repair:
-    name: Start a repair worker
+    name: Add a repair task
     if: github.event.workflow_run.conclusion == 'failure'
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -36,10 +35,12 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: main
+          fetch-depth: 0
           persist-credentials: false
-          sparse-checkout: scripts
-      - id: gate
-        run: python3 -I scripts/swarm.py repair-gate --run "$RUN_ID"
-      - name: Start the swarm with this run as the repair task
-        if: steps.gate.outputs.start == 'true'
-        run: gh workflow run swarm.yml --ref main -f repair_run="$RUN_ID"
+      - id: task
+        run: python3 -I scripts/swarm.py add-repair-task --run "$RUN_ID"
+      # The TODO.md commit is [skip ci], so start the wave explicitly.
+      - name: Start a wave for the repair
+        if: steps.task.outputs.added == 'true'
+        run: gh workflow run swarm.yml --ref main
