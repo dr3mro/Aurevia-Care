@@ -118,8 +118,9 @@ class ExchangeTaskIsolationTest {
                 seedMember(statement, org, "admin-" + suffix, "tenant_admin");
                 seedMember(statement, org, "revoke-" + suffix, "clinician");
             }
-            // FORGED is intentionally not seeded here: the storage-forgery test
-            // inserts that row itself and asserts the V20 guard resets its state.
+            // FORGED is deliberately not seeded here: the storage-forgery test
+            // inserts that row itself to prove the INSERT/V20 guard normalises
+            // poisoned state and resets its workflow/transmission/review channels.
             String[] ids = {READ, WORKFLOW, SENT, FAILED, ACK, REVIEW, GUARD,
                     REVOKED_TASK, MUTATE};
             for (int index = 0; index < ids.length; index++) {
