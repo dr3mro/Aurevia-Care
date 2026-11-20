@@ -1201,6 +1201,56 @@ class RepairTests(unittest.TestCase):
                for n in range(5)]
         self.assertTrue(self.gate(prs)[0])
 
+    def test_red_main_admits_dlv_repair_pull_requests_too(self):
+        prs = [{"number": 1, "title": "CW-001: a", "labels": labels("swarm"), "isCrossRepository": False},
+               {"number": 2, "title": "DLV-02: b", "labels": labels("swarm"), "isCrossRepository": False},
+               {"number": 3, "title": "FIX-5: c", "labels": labels("swarm"), "isCrossRepository": False}]
+        with mock.patch.object(swarm, "gh", FakeGh(prs=prs)):
+            self.assertEqual(swarm.plan_integration(red=True), [2, 3])
+
+    def test_repairs_get_the_repair_gate_and_their_named_classes(self):
+        todo = ("- [ ] DLV-02 · Repair identity\n  - scope: apps/api\n  - details:\n"
+                "    Classes: `IdentityProofingIsolationTest` and `ConsolidationIsolationTest`.\n")
+        cwd = os.getcwd()
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp, "TODO.md").write_text(todo)
+            os.chdir(tmp)
+            try:
+                for info, expected in (
+                        ({"title": "DLV-02: Repair identity", "labels": []}, swarm.REPAIR_GATE),
+                        ({"title": "FIX-9: x", "labels": []}, swarm.REPAIR_GATE),
+                        ({"title": "CW-001: a", "labels": labels("autofix")}, swarm.REPAIR_GATE),
+                        ({"title": "CW-001: a", "labels": []}, "scripts/integrator-gate.sh")):
+                    with self.subTest(title=info["title"]), \
+                            mock.patch.object(swarm, "gh_json", lambda *a, info=info: info):
+                        gate, env = swarm.gate_for(5, "scripts/integrator-gate.sh")
+                        self.assertEqual(gate, expected)
+                with mock.patch.object(swarm, "gh_json",
+                                       lambda *a: {"title": "DLV-02: Repair identity", "labels": []}):
+                    _, env = swarm.gate_for(5, "scripts/integrator-gate.sh")
+                self.assertEqual(env["STORY_ID"], "DLV-02")
+                self.assertIn("`IdentityProofingIsolationTest`", env["STORY_BODY"])
+            finally:
+                os.chdir(cwd)
+
+    def test_run_gate_passes_the_story_to_the_gate_but_no_token(self):
+        with mock.patch.dict(os.environ, {"GH_TOKEN": "secret"}), \
+             mock.patch.object(swarm.subprocess, "run") as run:
+            run.return_value = subprocess.CompletedProcess([], 0, "ok", "")
+            swarm.run_gate("scripts/repair-gate.sh", {"STORY_ID": "DLV-02", "STORY_BODY": "b"})
+        env = run.call_args.kwargs["env"]
+        self.assertEqual((env["STORY_ID"], env["STORY_BODY"]), ("DLV-02", "b"))
+        self.assertNotIn("GH_TOKEN", env)
+
+    def test_repair_gate_runs_the_integration_tier_and_cannot_skip_postgres(self):
+        gate = (ROOT / "scripts/repair-gate.sh").read_text()
+        self.assertIn("REQUIRE_POSTGRES=1", gate)
+        self.assertIn("bash scripts/worker-check.sh", gate)
+        self.assertIn("bash scripts/docs.sh", gate)
+        check = (ROOT / "scripts/worker-check.sh").read_text()
+        self.assertIn("REQUIRE_POSTGRES", check)
+        self.assertLess(check.index("REQUIRE_POSTGRES"), check.index("were NOT run"))
+
     def test_red_main_admits_only_repair_pull_requests(self):
         prs = [{"number": 1, "title": "CW-001: a", "labels": labels("swarm"), "isCrossRepository": False},
                {"number": 2, "title": "FIX-5: b", "labels": labels("swarm"), "isCrossRepository": False}]
