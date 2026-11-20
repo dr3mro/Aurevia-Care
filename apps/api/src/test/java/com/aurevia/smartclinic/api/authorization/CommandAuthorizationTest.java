@@ -75,6 +75,33 @@ class CommandAuthorizationTest {
     }
 
     @Test
+    void definitionsRejectTokensThatCannotBeGeneratedSafely() {
+        for (String badId : List.of("accept-order", "1accept", "/accept", "accept.order")) {
+            ApiException failure = assertThrows(ApiException.class,
+                    () -> new CommandDefinition(badId, "ACTION", "POST", "/api/v1/x", "Policy"));
+            assertEquals(422, failure.status());
+            assertEquals("INVALID_COMMAND_DEFINITION", failure.code());
+        }
+        for (String badPath : List.of("api/v1/x", "/api/v1/x/{user-id}", "/api/v1/x/{body}",
+                "/api/v1/x/{ctx}", "/api/v1/x/{ifMatch}", "/api/v1/x/{id}/{id}", "/api/v1/x/{id",
+                "/api/v1/x/id}")) {
+            ApiException failure = assertThrows(ApiException.class,
+                    () -> new CommandDefinition("okCommand", "ACTION", "POST", badPath, "Policy"));
+            assertEquals(422, failure.status());
+            assertEquals("INVALID_COMMAND_DEFINITION", failure.code());
+        }
+        assertEquals("/api/v1/x/{subject}", new CommandDefinition("okCommand", "ACTION", "POST",
+                "/api/v1/x/{subject}", "Policy").path());
+    }
+
+    @Test
+    void catalogRejectsDuplicateRoutes() {
+        CommandDefinition first = new CommandDefinition("first", "ACTION", "POST", "/api/v1/same", "Policy");
+        CommandDefinition second = new CommandDefinition("second", "ACTION", "POST", "/api/v1/same", "Policy");
+        assertThrows(IllegalArgumentException.class, () -> new CommandCatalog(List.of(first, second)));
+    }
+
+    @Test
     void catalogIsImmutableUniqueAndUnknownCommandsFailClosed() {
         CommandCatalog catalog = CommandCatalog.synthetic();
         assertEquals(24, catalog.commands().size());
@@ -338,6 +365,57 @@ class CommandAuthorizationTest {
         assertTrue(decision.allowed());
         assertEquals(1, sink.decisions().size());
         assertEquals("ALLOWED", sink.decisions().get(0).reasonCode());
+    }
+
+    @Test
+    void collaboratorFailuresAreRecordedAndReturnedAsMachineReadableErrors() {
+        MembershipResolver brokenResolver = identity -> {
+            throw new IllegalStateException("membership store unavailable");
+        };
+        InMemoryDecisionSink resolverSink = new InMemoryDecisionSink();
+        CommandAuthorization resolverFailure = CommandAuthorization.synthetic(
+                CommandCatalog.synthetic(), brokenResolver, resolverSink, CLOCK);
+        ApiException memberFailure = assertThrows(ApiException.class,
+                () -> resolverFailure.authorize(request("createFacility"), id(ORG, "admin-1")));
+        assertEquals(403, memberFailure.status());
+        assertEquals("FORBIDDEN", memberFailure.code());
+        assertEquals(1, resolverSink.decisions().size());
+        assertEquals("MEMBERSHIP_UNAVAILABLE", resolverSink.decisions().get(0).reasonCode());
+
+        Resolver resolver = new Resolver();
+        resolver.roles = List.of("tenant_admin");
+        InMemoryDecisionSink ruleSink = new InMemoryDecisionSink();
+        ActionRule brokenRule = (action, role) -> {
+            throw new IllegalStateException("policy evaluation unavailable");
+        };
+        CommandAuthorization ruleFailure = new CommandAuthorization(CommandCatalog.synthetic(),
+                Map.of(CommandCatalog.ACTION_POLICY, brokenRule), resolver, ruleSink, CLOCK);
+        ApiException decisionFailure = assertThrows(ApiException.class,
+                () -> ruleFailure.authorize(request("createFacility"), id(ORG, "admin-1")));
+        assertEquals(403, decisionFailure.status());
+        assertEquals("FORBIDDEN", decisionFailure.code());
+        assertEquals(1, ruleSink.decisions().size());
+        assertEquals("POLICY_UNAVAILABLE", ruleSink.decisions().get(0).reasonCode());
+    }
+
+    @Test
+    void untrustedCommandIdentifiersAreBoundedBeforeTheyAreAudited() {
+        Resolver resolver = new Resolver();
+        resolver.roles = List.of("tenant_admin");
+        InMemoryDecisionSink sink = new InMemoryDecisionSink();
+        CommandAuthorization authorization =
+                CommandAuthorization.synthetic(CommandCatalog.synthetic(), resolver, sink, CLOCK);
+        String oversized = "a".repeat(10_000) + "\nFORGED";
+        ApiException failure = assertThrows(ApiException.class,
+                () -> authorization.authorize(new CommandRequest(oversized, null, null), id(ORG, "admin-1")));
+        assertEquals(422, failure.status());
+        assertEquals("UNKNOWN_COMMAND", failure.code());
+        assertEquals("a".repeat(128), sink.decisions().get(sink.decisions().size() - 1).commandId());
+
+        ApiException control = assertThrows(ApiException.class,
+                () -> authorization.authorize(new CommandRequest("bad\nid", null, null), id(ORG, "admin-1")));
+        assertEquals(422, control.status());
+        assertEquals("badid", sink.decisions().get(sink.decisions().size() - 1).commandId());
     }
 
     @Test
