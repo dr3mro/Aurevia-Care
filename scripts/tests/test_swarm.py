@@ -147,6 +147,66 @@ class WorkerPostgresTests(unittest.TestCase):
         self.assertNotIn("NVD", script)
 
 
+class WorkerGateTests(unittest.TestCase):
+    def setUp(self):
+        import sys
+        sys.path.insert(0, str(ROOT / "scripts"))
+        import worker_gate
+        self.gate = worker_gate
+
+    def suite(self, tmp, name, failures=0, errors=0):
+        (Path(tmp) / f"TEST-{name}.xml").write_text(
+            f'<testsuite name="{name}" tests="3" failures="{failures}" errors="{errors}"/>')
+
+    def test_failing_classes_come_from_surefire_xml(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.suite(tmp, "com.x.GoodTest")
+            self.suite(tmp, "com.x.RxTransmissionFlowTest", failures=2)
+            self.suite(tmp, "com.x.ChartRecordIntegrationTest", errors=1)
+            self.assertEqual(self.gate.failing_classes(tmp),
+                             {"RxTransmissionFlowTest", "ChartRecordIntegrationTest"})
+
+    def test_ordinary_task_ignores_red_suites_it_did_not_touch(self):
+        ok, msg = self.gate.decide({"RxTransmissionFlowTest"},
+                                   ["apps/api/src/main/java/a/ChartService.java"], "S-G1-03")
+        self.assertTrue(ok)
+        self.assertIn("WARNING", msg)
+
+    def test_ordinary_task_fails_on_a_related_suite(self):
+        for changed in (["apps/api/src/test/java/a/RxTransmissionFlowTest.java"],
+                        ["apps/api/src/main/java/a/RxTransmission.java"]):
+            with self.subTest(changed=changed):
+                ok, _ = self.gate.decide({"RxTransmissionFlowTest"}, changed, "S-G2-01")
+                self.assertFalse(ok)
+
+    def test_repair_tasks_are_strict(self):
+        for story in ("FIX-123", "DLV-02"):
+            ok, _ = self.gate.decide({"RxTransmissionFlowTest"}, [], story)
+            self.assertFalse(ok)
+
+    def test_passing_run_is_ok(self):
+        self.assertTrue(self.gate.decide(set(), [], "S-G1-03")[0])
+
+
+class RepairFilterTests(unittest.TestCase):
+    def run_of(self, name, *jobs):
+        return {"name": name, "jobs": [{"name": n, "conclusion": c} for n, c in jobs]}
+
+    def test_a_failed_worker_alone_is_not_a_repair(self):
+        run = self.run_of("Agent swarm", ("Plan the wave", "success"),
+                          ("Swarm worker / Work the task", "failure"))
+        self.assertTrue(swarm.only_worker_failures(run))
+
+    def test_planning_or_integration_failures_still_count(self):
+        for bad in ("Plan the wave", "Swarm integrator / Integrate the ready batch"):
+            run = self.run_of("Agent swarm", (bad, "failure"), ("Swarm worker / Work the task", "failure"))
+            self.assertFalse(swarm.only_worker_failures(run))
+
+    def test_other_workflows_always_count(self):
+        self.assertFalse(swarm.only_worker_failures(
+            self.run_of("Delivery", ("Swarm worker / x", "failure"))))
+
+
 class RepairTaskTests(unittest.TestCase):
     TASK = {"id": "FIX-9", "title": "Repair main: Delivery failed", "body": "Reproduce.\n\nlog line"}
 
