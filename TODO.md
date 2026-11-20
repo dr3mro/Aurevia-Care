@@ -1041,6 +1041,7 @@ Do these after part 2 where `depends` says so. Persistence tasks run one at a ti
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT change files outside `scope`, add patient data to logs, or edit any existing migration.
 - [x] READY-49 · Add HTTP tests for the remaining controllers named in no test
   - pr: #217
+  - evidence: PR #217; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/READY-49.md; simulated review only
   - attempts: 1
   - requirements: ARC-03, ARC-04
   - scope: apps/api/src/test/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/it
@@ -1743,8 +1744,9 @@ Every entry below is finished and verified. Do not take them again; they stay he
     AttachmentService.events(actor, id) in apps/api/src/main/java/com/aurevia/smartclinic/messaging/attachments/AttachmentService.java:293 returns store.events(actor.organizationId()).stream().toList() - the entire tenant-wide attachment event log - after checking visibility only for the one file named by id. Its sibling view() at line 273 correctly filters with fileId.equals(fact.attachmentId()). AttachmentEvent.detail (AttachmentContract.java:349-351) carries scanner detail and void/rejection free text, so a caller authorized for one file receives other files' event details across conversations in the same tenant (MSG-07, ARC-07). InMemoryAttachmentStore.events(String organizationId) at line 66 confirms the store query is per-organization, so this is a cross-file/cross-conversation leak within a tenant, not a cross-tenant one. The existing test twoTenantsWithIdenticalLocalIdentifiersStayIsolated in AttachmentAcceptanceTest.java:428-431 only asserts every returned event has the caller's organizationId, so it never catches the missing per-file filter and 100% line coverage still passes. The service currently has no HTTP controller (already tracked as TODO AUD-20261119-03), so the leak is latent until that entry point is wired. Expected fix: filter the store events by attachmentId in events() exactly as view() does, and add a test that creates two attachments in one tenant and asserts events(a.id()) contains only a's events.
     Found by the daily audit. Synthetic fixtures only; failing tests first;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [-] AUD-20261120-11 · Reserved migration V59 is already used by the DLV-03 repair; READY-35 will collide
-  - agent: swarm-3
+- [x] AUD-20261120-11 · Reserved migration V59 is already used by the DLV-03 repair; READY-35 will collide
+  - pr: #218
+  - evidence: PR #218; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/AUD-20261120-11.md; simulated review only
   - attempts: 1
   - scope: db/migrations
   - details:
