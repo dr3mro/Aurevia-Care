@@ -569,8 +569,8 @@ Main's Delivery run is red; these tasks restore it. They share `apps/api`, so th
     Likely shared root cause (Delivery run #449 on S-G1-05): the trigger function `public.set_link_actor()` assigns `NEW.created_by`, but it is attached to tables that have no `created_by` column (`account_chart_link`, `duplicate_review`), so every INSERT fails with `record "new" has no field "created_by"` (about 26 tests). Two migrations from parallel workers appear to define or redefine the same function name for different tables. Find which migration last replaced `set_link_actor()`, give each table its own correctly-named function, and do not edit already-applied migrations: add a new one. Also expect separate defects in `ClinicalNoteRevisionIntegrationTest`, `ResultRoutingIntegrationTest`, `AccessIntegrationTest`, `DocumentIsolationTest`, `SpecimenAccessionIsolationTest`, `TrendingTest` and the `attested -> ambiguous` prescription transition; fix them after the classes listed here.
     Delivery on `main` has been red since about 23:36 on 2026-11-19: the `Java and database verification` job fails in `mvn verify` (run 44658087355, commit 3cd3443: Tests run 2012, Failures 62, Errors 7). Every failure is a PostgreSQL integration test (`@Tag("integration")`). Pull requests only run the fast tier, so these suites never ran before merge. Start from a clean checkout of current `main` and run the real suite (`bash apps/api/check.sh`, with PostgreSQL via `SMARTCLINIC_PG_ADMIN`), not only the fast tier. Reproduce each failure red first, find whether the test or the production code is wrong, and fix the real cause. Never weaken, skip, delete or re-tag a test, and never exclude a class from the gate. Read the surefire reports in `apps/api/target/surefire-reports` for the server stack trace behind each 404/500. Do not edit migrations that are already applied on main; add a new migration only when the schema is genuinely wrong. Do NOT edit `.github/`, `scripts/` or shared trackers. Record the root cause per class, commands and results in `.agent/pr-notes/<story-id>.md`. Done means the classes below pass in the full `mvn verify` run.
 
-- [-] DLV-03 · Repair integration tests: prescription transmission
-  - agent: swarm-1
+- [x] DLV-03 · Repair integration tests: prescription transmission
+  - pr: #198
   - attempts: 1
   - requirements: RX-02, IAM-01, ARC-02
   - depends: DLV-02
@@ -579,7 +579,9 @@ Main's Delivery run is red; these tasks restore it. They share `apps/api`, so th
     Class: `RxTransmissionFlowTest` (500 on `/api/v1/prescriptions/{id}/transmit` with no `submissionId`; STALE_VERSION where FORBIDDEN is expected for non-prescriber attestation; tenant concealment returns 200 instead of 404; RENEW_REQUIRES_TRANSMISSION where INVALID_TRANSITION is expected). Treat each as a possible production defect, since authorization and tenant isolation must fail closed.
     Delivery on `main` has been red since about 23:36 on 2026-11-19: the `Java and database verification` job fails in `mvn verify` (run 44658087355, commit 3cd3443: Tests run 2012, Failures 62, Errors 7). Every failure is a PostgreSQL integration test (`@Tag("integration")`). Pull requests only run the fast tier, so these suites never ran before merge. Start from a clean checkout of current `main` and run the real suite (`bash apps/api/check.sh`, with PostgreSQL via `SMARTCLINIC_PG_ADMIN`), not only the fast tier. Reproduce each failure red first, find whether the test or the production code is wrong, and fix the real cause. Never weaken, skip, delete or re-tag a test, and never exclude a class from the gate. Read the surefire reports in `apps/api/target/surefire-reports` for the server stack trace behind each 404/500. Do not edit migrations that are already applied on main; add a new migration only when the schema is genuinely wrong. Do NOT edit `.github/`, `scripts/` or shared trackers. Record the root cause per class, commands and results in `.agent/pr-notes/<story-id>.md`. Done means the classes below pass in the full `mvn verify` run.
 
-- [ ] DLV-04 · Repair integration tests: clinical notes, result routing, access, documents, specimens and trending
+- [-] DLV-04 · Repair integration tests: clinical notes, result routing, access, documents, specimens and trending
+  - agent: swarm-1
+  - attempts: 1
   - requirements: CLN-03, LAB-02, IAM-03, DOC-01
   - depends: DLV-03
   - scope: apps/api, db
@@ -931,8 +933,8 @@ Cadence and limits:
     Do NOT change `DeliveryStore` method signatures, the controllers or any migration. If the interface cannot be implemented with the V55 tables, STOP, write exactly which method and which missing column in `.agent/pr-notes/<story-id>.md`, and finish without code changes.
 
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` must pass for the classes you touched. Synthetic data only; write the failing test first; stay inside the declared scope; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
-- [-] AUD-20261120-07 · Inventory every in-memory store and write the persistence decision record
-  - agent: swarm-3
+- [x] AUD-20261120-07 · Inventory every in-memory store and write the persistence decision record
+  - pr: #197
   - attempts: 2
   - scope: docs/decisions
   - details:
