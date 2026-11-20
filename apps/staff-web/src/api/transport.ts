@@ -84,7 +84,9 @@ function csrfToken(): string | undefined {
     .split(';')
     .map((part) => part.trim())
     .find((part) => part.startsWith(`${CSRF_COOKIE}=`));
-  return entry?.slice(CSRF_COOKIE.length + 1);
+  const token = entry?.slice(CSRF_COOKIE.length + 1).trim();
+  // A blank token is an absent token: fail closed before any write is sent.
+  return token === undefined || token === '' ? undefined : token;
 }
 
 /** Parse a numeric Retry-After header (seconds); ignore other formats. */

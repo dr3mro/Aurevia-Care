@@ -37,13 +37,13 @@ All commands run from `apps/staff-web` unless stated.
 1. `npm ci --no-audit --no-fund` — added 312 packages, exit 0 (dependencies were not installed in the checkout).
 2. `npx vitest run src/api/transport.test.ts` (before implementation) — RED: `Failed to resolve import "./transport"`, 1 test file failed, no tests.
 3. `npx vitest run src/api/transport.test.ts` (after first implementation) — 28 passed but Vitest reported 1 unhandled rejection in the fake-timer timeout test. Defect D1 below; fixed in the test by attaching the rejection handler synchronously before advancing timers.
-4. `npx vitest run src/api/transport.test.ts` (after D1 fix) — `Test Files 1 passed (1)`, `Tests 28 passed (28)`, no errors.
+4. `npx vitest run src/api/transport.test.ts` (after D1 fix) — `Test Files 1 passed (1)`, `Tests 28 passed (28)`, no errors. After the F-1/D3 fix the focused file has 29 tests.
 5. `bash check.sh` — applicable staff-web gate (the story's `worker-check.sh` alternative is for API tasks). Final lines:
    - `gen:api: generated client matches the contract`
    - typecheck and lint: exit 0 (no diagnostics)
-   - `Test Files 31 passed (31)`, `Tests 227 passed (227)`
+   - `Test Files 31 passed (31)`, `Tests 228 passed (228)`
    - `No files with missing coverage.` / `46 files fully covered.`
-   - `Statements 100% (621/621)`, `Branches 100% (330/330)`, `Functions 100% (226/226)`, `Lines 100% (590/590)`
+   - `Statements 100% (622/622)`, `Branches 100% (334/334)`, `Functions 100% (226/226)`, `Lines 100% (591/591)`
    - The console stack traces in the output are expected `console.error` assertions from the existing `tests/theme/ThemeProvider.test.tsx` negative test; the suite result is all-passed.
 
 ## Defects found
@@ -51,7 +51,7 @@ All commands run from `apps/staff-web` unless stated.
 - D1 (test harness, resolved): a fake-timer timeout test created `send(...)` and only attached its rejection assertion after `advanceTimersByTimeAsync`, producing a `PromiseRejectionHandledWarning` and an unhandled-rejection error that would fail the gate. Fixed by converting the promise to a resolved value with `.catch((reason) => reason)` before advancing timers, then asserting on the resolved value.
 - D2 (type gate, resolved): `exactOptionalPropertyTypes` rejected passing `body: string | undefined` to `fetch`'s `RequestInit`, and `crypto.randomUUID` has a UUID template-literal return type. Fixed by building `RequestInit` and assigning `body` only when defined, and by typing the test's UUID mock as `typeof crypto.randomUUID` with UUID-shaped values.
 
-No production defect was found in the implementation by the executed checks.
+- D3 (review finding F-1, resolved): `csrfToken()` returned `''` for a present-but-blank `XSRF-TOKEN=` cookie, so a non-GET request would be sent with an empty `X-XSRF-TOKEN` header instead of failing closed. Fixed by trimming the cookie value and mapping blank to `undefined`; added a regression test asserting `csrf-missing` and zero `fetch` calls for a blank cookie.
 
 ## Decisions
 
@@ -65,7 +65,7 @@ No production defect was found in the implementation by the executed checks.
 
 ## Review
 
-A read-only bounded review was requested from the Senior TypeScript specialist (simulated reviewer). Its findings are appended here when received; reviewer evidence is simulated, not human or clinical.
+A read-only bounded review was returned by the Senior TypeScript specialist (simulated reviewer, not human or clinical). It confirmed every other acceptance criterion is met and raised one finding, F-1 (low severity, security relevant): a blank `XSRF-TOKEN=` cookie produced an empty CSRF header instead of the fail-closed `csrf-missing` error. F-1 was fixed in `csrfToken()` with a blank-value regression test (defect D3). All other observations were non-blocking.
 
 ## Blockers / missing evidence
 

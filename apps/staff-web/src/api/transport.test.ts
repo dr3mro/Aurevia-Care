@@ -135,6 +135,15 @@ describe('send — request construction', () => {
     });
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it('throws csrf-missing before sending when the cookie is blank', async () => {
+    cookieValue = 'XSRF-TOKEN=';
+
+    await expect(send(descriptor('POST', { body: {} }))).rejects.toMatchObject({
+      kind: 'csrf-missing',
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });
 
 describe.each([
