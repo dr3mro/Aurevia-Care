@@ -39,9 +39,9 @@ import com.aurevia.smartclinic.tenant.TenantContext;
  *
  * <p>This service is the single authoritative resolver for protected messaging
  * commands. It exposes both the conversation-domain
- * {@link PatientConnectionVerifier} port and the directory-specific
- * {@link #requireActiveConnectionById(String, String)} /
- * {@link #requireUsableConnection(String, String)} methods; all of them share
+ * {@link com.aurevia.smartclinic.messaging.conversations.PatientConnectionVerifier} port and the directory-specific
+ * {@link com.aurevia.smartclinic.messaging.units.CareUnitDirectoryService#requireActiveConnectionById(String, String)} /
+ * {@link com.aurevia.smartclinic.messaging.units.CareUnitDirectoryService#requireUsableConnection(String, String)} methods; all of them share
  * the same tenant-scoped resolution and fail closed on the same conditions.</p>
  */
 @Service
@@ -237,8 +237,8 @@ public class CareUnitDirectoryService implements PatientConnectionVerifier {
      *
      * <p>The expected unit key is validated first (before any lookup or audit),
      * then the exact connection is resolved through the tenant directory by
-     * {@link #requireActiveConnectionById(String, String)}. The directory's unit
-     * category is parsed by {@link ConversationUnitResolver} and must equal the
+     * {@link com.aurevia.smartclinic.messaging.units.CareUnitDirectoryService#requireActiveConnectionById(String, String)}. The directory's unit
+     * category is parsed by {@link com.aurevia.smartclinic.messaging.conversations.ConversationUnitResolver} and must equal the
      * expected key; every derived identity in the returned value comes from the
      * stored connection and directory, never from the caller.</p>
      */
@@ -262,7 +262,7 @@ public class CareUnitDirectoryService implements PatientConnectionVerifier {
      *
      * <p>The connection is resolved inside the active tenant, its chart ownership
      * and active state are asserted, and the existing
-     * {@link #requireActiveConnection(String, String)} check is reused so an
+     * {@link com.aurevia.smartclinic.messaging.units.CareUnitDirectoryService#requireActiveConnection(String, String)} check is reused so an
      * inactive membership, a revoked chart link or a revoked connection fails
      * closed. The resulting unit category comes from the tenant's care-unit
      * directory, never from the client.</p>

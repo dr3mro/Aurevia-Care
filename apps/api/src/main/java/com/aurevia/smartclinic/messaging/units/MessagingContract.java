@@ -131,7 +131,7 @@ public final class MessagingContract {
      * through this record, never from a global or client-supplied mapping. The
      * unit category binds the directory identity to the conversation unit
      * vocabulary so a connection to one kind cannot be used to address another
-     * kind. {@link #kind()} is the conversation-domain alias for the same value.</p>
+     * kind. {@link com.aurevia.smartclinic.messaging.units.MessagingContract.CareUnit#kind()} is the conversation-domain alias for the same value.</p>
      *
      * @return the immutable value
      */
@@ -157,7 +157,7 @@ public final class MessagingContract {
         /**
          * Create a care unit with a bounded conversation unit kind. This is the
          * conversation-domain constructor: the kind is validated against the
-         * approved {@link UnitKey} vocabulary at construction so an unknown kind
+         * approved {@link com.aurevia.smartclinic.messaging.conversations.ConversationContract.UnitKey} vocabulary at construction so an unknown kind
          * never reaches a directory or a connection.
          *
          * @param id             care-unit identifier
@@ -201,7 +201,7 @@ public final class MessagingContract {
          * Return the bounded conversation unit category declared by this inbox.
          *
          * <p>This is the conversation-domain alias of the directory's
-         * {@link #unitKey()} and is always the same value.</p>
+         * {@link com.aurevia.smartclinic.messaging.units.MessagingContract.CareUnit#unitKey()} and is always the same value.</p>
          *
          * @return the bounded unit key, or {@code null} for a directory-only unit
          */
