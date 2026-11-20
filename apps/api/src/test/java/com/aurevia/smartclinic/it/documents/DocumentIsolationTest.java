@@ -13,6 +13,7 @@ import java.sql.DriverManager;
 import java.sql.Statement;
 import java.util.Base64;
 import java.util.HexFormat;
+import java.util.UUID;
 
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterAll;
@@ -144,8 +145,10 @@ class DocumentIsolationTest {
     }
 
     private String registerChart(String org, String reception) {
+        // Each registration needs a fresh issuer-scoped MRN: V7 makes (org, issuer,
+        // mrn, version) unique and the database is shared across the test methods.
         String body = "{\"displayName\":\"Synthetic Patient\",\"mrn\":\"MRN-" + org.substring(0, 2)
-                + "\",\"issuer\":\"CLINIC\",\"dob\":\"1990-05-20\",\"language\":\"en\","
+                + "-" + UUID.randomUUID() + "\",\"issuer\":\"CLINIC\",\"dob\":\"1990-05-20\",\"language\":\"en\","
                 + "\"contacts\":\"{}\",\"identifiers\":\"[]\",\"consents\":\"[]\"}";
         ResponseEntity<String> response = post("/api/v1/patients", body, reception, org);
         assertEquals(HttpStatus.OK, response.getStatusCode(), response.getBody());
@@ -237,11 +240,11 @@ class DocumentIsolationTest {
                 + "\"sourceAssociationId\":null}";
         assertEquals(HttpStatus.FORBIDDEN,
                 post("/api/v1/documents/rendered", validRender, "reception-a", ORG_A).getStatusCode());
-        assertEquals(HttpStatus.UNPROCESSABLE_ENTITY,
-                post("/api/v1/documents/rendered", "{}", "clinician-a", ORG_A).getStatusCode());
+        assertEquals(422, post("/api/v1/documents/rendered", "{}", "clinician-a", ORG_A)
+                .getStatusCode().value());
         String badMedia = body.replace("application/pdf", "image/gif");
-        assertEquals(HttpStatus.UNPROCESSABLE_ENTITY,
-                post("/api/v1/documents/associations", badMedia, "clinician-a", ORG_A).getStatusCode());
+        assertEquals(422, post("/api/v1/documents/associations", badMedia, "clinician-a", ORG_A)
+                .getStatusCode().value());
         String missingChart = body.replace(chart, UNKNOWN);
         assertEquals(HttpStatus.NOT_FOUND,
                 post("/api/v1/documents/associations", missingChart, "clinician-a", ORG_A).getStatusCode());
@@ -254,8 +257,8 @@ class DocumentIsolationTest {
         String uri = "/api/v1/documents/associations/" + id + "/void";
         assertEquals(HttpStatus.PRECONDITION_REQUIRED,
                 post(uri, "{\"reason\":\"wrong chart\"}", "clinician-a", ORG_A).getStatusCode());
-        assertEquals(HttpStatus.UNPROCESSABLE_ENTITY,
-                request(HttpMethod.POST, uri, "{\"reason\":\"  \"}", "clinician-a", ORG_A, "1").getStatusCode());
+        assertEquals(422, request(HttpMethod.POST, uri, "{\"reason\":\"  \"}",
+                "clinician-a", ORG_A, "1").getStatusCode().value());
         assertEquals(HttpStatus.PRECONDITION_FAILED,
                 request(HttpMethod.POST, uri, "{\"reason\":\"wrong chart\"}",
                         "clinician-a", ORG_A, "9").getStatusCode());

@@ -302,7 +302,7 @@ class ClinicalNoteRevisionIntegrationTest {
         String id = field(create("clinician-a", ORG_A).getBody(), "id");
         assertEquals(HttpStatus.OK, request(HttpMethod.POST, "/api/v1/clinical-notes/" + id + "/sign",
                 "{\"attestation\":\"attested\"}", "clinician-a", ORG_A, "\"1\"").getStatusCode());
-        String body = "{\"reason\":\"wrong patient\",\"affectedRecipients\":[\"lab-a\"]}";
+        String body = "{\"reason\":\"wrong patient\",\"affectedRecipients\":\"[\\\"lab-a\\\"]\"}";
         ResponseEntity<String> result = request(HttpMethod.POST,
                 "/api/v1/clinical-notes/" + id + "/entered-in-error",
                 body, "clinician-a", ORG_A, "\"2\"");
@@ -316,7 +316,7 @@ class ClinicalNoteRevisionIntegrationTest {
         assertTrue(view.getBody().contains("\"signed\""), "the signed original must remain readable");
         ResponseEntity<String> missingReason = request(HttpMethod.POST,
                 "/api/v1/clinical-notes/" + id + "/entered-in-error",
-                "{\"reason\":\"  \",\"affectedRecipients\":[]}", "clinician-a", ORG_A, "\"3\"");
+                "{\"reason\":\"  \",\"affectedRecipients\":\"[]\"}", "clinician-a", ORG_A, "\"3\"");
         assertEquals(422, missingReason.getStatusCode().value());
     }
 

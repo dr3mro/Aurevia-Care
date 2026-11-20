@@ -3,6 +3,7 @@ package com.aurevia.smartclinic.authz.access;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -336,20 +337,42 @@ public class AccessRepository {
         return new GrantRow(resultSet.getString("id"), resultSet.getString("subject"),
                 resultSet.getString("facility_code"), resultSet.getString("purpose"),
                 resultSet.getString("reason"), resultSet.getString("role_key"),
-                resultSet.getObject("granted_at", Instant.class),
-                resultSet.getObject("expires_at", Instant.class),
-                resultSet.getObject("revoked_at", Instant.class),
-                resultSet.getString("reviewed_by"),
-                resultSet.getObject("reviewed_at", Instant.class),
-                resultSet.getString("review_note"));
+                instant(resultSet, "granted_at"), instant(resultSet, "expires_at"),
+                nullableInstant(resultSet, "revoked_at"), resultSet.getString("reviewed_by"),
+                nullableInstant(resultSet, "reviewed_at"), resultSet.getString("review_note"));
     }
 
     private static IncidentRow mapIncident(ResultSet resultSet, int rowNumber) throws SQLException {
         return new IncidentRow(resultSet.getString("id"), resultSet.getString("reference"),
                 resultSet.getString("subject"), resultSet.getString("reason"),
                 resultSet.getString("status"), resultSet.getString("approved_by"),
-                resultSet.getObject("approved_at", Instant.class),
-                resultSet.getObject("created_at", Instant.class),
-                resultSet.getObject("expires_at", Instant.class));
+                nullableInstant(resultSet, "approved_at"), instant(resultSet, "created_at"),
+                instant(resultSet, "expires_at"));
+    }
+
+    /**
+     * Read a required {@code timestamptz} column as an instant. pgjdbc maps
+     * {@code timestamptz} to {@link OffsetDateTime}, not to {@link Instant}.
+     *
+     * @param resultSet current row
+     * @param column    required timestamp column
+     * @return the column as an instant
+     * @throws SQLException when the column cannot be read
+     */
+    private static Instant instant(ResultSet resultSet, String column) throws SQLException {
+        return resultSet.getObject(column, OffsetDateTime.class).toInstant();
+    }
+
+    /**
+     * Read a nullable {@code timestamptz} column as an instant.
+     *
+     * @param resultSet current row
+     * @param column    nullable timestamp column
+     * @return the column as an instant, or {@code null} when it is unset
+     * @throws SQLException when the column cannot be read
+     */
+    private static Instant nullableInstant(ResultSet resultSet, String column) throws SQLException {
+        OffsetDateTime value = resultSet.getObject(column, OffsetDateTime.class);
+        return value == null ? null : value.toInstant();
     }
 }
