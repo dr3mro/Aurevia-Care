@@ -9,7 +9,7 @@ The committed [OpenAPI contract](generated/openapi.yaml),
 The server gate is
 [CommandAuthorization.java](../../apps/api/src/main/java/com/aurevia/smartclinic/api/authorization/CommandAuthorization.java).
 Requirement text is in [SMARTCLINIC_V1_SPEC.md](../../SMARTCLINIC_V1_SPEC.md);
-the shared wire conventions are in the [X-01 contract](../x_01/README.md).
+the shared wire conventions are in the [X-01 contract](../contract/README.md).
 
 This slice adds no route, controller, database table or migration; reserved
 version `V57` is intentionally unused (gaps are allowed by the migration gate).
@@ -94,10 +94,11 @@ OPS-02 audit belongs to the owning service's transactional audit appender.
 
 This slice is delivered at the canonical, business-domain paths named by the
 tracker entry: `contracts/openapi` and `com.aurevia.smartclinic.api.authorization`.
-The earlier story-ID paths (`contracts/x_04`, `api/x_04`) are not retained, so no
-duplicate command catalog or authorization gate exists. Reserved migration V57
-is unused; coordination of the remaining story-ID contract paths
-(`contracts/x_01`–`x_03`) belongs to REFACTOR-PACKAGES-02 under its own owner.
+The earlier story-ID paths are not retained, so no duplicate command catalog or
+authorization gate exists. Reserved migration V57
+is unused; the remaining story-ID contract paths were renamed to business-domain
+folders (`contracts/contract`, `contracts/events`, `contracts/documents`) by
+REFACTOR-PACKAGES-02.
 
 ## Entry point to test trace
 
