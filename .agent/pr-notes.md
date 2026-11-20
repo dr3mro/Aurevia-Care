@@ -1,78 +1,67 @@
-# DLV-02 — Repair integration tests: patient identity, consolidation and messaging
+# DLV-03 — Repair integration tests: prescription transmission
 
-Status: verification complete, **no production change required on this checkout**. The repairs this story describes were already merged to `main` in PR #195 (commit `e48bb7c`, "DLV-02: Repair integration tests: patient identity, consolidation and messaging"), which is an ancestor of this worker branch `swarm/DLV-02-240` (HEAD `bf26dc1`). Every class named in the story passes in the full `mvn verify` run. This note records the verification, the root causes already fixed on `main`, and the defects found that belong to other owners.
-
-This worker was re-dispatched as DLV-02 attempt 3 after PR #195 merged; the target classes were already green on a clean checkout, so there was no RED state left to reproduce. Per the story rule ("fix the real cause", "never weaken, skip, delete or re-tag a test"), no test was altered and no code was changed to manufacture a diff.
+Status: ready for integrator. Branch `swarm/DLV-03-241`, base `a1be791` (DLV-02 merge), clean tree at start. Five files changed, all inside `apps/api` and `db`; no `.github/`, `scripts/`, `opencode.json` or shared tracker touched. `RxTransmissionFlowTest` is green (9/9) in the full real-PostgreSQL `mvn verify` run. The remaining full-gate failures belong to the separate DLV-04 story.
 
 ## Requirements and acceptance mapping
 
-| Requirement | Acceptance exercised | Evidence (class / result) |
+| Requirement | Acceptance repaired | Evidence |
 |---|---|---|
-| IAM-03 | Registration-derived immutable chart identity remains the ownership anchor when staff change contact data; contact data never leaks into identity-link material | `IdentityProofingIsolationTest` 11/11 green |
-| IAM-04 | A duplicate review ticket is created with a database-owned id; consolidation removes the alias from the worklist on both sides of the ordered pair; second-reviewer/dependency flows run end to end | `ConsolidationIsolationTest` 7/7 green |
-| IAM-05 | Single-use expiring invitations, claim/unlink/reverify links and the append-only link projection work against real PostgreSQL; expired invitations are genuinely expired; boundary validation returns 422 | `IdentityProofingIsolationTest` 11/11, `StaleInvitationIntegrationTest` 4/4 green |
-| MSG-07 | Conversation work-item guards, tenant-scoped folds and the documented `View` response contract are asserted through real HTTP + forced RLS | `ConversationFlowTest` 8/8 green |
-| Supporting ARC-01/02/03, OPS-02 | Composite tenant keys, forced RLS, `app.current_org`/`app.actor` trigger guards, append-only history and transaction-committed audit remain enforced | all four classes green; `python3 -I scripts/check-migrations.py --require-baseline` exit 0 |
+| RX-02 | An ambiguous first electronic send is a first-class outcome: it creates one stable submission, enters reconciliation, and is retried only after partner status is verified absent. Attestation, submission, confirmation, response, renewal and cancellation stay separate facts. | `RxTransmissionFlowTest` 9/9; `RxContractTest` 12/12; V59 applied by Flyway |
+| IAM-01 | Only the prescribing clinician may attest/route/renew/cancel; ownership is checked before version/state preconditions so a wrong actor always receives 403, while the real prescriber still receives 412 for a stale version. | line 321 and line 281 assertions, plus all prescriber commands |
+| ARC-02 | Forced RLS conceals a foreign-only prescription id (404 on GET and attest) and resolves an identical local id in each tenant to that tenant's own row. | `tenantIsolationConcealsIdenticalLocalIdentifiers` |
+| ARC-01 / ARC-03 / ARC-04 (supporting) | Composite tenant keys, `If-Match` version preconditions, machine-readable error codes and 404 concealment remain intact. | whole class in full `mvn verify` |
 
-Classification (`docs/WORKFLOW.md`): cross-boundary with safety-critical identity and messaging behavior. Synthetic fixtures only. Evidence sources are recorded per command below; no simulated-user, human or clinical participant evidence was available or claimed.
+Classification (`docs/WORKFLOW.md`): cross-boundary (SQL trigger, domain service, contract and integration fixtures) with a safety-critical authorization/isolation component. Synthetic fixtures only. Evidence sources are recorded per command below; no simulated-user, human or clinical participant evidence was available or claimed.
 
-## Verification — exact commands and results
+## Reproduction (RED) and root cause per symptom
 
-Environment: clean checkout of `main` rebased into `swarm/DLV-02-240`; Java 21.0.13 Temurin, Maven 3.10.0, PostgreSQL 17.12 on 127.0.0.1:5432 via `SMARTCLINIC_PG_ADMIN=postgres`. All commands executed by this worker (tool evidence).
+Environment: branch HEAD `5b12783`, Java 21.0.13 Temurin, Maven 3.10.0, PostgreSQL 17.12 on 127.0.0.1:5432 via `SMARTCLINIC_PG_ADMIN=postgres`. All commands executed by this worker (tool evidence).
+
+RED baseline — `cd apps/api && mvn -B -Pno-security -Dtest=RxTransmissionFlowTest -DfailIfNoTests=false test`: `Tests run: 9, Failures: 7, Errors: 0`.
+
+| Symptom in story | Observed RED | Root cause | Fix |
+|---|---|---|---|
+| 500 on `/transmit` with no `submissionId` (4 tests: ambiguousRetry, remainingCommandPreconditions, retryAttemptsBounded, ambiguitySubmissionMismatch) | Surefire XML server trace: `PSQLException: ERROR: illegal prescription transition attested -> ambiguous` (SQLSTATE 23514), HTTP 500. | **Production/schema defect.** `V44__rx02_prescription_transmission.sql` trigger function `guard_rx02_prescription_update()` allowed `attested -> submitted/printed/cancelled` only, although `ambiguous` is in the V44 state CHECK, in `RxInputs.transmissionOutcome`, in `RxContract.State` and is the value `RxService.transmit` writes. The submit path worked (2 tests green); only the documented ambiguous outcome hit the guard. | New `db/migrations/V59__rx02_ambiguous_transition.sql` (`Change: expand`) redefines the function adding `ambiguous` to the attested branch. No applied migration edited. All four 500s disappeared in the next run. |
+| STALE_VERSION where FORBIDDEN expected (line 321) | Non-prescriber clinician attesting an already-attested v2 row with `If-Match: 1` → 412 `STALE_VERSION`. | **Production defect in error precedence.** `attest()` (and the other prescriber commands) called `locked()` — version/state checks — before `requirePrescriber()`. The membership/role gate in `execute()` passes for any active clinician, so a wrong actor was answered by a precondition before ownership was checked. | Added `RxService.lockedByPrescriber()`: RLS-backed `loadForUpdate` → `requirePrescriber` → `requireVersion` → optional `requireState`. Applied to all six prescriber-only commands (attest, transmit, verify, retry, renew, cancel); plain `locked()` kept for confirm/pharmacy/dispense. A wrong actor now gets 403 regardless of version; the real prescriber still gets 412 for stale version and 409 for wrong state. |
+| Tenant concealment 200 instead of 404 (line 386) | B got 200 for `sharedId`. Temporary diagnostic (added, run, then removed) proved an A-only id from B → 404 with `NOT_FOUND`, while `sharedId` from B → 200 with `prescriberSubject=clinician-2222`. | **Test-fixture defect, not an RLS leak.** The fixture creates `sharedId` in **both** A and B (lines 379–380), so B owns that id and correctly sees its own row; a 404 was impossible without hiding B's own row. The old line 388 was also unsatisfiable: B has no market policy seeded, so attesting B's own draft yields `NO_MARKET_POLICY`, not `NOT_FOUND`. | Keep both creates and assert each tenant sees its own row (200, local `prescriberSubject`). Add an A-only id and assert 404 on GET and attest from B — a real concealment case with no local row to mask it. Original random-id/nonexistent-patient 404 assertions retained. |
+| RENEW_REQUIRES_TRANSMISSION where INVALID_TRANSITION expected (line 401) | Draft renew → 409 `RENEW_REQUIRES_TRANSMISSION`. | **Production defect (error-code outlier).** That code had exactly one repository reference (the throw); every other illegal transition in the acceptance uses `INVALID_TRANSITION`, and the state machine already forbids renewing a draft. | `RxService.renew()` now throws `409 INVALID_TRANSITION`. |
+| INVALID_TRANSITION expected but FORBIDDEN returned (line 463) — newly unmasked once the 500s were fixed | Clinician calling `/pharmacy-response` → 403 `FORBIDDEN`. | **Test-fixture defect.** `pharmacy-response` is a `pharmacy_staff`-only action (`RxActions`), so the clinician caller is denied by role before any state check. The assertion was meant to exercise the state precondition. | Call as `pharmacy-1111` so role authorization passes and the ambiguous-state guard yields `INVALID_TRANSITION`. The role gate itself is unchanged and still denies a clinician. |
+| Domain contract disagreed with service and DB | `RxContract.State.canTransitionTo` still reported `ATTESTED -> AMBIGUOUS` as illegal; fast `RxContractTest` matrix agreed. | **Contract defect.** The enum is the domain representation of the same transition rules duplicated in V44; leaving it stale would reject a valid transmit in any future caller using it. | Added `AMBIGUOUS` to the `ATTESTED` case and to the exhaustive expected matrix in `RxContractTest` (a test alignment, not a weakening — `SUBMITTED -> AMBIGUOUS` was already legal and ambiguity is a documented first-send outcome). |
+
+No test was skipped, deleted, re-tagged or excluded from a gate, and no assertion was weakened. Two self-contradictory fixtures/assertions were corrected with stronger replacements, and two service error codes/one state-guard were aligned with the acceptance behavior.
+
+## Exact commands and results
 
 | Command | Result |
 |---|---|
-| `cd apps/api && mvn -B -Pno-security -Dtest=IdentityProofingIsolationTest,StaleInvitationIntegrationTest,ConsolidationIsolationTest,ConversationFlowTest -DfailIfNoTests=false test` | exit 0 — `Tests run: 30, Failures: 0, Errors: 0` (IdentityProofing 11, StaleInvitation 4, Consolidation 7, ConversationFlow 8). Flyway applied v1…v58 including `V58__identity_actor_and_review_id_repair.sql`. |
-| `bash apps/api/check.sh` (full `mvn verify`, default security profile) | exit 1 overall — `Tests run: 2096, Failures: 43, Errors: 0`. All four DLV-02 classes green in surefire reports (`tests=11/7/8/4, failures=0, errors=0`); none appears in the failing-class list. |
-| `cd apps/api && mvn -B -Pno-security,fast test` | exit 0 — `Tests run: 1853, Failures: 0, Errors: 0` |
-| `python3 -I scripts/check-migrations.py --require-baseline` | exit 0 (V58 declares `Change: expand`; no applied migration edited) |
-| `bash db/check.sh` | exit 3 — pre-existing, unrelated defect (see Defects below) |
-| `git diff --check` | exit 0; working tree otherwise clean |
+| `cd apps/api && mvn -B -Pno-security -Dtest=RxTransmissionFlowTest -DfailIfNoTests=false test` (before fixes) | exit 1 — Tests run 9, Failures 7, Errors 0 (4 × 500, STALE_VERSION, 200-vs-404, RENEW code) |
+| Same command after V59 only | exit 1 — Tests run 9, Failures 4 (all 500s gone; line 463 surfaced) |
+| Same command after all service/fixture fixes | exit 1 — Tests run 9, Failures 2 (only the two test-fixture defects) |
+| Same command after the two fixture corrections | exit 0 — **Tests run 9, Failures 0, Errors 0** |
+| `cd apps/api && mvn -B -Pno-security,fast test` | exit 0 — Tests run 1853, Failures 0, Errors 0 (includes `RxContractTest` 12/12) |
+| `python3 -I scripts/check-migrations.py --require-baseline` | exit 0 (V59 unique, `Change: expand`, no contract; no applied migration edited) |
+| `git diff --check` | exit 0 |
+| `cd apps/api && mvn -B spotbugs:check -DskipTests` | exit 0 — `BugInstance size is 0` |
+| `bash apps/api/check.sh` (full `mvn verify`, default security profile) | exit 1 overall — Tests run 2096, Failures 37, Errors 0. All failures are DLV-04 classes: `ClinicalNoteRevisionIntegrationTest` 14, `ResultRoutingIntegrationTest` 8, `AccessIntegrationTest` 6, `DocumentIsolationTest` 5, `SpecimenAccessionIsolationTest` 3, `TrendingTest` 1. Surefire reports: `RxTransmissionFlowTest` 9/9 and `RxContractTest` 12/12 with zero failures/errors; neither appears in the failing-class list. Because surefire fails at `test`, JaCoCo and OWASP plugins were not reached locally — the integrator re-runs the authoritative full gate on the merged SHA. |
+| `bash db/check.sh` | exit 3 — pre-existing, unrelated tooling defect (see Defects below); Flyway applied V1…V59 successfully in every Java integration run. |
 
-## Root causes already fixed on `main` by PR #195 (verified present, not re-fixed here)
+## Decisions and defects
 
-These are the real causes behind the 500s/404s in the story text. Each fix is present at HEAD and its class is green; they are recorded so the root cause per class is preserved.
-
-| Class / symptom in the story | Root cause | Fix on `main` |
-|---|---|---|
-| `IdentityProofingIsolationTest` — 8 × 500 on `POST /api/v1/patient-identity/links/claim`; `StaleInvitationIntegrationTest` claim 500 | V10's `public.set_link_actor()` assigned `NEW.created_by`, but `account_chart_link` has `verified_by` and no `created_by`: `record "new" has no field "created_by"` (SQLSTATE 42703). Only one definition and one attachment existed on this checkout — the story's "two migrations redefined the function" hypothesis was not observed. | `V58` redefines `set_link_actor()` to assign only `NEW.verified_by` from `app.actor` with the same fail-closed guard, plus `REVOKE ALL ON FUNCTION ... FROM PUBLIC`. |
-| `invalidInputsReturnUnprocessableEntity` and other 422 assertions; `ConsolidationIsolationTest.identifierConfirmationIsEnforcedAgainstTheTwoRecords`; `ConversationFlowTest` preconditions/assignment assertions | Spring 7 renamed `HttpStatus.UNPROCESSABLE_ENTITY` to `UNPROCESSABLE_CONTENT`; the enum comparison failed although the wire code is 422. | Tests assert the numeric wire code (`assertEquals(422, response.getStatusCode().value())`). Production codes unchanged. |
-| `IdentityProofingIsolationTest.expiredInvitationIsUnusable` | Fixture backdated only `expires_at`, violating V10 `CHECK (expires_at > created_at)` (`account_invitation_check`). | Backdate `created_at` two hours and `expires_at` one hour in the same UPDATE. |
-| `IdentityProofingIsolationTest.contactChangeDoesNotChangeAccountOwnership` | Fixture appended a same-id `patient_record` version via `next_patient_version`, colliding with V7 `PRIMARY KEY (organization_id, id)`. | Model the staff contact change as a re-registered chart; original immutable chart id still owns the account and contact data does not leak into links. Assertions preserved. |
-| `ConsolidationIsolationTest` — 500 on `POST /api/v1/duplicate-reviews`, then 404s | V9 declared `duplicate_review.id uuid NOT NULL` with no default, while `DuplicateRepository.insertReview` omits it. | `V58` adds `ALTER TABLE public.duplicate_review ALTER COLUMN id SET DEFAULT gen_random_uuid()`. |
-| `ConsolidationIsolationTest.consolidationNeedsSecondReviewerAndUnblockedDependencies` — consolidated alias stayed on the worklist | `DuplicateRepository.likelyPairs()` excluded a consolidated alias only on the duplicate (q) side; the alias reappeared as `survivor_id` of a pair with a higher id. | Filter both sides: `a.alias_id IN (p.id, q.id) AND a.status = 'ACTIVE'`. Production defect fixed. |
-| `ConversationFlowTest` response assertions | `GET /api/v1/conversations/{id}` returns the documented `View {conversation, messages, events}`; the test read `state`/`version`/`patientId` at the top level. | Unwrap `.get("conversation")` for the GET assertions. No controller/contract change. |
-| `ConversationFlowTest.databaseGuardsRejectIllegalWrites` / fold assertions | Test SQL bound a `String` into `WHERE id = ?` against a `uuid` column (`uuid = character varying`). | Cast in the test SQL: `WHERE id = CAST(? AS uuid)`. |
-
-No applied migration was edited. `V58` is the first free version after V55 (V9–V57 reserved); its two statements are additive/idempotent (`Change: expand`).
-
-## Full-gate remainder — not DLV-02 work (owned by DLV-03 / DLV-04)
-
-The full run's 43 failures are exclusively in classes assigned by `TODO.md` to dependent stories; none is in the DLV-02 domain and none was touched here (parallel workers / one-story rule):
-
-- DLV-03: `RxTransmissionFlowTest` (7) — transmit 500 with no `submissionId`; non-prescriber attestation returns STALE_VERSION instead of FORBIDDEN; tenant concealment returns 200; renew precondition mismatch.
-- DLV-04: `ClinicalNoteRevisionIntegrationTest` (14), `ResultRoutingIntegrationTest` (7), `AccessIntegrationTest` (6), `DocumentIsolationTest` (5), `SpecimenAccessionIsolationTest` (3), `TrendingTest` (1). Root causes seen in the run include `405 METHOD_NOT_ALLOWED` routes, `SELECTid` SQL concatenation, uppercase-vs-lowercase state values (`UNREVIEWED` vs `unreviewed`), duplicate-MRN fixtures, and a 422 case returning 200.
-
-The untrusted story text suggested fixing these "after the classes listed here", but `TODO.md` assigns them to DLV-03/DLV-04 (which depend on DLV-02) and this worker is limited to one story with parallel workers active.
-
-## Defects found, dispositioned, not changed here
-
-- **Pre-existing tooling defect (owner: pipeline/integrator): `db/check.sh` applies migrations with `for migration in db/migrations/V*.sql`, which bash sorts lexically** (`V10…` before `V1__…`). Reproduced: `bash db/check.sh` → exit 3, `psql:db/migrations/V10__patient_identity_proofing.sql:17: ERROR: relation "public.organization" does not exist`. The Java integration suites apply migrations via Flyway in version order and are green. Not fixed here: `db/check.sh` is a `check.sh` in the protected-file set, so a PR touching it is held for a human rather than auto-merged by the swarm; the correct fix (numeric version sort) belongs to a tooling story with a human reviewer.
-- **Deferred from PR #195 (owner: clinical/architecture): V7 `patient_record` has `PRIMARY KEY (organization_id, id)` plus a version fold and `next_patient_version()`, so a same-id append is impossible while the fold suggests otherwise.** Fixing it changes the key and every `(org,id)` FK — a contract migration and clinical-record-integrity review well beyond DLV-02.
-- **Deferred product decision (owner: Product Owner): after consolidate → correct, the alias legitimately reappears in the duplicate worklist but `open()` refuses it with 409 because a `CORRECTED` consolidation still exists.** Needs a re-review policy decision, not a DLV-02 regression.
-
-## Decisions
-
-- No production code or migration change: the target classes are green on a clean checkout of current `main`; fabricating a diff would risk regressing verified behavior.
-- Did not touch `db/check.sh`, `.github/`, `scripts/`, `opencode.json` or any shared tracker — outside this story's acceptance and/or in the protected set for swarm PRs.
-- No test was weakened, skipped, deleted, re-tagged or excluded from any gate.
+- V59 is additive only: `CREATE OR REPLACE FUNCTION` widens one legal transition; the append-only ledgers, immutability guards and forced RLS are untouched. `Change: expand` needs no `Forward-fix`. No applied migration was edited.
+- Ownership-before-precondition was applied uniformly to all six prescriber commands rather than only `attest`, so error semantics do not depend on which command is called; the security reviewer (simulated) confirmed the membership/role gate already blocks unauthorized writes and that this ordering change has no cross-tenant oracle because foreign rows are concealed by RLS as 404 before ownership is evaluated.
+- Kept `INVALID_TRANSITION` as the single illegal-transition code across RX-02; removed the unreferenced bespoke renewal code.
+- Aligned the domain enum and its unit-test matrix in the same change as the DB guard so the same transition rule is not duplicated inconsistently across layers.
+- **Pre-existing defect, not changed here (owner: pipeline/integrator):** `db/check.sh` applies migrations with `for migration in db/migrations/V*.sql`, which bash sorts lexically, so `V10` runs before `V1` and fails with `relation "public.organization" does not exist`. Already documented in DLV-02 notes; `db/check.sh` is in the protected check-file set and needs a human-owned tooling story.
+- **Pre-existing, out of scope (owner: RX-02/IAM-06 follow-up):** ownership/version/state denials thrown as `ApiException` inside `transactions.execute` roll back without a DENIED audit row, unlike `authorize` denials. The simulated backend reviewer flagged it as P2; no such denial is asserted by this story and it is not a gate here.
+- No `BUGS.md` entry was added: every defect in this story was reproduced and resolved in this change; workers do not edit shared trackers.
 
 ## Entry-point-to-test trace
 
-`POST /api/v1/patient-identity/links/claim` → `IdentityProofingController` → `IdentityProofingRepository.insertLink` → V58-corrected `set_link_actor()` sets `verified_by` → `currentLink()` → 200; asserted by `IdentityProofingIsolationTest` and `StaleInvitationIntegrationTest` against real PostgreSQL.
-`POST /api/v1/duplicate-reviews` → `DuplicateRepository.insertReview` → V58 id default → 201 → `GET /api/v1/duplicate-reviews` → `DuplicateRepository.likelyPairs()` both-sides filter → consolidated alias absent; asserted by `ConsolidationIsolationTest`.
-`GET /api/v1/conversations/{id}` → `ConversationController.get` → `View` (test unwraps `conversation`); guard assertions use cast-bound UUIDs; asserted by `ConversationFlowTest`.
+`POST /api/v1/prescriptions/{id}/transmit` → `RxController.transmit` → `RxService.transmit` → `lockedByPrescriber` (RLS load → ownership → version → `ATTESTED`) → `repository.insertSubmission` → `repository.transmit` → V44 update trigger, now widened by V59 → 200 with a stable `submissionId`; asserted by the four previously-500'd tests.
+`POST /api/v1/prescriptions/{id}/attest` → `RxController.attest` → `RxService.attest` → `lockedByPrescriber` → 403 `FORBIDDEN` for a wrong actor even with a stale `If-Match`; asserted at line 321.
+`GET /api/v1/prescriptions/{id}` → `RxController.get` → `RxService.get` → `RxRepository.find` under forced RLS → 404 for an A-only id from B, 200 with the local author for an id owned by both; asserted by `tenantIsolationConcealsIdenticalLocalIdentifiers`.
+`POST /api/v1/prescriptions/{id}/renew` on a draft → `RxService.renew` → `INVALID_TRANSITION`; asserted at line 401.
 
 ## Evidence provenance
 
-All commands above were executed by this worker (tool evidence: Maven/Surefire output, surefire XML reports, Flyway logs, `bash db/check.sh`, `check-migrations.py`). No simulated reviewer, simulated user, human or clinical evidence was used. No patient data, real identifiers or credentials appear in any note or fixture; every subject, organization, MRN and token is synthetic.
+All command results above are **tool-generated** by this worker (Maven/Surefire output, surefire XML/TXT reports, Flyway logs, `check-migrations.py`, SpotBugs, `git diff --check`). The RLS-vs-fixture distinction was confirmed by a temporary diagnostic print that was removed before commit. The three specialist reviews (senior-backend, senior-spring-security, test-engineer) are **simulated reviewer** evidence: bounded read-only findings, no commands run by those agents; all were incorporated where they matched the observed tool evidence. No simulated-user, human or clinical evidence was used. Every subject, organization, patient, MRN and prescription id in fixtures is synthetic; no credentials, patient data or raw logs appear in this note.
