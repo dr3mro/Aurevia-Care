@@ -104,6 +104,26 @@ def gh_json(*args):
     return json.loads(gh(*args) or "null")
 
 
+def report_issue(title, body):
+    """Tell a person about a problem without opening a new issue every time.
+
+    The swarm hits the same problem on every wave (main still red, the budget cap
+    still reached), and one issue per wave buried the issue list. When an open
+    issue with this exact title exists, add a comment stamped with the date and
+    time instead; otherwise open one."""
+    stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    text = f"{MARK}\n**{stamp}**\n\n{body}"
+    found = gh_json("issue", "list", "--state", "open", "--search", f"{title} in:title",
+                    "--limit", "30", "--json", "number,title") or []
+    same = [i for i in found if i.get("title") == title]
+    if same:
+        number = str(min(i["number"] for i in same))
+        gh("issue", "comment", number, "--body", text, check=False)
+        return number
+    gh("issue", "create", "--title", title, "--body", text, check=False)
+    return ""
+
+
 def repo_slug():
     """Full owner/name used by the REST label endpoints."""
     return os.environ.get("GITHUB_REPOSITORY", "dr3mro/Aurevia-Care")
@@ -529,10 +549,10 @@ def publish(task, directory):
                 pr = gh("pr", "view", branch, "--json", "number", "--jq", ".number").strip()
             except subprocess.CalledProcessError:
                 # The branch is pushed, so the work is safe; make sure a person can find it.
-                gh("issue", "create", "--title", f"{task['id']}: worker branch pushed without a pull request",
-                   "--body", f"{MARK}\nBranch `{branch}` holds the worker's commits (result: {result}, "
+                report_issue(f"{task['id']}: worker branch pushed without a pull request",
+                             f"Branch `{branch}` holds the worker's commits (result: {result}, "
                              f"checks: {checks}) but the pull request could not be opened. "
-                             f"Open one from the branch. {run_url()}", check=False)
+                             f"Open one from the branch. {run_url()}")
                 pr = ""
         else:
             pr = str(task["number"])
@@ -819,10 +839,10 @@ def budget_gate(cap=DEFAULT_MONTHLY_MINUTES, now=None, used=None):
     used = monthly_minutes(now) if used is None else used
     if used < cap * 0.9:
         return True, f"Estimated monthly swarm minutes {used:.0f} of {cap}: starting."
-    gh("issue", "create", "--title", "Swarm monthly Actions budget near its cap",
-       "--body", (f"{MARK}\nEstimated swarm minutes this month: {used:.0f} of {cap}. "
-                  "Waves are paused until the cap resets; a person may raise the cap "
-                  "or stop the swarm. No new wave was started."), check=False)
+    report_issue("Swarm monthly Actions budget near its cap",
+                 f"Estimated swarm minutes this month: {used:.0f} of {cap}. "
+                 "Waves are paused until the cap resets; a person may raise the cap "
+                 "or stop the swarm. No new wave was started.")
     return False, f"Estimated monthly swarm minutes {used:.0f} of {cap}: pausing waves."
 
 
@@ -837,10 +857,10 @@ def repair_gate(run_id, now=None):
     recent = [p for p in repairs
               if datetime.datetime.fromisoformat(p["createdAt"].replace("Z", "+00:00")) > since]
     if len(recent) >= MAX_FIX:
-        gh("issue", "create", "--title", "Main is red and automatic repair gave up",
-           "--body", f"{MARK}\nThree repair attempts in 24 hours did not turn main green. "
-                     f"Latest failing run: {run_id}. A person must take over.", check=False)
-        return False, "Repair limit reached; opened an issue."
+        report_issue("Main is red and automatic repair gave up",
+                     "Three repair attempts in 24 hours did not turn main green. "
+                     f"Latest failing run: {run_id}. A person must take over.")
+        return False, "Repair limit reached; reported in the open issue."
     return True, "Starting a repair."
 
 
