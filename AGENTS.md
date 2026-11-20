@@ -48,6 +48,19 @@ Every change must meet all of the following before it is called done:
 - **Clean code and SOLID**: one responsibility per unit, small explicit interfaces, dependency inversion at boundaries, no duplicated rules across layers, readable names and guard clauses, and a traceable entry point to a test for each behavior.
 - **Self-improvement**: when a defect, review finding or tool gap is observed, update the owning skill or agent instruction in the same change so the next run avoids it. Regenerate `opencode.json` after any agent or skill edit and commit the generated file.
 
+## Coverage rules (100%, no exceptions)
+
+Delivery fails the whole run on a single uncovered line or branch, in Java (JaCoCo), the staff web (Vitest) and the patient app (Jest). These rules are hard limits; a pull request that breaks one is not mergeable.
+
+1. Every new or changed production line, branch, method and class is covered by a test you wrote in the same pull request. Write the failing test first.
+2. Never lower, remove or bypass a threshold or exclusion: no edits to the JaCoCo rules in `apps/api/pom.xml`, to `coverage` or `thresholds` in `vitest.config.ts`, or to `coverageThreshold` in `apps/patient-mobile/jest.config.ts`; no new `exclude` entries, `@Generated`, `/* istanbul ignore */`, `/* c8 ignore */` or `// NOSONAR` comments; no test left `@Disabled`, `.skip` or `xit`.
+3. If code cannot be covered because it is unreachable, delete the code. Do not keep a guard that no input can trigger, and do not write a test that only exists to touch a line.
+4. Cover failure paths as well as success paths: every `if/else`, ternary, `catch`, early return, empty-result and stale-version path needs its own assertion on behavior, not just a call.
+5. A test must assert an outcome (a value, a status code, a thrown error, a call that happened). A test with no assertion does not count.
+6. Before you finish, list every new or changed branch and the test that covers it in your notes file. If you cannot name a test for a branch, the branch is not done.
+7. Never weaken, delete or rewrite an existing test to make a change pass. If an existing test must change because behavior changed on purpose, say so in your notes.
+8. **Do not mark a task complete until coverage is proven 100%.** For Java run `mvn -f apps/api/pom.xml verify` (or the repo's `apps/api/check.sh`) and read the JaCoCo report; for the staff web run Vitest with coverage; for the patient app run `apps/patient-mobile/check.sh`. Open the report for every file you touched and confirm no missed line or branch. Put the exact command and the coverage result in your notes file. If you cannot run the coverage command, or any touched file is below 100%, add tests until it is; if you still cannot, say so in your notes and leave the task unfinished instead of claiming it is done.
+
 ## Frontend standards
 
 - In patient-mobile tests write `import { jest } from '@jest/globals';` before using `jest.fn()` or `jest.mock()`; the bare `jest` namespace fails the type check (Delivery run 531). Run `bash apps/patient-mobile/check.sh` before you finish.
