@@ -285,11 +285,16 @@ class IdentityProofingIsolationTest {
              Statement statement = connection.createStatement()) {
             useOrg(statement, ORG_A);
             statement.execute("SET app.actor = 'registrar-a'");
+            // V7 keys patient_record on (organization_id, id), so a same-id
+            // version append is impossible even though next_patient_version()
+            // exists. Model the staff contact change as a re-registered chart
+            // carrying the changed contact: ownership must still follow the
+            // original immutable chart id, and contacts must not leak to links.
             statement.execute("INSERT INTO public.patient_record "
                     + "(organization_id, id, version, mrn, mrn_issuer, display_name, normalized_name, dob, "
                     + " contacts, created_by) "
-                    + "VALUES ('" + ORG_A + "', '" + CHART_A + "', "
-                    + "public.next_patient_version('" + CHART_A + "'::uuid), 'IDENT-A', 'ISSUER', "
+                    + "VALUES ('" + ORG_A + "', '" + UUID.randomUUID() + "', 1, "
+                    + "'IDENT-A-CHANGED', 'ISSUER', "
                     + "'Org A chart', 'org a chart', '1990-01-01', "
                     + "'{\"phone\":\"new-phone\"}', "
                     + "(SELECT id FROM public.user_identity WHERE organization_id = '" + ORG_A
@@ -343,7 +348,11 @@ class IdentityProofingIsolationTest {
         try (Connection connection = DriverManager.getConnection(URL, "smartclinic_migrate", "");
              Statement statement = connection.createStatement()) {
             useOrg(statement, ORG_A);
-            statement.execute("UPDATE public.account_invitation SET expires_at = now() - interval '1 hour' "
+            // Backdate both endpoints so the invitation is genuinely expired while
+            // V10's CHECK (expires_at > created_at) still holds.
+            statement.execute("UPDATE public.account_invitation "
+                    + "SET created_at = now() - interval '2 hours', "
+                    + "    expires_at = now() - interval '1 hour' "
                     + "WHERE token_hash = encode(sha256(convert_to('" + token + "', 'UTF8')), 'hex')");
         }
         assertEquals(HttpStatus.CONFLICT,
@@ -367,18 +376,18 @@ class IdentityProofingIsolationTest {
 
     @Test
     void invalidInputsReturnUnprocessableEntity() {
-        assertEquals(HttpStatus.UNPROCESSABLE_ENTITY,
-                enroll("Bad Subject!", "Name", "registrar-a", ORG_A).getStatusCode());
-        assertEquals(HttpStatus.UNPROCESSABLE_ENTITY,
-                request(HttpMethod.POST, "/api/v1/patient-identity/invitations",
-                        "{\"subject\":\"any.subject\",\"chartId\":\"" + CHART_A
-                                + "\",\"purpose\":\"ANY\",\"ttlSeconds\":600}",
-                        "registrar-a", ORG_A).getStatusCode());
-        assertEquals(HttpStatus.UNPROCESSABLE_ENTITY,
-                request(HttpMethod.POST, "/api/v1/patient-identity/invitations",
-                        "{\"subject\":\"any.subject\",\"chartId\":\"" + CHART_A
-                                + "\",\"purpose\":\"LINK\",\"ttlSeconds\":0}",
-                        "registrar-a", ORG_A).getStatusCode());
+        // Spring 7 renamed HttpStatus.UNPROCESSABLE_ENTITY to UNPROCESSABLE_CONTENT;
+        // assert the wire code so the contract stays 422 across the rename.
+        assertEquals(422, enroll("Bad Subject!", "Name", "registrar-a", ORG_A)
+                .getStatusCode().value());
+        assertEquals(422, request(HttpMethod.POST, "/api/v1/patient-identity/invitations",
+                "{\"subject\":\"any.subject\",\"chartId\":\"" + CHART_A
+                        + "\",\"purpose\":\"ANY\",\"ttlSeconds\":600}",
+                "registrar-a", ORG_A).getStatusCode().value());
+        assertEquals(422, request(HttpMethod.POST, "/api/v1/patient-identity/invitations",
+                "{\"subject\":\"any.subject\",\"chartId\":\"" + CHART_A
+                        + "\",\"purpose\":\"LINK\",\"ttlSeconds\":0}",
+                "registrar-a", ORG_A).getStatusCode().value());
     }
 
     @Test

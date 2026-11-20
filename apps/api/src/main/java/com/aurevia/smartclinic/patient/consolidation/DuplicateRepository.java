@@ -87,8 +87,11 @@ public class DuplicateRepository {
                    AND q.id > p.id
                  WHERE p.dob IS NOT NULL
                    AND NOT EXISTS (SELECT 1 FROM public.current_chart_associations() a
-                                    WHERE a.alias_id = q.id AND a.status = 'ACTIVE')
-                 ORDER BY p.normalized_name, p.id, q.id
+                                     -- A consolidated alias must leave the worklist
+                                     -- entirely: the ordered join can place it on
+                                     -- either the p or the q side.
+                                     WHERE a.alias_id IN (p.id, q.id) AND a.status = 'ACTIVE')
+                  ORDER BY p.normalized_name, p.id, q.id
                 """, (resultSet, rowNumber) -> new DuplicatePair(
                 resultSet.getString("survivor_id"), resultSet.getString("survivor_name"),
                 resultSet.getString("duplicate_id"), resultSet.getString("duplicate_name")));
