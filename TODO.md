@@ -798,6 +798,256 @@ Order of work for the whole production-readiness effort: (1) security and platfo
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
 
+## Production readiness, part 3: durable state, operations, patient app connection (in order)
+
+Do these after part 2 where `depends` says so. Persistence tasks run one at a time because each reserves one migration version (V59 to V66).
+
+### Phase A — Durable state (nothing may stay in memory at launch; see docs/decisions/0003)
+
+- [ ] READY-35 · Persist service profiles in PostgreSQL (V59) instead of memory
+  - requirements: ARC-01, ARC-02, OPS-02
+  - attempts: 0
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/messaging/service, apps/api/src/test/java/com/aurevia/smartclinic/messaging/service, db/migrations/V59__service_profiles.sql, apps/api/src/test/java/com/aurevia/smartclinic/it
+  - depends: AUD-20261120-06
+  - reserved: V59
+  - details:
+    Problem (verified in `docs/decisions/0003-persistence-of-in-memory-stores.md`): `InMemoryServiceProfileStore` is a `@Repository` that keeps all state in process memory, so every restart loses it and two API instances disagree. Replace it with PostgreSQL. This store owns migration V59 only.
+    1. Read `messaging/service/ServiceProfileStore.java` (the interface; every method already takes the organization id) and `InMemoryServiceProfileStore.java` (the behaviour to copy) completely. Read `ServiceProfileService.java` to see which methods production code calls. Read one existing JDBC repository for style (`patient/PatientRepository.java`) and `db/migrations/V58*.sql` plus one earlier migration that creates a tenant table, to copy how tables get `organization_id`, forced row-level security and the `public.app_org()` policy.
+    2. Create `db/migrations/V59__service_profiles.sql` with one table per aggregate the interface stores (name them after the business concept, no story ids). Every table: `organization_id` not null, primary key including it where identifiers are only unique per tenant, `created_at timestamptz not null default now()`, `ENABLE` and `FORCE ROW LEVEL SECURITY`, a policy `USING (organization_id = public.app_org())`, and GRANT to `smartclinic_app` exactly as the earlier migration does. Append-only facts get no UPDATE grant. The migration is additive only.
+    3. Create `JdbcServiceProfileStore` in the same package, `@Repository`, constructor-injected `JdbcTemplate`, parameterised SQL only, implementing every interface method with the same semantics (same exceptions, same empty results).
+    4. Remove `@Repository` from `InMemoryServiceProfileStore` and keep it only for unit tests (move it under `apps/api/src/test/java/com/aurevia/smartclinic/messaging/service` if production code no longer uses it: `grep -rn InMemoryServiceProfileStore apps/api/src/main`).
+    5. Write `JdbcServiceProfileStoreIntegrationTest` under `apps/api/src/test/java/com/aurevia/smartclinic/messaging/service/it/` (tag `integration`; copy the setup of an existing class there): save then read back, update path if the interface has one, and tenant A cannot read tenant B rows with identical local ids.
+    6. Run `bash scripts/worker-check.sh`. Also run the AUD-20261120-04 row-level-security gate if it exists.
+    If the interface cannot be implemented with a clean table design, STOP and write exactly which method and why into `.agent/pr-notes/<task-id>.md`; make no code changes.
+
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT change files outside `scope`, add patient data to logs, or edit any existing migration.
+- [ ] READY-36 · Persist care units in PostgreSQL (V60) instead of memory
+  - requirements: ARC-01, ARC-02, OPS-02
+  - attempts: 0
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/messaging/units, apps/api/src/test/java/com/aurevia/smartclinic/messaging/units, db/migrations/V60__care_units.sql, apps/api/src/test/java/com/aurevia/smartclinic/it
+  - depends: READY-35
+  - reserved: V60
+  - details:
+    Problem (verified in `docs/decisions/0003-persistence-of-in-memory-stores.md`): `InMemoryMessagingStore` is a `@Repository` that keeps all state in process memory, so every restart loses it and two API instances disagree. Replace it with PostgreSQL. This store owns migration V60 only.
+    1. Read `messaging/units/MessagingStore.java` (the interface; every method already takes the organization id) and `InMemoryMessagingStore.java` (the behaviour to copy) completely. Read `CareUnitDirectoryService.java` to see which methods production code calls. Read one existing JDBC repository for style (`patient/PatientRepository.java`) and `db/migrations/V58*.sql` plus one earlier migration that creates a tenant table, to copy how tables get `organization_id`, forced row-level security and the `public.app_org()` policy.
+    2. Create `db/migrations/V60__care_units.sql` with one table per aggregate the interface stores (name them after the business concept, no story ids). Every table: `organization_id` not null, primary key including it where identifiers are only unique per tenant, `created_at timestamptz not null default now()`, `ENABLE` and `FORCE ROW LEVEL SECURITY`, a policy `USING (organization_id = public.app_org())`, and GRANT to `smartclinic_app` exactly as the earlier migration does. Append-only facts get no UPDATE grant. The migration is additive only.
+    3. Create `JdbcMessagingStore` in the same package, `@Repository`, constructor-injected `JdbcTemplate`, parameterised SQL only, implementing every interface method with the same semantics (same exceptions, same empty results).
+    4. Remove `@Repository` from `InMemoryMessagingStore` and keep it only for unit tests (move it under `apps/api/src/test/java/com/aurevia/smartclinic/messaging/units` if production code no longer uses it: `grep -rn InMemoryMessagingStore apps/api/src/main`).
+    5. Write `JdbcMessagingStoreIntegrationTest` under `apps/api/src/test/java/com/aurevia/smartclinic/messaging/units/it/` (tag `integration`; copy the setup of an existing class there): save then read back, update path if the interface has one, and tenant A cannot read tenant B rows with identical local ids.
+    6. Run `bash scripts/worker-check.sh`. Also run the AUD-20261120-04 row-level-security gate if it exists.
+    If the interface cannot be implemented with a clean table design, STOP and write exactly which method and why into `.agent/pr-notes/<task-id>.md`; make no code changes.
+
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT change files outside `scope`, add patient data to logs, or edit any existing migration.
+- [ ] READY-37 · Persist flow policies in PostgreSQL (V61) instead of memory
+  - requirements: ARC-01, ARC-02, OPS-02
+  - attempts: 0
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/messaging/flows, apps/api/src/test/java/com/aurevia/smartclinic/messaging/flows, db/migrations/V61__flow_policies.sql, apps/api/src/test/java/com/aurevia/smartclinic/it
+  - depends: READY-36
+  - reserved: V61
+  - details:
+    Problem (verified in `docs/decisions/0003-persistence-of-in-memory-stores.md`): `InMemoryFlowPolicyStore` is a `@Repository` that keeps all state in process memory, so every restart loses it and two API instances disagree. Replace it with PostgreSQL. This store owns migration V61 only.
+    1. Read `messaging/flows/FlowPolicyStore.java` (the interface; every method already takes the organization id) and `InMemoryFlowPolicyStore.java` (the behaviour to copy) completely. Read `PatientFlowPresentationService.java` to see which methods production code calls. Read one existing JDBC repository for style (`patient/PatientRepository.java`) and `db/migrations/V58*.sql` plus one earlier migration that creates a tenant table, to copy how tables get `organization_id`, forced row-level security and the `public.app_org()` policy.
+    2. Create `db/migrations/V61__flow_policies.sql` with one table per aggregate the interface stores (name them after the business concept, no story ids). Every table: `organization_id` not null, primary key including it where identifiers are only unique per tenant, `created_at timestamptz not null default now()`, `ENABLE` and `FORCE ROW LEVEL SECURITY`, a policy `USING (organization_id = public.app_org())`, and GRANT to `smartclinic_app` exactly as the earlier migration does. Append-only facts get no UPDATE grant. The migration is additive only.
+    3. Create `JdbcFlowPolicyStore` in the same package, `@Repository`, constructor-injected `JdbcTemplate`, parameterised SQL only, implementing every interface method with the same semantics (same exceptions, same empty results).
+    4. Remove `@Repository` from `InMemoryFlowPolicyStore` and keep it only for unit tests (move it under `apps/api/src/test/java/com/aurevia/smartclinic/messaging/flows` if production code no longer uses it: `grep -rn InMemoryFlowPolicyStore apps/api/src/main`).
+    5. Write `JdbcFlowPolicyStoreIntegrationTest` under `apps/api/src/test/java/com/aurevia/smartclinic/messaging/flows/it/` (tag `integration`; copy the setup of an existing class there): save then read back, update path if the interface has one, and tenant A cannot read tenant B rows with identical local ids.
+    6. Run `bash scripts/worker-check.sh`. Also run the AUD-20261120-04 row-level-security gate if it exists.
+    If the interface cannot be implemented with a clean table design, STOP and write exactly which method and why into `.agent/pr-notes/<task-id>.md`; make no code changes.
+
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT change files outside `scope`, add patient data to logs, or edit any existing migration.
+- [ ] READY-38 · Persist messaging governance in PostgreSQL (V62) instead of memory
+  - requirements: ARC-01, ARC-02, OPS-02
+  - attempts: 0
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/messaging/governance, apps/api/src/test/java/com/aurevia/smartclinic/messaging/governance, db/migrations/V62__messaging_governance.sql, apps/api/src/test/java/com/aurevia/smartclinic/it
+  - depends: READY-37
+  - reserved: V62
+  - details:
+    Problem (verified in `docs/decisions/0003-persistence-of-in-memory-stores.md`): `InMemoryMessagingGovernanceStore` is a `@Repository` that keeps all state in process memory, so every restart loses it and two API instances disagree. Replace it with PostgreSQL. This store owns migration V62 only.
+    1. Read `messaging/governance/MessagingGovernanceStore.java` (the interface; every method already takes the organization id) and `InMemoryMessagingGovernanceStore.java` (the behaviour to copy) completely. Read `MessagingGovernanceService.java` to see which methods production code calls. Read one existing JDBC repository for style (`patient/PatientRepository.java`) and `db/migrations/V58*.sql` plus one earlier migration that creates a tenant table, to copy how tables get `organization_id`, forced row-level security and the `public.app_org()` policy.
+    2. Create `db/migrations/V62__messaging_governance.sql` with one table per aggregate the interface stores (name them after the business concept, no story ids). Every table: `organization_id` not null, primary key including it where identifiers are only unique per tenant, `created_at timestamptz not null default now()`, `ENABLE` and `FORCE ROW LEVEL SECURITY`, a policy `USING (organization_id = public.app_org())`, and GRANT to `smartclinic_app` exactly as the earlier migration does. Append-only facts get no UPDATE grant. The migration is additive only.
+    3. Create `JdbcMessagingGovernanceStore` in the same package, `@Repository`, constructor-injected `JdbcTemplate`, parameterised SQL only, implementing every interface method with the same semantics (same exceptions, same empty results).
+    4. Remove `@Repository` from `InMemoryMessagingGovernanceStore` and keep it only for unit tests (move it under `apps/api/src/test/java/com/aurevia/smartclinic/messaging/governance` if production code no longer uses it: `grep -rn InMemoryMessagingGovernanceStore apps/api/src/main`).
+    5. Write `JdbcMessagingGovernanceStoreIntegrationTest` under `apps/api/src/test/java/com/aurevia/smartclinic/messaging/governance/it/` (tag `integration`; copy the setup of an existing class there): save then read back, update path if the interface has one, and tenant A cannot read tenant B rows with identical local ids.
+    6. Run `bash scripts/worker-check.sh`. Also run the AUD-20261120-04 row-level-security gate if it exists.
+    If the interface cannot be implemented with a clean table design, STOP and write exactly which method and why into `.agent/pr-notes/<task-id>.md`; make no code changes.
+
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT change files outside `scope`, add patient data to logs, or edit any existing migration.
+- [ ] READY-39 · Persist instruction facts in PostgreSQL (V63) instead of memory
+  - requirements: ARC-01, ARC-02, OPS-02
+  - attempts: 0
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/messaging/acknowledgment, apps/api/src/test/java/com/aurevia/smartclinic/messaging/acknowledgment, db/migrations/V63__instruction_facts.sql, apps/api/src/test/java/com/aurevia/smartclinic/it
+  - depends: READY-38
+  - reserved: V63
+  - details:
+    Problem (verified in `docs/decisions/0003-persistence-of-in-memory-stores.md`): `InMemoryInstructionFactStore` is a `@Repository` that keeps all state in process memory, so every restart loses it and two API instances disagree. Replace it with PostgreSQL. This store owns migration V63 only.
+    1. Read `messaging/acknowledgment/InstructionFactStore.java` (the interface; every method already takes the organization id) and `InMemoryInstructionFactStore.java` (the behaviour to copy) completely. Read `InstructionFactService.java` to see which methods production code calls. Read one existing JDBC repository for style (`patient/PatientRepository.java`) and `db/migrations/V58*.sql` plus one earlier migration that creates a tenant table, to copy how tables get `organization_id`, forced row-level security and the `public.app_org()` policy.
+    2. Create `db/migrations/V63__instruction_facts.sql` with one table per aggregate the interface stores (name them after the business concept, no story ids). Every table: `organization_id` not null, primary key including it where identifiers are only unique per tenant, `created_at timestamptz not null default now()`, `ENABLE` and `FORCE ROW LEVEL SECURITY`, a policy `USING (organization_id = public.app_org())`, and GRANT to `smartclinic_app` exactly as the earlier migration does. Append-only facts get no UPDATE grant. The migration is additive only.
+    3. Create `JdbcInstructionFactStore` in the same package, `@Repository`, constructor-injected `JdbcTemplate`, parameterised SQL only, implementing every interface method with the same semantics (same exceptions, same empty results).
+    4. Remove `@Repository` from `InMemoryInstructionFactStore` and keep it only for unit tests (move it under `apps/api/src/test/java/com/aurevia/smartclinic/messaging/acknowledgment` if production code no longer uses it: `grep -rn InMemoryInstructionFactStore apps/api/src/main`).
+    5. Write `JdbcInstructionFactStoreIntegrationTest` under `apps/api/src/test/java/com/aurevia/smartclinic/messaging/acknowledgment/it/` (tag `integration`; copy the setup of an existing class there): save then read back, update path if the interface has one, and tenant A cannot read tenant B rows with identical local ids.
+    6. Run `bash scripts/worker-check.sh`. Also run the AUD-20261120-04 row-level-security gate if it exists.
+    If the interface cannot be implemented with a clean table design, STOP and write exactly which method and why into `.agent/pr-notes/<task-id>.md`; make no code changes.
+
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT change files outside `scope`, add patient data to logs, or edit any existing migration.
+- [ ] READY-40 · Persist patient instructions in PostgreSQL (V64) instead of memory
+  - requirements: ARC-01, ARC-02, OPS-02
+  - attempts: 0
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/messaging/instructions, apps/api/src/test/java/com/aurevia/smartclinic/messaging/instructions, db/migrations/V64__patient_instructions.sql, apps/api/src/test/java/com/aurevia/smartclinic/it
+  - depends: READY-39
+  - reserved: V64
+  - details:
+    Problem (verified in `docs/decisions/0003-persistence-of-in-memory-stores.md`): `InstructionStore.InMemory (nested class)` is a `@Repository` that keeps all state in process memory, so every restart loses it and two API instances disagree. Replace it with PostgreSQL. This store owns migration V64 only.
+    1. Read `messaging/instructions/InstructionStore.java` (the interface; every method already takes the organization id) and `InstructionStore.InMemory (nested class).java` (the behaviour to copy) completely. Read `InstructionService.java` to see which methods production code calls. Read one existing JDBC repository for style (`patient/PatientRepository.java`) and `db/migrations/V58*.sql` plus one earlier migration that creates a tenant table, to copy how tables get `organization_id`, forced row-level security and the `public.app_org()` policy.
+    2. Create `db/migrations/V64__patient_instructions.sql` with one table per aggregate the interface stores (name them after the business concept, no story ids). Every table: `organization_id` not null, primary key including it where identifiers are only unique per tenant, `created_at timestamptz not null default now()`, `ENABLE` and `FORCE ROW LEVEL SECURITY`, a policy `USING (organization_id = public.app_org())`, and GRANT to `smartclinic_app` exactly as the earlier migration does. Append-only facts get no UPDATE grant. The migration is additive only.
+    3. Create `JdbcInstructionStore` in the same package, `@Repository`, constructor-injected `JdbcTemplate`, parameterised SQL only, implementing every interface method with the same semantics (same exceptions, same empty results).
+    4. Remove `@Repository` from `InstructionStore.InMemory (nested class)` and keep it only for unit tests (move it under `apps/api/src/test/java/com/aurevia/smartclinic/messaging/instructions` if production code no longer uses it: `grep -rn InstructionStore.InMemory (nested class) apps/api/src/main`).
+    5. Write `JdbcInstructionStoreIntegrationTest` under `apps/api/src/test/java/com/aurevia/smartclinic/messaging/instructions/it/` (tag `integration`; copy the setup of an existing class there): save then read back, update path if the interface has one, and tenant A cannot read tenant B rows with identical local ids.
+    6. Run `bash scripts/worker-check.sh`. Also run the AUD-20261120-04 row-level-security gate if it exists.
+    If the interface cannot be implemented with a clean table design, STOP and write exactly which method and why into `.agent/pr-notes/<task-id>.md`; make no code changes.
+
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT change files outside `scope`, add patient data to logs, or edit any existing migration.
+- [ ] READY-41 · Durable authorization decision ledger (OPS-02)
+  - requirements: OPS-02, ARC-04
+  - attempts: 0
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/api/authorization, apps/api/src/test/java/com/aurevia/smartclinic/api/authorization, apps/api/src/main/java/com/aurevia/smartclinic/config, db/migrations/V65__authorization_decisions.sql, apps/api/src/test/java/com/aurevia/smartclinic/it
+  - depends: READY-40
+  - reserved: V65
+  - details:
+    Problem: `CommandAuthorization` takes a `DecisionSink`; production has no sink, so allow and deny decisions are not recorded (OPS-02 needs durable authorization audit).
+    1. Read `api/authorization/CommandAuthorization.java` (interface `DecisionSink`, line ~167), `InMemoryDecisionSink.java`, and how `audit_event` is written (`audit/AuditRepository.java`, migration V3).
+    2. Create `db/migrations/V65__authorization_decisions.sql`: table `authorization_decision` (id uuid primary key default gen_random_uuid(), organization_id, subject, action, resource_type, decision text check in ('allow','deny'), reason_code, correlation_id, decided_at timestamptz default now()). Forced RLS as in other tenant tables; INSERT and SELECT grants only (append-only, no UPDATE or DELETE). Never store request bodies or patient fields.
+    3. Create `JdbcDecisionSink implements CommandAuthorization.DecisionSink` and a `@Configuration` class in `config` that provides it as the production `DecisionSink` bean (tests keep `InMemoryDecisionSink`). A sink failure must not allow the request: on exception the decision is deny with reason `AUDIT_UNAVAILABLE`.
+    4. Tests: allow and deny rows are written; a failing sink denies; tenant isolation; the row contains no free-text fields beyond the codes above.
+    5. Run `bash scripts/worker-check.sh`.
+
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT change files outside `scope`, add patient data to logs, or edit any existing migration.
+- [ ] READY-42 · Durable idempotency ledger for write endpoints (ARC-03, ARC-04)
+  - requirements: ARC-03, ARC-04
+  - attempts: 0
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/api/x_01, apps/api/src/test/java/com/aurevia/smartclinic/api/x_01, apps/api/src/main/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/web, db/migrations/V66__idempotency_ledger.sql, apps/api/src/test/java/com/aurevia/smartclinic/it
+  - depends: READY-41
+  - reserved: V66
+  - details:
+    Problem: `IdempotencyLedger` exists with only an in-memory implementation that no controller uses, so a retried POST can create a duplicate.
+    1. Read `IdempotencyLedger.java` and its tests, and `docs/decisions/0003-persistence-of-in-memory-stores.md`. If REFACTOR-PACKAGES-02 has already renamed `api/x_01`, use the new package; find it with `grep -rln "interface IdempotencyLedger" apps/api/src`.
+    2. Create `db/migrations/V66__idempotency_ledger.sql`: table `idempotency_record` (organization_id, subject, key text, request_hash text, status_code int, response_body jsonb, created_at, expires_at; primary key (organization_id, subject, key); forced RLS; INSERT, SELECT, DELETE grants). Do not store tokens.
+    3. Create `JdbcIdempotencyLedger` and a web interceptor or filter `IdempotencyFilter` that, for POST requests carrying `Idempotency-Key`, returns the stored response when the key and request hash match, answers 422 `IDEMPOTENCY_KEY_REUSED` when the key matches but the request hash differs, and stores the response of a first successful call. Requests without the header behave exactly as today (do NOT make the header mandatory in this task).
+    4. Tests: replay returns the same status and body without running the handler twice; different body with same key gives 422; keys are per subject and per organization; expired records are ignored.
+    5. Run `bash scripts/worker-check.sh`.
+
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT change files outside `scope`, add patient data to logs, or edit any existing migration.
+
+### Phase B — Production configuration and operations
+
+- [ ] READY-43 · Production profile that cannot start in an unsafe state (WEB-01, WEB-05)
+  - requirements: WEB-01, WEB-05, ARC-01
+  - attempts: 0
+  - scope: apps/api/src/main/resources, apps/api/src/main/java/com/aurevia/smartclinic/config, apps/api/src/test/java/com/aurevia/smartclinic/config, apps/api/README.md
+  - depends: READY-02
+  - details:
+    Today `application.yml` has a pool of 2 connections, no timeouts, no graceful shutdown and nothing stops a production process from running with test authentication.
+    1. Create `apps/api/src/main/resources/application-production.yml`: `server.shutdown: graceful`, `spring.lifecycle.timeout-per-shutdown-phase: 30s`, `server.tomcat.connection-timeout: 10s`, `server.tomcat.max-swallow-size`, Hikari `maximum-pool-size: ${SMARTCLINIC_DB_POOL:20}`, `connection-timeout: 5000`, `max-lifetime: 1500000`, `leak-detection-threshold: 20000`, `server.error.include-message: never`, `server.error.include-stacktrace: never`, `server.forward-headers-strategy: framework`. Read values only from environment variables; no secrets in the file.
+    2. Create `ProductionSafetyCheck` (a `@Component` active only under profile `production`) that throws `IllegalStateException` at startup when the `synthetic-auth` profile is also active, when `SMARTCLINIC_DB_PASSWORD` is empty, or when the datasource URL does not contain `sslmode=require` or `verify-full`. Messages never include the password.
+    3. Tests with `ApplicationContextRunner`: each unsafe combination fails startup with the expected message; the safe combination starts.
+    4. Document the environment variables in `apps/api/README.md` in a table (name, meaning, default, required in production).
+    5. Run `bash scripts/worker-check.sh`.
+
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT change files outside `scope`, add patient data to logs, or edit any existing migration.
+- [ ] READY-44 · Request metrics endpoint (WEB-06)
+  - requirements: WEB-06
+  - attempts: 0
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/config, apps/api/src/main/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/web, docs/operations/production-readiness/README.md
+  - depends: READY-01
+  - details:
+    Spec WEB-06 asks for request rate, error rate and latency per route.
+    1. Without adding a dependency, create `RequestMetricsFilter` in `web` that counts requests and sums latency per (method, route pattern, status class) using the Spring route pattern from `HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE` (never the raw path, which contains ids). Store in a `ConcurrentHashMap<String, LongAdder>`.
+    2. Expose `GET /health/metrics` (outside `/api/v1`, next to the health endpoints of READY-01) in Prometheus text format: `smartclinic_http_requests_total{method,route,status}` and `smartclinic_http_request_seconds_sum{...}`. It requires no login but only answers to requests whose remote address is loopback or in the CIDR list from `SMARTCLINIC_METRICS_ALLOW` (default loopback only), otherwise 404.
+    3. Tests: a request increments the right series; ids never appear in a label; a request from a non-allowed address gets 404; label values are escaped.
+    4. Add one paragraph to the production-readiness README naming the endpoint and the alert thresholds from spec WEB-06.
+    5. Run `bash scripts/worker-check.sh`.
+
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT change files outside `scope`, add patient data to logs, or edit any existing migration.
+- [ ] READY-45 · Automated accessibility and end-to-end test harness for the staff web (WEB-10)
+  - requirements: WEB-10, UX-01
+  - attempts: 0
+  - scope: apps/staff-web/e2e, apps/staff-web/package.json, package.json, package-lock.json, apps/staff-web/README.md
+  - depends: READY-19
+  - details:
+    You MAY add exactly these devDependencies for this task: `@playwright/test` and `@axe-core/playwright` (use the versions `npm view <name> version` returns, pinned exactly, no caret). No other dependency.
+    1. Create `apps/staff-web/e2e/playwright.config.ts` (baseURL from env `E2E_BASE_URL` default `http://127.0.0.1:5173`, projects chromium only, retries 1, trace on first retry, `webServer` runs `npm run dev` in `apps/staff-web`).
+    2. Create `e2e/smoke.spec.ts` with synthetic data only: opens `/`, checks the page title and that the skip link is first in tab order; opens `/design-preview` in dev; runs axe (`AxeBuilder`) and fails on any violation of impact serious or critical; repeats with `?lang=ar` or the language toggle and asserts `document.dir === 'rtl'`; resizes to 768 px width and asserts no horizontal scroll.
+    3. Add npm script `e2e` in `apps/staff-web/package.json`. Do NOT add it to `check.sh` (browsers are not installed in the worker image) and do NOT edit `.github/workflows`; write in the pr-notes that a person must add a CI job.
+    4. Add a short section to `apps/staff-web/README.md`: how to run `npx playwright install chromium` and `npm run e2e`.
+    5. Run `apps/staff-web/check.sh` (must still pass) and `python3 -I scripts/check-docs.py`.
+
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT change files outside `scope`, add patient data to logs, or edit any existing migration.
+- [ ] READY-46 · Launch checklist document with the owner of every item that needs a person
+  - requirements: WEB-01, WEB-11, WEB-12
+  - attempts: 0
+  - scope: docs/operations/production-readiness
+  - details:
+    Several launch items cannot be done by an agent (they need cloud access, a decision, or workflow permissions). Make them impossible to forget.
+    1. Create `docs/operations/production-readiness/launch-checklist.md`. Start from `SMARTCLINIC_V1_SPEC.md` section 8.1 and the `README.md` next to it. One table row per item with columns: item, spec ID, owner (Infrastructure, Security, Product Owner, Clinical lead, Engineering), evidence required, status (open). Do not invent owners' names; use the role words above.
+    2. Include at least these rows: managed TLS 1.2+ certificates and HSTS at the edge (WEB-01); WAF and DDoS protection (WEB-04); managed OIDC provider with staff MFA and mobile PKCE client registered (WEB-03); database backups with a restore drill and a recorded recovery time (OPS-04); secrets in a secret manager, none in images (WEB-12); CI actions pinned by commit SHA and base images by digest (WEB-12); dependency, image and secret scanning that blocks merges (WEB-12); SBOM and signed artifact promoted through environments (WEB-11); progressive rollout 5%, 25%, 100% with automatic rollback (WEB-11); E2E CI job using the READY-45 suite (WEB-10); penetration test with findings closed; status page and support page hosted separately (WEB-13); on-call rota and incident runbook; privacy notice and accessibility statement published; Product Owner and clinical sign-off per site (G5).
+    3. Link each row to the existing runbook or evidence file if one exists under `docs/operations/` or `infra/` (check with `ls`); otherwise write `none yet`.
+    4. Run `python3 -I scripts/check-docs.py` (links and requirement IDs must resolve).
+    Do NOT claim any row is done.
+
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT change files outside `scope`, add patient data to logs, or edit any existing migration.
+
+### Phase C — Patient app connection to the API
+
+- [ ] READY-47 · Patient app API transport and secure token storage (no login screen yet)
+  - requirements: PAT-01, ARC-03
+  - attempts: 0
+  - scope: apps/patient-mobile/src/api, apps/patient-mobile/tests/api
+  - depends: READY-33
+  - details:
+    Mirror what READY-06 did for the staff web. `expo-secure-store` is already a dependency; add no other.
+    1. Create `src/api/transport.ts`: `createTransport({ baseUrl, getToken, fetchImpl })` returning `get/post/put` that adds `Authorization: Bearer <token>`, `Accept-Language`, a fresh `X-Correlation-Id` (uuid from `crypto.randomUUID` or a small fallback), a 15 second timeout through `AbortController`, and JSON parsing. HTTPS only: reject any `baseUrl` not starting with `https://` (allow `http://localhost` only when `__DEV__`).
+    2. Map failures to a typed `TransportError` with kind `network`, `timeout`, `unauthenticated` (401), `forbidden` (403), `conflict` (409, 412), `validation` (422, with the server's field errors) and `server`. Never put the response body or token into the error message or logs.
+    3. Create `src/api/tokenStore.ts` using `expo-secure-store` (`setItemAsync`, `getItemAsync`, `deleteItemAsync`, key `session`, option `requireAuthentication` false for now) and expose `saveToken`, `loadToken`, `clearToken`. Never use AsyncStorage.
+    4. Tests (mock `fetch` and `expo-secure-store`): headers present, timeout aborts, each status maps to the right kind, http base URL rejected, token never appears in error text, clearToken removes it.
+    Do NOT build login in this task; PKCE needs the identity provider details from a person (see launch checklist).
+
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT change files outside `scope`, add patient data to logs, or edit any existing migration.
+- [ ] READY-48 · Patient app screens read their data from the API through the transport
+  - requirements: PAT-01, PAT-02, PAT-03
+  - attempts: 0
+  - scope: apps/patient-mobile/src/features, apps/patient-mobile/src/app, apps/patient-mobile/tests
+  - depends: READY-34, READY-47
+  - details:
+    Needs READY-34 and READY-47. Today the app tabs get placeholder providers.
+    1. Read each screen's props (AppointmentListScreen, ReleasedReportsScreen, ConversationInbox) and the matching API controllers (`web/AppointmentController`, the released-report controller under `messaging/reports`, `messaging/conversations/ConversationController`).
+    2. In `src/app/providers.ts` replace the `placeholder...` providers for those three screens with functions using the READY-47 transport: `GET /api/v1/appointments` is staff only, so for the patient use the patient endpoints you find with `grep -rn "patient" apps/api/src/main/java/**/web` (look for released reports and the conversation inbox); if a patient endpoint for appointments does not exist, keep the placeholder for appointments and write that gap into the pr-notes instead of inventing an endpoint.
+    3. Every screen shows loading, empty, error, offline and session-expired states using the existing state components; on `unauthenticated` call a `onSessionExpired` callback that clears the token (READY-47) and navigates to a signed-out screen showing text from `messages.ts`.
+    4. Tests: each state per screen with a fake transport; session-expired clears the token.
+
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT change files outside `scope`, add patient data to logs, or edit any existing migration.
+- [ ] READY-49 · Add HTTP tests for the remaining controllers named in no test
+  - requirements: ARC-03, ARC-04
+  - attempts: 0
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/it
+  - depends: AUD-20261120-09
+  - details:
+    Run: for each file `*Controller.java` under `apps/api/src/main/java`, `grep -rl "<ControllerName>" apps/api/src/test` and list those with no hit, except the ones AUD-20261120-08 and -09 already cover (scheduling, audit, appointment, finance, prescription, specialty, conversation).
+    For each remaining controller, add one test class (`<Name>HttpTest`) copying the structure of an existing controller test: no login gives 401; a role without the action gives 403; one valid call gives the documented status (200 or 201); one invalid body gives 422 with an error code; and where the controller lists, a bad cursor or limit gives 422. Use synthetic data and the `synthetic-auth` profile headers. Put the list of controllers you covered in `.agent/pr-notes/<task-id>.md`.
+    Run `bash scripts/worker-check.sh`. Do NOT change production code; if a test reveals a bug, write the bug into `BUGS.md` (follow its format) and mark the test `@Disabled("see BUGS.md")`.
+
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT change files outside `scope`, add patient data to logs, or edit any existing migration.
+- [ ] READY-50 · Launch readiness review: spec requirement to evidence table
+  - requirements: WEB-01, WEB-13
+  - attempts: 0
+  - scope: docs/operations/production-readiness
+  - depends: READY-46, READY-44, READY-43
+  - details:
+    Last task before launch. Read `SMARTCLINIC_V1_SPEC.md` section 8.1 and every file under `docs/operations/production-readiness/`.
+    1. Create `docs/operations/production-readiness/evidence.md` with one row per WEB-01..WEB-13: the requirement ID, the repository evidence (file path or test class that proves it, found with `grep -rn "WEB-0"` and `ls`), and a status word: `proven by test`, `proven by document`, `needs infrastructure owner` or `missing`.
+    2. For every `missing` row add a one-line description of the smallest task that would close it. Do NOT edit TODO.md; the Product Owner decides.
+    3. Run `python3 -I scripts/check-docs.py`.
+
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT change files outside `scope`, add patient data to logs, or edit any existing migration.
+
 ## Done (finished tasks, kept for history, checkmarks preserved)
 
 Every entry below is finished and verified. Do not take them again; they stay here so `depends` and history still resolve.
