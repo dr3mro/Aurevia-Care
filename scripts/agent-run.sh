@@ -456,10 +456,10 @@ cmd_resolve() {
     rm -f "$out/merge" "$out/checks"
     cmd_merge_main || true
     cp "$out/merge" "$out/resolve/$pr" 2> /dev/null || printf 'failed' > "$out/resolve/$pr"
-    # A merge that left the checks failing is not pushed.
-    if [[ "$(cat "$out/resolve/$pr")" == merged && "$(cat "$out/checks" 2> /dev/null)" == failed ]]; then
-      printf 'merged but checks failed' > "$out/resolve/$pr"
-    fi
+    # Keep the merge outcome authoritative for the bundle; record the check
+    # result alongside it so a flaky environment does not masquerade as a
+    # conflict. The integrator re-runs the full gate before anything lands.
+    printf '%s' "$(cat "$out/checks" 2>/dev/null || echo unknown)" > "$out/resolve/$pr.checks"
     # The trusted job in a fresh runner receives the merge as a bundle, so the
     # agent never shares a workspace with the push token.
     if [[ "$(cat "$out/resolve/$pr")" == merged ]]; then

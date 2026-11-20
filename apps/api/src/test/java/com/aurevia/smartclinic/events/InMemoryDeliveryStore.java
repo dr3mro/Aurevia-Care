@@ -9,8 +9,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-import org.springframework.stereotype.Repository;
-
 import com.aurevia.smartclinic.events.DurableEventContract.ConsumerReceipt;
 import com.aurevia.smartclinic.events.DurableEventContract.DeadLetterEntry;
 import com.aurevia.smartclinic.events.DurableEventContract.DeliveryAuditEvent;
@@ -25,9 +23,9 @@ import com.aurevia.smartclinic.events.DurableEventContract.ReplayRecord;
  * without a database. It is not authoritative: a production adapter persists
  * the same facts with forced tenant row-level security and an atomic outbox
  * commit. Every method takes the active organization and never merges rows
- * across tenants.</p>
+ * across tenants. This is a test fixture only; production uses
+ * {@link com.aurevia.smartclinic.events.JdbcDeliveryStore}.</p>
  */
-@Repository
 public class InMemoryDeliveryStore implements DeliveryStore {
 
     private final Map<String, String> roles = new ConcurrentHashMap<>();
