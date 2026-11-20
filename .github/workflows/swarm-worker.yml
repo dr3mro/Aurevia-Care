@@ -232,7 +232,8 @@ jobs:
             .agent/checks
             .agent/branch
             .agent/merge
-            .agent/pr-notes.md
+            .agent/check.log
+            .agent/publish-notes.md
             .agent/result.bundle
           if-no-files-found: ignore
           # Kept for a week so a blocked or failed publish never loses the work.

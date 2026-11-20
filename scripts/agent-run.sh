@@ -30,7 +30,7 @@ mkdir -p "$out"
 # fix pass) ever touch the same path and pull requests never conflict. The stamp is
 # fixed once per job in .agent/notes-stamp (ignored) so every work segment of one run
 # keeps writing to the same file. Nothing is ever written to the shared
-# .agent/pr-notes.md: that path is only the ignored copy the publish job reads.
+# .agent/pr-notes.md. The ignored copy the publish job reads is .agent/publish-notes.md.
 mkdir -p "$out/pr-notes"
 [[ -s "$out/notes-stamp" ]] || date -u +%Y%m%d-%H%M%S > "$out/notes-stamp"
 notes_stamp=$(<"$out/notes-stamp")
@@ -105,7 +105,7 @@ run_agent() {
 
 tracker_rules() {
   if [[ "${SWARM:-0}" == 1 ]]; then
-    printf '%s' "You are one of several parallel workers. Follow AGENTS.md, CODING_STYLE.md and the specification, and use the .opencode specialists as AGENTS.md directs. Stay inside the task scope and use only the reserved migration version. Name Java packages and classes by business domain, never by story or task ID, and reuse existing domain types instead of duplicating them. Delivery requires 100% coverage: write a test for every branch and failure path you add, delete code that cannot run, never lower a coverage threshold, add an exclusion or skip a test, and list each new branch with its test in your notes (AGENTS.md, Coverage rules). Do not call the task complete until you have run the coverage command for every area you touched, confirmed 100% on every file you changed, and written the command and result in your notes; if you cannot reach 100%, say so in your notes instead of finishing. Do not edit TODO.md, MEMORY.md, WORKSPACE.md, BUGS.md, PROJECT.md or docs/swarm: the orchestrator already marked your task [-] in TODO.md and the integrator marks it [x] after the merge. Write the requirement IDs, acceptance mapping, exact commands run and results, defects found and decisions to ${notes_file} (create the pr-notes folder if missing; the file is named after your story and is yours alone, so parallel workers never touch the same file). It is committed with your work and becomes the pull request description. Run the fast unit tests. The integrator runs the database and integration tests. If a decision or evidence is missing, stop and say so in ${notes_file}."
+    printf '%s' "You are one of several parallel workers. Follow AGENTS.md, CODING_STYLE.md and the specification, and use the .opencode specialists as AGENTS.md directs. Stay inside the task scope and use only the reserved migration version. Name Java packages and classes by business domain, never by story or task ID, and reuse existing domain types instead of duplicating them. Delivery requires 100% coverage: write a test for every branch and failure path you add, delete code that cannot run, never lower a coverage threshold, add an exclusion or skip a test, and list each new branch with its test in your notes (AGENTS.md, Coverage rules). Do not call the task complete until you have run the coverage command for every area you touched, confirmed 100% on every file you changed, and written the command and result in your notes; if you cannot reach 100%, say so in your notes instead of finishing. Do not edit TODO.md, MEMORY.md, WORKSPACE.md, BUGS.md, PROJECT.md or docs/swarm: the orchestrator already marked your task [-] in TODO.md and the integrator marks it [x] after the merge. Write the requirement IDs, acceptance mapping, exact commands run and results, defects found and decisions to ${notes_file} (create the pr-notes folder if missing; the file is named after your story and is yours alone, so parallel workers never touch the same file). It is committed with your work and becomes the pull request description. Run the fast unit tests. The integrator runs the database and integration tests. If a decision or evidence is missing, stop and say so in ${notes_file}. If you cannot finish or a check still fails, add a section \"Why this is not finished\" to ${notes_file} with what failed (the command and the error), the most likely cause, what you already tried, and the exact next step, so the next worker or a person can continue without rediscovering it."
   else
     printf '%s' "Update TODO.md and MEMORY.md. Mark your task [-] with your agent name before you start and [x] with evidence when every gate passes. If a decision or evidence is missing, put the task back to [ ] and write the question under it in TODO.md."
   fi
@@ -194,8 +194,12 @@ $(tail -n 60 "$out/coverage.log")" "$out/coverage-fix-${attempt}.log" > /dev/nul
       restore_config
     done
   fi
-  # The publish job reads the notes from .agent/pr-notes.md in the artifact.
-  [[ "$notes_file" != .agent/pr-notes.md && -f "$notes_file" ]] && cp "$notes_file" "$out/pr-notes.md"
+  # The publish job reads the notes from .agent/publish-notes.md in the artifact. That name
+  # is ignored and never the shared .agent/pr-notes.md, which no run may write or commit.
+  [[ -f "$notes_file" ]] && cp "$notes_file" "$out/publish-notes.md"
+  # The shared notes file was retired because every run overwrote it and PRs conflicted.
+  # If an old copy is still tracked, drop it from this branch instead of editing it.
+  git rm -q --cached --ignore-unmatch -- .agent/pr-notes.md
   # Keep any uncommitted agent work so it is checked and published.
   if [[ -n "$(git status --porcelain --untracked-files=all)" ]]; then
     git add -A
