@@ -57,6 +57,9 @@ jobs:
       contents: write
       pull-requests: write
       actions: read
+      # The budget gate opens an issue when it pauses the swarm; without this
+      # permission the pause was silent.
+      issues: write
     outputs:
       matrix: ${{ steps.plan.outputs.matrix }}
       count: ${{ steps.plan.outputs.count }}
