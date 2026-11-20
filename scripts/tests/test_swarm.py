@@ -542,10 +542,31 @@ class PlanTests(unittest.TestCase):
 
     def test_label_editing_jobs_have_issues_write(self):
         import yaml
-        for name, job in (("swarm-integrator.yml", "integrate"), ("fix-pr-gate.yml", "validate")):
+        for name, job in (("swarm-integrator.yml", "integrate"), ("fix-pr-gate.yml", "handoff")):
             config = yaml.safe_load((ROOT / ".github/workflows" / name).read_text())
             perms = config["jobs"][job]["permissions"]
             self.assertEqual(perms.get("issues"), "write", f"{name} {job}")
+
+    def test_the_fix_gate_runs_pull_request_code_without_a_token(self):
+        import yaml
+        config = yaml.safe_load((ROOT / ".github/workflows/fix-pr-gate.yml").read_text())
+        validate, handoff = config["jobs"]["validate"], config["jobs"]["handoff"]
+        self.assertEqual(validate["permissions"], {"contents": "read"})
+        self.assertNotIn("GH_TOKEN", json.dumps(validate))
+        checkout = handoff["steps"][0]["with"]
+        self.assertEqual(checkout["ref"], "${{ github.event.repository.default_branch }}")
+
+    def test_reusable_workflow_jobs_ask_only_for_what_the_caller_grants(self):
+        import yaml
+        order = {"none": 0, "read": 1, "write": 2}
+        swarm_yml = yaml.safe_load((ROOT / ".github/workflows/swarm.yml").read_text())
+        for caller, called in (("worker", "swarm-worker.yml"), ("integrate", "swarm-integrator.yml")):
+            granted = swarm_yml["jobs"][caller]["permissions"]
+            nested = yaml.safe_load((ROOT / ".github/workflows" / called).read_text())
+            for name, job in nested["jobs"].items():
+                for scope, level in (job.get("permissions") or {}).items():
+                    self.assertGreaterEqual(order[granted.get(scope, "none")], order[level],
+                                            f"{called} {name} asks {scope}: {level}")
 
     def test_labels_use_rest_not_graphql_pr_edit(self):
         source = (ROOT / "scripts/swarm.py").read_text()
@@ -979,9 +1000,13 @@ class AuditTests(unittest.TestCase):
         text = self.TODO + "- [ ] X-1 · Tenant check MISSING on export endpoint!\n  - scope: a\n"
         self.assertEqual(self.entries([self.good()], text), [])
 
-    def test_at_most_five_new_tasks_per_audit(self):
-        items = [self.good(title=f"Distinct finding number {n} in the code") for n in range(8)]
+    def test_at_most_ten_new_tasks_per_audit(self):
+        items = [self.good(title=f"Distinct finding number {n} in the code") for n in range(14)]
+        self.assertEqual(swarm.MAX_AUDIT_NEW, 10)
         self.assertEqual(len(self.entries(items)), swarm.MAX_AUDIT_NEW)
+
+    def test_the_open_audit_backlog_leaves_room_for_a_full_audit(self):
+        self.assertGreaterEqual(swarm.MAX_AUDIT_OPEN, 2 * swarm.MAX_AUDIT_NEW)
 
     def test_no_new_tasks_while_too_many_audit_tasks_are_open(self):
         text = self.TODO + "".join(
@@ -1022,6 +1047,10 @@ class AuditTests(unittest.TestCase):
         self.assertIn("cron: '17 7 * * *'", text)
         self.assertIn("scripts/agent-run.sh audit", text)
         self.assertIn("swarm.py add-audit-tasks", text)
+        self.assertIn("AUDIT_FOCUS: ${{ inputs.focus }}", text)
+        script = (ROOT / "scripts/agent-run.sh").read_text()
+        self.assertIn("Today's focus: $(audit_focus)", script)
+        self.assertIn("Write at most 10 findings", script)
         audit = text.split("  audit:")[1].split("  append:")[0]
         self.assertNotIn("GH_TOKEN", audit)
         self.assertNotIn("contents: write", audit)

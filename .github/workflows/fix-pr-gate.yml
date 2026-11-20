@@ -4,6 +4,9 @@ name: Fix PR gate
 # integrator; a red fix goes back through swarm.py fail() for one bounded retry.
 # There is deliberately no failed-run or cron trigger: a repair exists only
 # A fix PR has the autofix label or a FIX- title; nothing else matches.
+# The gate runs the pull request's own code, so that job holds no write token; a
+# second job on a fresh runner, with the trusted scripts of the default branch, acts
+# on the result. Untrusted code cannot reach the token through PATH or env files.
 on:
   pull_request:
     types: [opened, synchronize, reopened, labeled]
@@ -30,10 +33,8 @@ jobs:
     timeout-minutes: 45
     permissions:
       contents: read
-      pull-requests: write
-      # swarm.py fail() adds needs-fix/fix-N labels via the Issues API.
-      issues: write
-      actions: write
+    outputs:
+      passed: ${{ steps.gate.outputs.passed }}
     services:
       postgres:
         image: postgres:17
@@ -45,8 +46,6 @@ jobs:
           --health-cmd "pg_isready -U postgres"
           --health-interval 10s --health-timeout 5s --health-retries 5
     env:
-      GH_TOKEN: ${{ github.token }}
-      PR: ${{ github.event.pull_request.number }}
       SMARTCLINIC_PG_ADMIN: postgres
       NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
     steps:
@@ -67,22 +66,61 @@ jobs:
           key: owasp-nvd-${{ runner.os }}-${{ runner.arch }}-${{ github.sha }}
           restore-keys: |
             owasp-nvd-${{ runner.os }}-${{ runner.arch }}-
-      - name: Run the full gate and hand off
+      - name: Run the full gate (no GitHub token in this job)
+        id: gate
         run: |
           set +e
           bash scripts/check.sh > fix-pr-gate.log 2>&1
           code=$?
           set -e
-          if [[ "$code" -eq 0 ]]; then
-            # A draft PR cannot be merged; make it ready and label it so the
-            # integrator picks it up without any human confirmation.
+          tail -80 fix-pr-gate.log
+          if [[ "$code" -eq 0 ]]; then echo "passed=true" >> "$GITHUB_OUTPUT"; fi
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: fix-pr-gate-log
+          path: fix-pr-gate.log
+          if-no-files-found: ignore
+          retention-days: 3
+  handoff:
+    name: Hand off the fix PR
+    needs: validate
+    if: always() && needs.validate.result != 'skipped' && needs.validate.result != 'cancelled'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      actions: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PR: ${{ github.event.pull_request.number }}
+      PASSED: ${{ needs.validate.outputs.passed }}
+    steps:
+      # Trusted copy of the scripts: never the pull request's version.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+          sparse-checkout: scripts
+      - uses: actions/download-artifact@v8
+        continue-on-error: true
+        with:
+          name: fix-pr-gate-log
+          path: gate
+      - name: Hand a green fix to the integrator, send a red one back
+        run: |
+          # The integrator runs its own full gate before main moves, so a forged
+          # pass only queues the pull request; it never merges it.
+          if [[ "$PASSED" == true ]]; then
             gh pr ready "$PR" || true
             gh api --method POST "repos/$GITHUB_REPOSITORY/issues/$PR/labels" \
               -f 'labels[]=swarm' -f 'labels[]=autofix'
             gh workflow run swarm-integrator.yml
           else
-            tail -80 fix-pr-gate.log
+            touch gate/fix-pr-gate.log 2>/dev/null || { mkdir -p gate; touch gate/fix-pr-gate.log; }
             python3 -I scripts/swarm.py fail --pr "$PR" \
-              --reason "Fix PR gate failed" --log fix-pr-gate.log
+              --reason "Fix PR gate failed" --log gate/fix-pr-gate.log
             exit 1
           fi

@@ -1,0 +1,63 @@
+name: Swarm watchdog
+# Keeps the swarm honest without a person watching it. It never runs an agent and
+# holds no write access to code: it opens or updates one issue per cause, closes it
+# when the cause is gone, and notices when no wave has run for an hour while work
+# is waiting.
+#   - a finished run of a workflow that can fail: record the failure (or close the
+#     issue when the next run is green); a transient infrastructure error is retried once
+#   - every 15 minutes: stall check, and close issues whose pull request is finished
+# The schedule is only a heartbeat: GitHub may delay or drop it, so the run events
+# above are the primary trigger. SWARM_ISSUES=off (repository variable) silences it.
+on:
+  workflow_run:
+    workflows: [Delivery, Agent swarm, Swarm slot images, Daily audit, Swarm issue monitor, Daily notes]
+    types: [completed]
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: swarm-watchdog
+  cancel-in-progress: false
+  # Keep every waiting run: without this a newer trigger replaces a waiting one,
+  # so a failure event or the 2 AM run could be dropped.
+  queue: max
+env:
+  SWARM_ISSUES: ${{ vars.SWARM_ISSUES }}
+
+jobs:
+  watch:
+    name: Watch the swarm
+    # Pull-request runs are the integrator's business, and a cancelled or skipped
+    # run says nothing: only finished main/schedule/dispatch runs reach the script.
+    if: >-
+      github.event_name != 'workflow_run'
+      || (github.event.workflow_run.event != 'pull_request'
+          && contains(fromJSON('["success","failure","timed_out"]'), github.event.workflow_run.conclusion))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+      actions: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+          sparse-checkout: |
+            scripts
+            TODO.md
+      - name: Record or close the failure of a finished run
+        if: github.event_name == 'workflow_run'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: python3 -I scripts/swarm.py run-event --run "$RUN_ID"
+      - name: Check for a stalled swarm and close finished issues
+        if: github.event_name != 'workflow_run'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 -I scripts/swarm.py watchdog

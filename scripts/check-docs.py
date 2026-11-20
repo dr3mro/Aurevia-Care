@@ -40,9 +40,14 @@ def mentioned_ids(text, prefixes):
     return found
 
 
+# Worker notes and archives are records, not specs: agent-written text there must not turn main red.
+SKIP_PREFIXES = (".agent/", "docs/archive/")
+
+
 def markdown_files(root):
     return [p for p in root.rglob("*.md")
-            if not SKIP & set(p.relative_to(root).parts)]
+            if not SKIP & set(p.relative_to(root).parts)
+            and not p.relative_to(root).as_posix().startswith(SKIP_PREFIXES)]
 
 
 def check(root=ROOT):

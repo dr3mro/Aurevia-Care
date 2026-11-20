@@ -1,0 +1,144 @@
+name: Swarm issue monitor
+# Hourly at minute 37 (half an hour from the swarm's own safety-net wave at :07): issues
+# no worker was ever assigned (open over an hour) are picked up.
+# Daily at 2:00 AM New York: issues with no progress for 24 hours get a worker again.
+# Cron is UTC only, so the daily job is scheduled at 06:00 UTC (summer, EDT) and 07:00 UTC
+# (winter, EST); each runs only in its own season, so a delayed run still counts. A read-only triage worker derives
+# the scope for an issue with no task; a trusted job validates it and adds the task to TODO.md.
+# Workers comment on the issue when they receive it and when they stop or finish.
+on:
+  schedule:
+    - cron: '37 * * * *'
+    - cron: '0 6 * * *'
+    - cron: '0 7 * * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'hourly (unassigned issues) or daily (no progress for 24 hours)'
+        type: choice
+        options: [hourly, daily]
+        default: hourly
+permissions:
+  contents: read
+concurrency:
+  group: swarm-issue-monitor
+  cancel-in-progress: false
+  # Keep every waiting run: without this a newer trigger replaces a waiting one,
+  # so a failure event or the 2 AM run could be dropped.
+  queue: max
+env:
+  SWARM_GIT_NAME: ${{ vars.SWARM_GIT_NAME }}
+  SWARM_GIT_EMAIL: ${{ vars.SWARM_GIT_EMAIL }}
+  SWARM_ISSUES: ${{ vars.SWARM_ISSUES }}
+
+jobs:
+  select:
+    name: Select issues
+    if: vars.SWARM_ISSUES != 'off'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+      actions: read
+    outputs:
+      act: ${{ steps.pick.outputs.act }}
+      triage: ${{ steps.pick.outputs.triage }}
+      image: ${{ steps.image.outputs.image }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 1
+          persist-credentials: false
+      - id: image
+        run: echo "image=ghcr.io/${GITHUB_REPOSITORY,,}-agent-2:latest" >> "$GITHUB_OUTPUT"
+      - id: pick
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          SCHEDULE: ${{ github.event.schedule }}
+          MODE: ${{ github.event_name == 'schedule' && (github.event.schedule == '37 * * * *' && 'hourly' || 'daily') || inputs.mode }}
+        run: python3 -I scripts/swarm.py monitor-select --mode "$MODE" --out monitor
+      - uses: actions/upload-artifact@v7
+        if: steps.pick.outputs.act == 'true'
+        with:
+          name: monitor-selection
+          path: monitor
+          retention-days: 1
+  triage:
+    name: Triage worker
+    needs: select
+    if: needs.select.outputs.triage == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    container:
+      image: ${{ needs.select.outputs.image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    permissions:
+      contents: read
+      packages: read
+    defaults:
+      run:
+        shell: bash
+    env:
+      MODEL: opencode-go/hy4-flash-free
+      SWARM: '1'
+      AGENT_TIMEOUT: 45m
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/download-artifact@v8
+        with:
+          name: monitor-selection
+          path: monitor
+      - name: Make the issue files available to the worker
+        run: cp -r monitor/triage-in triage-in
+      - name: Triage the issues (no GitHub token in this step)
+        env:
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY_2 || secrets.OPENCODE_API_KEY }}
+        run: scripts/agent-run.sh triage
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: monitor-triage
+          path: .agent/triage
+          if-no-files-found: ignore
+          retention-days: 1
+  assign:
+    name: Assign workers
+    needs: [select, triage]
+    if: always() && needs.select.outputs.act == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@v8
+        with:
+          name: monitor-selection
+          path: monitor
+      - uses: actions/download-artifact@v8
+        continue-on-error: true
+        with:
+          name: monitor-triage
+          path: triage
+      - name: Add tasks, requeue pull requests, start a wave
+        env:
+          # The job's own token: it can push TODO.md (as the plan job does), write issues and
+          # labels, and dispatch a wave. No dependency on SWARM_TOKEN's scopes.
+          GH_TOKEN: ${{ github.token }}
+        run: python3 -I scripts/swarm.py monitor-assign --selection monitor/selection.json --triage triage

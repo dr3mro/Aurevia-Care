@@ -70,6 +70,7 @@ jobs:
           --health-interval 10s --health-timeout 5s --health-retries 5
     env:
       GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
+      GH_ISSUES_TOKEN: ${{ github.token }}
       SMARTCLINIC_PG_ADMIN: postgres
       NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
     steps:
@@ -140,7 +141,7 @@ jobs:
       MODEL: opencode-go/hy4-flash-free
       SWARM: '1'
       CHECK_SCRIPT: scripts/quick-check.sh
-      MERGE_ATTEMPTS: '3'
+      MERGE_ATTEMPTS: '5'
       AGENT_TIMEOUT: 20m
     steps:
       - uses: actions/checkout@v7
@@ -193,4 +194,5 @@ jobs:
       - name: Push the resolved branches or send them back
         env:
           GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
+          GH_ISSUES_TOKEN: ${{ github.token }}
         run: python3 -I scripts/swarm.py resolve-publish --dir resolved
