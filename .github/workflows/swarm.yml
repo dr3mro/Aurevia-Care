@@ -56,7 +56,10 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-      actions: read
+      # Reading the slot-image manifests needs packages: read; dispatching one
+      # agent-image.yml build when they are absent needs actions: write.
+      packages: read
+      actions: write
       # The budget gate opens an issue when it pauses the swarm; without this
       # permission the pause was silent.
       issues: write
@@ -90,26 +93,15 @@ jobs:
         run: python3 -I scripts/swarm.py add-repair-task --latest
       # The prepared images are built once by agent-image.yml / swarm-images.yml
       # and reused by every worker. Never start a wave while they are rebuilding
-      # or not green: a worker would pull a stale image (for example V1 OpenCode
-      # after the base image moved to V2) and fail before doing any work.
+      # or not green. The decision lives in the swarm helper and is testable:
+      # a wave is blocked only while a build is queued/in progress or the newest
+      # completed build failed. With no run history at all (cleaned or expired),
+      # the slot images in GHCR decide instead of an empty `gh run list`.
       - id: images
         if: steps.budget.outputs.start == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          latest() { gh run list --workflow "$1" --limit 1 --json status,conclusion -q ".[0].$2"; }
-          base_status=$(latest agent-image.yml status)
-          slot_status=$(latest swarm-images.yml status)
-          slot_conclusion=$(latest swarm-images.yml conclusion)
-          ready=true
-          if [[ "$base_status" == in_progress || "$base_status" == queued \
-             || "$slot_status" == in_progress || "$slot_status" == queued \
-             || "$slot_conclusion" != success ]]; then
-            ready=false
-          fi
-          echo "Prepared images not ready (base=$base_status, slot=$slot_status/$slot_conclusion)" >&2
-          echo "ready=$ready" >> "$GITHUB_OUTPUT"
+        run: python3 -I scripts/swarm.py images-ready
       # Marks every task it starts as [-] in TODO.md and pushes that to main
       # (GITHUB_TOKEN pushes do not trigger another run).
       - id: plan
@@ -120,9 +112,10 @@ jobs:
           BUDGET_WORKERS: ${{ steps.budget.outputs.workers }}
           REPAIR_RUN: ${{ inputs.repair_run }}
           IMAGES_READY: ${{ steps.images.outputs.ready }}
+          IMAGES_REASON: ${{ steps.images.outputs.reason }}
         run: |
           if [[ "$IMAGES_READY" != true ]]; then
-            echo 'Prepared images are rebuilding or not green; skipping this wave.' >&2
+            echo "Prepared images not ready: $IMAGES_REASON; skipping this wave." >&2
             echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"
             echo 'count=0' >> "$GITHUB_OUTPUT"
             exit 0
