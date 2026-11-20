@@ -150,7 +150,12 @@ public class ConsolidationService {
                 failure.set(new ApiException(404, "NOT_FOUND", "patient not found"));
                 return null;
             }
-            Optional<DuplicateReview> existing = repository.findReviewByPair(survivorId, duplicateId);
+            // V9 uniqueness is on the ordered (survivor, duplicate) pair. A client can
+            // otherwise reopen an already-consolidated pair by swapping the two ids:
+            // the forward lookup is empty, a second review is appended, and a second
+            // ACTIVE association would create a two-node chart-visibility cycle.
+            Optional<DuplicateReview> existing = repository.findReviewByPair(survivorId, duplicateId)
+                    .or(() -> repository.findReviewByPair(duplicateId, survivorId));
             if (existing.isPresent()) {
                 DuplicateReview found = existing.get();
                 if (repository.findCurrentConsolidation(found.id()).isPresent()) {
@@ -171,8 +176,15 @@ public class ConsolidationService {
                 return null;
             }
             DuplicateReview created = repository.findReviewByPair(survivorId, duplicateId).orElse(null);
-            repository.appendAudit(context, "DUPLICATE_REVIEW_OPEN",
-                    created == null ? duplicateId : created.id(), "SUCCESS");
+            if (created == null) {
+                // The insert committed but the created review is not visible. Report a
+                // conflict rather than HTTP 201 with an empty body; a client retry
+                // follows the idempotent re-open path and returns the existing ticket.
+                repository.appendAudit(context, "DUPLICATE_REVIEW_OPEN", duplicateId, "CONFLICT");
+                failure.set(new ApiException(409, "CONFLICT", "review could not be confirmed; retry"));
+                return null;
+            }
+            repository.appendAudit(context, "DUPLICATE_REVIEW_OPEN", created.id(), "SUCCESS");
             return created;
         });
         if (failure.get() != null) {
@@ -254,6 +266,24 @@ public class ConsolidationService {
             if (repository.findCurrentConsolidation(reviewId).isPresent()) {
                 repository.appendAudit(context, "CONSOLIDATE", reviewId, "CONFLICT");
                 failure.set(new ApiException(409, "CONFLICT", "review already consolidated"));
+                return null;
+            }
+            // A different review can already have moved this duplicate's chart while
+            // its append-only patient version stayed unchanged, so the version
+            // precondition cannot detect it. The read path exposes the same fact as
+            // ReviewDetail.chartVisibilityId; the write path must refuse to append a
+            // second ACTIVE association. Read under the pair lock, not from a snapshot.
+            if (!duplicate.id().equals(repository.effectivePatientId(duplicate.id()))) {
+                repository.appendAudit(context, "CONSOLIDATE", reviewId, "CONFLICT");
+                failure.set(new ApiException(409, "CONFLICT", "duplicate chart already moved by another review"));
+                return null;
+            }
+            // The survivor must still own its own chart too. If a reversed review
+            // raced past open() and the survivor was already aliased elsewhere,
+            // appending the inverse association would close a visibility cycle.
+            if (!survivor.id().equals(repository.effectivePatientId(survivor.id()))) {
+                repository.appendAudit(context, "CONSOLIDATE", reviewId, "CONFLICT");
+                failure.set(new ApiException(409, "CONFLICT", "survivor chart already moved by another review"));
                 return null;
             }
             String associationId = repository.newId();
