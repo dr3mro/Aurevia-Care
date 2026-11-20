@@ -336,6 +336,17 @@ def run_event(run_id):
     slug = workflow_slug(name)
     if conclusion == "success":
         closed = close_issues("workflow", slug, f"The next run is green: {info.get('url')}", by="workflow")
+        # The repair gate opens "Main is red and automatic repair gave up" when three
+        # repair attempts fail in 24 hours. It has no fingerprint, so close it here
+        # once a Delivery run on main is green again.
+        if name == "Delivery":
+            for issue in gh_json("issue", "list", "--state", "open",
+                                 "--search", "Main is red and automatic repair gave up in:title",
+                                 "--limit", "10", "--json", "number,title") or []:
+                if issue.get("title") == "Main is red and automatic repair gave up":
+                    gh("issue", "close", str(issue["number"]),
+                       "--comment", f"{MARK}\nMain is green again: {info.get('url')}", check=False)
+                    closed = closed + [str(issue["number"])]
         return f"closed {closed}" if closed else "green; nothing open"
     if conclusion not in ("failure", "timed_out"):
         return f"{conclusion or 'unfinished'}; nothing to do"
@@ -426,6 +437,20 @@ def watchdog():
     else:
         closed = close_issues("stall", ["swarm"], "Waves are running again, or there is no work waiting.")
         print(f"Healthy. {facts}" + (f" Closed stall issue {closed}." if closed else ""))
+    # Close the repair-gave-up issue once a Delivery run on main is green.
+    try:
+        runs = gh_json("run", "list", "--workflow", "Delivery", "--branch", "main",
+                       "--limit", "1", "--json", "conclusion,url") or []
+        if runs and runs[0].get("conclusion") == "success":
+            for issue in gh_json("issue", "list", "--state", "open",
+                                 "--search", "Main is red and automatic repair gave up in:title",
+                                 "--limit", "10", "--json", "number,title") or []:
+                if issue.get("title") == "Main is red and automatic repair gave up":
+                    gh("issue", "close", str(issue["number"]),
+                       "--comment", f"{MARK}\nMain is green again: {runs[0].get('url')}", check=False)
+                    print(f"Closed repair-gave-up issue {issue['number']}.")
+    except Exception as error:  # noqa: BLE001
+        print(f"repair-gave-up close check skipped: {error}", file=__import__("sys").stderr)
     closed = sync_issues()
     if closed:
         print(f"Closed finished issues: {closed}")
