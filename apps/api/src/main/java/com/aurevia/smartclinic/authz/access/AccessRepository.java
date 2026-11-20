@@ -352,7 +352,7 @@ public class AccessRepository {
 
     /**
      * Read a required {@code timestamptz} column as an instant. pgjdbc maps
-     * {@code timestamptz} to {@link OffsetDateTime}, not to {@link Instant}.
+     * {@code timestamptz} to {@link java.time.OffsetDateTime}, not to {@link java.time.Instant}.
      *
      * @param resultSet current row
      * @param column    required timestamp column
