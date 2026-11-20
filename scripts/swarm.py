@@ -1379,7 +1379,13 @@ def main(argv=None):
     elif a.cmd == "continue":
         prs = gh_json("pr", "list", "--state", "open", "--label", "swarm", "--limit", "100",
                       "--json", "number,title,headRefName,isCrossRepository,labels,comments") or []
-        go = continue_swarm(Path(a.file).read_text(), prs)
+        # A task whose pull request merged is still marked taken until the next plan
+        # reclaims it, and its dependants would look blocked: reclaim first so a merged
+        # wave is seen as finished and the loop carries on.
+        everything = gh_json("pr", "list", "--state", "all", "--label", "swarm", "--limit", "200",
+                             "--json", "number,headRefName,state,labels") or []
+        text = reclaim(Path(a.file).read_text(), everything, live_workers())
+        go = continue_swarm(text, prs)
         if go and waiting_waves():
             go = False
             print("A wave is already waiting; not queueing another.")
