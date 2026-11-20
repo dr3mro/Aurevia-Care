@@ -1,0 +1,16 @@
+{
+  "expo": {
+    "name": "Aurevia Care",
+    "slug": "aurevia-care",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.example.aureviacare"
+    },
+    "android": {
+      "package": "com.example.aureviacare"
+    }
+  }
+}
