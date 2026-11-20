@@ -11,7 +11,6 @@ export default defineConfig({
       provider: 'v8',
       include: ['frontend/**/*.ts'],
       exclude: ['frontend/**/*.test.ts'],
-      all: false,
       thresholds: { lines: 100, functions: 100, branches: 100, statements: 100 },
     },
   },
