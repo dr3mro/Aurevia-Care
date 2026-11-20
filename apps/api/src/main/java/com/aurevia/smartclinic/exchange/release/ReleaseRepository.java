@@ -77,6 +77,27 @@ public class ReleaseRepository {
     }
 
     /**
+     * Check the live, verified account-to-chart link fold for one patient-scoped read (IAM-05, PAT-02).
+     *
+     * <p>The rule lives once in the V10 {@code public.has_chart_access} fold over the
+     * append-only {@code account_chart_link} ledger. Forced RLS and the transaction-local
+     * tenant GUC confine the answer to the active organization, and an unlink takes effect
+     * on the next request without a token or session refresh. The fold is read inside the
+     * caller's guarded transaction, never at connection time.</p>
+     *
+     * @param subject   authenticated subject from the tenant context
+     * @param patientId tenant-local patient identifier addressed by the request
+     * @return {@code true} only when the current event is a verified link to this chart
+     */
+    public boolean hasVerifiedChartLink(String subject, String patientId) {
+        Boolean linked = jdbc.queryForObject(
+                "SELECT public.has_chart_access(:subject, CAST(:patientId AS uuid))",
+                new MapSqlParameterSource().addValue("subject", subject).addValue("patientId", patientId),
+                Boolean.class);
+        return Boolean.TRUE.equals(linked);
+    }
+
+    /**
      * Append one authorization. Author, tenant and timestamp are database-owned.
      *
      * @param organizationId        active organization identifier

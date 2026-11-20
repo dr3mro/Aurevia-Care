@@ -324,11 +324,17 @@ public class ReleaseService {
     }
 
     /**
-     * List the revision identifiers a patient may currently access.
+     * List the revision identifiers a caller may currently access for one patient (PAT-02).
+     *
+     * <p>This is a patient-scoped query, not a staff directory. The caller is either
+     * the verified patient whose active chart link points at {@code patientId}, or
+     * a care-team clinician/tenant administrator. Both checks are re-derived inside
+     * the guarded transaction. A receptionist, privacy auditor or patient linked to
+     * another chart is denied and the denial is audited in the same transaction.</p>
      *
      * @param patientId tenant-local patient identifier
      * @return currently visible revision identifiers
-     * @throws ApiException on invalid input or denial
+     * @throws ApiException on invalid input, missing context or denial
      */
     public List<String> visibleRevisions(String patientId) {
         if (patientId == null || !PATIENT.matcher(patientId).matches()) {
@@ -337,10 +343,19 @@ public class ReleaseService {
         AtomicReference<ApiException> failure = new AtomicReference<>();
         List<String> result = transactions.execute(status -> {
             TenantContext context = TenantContext.current();
-            ApiException denial = authorize(context, ReleaseActionPolicy.ACCESS, patientId);
-            if (denial != null) {
-                failure.set(denial);
+            if (context == null) {
+                failure.set(new ApiException(401, "UNAUTHENTICATED", "authentication required"));
                 return null;
+            }
+            // A verified, active link to this exact chart is the patient's own
+            // authorization. It is read from the authoritative ledger on every
+            // request, so an unlink or a link to another chart denies at once.
+            if (!repository.hasVerifiedChartLink(context.subject(), patientId)) {
+                ApiException denial = authorize(context, ReleaseActionPolicy.ACCESS, patientId);
+                if (denial != null) {
+                    failure.set(denial);
+                    return null;
+                }
             }
             List<String> visible = repository.findAuthorizedByPatient(patientId).stream()
                     .filter(release -> release.visibleNow(clock))

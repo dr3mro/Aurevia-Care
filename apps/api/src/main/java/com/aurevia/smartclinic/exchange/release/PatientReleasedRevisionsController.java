@@ -10,10 +10,10 @@ import org.springframework.web.bind.annotation.RestController;
  * Patient-scoped read of currently released report revisions (PAT-02, XCH-06).
  *
  * <p>This endpoint lives under the {@code patients} resource family rather than
- * {@code releases}, because a patient queries the revisions they may access. All
- * authorization, tenant scoping and visibility folding happen in
- * {@link com.aurevia.smartclinic.exchange.release.ReleaseService}; this adapter only maps the
- * path and delegates.</p>
+ * {@code releases}, because it is a patient-scoped query. The service verifies the
+ * caller's active, verified chart link to the exact path patient (or a care-team
+ * clinician role), then folds the currently visible revisions. This adapter only
+ * maps the path and delegates; it never trusts the path identifier on its own.</p>
  */
 @RestController
 public class PatientReleasedRevisionsController {
