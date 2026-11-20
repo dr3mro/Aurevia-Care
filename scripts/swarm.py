@@ -32,6 +32,12 @@ BODY_LIMIT = 8000
 DEFAULT_MONTHLY_MINUTES = 10000
 BUDGET_WORKFLOWS = ("swarm.yml", "swarm-integrator.yml",
                     "agent-image.yml", "swarm-images.yml", "fix-pr-gate.yml")
+# Workflows that publish the prepared worker images. Their newest run, together
+# with the registry state, is the whole readiness decision (FIX-IMAGES-01).
+IMAGE_BUILD_WORKFLOWS = ("agent-image.yml", "swarm-images.yml")
+# A build in any of these states is still moving: starting a wave now would pull
+# a stale :latest image (for example V1 OpenCode after the base moved to V2).
+IMAGE_BUILD_ACTIVE = frozenset(("queued", "in_progress", "waiting", "requested", "pending"))
 BRANCH = re.compile(r"swarm/[A-Za-z0-9._-]+")
 LABELS = {
     "swarm": ("1d76db", "Pull request opened by a swarm worker"),
@@ -175,6 +181,124 @@ def slot_config(slots, number):
     slot = next(s for s in slots if s["slot"] == number)
     return {"$schema": "https://opencode.ai/config.json", "model": slot["model"],
             "autoupdate": False, "share": "disabled", **slot.get("config", {})}
+
+
+def images_ready(runs, manifests_exist):
+    """Decide from build history and registry state whether a wave may start.
+
+    FIX-IMAGES-01: Actions run history is not authoritative on its own. It can be
+    cleaned, expire or be deleted while healthy images still sit in the registry,
+    and treating an empty history as "not ready" skips every wave forever. This
+    function blocks only for a real reason: a build still queued/running, or the
+    newest completed build failing. With no usable history the registry decides.
+
+    Args:
+        runs: latest run of each prepared-image workflow, as mappings with
+              'status' and 'conclusion'. An empty sequence means no history.
+        manifests_exist: True when every worker slot's :latest image is present
+              in the registry. Only consulted when there is no usable history.
+
+    Returns:
+        True when prepared images are ready and a wave may start.
+    """
+    runs = list(runs or [])
+    if any(str(r.get("status", "")).lower() in IMAGE_BUILD_ACTIVE for r in runs):
+        return False
+    # Only completed runs with a real verdict count. Cancelled/skipped runs are
+    # not a green build and must not strand the swarm, so they fall back to the
+    # registry like an empty history.
+    verdicts = [str(r.get("conclusion", "")).lower() for r in runs
+                if str(r.get("status", "")).lower() == "completed"]
+    verdicts = [v for v in verdicts if v in ("success", "failure")]
+    if "failure" in verdicts:
+        return False
+    if not verdicts:
+        return bool(manifests_exist)
+    return True
+
+
+def has_usable_image_history(runs):
+    """True when a build is in flight or has a completed success/failure verdict.
+
+    Cancelled, skipped and timed-out runs are not usable history: they carry no
+    verdict about the images, so readiness must fall back to the registry and a
+    missing image must trigger one rebuild dispatch.
+    """
+    for run in runs or []:
+        status = str(run.get("status", "")).lower()
+        if status in IMAGE_BUILD_ACTIVE:
+            return True
+        if status == "completed" and str(run.get("conclusion", "")).lower() in ("success", "failure"):
+            return True
+    return False
+
+
+def image_build_runs():
+    """Latest run of each prepared-image workflow; empty when history is gone."""
+    runs = []
+    for workflow in IMAGE_BUILD_WORKFLOWS:
+        found = gh_json("run", "list", "--workflow", workflow, "--limit", "1",
+                        "--json", "status,conclusion") or []
+        if found:
+            runs.append(found[0])
+    return runs
+
+
+def slot_images_exist(slots):
+    """True when every slot's :latest image exists in GHCR.
+
+    Uses the owner-scoped packages API with the plan job's `packages: read`, so
+    no registry login is needed. Package versions are addressed under the owner
+    (org or user), not the repository, so both scopes are tried; a missing or
+    unreadable package fails closed.
+    """
+    owner, repo = repo_slug().split("/", 1)
+    package_prefix = repo.lower()
+    for slot in slots:
+        package = f"{package_prefix}-agent-{slot['slot']}"
+        verdict = ""
+        for scope in (f"orgs/{owner}", f"users/{owner}"):
+            out = gh("api", f"{scope}/packages/container/{package}/versions",
+                     "--jq", 'any(.[]; (.metadata.container.tags // []) | index("latest"))',
+                     check=False).strip()
+            if out in ("true", "false"):
+                verdict = out
+                break
+        if verdict != "true":
+            return False
+    return True
+
+
+def prepare_images(slots_path=".github/swarm/slots.json"):
+    """Plan-job step: decide image readiness, dispatch one rebuild when needed.
+
+    When no build history exists and the slot images are missing, dispatch
+    agent-image.yml once (it chains into swarm-images.yml on success) and emit
+    ready=false so the wave is skipped with a clear log message.
+    """
+    runs = image_build_runs()
+    usable_history = has_usable_image_history(runs)
+    # Cancelled/skipped-only runs are not usable history: consult the registry
+    # exactly when images_ready will fall back to it, and dispatch a rebuild when
+    # it says the slot images are absent. Using `not runs` here would hard-code
+    # manifests_exist=True for a cancelled build and start workers against a
+    # missing image (or, with a real registry check, skip forever without a fix).
+    manifests_exist = slot_images_exist(load_slots(slots_path)) if not usable_history else True
+    ready = images_ready(runs, manifests_exist)
+    emit("ready", "true" if ready else "false")
+    if ready:
+        print("Prepared images are ready: starting the wave.")
+        return True
+    if not usable_history and not manifests_exist:
+        print("No usable prepared-image build history and no slot images in the registry; "
+              "dispatching agent-image.yml once and skipping this wave.", file=sys.stderr)
+        gh("workflow", "run", "agent-image.yml", "--ref", "main", check=False)
+        emit("dispatch", "true")
+    elif any(str(r.get("status", "")).lower() in IMAGE_BUILD_ACTIVE for r in runs):
+        print("Prepared images are still building; skipping this wave.", file=sys.stderr)
+    else:
+        print("The newest prepared-image build failed; skipping this wave.", file=sys.stderr)
+    return False
 
 
 def clip(text):
@@ -1098,6 +1222,8 @@ def main(argv=None):
         sub.add_parser(name)
     p = sub.add_parser("budget-gate")
     p.add_argument("--cap", type=int, default=DEFAULT_MONTHLY_MINUTES)
+    p = sub.add_parser("images-ready")
+    p.add_argument("--slots", default=".github/swarm/slots.json")
     p = sub.add_parser("integrate-batch")
     p.add_argument("--queue", required=True, help="JSON array of pull request numbers")
     p.add_argument("--gate", default="scripts/quick-check.sh")
@@ -1201,6 +1327,8 @@ def main(argv=None):
         queue = plan_integration(main_is_red())
         emit("queue", json.dumps(queue))
         emit("count", len(queue))
+    elif a.cmd == "images-ready":
+        prepare_images(a.slots)
     elif a.cmd == "budget-gate":
         if repo_is_public():
             # No minutes budget to protect: the estimate only ever paused a free swarm.
