@@ -13,6 +13,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -543,6 +544,50 @@ class ReleaseServiceTest {
         when(repository.hasActiveMembership(ACTOR)).thenReturn(true);
         when(repository.activeRoles(ACTOR)).thenReturn(List.of());
         assertEquals(403, assertThrows(ApiException.class, () -> service.visibleRevisions(PATIENT)).status());
+    }
+
+    @Test
+    void visibleRevisionsDeniesReceptionAndAuditorEnumeration() {
+        // AUD-20261119-01: the patient-scoped revision query is not a general
+        // staff enumeration surface. Reception and privacy audit do not need it.
+        for (String role : List.of("reception", "privacy_auditor")) {
+            authorized(role);
+            assertEquals(403, assertThrows(ApiException.class, () -> service.visibleRevisions(PATIENT)).status());
+        }
+        verify(repository, never()).findAuthorizedByPatient(anyString());
+        verify(repository, times(2)).appendAudit(TenantContext.current(), "RELEASE_ACCESS_QUERY", PATIENT, "DENIED");
+    }
+
+    @Test
+    void verifiedPatientSeesOnlyTheirOwnCurrentlyVisibleRevisions() {
+        // AUD-20261119-01: PAT-02 self-access. A verified link to this exact chart
+        // authorizes the read without any staff membership or staff role.
+        when(repository.hasVerifiedChartLink(ACTOR, PATIENT)).thenReturn(true);
+        when(repository.findAuthorizedByPatient(PATIENT)).thenReturn(List.of(
+                release(ReleaseState.AUTHORIZED, NOW.toString(), 1),
+                release(ReleaseState.AUTHORIZED, NOW.plusSeconds(60).toString(), 1),
+                release(ReleaseState.WITHDRAWN, NOW.toString(), 2)));
+        assertEquals(List.of(REVISION), service.visibleRevisions(PATIENT));
+        verify(repository, never()).hasActiveMembership(anyString());
+        verify(repository, never()).activeRoles(anyString());
+        verify(repository).appendAudit(TenantContext.current(), "RELEASE_ACCESS_QUERY", PATIENT, "SUCCESS");
+    }
+
+    @Test
+    void patientLinkedToAnotherChartCannotEnumerateThisPatient() {
+        // The link check is bound to the path patient id, not just to "some chart".
+        when(repository.hasVerifiedChartLink(ACTOR, PATIENT)).thenReturn(false);
+        when(repository.hasActiveMembership(ACTOR)).thenReturn(false);
+        assertEquals(403, assertThrows(ApiException.class, () -> service.visibleRevisions(PATIENT)).status());
+        verify(repository, never()).findAuthorizedByPatient(anyString());
+        verify(repository).appendAudit(TenantContext.current(), "RELEASE_ACCESS_QUERY", PATIENT, "DENIED");
+    }
+
+    @Test
+    void patientScopedReadRequiresTenantContext() {
+        TenantContext.clear();
+        assertEquals(401, assertThrows(ApiException.class, () -> service.visibleRevisions(PATIENT)).status());
+        verify(repository, never()).appendAudit(any(), any(), any(), any());
     }
 
     @Test
