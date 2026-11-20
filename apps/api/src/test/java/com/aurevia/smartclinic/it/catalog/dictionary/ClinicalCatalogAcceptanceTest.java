@@ -201,4 +201,19 @@ class ClinicalCatalogAcceptanceTest {
 
         assertEquals(LocalDate.of(2026, 1, 1), mixedScript.civilDate("2026-01-01"));
     }
+
+    @Test
+    void malformedTimeAndZoneInputsAreRejectedWithDomainErrors() {
+        IllegalArgumentException instantError = assertThrows(IllegalArgumentException.class,
+                () -> mixedScript.instantWithZone("not-an-instant", "UTC"));
+        assertTrue(instantError.getMessage().contains("UTC instant"));
+
+        IllegalArgumentException zoneError = assertThrows(IllegalArgumentException.class,
+                () -> mixedScript.instantWithZone("2026-01-01T00:00:00Z", "Not/AZone"));
+        assertTrue(zoneError.getMessage().contains("IANA zone"));
+
+        IllegalArgumentException dateError = assertThrows(IllegalArgumentException.class,
+                () -> mixedScript.civilDate("2026-13-45"));
+        assertTrue(dateError.getMessage().contains("civil date"));
+    }
 }
