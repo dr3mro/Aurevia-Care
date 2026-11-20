@@ -1,60 +1,132 @@
-# CW-009 — Staff web React audit and access-review screens (synthetic fixtures)
+# S-G1-07 — Original PDF/image associations and immutable localized PDF rendering (CLN-07)
 
-## Requirements and acceptance mapping
+## Scope and requirement IDs
 
-- **ADM-02** — audit review: `AuditEventList` renders actor, purpose, scope, correlation ID, action, resource, UTC instant and outcome for every row; `AccessStateNotice` renders permission-denied (`role="alert"`) and concealment/permitted (`role="status"`) states from fixture probes; `AdminScreen` composes the tenant-scoped views and a configuration-proposal announcement.
-- **OPS-02** — audit and least privilege: `StaffHistoryView` shows append-only invite / role-grant / deactivation events with actor, grantor, effective instant and deactivation reason; deactivation collapses current roles to none. `AuditEventList` computes a synthetic FNV-1a hash-chain verdict with a chain-verified / chain-not-verified / no-events badge and an escalation hint for a broken chain. No real credentials, endpoints or patient data.
-- **UX-01** — English/Arabic bundles with machine-checked key parity, document `dir`/`lang` direction, logical CSS properties only, `<bdi dir="auto">` isolation with content-correct `lang`, and `Intl` civil-date and UTC-instant formatting via the shared CW-004 helpers.
-- Tenant isolation (IAM-01/ARC-01 evidence at the UI boundary): two synthetic tenants intentionally share local identifiers (config key `facility.MAIN.booking`, staff subject `synthetic.reception`, audit sequences); every selection folds on `organizationId` and cross-tenant resources are concealed.
+- Story: **S-G1-07**. Requirement: **CLN-07** (link original PDFs/images to chart, order or result as authorized; retain original bytes and checksum; image rotation is presentation metadata; void captures a reason and preserves history; immutable versioned PDFs in English/Arabic with embedded fonts, direction-aware layout, page numbers, provenance and print profile).
+- Supporting IDs: ARC-01/ARC-02 (tenant-owned keys, forced RLS), ARC-03 (versioned routes, `If-Match`, 401/403/404/409/412/422), IAM-01 (bounded role matrix, fresh membership), OPS-02 (transactional append-only audit), UX-01 (Arabic RTL), PRD-06 (server-side authorization).
+- **Scope decision:** `TODO.md` and the untrusted story text name `.../chart/documents` and `.../it/chart/documents`. The authoritative business-domain package in this tree is `com.aurevia.smartclinic.documents` with its test mirror `it/documents` and `db/migrations/V17__document_associations.sql` — confirmed by `.agent/pr-notes/REFACTOR-PACKAGES.md` §2/§3 and by the pre-existing implementation at base `c107308`. Creating a second `chart/documents` package would duplicate the domain and violate AGENTS.md's business-domain naming rule. All edits therefore stayed in `apps/api/src/main/java/com/aurevia/smartclinic/documents` and `apps/api/src/test/java/com/aurevia/smartclinic/it/documents`. No other worker uses these paths.
+- **Migration:** reserved **V17** already exists in the base (`V17__document_associations.sql`) and was left unchanged by this worker; `db/migrations` is outside the declared scope. No shared tracker, config, contract or script was edited.
 
-## Scope
+## Pre-existing base state (inherited, verified here)
 
-`apps/staff-web/src/features/admin/**` only, plus this notes file. No shared tracker, `check.sh`, API, db, contracts, workflow or script was edited. No migration version used. The feature is intentionally not mounted in `AppShell` (matching the CW-004/CW-007 pattern; mounting is outside this scope).
+The base already contained the full CLN-07 slice: `DocumentController`, `DocumentService`, `DocumentRepository`, `DocumentPolicy`, `DocumentInputs`, `DocumentModel`, `PdfRenderer`, seven test classes (54 unit tests) and `DocumentIsolationTest` (7 DB acceptance tests). Baseline fast run of the six unit classes: **54 tests, 0 failures/errors**, all new production classes at 100% JaCoCo (only `DocumentRepository` left to the DB suite). This worker resumed by adding two test-first integrity fixes, not by rewriting the slice.
 
-## Files
+## Fixes made this run (test-first, synthetic data only)
 
-`domain.ts`, `fixtures.ts`, `messages.ts`, `StateBadge.tsx`, `AccessStateNotice.tsx`, `ConfigEditor.tsx`, `StaffHistoryView.tsx`, `AuditEventList.tsx`, `AdminScreen.tsx`, plus `admin-core.test.ts`, `admin-components.test.tsx`, `admin-screen.test.tsx`.
+### Fix 1 — Arabic multi-word titles were not visually reordered (CLN-07 / UX-01)
 
-## Specialist routing and evidence source
+- **Defect:** `PdfRenderer.content()` emitted the visible title as one `hexText(spec.title())` string in logical order while every body line's space-separated words were reversed for RTL. An Arabic multi-word title was therefore laid out opposite to the body and to RTL reading order. The Info-dictionary `/Title` was correctly logical; only the content stream was wrong.
+- **RED:** added `PdfRendererTest.arabicTitleUsesTheSameVisualReorderingAsBodyLines` (isolate the BT..ET stream, assert the last title word's UTF-16BE hex precedes the first). `mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest=PdfRendererTest#arabicTitleUsesTheSameVisualReorderingAsBodyLines test` → **exit 1, `Tests run: 1, Failures: 1`** (`expected: <true> but was: <false>`).
+- **GREEN:** extracted `PdfRenderer.visualOrder(text, rtl)` and applied it to the title and body lines in `content()` only; the Info dictionary and `%LOGICAL` comment keep the original logical string. Same targeted command → exit 0. Full six-class documents run → **55 tests, 0 failures**.
 
-- `smartclinic-senior-react`: bounded read-only review of the finished feature against ADM-02/OPS-02/UX-01. Found one genuine low-severity defect (stale cross-tenant announcement across an active-organization switch); fixed here. Found no other material gap. **The reviewer had no shell, so its findings are source inspection only, not executed evidence** (simulated review).
-- `smartclinic-ux-reviewer` and `smartclinic-senior-typescript` skills were loaded; the prior attempt recorded three UX review rounds (invalid-date crash and accessibility/accuracy fixes). Those are prior simulated-review findings, not human or clinical feedback.
-- All command results below are **tool-generated** from commands executed by the implementing agent in this attempt (evidence source: tool). No human participant, real clinician or patient evidence exists for this story.
+### Fix 2 — the validated source original was discarded from PDF provenance (CLN-07)
 
-## Defect found and fixed in this attempt (CW-009-01)
+- **Defect:** `DocumentService.render` parsed and validated `sourceAssociationId` (existence, active status, same subject) and then never passed it to `PdfSpec`. The immutable PDF's lineage was only the caller-supplied free-text `sourceSystem`/`sourceId`, so no server-validated binding from the linked original to its derived PDF was recorded.
+- **RED:** added `DocumentServiceTest.renderBindsTheValidatedSourceAssociationIntoTheRenderSpec` (capture `PdfSpec`, assert `sourceAssociationId()`) and `PdfRendererTest.provenanceBindsTheValidatedSourceAssociation` (assert the PDF `/Subject` contains `association:<id>`, and that an unbound render does not). `mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest=DocumentServiceTest,PdfRendererTest test` → **exit 1, COMPILATION ERROR** (`cannot find symbol: method sourceAssociationId()`; `constructor PdfSpec ... cannot be applied to given types`). Genuine red.
+- **GREEN:** added `sourceAssociationId` to `PdfSpec` (Javadoc updated), passed it from `DocumentService.render`, and appended ` association:<id>` to the `/Subject` provenance in `PdfRenderer.render` when present (exact prior string retained when absent, so existing provenance assertions still hold). Updated the three `PdfSpec` constructions in value/renderer tests. Same targeted command → exit 0; full six-class documents run → **57 tests, 0 failures/errors**.
 
-- **Stale cross-tenant announcement on organization switch (UI tenant-isolation seam).** `AdminScreen` cleared `proposals`/`proposal` in a `useEffect` keyed on `organizationId`. Passive effects run after paint, so the first committed frame under a new tenant still rendered the previous tenant's `{ facilityCode, version }` status announcement, contradicting the component's "never carried into another tenant" invariant. The existing tenant-switch test passed only because RTL flushes effects inside `act()`.
-- **Regression test (red first):** `admin-screen.test.tsx > never paints the previous tenant proposal after an active-organization switch` uses a `useLayoutEffect` probe that reads the status region during the commit phase, before passive effects. Against the old code it captured `Proposed version 5 for MAIN` under tenant beta (assertion failed). `npx vitest run src/features/admin/admin-screen.test.tsx` → 1 failed / 4 passed.
-- **Fix:** moved the reset to render time using React's "adjust state when props change" pattern — a `proposalOrganizationId` state and a synchronous guard that clears `proposals`/`proposal` when `organizationId` differs. React discards and immediately re-runs that render, so no stale frame is committed. `useEffect` import removed.
-- **Green after fix:** `npx vitest run src/features/admin` → 3 files, 42 tests passed (was 41).
+## Acceptance mapping (implementation → entry point → test)
 
-## Final verification commands and results (this attempt)
+| CLN-07 clause | Implementation | Evidence |
+|---|---|---|
+| Link original PDF/image to chart/order/result as authorized | `DocumentService.link`, `DocumentInputs`, `DocumentPolicy`; `POST /api/v1/documents/associations` | `DocumentServiceTest` (8 link cases), `DocumentPolicyTest`, `DocumentInputsTest`, `DocumentIsolationTest.deniesWrongRolesMissingIdentityAndInvalidInputs` (DB) |
+| Retain original bytes and checksum | `DocumentRepository.insert`; V17 BEFORE INSERT trigger derives `sha256`/`byte_size` from `content` | `DocumentIsolationTest.storesOriginalBytesWithDatabaseChecksumAndHistory` (DB) |
+| Rotation is presentation metadata | `rotation_degrees` column pinned by V17 update guard; `/Rotate` in `PdfRenderer` | `PdfRendererTest.versionAndRotationChangeTheRenderedBytes`, `DocumentInputsTest.rotationIsPresentationMetadataWithAZeroDefault` |
+| Void captures reason and preserves history | `DocumentService.voidAssociation`, V17 event trigger and update guard, `If-Match` precondition | `DocumentServiceTest.voidChecksEveryBoundaryAndPreservesHistory`, `DocumentControllerTest.voidParsesTheIfMatchPrecondition`, `DocumentIsolationTest.voidRequiresIfMatchAndReasonAndPreservesHistory` (DB) |
+| Immutable versioned PDFs, en/ar, fonts, direction, page numbers, provenance, print profile | `PdfRenderer`, `rendered_document` (append-only) + `next_render_version` advisory lock in V17 | `PdfRendererTest` (11), `DocumentServiceTest` render cases, `DocumentIsolationTest.rendersImmutableVersionedEnglishAndArabicPdfs` (DB) |
+| **This run — RTL title layout** | `PdfRenderer.visualOrder` applied to the content-stream title | `PdfRendererTest.arabicTitleUsesTheSameVisualReorderingAsBodyLines` (red → green) |
+| **This run — original→PDF provenance** | `PdfSpec.sourceAssociationId` → `/Subject association:<id>` | `DocumentServiceTest.renderBindsTheValidatedSourceAssociationIntoTheRenderSpec`, `PdfRendererTest.provenanceBindsTheValidatedSourceAssociation` (both red → green) |
 
-All run from `apps/staff-web` unless noted; evidence source = executed tool commands.
+Supporting: V17 forced RLS and actor-derived triggers; `DocumentService.authorize` re-derives active membership/roles each command and audits denials; `IfMatch` 428/412 mapping; cursor/version semantics per ARC-03.
 
-- `npm ci --no-audit --no-fund` → exit 0 (312 packages, pinned toolchain).
-- `npx vitest run src/features/admin` → 3 files, 42 tests passed.
-- `bash check.sh` (canonical gate: `gen:api:check`, `typecheck`, `lint`, `test:coverage`) → **exit 0**; **29 test files, 189 tests passed, 44 files fully covered, 100% statements (555/555), branches (288/288), functions (214/214), lines (526/526)** with `perFile: true`.
-- `npm run build` → exit 0 (`tsc --noEmit` + `vite build`, 31 modules).
-- `bash docs.sh /tmp/opencode/cw009-docs-final` → exit 0; TypeDoc (`treatWarningsAsErrors`) produced `index.html`.
-- From repo root: `bash scripts/frontend-check.sh` → exit 0 (module typecheck/lint/tests, TypeScript-only policy, strict tsconfig, no `any`/`@ts-ignore`, root Prettier, root Vitest).
-- Quality scan: no `any`/`@ts-ignore`, no story/task-ID naming, no endpoint or PHI-shaped strings in the feature.
+**Entry-point-to-test trace:** `POST /api/v1/documents/rendered` → `DocumentController.render` → `DocumentService.render` (validate `sourceAssociationId`, build `PdfSpec` with it) → `PdfRenderer.render` (`visualOrder` title/lines; `/Subject` provenance with association id; embedded font, A4 print profile, page number) → `DocumentRepository.insertRendered` (DB-derived digest, append-only) → `AuditAppender` → asserted in `DocumentIsolationTest.rendersImmutableVersionedEnglishAndArabicPdfs` and, at unit level, in `DocumentServiceTest`/`PdfRendererTest`.
 
-The stderr stack trace from `tests/theme/ThemeProvider.test.tsx` is the pre-existing fail-closed test (`useTheme` outside a provider); it does not fail any gate.
+## Exact commands and results (evidence source: executed tool commands)
 
-Prettier note: `apps/staff-web` has no Prettier dependency or script (its canonical formatter surface is ESLint + strict TypeScript), and `.prettierignore` excludes `apps/**`, so the root `format:check` does not measure module files. Adding a module formatter is outside this story's scope and was not silently skipped.
+| Command | Result |
+|---|---|
+| `mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest=<6 documents classes> test` (baseline) | exit 0; 54 tests, 0 failures/errors |
+| Targeted RTL test (before fix) | exit 1; `Tests run: 1, Failures: 1` — genuine red |
+| Targeted RTL test (after fix) | exit 0; green |
+| Targeted provenance tests (before fix) | exit 1; COMPILATION ERROR on `sourceAssociationId()` and `PdfSpec` arity — genuine red |
+| Targeted provenance tests (after fix) | exit 0; green |
+| `mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest=<6 documents classes> test` (final) | **exit 0; 57 tests, 0 failures, 0 errors, 0 skipped** |
+| `mvn -q -B -f apps/api/pom.xml -Pno-security,fast test` (full fast tier) | **exit 0; 1688 tests, 0 failures, 0 errors, 0 skipped** |
+| `mvn -q -B -f apps/api/pom.xml -Pno-security,fast test jacoco:report` + parse `apps/api/target/site/jacoco/jacoco.xml` | `PdfRenderer` INSTRUCTION 430/430, BRANCH 22/22, LINE 76/76, METHOD 12/12, CLASS 1/1; `DocumentService` 952/952, 66/66, 193/193, 18/18, 1/1; `DocumentModel$PdfSpec` 46/46, 2/2, 4/4, 2/2, 1/1; every other documents class 0 missed. **100% on all unit-covered production classes.** `DocumentRepository` is exercised by the DB suite (integrator). |
+| `mvn -q -B -f apps/api/pom.xml -Pno-security -DskipTests -Djacoco.skip=true -Dspotbugs.skip=false spotbugs:check` | exit 1 with 5 **pre-existing** findings, all outside this scope: `messaging.acknowledgment.InstructionFactController` (US_USELESS_SUPPRESSION_ON_METHOD), `messaging.conversations.ConversationRepository` (NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE), `patient.identity.IdentityProofingService` (NP_BOOLEAN_RETURN_NULL), `prescription.rx.RxController` (EI_EXPOSE_REP2), `prescription.rx.RxRepository` (NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE). **Zero findings in `documents`.** Not edited (scope boundary). |
+| `python3 -I scripts/check-docs.py` | exit 0 |
+| `python3 -I scripts/check-secrets.py` | exit 0 |
+| `python3 -I scripts/check-migrations.py --require-baseline` | exit 0 |
+| `python3 -I -m unittest discover -s scripts/tests -p 'test_java_conventions.py' -q` | exit 0; OK (2 tests) |
+| `git diff --check` | exit 0 |
 
-## Entry-point-to-test trace
+## Reviews, defects and decisions
 
-`AdminScreen` (composition + synchronous tenant reset) → `ConfigEditor.submit` → `isValidCivilDate` / `proposeVersion` → `versionsFor` / `effectiveVersion` → rendered version table (`admin-screen.test.tsx`, `admin-components.test.tsx`, `admin-core.test.ts`). `AdminScreen` → `StaffHistoryView` → `historyFor` / `isDeactivated` / `currentRoles` → append-only event table (same tests). `AdminScreen` → `AuditEventList` → `adminChainFor` / `verifyChain` → outcome rows and chain badge (same tests). `AdminScreen` → `resolveAccess(probe.viewer, probe.resourceOrganizationId)` → `AccessStateNotice` permitted/denied/concealed notices (same tests). The new regression test drives `AdminScreen` through an active-organization switch and asserts via a commit-phase probe that no prior-tenant announcement is painted.
+- **Specialist reviews (simulated, read-only, no edits):** `smartclinic-ux-reviewer` confirmed Fix 1 is a genuine CLN-07/UX-01 direction-aware-layout defect, that the minimal fix is correct, that the red/green test is a valid discriminator, and that the Info-dictionary `/Title` must remain logical (it does). `smartclinic-senior-backend` independently confirmed Fix 1 and raised Fix 2 (validated source discarded) and a third item (rotation inheritance) from source reading; it did not re-run checks. Findings 1 and 2 are implemented. **Evidence source: simulated reviewers (static); all gate results above are from executed tool commands. No simulated-user exercise and no human, clinical or Arabic-speaking participant evidence.**
+- **Decision — rotation inheritance (deferred):** the backend reviewer observed that a render referencing a source association with `rotationDegrees = 90`, when the request omits rotation, emits `/Rotate 0`. Not changed: CLN-07 makes rotation *presentation metadata* of each artifact; the render request already owns an explicit, validated rotation field defaulting to 0, and silently inheriting a source scan's rotation into a clinical report is a presentation decision with possible interpretation impact. Defer to an owner/clinical decision with a test rather than change it in this bounded slice.
+- **Decision — no magic-byte validation added:** X-03/ARC-06 owns upload/scan validation; duplicating it in the CLN-07 link path would repeat rules across layers. The database still derives the checksum from the exact retained bytes, so a forged digest cannot enter the store.
+- **Decision — no new migration or controller change:** V17 already enforces tenant RLS, derived digests, append-only history, the void guard and version serialization. Both fixes are in domain code and need no schema change.
+- **Defects found and fixed this run:** (1) Arabic multi-word title rendered in logical word order; (2) validated source association dropped from render provenance. No production defect remains open in this slice.
 
-## Limitations / unverified behaviour
+## Blockers / evidence genuinely missing
 
-- The integrator runs the database and integration tests; none were run here by design.
-- Accessibility was verified through role/name assertions, a commit-phase DOM probe and logical-CSS source scanning in jsdom, not a real WCAG 2.2 AA audit or screen reader.
-- Arabic copy is synthetically translated for the fixture; it is not a clinically approved translation. The shared `i18n/format.ts` does not force `numberingSystem: 'latn'` (a documented pre-existing deviation outside this scope).
-- The chain badge uses a deterministic FNV-1a hash for synthetic fixtures only; it is demonstrative, not a production integrity control.
+1. **No local PostgreSQL** (`pg_isready`/`psql` absent). The 7 `@Tag("integration")` tests in `DocumentIsolationTest` — database-derived checksum, two-tenant concealment, forced RLS, void guard, immutable en/ar renders — were **not executed here**. The integrator must run `bash apps/api/check.sh` on the exact merged SHA; that suite is the authority for `DocumentRepository` coverage.
+2. **SpotBugs exit 1** is caused by 5 pre-existing findings in packages outside this scope; they are recorded above and were not edited. The integrator's full gate should be read with that baseline in mind.
+3. **No clinical/human/patient evidence.** Real clinical approval and Arabic-language sign-off remain G5 gates. All fixtures and identifiers in this story are synthetic; no patient data, credentials, file names from real records or raw logs appear in code, tests or this note.
 
-## Delivery
+---
 
-Committed to the assigned branch only; no push, tag, `gh` call or tracker edit.
+## This worker (swarm-8, branch `swarm/S-G1-07-121`, base `48a6e39`)
+
+The CLN-07 slice above was already merged on `main`. I added three further test-first integrity fixes; no migration, shared file, tracker or contract was edited. `V17` is unchanged. Edits stay in the story's business-domain paths `documents` / `it/documents` (the tree's authoritative home for CLN-07 per `REFACTOR-PACKAGES.md` §2/§3).
+
+### Fix 3 — RTL mixed-script value/unit inversion (CLN-07, UX-01) — High
+
+- **Defect:** `PdfRenderer.visualOrder` reversed every space-separated token for Arabic. A line `الجرعة 500 mg يوميا` rendered as `يوميا mg 500 الجرعة`, inverting the numeric value and its unit into `mg 500`. That contradicts `docs/design/rtl-and-localization.md:80-82,114` (digits and units are invariant LTR; value + unit are one run) and is a dosing-reading hazard.
+- **RED:** three new `PdfRendererTest` cases (value-before-unit mid-line, trailing `12.5 mmol/L` run, no empty `<> Tj`). Targeted run → `Tests run: 14, Failures: 3` (exit 1).
+- **GREEN:** bidi-run-aware `visualOrder`: consecutive non-Arabic tokens form one LTR run that keeps logical order; each Arabic token is its own RTL run; run *order* is reversed; empty tokens are skipped. Pure-Arabic renders stay byte-identical. Targeted run → exit 0.
+
+### Fix 4 — boundary NPE bypassed the documented 422 (CLN-07, ARC-03) — Medium
+
+- **Defect:** `RenderRequest`'s compact constructor and accessor used `List.copyOf(lines)`. A JSON body with `lines: null` or a null element threw an unmapped `NullPointerException` before `DocumentInputs.lines(...)` could return the intended `422 INVALID_LINES`.
+- **RED:** `DocumentValuesTest.renderRequestDefersInvalidLineListsToBoundaryValidation` (error on null list) and two new assertions in `DocumentServiceTest.renderRejectsInvalidInputBeforeAnyWrite` → `Unexpected exception type ... but was: <java.lang.NullPointerException>`.
+- **GREEN:** null-safe `copyLines` keeps an immutable view and defers all rejection to the single validator. Targeted run → exit 0.
+
+### Fix 5 — distinct revisions shared one PDF `/ID` (CLN-07 provenance) — Low
+
+- **Defect:** `documentId(content)` hashed only the text stream (title, lines, direction, page). Two immutable revisions differing in version, rotation or provenance had identical `/ID`, so an `/ID`-keyed cache could conflate a signed revision with its replacement.
+- **RED:** `PdfRendererTest.distinctRevisionsDoNotShareThePdfFileIdentifier` → `expected: not equal but was: </ID [<42976acfa53c170b>`.
+- **GREEN:** hash the whole PDF body (objects include version keywords, `/Rotate`, subject and provenance). Targeted run → exit 0.
+
+### Entry-point-to-test trace
+
+`POST /api/v1/documents/rendered` → Jackson builds `RenderRequest` (now null-safe, Fix 4) → `DocumentController.render` → `DocumentService.render` → `DocumentInputs.lines` (422 authority) → `PdfRenderer.render` (bidi-run-aware `visualOrder`, Fix 3; body-wide `/ID`, Fix 5) → `DocumentRepository.insertRendered` → audit. Asserted by `DocumentServiceTest`, `DocumentValuesTest`, `PdfRendererTest` and the DB suite `DocumentIsolationTest`.
+
+### Exact commands and results (evidence source: executed tool commands)
+
+| Command | Result |
+|---|---|
+| `mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest=DocumentControllerTest,DocumentInputsTest,DocumentPolicyTest,DocumentServiceTest,DocumentValuesTest,PdfRendererTest test` (base) | exit 0; 57 tests |
+| Targeted RTL tests before Fix 3 | exit 1; `Tests run: 14, Failures: 3` — genuine red |
+| Targeted NPE + `/ID` tests before Fixes 4/5 | exit 1; 1 error + 2 failures — genuine red |
+| Six-class documents run after all fixes | **exit 0; 62 tests, 0 failures/errors** |
+| `mvn ... test jacoco:report` + parse `apps/api/target/site/jacoco/jacoco.xml` | every unit-covered `documents` class 0 missed on instruction/branch/line/method; `PdfRenderer` 508 instr / 36 branch / 92 line / 13 method, all covered. `DocumentRepository` is DB-suite-only (integrator). |
+| `mvn -q -B -f apps/api/pom.xml -Pno-security,fast test` (full fast tier) | **exit 0; 1763 tests, 0 failures/errors/skipped** |
+| `mvn -q -B -f apps/api/pom.xml -Pno-security -DskipTests -Djacoco.skip=true -Dspotbugs.skip=false spotbugs:check` | exit 1 with 5 **pre-existing** findings outside this scope (messaging.acknowledgment, messaging.conversations, patient.identity, prescription.rx ×2); **0 in `documents`**. Not edited (scope boundary). |
+| `python3 -I scripts/check-migrations.py --require-baseline` | exit 0 |
+| `python3 -I scripts/check-docs.py`, `python3 -I scripts/check-secrets.py` | exit 0, exit 0 |
+| `python3 -I -m unittest discover -s scripts/tests -p 'test_java_conventions.py' -q` | exit 0; 2 tests OK |
+| `git diff --check` | exit 0 |
+| `python3 -I scripts/check-pack.py` | exit 1: `opencode.json is stale` — **known worker artifact OPS-CW-003-01**, not this change: `git ls-files -v opencode.json` → `S` (skip-worktree), worktree SHA differs from `git show HEAD:opencode.json`, and `git status --short opencode.json` is empty. Not regenerated; out of scope. |
+
+### Reviews and decisions (this run)
+
+- `smartclinic-ux-reviewer` (simulated, read-only) found Fix 3 and named it a high-severity value/unit hazard; it explicitly dismissed empty-space and page-number items as non-defects. `smartclinic-senior-backend` (simulated, read-only) found Fix 4 (primary) and Fix 5 (secondary) and listed the same slice limitations as non-defects. **All gate results above are from executed tool commands; findings came from simulated reviewers. No simulated-user, human or Arabic-speaking participant evidence.**
+- **Decision — keep `Collections.unmodifiableList(new ArrayList<>(...))` for `RenderRequest`:** `List.copyOf` is the wrong primitive at a trust boundary because it rejects null before validation; the immutable view still satisfies SpotBugs EI_EXPOSE_REP. `PdfSpec` is internal and built only from validated lines, so it keeps `List.copyOf`.
+- **Decision — `/ID` from the full body rather than a canonical spec record:** avoids a second canonicalization rule; the body already carries every distinguishing field and is deterministic.
+- **Decision — no migration, magic-byte sniffing or original-download endpoint:** V17 is reserved but already present and correct; byte-level type validation and mediated retrieval belong to X-03/ARC-06 (recorded as a prior decision).
+- **Defects found and fixed this worker:** RTL value/unit inversion, boundary NPE bypassing 422, colliding PDF `/ID`. No production defect remains open in this slice.
+
+### Missing evidence (unchanged)
+
+No local PostgreSQL: the seven `@Tag("integration")` cases in `DocumentIsolationTest` (DB-derived checksums, two-tenant concealment, forced RLS, void guard, immutable en/ar renders) were not executed here. The integrator must run `bash apps/api/check.sh` on the exact merged SHA; that suite is the authority for `DocumentRepository` coverage. Real clinical and Arabic-language sign-off remain G5 gates.
