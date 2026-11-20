@@ -186,7 +186,7 @@ class ChartRecordIntegrationTest {
         ResponseEntity<String> defined = request(HttpMethod.POST,
                 "/api/v1/catalogs/diagnosis/entries",
                 "{\"code\":\"R51\",\"value\":\"Headache\"}", "admin-a", ORG_A, "cat-define");
-        assertEquals(HttpStatus.OK, defined.getStatusCode(), defined.getBody());
+        assertEquals(HttpStatus.CREATED, defined.getStatusCode(), defined.getBody());
         ResponseEntity<String> approved = request(HttpMethod.POST,
                 "/api/v1/catalogs/diagnosis/entries/R51/versions/1/approve",
                 "{\"note\":\"synthetic\"}", "admin-a", ORG_A, "cat-approve");

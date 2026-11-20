@@ -25,7 +25,6 @@ concurrency:
   cancel-in-progress: false
   # Keep every waiting run: without this a newer trigger replaces a waiting one,
   # so a failure event or the 2 AM run could be dropped.
-  queue: max
 env:
   SWARM_GIT_NAME: ${{ vars.SWARM_GIT_NAME }}
   SWARM_GIT_EMAIL: ${{ vars.SWARM_GIT_EMAIL }}
@@ -132,6 +131,7 @@ jobs:
           name: monitor-selection
           path: monitor
       - uses: actions/download-artifact@v8
+        if: needs.select.outputs.triage == 'true'
         continue-on-error: true
         with:
           name: monitor-triage

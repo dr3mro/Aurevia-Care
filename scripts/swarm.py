@@ -127,11 +127,13 @@ def report_issue(title, body):
     time instead; otherwise open one."""
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     text = f"{MARK}\n**{stamp}**\n\n{body}"
-    found = gh_json("issue", "list", "--state", "open", "--search", f"{title} in:title",
-                    "--limit", "30", "--json", "number,title") or []
+    found = gh_json("issue", "list", "--state", "all", "--search", f"{title} in:title",
+                    "--limit", "30", "--json", "number,title,state") or []
     same = [i for i in found if i.get("title") == title]
     if same:
         number = str(min(i["number"] for i in same))
+        if any(i.get("state") == "CLOSED" for i in same if str(i.get("number")) == number):
+            gh("issue", "reopen", number, check=False)
         gh("issue", "comment", number, "--body", text, check=False)
         return number
     gh("issue", "create", "--title", title, "--body", text, check=False)
@@ -227,6 +229,19 @@ def record_issue(kind, parts, title, body, labels=(), markers=None):
     fp = fingerprint(kind, *parts)
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     existing = issues_with("fingerprint", fp)
+    if not existing:
+        # Reopen a previously closed issue with the same fingerprint instead of
+        # opening a duplicate when the problem comes back.
+        closed = gh_json("issue", "list", "--state", "closed",
+                         "--search", f"{fp} in:body", "--limit", "10",
+                         "--json", "number,title,body") or []
+        closed = [i for i in closed if f"<!-- swarm-fingerprint:{fp} -->" in (i.get("body") or "")]
+        if closed:
+            number = str(min(i["number"] for i in closed))
+            gh("issue", "reopen", number, check=False)
+            text = clip_to(f"{MARK}\n**{stamp}** seen again.\n\n{body}", ISSUE_BODY_LIMIT)
+            gh("issue", "comment", number, "--body", text, check=False)
+            return number
     if existing:
         number = str(min(i["number"] for i in existing))
         text = clip_to(f"{MARK}\n**{stamp}** seen again.\n\n{body}", ISSUE_BODY_LIMIT)
@@ -310,9 +325,19 @@ def report_worker_handoff(task, result, checks, merged, directory, pr=""):
                         markers={"task": task["id"], "pr": pr or "none"})
 
 
-def classify_failure(log):
-    """infra and credentials need a person; anything else may be code an agent can fix."""
-    if CREDENTIALS.search(log or ""):
+def classify_failure(log, failed=None):
+    """infra and credentials need a person; anything else may be code an agent can fix.
+
+    A credential classification is only trusted when an auth-related step actually
+    failed, or the log contains a precise auth error. Expected errors from the
+    database policy checks (for example the duplicate-approval assertion in
+    db/check.sh) otherwise misclassify the run as a credentials problem."""
+    failed = failed or []
+    auth_step = any(re.search(r"auth|credential|token|login|permission", job + " " + step, re.I)
+                    for job, step in failed)
+    precise_auth = re.search(r"Bad credentials|Resource not accessible|Requires authentication|"
+                             r"permission denied|HTTP 40[13]|token (?:expired|invalid)", log or "")
+    if (auth_step or precise_auth) and CREDENTIALS.search(log or ""):
         return "credentials"
     if QUOTA.search(log or ""):
         return "quota"
@@ -336,6 +361,27 @@ def run_event(run_id):
     slug = workflow_slug(name)
     if conclusion == "success":
         closed = close_issues("workflow", slug, f"The next run is green: {info.get('url')}", by="workflow")
+        # Close any open run-level failure issue for this workflow: those are
+        # recorded under the "ci" fingerprint and would otherwise never match
+        # the "workflow" fingerprint used above.
+        for issue in gh_json("issue", "list", "--state", "open",
+                             "--search", f"{name} failed in:title", "--limit", "30",
+                             "--json", "number,title") or []:
+            if issue.get("title", "").startswith(f"{name} failed:"):
+                gh("issue", "close", str(issue["number"]),
+                   "--comment", f"{MARK}\nThe next run is green: {info.get('url')}", check=False)
+                closed = closed + [str(issue["number"])]
+        # The repair gate opens "Main is red and automatic repair gave up" when three
+        # repair attempts fail in 24 hours. It has no fingerprint, so close it here
+        # once a Delivery run on main is green again.
+        if name == "Delivery":
+            for issue in gh_json("issue", "list", "--state", "open",
+                                 "--search", "Main is red and automatic repair gave up in:title",
+                                 "--limit", "10", "--json", "number,title") or []:
+                if issue.get("title") == "Main is red and automatic repair gave up":
+                    gh("issue", "close", str(issue["number"]),
+                       "--comment", f"{MARK}\nMain is green again: {info.get('url')}", check=False)
+                    closed = closed + [str(issue["number"])]
         return f"closed {closed}" if closed else "green; nothing open"
     if conclusion not in ("failure", "timed_out"):
         return f"{conclusion or 'unfinished'}; nothing to do"
@@ -347,7 +393,7 @@ def run_event(run_id):
               for s in j.get("steps", []) if s.get("conclusion") == "failure"] \
         or [(j["name"], "") for j in info.get("jobs", []) if j.get("conclusion") == "failure"]
     where = "; ".join(f"{job} / {step}".strip(" /") for job, step in failed[:6]) or "run level"
-    kind = classify_failure(log)
+    kind = classify_failure(log, failed)
     body = (f"**Workflow:** {name} · **Event:** {info.get('event')} · **Branch:** {info.get('headBranch')} "
             f"· **Commit:** {str(info.get('headSha'))[:7]}\n**Run:** {info.get('url')}\n"
             f"**Failed:** {where}\n**Class:** {kind}"
@@ -426,6 +472,20 @@ def watchdog():
     else:
         closed = close_issues("stall", ["swarm"], "Waves are running again, or there is no work waiting.")
         print(f"Healthy. {facts}" + (f" Closed stall issue {closed}." if closed else ""))
+    # Close the repair-gave-up issue once a Delivery run on main is green.
+    try:
+        runs = gh_json("run", "list", "--workflow", "Delivery", "--branch", "main",
+                       "--limit", "1", "--json", "conclusion,url") or []
+        if runs and runs[0].get("conclusion") == "success":
+            for issue in gh_json("issue", "list", "--state", "open",
+                                 "--search", "Main is red and automatic repair gave up in:title",
+                                 "--limit", "10", "--json", "number,title") or []:
+                if issue.get("title") == "Main is red and automatic repair gave up":
+                    gh("issue", "close", str(issue["number"]),
+                       "--comment", f"{MARK}\nMain is green again: {runs[0].get('url')}", check=False)
+                    print(f"Closed repair-gave-up issue {issue['number']}.")
+    except Exception as error:  # noqa: BLE001
+        print(f"repair-gave-up close check skipped: {error}", file=__import__("sys").stderr)
     closed = sync_issues()
     if closed:
         print(f"Closed finished issues: {closed}")
@@ -2221,7 +2281,15 @@ def integrate_batch(queue, gate="scripts/quick-check.sh"):
     comments = [record_merge(pr, task_id, sha, gates[pr][0]) for pr, task_id, sha in merged]
     files = ["TODO.md"] + [f"docs/swarm/{t}.md" for _, t, _ in merged]
     git("add", *files)
-    git(*IDENTITY, "commit", "-qm", f"Integrate {len(merged)} swarm pull request(s)")
+    try:
+        git(*IDENTITY, "commit", "-qm", "--allow-empty", f"Integrate {len(merged)} swarm pull request(s)")
+    except subprocess.CalledProcessError as error:
+        status = git("status", "--short", check=False)
+        staged = git("diff", "--cached", "--stat", check=False)
+        raise subprocess.CalledProcessError(
+            error.returncode, error.cmd,
+            (error.stdout or "") + "\n--- status ---\n" + status +
+            "\n--- staged ---\n" + staged, error.stderr)
     # A full gate can take many minutes; concurrent [skip ci] tracker commits
     # can advance main meanwhile. Integrators are serialized by their
     # concurrency group, so the only new commits are tracker-only. Move HEAD
@@ -2447,7 +2515,11 @@ def main(argv=None):
         # GitHub skips a job output that contains anything it masks as a secret, which
         # leaves the worker matrix empty. Story text is the part that can trip it, so
         # stories travel as an id only and the worker reads their text from TODO.md.
-        lean = [{**t, "title": "", "body": ""} if t["kind"] == "story" else t for t in include]
+        # GitHub skips a job output that contains anything it masks as a secret, which
+        # leaves the worker matrix empty. No task text travels through the output: stories
+        # and fix tasks alike are read from TODO.md (and the issue context file) by the
+        # worker, so strip every free-text field here.
+        lean = [{**t, "title": "", "body": "", "fix": ""} for t in include]
         emit("matrix", json.dumps({"include": lean}, separators=(",", ":")))
         emit("count", len(include))
     elif a.cmd == "watchdog":
