@@ -1,55 +1,162 @@
-# DLV-01 — Repair integration tests: patient chart, chart entry and exchange task
+# FIX-IMAGES-01 — Prepared-image readiness must not depend on workflow run history
 
-Status: ready for integrator. Branch `swarm/DLV-01-222`, base `feb59df`. Six files changed, all inside `apps/api`; no migration, `.github/`, `scripts/` or shared tracker touched. All four named classes are green in the full `mvn verify` run. The remaining full-gate failures belong to the separate DLV-02/DLV-03 stories.
+Story: **FIX-IMAGES-01 · Prepared-image readiness must not depend on workflow run history**.
+Requirement: **OPS-06**. Scope: `.github/workflows`, `scripts`.
+This file is the pull-request description for this worker's change.
 
-## Requirements and acceptance mapping
+## Bottom line
 
-| Requirement | Acceptance repaired |
-|---|---|
-| CLN-03 | Chart records/entries can be captured with provenance, verification and tenant isolation against real PostgreSQL; audit and verification are observable (ChartRecordIntegrationTest, ChartEntryIntegrationTest). |
-| CLN-05 | Version-bound verification refuses a stale/concurrent write with 412; the winning revision is the only one applied. |
-| ARC-02 | Forced RLS and tenant context are respected by test SQL assertions (audit reads must bind the active organization); two tenants with identical local ids stay concealed. |
-| ARC-03 / ARC-04 (supporting) | `If-Match` version precondition is validated before the lifecycle state, so a stale version yields 412 while a current-version already-verified entry yields 409. |
-| XCH-02 (supporting) | `ExchangeTaskIsolationTest` proves the INSERT trigger normalises a forged review state; the fixture must leave the row free for the test to insert. |
+The `plan` job's `images` step decided readiness from the presence of a *successful
+latest* `swarm-images.yml` run. When Actions run history is empty (cleaned, expired or
+deleted runs) there is no latest run, so `ready` was false on every wave and the swarm
+skipped forever even though the slot images were present in GHCR. As of 2026-11-20 the
+repository had no `agent-image.yml` or `swarm-images.yml` runs at all.
 
-Classification (`docs/WORKFLOW.md`): cross-boundary (production repository + service + integration fixtures), with a safety-critical verification precondition. Synthetic data only. No human or clinical participant; evidence is tool output plus one bounded read-only senior-backend review (simulated).
+The decision now lives in a pure, tested Python function. A wave is blocked **only**
+when a build is queued/in progress or the newest completed build did not succeed.
+With no run history at all, the presence of `ghcr.io/<owner>/<repo>-agent-<slot>:latest`
+for every slot decides; if the images are missing, one `agent-image.yml` build is
+dispatched and the wave is skipped with an explicit reason.
 
-## Root cause per class (all reproduced RED first)
+## Scope and requirements
 
-| Class | Observed RED | Root cause | Fix |
-|---|---|---|---|
-| `ChartRecordIntegrationTest` | 5 × HTTP 500 on `POST /api/v1/chart/records/entries`. Server trace: `PSQLException: Can't infer the SQL type to use for an instance of java.time.Instant` at `chart.record.ChartRepository.insert:106`. | **Production defect.** The repository bound `Instant` values directly; PG JDBC 42.7.14 cannot infer a type for `java.time.Instant`. The failure happens at parameter binding, before SQL parsing. | `chart/record/ChartRepository` now binds ISO-8601 text via `instantText(Instant)` and casts it with `CAST(:param AS timestamptz)` in both `insert` and `verify` — the established pattern in `AppointmentRepository`, `WorklistRepository`, `ExchangeTaskRepository`. Same latent defect fixed in `patient/chart/ChartRepository` (the sibling slice would have 500'd once its fixture was repaired). |
-| `ChartEntryIntegrationTest` | `prepare -> seedPatient`: `new row for relation "patient_record" violates check constraint "patient_record_check"`. Also Flyway logged `Skipping filesystem location: .../it/s_g1_03/migrations (not found)`. | **Two fixture defects.** (1) `seedPatient` inserted neither `dob` nor `dob_unknown_reason`, violating V7 `CHECK ((dob IS NOT NULL) <> (dob_unknown_reason IS NOT NULL))`. (2) The package refactor moved the test migration directory to `it/patientchart/migrations` but left the stale `s_g1_03` Flyway location, so `chart_entry` was never created. | Seed synthetic `dob = DATE '1990-05-20'` (matches the already-fixed `ChartRecordIntegrationTest`); point Flyway at `it/patientchart/migrations`. No schema change: V7's invariant is correct. |
-| `ExchangeTaskIsolationTest` | `storageCannotForgeAReviewedTaskOrMoveTwoChannels`: `duplicate key value violates unique constraint "exchange_task_pkey"`. | **Fixture defect.** `@BeforeAll` seeded `FORGED` among the initial tasks, so the test's own `INSERT` of that id collided before the V20 `xch02_initialize_task_channels` trigger could be exercised. | Remove `FORGED` from the seeded id array; the test now inserts a fresh row and asserts the trigger resets workflow/transmission/clinical-review state. The production guard is correct and unchanged. |
-| `CheckInWorklistIntegrationTest` | Story reported 2 rows expected, 9 observed. | Already repaired on current `main` (commit `cd390df`): the assertion is scoped by appointment id and the ordering list is filtered. No change needed here. | Verified green (9/9) in the RED run and in every subsequent run; no edit made. |
-| `ChartRecordIntegrationTest` / `ChartEntryIntegrationTest` (second RED layer, after the 500s were fixed) | Audit count `expected: <4> but was: <0>`; race `expected: <1> but was: <0>` for a 412. | **Two more fixture/test defects plus one precondition-order defect.** (a) The audit-count SQL connection was opened as `smartclinic_migrate` without setting `app.current_org`; `audit_event` has `FORCE RLS`, so the owner saw zero rows (the same connection also calls `audit_verify_chain`, which requires the active tenant). (b) The concurrent loser returned 409 when its read followed the winner's commit because `ChartService.verify` checked `ALREADY_VERIFIED` before the `If-Match` version. | (a) Set `SET app.current_org = ORG_A` on that connection before both queries. (b) Validate `existing.version() != expected` **before** the verified-state check in both `ChartService.verify` methods, so a stale precondition always returns 412 and a current-version verified entry still returns 409. The original strict 412 assertions were kept — no test was weakened, skipped, deleted or re-tagged. |
+- Requirements: **OPS-06** (migration-change safety and delivery-pipeline integrity;
+  this repair restores the swarm's prepared-image readiness gate).
+- Allowed scope only: `.github/workflows/swarm.yml`, `scripts/swarm.py`,
+  `scripts/tests/test_swarm.py`, and this notes file.
+- Explicitly NOT touched: `apps/api`, `db/`, `scripts/check.sh`, `scripts/quick-check.sh`,
+  `.opencode/`, `opencode.json`, any tracker (TODO.md, MEMORY.md, WORKSPACE.md, BUGS.md,
+  PROJECT.md), or `docs/swarm`. No tracker was edited because the orchestrator already
+  marked the task `[-]` and the integrator marks it `[x]` after merge.
+
+## Acceptance mapping
+
+| Acceptance criterion | Implementation | Evidence |
+|---|---|---|
+| Block only when a build is queued or in progress | `images_ready()` checks `BUILD_PENDING` statuses first (`queued`, `in_progress`, `waiting`, `pending`, `requested`) and returns `ready=False` with no dispatch | `test_build_in_progress_blocks_without_dispatch`, `test_pending_build_blocks_even_after_a_prior_success` |
+| Block when the newest completed run failed | `images_ready()` takes the newest completed run (caller passes runs newest-first) and blocks on a `failure` conclusion; no dispatch for a genuine failure | `test_latest_completed_failure_blocks`, `test_failed_build_blocks_without_dispatch_even_without_images` |
+| Inconclusive run states must not stall | `cancelled`/`skipped`/`stale`/`None` fall back to the registry, as empty history does | `test_inconclusive_conclusions_fall_back_to_the_registry` |
+| The GitHub-reading adapter is correct | `image_runs()` queries both workflows with `--limit 1`, merges newest-first by `createdAt`, and drops malformed records | `test_image_runs_merges_both_workflows_newest_first`, `test_image_runs_with_no_history_is_empty`, `test_image_runs_drops_malformed_records` |
+| No runs + images present → start the wave | `images_ready([], True) -> ready` | `test_no_runs_and_images_present_is_ready`, `test_cli_starts_the_wave_when_history_is_empty_but_images_exist` |
+| No runs + images missing → dispatch agent-image.yml once and skip with a clear message | `images_ready([], False) -> dispatch`; `images_ready_command()` calls `gh workflow run agent-image.yml --ref main`, emits `ready=false`, and the plan step prints the reason | `test_no_runs_and_images_missing_blocks_and_dispatches`, `test_cli_dispatches_and_emits_when_images_are_missing` |
+| Decide by whether the slot images exist | `slot_manifests_exist()` queries the packages API for each slot in `.github/swarm/slots.json`, checking for the `latest` tag | `test_manifest_check_covers_every_slot`, `test_manifest_check_fails_when_one_slot_is_missing`, `test_manifest_check_fails_without_a_repo_slug` |
+| Decision in a small tested function, not shell | `images_ready()` is pure; the workflow `images` step is now one line calling the CLI | `test_workflow_delegates_the_decision_to_python`, `test_workflows_only_call_real_subcommands` |
+| Add `packages: read` if missing | Plan job permissions gained `packages: read` (manifest checks) and `actions: write` (build dispatch) | `test_workflow_delegates_the_decision_to_python` |
+
+Entry point → test trace: `swarm.yml` `plan/images` step → `python3 -I scripts/swarm.py
+images-ready` → `images_ready_command()` → `image_runs()` (`gh run list` for both
+workflows) + `slot_manifests_exist()` (`gh api` packages) → pure `images_ready()` →
+`gh workflow run agent-image.yml` when needed → `emit(ready|reason|dispatch)` →
+`GITHUB_OUTPUT` → `plan` step guard → wave matrix or skipped wave. The five required
+scenarios are exercised from the pure decision entry point and the CLI wrapper in
+`ImageReadinessTests`.
+
+## Exact commands run and results (evidence source: executed tool commands)
+
+From the repository root (Python 3.11 locally; CI uses the repo's Python):
+
+- `python3 -I -m unittest discover -s scripts/tests -p 'test_swarm.py' -v` → all **17
+  new `ImageReadinessTests` pass**; the only errors are **6 pre-existing** tests that
+  do `import yaml` (PyYAML is not installed in this worker image; CI has it). No new
+  failure is attributable to this change.
+- Direct demonstration of `images_ready()` (tool output):
+  - no runs, images present → `(True, 'slot images are present in the registry', False)`
+  - no runs, images missing → `(False, 'slot images are missing from the registry', True)`
+  - build in progress → `(False, 'a prepared-image build is queued or in progress', False)`
+  - latest build failed → `(False, 'the newest prepared-image build did not succeed', False)`
+  - latest build succeeded → `(True, 'the newest prepared-image build succeeded', False)`
+  - cancelled + images present → `(True, 'slot images are present in the registry', False)`
+  - failed + images missing → `(False, 'the newest prepared-image build did not succeed', False)`
+- `python3 -I scripts/check-docs.py` → exit 0.
+- `python3 -I scripts/check-secrets.py` → exit 0.
+- `python3 -I scripts/check-migrations.py --require-baseline` → exit 0.
+- `python3 -I scripts/project-name.py repositorySlug` → `aurevia-care`.
+- `python3 -I scripts/swarm.py images-ready --help` → exit 0, subcommand registered.
+- `bash -n scripts/quick-check.sh scripts/check.sh` → exit 0.
+- `git diff --stat` → only the three scoped source files above are modified.
+
+Not run here (integrator-owned, per worker contract): the database and integration
+tests and the full `scripts/check.sh` / `integrator-gate.sh`. The fast unit tests are
+the worker's gate; the JSON/YAML workflow files are additionally parsed by
+`test_workflow_concurrency.py` and `test_swarm.py` in CI, where PyYAML is available.
+
+## Defects found and fixed
+
+1. **Root cause (the reported defect):** empty `gh run list` history produced
+   `slot_conclusion=""`, and the old shell check treated any non-`success` conclusion
+   as not ready → permanent wave skip. Fixed by making no-history fall back to GHCR
+   image presence.
+2. **Missing permission:** the plan job lacked `packages: read`, so the packages API
+   manifest check would be denied. Added; also raised `actions: read` → `actions:
+   write` because `gh workflow run agent-image.yml` requires write on Actions.
+3. No other in-scope defect found. The environment's missing PyYAML and stale
+   `opencode.json` CI profile cause unrelated pre-existing local test failures and
+   were left unchanged.
 
 ## Decisions
 
-- No new migration: V7's patient invariant and V20's channel trigger are correct; every observed defect was in test fixtures or Java bindings. Already-applied migrations were not edited.
-- Kept the two-line `instantText` helper local to each repository (five existing copies in the codebase) instead of adding a shared utility; a new shared class would widen a repair story and need its own coverage. Confirmed by the bounded senior-backend review.
-- Both halves of the Instant fix are required: wrapping to text fixes the driver binding; `CAST(... AS timestamptz)` makes the text unambiguous. Dropping either reintroduces the 500.
-- `encounterId` is a `text` column in both test-scoped V13 migrations and is bound as a `String`; no UUID cast was added.
-- The senior-backend reviewer noted a non-blocking parity gap (`patient.chart.ChartService` does not normalise a blank `unknownReason` like the record slice). It yields a translated 409, not a 500, is not asserted by the patient test, and is outside DLV-01; left for a follow-up story.
+- The decision is a pure function `images_ready(runs, manifests_exist)` so all branches
+  are testable without GitHub or the network; the CLI wrapper only gathers inputs,
+  dispatches a build and emits outputs.
+- `runs` is a flat newest-first list of the newest run from each of the two image
+  workflows; `gh run list` with `--limit 1` per workflow supplies them. Empty list is
+  the explicit "no history" signal.
+- Manifest presence uses the packages API (`packages: read`) rather than
+  `docker manifest inspect`, so the plan job needs no Docker login and no credential
+  is written to the repo. A 404 or any non-`true` answer counts as "missing".
+- Dispatch happens only in the no-history + images-missing case. A genuinely failed
+  build blocks without dispatch (it needs a person, not an hourly retry); a cancelled
+  or other inconclusive run falls back to the registry. Because a dispatch creates a
+  queued run, subsequent plans see a pending build and do not dispatch again —
+  effectively once, as required.
+- `image_runs()` filters non-dict records so a malformed `gh run list` item cannot
+  crash the plan step and queue a false repair task.
+- `slot_manifests_exist()` calls `gh api` with `check=True` so the shared `gh()` helper
+  retries transient 502/503/504 responses; a real 404 (package never published) is
+  caught as "image missing".
+- `actions: write` is granted to the plan job solely to permit the build dispatch;
+  all other jobs keep their existing least-privilege permissions.
+- Accepted residual risks (reviewer-noted, low impact): (a) the tiny window between a
+  base-image success and the chained slot-image build starting is treated as ready
+  because the acceptance criterion says "latest build succeeded → ready"; (b) a
+  successful build's manifest check is skipped (a build reports success only after it
+  pushes the images); (c) two serialized plans could both dispatch before a queued
+  run appears in `gh run list`, but `agent-image`'s `queue: max` concurrency serializes
+  the builds, so no image is corrupted.
 
-## Exact commands and results
+## Bounded specialist review
 
-Environment: Java 21.0.13 Temurin, Maven 3.10.0, PostgreSQL 17.12 via `SMARTCLINIC_PG_ADMIN`; tools executed by the primary agent, not delegated.
+Two read-only reviews were run (GitHub Workflow, session `ses_e089fc9a6ffeO5lWKauJorJEDV`;
+Senior Python, session `ses_e089fc9a6ffdXut7Bgb3jdyzWM`). Both confirmed the five
+mandated scenarios, the permission grants (`packages: read`, `actions: write`), the
+packages API path/jq for user and org repos, and the workflow chain that re-plans a
+skipped wave. They found no blocker. Their actionable findings were resolved in this
+change:
 
-| Command | Result |
-|---|---|
-| `cd apps/api && mvn -B test -Pno-security -Dtest=ChartRecordIntegrationTest,ChartEntryIntegrationTest,ExchangeTaskIsolationTest,CheckInWorklistIntegrationTest` (before fixes) | exit 1 — Tests run 24, Failures 5, Errors 2 (5 × 500, duplicate key, V7 CHECK) |
-| Same command after binding/fixture fixes | exit 1 — Tests run 27, Failures 4, Errors 0 (audit count 0, race 412 count 0 in both chart classes) |
-| Temporary instrumentation of race outcomes (removed afterwards) | combined run `[409, 200]` / `[200, 409]`; isolated run `[412, 200]`. Established the timing-dependent precondition-order root cause. |
-| Same command after audit-context and precondition-order fixes, run A | exit 0 — Tests run 27, Failures 0, Errors 0 (5 + 9 + 4 + 9) |
-| Same command, run B (repeat for flake check) | exit 0 — Tests run 27, Failures 0, Errors 0 |
-| `mvn -B test -Pfast` | exit 0 — Tests run 1844, Failures 0, Errors 0 |
-| `mvn -B spotbugs:check -DskipTests` | exit 0 — `BugInstance size is 0` |
-| `bash apps/api/check.sh` (full `mvn -B verify`, default security profile) after final code | exit 1 overall — Tests run 2087, Failures 63, Errors 4. Surefire reports for all four DLV-01 classes: 5/5, 9/9, 4/4, 9/9 green with zero failures/errors. |
-| `git diff --check` | exit 0 |
+- `image_runs()` had no direct test and was not `None`-safe → added three tests
+  (both-workflow merge/order, empty history, malformed-record filtering) and a dict
+  filter in the adapter.
+- Manifest tests only checked substrings → now assert the full endpoint
+  `repos/Owner/Repo/packages/container/repo-agent-1/versions` and the exact jq tag
+  expression.
+- Inconclusive conclusions (`cancelled`/`skipped`/`stale`/`None`) blocked the wave with
+  no recovery → they now fall back to the registry (liveness, same principle as the
+  empty-history fix), with tests.
+- Transient API errors with `check=False` bypassed `gh()` retries and read as "missing"
+  → switched to `check=True` plus a caught `CalledProcessError`.
+- Dispatch on a failed build could churn hourly → removed; dispatch is now exclusive
+  to the no-history + images-missing case, matching the story wording.
+- Weak `assertIn("succeed", ...)` → tightened to `"did not succeed"`.
 
-Evidence provenance: all command results above are **tool-generated** by this worker; the bounded senior-backend review is **simulated reviewer** evidence (file reads only, no commands run by that subagent). No simulated-user or human/clinical evidence was available or claimed.
+Reviewers had no `execute` tool; their findings are static review (simulated reviewer
+evidence), and the fixes above were verified by the executed tool commands listed
+earlier. The reviewers did not re-run checks.
 
-## Out-of-scope remainder (for the integrator / DLV-02 / DLV-03)
+## Evidence provenance
 
-The full gate is still red because of 11 classes owned by the other repair stories, none touched here: `IdentityProofingIsolationTest`, `StaleInvitationIntegrationTest`, `ConsolidationIsolationTest`, `ConversationFlowTest`, `ClinicalNoteRevisionIntegrationTest`, `ResultRoutingIntegrationTest`, `AccessIntegrationTest`, `DocumentIsolationTest`, `SpecimenAccessionIsolationTest`, `TrendingTest`, `RxTransmissionFlowTest`. Their reported causes (the `set_link_actor()` trigger, Spring 7 `UNPROCESSABLE_CONTENT` rename, `uuid = character varying`, prescription transmission 500s) match the DLV-02/DLV-03 descriptions. Because surefire fails before the verify-phase plugins, the final full-run JaCoCo 100% gate and OWASP check could not be observed on this checkout; SpotBugs was run separately and is green. The integrator's full `scripts/check.sh` on the merged SHA remains the authoritative gate.
+- Tool / executed commands: all gate results, the five-scenario demonstration, and
+  `git diff` scope verification above.
+- Simulated specialist review: bounded read-only reviews recorded in the previous
+  section; reviewers do not re-execute checks.
+- No human, clinical or simulated-user acceptance was available or claimed for this
+  pipeline repair.
