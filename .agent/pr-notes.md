@@ -1,111 +1,67 @@
-# READY-46 — Launch checklist document with the owner of every item that needs a person
+# DLV-04 — Repair integration tests: clinical notes, result routing, access, documents, specimens and trending
 
-## Story and scope
+Status: ready for integrator. Branch `swarm/DLV-04-255`, base `fefe4cd` (= `origin/main`, clean tree, 0/0). Changes are confined to `apps/api` (4 production files, 4 integration-test fixtures); no migration added or edited, no `.github/`, `scripts/`, `opencode.json` or shared tracker touched. All six named classes pass in the full real-PostgreSQL `mvn verify` run (49/49) and in the canonical `bash apps/api/check.sh` test phase (2096/2096 tests, 0 failures, 0 errors). Synthetic data only. No test was skipped, deleted, re-tagged or excluded from a gate, and no assertion was weakened.
 
-- Task: `READY-46` (already marked `[-]` by the orchestrator, `agent: swarm-3`; I did not edit TODO.md).
-- Scope used: `docs/operations/production-readiness` (new file `launch-checklist.md`) plus my own note file `.agent/pr-notes/READY-46.md`, which the task explicitly assigns to me. No other file was changed. No migration was added or edited. No tracker file was edited.
-- Branch: `swarm/READY-46-251` at base `8771c36`. No push, tag or `gh` call was made.
+## Requirements and acceptance mapping
 
-## Requirement IDs and acceptance mapping
-
-Requirements from the task: **WEB-01, WEB-11, WEB-12** (plus WEB-03, WEB-04, WEB-05-adjacent OPS-05, WEB-10, WEB-13, OPS-04 and G5 introduced by the required row list).
-
-| Story step | Acceptance | Where satisfied |
+| Requirement | Acceptance exercised | Classes / result |
 |---|---|---|
-| 1 | Create `docs/operations/production-readiness/launch-checklist.md`; one row per item; columns item, spec ID, owner (Infrastructure, Security, Product Owner, Clinical lead, Engineering), evidence required, status (open); role words only, no invented names | New file: six-column table (the sixth column is `Link`, added to satisfy step 3). All 15 rows have status `open`. Owners use only the allowed role words. |
-| 2 | Include at least the 15 named rows | All 15 rows are present: TLS/HSTS (WEB-01), WAF+DDoS (WEB-04), OIDC/MFA/PKCE (WEB-03), backups/restore drill/RTO (OPS-04), secrets in manager (WEB-12), CI actions by SHA + images by digest (WEB-12), blocking scans (WEB-12), SBOM+signed artifact (WEB-11), 5/25/100 rollout with rollback (WEB-11), E2E CI job for the READY-45 suite (WEB-10), penetration test, status/support pages (WEB-13), on-call rota + incident runbook, privacy notice + accessibility statement, per-site PO and clinical sign-off (G5). |
-| 3 | Link each row to an existing runbook/evidence file under `docs/operations/` or `infra/`, else `none yet` | `ls` survey below. Seven rows link to existing files: restore procedure, recovery evidence, CI evidence contract, signed builds, rollout, operational runbooks. Eight rows honestly say `none yet` because no such file exists. |
-| 4 | Run `python3 -I scripts/check-docs.py` (links and requirement IDs resolve) | Green — exact command and output below. |
-| Do NOT claim any row is done | Every row status is `open`; the document states it asserts nothing as done and that a synthetic rehearsal is not evidence. | New file, intro and status column. |
+| CLN-03, CLN-05 | Clinical note drafts, version-bound edits, signing metadata, amendment/addendum, entered-in-error history, append-only revisions and audit-after-rollback | `ClinicalNoteRevisionIntegrationTest` 14/14 |
+| LAB-02, XCH-04 | Identifier matching, import/routing, reconciliation, corrections with reopened review and notifications, critical routing, trend identity | `ResultRoutingIntegrationTest` 12/12; `SpecimenAccessionIsolationTest` 4/4; `TrendingTest` 5/5 |
+| IAM-03, IAM-06, ARC-02 | Registration/issuer-scoped MRN, emergency and support access grants, tenant isolation, actor/reason audit | `AccessIntegrationTest` 8/8; `DocumentIsolationTest` 6/6 |
+| CLN-07, ARC-01/02/03/04 (supporting) | Originals/renders with checksums, forced RLS concealment, version preconditions, machine-readable errors, atomic audit | `DocumentIsolationTest`, all classes above |
 
-## `ls` survey of candidate link targets
+Classification (`docs/WORKFLOW.md`): cross-boundary (SQL boundary, domain enums, HTTP contract, integration fixtures), with a safety-critical authorization/isolation component. Evidence sources are recorded per command below.
 
-`find docs/operations -type f` and `find infra -type f` were run. Existing files that genuinely cover a row:
+## Reproduction (RED) and root cause per class
 
-- `docs/operations/s_g5_06/restore-procedure.md`, `docs/operations/s_g5_06/recovery-evidence.md` — restore drill / RPO-RTO row.
-- `docs/operations/s_g5_06/operational-runbooks.md` — on-call / incident runbook row.
-- `docs/operations/s_g5_07/evidence-contract.md` — dependency/image/secret scanning row (`ci_checks.dependency_scan`, `ci_checks.secret_scan`).
-- `docs/operations/s_g5_07/build-and-migration-gates.md` — SBOM / signed artifact row (`signed_builds`, digest, promotion gate).
-- `docs/operations/s_g5_07/rollout-and-production-access.md` — progressive rollout row.
-- `infra/DEPLOYMENT.md` — cited as general deployment design handoff only, not as row evidence.
+Environment: Java 21.0.13 Temurin, Maven 3.10.0, PostgreSQL 17 on 127.0.0.1:5432 via `SMARTCLINIC_PG_ADMIN=postgres`. All commands executed by this worker (tool evidence). RED baseline — `cd apps/api && mvn -B -Pno-security -Dtest=ClinicalNoteRevisionIntegrationTest,ResultRoutingIntegrationTest,AccessIntegrationTest,DocumentIsolationTest,SpecimenAccessionIsolationTest,TrendingTest -DfailIfNoTests=false test`: **Tests run 49, Failures 36** (server stack traces read from `apps/api/target/surefire-reports` and a captured full Maven log).
 
-No runbook/evidence file exists for edge TLS/WAF, OIDC registration, secret-manager storage, action SHA/image digest pinning, the E2E CI job (the READY-45 suite is a separate, not-yet-merged story), penetration test, separately hosted status/support pages, the published privacy/accessibility statements, or per-site G5 sign-off. Those rows say `none yet` in the committed file.
+The story's two shared causes were already fixed on this base: V58 redefines `set_link_actor()` and gives `duplicate_review.id` a default (DLV-02), and V59 widens the prescription transition (DLV-03). Only the six DLV-04 classes remained red. The `SELECTid` cause was *not* pre-fixed — it was still present at HEAD and is fixed here at its source.
 
-## Exact commands run and results
+| Class | Observed RED | Root cause | Fix |
+|---|---|---|---|
+| `ClinicalNoteRevisionIntegrationTest` (14) | One 500 on `POST /api/v1/clinical-notes`, cascading into 13 `405`/`404`/empty-id failures; the 500 trace showed `PSQLException: syntax error at or near "SELECTid"` at `NoteRepository.current:103`. | **Production defect.** Java text blocks strip trailing whitespace, so `SELECT """ + COLUMNS` produced `SELECTid::text, ...`. Both `current()` and `history()` used the pattern. A further RED layer, unmasked once create worked: `/entered-in-error` returned 400. | `NoteRepository`: replaced the text-block concatenation with `"SELECT " + COLUMNS + """` in both queries. Kept the test's intent but corrected its `affectedRecipients` fixtures: `ErrorRequest.affectedRecipients` is a `String` holding string-encoded JSON (validated by `NoteInputs.recipients`, unit-tested in `ClinicalNoteServiceTest`), so the test now sends `"[\"lab-a\"]"` / `"[]"` instead of a native array that Jackson could not bind to `String`. |
+| `AccessIntegrationTest` (6) | 500 on `/api/v1/access/emergency` and `/active`; trace: `PSQLException: conversion to class java.time.Instant from timestamptz not supported` at `AccessRepository.mapGrant:339`. | **Production defect.** pgjdbc maps `timestamptz` to `OffsetDateTime`, not `Instant`; `getObject(col, Instant.class)` fails on every grant/incident read. | `AccessRepository`: added `instant()` and null-safe `nullableInstant()` helpers using `getObject(col, OffsetDateTime.class).toInstant()`, matching the established pattern in `OrderRepository`, `RxRepository` and `ConversationRepository`. Required columns (`granted_at`, `expires_at`, `created_at`) use `instant`; nullable ones (`revoked_at`, `reviewed_at`, `approved_at`) use `nullableInstant`. |
+| `ResultRoutingIntegrationTest` (7) | Response fields compared as `unreviewed`/`final`/`critical`/`conflict`/`unmatched`/`acknowledged` but returned as `UNREVIEWED`/`FINAL`/...; one `missing field /patientId`; one concurrent-registration assertion expecting a fixed winner. | **Production defect (wire values) + two test-fixture defects.** The public `ResultModel` enums had no `@JsonValue wire()`, so Jackson emitted uppercase enum names although V22 stores lowercase and the repository reads lowercase wire values. `ResultReport.patientId` lives under `identifiers`, never at the top level. The concurrency test assumed the first submitted `Future` always wins the registration race. | Added `@JsonValue wire()` (lowercase `name()`) to `ResultKind`, `ReviewState`, `ReconciliationReason`, `ReconciliationStatus` — the same contract pattern as `NoteState` and `ClinicalReviewState`; DB binding is unchanged (`ResultRepository` uses explicit lower/upper-case conversion). Pointed the two assertions at `/identifiers/patientId`. Rewrote the race assertion to require exactly one 201 and one 409 without assuming which future wins; the production check-then-insert + unique-key null return already returns 409 to the loser and was left unchanged. |
+| `SpecimenAccessionIsolationTest` (3) | `expected: <accessioned> but was: <ACCESSIONED>` (and rejected/recollected). | **Production defect.** `AccessionState.wire()` returns lowercase and is the documented DB/API value, but lacked `@JsonValue`, so Jackson serialized the enum name. | Added `@JsonValue` to the existing `wire()` method. No behavior or DB value change. |
+| `DocumentIsolationTest` (5 → after first fix, 2) | All 5 failed at `registerChart` with 409 `MRN already exists for this issuer`; after unique MRNs, 2 failed with `expected: <422 UNPROCESSABLE_ENTITY> but was: <422 UNPROCESSABLE_CONTENT>`. | **Test-fixture defects.** V7 makes `(organization_id, mrn_issuer, mrn, version)` unique and the fixture re-registered the same MRN on every test method against a shared database. Spring 7 renamed the `HttpStatus` reason phrase, so enum comparison fails although the wire code is 422 (same cause DLV-02 fixed elsewhere). | `registerChart` now appends `UUID.randomUUID()` to the issuer-scoped MRN. The three 422 assertions now compare the numeric wire code (`assertEquals(422, ...getStatusCode().value())`). |
+| `TrendingTest` (1) | `invalidInputsFailAtTheBoundary`: blank `testCode=%20` returned 200 with body `{"testCode":"%20",...}` instead of 422. | **Test-fixture defect, proven by a temporary diagnostic (added, run, removed).** RestClient re-encodes the `%`, so the server receives the literal string `%20`, which is not blank; `TrendService.code()` correctly rejects only blank values. | Send an empty value `?testCode=` so the boundary receives a genuinely blank string. Production validation unchanged. |
 
-Baseline and final, executed from the repository root:
+No applied migration was edited. No new migration was needed: every observed defect was in Java bindings, enum serialization or test fixtures; the V7/V15/V22/V26 schema invariants and triggers were correct.
 
-```
-$ python3 -I scripts/check-docs.py            # baseline, before adding the file
-exit=0                                        # no output = no broken links, no unknown IDs
+## Exact commands and results
 
-$ python3 -I scripts/check-docs.py            # after adding launch-checklist.md
-exit=0                                        # no output = all 15 rows' links and IDs resolve
+| Command | Result |
+|---|---|
+| `cd apps/api && mvn -B -Pno-security -Dtest=<six classes> -DfailIfNoTests=false test` (before fixes) | exit 1 — Tests run 49, Failures 36, Errors 0 |
+| Same command after the SQL/binding/enum/fixture fixes | exit 1 — Tests run 49, Failures 4 (entered-in-error 400, two Spring-7 422 enum comparisons, one race assumption) |
+| Same command after the four remaining fixture fixes | exit 0 — **Tests run 49, Failures 0, Errors 0** (Trending 5, ClinicalNote 14, Specimen 4, Access 8, ResultRouting 12, Document 6) |
+| `cd apps/api && mvn -B -Pno-security,fast test` | exit 0 — Tests run 1853, Failures 0, Errors 0 |
+| `bash apps/api/check.sh` (full `mvn -q -B verify`) | test phase: **2096 tests, 0 failures, 0 errors**; `mvn verify` then exit 1 at `jacoco:check` for **pre-existing coverage gaps in untouched classes** (see Defects). All six target classes green in that same run. |
+| `mvn -q -B -Pno-security -Dtest=ResultRoutingIntegrationTest -DfailIfNoTests=false test` × 3 | exit 0, exit 0, exit 0 — race fix is stable |
+| `python3 -I scripts/check-migrations.py --require-baseline` | exit 0 |
+| `python3 -I scripts/check-docs.py`, `check-secrets.py`, `check-names.py`, `python3 -I -m unittest discover -s scripts/tests -q` | all exit 0 |
+| `git diff --check` | exit 0 |
+| `bash scripts/worker-check.sh` | exit 1 at `check-pack: opencode.json is stale` — **environmental artifact, not caused by this change** (see Defects) |
+| `bash db/check.sh` | exit 3 — pre-existing, unrelated tooling defect (see Defects) |
 
-$ python3 -I scripts/check-names.py
-exit=0
-```
+Entry-point-to-test trace: `POST /api/v1/clinical-notes` → `ClinicalNoteController.create` → `ClinicalNoteService.createDraft` → `NoteRepository.current` (fixed SQL) → 200; asserted by `createDraftAndReadFullHistory`. `POST /api/v1/access/emergency` → `AccessController.grant` → `EmergencyAccessService.grant` → `AccessRepository.insertGrant`/`mapGrant` (fixed instant mapping) → 201; asserted by `qualifiedClinicianGrantsAndChecksActiveAccess`. `POST /api/v1/xch04/results` → `ResultController.importResult` → `ResultRoutingService` → `ResultReport` with `@JsonValue` enums → lowercase wire values; asserted by `matchedResultIsImportedRoutedAndAudited`.
 
-This is the check named in step 6 of "Instructions for every agent" for a
-Markdown-only change (`python3 -I scripts/check-docs.py`). Result pasted above:
-exit 0, no errors.
+## Defects found and disposition
 
-I also surveyed with `find docs/operations -type f` and `find infra -type f`
-(results summarised above), and read the adjacent
-`docs/operations/production-readiness/README.md` plus the s_g5_06/s_g5_07
-READMEs and link-target files to choose accurate links.
-
-### Fast unit tests — pre-existing baseline failures, not introduced here
-
-```
-$ python3 -I -m unittest discover -s scripts/tests -q
-Ran 268 tests ... FAILED (failures=8, errors=10)
-```
-
-These 18 failures were present before I made any change (same result on the
-clean tree). They are in `test_check_pack.py`, `test_agent_run.py`, `test_swarm.py`
-and two loader errors (`test_fast_tier`, `test_workflow_concurrency`), and report
-`opencode.json is stale: run scripts/gen-opencode.py` and CI/workflow-profile
-staleness — the known worker CI-profile artifact described in MEMORY.md
-(OPS-CW-003-01), not a consequence of this docs-only change. They are outside my
-scope (`docs/operations/production-readiness`), so I did not modify them. The
-integrator runs the authoritative gates. This is recorded as an observed baseline
-defect, not a claim that the full suite is green.
-
-```
-$ bash scripts/quick-check.sh
-exit=1
-check-pack: opencode.json is stale: run scripts/gen-opencode.py
-```
-
-Verified as the same pre-existing artifact: `git ls-files -v opencode.json`
-returns `S` (skip-worktree), so this worker's checked-out `opencode.json` is the
-CI profile copied by `agent-run.sh`, not the committed local profile. The
-committed HEAD profile is the correct generated file (MEMORY.md,
-OPS-CW-003-01). `git status --short` shows only my two new files changed; the
-fast gate's failure is not caused by and cannot be fixed within this docs-only
-scope.
-
-## Defects found
-
-- None in the new document. `check-docs.py` and `check-names.py` are green.
-- Observed (pre-existing, out of scope): the 18 failing Python tooling tests noted above, all failing on the clean tree before any edit. No patient data or credential was involved.
+- **Pre-existing JaCoCo gaps, not changed here (owner: Delivery / owning stories).** Now that surefire reaches `verify`, `jacoco:check` reports three untouched classes below 100%: `ReleaseService` (lines 211–213, `held release must be lifted before correction` branch), `patient.chart.ChartRepository` (`verify`, line 171 partial branch) and one `FinanceService.postEntry` conflict branch. None of these classes is in `git diff`; none imports a modified enum. They are unrelated to DLV-04 and are outside the one-story rule. DLV repair PRs merge through `scripts/repair-gate.sh` (which excludes JaCoCo); JaCoCo/OWASP/SpotBugs run in Delivery after merge.
+- **Pre-existing `db/check.sh` defect (owner: pipeline/integrator).** It applies migrations with `for migration in db/migrations/V*.sql`, which bash sorts lexically (`V10` before `V1`), failing with `relation "public.organization" does not exist`. Documented in DLV-02/DLV-03 notes. `db/check.sh` is a protected check file; not edited here. The Java integration suites apply migrations in Flyway version order and are green.
+- **Environmental `opencode.json` artifact (owner: worker harness).** `git ls-files -v opencode.json` shows flag `S` (skip-worktree): the worktree holds the CI profile copied by `agent-run.sh`, so `check-pack.py`/`gen-opencode.py --check` judge that, not the committed local profile. Verified programmatically that `git show HEAD:opencode.json` equals `gen-opencode.py`'s generated local profile (`True`) while the worktree copy differs (`False`). This is the known OPS-CW-003-01 false positive; no regeneration was performed.
+- No `BUGS.md` entry added: every defect in scope was reproduced and fixed in this change; workers do not edit shared trackers.
 
 ## Decisions
 
-1. Added a sixth `Link` column while keeping the five required columns, because step 3 requires a per-row link/evidence target and the adjacent README uses the same `Link` pattern.
-2. Used only the five allowed role words for owners; where two roles share a row ("Product Owner / Clinical lead") both are allowed role words and no name is invented.
-3. Wrote `none yet` where no runbook/evidence file actually exists, rather than pointing at loosely related files, so the checklist does not overstate available evidence.
-4. Assigned OPS-05 to the on-call/incident row (the spec clause that names on-call coverage owners and runbooks) and WEB-12 to the penetration-test row (the spec clause that requires it).
-5. Kept every status `open` and added an explicit honesty note that synthetic rehearsals do not close a row.
+- Fixed the real cause in each case rather than re-tagging or weakening tests: SQL concatenation, JDBC type mapping and enum wire serialization were production defects; MRN reuse, a wrongly encoded query parameter, a wrong JSON field path, a native-vs-string JSON array, Spring-7 enum comparisons and a fixed-winner race assumption were fixture defects.
+- Added `@JsonValue` to existing/new `wire()` methods rather than changing tests to expect uppercase: lowercase is the documented DB and API value across the codebase, and DB binding paths are unaffected.
+- Did not add a migration: every schema invariant exercised by these tests was already correct.
+- Did not touch the three pre-existing JaCoCo gaps or `db/check.sh`; both are outside this story's acceptance and one of them is a protected file.
 
 ## Evidence provenance
 
-- Tool evidence: `python3 -I scripts/check-docs.py` (exit 0), `python3 -I scripts/check-names.py` (exit 0), `find`/`ls` surveys, and file reads listed above — all executed by me.
-- Reviewer evidence: none requested; this is a contained documentation change (Workflow "routine" class). Skills loaded: `smartclinic-delivery`, `smartclinic-devsecops`, `smartclinic-product-owner`, `smartclinic-github-workflow`.
-- Simulated-user evidence: none.
-- Human / clinical / patient evidence: none. All rows are open and require the named human owners to supply real evidence before G5.
-
-## Missing decision or evidence
-
-None blocking. No owner names were invented (role words used as instructed), and the task's required check passes.
+All command results, stack traces and the temporary diagnostic were **tool-generated** by this worker (Maven/Surefire, surefire XML/TXT reports, JaCoCo XML/CSV, git, policy scripts). No reviewer, simulated-user, human or clinical evidence was used or claimed. Every subject, organization, patient, MRN, accession and token in the fixtures is synthetic; no credentials, patient data or raw logs appear in this note.

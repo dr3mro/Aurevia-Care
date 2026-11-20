@@ -507,9 +507,9 @@ class ResultRoutingIntegrationTest {
         assertEquals(HttpStatus.CREATED, second.getStatusCode(), second.getBody());
 
         assertFalse(text(first, "/id").equals(text(second, "/id")));
-        assertEquals(patientA, text(first, "/patientId"));
+        assertEquals(patientA, text(first, "/identifiers/patientId"));
         assertEquals("ORD-S1", text(first, "/orderId"));
-        assertEquals(secondPatient, text(second, "/patientId"));
+        assertEquals(secondPatient, text(second, "/identifiers/patientId"));
         assertEquals("ORD-S2", text(second, "/orderId"));
         assertEquals(2, count(ORG_A, "SELECT count(*) FROM public.xch04_report_revision "
                 + "WHERE accession = 'ACC-SHARED'"));
@@ -530,8 +530,12 @@ class ResultRoutingIntegrationTest {
             start.countDown();
             ResponseEntity<String> a = first.get(30, TimeUnit.SECONDS);
             ResponseEntity<String> b = second.get(30, TimeUnit.SECONDS);
-            assertEquals(201, a.getStatusCode().value(), a.getBody());
-            assertEquals(409, b.getStatusCode().value(), b.getBody());
+            // Either request may win the race; the contract is one winner and
+            // one ORDER_EXISTS conflict, not which Future was submitted first.
+            assertTrue((a.getStatusCode().value() == 201 && b.getStatusCode().value() == 409)
+                            || (a.getStatusCode().value() == 409 && b.getStatusCode().value() == 201),
+                    "expected one 201 and one 409 but was " + a.getStatusCode()
+                            + " and " + b.getStatusCode());
         } finally {
             pool.shutdownNow();
         }
