@@ -40,6 +40,15 @@ class RepositoryTests(unittest.TestCase):
         self.assertTrue(any("IAM-09" in e for e in errors))
         self.assertTrue(any("missing.md" in e for e in errors))
 
+    def test_generated_notes_are_checked_when_explicitly_requested(self):
+        root = self.make_repo("IAM-01")
+        notes = root / ".agent/pr-notes/daily.md"
+        notes.parent.mkdir(parents=True)
+        notes.write_text("See IAM-09 and [x](missing.md)")
+        self.assertEqual(docs.check(root), [])
+        self.assertEqual(len(docs.check(root, [".agent/pr-notes/daily.md"])), 2)
+        self.assertEqual(len(docs.check(root, ["../outside.md"])), 1)
+
     def test_valid_links_pass(self):
         errors = docs.check(self.make_repo("IAM-01 [self](NOTE.md#top) [a](#x)"))
         self.assertEqual(errors, [])

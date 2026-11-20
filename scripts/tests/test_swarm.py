@@ -639,12 +639,12 @@ class PlanTests(unittest.TestCase):
                 swarm.gh("pr", "edit", "30", "--add-label", "needs-fix")
         self.assertIn("permission denied", stream.getvalue())
 
-    def test_integration_runs_inside_the_wave_not_through_a_workflow_run_chain(self):
+    def test_integration_still_runs_inside_the_wave_and_wakes_after_delivery(self):
         import yaml
         integrator = yaml.safe_load((ROOT / ".github/workflows/swarm-integrator.yml").read_text())
         triggers = integrator[True]
         self.assertIn("workflow_call", triggers)
-        self.assertNotIn("workflow_run", triggers)
+        self.assertEqual(triggers["workflow_run"]["workflows"], ["Delivery"])
         wave = yaml.safe_load((ROOT / ".github/workflows/swarm.yml").read_text())["jobs"]
         self.assertEqual(wave["integrate"]["uses"], "./.github/workflows/swarm-integrator.yml")
         self.assertEqual(wave["integrate"]["needs"], ["plan", "worker"])
@@ -923,6 +923,16 @@ class IntegrationTests(unittest.TestCase):
                {"number": 5, "labels": labels("swarm"), "isCrossRepository": False, "isDraft": True}]
         with mock.patch.object(swarm, "gh", FakeGh(prs=prs)):
             self.assertEqual(swarm.plan_integration(), [3, 4])
+
+    def test_pinned_scope_allows_only_the_tasks_code_and_own_handoff(self):
+        note = ".agent/pr-notes/CW-001-20261120-140000.md"
+        tracker = "- [ ] CW-001 · Task\n  - scope: apps/staff-web/app\n"
+        completed = "## Test evidence\nPassed\n## Coverage\nPassed\n## Findings\nNone\n## Lessons for workers\nNone"
+        changed = "apps/staff-web/app/within.ts\0apps/staff-web/application/outside.ts\0" + note + "\0"
+        with mock.patch.object(swarm, "git", side_effect=[tracker, changed, completed]):
+            outside, handoff = swarm.candidate_scope("CW-001", "base")
+        self.assertEqual(outside, ["apps/staff-web/application/outside.ts"])
+        self.assertTrue(handoff)
 
     def test_delivery_readiness_requires_current_pr_and_exact_head(self):
         good = {"head_sha": "head", "event": "pull_request", "conclusion": "success",
@@ -2019,6 +2029,18 @@ class ImageReadinessTests(unittest.TestCase):
     def test_pending_build_blocks_even_after_a_prior_success(self):
         runs = [self.rec("in_progress"), self.rec("completed", "success")]
         self.assertFalse(swarm.images_ready(runs, True)[0])
+
+    def test_verified_slot_images_skip_incomplete_generations_and_pin_digests(self):
+        urls = {"1": "ghcr.io/o/r-agent-1@sha256:" + "a" * 64,
+                "2": "ghcr.io/o/r-agent-2@sha256:" + "b" * 64}
+        def download(*args):
+            manifest = urls if args[2] == "1" else {"1": urls["1"]}
+            (Path(args[-1]) / "slot-images.json").write_text(json.dumps(manifest))
+        with mock.patch.object(swarm, "repo_slug", return_value="o/r"), \
+                mock.patch.object(swarm, "gh_json", return_value=[{"databaseId": 2}, {"databaseId": 1}]), \
+                mock.patch.object(swarm, "gh", side_effect=download):
+            result = swarm.verified_slot_images(SLOTS[:2])
+        self.assertEqual(result, urls)
 
     def test_latest_completed_failure_blocks(self):
         runs = [self.rec("completed", "failure"), self.rec("completed", "success")]

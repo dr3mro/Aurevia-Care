@@ -50,12 +50,31 @@ jobs:
           docker pull "$base"
           GITHUB_OUTPUT=slots.out python3 -I scripts/swarm.py slot-matrix
           slots=$(sed -n 's/^matrix=//p' slots.out | jq -r '.slot[]')
+          generation="run-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          base_digest=$(docker image inspect "$base" --format '{{index .RepoDigests 0}}')
+          printf '{}\n' > slot-images.json
           for slot in $slots; do
             image="ghcr.io/${GITHUB_REPOSITORY,,}-agent-${slot}"
             config=$(python3 -I scripts/swarm.py slot-config --slot "$slot")
             docker build -f .github/agent-image/Dockerfile.slot \
-              --build-arg "BASE=$base" --build-arg "SLOT=$slot" --build-arg "SLOT_CONFIG=$config" \
+              --build-arg "BASE=$base_digest" --build-arg "SLOT=$slot" --build-arg "SLOT_CONFIG=$config" \
               --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
-              -t "$image:latest" .github/agent-image
+              -t "$image:$generation" .github/agent-image
+            docker push "$image:$generation"
+            digest=$(docker buildx imagetools inspect "$image:$generation" --format '{{json .Manifest}}' | jq -er .digest)
+            jq --arg slot "$slot" --arg image "$image@$digest" '. + {($slot): $image}' slot-images.json > slot-images.tmp
+            mv slot-images.tmp slot-images.json
+          done
+          # Compatibility tags for single-slot support jobs. Swarm waves consume
+          # only the complete digest manifest from a successful run.
+          for slot in $slots; do
+            image="ghcr.io/${GITHUB_REPOSITORY,,}-agent-${slot}"
+            docker tag "$image:$generation" "$image:latest"
             docker push "$image:latest"
           done
+      - uses: actions/upload-artifact@v7
+        with:
+          name: verified-slot-images
+          path: slot-images.json
+          if-no-files-found: error
+          retention-days: 90
