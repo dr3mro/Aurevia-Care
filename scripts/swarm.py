@@ -587,10 +587,24 @@ def plan_integration(red=False):
             and (not red or p.get("title", "").startswith("FIX-"))]
 
 
+def only_worker_failures(run):
+    """True when an Agent swarm run failed only in its worker jobs.
+
+    A worker that times out or is rate limited is routine and its task is retried
+    by the planner; main is not broken, so it must not start a repair that blocks
+    the whole swarm. Failures in planning, integration or the loop still count."""
+    if run.get("name") != "Agent swarm":
+        return False
+    failed = [j["name"] for j in run.get("jobs", []) if j.get("conclusion") == "failure"]
+    return bool(failed) and all(name.startswith("Swarm worker /") for name in failed)
+
+
 def repair_task(run_id):
     """Build the worker task that repairs a failed run on main."""
-    run = gh_json("run", "view", str(run_id), "--json", "name,headBranch,headSha,conclusion,url")
+    run = gh_json("run", "view", str(run_id), "--json", "name,headBranch,headSha,conclusion,url,jobs")
     if run["headBranch"] != "main" or run["conclusion"] != "failure":
+        return None
+    if only_worker_failures(run):
         return None
     log = gh("run", "view", str(run_id), "--log-failed", check=False)
     tail = "\n".join(log.splitlines()[-150:])[-5000:].replace("```", "'''")
