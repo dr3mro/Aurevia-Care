@@ -1041,6 +1041,7 @@ Do these after part 2 where `depends` says so. Persistence tasks run one at a ti
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT change files outside `scope`, add patient data to logs, or edit any existing migration.
 - [x] READY-49 · Add HTTP tests for the remaining controllers named in no test
   - pr: #217
+  - evidence: PR #217; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/READY-49.md; simulated review only
   - attempts: 1
   - requirements: ARC-03, ARC-04
   - scope: apps/api/src/test/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/it
