@@ -1364,6 +1364,15 @@ class GitTests(unittest.TestCase):
                         self.assertFalse(names.ID_NAME.match(part),
                                          f"{task['id']} scope names a folder after an ID: {path}")
 
+    def test_claim_open_never_grants_a_task_twice(self):
+        text = ("- [ ] T-1 · one\n  - attempts: 0\n  - scope: a\n- [-] T-2 · two\n  - agent: swarm-1\n"
+                "  - attempts: 0\n  - scope: b\n- [x] T-3 · three\n  - attempts: 0\n  - scope: c\n")
+        new, granted = swarm.claim_open(text, {"T-1": "swarm-2", "T-2": "swarm-3", "T-3": "swarm-4", "T-9": "swarm-5"})
+        self.assertEqual(granted, {"T-1"})
+        again, granted_again = swarm.claim_open(new, {"T-1": "swarm-6"})
+        self.assertEqual(granted_again, set())
+        self.assertEqual(again, new)
+
     def test_image_runs_passes_only_string_arguments_to_gh(self):
         seen = []
         def fake(*args):
