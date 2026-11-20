@@ -57,7 +57,7 @@ function CodedEntryTable({
             const shown = locale === 'ar' && entry.displayLocal ? entry.displayLocal : entry.display;
             return (
               <tr key={key}>
-                <td>{entry.code}</td>
+                <th scope="row">{entry.code}</th>
                 <td>{entry.originalText}</td>
                 <td>
                   <MixedScriptText text={shown} lang={locale} />
@@ -133,7 +133,7 @@ export function LongitudinalChart({ chart, locale }: LongitudinalChartProps) {
           ) : (
             chart.vitals.map((vital) => (
               <tr key={`${vital.organizationId}:${vital.id}`}>
-                <td>{vital.kind}</td>
+                <th scope="row">{vital.kind}</th>
                 <td>{formatMeasurement(vital.value, vital.unit, locale)}</td>
                 <td>
                   <time dateTime={vital.measuredAt}>

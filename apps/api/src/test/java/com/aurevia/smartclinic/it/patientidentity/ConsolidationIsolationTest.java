@@ -185,6 +185,12 @@ class ConsolidationIsolationTest {
         }
     }
 
+    /** IAM-04 consolidation approval confirming both issuer-scoped MRNs as one person. */
+    private static String approvalBody(String mrnPrefix) {
+        return "{\"reason\":\"merge\",\"confirmedIdentifiers\":[\""
+                + mrnPrefix + "-1@CLINIC-A\",\"" + mrnPrefix + "-2@CLINIC-A\"]}";
+    }
+
     private String[] twoDuplicates(String mrnPrefix) {
         String survivor = register("Amina Khan", mrnPrefix + "-1", "CLINIC-A", "1988-03-03",
                 "en", "reception-a", ORG_A);
@@ -240,11 +246,11 @@ class ConsolidationIsolationTest {
         String reviewId = field(opened.getBody(), "id");
 
         String command = "/api/v1/duplicate-reviews/" + reviewId + "/consolidate";
-        assertEquals(HttpStatus.CONFLICT, request(HttpMethod.POST, command, "{\"reason\":\"merge\"}",
+        assertEquals(HttpStatus.CONFLICT, request(HttpMethod.POST, command, approvalBody("DUP-C"),
                 "reviewer-a", ORG_A, "\"1\"").getStatusCode());
 
         addDependency(pair[1], false);
-        assertEquals(HttpStatus.CONFLICT, request(HttpMethod.POST, command, "{\"reason\":\"merge\"}",
+        assertEquals(HttpStatus.CONFLICT, request(HttpMethod.POST, command, approvalBody("DUP-C"),
                 "approver-a", ORG_A, "\"1\"").getStatusCode());
         assertEquals(0, count("chart_association", "alias_id = '" + pair[1] + "'"),
                 "blocked command must write nothing");
@@ -252,7 +258,7 @@ class ConsolidationIsolationTest {
                 "blocked command must write nothing");
 
         addDependency(pair[1], true);
-        ResponseEntity<String> done = request(HttpMethod.POST, command, "{\"reason\":\"merge\"}",
+        ResponseEntity<String> done = request(HttpMethod.POST, command, approvalBody("DUP-C"),
                 "approver-a", ORG_A, "\"1\"");
         assertEquals(HttpStatus.OK, done.getStatusCode(), done.getBody());
         assertEquals("CONSOLIDATED", field(done.getBody(), "status"));
@@ -266,7 +272,7 @@ class ConsolidationIsolationTest {
                 null, "admin-a", ORG_A, null);
         assertFalse(after.getBody().contains(pair[1]), "consolidated pair leaves the worklist");
 
-        assertEquals(HttpStatus.CONFLICT, request(HttpMethod.POST, command, "{\"reason\":\"merge\"}",
+        assertEquals(HttpStatus.CONFLICT, request(HttpMethod.POST, command, approvalBody("DUP-C"),
                 "approver-a", ORG_A, "\"1\"").getStatusCode(), "consolidation is not repeatable");
     }
 
@@ -279,10 +285,10 @@ class ConsolidationIsolationTest {
         String reviewId = field(opened.getBody(), "id");
         String command = "/api/v1/duplicate-reviews/" + reviewId + "/consolidate";
         assertEquals(HttpStatus.PRECONDITION_FAILED,
-                request(HttpMethod.POST, command, "{\"reason\":\"merge\"}", "approver-a", ORG_A, "\"9\"")
+                request(HttpMethod.POST, command, approvalBody("DUP-S"), "approver-a", ORG_A, "\"9\"")
                         .getStatusCode());
         assertEquals(HttpStatus.FORBIDDEN,
-                request(HttpMethod.POST, command, "{\"reason\":\"merge\"}", "reception-a", ORG_A, "\"1\"")
+                request(HttpMethod.POST, command, approvalBody("DUP-S"), "reception-a", ORG_A, "\"1\"")
                         .getStatusCode());
     }
 
@@ -294,7 +300,7 @@ class ConsolidationIsolationTest {
                 reviewBody, "reviewer-a", ORG_A, null);
         String reviewId = field(opened.getBody(), "id");
         String command = "/api/v1/duplicate-reviews/" + reviewId + "/consolidate";
-        assertEquals(HttpStatus.OK, request(HttpMethod.POST, command, "{\"reason\":\"merge\"}",
+        assertEquals(HttpStatus.OK, request(HttpMethod.POST, command, approvalBody("DUP-X"),
                 "approver-a", ORG_A, "\"1\"").getStatusCode(), opened.getBody());
 
         ResponseEntity<String> corrected = request(HttpMethod.POST,
@@ -332,7 +338,34 @@ class ConsolidationIsolationTest {
                 "/api/v1/duplicate-reviews/" + pair[0] + "/" + pair[1], null, "reviewer-b", ORG_B, null)
                 .getStatusCode());
         assertEquals(HttpStatus.FORBIDDEN, request(HttpMethod.POST,
-                "/api/v1/duplicate-reviews/" + reviewId + "/consolidate", "{\"reason\":\"merge\"}",
+                "/api/v1/duplicate-reviews/" + reviewId + "/consolidate", approvalBody("DUP-T"),
                 "reviewer-b", ORG_A, "\"1\"").getStatusCode());
+    }
+
+    @Test
+    void identifierConfirmationIsEnforcedAgainstTheTwoRecords() throws Exception {
+        String[] pair = twoDuplicates("DUP-I");
+        String reviewBody = "{\"survivorId\":\"" + pair[0] + "\",\"duplicateId\":\"" + pair[1] + "\"}";
+        ResponseEntity<String> opened = request(HttpMethod.POST, "/api/v1/duplicate-reviews",
+                reviewBody, "reviewer-a", ORG_A, null);
+        String reviewId = field(opened.getBody(), "id");
+        String command = "/api/v1/duplicate-reviews/" + reviewId + "/consolidate";
+
+        // A name+DOB warning alone is not grounds for a merge: two identifiers
+        // must be confirmed and must match the two records being consolidated.
+        String wrong = "{\"reason\":\"merge\",\"confirmedIdentifiers\":[\"X-1@CLINIC-Z\",\"X-2@CLINIC-Y\"]}";
+        assertEquals(HttpStatus.UNPROCESSABLE_ENTITY,
+                request(HttpMethod.POST, command, wrong, "approver-a", ORG_A, "\"1\"").getStatusCode());
+        assertEquals(0, count("chart_association", "alias_id = '" + pair[1] + "'"));
+        assertEquals(0, count("consolidation", "review_id = '" + reviewId + "'"));
+
+        // When identifiers cannot be confirmed, the documented approved process
+        // is required and the decision is audited with its basis.
+        String alternate = "{\"reason\":\"merge\",\"alternateProcess\":\"site_witness\"}";
+        ResponseEntity<String> done = request(HttpMethod.POST, command, alternate, "approver-a", ORG_A, "\"1\"");
+        assertEquals(HttpStatus.OK, done.getStatusCode(), done.getBody());
+        assertEquals(pair[0], scalar("SELECT public.effective_patient_id('" + pair[1] + "')::text"));
+        assertTrue(count("audit_event", "action = 'CONSOLIDATION_IDENTIFIER_CONFIRM' "
+                + "AND outcome = 'ALTERNATE:site_witness' AND resource_id = '" + reviewId + "'") >= 1);
     }
 }

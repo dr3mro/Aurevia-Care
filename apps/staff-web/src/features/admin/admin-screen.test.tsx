@@ -1,7 +1,7 @@
 import { useLayoutEffect } from 'react';
 import type { ReactElement, ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { I18nProvider } from '../../i18n/I18nProvider';
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import type { Locale } from '../../i18n/messages';
@@ -60,6 +60,30 @@ describe('AdminScreen', () => {
     expect(screen.getByTestId('admin-status').textContent).toBe('');
   });
 
+  it('keeps each wide table in a labelled, keyboard-scrollable region', () => {
+    alphaScreen();
+    for (const label of [
+      adminText('en', 'configurationVersions'),
+      adminText('en', 'staffHistory'),
+      adminText('en', 'auditEvents'),
+    ]) {
+      const region = screen
+        .getAllByRole('region', { name: label })
+        .find((element) => element.getAttribute('tabindex') === '0');
+      expect(region).toBeDefined();
+      expect((region as HTMLElement).style.overflowX).toBe('auto');
+      expect(within(region as HTMLElement).getByRole('table')).toBeTruthy();
+    }
+  });
+
+  it('announces a proposal through visible text without a competing static label', () => {
+    alphaScreen();
+    const status = screen.getByTestId('admin-status');
+    expect(status.getAttribute('role')).toBe('status');
+    // A static accessible name could mask the dynamic result for screen readers.
+    expect(status.hasAttribute('aria-label')).toBe(false);
+  });
+
   it('proposes a local configuration version and announces it', () => {
     alphaScreen();
     fireEvent.change(screen.getByLabelText(adminText('en', 'proposedValue')), {
@@ -104,6 +128,32 @@ describe('AdminScreen', () => {
     expect(screen.getByRole('heading', { level: 2, name: adminText('ar', 'admin') })).toBeTruthy();
     expect(screen.getByRole('table', { name: adminText('ar', 'auditEvents') })).toBeTruthy();
     expect(screen.getByText(adminText('ar', 'chainVerified'))).toBeTruthy();
+  });
+
+  it('does not carry an unsubmitted configuration draft across an active-organization switch', () => {
+    // A draft typed but not proposed is held in the editor's own local state.
+    // It must not survive an active-organization switch: the same text could
+    // otherwise be proposed into a different tenant, whose local identifiers
+    // intentionally collide with the previous tenant's (IAM-01, ARC-01).
+    const { rerender } = alphaScreen();
+    const value = screen.getByLabelText(adminText('en', 'proposedValue')) as HTMLInputElement;
+    const effectiveFrom = screen.getByLabelText(adminText('en', 'effectiveFrom')) as HTMLInputElement;
+    fireEvent.change(value, { target: { value: 'Synthetic alpha unsubmitted draft' } });
+    fireEvent.change(effectiveFrom, { target: { value: '2026-08-01' } });
+    expect(value.value).toBe('Synthetic alpha unsubmitted draft');
+    expect(effectiveFrom.value).toBe('2026-08-01');
+
+    rerender(
+      <ThemeProvider>
+        <I18nProvider initialLocale="en">
+          <AdminScreen {...screenProps(betaOrganizationId)} />
+        </I18nProvider>
+      </ThemeProvider>,
+    );
+
+    expect((screen.getByLabelText(adminText('en', 'proposedValue')) as HTMLInputElement).value).toBe('');
+    expect((screen.getByLabelText(adminText('en', 'effectiveFrom')) as HTMLInputElement).value).toBe('');
+    expect(screen.getByTestId('admin-status').textContent).toBe('');
   });
 
   it('never paints the previous tenant proposal after an active-organization switch', () => {

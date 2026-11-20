@@ -27,7 +27,6 @@ export function AccessStateNotice({ state, label }: AccessStateNoticeProps) {
     <div
       data-access-state={state}
       role={state === 'denied' ? 'alert' : 'status'}
-      aria-label={label}
       style={{
         display: 'grid',
         gap: tokens.spacing.sm,

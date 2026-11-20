@@ -49,7 +49,8 @@ jobs:
       STORY_BODY: ${{ fromJSON(inputs.task).body }}
       FIX_COMMENT: ${{ fromJSON(inputs.task).fix }}
       PR_NUMBER: ${{ fromJSON(inputs.task).number }}
-      CHECK_SCRIPT: scripts/quick-check.sh
+      CHECK_SCRIPT: scripts/worker-check.sh
+      SMARTCLINIC_PG_ADMIN: postgres
     steps:
       - uses: actions/checkout@v7
         with:
@@ -65,6 +66,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           BASE_BRANCH: ${{ github.event.repository.default_branch }}
         run: scripts/agent-run.sh fetch-main || true
+      # PostgreSQL ships in the agent image; the integration suites need it.
+      - name: Start PostgreSQL for the worker checks
+        # Tolerates an older image without PostgreSQL (the first waves after the
+        # image changes); worker-check.sh then skips the database part loudly.
+        run: |
+          if command -v start-postgres >/dev/null; then
+            start-postgres
+          else
+            echo "start-postgres missing - older agent image" >&2
+          fi
       - id: s1
         name: Work the task, segment 1 of 4 (no GitHub token in this step)
         env:
