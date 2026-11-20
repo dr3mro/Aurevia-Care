@@ -6,7 +6,13 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 base="${1:-origin/main}"
-changed=$( { git diff --name-only "$base" 2>/dev/null; git ls-files --others --exclude-standard; } | sort -u)
+if ! base_commit=$(git rev-parse --verify --end-of-options "${base}^{commit}" 2>/dev/null); then
+  printf 'coverage check: invalid base ref: %s\n' "$base" >&2
+  exit 1
+fi
+tracked=$(git diff --name-only "$base_commit" --)
+untracked=$(git ls-files --others --exclude-standard)
+changed=$(printf '%s\n' "$tracked" "$untracked" | sort -u)
 status=0
 if grep -q '^apps/api/' <<<"$changed" || grep -q '^db/' <<<"$changed"; then
   export SMARTCLINIC_PG_ADMIN="${SMARTCLINIC_PG_ADMIN:-postgres}"
@@ -20,7 +26,7 @@ if grep -q '^apps/patient-mobile/' <<<"$changed"; then
 fi
 if grep -q '^apps/staff-web/' <<<"$changed"; then
   printf 'coverage check: staff-web (Vitest thresholds)\n'
-  (cd apps/staff-web && npm run -s test:coverage) || status=1
+  bash apps/staff-web/check.sh || status=1
 fi
 [[ $status -eq 0 ]] && printf 'coverage check: passed\n'
 exit $status

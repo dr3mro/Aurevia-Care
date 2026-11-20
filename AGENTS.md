@@ -45,6 +45,8 @@ Workers never call `gh` and never hold a GitHub token. They hand work to each ot
 
 ## Engineering quality bar
 
+Apply the shared senior review standard in [docs/WORKFLOW.md](docs/WORKFLOW.md) for every role. Implementation agents provide executable evidence. Read-only specialists review the relevant paths and report findings with evidence and a proposed check.
+
 Every change must meet all of the following before it is called done:
 
 - **Notes go only to the file your prompt names**, `.agent/pr-notes/<task-id>-<timestamp>.md` (a fix pass: `<task-id>-fix-<timestamp>.md`; the path in your prompt wins over any older `<task-id>.md` wording in a task), one new file per run. Never create, edit or commit the shared `.agent/pr-notes.md` or any other file directly under `.agent/`: parallel workers overwrite it and every pull request then conflicts.
@@ -78,7 +80,7 @@ Delivery fails the whole run on a single uncovered line or branch, in Java (JaCo
 
 - In patient-mobile tests write `import { jest } from '@jest/globals';` before using `jest.fn()` or `jest.mock()`; the bare `jest` namespace fails the type check (Delivery run 531). Run `bash apps/patient-mobile/check.sh` before you finish.
 - TypeScript only: .ts/.tsx, never .js/.jsx. tsconfig must have "strict": true, "noUncheckedIndexedAccess": true; no `any`, no `@ts-ignore`.
-- React: function components and hooks only, typed props, small single-purpose components, no business logic in JSX, data fetching via one typed API client.
+- React: use function components, hooks, typed props, small single-purpose components, no business logic in JSX, data fetching via one typed API client.
 - Before finishing any task run `tsc --noEmit`, `eslint . --max-warnings=0`, `prettier --check .` and the tests, and fix every failure. Never disable a rule to pass.
 - Convert any existing .js/.jsx file you touch to TypeScript.
 

@@ -14,6 +14,14 @@ class PackTests(unittest.TestCase):
     def test_committed_opencode_json_is_generated(self):
         self.assertEqual((ROOT / "opencode.json").read_text(), gen.render(ROOT))
 
+    def test_existing_but_wrong_skill_is_rejected(self):
+        tmp = copy_pack()
+        self.addCleanup(shutil.rmtree, tmp)
+        agent = tmp / ".opencode/agents/smartclinic-senior-react.md"
+        agent.write_text(agent.read_text().replace("Load `smartclinic-senior-react`",
+                                                   "Load `smartclinic-senior-python`"))
+        self.assertTrue(any("must load smartclinic-senior-react" in error for error in pack.check(tmp)))
+
     def test_missing_skill_is_reported(self):
         tmp = copy_pack()
         self.addCleanup(shutil.rmtree, tmp)
