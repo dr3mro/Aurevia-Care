@@ -430,7 +430,8 @@ def plan_workers(max_workers, slots, text, open_prs, repair=None):
                          "fix": clip(notes[-1] if notes else "Integration failed.")})
     in_flight = {task_id_of(p["headRefName"]) for p in open_prs}
     done = {name for t in tasks if t["status"] == "done" for name in (t["id"], *t["aliases"])}
-    for task in tasks:
+    # Repairs of main come first: a red main blocks every other merge.
+    for task in sorted(tasks, key=lambda t: not t["id"].startswith("FIX-")):
         if task["status"] != "todo" or not task["scope"] or task["id"] in in_flight \
                 or attempts_of(task) >= MAX_ATTEMPTS:
             continue
@@ -599,6 +600,45 @@ def repair_task(run_id):
             ".agent/pr-notes.md and change nothing.\n\nFailing log tail:\n```text\n" + tail + "\n```")
     return {"kind": "story", "id": f"FIX-{run_id}", "number": 0, "branch": "",
             "title": f"Repair main: {run['name']} failed", "body": clip(body), "fix": ""}
+
+
+REPAIR_HEADER = "## Repairs (automatic)"
+
+
+def repair_entry(task):
+    """TODO.md entry for a repair. Scope `*` overlaps every other task, so while a
+    repair is taken the swarm works on nothing else."""
+    body = "\n".join(f"    {line}" for line in task["body"].splitlines() if line.strip())
+    return (f"- [ ] {task['id']} · {task['title']}\n"
+            f"  - attempts: 0\n  - scope: *\n  - details:\n{body}\n"
+            "    Repair PRs may touch workflow and script files. Reproduce first, fix the cause,\n"
+            "    never weaken, skip or delete a test; record results in .agent/pr-notes/<story-id>.md.")
+
+
+def add_repair_task(run_id, path="TODO.md"):
+    """Turn a failed run on main into a repair task in TODO.md. Returns True when added.
+
+    Bounded like the old watchdog: nothing while a repair pull request or task is
+    still open, and an issue for a person after three repairs in a day."""
+    start, why = repair_gate(run_id)
+    print(why)
+    if not start:
+        return False
+    task = repair_task(run_id)
+    if task is None:
+        print("The run is not a failed run on main; nothing to repair.")
+        return False
+    added = []
+
+    def edit(text):
+        if any(t["id"].startswith("FIX-") and t["status"] != "done" for t in parse_tasks(text)):
+            print("A repair task is already open.")
+            return text
+        head = "" if REPAIR_HEADER in text else f"\n{REPAIR_HEADER}\n\n"
+        added.append(task["id"])
+        return text.rstrip("\n") + "\n" + head + repair_entry(task) + "\n"
+    update_todo(edit, f"Repair task for run {run_id}", path)
+    return bool(added)
 
 
 MAX_ACTIVE_WORKERS = 20  # workers running at once across every wave
@@ -984,6 +1024,9 @@ def main(argv=None):
     p.add_argument("--file", default="TODO.md")
     p = sub.add_parser("repair-gate")
     p.add_argument("--run", required=True)
+    p = sub.add_parser("add-repair-task")
+    p.add_argument("--run", required=True)
+    p.add_argument("--file", default="TODO.md")
     for name in ("release", "publish"):
         p = sub.add_parser(name)
         p.add_argument("--task", required=True, help="task JSON")
@@ -1049,6 +1092,8 @@ def main(argv=None):
         publish(json.loads(a.task), a.dir)
     elif a.cmd == "add-audit-tasks":
         add_audit_tasks(a.findings, a.file)
+    elif a.cmd == "add-repair-task":
+        emit("added", "true" if add_repair_task(a.run, a.file) else "false")
     elif a.cmd == "repair-gate":
         start, why = repair_gate(a.run)
         print(why)
