@@ -176,8 +176,8 @@ Cadence and limits:
     Done when: both POSTs return 201 with a `Location` header, no test expects 200 for them, and `bash scripts/worker-check.sh` is green.
 
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` must pass for the classes you touched. Synthetic data only; write the failing test first; stay inside the declared scope; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
-- [-] AUD-20261120-02 · Production authentication, part 1: a pure JWT-claims-to-TenantContext resolver with tests
-  - agent: swarm-1
+- [x] AUD-20261120-02 · Production authentication, part 1: a pure JWT-claims-to-TenantContext resolver with tests
+  - pr: #211
   - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/web
   - depends: DLV-04
@@ -197,8 +197,9 @@ Cadence and limits:
     Done when: `ClaimsTenantResolverTest` has at least 7 tests (happy path, missing sub, blank sub, missing orgs, malformed org list, org not in token, malformed header) and passes.
 
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` must pass for the classes you touched. Synthetic data only; write the failing test first; stay inside the declared scope; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
-- [ ] AUD-20261120-03 · Production authentication, part 2: validate OIDC bearer tokens and bind the tenant context
-  - attempts: 0
+- [-] AUD-20261120-03 · Production authentication, part 2: validate OIDC bearer tokens and bind the tenant context
+  - agent: swarm-3
+  - attempts: 1
   - scope: apps/api/pom.xml, apps/api/src/main/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/web, apps/api/src/main/resources
   - depends: AUD-20261120-02
   - details:
