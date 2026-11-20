@@ -473,8 +473,9 @@ Order of work for the whole production-readiness effort: (1) security and platfo
 
 ### Phase 2 — API list endpoints the screens need (independent of each other)
 
-- [-] READY-13 · List appointments by date range (GET /api/v1/appointments)
-  - agent: swarm-6
+- [x] READY-13 · List appointments by date range (GET /api/v1/appointments)
+  - pr: #226
+  - evidence: PR #226; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/READY-13.md; simulated review only
   - attempts: 1
   - requirements: ARC-03
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/scheduling, apps/api/src/test/java/com/aurevia/smartclinic/scheduling, contracts/openapi
