@@ -2,6 +2,7 @@ import { MixedScriptText } from '../../components/MixedScriptText';
 import { formatInstant } from '../../i18n/format';
 import { useI18n } from '../../i18n/I18nProvider';
 import { useTheme } from '../../theme/ThemeProvider';
+import { AdminTableRegion } from './AdminTableRegion';
 import type { AuditEvent } from './domain';
 import { adminChainFor, verifyChain } from './domain';
 import { adminText, outcomeMessageKey } from './messages';
@@ -46,67 +47,69 @@ export function AuditEventList({ events, organizationId }: AuditEventListProps) 
         />
       )}
       {!verified && chain.length > 0 ? <p role="status">{text('chainBrokenHint')}</p> : null}
-      <table style={{ borderCollapse: 'collapse', width: '100%' }}>
-        <caption style={{ textAlign: 'start', paddingBlock: tokens.spacing.sm }}>
-          {text('auditEvents')}
-        </caption>
-        <thead>
-          <tr>
-            <th scope="col">{text('sequence')}</th>
-            <th scope="col">{text('actor')}</th>
-            <th scope="col">{text('purpose')}</th>
-            <th scope="col">{text('scope')}</th>
-            <th scope="col">{text('correlationId')}</th>
-            <th scope="col">{text('outcome')}</th>
-            <th scope="col">{text('action')}</th>
-            <th scope="col">{text('resource')}</th>
-            <th scope="col">{text('occurredAt')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {chain.length === 0 ? (
+      <AdminTableRegion label={text('auditEvents')}>
+        <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+          <caption style={{ textAlign: 'start', paddingBlock: tokens.spacing.sm }}>
+            {text('auditEvents')}
+          </caption>
+          <thead>
             <tr>
-              <td colSpan={9}>{text('noEvents')}</td>
+              <th scope="col">{text('sequence')}</th>
+              <th scope="col">{text('actor')}</th>
+              <th scope="col">{text('purpose')}</th>
+              <th scope="col">{text('scope')}</th>
+              <th scope="col">{text('correlationId')}</th>
+              <th scope="col">{text('outcome')}</th>
+              <th scope="col">{text('action')}</th>
+              <th scope="col">{text('resource')}</th>
+              <th scope="col">{text('occurredAt')}</th>
             </tr>
-          ) : (
-            chain.map((event) => (
-              <tr key={`${event.organizationId}:${event.sequence}`}>
-                <th scope="row">{event.sequence}</th>
-                <td>
-                  <MixedScriptText text={event.actor} lang="en" />
-                </td>
-                <td>
-                  <MixedScriptText text={event.purpose} lang="en" />
-                </td>
-                <td>
-                  <MixedScriptText text={event.scope} lang="en" />
-                </td>
-                <td>
-                  <MixedScriptText text={event.correlationId} lang="en" />
-                </td>
-                <td>
-                  <StateBadge
-                    glyph={outcomeGlyph[event.outcome]}
-                    label={adminText(locale, outcomeMessageKey[event.outcome])}
-                    tone={event.outcome === 'SUCCESS' ? 'success' : 'denied'}
-                  />
-                </td>
-                <td>
-                  <MixedScriptText text={event.action} lang="en" />
-                </td>
-                <td>
-                  <MixedScriptText text={event.resourceId} lang="en" />
-                </td>
-                <td>
-                  <time dateTime={event.occurredAt}>
-                    {formatInstant(event.occurredAt, 'UTC', locale)}
-                  </time>
-                </td>
+          </thead>
+          <tbody>
+            {chain.length === 0 ? (
+              <tr>
+                <td colSpan={9}>{text('noEvents')}</td>
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+            ) : (
+              chain.map((event) => (
+                <tr key={`${event.organizationId}:${event.sequence}`}>
+                  <th scope="row">{event.sequence}</th>
+                  <td>
+                    <MixedScriptText text={event.actor} lang="en" />
+                  </td>
+                  <td>
+                    <MixedScriptText text={event.purpose} lang="en" />
+                  </td>
+                  <td>
+                    <MixedScriptText text={event.scope} lang="en" />
+                  </td>
+                  <td>
+                    <MixedScriptText text={event.correlationId} lang="en" />
+                  </td>
+                  <td>
+                    <StateBadge
+                      glyph={outcomeGlyph[event.outcome]}
+                      label={adminText(locale, outcomeMessageKey[event.outcome])}
+                      tone={event.outcome === 'SUCCESS' ? 'success' : 'denied'}
+                    />
+                  </td>
+                  <td>
+                    <MixedScriptText text={event.action} lang="en" />
+                  </td>
+                  <td>
+                    <MixedScriptText text={event.resourceId} lang="en" />
+                  </td>
+                  <td>
+                    <time dateTime={event.occurredAt}>
+                      {formatInstant(event.occurredAt, 'UTC', locale)}
+                    </time>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </AdminTableRegion>
     </section>
   );
 }
