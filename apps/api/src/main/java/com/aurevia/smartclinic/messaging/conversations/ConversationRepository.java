@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 import org.springframework.jdbc.core.RowMapper;
@@ -176,12 +177,13 @@ public class ConversationRepository {
      * @return one plus the current maximum sequence
      */
     public int nextSequence(String conversationId) {
-        // The aggregate always returns exactly one non-null row.
-        int value = jdbc.queryForObject("""
+        // The aggregate always returns exactly one non-null row; fail closed if
+        // a driver ever violates that contract instead of unboxing null.
+        Integer value = jdbc.queryForObject("""
                 SELECT COALESCE(MAX(sequence), 0) + 1 FROM public.conversation_message
                  WHERE conversation_id = CAST(:conversationId AS uuid)
                 """, Map.of("conversationId", conversationId), Integer.class);
-        return value;
+        return Objects.requireNonNull(value, "nextSequence aggregate returned no row");
     }
 
     /**
