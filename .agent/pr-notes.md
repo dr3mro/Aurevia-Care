@@ -1,89 +1,123 @@
-# AUD-20261120-10 — Attachment event history returns every event in the tenant, not the requested file's trail
-
-Branch: `swarm/AUD-20261120-10-289`. Integrator merge-conflict repair, fix attempt 1 of 3. No push, tag or `gh` call was made. Synthetic fixtures only — no patient data, credentials, tokens or real identifiers appear in the code, the tests or this note.
+# AUD-20261120-16 — Verify order and result subjects in document render and rendered-version reads
 
 ## Requirement IDs and acceptance mapping
 
 | Requirement | Acceptance | Where |
 |---|---|---|
-| MSG-07 | Opening, viewing and downloading conversations/files is audited; a caller authorized for one file must not obtain another file's event detail (scanner detail, void/rejection free text) | `AttachmentService.events(actor, id)` now filters the tenant event stream to the single visible `attachmentId`, exactly as its sibling `view(actor, id)` already did |
-| ARC-07 | A conversation/message belongs to one recipient unit and one verified patient connection and carries a scoped fact trail | The per-file filter keeps one file's trail from crossing into another file in a different conversation in the same tenant |
-| OPS-02 | Sensitive reads leave a correctly scoped, durable audit trail | Unchanged: `authorize(...)` and the `visible(...)` check still run first; only the returned fact trail is narrowed |
+| CLN-07 | An immutable rendered PDF binds only to a chart, order or result that exists in the active tenant; listing renders must not answer for a bogus subject | `DocumentService.render` now returns 404 for a missing order/result; `DocumentService.renderedVersions` returns 404 for a missing chart/order/result |
+| ARC-01 | Tenant-owned subject keys are real, not arbitrary opaque ids | Both new guards call the existing RLS-bounded `DocumentRepository.subjectExists`, which probes `current_patients()`, `exchange_order` and `xch04_report_revision` |
+| ARC-02 | The probe runs as the non-owner role with transaction-local tenant context | Reuses the existing fold and forced-RLS policies; no `SECURITY DEFINER`, no new tenant switch |
+| XCH-01 / XCH-04 | Canonical owners of order and result identifiers | `subjectExists` probes `public.exchange_order` and `public.xch04_report_revision` |
+| OPS-02 | Denials leave no success audit | On the 404 path neither `insertRendered`/`renderedVersions` nor a `SUCCESS` audit row is produced |
 
-The defect was a **cross-file / cross-conversation leak within one tenant**, not a cross-tenant leak: `InMemoryAttachmentStore.events(organizationId)` is already keyed by organization. `AttachmentEvent.detail` (`AttachmentContract.java`) carries scanner detail and void/rejection free text, so the leak exposed other files' incident detail to a caller authorized for only one file. The service has no HTTP controller yet (tracked separately as AUD-20261119-03 and out of scope), so the leak is latent until an entry point is wired.
+## Change
 
-## Change (only the declared scope)
+- `apps/api/src/main/java/com/aurevia/smartclinic/documents/DocumentService.java`
+  - `render(...)`: after the unchanged chart-only `chartExists` guard, a missing order/result target now returns `404 NOT_FOUND` ("subject not found") before any version reservation, render or write.
+  - `renderedVersions(...)`: a missing chart/order/result target now returns `404 NOT_FOUND` before the repository listing and its `DOCUMENT_LIST/SUCCESS` audit.
+  - Javadoc `@throws` updated for both commands.
+- No new production class, no new method on `DocumentRepository`, no migration. `subjectExists` already exists (AUD-20261120-13) and is reused instead of duplicating SQL. V17's bare `rendered_document.subject_id` needs no new FK: the service guard enforces the same invariant at every entry point, preserving the predecessor's no-cross-module-FK decision.
+- No coverage threshold, exclusion, `@Disabled`, `.skip` or `xit` was added or changed.
 
-- `apps/api/src/main/java/com/aurevia/smartclinic/messaging/attachments/AttachmentService.java`
-  - `events(Actor, String)`: after `authorize` + `load` + `visible`, capture `String fileId = current.id();` and replace the unfiltered
-    `return store.events(actor.organizationId()).stream().toList();`
-    with
-    `return store.events(actor.organizationId()).stream().filter(fact -> fileId.equals(fact.attachmentId())).toList();`
-  - Mirrors `view(...)`. No authorization, visibility, ordering or signature change. No new class, method, package, branch condition or migration.
-- `apps/api/src/test/java/com/aurevia/smartclinic/messaging/attachments/AttachmentAcceptanceTest.java`
-  - New regression test `eventsAreScopedToTheRequestedAttachmentWithinOneTenant`: uploads two attachments `a` and `b` for the same patient in the same tenant, scans each with a distinct detail string, asserts `events(a.id())` has exactly 2 facts, every fact's `attachmentId` is `a.id()`, contains `detail-of-file-a`, contains no `detail-of-file-b`, and equals `view(a.id()).events()`; then the symmetric assertions for `b`.
+### Scope note (transparent deviation)
 
-The pre-existing `twoTenantsWithIdenticalLocalIdentifiersStayIsolated` only asserted every event carries the caller's `organizationId`, so it never detected the missing per-file filter even at 100% line coverage. The new test is the missing behavioral guard. No coverage threshold, exclusion or skip was changed; no existing test was weakened, deleted or skipped.
+The declared `scope` field lists only `apps/api/src/main/java/com/aurevia/smartclinic/documents` and `db/migrations`. The story's acceptance explicitly requires "a test per subject type asserting rejection" and AGENTS.md requires 100% coverage with a test for every new branch, so tests were necessarily added in the mirror test package `apps/api/src/test/java/com/aurevia/smartclinic/documents/` and one supporting default stub was added to `apps/api/src/test/java/com/aurevia/smartclinic/it/documents/DocumentServiceTest.java`. The production change is confined to the declared scope; no other worker owns the documents test package, so there is no collision. If the integrator treats the test paths as a strict scope violation, the production change is self-contained and the test files can be split into a separate change.
 
-## Merge-conflict repair actions
+## Tests written first (red -> green)
 
-- A prior attempt wrote its note into the forbidden shared `.agent/pr-notes.md`; that file is the artifact the swarm publish job regenerates from a per-story note, so committing a change to it collides with parallel workers. Restored `.agent/pr-notes.md` byte-for-byte to `origin/main` (`git show origin/main:.agent/pr-notes.md > .agent/pr-notes.md`), so it no longer appears in this branch's diff against main.
-- Removed a duplicate prior note `.agent/pr-notes/fix-20261120-170419.md` (same story, wrong filename). This branch's only note is the file named in the task, `.agent/pr-notes/fix-20261120-171531.md`.
-- The production fix and regression test were already present in this branch from earlier attempts; I re-verified them rather than duplicating them (RED/GREEN and full coverage below are my own fresh tool runs).
+New test class: `apps/api/src/test/java/com/aurevia/smartclinic/documents/DocumentServiceSubjectRenderTest.java` (9 tests, synthetic identifiers, mocked repository).
 
-## Tests written first (RED -> GREEN) — tool evidence
+Red command (before the production change):
+```
+mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest=DocumentServiceSubjectRenderTest test
+```
+Red result: `Tests run: 9, Failures: 9, Errors: 0, Skipped: 0` — every test failed because production never called `subjectExists` in `render`/`renderedVersions` (either "Expected ApiException to be thrown, but nothing was thrown" or an unmet Mockito verification).
 
-All commands run from `apps/api` with Java 21.0.13 / Maven 3.10.0.
-
-- RED: temporarily replaced `events()` with `origin/main`'s unfiltered body (new test kept), then ran
-  `mvn -q -B -f pom.xml -Pno-security,fast -Dtest='AttachmentAcceptanceTest#eventsAreScopedToTheRequestedAttachmentWithinOneTenant' test`
-  → `rc=1`, `Tests run: 1, Failures: 1, Errors: 0, Skipped: 0`, `org.opentest4j.AssertionFailedError: expected: <2> but was: <4>` at `AttachmentAcceptanceTest:443` (tenant-wide ledger returned all four facts from both files).
-- Restored the fixed file byte-for-byte (`cmp` vs saved copy returned 0).
-- GREEN: same command → `rc=0`.
-
-## Coverage evidence (AGENTS.md coverage rule 8)
-
-Command: `SMARTCLINIC_PG_ADMIN=postgres mvn -q -B -f pom.xml -Pno-security verify`
-Result: `rc=0` — full unit, real-PostgreSQL integration and JaCoCo `check` (thresholds `minimum=1.00` for INSTRUCTION, LINE, BRANCH, METHOD and CLASS in `pom.xml`) all passed.
-
-`apps/api/target/site/jacoco/jacoco.csv` row for the only changed production class:
-
-`SmartClinic API,com.aurevia.smartclinic.messaging.attachments,AttachmentService,0,963,0,86,0,168,0,71,0,28`
-
-Parsed (missed / covered): instructions 0/963, branches 0/86, lines 0/168, complexity 0/71, methods 0/28 — **100% on every measured counter** for `AttachmentService`. Global `jacoco.xml` counters are also 0 missed: INSTRUCTION 0/90701, BRANCH 0/6407, LINE 0/15736, COMPLEXITY 0/7070, METHOD 0/3815, CLASS 0/785. No touched file is below 100%.
-
-Surefire aggregate (`target/surefire-reports/TEST-*.xml`): **210 suites, 2361 tests, 0 failures, 0 errors, 0 skipped**; `AttachmentAcceptanceTest` ran 29 tests, 0 failures/errors/skipped.
+Green command (same command after implementation, extended to the affected existing class):
+```
+mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest=DocumentServiceSubjectRenderTest,DocumentServiceTest,DocumentServiceSubjectLinkTest,DocumentRepositorySubjectTest test
+```
+Green result: exit 0 — `DocumentServiceSubjectRenderTest` 9 tests, `it.documents.DocumentServiceTest` 21 tests, both subject-link/repository classes from AUD-20261120-13 still green; 0 failures, 0 errors, 0 skipped.
 
 ## New/changed branches and their covering tests (AGENTS.md coverage rule 6)
 
 | Production branch | Test |
 |---|---|
-| New `events()` filter predicate `fileId.equals(fact.attachmentId())` → true (fact belongs to the requested file) | `AttachmentAcceptanceTest.eventsAreScopedToTheRequestedAttachmentWithinOneTenant` — asserts `detail-of-file-a` in `events(a.id())` and `detail-of-file-b` in `events(b.id())` |
-| Same predicate → false (fact belongs to the other file in the same tenant) | Same test — asserts trail size 2 (not 4), no cross-detail, and equality with `view(...).events()` |
+| `render`: `!CHART.equals(subjectType)` true (order/result) | `renderRejectsAnOrderWhoseTargetDoesNotExist`, `renderRejectsAResultWhoseTargetDoesNotExist`, `renderStoresAnOrderRenderWhenTheTargetExists`, `renderStoresAResultRenderWhenTheTargetExists` |
+| `render`: `!CHART.equals(subjectType)` false (chart short-circuit, no `subjectExists` call) | existing `it.documents.DocumentServiceTest.renderConcealsMissingChart`, `renderCreatesAVersionedImmutableArtifact` and other chart render tests; unchanged chart branch |
+| `render`: `!repository.subjectExists(...)` true -> 404 | `renderRejectsAnOrderWhoseTargetDoesNotExist`, `renderRejectsAResultWhoseTargetDoesNotExist` |
+| `render`: `!repository.subjectExists(...)` false -> render proceeds | `renderStoresAnOrderRenderWhenTheTargetExists`, `renderStoresAResultRenderWhenTheTargetExists` |
+| `renderedVersions`: `!repository.subjectExists(...)` true -> 404 | `renderedVersionsRejectsAnOrderWhoseTargetDoesNotExist`, `renderedVersionsRejectsAResultWhoseTargetDoesNotExist`, `renderedVersionsRejectsAChartWhoseTargetDoesNotExist` |
+| `renderedVersions`: `!repository.subjectExists(...)` false -> list returned | `renderedVersionsListsAnOrderWhenTheTargetExists`, `renderedVersionsListsAResultWhenTheTargetExists`, existing `renderedVersionListingValidatesAndAudits` (chart) |
+| `render`/`renderedVersions`: denial branch precedes subject probe (unchanged) | existing `renderDeniesInactiveMembershipAndMissingPermission`, `renderedReadsAreValidatedAuthorizedAndAudited` |
 
-No other production branch was added or changed. The existing authorization/visibility branches in `events()` are unchanged and remain covered by their existing tests.
+The `&&` short-circuit in `render` is covered on both sides as listed; the chart guard is unchanged from AUD-20261120-13.
+
+## Supporting test change (not a weakening)
+
+`it.documents.DocumentServiceTest.setUp` now stubs `repository.subjectExists(anyString(), anyString())` to `true` by default. This is the minimum change that lets the pre-existing order-render success case (`renderForOrderSkipsTheChartLookup`) and chart rendered-version listing case (`renderedVersionListingValidatesAndAudits`) keep asserting exactly what they asserted before; it adds no assertion, removes no assertion and skips no test. The dedicated new class overrides the stub to `false` per subject type to assert the new rejection. No existing test was deleted, disabled or rewritten to make a change pass.
 
 ## Entry point -> test trace
 
-`AttachmentService.events(actor, id)` (no HTTP controller yet — AUD-20261119-03) → `authorize(READ)` → `load(...)` → `visible(...)` → `store.events(organizationId)` → per-file `filter(attachmentId)` → ordered `List<AttachmentEvent>`. The regression test enters directly at the service method with two synthetic attachments in one tenant and asserts the returned trail is scoped to the requested `attachmentId`. `view(...)` shares the same filter and is asserted equal in the test.
+`POST /api/v1/documents/rendered` -> `DocumentController.render` -> `DocumentService.render` -> authorize -> chart guard or `subjectExists(subjectType, subjectId)` (RLS-bounded SELECT EXISTS) -> 404 `NOT_FOUND` when the target is absent, otherwise version reservation + immutable insert + audit. `GET /api/v1/documents/rendered?subjectType=...&subjectId=...` -> `DocumentController.renderedVersions` -> `DocumentService.renderedVersions` -> authorize -> `subjectExists` -> 404 or list. HTTP chart success/concealment remains exercised by `it.documents.DocumentIsolationTest`; per-subject rejection is exercised by `DocumentServiceSubjectRenderTest`.
 
-## Other commands run and results
+## Commands actually run and results
 
-- `python3 -I scripts/check-names.py` → `rc=0`
-- `python3 -I scripts/check-secrets.py` → `rc=0`
-- `python3 -I scripts/check-docs.py` → `rc=0`
-- `python3 -I scripts/check-migrations.py --require-baseline` → `rc=0`
-- `python3 -I scripts/gen-opencode.py --check` and `python3 -I scripts/check-pack.py` → both `rc=0` when run against the committed `opencode.json` (`git show HEAD:opencode.json`); check-pack reported `Delivery tooling validated: 33 agents, 33 skills`.
+- `mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest=DocumentServiceSubjectRenderTest test` — exit 1, 9/9 failures (red).
+- `mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest=DocumentServiceSubjectRenderTest,DocumentServiceTest,DocumentServiceSubjectLinkTest,DocumentRepositorySubjectTest test` — exit 0, 0 failures/errors/skipped (green).
+- `python3 -I scripts/check-names.py`, `python3 -I scripts/check-docs.py`, `python3 -I scripts/check-secrets.py`, `python3 -I scripts/check-migrations.py --require-baseline` — all exit 0.
+- `python3 -I -m unittest discover -s scripts/tests -q` — 271 tests, 8 failures / 10 errors, pre-existing and environmental (`ModuleNotFoundError: No module named 'yaml'` plus git-branch setup errors in `test_agent_run.py`), matching AUD-20261120-13's observation; unrelated to this Java change.
+- Canonical gate `SMARTCLINIC_PG_ADMIN=postgres bash apps/api/check.sh` — see Coverage section.
 
-## Environment artifacts (not caused by this change, out of scope)
+## Coverage (100% gate)
 
-- In this cloud worker `opencode.json` carries Git's `S` (skip-worktree) flag and the worktree copy is the CI profile (`cmp` with `.github/opencode.ci.json` returned 0). Running the policy gate against that worktree copy reports `check-pack: opencode.json is stale`; this is the already-closed OPS-CW-003-01 measurement artifact (delivery skill: "in a cloud worker treat worktree config checks as CI-profile results, not HEAD truth"). The committed HEAD profile is correct and both pack checks pass against it. No generator/agent/config file was edited.
-- `bash scripts/check.sh` in this worker reaches `python3 -I -m unittest discover -s scripts/tests` and reports 271 tests with 6 failures and 10 errors. All 10 errors are `ModuleNotFoundError: No module named 'yaml'` (PyYAML absent from this worker image); the 6 `test_agent_run.py` failures come from leftover `opencode/issue-5-9` branch/gh-mock state in this reused worker checkout. These are pre-existing environment gaps in Python tooling tests, outside the declared Java scope, and unrelated to the attachment change; they are not reproduced in the integrator's prepared image. No Python tooling file or test was modified.
-- The integrator runs the database and integration tier; I additionally ran the full `mvn verify` above (unit + integration + JaCoCo), all green.
+Canonical gate command (segment 2, run on the merged branch with local JDK 21.0.13 and PostgreSQL accepting on 127.0.0.1:5432):
 
-## Defects found and decisions
+```
+SMARTCLINIC_PG_ADMIN=postgres bash -c 'bash apps/api/check.sh > /tmp/opencode/aud16-check2.log 2>&1; echo "GATE_EXIT=$?"'
+```
 
-- Root cause confirmed: `events()` omitted the per-attachment filter that `view()` already applied; the new test fails against the unfiltered version with four facts instead of two.
-- No new defect discovered; no missing decision or evidence. The fix is within the declared scope, uses only synthetic fixtures, and every gate I can run locally is green.
+Result: `GATE_EXIT=0`. The canonical `apps/api/check.sh` runs `mvn -q -B verify`, which executes the full unit + real-PostgreSQL integration suites and enforces the build-failing JaCoCo limits (instruction, line, branch, method and class) together with SpotBugs and OWASP Dependency-Check.
 
-Evidence source: tool evidence from commands I executed in this checkout (git, Maven/Surefire, JaCoCo, Python policy scripts). Reviewer evidence: none in this run (prior simulated audit finding is the origin of the task). Simulated-user and human/clinical evidence: none.
+- Surefire totals from the gate run: **Tests 2369, Failures 0, Errors 0, Skipped 0** (sum of all `TEST-*.xml` reports; no `@Disabled`, `.skip` or `xit`).
+- JaCoCo counters read from `apps/api/target/site/jacoco/jacoco.xml`, regenerated by this gate run:
+  - Repository-wide: INSTRUCTION 0 missed / 90726 covered, BRANCH 0 / 6413, LINE 0 / 15739, COMPLEXITY 0 / 7072, METHOD 0 / 3814, CLASS 0 / 785.
+  - `com/aurevia/smartclinic/documents/DocumentService` (the only production file changed): INSTRUCTION 0 missed / 1000 covered, BRANCH 0 / 74, LINE 0 / 202, COMPLEXITY 0 / 55, METHOD 0 / 18, CLASS 0 / 1.
+- Both new branches (the `render` order/result existence guard and the `renderedVersions` existence guard) are included in those zero-missed counters, with the tests named in the branch table above.
+
+Fast unit-test confirmation on the merged branch:
+
+```
+mvn -q -B -f apps/api/pom.xml -Pno-security,fast -Dtest=DocumentServiceSubjectRenderTest,DocumentServiceTest,DocumentServiceSubjectLinkTest,DocumentRepositorySubjectTest test
+```
+
+Exit 0; Surefire reports: `DocumentServiceSubjectRenderTest` 9/9, `it.documents.DocumentServiceTest` 21/21, `DocumentServiceSubjectLinkTest` 6/6, `DocumentRepositorySubjectTest` 5/5 — 0 failures, 0 errors, 0 skipped.
+
+Coverage evidence source: executed tool commands and machine-generated Surefire/JaCoCo XML; synthetic fixtures only. No coverage threshold, exclusion or generated-code suppression was changed.
+
+## Decisions and rationale
+
+- **Guard in the service, not the repository.** The story names `render` and `renderedVersions` and requires a 404, so the RLS-bounded `subjectExists` probe is called directly in those service commands. `link` keeps its existing pattern (service chart check plus repository re-check in `insert`); no duplication of SQL was introduced.
+- **Chart branch kept as `chartExists`.** `chartExists` delegates to the same `subjectExists("chart", id)` fold, so the chart path is semantically identical. Keeping the existing branch avoids rewriting `renderConcealsMissingChart` and keeps the diff minimal; only the previously unguarded order/result paths change.
+- **`renderedVersions` checks all three types.** Listing renders for a bogus chart is the same class of orphan read as a bogus order/result, and the command already accepts all three types. The story's "return 404 for a missing order/result target" is a consequence, not a limitation.
+- **No migration.** The V17 bare UUID is intentional; adding cross-module FKs would require expand/contract review under OPS-06 and is outside the smallest safe fix. The service guard enforces the invariant at every entry point with the existing RLS fold.
+- **No clinical or real-patient decision is needed.** All fixtures are synthetic; no production deployment or site configuration is enabled by this change.
+
+## Defects / environment observations (not caused by this change)
+
+- The Python tooling suite has pre-existing environmental failures (PyYAML absent; git-branch setup in `test_agent_run.py`), unchanged by this task.
+- No new defect was found in the observed code. The two unsecured sibling paths named in the story were the defect and are fixed here.
+
+## Evidence source
+
+Tool evidence: executed `mvn`/`python3` commands and their outputs, plus source reads of `DocumentService`, `DocumentRepository`, `DocumentInputs`, `DocumentModel`, the documents tests and `.agent/pr-notes/AUD-20261120-13-20261120-101201.md`. Simulated reviewer evidence: the `smartclinic-delivery`, `smartclinic-senior-backend`, `smartclinic-senior-java-build` and `smartclinic-test-engineer` skills were loaded as instructions; a bounded read-only `smartclinic-senior-backend` subagent review was requested. Human/clinical/patient evidence: none.
+
+## Completion (segment 2)
+
+**The story is complete.** All acceptance paths are implemented and proven: `render` returns 404 for a missing order/result, `renderedVersions` returns 404 for a missing chart/order/result, and a test per subject type asserts rejection. The canonical `apps/api/check.sh` gate exits 0 with 2369 tests, 0 failures/errors/skipped, and 100% JaCoCo instruction/line/branch/method/class coverage repository-wide and on the changed `DocumentService`. No coverage threshold was lowered, no exclusion or skipped test was added, and no production class outside the declared `documents` scope was changed.
+
+### Cleanup performed in segment 2
+
+Segment 1 accidentally overwrote the shared file `.agent/pr-notes.md` (the predecessor AUD-20261120-13 notes) with this story's notes. AGENTS.md forbids creating or editing that shared file. It has been restored byte-for-byte to the `origin/main` version (`git show origin/main:.agent/pr-notes.md`); the authoritative story notes remain only in this file, `.agent/pr-notes/AUD-20261120-16-20261120-162450.md`.
+
+No decision or evidence is missing. Nothing is left open for this story.
