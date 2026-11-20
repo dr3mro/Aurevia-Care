@@ -404,6 +404,18 @@ def add_audit_tasks(findings_path, path="TODO.md", today=None):
     return len(added)
 
 
+def task_field(task_id, field, path="TODO.md"):
+    """Title or full task text of one TODO.md entry; empty when it is not there."""
+    try:
+        tasks = parse_tasks(Path(path).read_text())
+    except OSError:
+        return ""
+    task = next((t for t in tasks if t["id"] == task_id), None)
+    if task is None:
+        return ""
+    return task["task"] if field == "title" else task_text(task)
+
+
 def attempts_of(task):
     value = task.get("attempts", "")
     return int(value) if str(value).isdigit() else 0
@@ -701,7 +713,7 @@ def publish(task, directory):
                         "files.\n\n" + body)
             try:
                 gh("pr", "create", "--base", os.environ.get("BASE_BRANCH", "main"), "--head", branch,
-                   "--title", f"{task['id']}: {task['title']}", "--body", body, "--label", "swarm",
+                   "--title", f"{task['id']}: {task_field(task['id'], 'title') or task.get('title') or task['id']}", "--body", body, "--label", "swarm",
                    *(["--label", "autofix"] if repair else []),
                    *(["--draft"] if incomplete and not repair else []))
                 pr = gh("pr", "view", branch, "--json", "number", "--jq", ".number").strip()
@@ -748,7 +760,7 @@ def fail(pr, reason, log_text=""):
     # One waiting wave already plans every sent-back pull request, so several fails
     # in one integration run must not each dispatch a wave of their own.
     if waiting_waves() == 0:
-        gh("workflow", "run", "swarm.yml", "-f", "workers=1", check=False)
+        gh("workflow", "run", "swarm.yml", "-f", "workers=10", check=False)
     return True
 
 
@@ -1313,6 +1325,10 @@ def main(argv=None):
     p.add_argument("--slots", default=".github/swarm/slots.json")
     p.add_argument("--file", default="TODO.md")
     p.add_argument("--repair-run", default="")
+    p = sub.add_parser("task-field")
+    p.add_argument("--id", required=True)
+    p.add_argument("--field", choices=("title", "body"), required=True)
+    p.add_argument("--file", default="TODO.md")
     p = sub.add_parser("continue")
     p.add_argument("--file", default="TODO.md")
     p = sub.add_parser("add-audit-tasks")
@@ -1381,8 +1397,14 @@ def main(argv=None):
             return current
         update_todo(mark, f"Take {len(claims)} task(s) for the swarm", a.file)
         include = [t for t in include if t["kind"] != "story" or t["id"] in granted]
-        emit("matrix", json.dumps({"include": include}, separators=(",", ":")))
+        # GitHub skips a job output that contains anything it masks as a secret, which
+        # leaves the worker matrix empty. Story text is the part that can trip it, so
+        # stories travel as an id only and the worker reads their text from TODO.md.
+        lean = [{**t, "title": "", "body": ""} if t["kind"] == "story" else t for t in include]
+        emit("matrix", json.dumps({"include": lean}, separators=(",", ":")))
         emit("count", len(include))
+    elif a.cmd == "task-field":
+        print(task_field(a.id, a.field, a.file))
     elif a.cmd == "continue":
         prs = gh_json("pr", "list", "--state", "open", "--label", "swarm", "--limit", "100",
                       "--json", "number,title,headRefName,isCrossRepository,labels,comments") or []

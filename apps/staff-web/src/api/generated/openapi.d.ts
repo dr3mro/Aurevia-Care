@@ -28,7 +28,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** List facilities in the active organization with cursor pagination */
+        get: operations["listFacilities"];
         put?: never;
         /** Create a facility in the active organization */
         post: operations["createFacility"];
@@ -291,6 +292,10 @@ export interface components {
             code?: string;
             name?: string;
         };
+        FacilityPage: {
+            items?: components["schemas"]["Facility"][];
+            nextCursor?: string | null;
+        };
         /** @description Organization, grantor and effective dates are derived server-side, never accepted here. */
         InviteStaff: {
             subject: string;
@@ -504,6 +509,51 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             /** @description Not found or inaccessible; existence is concealed */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listFacilities: {
+        parameters: {
+            query?: {
+                /** @description Opaque code:id cursor for the next page */
+                cursor?: string;
+                /** @description Page size 1-200 */
+                limit?: number;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of facilities ordered by code ascending */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FacilityPage"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            /** @description Invalid cursor */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
