@@ -228,7 +228,7 @@ def image_runs():
     """
     runs = []
     for workflow in ("agent-image.yml", "swarm-images.yml"):
-        found = gh_json("run", "list", "--workflow", workflow, "--limit", 1,
+        found = gh_json("run", "list", "--workflow", workflow, "--limit", "1",
                         "--json", "status,conclusion,createdAt") or []
         # Tolerate a malformed record rather than crash the plan step (which
         # would fail the job and queue a false repair task).
