@@ -748,7 +748,7 @@ def fail(pr, reason, log_text=""):
     # One waiting wave already plans every sent-back pull request, so several fails
     # in one integration run must not each dispatch a wave of their own.
     if waiting_waves() == 0:
-        gh("workflow", "run", "swarm.yml", "-f", "workers=1", check=False)
+        gh("workflow", "run", "swarm.yml", "-f", "workers=10", check=False)
     return True
 
 
