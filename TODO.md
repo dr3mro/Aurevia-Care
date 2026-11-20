@@ -47,8 +47,8 @@ Current source state (2026-11-19T07:19Z, from `main` at `311d69a`): 7 Flyway mig
   - scope: apps/api/src/test/java/com/aurevia/smartclinic/it
   - pr: #18
 - [x] S-G0-05 · Patient registration, identity confirmation and likely-duplicate warnings (IAM-03). V7 append-only patient records, issuer-scoped MRN, normalized name search, non-linking duplicate warnings, `/api/v1/patients`; 184 tests at delivery, JaCoCo 100%, local gates green, code on `main`. Current source (2026-11-19): Surefire reports 191 Java tests, 0 failures/errors across the suite; V7 and `/api/v1/patients` present.
-- [-] S-G0-06 · Same-tenant duplicate review and all-or-nothing chart consolidation (IAM-04).
-  - agent: swarm-2
+- [x] S-G0-06 · Same-tenant duplicate review and all-or-nothing chart consolidation (IAM-04).
+  - pr: #160
   - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/patient/consolidation, apps/api/src/test/java/com/aurevia/smartclinic/it/patient/consolidation
   - reserved: V9
@@ -56,8 +56,8 @@ Current source state (2026-11-19T07:19Z, from `main` at `311d69a`): 7 Flyway mig
     Implement Same-tenant duplicate review and all-or-nothing chart consolidation (IAM-04) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [-] S-G0-07 · Patient identity proofing, verified chart linking and unlinking (IAM-05).
-  - agent: swarm-3
+- [x] S-G0-07 · Patient identity proofing, verified chart linking and unlinking (IAM-05).
+  - pr: #161
   - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/patient/identity, apps/api/src/test/java/com/aurevia/smartclinic/it/patient/identity
   - reserved: V10
@@ -65,8 +65,8 @@ Current source state (2026-11-19T07:19Z, from `main` at `311d69a`): 7 Flyway mig
     Implement Patient identity proofing, verified chart linking and unlinking (IAM-05) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [-] S-G0-08 · Emergency access and platform support access controls (IAM-06).
-  - agent: swarm-4
+- [x] S-G0-08 · Emergency access and platform support access controls (IAM-06).
+  - pr: #162
   - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/authz/emergency, apps/api/src/test/java/com/aurevia/smartclinic/it/authz/emergency
   - reserved: V11
@@ -86,8 +86,8 @@ Gate evidence: competing bookings enforce one protected slot; stale drafts canno
     Slice: facility time zone, scheduling resources (clinician/room), weekly availability windows, visit types with duration, temporary holds with expiry, transactional booking with a database-enforced single protected slot, atomic reschedule with version precondition, booked → checked in → in progress → completed plus cancelled/no-show/expired branches, weekly recurrence series (all-or-nothing) and append-only appointment history.
     Acceptance matrix: (A1) book inside availability; (A2) competing bookings yield exactly one winner and one 409 under real concurrency; (A3) room and clinician overlaps both blocked; (A4) hold occupies the slot, conversion is atomic, expiry releases it; (A5) reschedule is atomic, stale If-Match is 412, history keeps the previous slot; (A6) cancel/no-show require a reason and record actor; (A7) illegal transitions are 409; (A8) booking outside availability needs a recorded override; (A9) configured booking rules are enforced; (A10) two tenants with identical local identifiers stay isolated; (A11) a series rolls back fully on one conflict; (A12) role authorization and 401/403 outcomes; (A13) invalid input is 422.
     Out of scope for this slice: staff worklist/assignment/handoff (S-G1-02), clinical chart (S-G1-03), equipment resources and paid booking rules.
-- [-] S-G1-02 · Identity verification, check-in, organization/facility worklist, assignment and handoff (CLN-02).
-  - agent: swarm-5
+- [x] S-G1-02 · Identity verification, check-in, organization/facility worklist, assignment and handoff (CLN-02).
+  - pr: #163
   - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/scheduling/checkin, apps/api/src/test/java/com/aurevia/smartclinic/it/scheduling/checkin
   - reserved: V12
@@ -95,8 +95,8 @@ Gate evidence: competing bookings enforce one protected slot; stale drafts canno
     Implement Identity verification, check-in, organization/facility worklist, assignment and handoff (CLN-02) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [-] S-G1-03 · Longitudinal chart: problems, allergies, medications, vitals, source and verification states (CLN-03).
-  - agent: swarm-6
+- [x] S-G1-03 · Longitudinal chart: problems, allergies, medications, vitals, source and verification states (CLN-03).
+  - pr: #164
   - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/chart/record, apps/api/src/test/java/com/aurevia/smartclinic/it/chart/record
   - reserved: V13
@@ -114,8 +114,8 @@ Gate evidence: competing bookings enforce one protected slot; stale drafts canno
     Implement Versioned SOAP, operative, OB/GYN, perinatal and pediatric development templates (CLN-04) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [-] S-G1-05 · Draft to signed, amendments, signed addenda and entered-in-error with preserved originals (CLN-05).
-  - agent: swarm-7
+- [x] S-G1-05 · Draft to signed, amendments, signed addenda and entered-in-error with preserved originals (CLN-05).
+  - pr: #165
   - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/chart/signing, apps/api/src/test/java/com/aurevia/smartclinic/it/chart/signing
   - reserved: V15
@@ -133,8 +133,8 @@ Gate evidence: competing bookings enforce one protected slot; stale drafts canno
     Implement Follow-up suggestions with rule explanation and care-team tasks (CLN-06) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [-] S-G1-07 · Original PDF/image associations and immutable, localized, versioned PDF rendering (CLN-07).
-  - agent: swarm-8
+- [x] S-G1-07 · Original PDF/image associations and immutable, localized, versioned PDF rendering (CLN-07).
+  - pr: #166
   - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/chart/documents, apps/api/src/test/java/com/aurevia/smartclinic/it/chart/documents
   - reserved: V17
@@ -142,8 +142,8 @@ Gate evidence: competing bookings enforce one protected slot; stale drafts canno
     Implement Original PDF/image associations and immutable, localized, versioned PDF rendering (CLN-07) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [-] S-G1-08 · Clinical dictionaries, diagnosis/procedure catalogs and RTL mixed-script operation (PRD-05, UX-01).
-  - agent: swarm-9
+- [x] S-G1-08 · Clinical dictionaries, diagnosis/procedure catalogs and RTL mixed-script operation (PRD-05, UX-01).
+  - pr: #167
   - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/catalog/dictionary, apps/api/src/test/java/com/aurevia/smartclinic/it/catalog/dictionary
   - reserved: V18
@@ -157,8 +157,8 @@ Gate evidence: competing bookings enforce one protected slot; stale drafts canno
 
 Gate evidence: rejected or recollected specimens trace to the right order; duplicate and reordered events do not duplicate or overwrite final reports; unmatched results wait for review; critical results escalate on deadline with human acknowledgment, and corrections reopen review.
 
-- [-] S-G2-01 · Order creation with authorization, snapshot, disclosure record and destination work item (XCH-01).
-  - agent: swarm-10
+- [x] S-G2-01 · Order creation with authorization, snapshot, disclosure record and destination work item (XCH-01).
+  - pr: #168
   - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/exchange/order, apps/api/src/test/java/com/aurevia/smartclinic/it/exchange/order
   - reserved: V19
@@ -533,8 +533,8 @@ Delivered inside the stories above, not scheduled separately.
     Implement Upload validation, quarantine, mediated downloads and PDF binding to immutable revisions (ARC-06) against SMARTCLINIC_V1_SPEC.md.
     Synthetic fixtures only; failing tests first; 100% coverage;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [-] X-04 · Generated OpenAPI clients and server-side authorization for every command (PRD-06).
-  - agent: swarm-2
+- [x] X-04 · Generated OpenAPI clients and server-side authorization for every command (PRD-06).
+  - pr: #155
   - attempts: 3
   - scope: contracts/openapi, apps/api/src/main/java/com/aurevia/smartclinic/api/authorization
   - reserved: V57
@@ -595,16 +595,16 @@ Independent modules scoped to their own paths so workers cannot collide with bac
   - scope: apps/staff-web/src/features/scheduling
   - details:
     ReactJS staff-web scheduling screens, in `apps/staff-web/src/features/scheduling` only. Depends on CW-004's scaffold, so reuse its React/Vite/TS setup, component set, theme, i18n bundles and generated OpenAPI client types. Build synthetic-only screens: a day/week appointment worklist ordered by scheduled time, a booking form with protected-resource conflict hint, check-in and assignment controls, and visit-state badges (booked → checked in → in progress → completed, plus cancelled/no-show). Use local fixture data with two tenants sharing the same local IDs to prove the UI never merges tenants; no real endpoints and no clinical data. Keep strict TypeScript, accessible labels and RTL-correct layout, and 100% coverage with Vitest. Do NOT touch `apps/api`, `db/`, `contracts/`, `apps/staff-web/check.sh`, `.github/`, `scripts/`, or shared trackers. Record requirement IDs, commands, results and decisions in `.agent/pr-notes/<story-id>.md`.
-- [-] CW-008 · Staff web React chart and document screens (synthetic fixtures)
-  - agent: swarm-3
+- [x] CW-008 · Staff web React chart and document screens (synthetic fixtures)
+  - pr: #156
   - attempts: 3
   - requirements: CLN-03, CLN-05, CLN-07, UX-01
   - depends: CW-004
   - scope: apps/staff-web/src/features/chart
   - details:
     ReactJS staff-web chart and document screens, in `apps/staff-web/src/features/chart` only. Depends on CW-004's scaffold. Build synthetic-only screens: a longitudinal chart view (problems, allergies, medications, vitals with units), a SOAP note draft with draft/signed states and an entered-in-error banner, and a document list showing PDF/image associations with version and language. Never allow editing a signed revision in the UI; show read-only state and an amendment action instead. Use local fixtures with two tenants sharing local IDs; no real endpoints or patient data. Strict TypeScript, accessible labels, RTL-correct layout and 100% Vitest coverage. Do NOT touch `apps/api`, `db/`, `contracts/`, `apps/staff-web/check.sh`, `.github/`, `scripts/`, or shared trackers. Record evidence in `.agent/pr-notes/<story-id>.md`.
-- [-] CW-009 · Staff web React audit and access-review screens (synthetic fixtures)
-  - agent: swarm-4
+- [x] CW-009 · Staff web React audit and access-review screens (synthetic fixtures)
+  - pr: #157
   - attempts: 3
   - requirements: ADM-02, OPS-02, UX-01
   - depends: CW-004
@@ -753,8 +753,9 @@ Cadence and limits:
     PatientReleasedRevisionsController exposes GET /api/v1/patients/{patientId}/released-revisions and passes the path patientId straight into ReleaseService.visibleRevisions (PatientReleasedRevisionsController.java:38-40). That method only calls authorize(context, RELEASE_ACCESS_QUERY, patientId) (ReleaseService.java:333-356), which checks active membership plus a role in {clinician, tenant_admin, reception, privacy_auditor} (ReleaseActionPolicy.java:33-50); it never verifies that the authenticated subject is linked to that patientId. Any receptionist or privacy auditor can therefore enumerate released report revision IDs for any patient by supplying its UUID, while a verified patient (role 'patient') is denied 403. The correct patient-facing service ReleasedReportService, which checks a verified + active chart link and release state on every list/download (messaging/reports/ReleasedReportService.java:62-129, 143-150), has no caller in main outside its own Javadoc/test references, so PAT-02 patient self-access is unreachable at runtime. Expected fix: route the endpoint through ReleasedReportService (or add equivalent verified-link and self-only checks to ReleaseService.visibleRevisions), drop reception/privacy_auditor from the patient-scoped read policy, and add negative tests for a staff reader requesting another patient's revisions and for a patient reading their own.
     Found by the daily audit. Synthetic fixtures only; failing tests first;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [ ] AUD-20261119-02 · Verify the patient-unit connection when opening a conversation
-  - attempts: 1
+- [-] AUD-20261119-02 · Verify the patient-unit connection when opening a conversation
+  - agent: swarm-1
+  - attempts: 2
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/messaging/conversations, apps/api/src/main/java/com/aurevia/smartclinic/messaging/units
   - details:
     ConversationService.open (ConversationService.java:76-105) accepts patientId, patientSubject, unitKey and connectionId from the JSON body. For a patient caller it only checks subject == patientSubject and repository.patientLinkActive (a patient-to-chart link); connectionId is merely format-validated at line 80 and persisted at line 99 with no check that an active PatientUnitConnection binds this patient to that unit. A verified patient can thus open a thread with any of the five units (clinic/lab/radiology/pt/pharmacy) just by naming the unitKey, violating MSG-01's requirement to validate patient, destination and context on the server at connection time and every protected action and to block arbitrary directory contact. The integration test ConversationFlowTest.java:331-343 even opens with unitKey 'lab' and a fixed 'conn-1' without proving a connection. CareUnitDirectoryService.requireActiveConnection (messaging/units/CareUnitDirectoryService.java:209-220) already implements the needed check but a repo-wide grep shows zero callers in main. Expected fix: call that check on open/reply using server-derived connection and unit identity, reject client-supplied connectionId values not bound to the caller, and add a no-connection/wrong-unit negative test.
@@ -767,8 +768,9 @@ Cadence and limits:
     Several services implementing requirements marked [x] in TODO.md have no caller anywhere in apps/api/src/main/java (grep for each class name outside its own file returns zero): AttachmentService (MSG-03 upload/quarantine/scan/publish/download), PatientAppointmentService (PAT-01), ReleasedReportService (PAT-02), G3EvidenceService, plus TherapyService (PT-01) and ImagingService (RAD-01). No controller contains a multipart/@RequestPart upload endpoint, so patient document upload and mediated retrieval cannot occur at runtime; the patient app exercises these flows only with local fixtures. JaCoCo 100% is satisfied by unit tests of these classes, so the gate does not detect that no entry point exists. Expected fix: wire thin controllers (or otherwise expose each deliverable command through a real entry point) and add an HTTP-level test per workflow, or honestly mark the corresponding TODO entries pending instead of done.
     Found by the daily audit. Synthetic fixtures only; failing tests first;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [ ] AUD-20261119-04 · Rename story-ID-named patient-mobile feature packages
-  - attempts: 1
+- [-] AUD-20261119-04 · Rename story-ID-named patient-mobile feature packages
+  - agent: swarm-2
+  - attempts: 2
   - scope: apps/patient-mobile/src/features
   - details:
     All 12 directories under apps/patient-mobile/src/features are named s_g3_01 through s_g3_12 (story IDs), for example features/s_g3_02/credentials.ts and features/s_g3_06/attachments.test.tsx. CODING_STYLE.md requires business-domain naming and the earlier refactor already removed Java s_g* packages; this mobile remainder is called out as out of scope in .agent/pr-notes/REFACTOR-PACKAGES.md section 6 but is not a tracked TODO entry. Expected fix: agree an owner-approved domain mapping (appointments, reports, enrollment, units, conversations, attachments, instructions, acknowledgments, service-profiles, governance, flows, evidence), git mv the folders and update imports and tests.
