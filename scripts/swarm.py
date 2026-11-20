@@ -723,13 +723,13 @@ def main_is_red(workflow="delivery.yml"):
 
 def plan_integration(red=False):
     """Pull requests ready to integrate, oldest first. While main is red only
-    repair pull requests (FIX-) may merge, so ordinary work is not blamed for it."""
+    repair pull requests (FIX-, DLV-) may merge, so ordinary work is not blamed for it."""
     prs = gh_json("pr", "list", "--state", "open", "--label", "swarm", "--limit", "50",
                   "--json", "number,title,labels,isCrossRepository")
     blocked = {"needs-fix", "needs-human"}
     return [p["number"] for p in sorted(prs, key=lambda p: p["number"])
             if not p["isCrossRepository"] and not blocked & label_names(p)
-            and (not red or p.get("title", "").startswith("FIX-"))]
+            and (not red or p.get("title", "").startswith(REPAIR_PREFIXES))]
 
 
 def only_worker_failures(run):
@@ -1076,12 +1076,37 @@ def continue_swarm(text, prs):
     return bool(ready) and not waiting
 
 
-def run_gate(gate):
+REPAIR_GATE = "scripts/repair-gate.sh"
+
+
+def gate_for(pr, default_gate):
+    """(gate script, extra environment) for one pull request.
+
+    Repairs (FIX- and DLV- tasks) use the repair gate, which judges the integration
+    tier on the classes the task names; everything else keeps the full gate."""
+    info = gh_json("pr", "view", str(pr), "--json", "title,labels") or {}
+    title = info.get("title", "")
+    if not (title.startswith(REPAIR_PREFIXES) or "autofix" in label_names(info)):
+        return default_gate, {}
+    story = task_id_of_title(title)
+    task = next((t for t in parse_tasks(Path("TODO.md").read_text()) if t["id"] == story), None)
+    body = f"{task['task']}\n{task['details']}" if task else ""
+    return REPAIR_GATE, {"STORY_ID": story, "STORY_BODY": body}
+
+
+def task_id_of_title(title):
+    """`DLV-02: Repair ...` -> `DLV-02`."""
+    match = re.match(r"([A-Za-z0-9-]+):", title)
+    return match.group(1) if match else ""
+
+
+def run_gate(gate, extra_env=None):
     """Run the fast gate on the current merge. Returns (ok, log tail)."""
     # Agent-written code is already merged locally at this point. Strip every
     # credential from the gate subprocess so it cannot read or leak a token.
     env = {k: v for k, v in os.environ.items()
            if k not in ("GH_TOKEN", "GITHUB_TOKEN", "SWARM_TOKEN")}
+    env.update(extra_env or {})
     done = subprocess.run(["bash", gate], capture_output=True, text=True, env=env)
     log = (done.stdout + "\n" + done.stderr).strip()
     return done.returncode == 0, log
@@ -1093,7 +1118,7 @@ def integrate_batch(queue, gate="scripts/quick-check.sh"):
     One cache/Java setup serves the whole batch. A PR whose gate fails is sent
     back to the workers and its merge is rolled back before the next PR, so a
     bad PR never blocks the others. Returns the number of merged PRs."""
-    merged, conflicted = [], []
+    merged, conflicted, gates = [], [], {}
     for pr in queue:
         blocked = guard(pr, is_repair(pr))
         if blocked:
@@ -1117,17 +1142,19 @@ def integrate_batch(queue, gate="scripts/quick-check.sh"):
             fail(pr, "the branch changed after planning; it will be retested")
             git("merge", "--abort", check=False)
             continue
-        ok, log = run_gate(gate)
+        pr_gate, pr_env = gate_for(pr, gate)
+        ok, log = run_gate(pr_gate, pr_env)
         if not ok:
-            fail(pr, f"Fast merge gate ({gate}) failed on the merge of main and this branch", log)
+            fail(pr, f"Merge gate ({pr_gate}) failed on the merge of main and this branch", log)
             git("reset", "--hard", "HEAD~1", check=False)
             continue
+        gates[pr] = (pr_gate, pr_env)
         merged.append((pr, task_id, sha))
     emit("conflicted", json.dumps(conflicted))
     if not merged:
         emit("merged", 0)
         return 0
-    comments = [record_merge(pr, task_id, sha, gate) for pr, task_id, sha in merged]
+    comments = [record_merge(pr, task_id, sha, gates[pr][0]) for pr, task_id, sha in merged]
     files = ["TODO.md"] + [f"docs/swarm/{t}.md" for _, t, _ in merged]
     git("add", *files)
     git(*IDENTITY, "commit", "-qm", f"Integrate {len(merged)} swarm pull request(s)")
@@ -1148,13 +1175,16 @@ def integrate_batch(queue, gate="scripts/quick-check.sh"):
             git("reset", "--soft", "origin/main")
             git("checkout", "origin/main", "--", "TODO.md", "docs/swarm", check=False)
             for pr, task_id, sha in merged:
-                record_merge(pr, task_id, sha, gate)
+                record_merge(pr, task_id, sha, gates[pr][0])
             git("add", *files)
             git(*IDENTITY, "commit", "-qm", "Integrate swarm PRs (reconciled)",
                 "--allow-empty", check=False)
-            ok, log = run_gate(gate)
+            # Re-gate with the strictest gate the batch used: the full one if any PR needed it.
+            regate = gate if any(g == gate for g, _ in gates.values()) else REPAIR_GATE
+            renv = next((e for g, e in gates.values() if g == regate), {})
+            ok, log = run_gate(regate, renv)
             if not ok:
-                raise subprocess.CalledProcessError(1, ("gate", gate), "", log)
+                raise subprocess.CalledProcessError(1, ("gate", regate), "", log)
     for (pr, _, _), comment in zip(merged, comments):
         gh("pr", "comment", str(pr), "--body", comment)
     dispatch_delivery()
