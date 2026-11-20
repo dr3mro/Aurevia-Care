@@ -1089,8 +1089,9 @@ Found while extending the specification (section 8.1 and docs/design/screens-and
     Do NOT raise the limit, do NOT remove dependencies to make it pass without noting it, and do NOT add third-party scripts.
 
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` (API tasks) or `bash apps/staff-web/check.sh` (staff web tasks) must pass. Synthetic data only; write the failing test first; stay inside the declared scope; name folders and packages after what they hold, never a task ID; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
-- [ ] READY-09 · Mark the staff web non-indexable (WEB-13)
-  - attempts: 0
+- [-] READY-09 · Mark the staff web non-indexable (WEB-13)
+  - agent: swarm-2
+  - attempts: 1
   - scope: apps/staff-web/index.html, apps/staff-web/public, apps/staff-web/tests
   - details:
     Spec rule WEB-13: authenticated applications are `noindex` and crawling is disallowed.
@@ -1128,8 +1129,9 @@ Found while extending the specification (section 8.1 and docs/design/screens-and
     Do NOT store tokens in the browser, do NOT disable CSRF on the cookie chain, and do NOT touch the `synthetic-auth` profile.
 
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` (API tasks) or `bash apps/staff-web/check.sh` (staff web tasks) must pass. Synthetic data only; write the failing test first; stay inside the declared scope; name folders and packages after what they hold, never a task ID; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
-- [ ] READY-12 · Production-readiness evidence checklist for WEB-01 to WEB-13
-  - attempts: 0
+- [-] READY-12 · Production-readiness evidence checklist for WEB-01 to WEB-13
+  - agent: swarm-3
+  - attempts: 1
   - scope: docs/operations/production-readiness
   - details:
     Create `docs/operations/production-readiness/README.md` that turns spec section 8.1 into an evidence checklist a person can sign. Documentation only: no code, no workflow changes.
