@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 import org.springframework.jdbc.core.RowMapper;
@@ -306,10 +307,13 @@ public class RxRepository {
      * @return number of submitted or retry facts
      */
     public int submissionAttempts(String submissionId) {
-        return jdbc.queryForObject("""
+        // COUNT(*) always yields one non-null row; fail closed if a driver ever
+        // violates that contract instead of unboxing null.
+        Integer attempts = jdbc.queryForObject("""
                 SELECT COUNT(*) FROM public.rx02_event
                  WHERE submission_id = CAST(:submissionId AS uuid) AND event_type = 'submitted'
                 """, Map.of("submissionId", submissionId), Integer.class);
+        return Objects.requireNonNull(attempts, "submissionAttempts aggregate returned no row");
     }
 
     /**
