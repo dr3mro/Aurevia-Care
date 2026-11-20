@@ -3,6 +3,8 @@ package com.aurevia.smartclinic.chart.record;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 
@@ -138,16 +140,19 @@ public class ChartRepository {
                 .addValue("unknownReason", entry.unknownReason())
                 .addValue("verification", entry.verification().name())
                 .addValue("verifiedBy", entry.verifiedBy())
-                .addValue("verifiedAt", instantText(entry.verifiedAt()))
-                .addValue("effectiveFrom", instantText(entry.effectiveFrom()))
-                .addValue("effectiveTo", instantText(entry.effectiveTo()))
-                .addValue("measuredAt", instantText(entry.measuredAt()))
+                // Bind instants as UTC OffsetDateTime (pgjdbc maps it to
+                // timestamptz); the explicit CAST in the SQL keeps the value
+                // unambiguous without a timezone-dependent shift.
+                .addValue("verifiedAt", instantValue(entry.verifiedAt()))
+                .addValue("effectiveFrom", instantValue(entry.effectiveFrom()))
+                .addValue("effectiveTo", instantValue(entry.effectiveTo()))
+                .addValue("measuredAt", instantValue(entry.measuredAt()))
                 .addValue("value", entry.value())
                 .addValue("unit", entry.unit())
                 .addValue("clinicalAuthor", entry.clinicalAuthor())
                 .addValue("dataEntryActor", entry.dataEntryActor())
                 .addValue("version", entry.version())
-                .addValue("recordedAt", instantText(entry.recordedAt())));
+                .addValue("recordedAt", instantValue(entry.recordedAt())));
     }
 
     /**
@@ -181,7 +186,7 @@ public class ChartRepository {
                         .addValue("id", id)
                         .addValue("expected", expected)
                         .addValue("actor", actor)
-                        .addValue("verifiedAt", instantText(verifiedAt))) == 1;
+                        .addValue("verifiedAt", instantValue(verifiedAt))) == 1;
     }
 
     /**
@@ -248,10 +253,13 @@ public class ChartRepository {
                 instant(resultSet, "recorded_at"));
     }
 
-    // PostgreSQL's JDBC driver cannot infer an SQL type for java.time.Instant;
-    // bind its ISO-8601 text and let the statement's explicit timestamptz cast apply.
-    private static String instantText(Instant instant) {
-        return instant == null ? null : instant.toString();
+    // pgjdbc cannot infer a SQL type for a bare java.time.Instant parameter and
+    // a text parameter is not implicitly cast to timestamptz on INSERT. Bind a
+    // UTC OffsetDateTime instead: pgjdbc maps it to timestamptz without a
+    // timezone-dependent shift. The INSERT/UPDATE keep their explicit
+    // CAST(... AS timestamptz) so the bound value is unambiguous either way.
+    private static OffsetDateTime instantValue(Instant instant) {
+        return instant == null ? null : OffsetDateTime.ofInstant(instant, ZoneOffset.UTC);
     }
 
     private static Instant instant(ResultSet resultSet, String column) throws SQLException {

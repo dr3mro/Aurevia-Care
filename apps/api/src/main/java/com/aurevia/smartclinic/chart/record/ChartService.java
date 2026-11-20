@@ -172,7 +172,9 @@ public class ChartService {
             }
             // Check the If-Match precondition before the lifecycle state so a
             // concurrent loser always gets 412, whether it read the entry before
-            // or after the winner's commit (ARC-04: 412 for stale versions).
+            // or after the winner's commit. A stale precondition takes precedence
+            // over the already-verified state: a concurrent verifier that read
+            // version N reports 412, not 409 (ARC-04: 412 for stale versions).
             if (existing.version() != expected) {
                 audit.append(context, VERIFY_ACTION, VERIFY_ACTION, RESOURCE, SCOPE, id, "CONFLICT");
                 failure.set(new ApiException(412, "STALE_VERSION", "entry version has changed"));
