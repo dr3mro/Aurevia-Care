@@ -199,7 +199,7 @@ Cadence and limits:
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` must pass for the classes you touched. Synthetic data only; write the failing test first; stay inside the declared scope; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
 - [-] AUD-20261120-03 · Production authentication, part 2: validate OIDC bearer tokens and bind the tenant context
   - agent: swarm-3
-  - attempts: 1
+  - attempts: 2
   - scope: apps/api/pom.xml, apps/api/src/main/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/web, apps/api/src/main/resources
   - depends: AUD-20261120-02
   - details:
