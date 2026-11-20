@@ -1,5 +1,6 @@
 package com.aurevia.smartclinic.web;
 
+import java.net.URI;
 import java.util.List;
 
 import org.springframework.http.ResponseEntity;
@@ -40,12 +41,13 @@ public class CatalogController {
      *
      * @param family  catalog family
      * @param request entry value and optional effective date
-     * @return the created draft
+     * @return HTTP 201 with a Location header and the created draft
      */
     @PostMapping("/{family}/entries")
     public ResponseEntity<ConfigEntry> define(@PathVariable String family, @RequestBody DefineRequest request) {
         ConfigEntry created = service.define(family, request.code(), request.value(), request.effectiveFrom());
-        return ResponseEntity.ok(created);
+        return ResponseEntity.created(
+                URI.create("/api/v1/catalogs/" + family + "/entries/" + request.code())).body(created);
     }
 
     /**

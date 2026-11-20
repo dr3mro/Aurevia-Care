@@ -129,7 +129,7 @@ class ConsolidationIsolationTest {
                 + ",\"dob\":\"" + dob + "\",\"language\":\"" + language + "\""
                 + ",\"contacts\":\"{}\",\"identifiers\":\"[]\",\"consents\":\"[]\"}";
         ResponseEntity<String> created = request(HttpMethod.POST, "/api/v1/patients", body, actor, org, null);
-        assertEquals(HttpStatus.OK, created.getStatusCode(), created.getBody());
+        assertEquals(HttpStatus.CREATED, created.getStatusCode(), created.getBody());
         return field(created.getBody(), "id");
     }
 

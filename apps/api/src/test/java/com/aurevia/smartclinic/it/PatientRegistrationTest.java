@@ -146,11 +146,12 @@ class PatientRegistrationTest {
     void registerAndReadPatient() {
         ResponseEntity<String> created = register("José Álvarez", "MRN-1", "CLINIC-A", "1990-05-20",
                 null, "reception-a", ORG_A);
-        assertEquals(HttpStatus.OK, created.getStatusCode(), created.getBody());
+        assertEquals(HttpStatus.CREATED, created.getStatusCode(), created.getBody());
         assertEquals("José Álvarez", field(created.getBody(), "displayName"));
         assertEquals("jose alvarez", field(created.getBody(), "normalizedName"));
 
         String id = field(created.getBody(), "id");
+        assertEquals("/api/v1/patients/" + id, created.getHeaders().getFirst(HttpHeaders.LOCATION));
         ResponseEntity<String> view = request(HttpMethod.GET, "/api/v1/patients/" + id,
                 null, "reception-a", ORG_A);
         assertEquals(HttpStatus.OK, view.getStatusCode());
@@ -162,17 +163,17 @@ class PatientRegistrationTest {
     void unknownDobReasonIsAcceptedAndCoded() {
         ResponseEntity<String> created = register("Unknown Name", "MRN-2", "CLINIC-A", null,
                 "not_disclosed", "reception-a", ORG_A);
-        assertEquals(HttpStatus.OK, created.getStatusCode(), created.getBody());
+        assertEquals(HttpStatus.CREATED, created.getStatusCode(), created.getBody());
         assertEquals("not_disclosed", field(created.getBody(), "dobUnknownReason"));
     }
 
     @Test
     void mrnIsIssuerScopedAndDuplicateWithinIssuerConflicts() {
-        assertEquals(HttpStatus.OK,
+        assertEquals(HttpStatus.CREATED,
                 register("Same Mrn", "MRN-3", "CLINIC-A", "1980-01-01", null, "reception-a", ORG_A)
                         .getStatusCode());
         // Same MRN under a different issuer is a different patient.
-        assertEquals(HttpStatus.OK,
+        assertEquals(HttpStatus.CREATED,
                 register("Same Mrn", "MRN-3", "CLINIC-B", "1980-01-01", null, "reception-a", ORG_A)
                         .getStatusCode());
         // Same MRN and issuer again conflicts.
@@ -180,7 +181,7 @@ class PatientRegistrationTest {
                 register("Again", "MRN-3", "CLINIC-A", "1980-01-01", null, "reception-a", ORG_A)
                         .getStatusCode());
         // Peer tenant can reuse the same local MRN and issuer.
-        assertEquals(HttpStatus.OK,
+        assertEquals(HttpStatus.CREATED,
                 register("Peer", "MRN-3", "CLINIC-A", "1980-01-01", null, "reception-b", ORG_B)
                         .getStatusCode());
     }
@@ -200,7 +201,7 @@ class PatientRegistrationTest {
         register("Amina Khan", "MRN-5", "CLINIC-A", "1988-03-03", null, "reception-a", ORG_A);
         ResponseEntity<String> second = register("Amina Khan", "MRN-6", "CLINIC-A", "1988-03-03",
                 null, "reception-a", ORG_A);
-        assertEquals(HttpStatus.OK, second.getStatusCode());
+        assertEquals(HttpStatus.CREATED, second.getStatusCode());
         String id = field(second.getBody(), "id");
         String body = request(HttpMethod.GET, "/api/v1/patients/" + id, null, "reception-a", ORG_A).getBody();
         assertTrue(body.contains("\"duplicates\""));
