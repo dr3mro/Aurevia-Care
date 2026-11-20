@@ -508,8 +508,7 @@ Order of work for the whole production-readiness effort: (1) security and platfo
     Do NOT change existing endpoints, response shapes or migrations.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
-- [-] READY-15 · List facilities (GET /api/v1/facilities)
-  - agent: swarm-3
+- [ ] READY-15 · List facilities (GET /api/v1/facilities)
   - attempts: 1
   - requirements: ARC-03
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/tenancy, apps/api/src/test/java/com/aurevia/smartclinic/tenancy, contracts/openapi
