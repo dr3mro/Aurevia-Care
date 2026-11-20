@@ -8,7 +8,6 @@ on:
   workflow_run:
     workflows:
       - Delivery
-      - Heavy verification
       - Agent swarm
       - Agent image
       - Swarm slot images
