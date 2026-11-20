@@ -1761,8 +1761,9 @@ Every entry below is finished and verified. Do not take them again; they stay he
     GET /api/v1/patient-instructions (InstructionController.java:120-123, listForPatient) and GET /api/v1/patient-instructions/{threadId} (line 109) both go through InstructionService.execute with action InstructionActions.READ. InstructionActions.java:40-41 grants READ only to staffSender roles plus tenant_admin and privacy_auditor; 'patient' is not in that set, so a verified patient gets 403 on every instruction-content read, even though the endpoint Javadoc says 'visible to a verified patient' and MSG-04/MSG-05/PAT-02 require patients to receive and acknowledge instructions. The only patient-reachable instruction route, /api/v1/instructions/{id}/facts served by InstructionFactService.facts, returns dispatch/view/acknowledgment fact metadata but never the instruction title or body. Every other messaging action matrix in main (ConversationActions, ServiceProfileActions, MessagingActions, InstructionFactActions) explicitly grants the patient role; this one does not. Also, listForPatient takes any patientId from the query string and filters by staffAssignedToUnit after authorization, so simply adding the role would still return nothing for a patient. Expected fix: add a patient-authorized read branch that binds the caller to the chart link/connection (for example allow READ for 'patient' and resolve patientId from the authenticated subject rather than the request parameter), keep the staff branch, and add negative and positive tests for patient self-read and wrong-patient denial.
     Found by the daily audit. Synthetic fixtures only; failing tests first;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [-] AUD-20261120-13 · Document link accepts order or result subjects without verifying they exist
-  - agent: swarm-5
+- [x] AUD-20261120-13 · Document link accepts order or result subjects without verifying they exist
+  - pr: #222
+  - evidence: PR #222; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/AUD-20261120-13.md; simulated review only
   - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/documents, apps/api/src/test/java/com/aurevia/smartclinic/documents
   - details:
