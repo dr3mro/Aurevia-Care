@@ -858,12 +858,12 @@ Cadence and limits:
   - depends: AUD-20261120-02
   - details:
     Needs AUD-20261120-02 (the `ClaimsTenantResolver` class) to be merged first.
-    Goal: outside the `synthetic-auth` profile, `/api/v1/**` requires a valid OIDC JWT bearer token; the synthetic header login keeps working only under `synthetic-auth` (all existing tests rely on it, do not break them).
+    Goal: outside the `synthetic-auth` profile, `/api/v1/**` requires a valid OIDC JWT bearer token (mobile app and partners; the staff web cookie session comes later in READY-11); the synthetic header login keeps working only under `synthetic-auth` (all existing tests rely on it, do not break them).
     Steps:
     1. In `apps/api/pom.xml` add dependencies `org.springframework.boot:spring-boot-starter-oauth2-resource-server` and, with `<scope>test</scope>`, `org.springframework.security:spring-security-test`. The Spring Boot parent already manages the versions, so add NO `<version>` tag. Run `mvn -q -B -f apps/api/pom.xml -Pno-security -DskipTests compile` to confirm the build still compiles.
     2. Add `web/SecurityConfiguration.java` (`@Configuration`, `@EnableWebSecurity`) with two `SecurityFilterChain` beans:
        - `@Profile("synthetic-auth")`: `http.csrf(c -> c.disable()).authorizeHttpRequests(a -> a.anyRequest().permitAll())` so the existing interceptor stays the only gate, exactly as today.
-       - `@Profile("!synthetic-auth")`: stateless sessions (`SessionCreationPolicy.STATELESS`), `csrf` disabled (bearer tokens, no cookies), `authorizeHttpRequests(a -> a.anyRequest().authenticated())`, `oauth2ResourceServer(o -> o.jwt(Customizer.withDefaults()))`.
+       - `@Profile("!synthetic-auth")`: stateless sessions (`SessionCreationPolicy.STATELESS`), CSRF ignored ONLY for requests that carry an `Authorization: Bearer` header (browsers never attach that header by themselves; this chain serves mobile and partners), via `csrf.ignoringRequestMatchers(request -> { String h = request.getHeader("Authorization"); return h != null && h.startsWith("Bearer "); })`. The spec requires session cookies with CSRF for the staff web; READY-11 adds that browser chain, so do not turn CSRF off for anything else, `authorizeHttpRequests(a -> a.anyRequest().authenticated())`, `oauth2ResourceServer(o -> o.jwt(Customizer.withDefaults()))`.
     3. In `src/main/resources/application.yml` add `spring.security.oauth2.resourceserver.jwt.issuer-uri: ${SMARTCLINIC_OIDC_ISSUER_URI:}` and `...jwt.audiences: ${SMARTCLINIC_OIDC_AUDIENCE:}`. Never put a real issuer, client id or secret in the repository. If the issuer is empty the application must fail to start outside `synthetic-auth` (fail closed): add a startup check in `SecurityConfiguration` that throws `IllegalStateException("SMARTCLINIC_OIDC_ISSUER_URI must be set")`.
     4. In `TenantContextInterceptor.preHandle`, replace the branch that returns 401 when `synthetic-auth` is not active: read `SecurityContextHolder.getContext().getAuthentication()`; if it is a `JwtAuthenticationToken`, call `new ClaimsTenantResolver().resolve(token.getToken().getClaims(), request.getHeader("X-Active-Organization"), correlation)` and `TenantContext.set(...)`; otherwise throw the same 401 as before. Keep the `synthetic-auth` branch byte-for-byte as it is.
     5. Add `TenantContextInterceptorJwtTest` with `MockMvc` and `SecurityMockMvcRequestPostProcessors.jwt()`: (a) no token -> 401; (b) token without `orgs` -> 401; (c) token with `orgs` containing the header value -> request reaches the controller; (d) header organization not in `orgs` -> 403.
@@ -976,3 +976,167 @@ Cadence and limits:
     Do NOT change production code, migrations or the OpenAPI files.
 
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` must pass for the classes you touched. Synthetic data only; write the failing test first; stay inside the declared scope; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
+
+## Production readiness (2026-11-20)
+
+Found while extending the specification (section 8.1 and docs/design/screens-and-navigation.md). Run after the main repair tasks; each task states its own dependency.
+
+- [ ] READY-01 · Health endpoints /health/live and /health/ready (WEB-05)
+  - attempts: 0
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/web
+  - depends: AUD-20261120-03
+  - details:
+    Spec rule WEB-05 in SMARTCLINIC_V1_SPEC.md section 8.1. These are the only routes outside `/api/v1`. `TenantContextInterceptor` is registered only for `/api/v1/**`, so these routes need no tenant or login headers.
+    1. Create `web/HealthController.java`: `@RestController` with two `@GetMapping` methods.
+       - `GET /health/live` returns `200` with body `{"status":"UP"}` and never touches the database.
+       - `GET /health/ready` runs `SELECT 1` with the injected `JdbcTemplate`. On success `200 {"status":"UP"}`. On any `DataAccessException` return `503 {"status":"DOWN"}`. Never put exception text, host names, versions or tenant data in the body.
+    2. Write `HealthControllerTest` (unit, standalone MockMvc, `JdbcTemplate` mocked with Mockito): live returns 200 without any header; ready returns 200 when `queryForObject` returns 1; ready returns 503 and the body contains no exception message when it throws.
+    3. Write an integration test `HealthReadyIntegrationTest` tagged `@Tag("integration")` (copy the setup of any test under `apps/api/src/test/java/com/aurevia/smartclinic/it/`): ready returns 200 against the real test database and no tenant headers are needed.
+    4. Add one line to `apps/api/README.md` listing the two routes.
+    Do NOT register the new routes in the interceptor, do not add Spring Actuator, do not return build or version data.
+
+    Run the checks yourself before you finish: `bash scripts/worker-check.sh` (API tasks) or `bash apps/staff-web/check.sh` (staff web tasks) must pass. Synthetic data only; write the failing test first; stay inside the declared scope; name folders and packages after what they hold, never a task ID; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
+- [ ] READY-02 · Security headers on every API response (WEB-02)
+  - attempts: 0
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/web, apps/api/src/main/resources
+  - depends: READY-01
+  - details:
+    Spec rule WEB-02. Add one servlet filter that sets the headers; do not use Spring Security for this.
+    1. Create `web/SecurityHeadersFilter.java`, `@Component`, extends `OncePerRequestFilter`, ordered first with `@Order(Ordered.HIGHEST_PRECEDENCE)`. For every response set: `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `Permissions-Policy: camera=(), microphone=(), geolocation=()`, `X-Robots-Tag: noindex, nofollow`. For paths starting `/api/` also set `Cache-Control: no-store`. When `request.isSecure()` is true also set `Strict-Transport-Security: max-age=31536000; includeSubDomains`.
+    2. In `src/main/resources/application.yml` add `server.forward-headers-strategy: framework` so `isSecure()` is correct behind a load balancer.
+    3. Write `SecurityHeadersFilterTest` (standalone MockMvc with the filter and a tiny test controller): every header above is present on `/api/v1/x`; `Cache-Control: no-store` is present for `/api/` and absent for `/health/live`; HSTS appears only on a secure request (`MockHttpServletRequestBuilder.secure(true)`).
+    Do NOT weaken the policy to make a test pass, and do NOT add `unsafe-inline` or `unsafe-eval` anywhere.
+
+    Run the checks yourself before you finish: `bash scripts/worker-check.sh` (API tasks) or `bash apps/staff-web/check.sh` (staff web tasks) must pass. Synthetic data only; write the failing test first; stay inside the declared scope; name folders and packages after what they hold, never a task ID; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
+- [ ] READY-03 · Per-subject rate limiting with 429 and Retry-After (WEB-04)
+  - attempts: 0
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/web, apps/api/src/main/resources
+  - depends: READY-02
+  - details:
+    Spec rule WEB-04. Counters live in memory per API instance; the edge WAF supplies the global limit (WEB-01). Say so in the class Javadoc.
+    1. Create `web/RateLimiter.java`: a plain class with a constructor `(Clock clock, int perMinute)` and `long retryAfterSeconds(String key)` that returns 0 when the call is allowed and counts it, or the seconds until the current one-minute window ends when the key already used `perMinute` calls. Use a `ConcurrentHashMap<String, Window>`; evict windows older than two minutes on every call so memory cannot grow forever. A `Clock` bean already exists (`config/ClockConfiguration.java`).
+    2. In `TenantContextInterceptor.preHandle`, right after `TenantContext.set(...)`, call the limiter with the key `organization + ":" + subject`. When it returns more than 0: set header `Retry-After` to that number and throw `new ApiException(429, "RATE_LIMITED", "too many requests")`. Read the limit from property `smartclinic.rate-limit.per-minute` (default 600) in `application.yml`.
+    3. Tests in `RateLimiterTest` with a mutable fake `Clock`: the (limit+1)th call in a minute returns a positive value; the same key is allowed again after the window; two keys do not share a counter; old windows are evicted. Add one interceptor test that the 429 response has the `Retry-After` header.
+    Do NOT add a library dependency, do NOT key by IP address, do NOT log the key.
+
+    Run the checks yourself before you finish: `bash scripts/worker-check.sh` (API tasks) or `bash apps/staff-web/check.sh` (staff web tasks) must pass. Synthetic data only; write the failing test first; stay inside the declared scope; name folders and packages after what they hold, never a task ID; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
+- [ ] READY-04 · Request size limits and an exact-origin CORS allowlist (WEB-04)
+  - attempts: 0
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/web, apps/api/src/main/resources
+  - depends: READY-03
+  - details:
+    Spec rule WEB-04. Browsers may call the API only from origins listed in configuration, and the default list is empty.
+    1. In `application.yml` set `server.max-http-request-header-size: 16KB`, `server.tomcat.max-swallow-size: 2MB`, `spring.servlet.multipart.max-file-size: 25MB` and `spring.servlet.multipart.max-request-size: 26MB`, and add `smartclinic.cors.allowed-origins: ${SMARTCLINIC_CORS_ORIGINS:}`.
+    2. Create `web/CorsConfiguration.java`, a `WebMvcConfigurer` that reads the property as a comma-separated list. Empty list: register no CORS mapping at all. Otherwise register `/api/**` with exactly those origins, methods GET, POST, PUT, DELETE, headers `Content-Type, If-Match, Idempotency-Key, X-Correlation-Id, X-Active-Organization`, `allowCredentials(true)`, max age 600.
+    3. Fail startup (`IllegalStateException`) when any listed origin is `*`, does not start with `https://`, or contains a path. An `http://localhost:5173` origin is allowed only when the Spring profile `synthetic-auth` is active.
+    4. Tests in `CorsConfigurationTest`: empty property -> a request with an `Origin` header gets no `Access-Control-Allow-Origin`; listed origin is echoed back exactly; unlisted origin is not; `*` and `http://example.org` make construction throw.
+    Do NOT use a wildcard in any form, and do NOT change the interceptor.
+
+    Run the checks yourself before you finish: `bash scripts/worker-check.sh` (API tasks) or `bash apps/staff-web/check.sh` (staff web tasks) must pass. Synthetic data only; write the failing test first; stay inside the declared scope; name folders and packages after what they hold, never a task ID; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
+- [ ] READY-05 · Structured JSON logs with correlation ID and a redaction test (WEB-06)
+  - attempts: 0
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/web, apps/api/src/main/resources
+  - depends: READY-04
+  - details:
+    Spec rule WEB-06. Spring Boot has built-in structured logging; use it, add no logging library.
+    1. In `application.yml` add `logging.structured.format.console: ecs`.
+    2. In `TenantContextInterceptor.preHandle`, after the correlation id is validated, call `MDC.put("correlationId", correlation)`; in `afterCompletion` call `MDC.remove("correlationId")`.
+    3. Find any place that logs a request body, a token, a header value or a patient field: `grep -rn "log\.\|LOGGER\.\|logger\." apps/api/src/main`. Remove or reduce each one that prints such data to identifiers only. Write the result (even "none found") in the pr-notes.
+    4. Test `LogRedactionTest` using Spring's `OutputCaptureExtension`: send a request whose JSON body contains the marker `ZZ-REDACTION-MARKER` and whose `Authorization` header is `Bearer ZZ-TOKEN-MARKER` to an endpoint that returns an error; assert the captured output contains neither marker, and that a log line produced during the request contains the correlation id.
+    Do NOT turn on request or response body logging, and do NOT put the subject or organization into every log line (identifiers only where needed).
+
+    Run the checks yourself before you finish: `bash scripts/worker-check.sh` (API tasks) or `bash apps/staff-web/check.sh` (staff web tasks) must pass. Synthetic data only; write the failing test first; stay inside the declared scope; name folders and packages after what they hold, never a task ID; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
+- [ ] READY-06 · Staff web API transport with CSRF, timeouts and typed errors (WEB-03, WEB-09)
+  - attempts: 0
+  - scope: apps/staff-web/src/api
+  - depends: DLV-04
+  - details:
+    Today `apps/staff-web/src/api/client.ts` only builds request descriptors and never sends a request. Add the transport; do not change the generated types in `src/api/generated`.
+    1. Create `src/api/transport.ts` exporting `send(descriptor, options?)` that calls `fetch(descriptor.url, ...)` with `credentials: 'include'`, header `X-Correlation-Id` (a new `crypto.randomUUID()` per call unless the descriptor has one), JSON body, and an `AbortController` timeout of 15000 ms.
+    2. For methods other than GET add header `X-XSRF-TOKEN` read from the `XSRF-TOKEN` cookie (`document.cookie`). If the cookie is missing, throw a `TransportError` with kind `csrf-missing` before sending.
+    3. Map responses to a `TransportError` class with a `kind` field: 401 -> `session-expired`, 403 -> `forbidden`, 404 -> `not-found`, 409 or 412 -> `conflict`, 422 -> `invalid`, 428 -> `precondition-required`, 429 -> `rate-limited` (store `retryAfterSeconds` from the `Retry-After` header), other 5xx -> `server`, network failure -> `offline`, abort -> `timeout`. Keep `correlationId` (from the response header) and the server's machine-readable error code on the error. Never put the response body text into the message.
+    4. Never retry automatically, except a GET once on `offline` or `timeout`. A POST is never retried.
+    5. Tests with Vitest and a mocked `fetch` (see how other tests in `src` mock things): one test per mapping above, CSRF header present for POST and absent for GET, timeout aborts, a GET retries once and a POST does not.
+    Do NOT store tokens or any response data in `localStorage` or `sessionStorage`, and do NOT add a dependency.
+
+    Run the checks yourself before you finish: `bash scripts/worker-check.sh` (API tasks) or `bash apps/staff-web/check.sh` (staff web tasks) must pass. Synthetic data only; write the failing test first; stay inside the declared scope; name folders and packages after what they hold, never a task ID; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
+- [ ] READY-07 · Staff web state views and a global error boundary (WEB-09)
+  - attempts: 0
+  - scope: apps/staff-web/src/components, apps/staff-web/src/app, apps/staff-web/src/features
+  - depends: READY-06
+  - details:
+    Needs READY-06 (`TransportError` kinds). Spec rule WEB-09 and `docs/design/screens-and-navigation.md` section 4 list seven states every screen needs.
+    1. Read an existing component under `src/components` and one screen (`src/features/scheduling/SchedulingScreen.tsx`) to copy the style and the message mechanism (`messages.ts` / `src/i18n`). All new text goes through the i18n messages in both English and Arabic.
+    2. Create `src/components/StateViews.tsx` exporting `LoadingState`, `EmptyState`, `ErrorState`, `ForbiddenState`, `ConflictState`, `SessionExpiredState`. `ErrorState` shows the correlation ID and a Retry button; `ConflictState` has buttons Compare, Reload and Copy my changes (callbacks as props); `SessionExpiredState` has a Sign in button (callback prop). Use the tokens, never raw colours. Each has `role` and live-region semantics from `docs/design/accessibility-patterns.md`.
+    3. Create `src/app/ErrorBoundary.tsx` (class component) that renders `ErrorState` with a generated correlation ID and logs only the correlation ID and error name with `console.error`, never props or state.
+    4. Wrap the app in the boundary in `src/main.tsx` / `App.tsx`.
+    5. Add `StateView.forTransportError(error)` helper mapping each `TransportError.kind` to the right state view.
+    6. Tests: each view renders in English and Arabic (RTL), is keyboard reachable, the boundary catches a throwing child and shows the correlation ID, and the helper maps all kinds.
+    Do NOT change existing screen logic in this task, and do NOT put patient data in any message.
+
+    Run the checks yourself before you finish: `bash scripts/worker-check.sh` (API tasks) or `bash apps/staff-web/check.sh` (staff web tasks) must pass. Synthetic data only; write the failing test first; stay inside the declared scope; name folders and packages after what they hold, never a task ID; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
+- [ ] READY-08 · Staff web route code-splitting and a bundle-size budget (WEB-08)
+  - attempts: 0
+  - scope: apps/staff-web/src/App.tsx, apps/staff-web/src/app, apps/staff-web/scripts, apps/staff-web/check.sh, apps/staff-web/vite.config.ts
+  - depends: DLV-04
+  - details:
+    Spec rule WEB-08: each route chunk at most 250 KB gzip.
+    1. In `src/App.tsx` load each feature screen (scheduling, chart, admin) with `React.lazy(() => import(...))` inside one `Suspense` whose fallback is `LoadingState` from `src/components/StateViews` if READY-07 is merged, otherwise a plain accessible "Loading" text.
+    2. Create `scripts/check-bundle-size.mjs`: run after `vite build`; read every `dist/assets/*.js`, gzip each with Node's `zlib.gzipSync`, print a table, and exit 1 when any file is larger than 250 KB (256000 bytes) gzipped. The limit is a constant at the top of the file.
+    3. Call the script from `check.sh` right after the build step (find where `vite build` or `npm run build` runs there and add the call after it).
+    4. Test `scripts/check-bundle-size.test.mjs` or a Vitest test that imports the size function and checks it rejects a 300 KB buffer and accepts a 10 KB one.
+    5. Write the measured sizes in the pr-notes.
+    Do NOT raise the limit, do NOT remove dependencies to make it pass without noting it, and do NOT add third-party scripts.
+
+    Run the checks yourself before you finish: `bash scripts/worker-check.sh` (API tasks) or `bash apps/staff-web/check.sh` (staff web tasks) must pass. Synthetic data only; write the failing test first; stay inside the declared scope; name folders and packages after what they hold, never a task ID; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
+- [ ] READY-09 · Mark the staff web non-indexable (WEB-13)
+  - attempts: 0
+  - scope: apps/staff-web/index.html, apps/staff-web/public, apps/staff-web/tests
+  - details:
+    Spec rule WEB-13: authenticated applications are `noindex` and crawling is disallowed.
+    1. In `apps/staff-web/index.html` add inside `<head>`: `<meta name="robots" content="noindex, nofollow">`.
+    2. Create `apps/staff-web/public/robots.txt` with exactly two lines: `User-agent: *` and `Disallow: /`.
+    3. Add a test in `apps/staff-web/tests` (look at the existing files there for style) that reads both files and fails when either rule is missing.
+    Do NOT add analytics, tracking or any external script tag.
+
+    Run the checks yourself before you finish: `bash scripts/worker-check.sh` (API tasks) or `bash apps/staff-web/check.sh` (staff web tasks) must pass. Synthetic data only; write the failing test first; stay inside the declared scope; name folders and packages after what they hold, never a task ID; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
+- [ ] READY-10 · Staff web navigation model from the screen map (design contract)
+  - attempts: 0
+  - scope: apps/staff-web/src/app
+  - depends: DLV-04
+  - details:
+    Implements the navigation in `docs/design/screens-and-navigation.md` section 2 as data plus a component; screens that do not exist yet stay as routes to a "not available yet" page.
+    1. Create `src/app/navigation.ts`: a typed array of items `{ id, route, group, labelKey, roles: Role[] }` copied from the table in section 2 (every row with a route that starts with `/` and is not under System). Export `navigationFor(role)` that returns only the items the role may use, grouped in the table's order. The `Role` type already exists or is created next to the existing role names in `src/app` / `src/features/admin/domain.ts`; reuse them.
+    2. Update `src/app/AppShell.tsx` to render the left rail from `navigationFor(role)`. Labels come from the i18n messages in English and Arabic. Mirror the rail in RTL.
+    3. Tests: reception sees Scheduling, Clinic and Patients but not Administration; tenant admin sees Administration; privacy auditor sees only the audit item and Account; no item appears twice; every label key exists in both languages.
+    Do NOT add a route for a screen without a table row, and do NOT show items the role cannot use.
+
+    Run the checks yourself before you finish: `bash scripts/worker-check.sh` (API tasks) or `bash apps/staff-web/check.sh` (staff web tasks) must pass. Synthetic data only; write the failing test first; stay inside the declared scope; name folders and packages after what they hold, never a task ID; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
+- [ ] READY-11 · Staff web OIDC login with a session cookie and CSRF protection (WEB-03)
+  - attempts: 0
+  - scope: apps/api/pom.xml, apps/api/src/main/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/web, apps/api/src/main/resources
+  - depends: AUD-20261120-03, READY-05
+  - details:
+    Spec section 7 (Identity) and WEB-03: staff web uses OIDC authorization code with an HTTP-only secure session cookie and CSRF protection. AUD-20261120-03 already added bearer-token validation for mobile and partners; this task adds the browser flow beside it and must not weaken it.
+    1. Add `org.springframework.boot:spring-boot-starter-oauth2-client` to `apps/api/pom.xml` (no version tag). Compile.
+    2. In the security configuration from AUD-20261120-03 add a second `SecurityFilterChain` ordered before the bearer chain, matching requests that do NOT carry an `Authorization: Bearer` header. It uses `oauth2Login`, session cookies named by `server.servlet.session.cookie.*` with `http-only: true`, `secure: true`, `same-site: lax`, and `CookieCsrfTokenRepository.withHttpOnlyFalse()` so the web client can read `XSRF-TOKEN`. CSRF stays ON for this chain.
+    3. Set `server.servlet.session.timeout: 15m` (idle) and add a filter that invalidates a session older than 12 hours (absolute) using `session.getCreationTime()` and the `Clock` bean.
+    4. Add `POST /logout` that invalidates the session on the server and clears the cookies.
+    5. Issuer, client id and client secret come only from environment variables (`SMARTCLINIC_OIDC_*`); fail startup when missing outside `synthetic-auth`. Never commit a value.
+    6. Tests with `spring-security-test`: a state-changing request without the CSRF token returns 403; with the token it reaches the controller; a session older than 12 hours is rejected (fake `Clock`); logout invalidates the session; a bearer-token request still works and ignores CSRF as before.
+    Note the limits in the pr-notes: listing and revoking a user's other sessions (WEB-03) needs a session registry and is a follow-up task for a person to approve.
+    Do NOT store tokens in the browser, do NOT disable CSRF on the cookie chain, and do NOT touch the `synthetic-auth` profile.
+
+    Run the checks yourself before you finish: `bash scripts/worker-check.sh` (API tasks) or `bash apps/staff-web/check.sh` (staff web tasks) must pass. Synthetic data only; write the failing test first; stay inside the declared scope; name folders and packages after what they hold, never a task ID; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
+- [ ] READY-12 · Production-readiness evidence checklist for WEB-01 to WEB-13
+  - attempts: 0
+  - scope: docs/operations/production-readiness
+  - details:
+    Create `docs/operations/production-readiness/README.md` that turns spec section 8.1 into an evidence checklist a person can sign. Documentation only: no code, no workflow changes.
+    1. Start with a heading `# Production readiness evidence`, a short paragraph saying which spec section it implements, and the line `Status: draft, owners to complete`.
+    2. Add one table with columns `Requirement | Evidence needed | Produced by | Owner | Status | Link`. One row per requirement WEB-01 to WEB-13 (read each row in `SMARTCLINIC_V1_SPEC.md` section 8.1). `Evidence needed` quotes the "Verify with ..." part in your own words. `Produced by` is one of `CI`, `Infrastructure owner`, `Security reviewer`, `Product owner`. Leave `Owner` as `unassigned`, `Status` as `not started`, `Link` empty. Use the repository facts: WEB-02, WEB-05, WEB-06 and WEB-09 are implemented by tasks READY-02, READY-01, READY-05 and READY-07; WEB-03 by READY-11; WEB-04 by READY-03 and READY-04; WEB-08 by READY-08; WEB-13 by READY-09; WEB-01, WEB-10, WEB-11 and WEB-12 need an infrastructure or CI change that workers cannot make (workers cannot edit `.github/workflows`).
+    3. Add a section `Needs a person` listing exactly: WAF and TLS setup, certificate automation, SHA-pinning CI actions, end-to-end browser suite and its CI job, penetration test, progressive-rollout tooling.
+    4. Run `python3 -I scripts/check-docs.py` and fix every complaint (links, unknown requirement IDs).
+    Do NOT invent evidence, links or owners, and do NOT mark any row done.
+
+    Run the checks yourself before you finish: `bash scripts/worker-check.sh` (API tasks) or `bash apps/staff-web/check.sh` (staff web tasks) must pass. Synthetic data only; write the failing test first; stay inside the declared scope; name folders and packages after what they hold, never a task ID; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
