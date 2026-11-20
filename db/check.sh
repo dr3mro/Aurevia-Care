@@ -28,9 +28,13 @@ END \$\$;" >/dev/null
 "${base[@]}" -c "DROP DATABASE IF EXISTS $db" >/dev/null
 "${base[@]}" -c "CREATE DATABASE $db OWNER smartclinic_migrate" >/dev/null
 
-for migration in db/migrations/V*.sql; do
+# Apply in Flyway version order, not bash's lexical glob order: with two-digit
+# versions, V10 must run after V9 rather than before V1. sort -V gives numeric
+# version ordering. (Previously this loop used a bare glob and silently applied
+# migrations out of order once versions passed V9.)
+while IFS= read -r migration; do
   "${mig[@]}" -f "$migration" >/dev/null
-done
+done < <(printf '%s\n' db/migrations/V*.sql | sort -V)
 
 # 1. Every tenant table has ENABLE + FORCE RLS.
 "${mig[@]}" <<'SQL' >/dev/null
@@ -47,6 +51,40 @@ BEGIN
   END LOOP;
 END $$;
 SQL
+
+# 1a. Every table that carries an organization_id must ENABLE + FORCE RLS.
+# This is the general form of check 1: it derives the table set from the catalog
+# so a new tenant table added by a future migration cannot be forgotten by
+# updating a hard-coded list (ARC-02). Fails with the offending table names.
+no_force_rls=$("${mig[@]}" <<'SQL'
+SELECT c.relname
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public'
+JOIN pg_attribute a ON a.attrelid = c.oid AND a.attname = 'organization_id' AND NOT a.attisdropped
+WHERE c.relkind = 'r'
+  AND NOT (c.relrowsecurity AND c.relforcerowsecurity)
+ORDER BY 1;
+SQL
+)
+[[ -z "$no_force_rls" ]] || { printf 'fail: tables with organization_id lacking FORCE RLS: %s\n' "$no_force_rls" >&2; exit 1; }
+
+# 1b. A tenant table with RLS enabled but no policy denies every row and is
+# unusable, so require at least one policy on every such table (ARC-02).
+# Fails with the offending table names.
+no_rls_policy=$("${mig[@]}" <<'SQL'
+SELECT c.relname
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public'
+JOIN pg_attribute a ON a.attrelid = c.oid AND a.attname = 'organization_id' AND NOT a.attisdropped
+LEFT JOIN pg_policies p ON p.schemaname = 'public' AND p.tablename = c.relname
+WHERE c.relkind = 'r'
+  AND c.relrowsecurity
+  AND p.policyname IS NULL
+GROUP BY c.relname
+ORDER BY 1;
+SQL
+)
+[[ -z "$no_rls_policy" ]] || { printf 'fail: tables with organization_id and RLS but no policy: %s\n' "$no_rls_policy" >&2; exit 1; }
 
 # 2. Runtime role cannot bypass RLS and owns no tenant table.
 "${mig[@]}" <<'SQL' >/dev/null
