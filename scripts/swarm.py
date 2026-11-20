@@ -338,15 +338,35 @@ def set_task_status(text, task_id, status, pr="", agent="", evidence=""):
     return "\n".join(lines) + "\n"
 
 
-def reclaim(text, prs):
+WORKER_JOB = re.compile(r"^Swarm worker(?: \((?:story|fix), (?P<id>[A-Za-z0-9-]+),)?")
+
+
+def is_worker_job(name):
+    """True for a job of a swarm worker. A matrix job's name carries the task:
+    `Swarm worker (story, DLV-02, 0, Title... / Work the task`."""
+    return name.startswith("Swarm worker")
+
+
+def worker_task_id(name):
+    """Task id in a worker job name, or '' when the name has none."""
+    match = WORKER_JOB.match(name)
+    return (match.group("id") or "") if match else ""
+
+
+def reclaim(text, prs, live=()):
     """Release swarm claims that no pull request backs.
 
     A claim with only a merged pull request was merged by a person, so it is done;
-    one with no pull request, or only closed ones, goes back to open."""
+    one with no pull request, or only closed ones, goes back to open. A claim whose
+    worker is still running (`live`: task ids) has no pull request yet and must
+    stay: waves overlap, and releasing it started a second worker on the same task."""
+    live = set(live)
     for task in parse_tasks(text):
         # `opencode-` claims come from the older dispatch system; with no pull request
         # behind them they would hold their scope (and block repairs) forever.
         if task["status"] != "taken" or not task["agent"].startswith(("swarm", "opencode")):
+            continue
+        if live & {task["id"], *task["aliases"]}:
             continue
         mine = [p for p in prs if task_id_of(p["headRefName"]) in {task["id"], *task["aliases"]}]
         # An open PR still in progress keeps the claim. A needs-human PR is a
@@ -618,7 +638,7 @@ def only_worker_failures(run):
     if run.get("name") != "Agent swarm":
         return False
     failed = [j["name"] for j in run.get("jobs", []) if j.get("conclusion") == "failure"]
-    return bool(failed) and all(name.startswith("Swarm worker /") for name in failed)
+    return bool(failed) and all(is_worker_job(name) for name in failed)
 
 
 def repair_task(run_id):
@@ -752,21 +772,29 @@ def waiting_waves():
     return total
 
 
-def active_workers():
-    """Worker jobs running or queued in any Agent swarm run right now.
+def live_workers():
+    """One entry per worker running or queued in any unfinished Agent swarm run.
 
-    Waves may overlap, so a new wave may only use what is left of the
-    combined cap. Returns 0 when the API call fails (the per-wave cap and
-    the budget gate still apply)."""
+    The entry is the worker's task id (a worker's Work and Publish jobs count once;
+    a name without a task id counts as its own entry). Waves may overlap, so this
+    both bounds the combined worker cap and tells reclaim which claims are alive.
+    Returns [] when the API call fails (the per-wave cap and the budget gate still
+    apply)."""
     runs = gh("run", "list", "--workflow", "swarm.yml", "--limit", "30",
               "--json", "databaseId,status", "-q",
               '.[] | select(.status != "completed") | .databaseId', check=False)
-    total = 0
+    live = []
     for run_id in runs.split():
         out = gh("api", f"repos/{repo_slug()}/actions/runs/{run_id}/jobs?per_page=100", "--paginate",
                  "--jq", '.jobs[] | select(.status != "completed") | .name', check=False)
-        total += sum(1 for name in out.splitlines() if name.startswith("Swarm worker /"))
-    return total
+        keys = {worker_task_id(n) or n for n in out.splitlines() if is_worker_job(n)}
+        live.extend(sorted(keys))
+    return live
+
+
+def active_workers():
+    """Number of workers running or queued across all waves right now."""
+    return len(live_workers())
 
 
 def rotate_slots(slots, busy):
@@ -1156,8 +1184,9 @@ def main(argv=None):
         repair = repair_task(a.repair_run) if a.repair_run else None
         everything = gh_json("pr", "list", "--state", "all", "--label", "swarm", "--limit", "200",
                              "--json", "number,headRefName,state,labels") or []
-        text = reclaim(Path(a.file).read_text(), everything)
-        busy = active_workers()
+        live = live_workers()
+        text = reclaim(Path(a.file).read_text(), everything, live)
+        busy = len(live)
         room = max(0, MAX_ACTIVE_WORKERS - busy)
         print(f"{busy} worker(s) already running; room for {room} of {MAX_ACTIVE_WORKERS}.")
         include = plan_workers(min(a.max, room), rotate_slots(load_slots(a.slots), busy),
@@ -1165,7 +1194,7 @@ def main(argv=None):
         claims = {t["id"]: f"swarm-{t['slot']}" for t in include if t["kind"] == "story"}
 
         def mark(current):
-            current = reclaim(current, everything)
+            current = reclaim(current, everything, live)
             for task_id, agent in claims.items():
                 current = set_task_status(current, task_id, "taken", agent=agent)
             return current
