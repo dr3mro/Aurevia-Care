@@ -1776,8 +1776,9 @@ Every entry below is finished and verified. Do not take them again; they stay he
     DocumentService.link in apps/api/src/main/java/com/aurevia/smartclinic/documents/DocumentService.java:75-112 validates subjectType as chart/order/result (DocumentInputs.java:62-66) but only checks target existence for CHART: 'if (CHART.equals(subjectType) && !repository.chartExists(subjectId))' at line 91. DocumentRepository.java:74 exposes only chartExists, so there is no existence check for the order and result cases. An authorized caller can therefore create an original-document association bound to a non-existent order or result identifier, leaving orphan clinical artifacts that violate ARC-01's tenant-owned key model and CLN-07's 'link original PDFs and images to chart, order or result'. Expected fix: add RLS-bounded SELECT EXISTS checks for order and result targets (or a single subjectExists method covering all three types) and return 404 when absent, with a test per subject type asserting the rejection.
     Found by the daily audit. Synthetic fixtures only; failing tests first;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [-] AUD-20261120-14 · Wire the generated command authorization gate into production write paths
-  - agent: swarm-1
+- [x] AUD-20261120-14 · Wire the generated command authorization gate into production write paths
+  - pr: #229
+  - evidence: PR #229; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/AUD-20261120-14.md; simulated review only
   - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/api/authorization, contracts/openapi
   - details:
