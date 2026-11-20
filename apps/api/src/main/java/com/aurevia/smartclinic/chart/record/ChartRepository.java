@@ -20,8 +20,7 @@ import org.springframework.stereotype.Repository;
  * confines it to the active organization. No organization or actor value is
  * accepted from a caller; the organization is bound transaction-locally.</p>
  */
-/* Explicit bean name: a legacy chart slice shares the default "chartRepository" name. */
-@Repository("chartRecordRepository")
+@Repository
 public class ChartRepository {
 
     private static final RowMapper<ChartEntry> ENTRY_MAPPER = ChartRepository::mapEntry;
