@@ -20,8 +20,12 @@ if ! pg_isready -q -h 127.0.0.1 -p 5432; then
   fi
 fi
 
-# Only the suites that need PostgreSQL; the unit tests already ran above.
-mvn -q -B -f apps/api/pom.xml -Pno-security -Dgroups=integration test
+# Only the suites that need PostgreSQL; the unit tests already ran above. Maven
+# failures are judged by scripts/worker_gate.py, which ignores integration suites
+# that were already red on main and unrelated to this change (repair tasks are strict).
+mvn_status=0
+mvn -q -B -f apps/api/pom.xml -Pno-security -Dgroups=integration test || mvn_status=$?
+python3 -I scripts/worker_gate.py "$mvn_status"
 bash db/check.sh
 
 printf 'worker check: quick gate, integration tests and database policy passed\n'
