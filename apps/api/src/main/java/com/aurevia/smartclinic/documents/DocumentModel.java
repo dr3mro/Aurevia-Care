@@ -1,5 +1,7 @@
 package com.aurevia.smartclinic.documents;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -115,16 +117,22 @@ public record RenderRequest(String subjectType, String subjectId, String locale,
                                 String effectiveAt, Integer rotationDegrees, String sourceAssociationId) {
 
         /**
-         * Defensively copy the content lines on construction.
-         *
+         * Keep an immutable view without rejecting boundary values that the
+         * dedicated validator must report as a machine-readable 422. Jackson
+         * may supply a null list or null elements; {@code List.copyOf} would
+         * throw an unmapped {@code NullPointerException} before validation.
          */
         public RenderRequest {
-            lines = List.copyOf(lines);
+            lines = copyLines(lines);
         }
 
         @Override
         public List<String> lines() {
-            return List.copyOf(lines);
+            return copyLines(lines);
+        }
+
+        private static List<String> copyLines(List<String> values) {
+            return values == null ? null : Collections.unmodifiableList(new ArrayList<>(values));
         }
     }
 }
