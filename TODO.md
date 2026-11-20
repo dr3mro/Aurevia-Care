@@ -146,8 +146,7 @@ Cadence and limits:
 
 ## Audit findings
 
-- [-] AUD-20261119-03 · Expose required workflows through HTTP entry points instead of orphan services
-  - agent: swarm-1
+- [ ] AUD-20261119-03 · Expose required workflows through HTTP entry points instead of orphan services
   - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/messaging, apps/api/src/main/java/com/aurevia/smartclinic/therapy, apps/api/src/main/java/com/aurevia/smartclinic/radiology
   - details:
@@ -157,8 +156,7 @@ Cadence and limits:
 
 ## Audit 2026-11-20 (whole-project audit)
 
-- [-] AUD-20261120-01 · Return HTTP 201 from patient registration and catalog entry creation, as the contract says
-  - agent: swarm-2
+- [ ] AUD-20261120-01 · Return HTTP 201 from patient registration and catalog entry creation, as the contract says
   - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/web
   - depends: DLV-04
@@ -178,8 +176,9 @@ Cadence and limits:
     Done when: both POSTs return 201 with a `Location` header, no test expects 200 for them, and `bash scripts/worker-check.sh` is green.
 
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` must pass for the classes you touched. Synthetic data only; write the failing test first; stay inside the declared scope; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
-- [ ] AUD-20261120-02 · Production authentication, part 1: a pure JWT-claims-to-TenantContext resolver with tests
-  - attempts: 0
+- [-] AUD-20261120-02 · Production authentication, part 1: a pure JWT-claims-to-TenantContext resolver with tests
+  - agent: swarm-1
+  - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/web
   - depends: DLV-04
   - details:
@@ -241,8 +240,7 @@ Cadence and limits:
     Done when: `bash db/check.sh` passes, the two new assertions run, and the notes list any table you had to except together with the reason.
 
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` must pass for the classes you touched. Synthetic data only; write the failing test first; stay inside the declared scope; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
-- [-] AUD-20261120-05 · Rename the story-ID folders under infra/ and docs/operations/ to business names
-  - agent: swarm-3
+- [ ] AUD-20261120-05 · Rename the story-ID folders under infra/ and docs/operations/ to business names
   - attempts: 3
   - scope: infra, docs/operations
   - depends: REFACTOR-PACKAGES-02
@@ -266,8 +264,7 @@ Cadence and limits:
     Done when: no path `s_g5_` remains outside `TODO.md` and `.agent/`, all seven `check.sh` scripts pass, and both Python checks pass.
 
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` must pass for the classes you touched. Synthetic data only; write the failing test first; stay inside the declared scope; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
-- [-] AUD-20261120-06 · Replace the in-memory delivery outbox store with a PostgreSQL-backed store
-  - agent: swarm-4
+- [ ] AUD-20261120-06 · Replace the in-memory delivery outbox store with a PostgreSQL-backed store
   - attempts: 3
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/events, apps/api/src/test/java/com/aurevia/smartclinic/events, apps/api/src/test/java/com/aurevia/smartclinic/it
   - depends: REFACTOR-PACKAGES-02
@@ -282,8 +279,9 @@ Cadence and limits:
     Do NOT change `DeliveryStore` method signatures, the controllers or any migration. If the interface cannot be implemented with the V55 tables, STOP, write exactly which method and which missing column in `.agent/pr-notes/<story-id>.md`, and finish without code changes.
 
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` must pass for the classes you touched. Synthetic data only; write the failing test first; stay inside the declared scope; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
-- [ ] AUD-20261120-08 · Add HTTP tests for the scheduling, audit and appointment endpoints that no test calls
-  - attempts: 0
+- [-] AUD-20261120-08 · Add HTTP tests for the scheduling, audit and appointment endpoints that no test calls
+  - agent: swarm-2
+  - attempts: 1
   - scope: apps/api/src/test/java/com/aurevia/smartclinic/it/scheduling, apps/api/src/test/java/com/aurevia/smartclinic/it/audit
   - depends: DLV-04
   - details:
@@ -296,8 +294,9 @@ Cadence and limits:
     Do NOT change production code, migrations or the OpenAPI files.
 
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` must pass for the classes you touched. Synthetic data only; write the failing test first; stay inside the declared scope; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
-- [ ] AUD-20261120-09 · Add HTTP tests for the finance, prescription, specialty and conversation endpoints that no test calls
-  - attempts: 0
+- [-] AUD-20261120-09 · Add HTTP tests for the finance, prescription, specialty and conversation endpoints that no test calls
+  - agent: swarm-3
+  - attempts: 1
   - scope: apps/api/src/test/java/com/aurevia/smartclinic/it/finance, apps/api/src/test/java/com/aurevia/smartclinic/it/prescription, apps/api/src/test/java/com/aurevia/smartclinic/it/authz, apps/api/src/test/java/com/aurevia/smartclinic/it/messaging
   - depends: DLV-04
   - details:
@@ -395,8 +394,7 @@ Found while extending the specification (section 8.1 and docs/design/screens-and
     Do NOT store tokens or any response data in `localStorage` or `sessionStorage`, and do NOT add a dependency.
 
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` (API tasks) or `bash apps/staff-web/check.sh` (staff web tasks) must pass. Synthetic data only; write the failing test first; stay inside the declared scope; name folders and packages after what they hold, never a task ID; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
-- [-] READY-07 · Staff web state views and a global error boundary (WEB-09)
-  - agent: swarm-5
+- [ ] READY-07 · Staff web state views and a global error boundary (WEB-09)
   - attempts: 3
   - scope: apps/staff-web/src/components, apps/staff-web/src/app, apps/staff-web/src/features
   - depends: READY-06
@@ -438,8 +436,9 @@ Found while extending the specification (section 8.1 and docs/design/screens-and
     Do NOT add analytics, tracking or any external script tag.
 
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` (API tasks) or `bash apps/staff-web/check.sh` (staff web tasks) must pass. Synthetic data only; write the failing test first; stay inside the declared scope; name folders and packages after what they hold, never a task ID; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
-- [ ] READY-10 · Staff web navigation model from the screen map (design contract)
-  - attempts: 0
+- [-] READY-10 · Staff web navigation model from the screen map (design contract)
+  - agent: swarm-4
+  - attempts: 1
   - scope: apps/staff-web/src/app
   - depends: DLV-04
   - details:
@@ -473,8 +472,7 @@ Order of work for the whole production-readiness effort: (1) security and platfo
 
 ### Phase 2 — API list endpoints the screens need (independent of each other)
 
-- [-] READY-13 · List appointments by date range (GET /api/v1/appointments)
-  - agent: swarm-6
+- [ ] READY-13 · List appointments by date range (GET /api/v1/appointments)
   - attempts: 3
   - requirements: ARC-03
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/scheduling, apps/api/src/test/java/com/aurevia/smartclinic/scheduling, contracts/openapi
@@ -491,9 +489,10 @@ Order of work for the whole production-readiness effort: (1) security and platfo
     Do NOT change existing endpoints, response shapes or migrations.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
-- [ ] READY-14 · List staff (GET /api/v1/staff)
+- [-] READY-14 · List staff (GET /api/v1/staff)
+  - agent: swarm-5
+  - attempts: 1
   - requirements: ARC-03
-  - attempts: 0
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/staff, apps/api/src/test/java/com/aurevia/smartclinic/staff, contracts/openapi
   - depends: DLV-04
   - details:
@@ -793,8 +792,7 @@ Order of work for the whole production-readiness effort: (1) security and platfo
     Do NOT add a dependency and do NOT run `expo prebuild`.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
-- [-] READY-34 · Patient app: four-tab navigation (Appointments, Reports, Messages, Account)
-  - agent: swarm-7
+- [ ] READY-34 · Patient app: four-tab navigation (Appointments, Reports, Messages, Account)
   - attempts: 3
   - requirements: PAT-01, PAT-02, PAT-03, UX-01
   - scope: apps/patient-mobile/src/app, apps/patient-mobile/App.tsx
@@ -1010,8 +1008,7 @@ Do these after part 2 where `depends` says so. Persistence tasks run one at a ti
 
 ### Phase C — Patient app connection to the API
 
-- [-] READY-47 · Patient app API transport and secure token storage (no login screen yet)
-  - agent: swarm-8
+- [ ] READY-47 · Patient app API transport and secure token storage (no login screen yet)
   - attempts: 3
   - requirements: PAT-01, ARC-03
   - scope: apps/patient-mobile/src/api, apps/patient-mobile/tests/api
