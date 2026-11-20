@@ -17,6 +17,7 @@ import random
 import re
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -901,6 +902,29 @@ def slot_manifests_exist(slots, repo=None):
     return True
 
 
+def verified_slot_images(slots):
+    """Return one complete successful run's digest map or no usable generation."""
+    runs = gh_json("run", "list", "--workflow", "swarm-images.yml", "--branch", "main",
+                   "--status", "success", "--limit", "5", "--json", "databaseId") or []
+    prefix = f"ghcr.io/{repo_slug().lower()}-agent"
+    expected = {str(slot["slot"]): re.compile(rf"{re.escape(prefix)}-{slot['slot']}@sha256:[0-9a-f]{{64}}")
+                for slot in slots}
+    for run in runs:
+        with tempfile.TemporaryDirectory() as directory:
+            try:
+                gh("run", "download", str(run["databaseId"]), "--name", "verified-slot-images",
+                   "--dir", directory)
+                images = json.loads((Path(directory) / "slot-images.json").read_text())
+            except (OSError, ValueError, subprocess.CalledProcessError):
+                continue
+        if isinstance(images, dict) and images.keys() == expected.keys() and all(
+            isinstance(images[slot], str) and pattern.fullmatch(images[slot])
+            for slot, pattern in expected.items()
+        ):
+            return images
+    return {}
+
+
 def images_ready_command(slots=None):
     """Gather inputs, decide readiness, dispatch one build if needed, emit outputs.
 
@@ -1205,10 +1229,10 @@ def release_claim(task_id, reason):
         f"Release {task_id}: {reason}")
 
 
-def check_generated_markdown():
+def check_generated_markdown(paths=()):
     """Validate generated Markdown before a trusted publisher writes it remotely."""
-    for check in ("scripts/check-docs.py", "scripts/check-secrets.py"):
-        subprocess.run([sys.executable, "-I", check], check=True)
+    subprocess.run([sys.executable, "-I", "scripts/check-docs.py", *paths], check=True)
+    subprocess.run([sys.executable, "-I", "scripts/check-secrets.py"], check=True)
 
 
 def update_todo(edit, message, path="TODO.md", attempts=8, validate=None):
@@ -1628,7 +1652,8 @@ def push_main(message, edit, paths=(NOTES_DIR, NOTES_ARCHIVE), attempts=6):
         git("add", "-A", "--", *paths)
         if not git("diff", "--cached", "--name-only", check=False).strip():
             return False
-        check_generated_markdown()
+        staged = git("diff", "--cached", "--name-only", "--diff-filter=AM", "-z").split("\0")
+        check_generated_markdown([path for path in staged if path.endswith(".md")])
         git(*IDENTITY, "commit", "-qm", f"{message} [skip ci]")
         try:
             authed_git("push", "origin", "HEAD:main")
@@ -1736,13 +1761,13 @@ def open_rules_pr(day, patch_path):
         return ""
     # Delivery skips Markdown-only pull requests, so a broken link or an unknown requirement ID
     # would only turn main red on the next code push: check the docs here instead.
-    for check in ("scripts/check-docs.py", "scripts/check-secrets.py"):
-        checked = subprocess.run([sys.executable, "-I", check], capture_output=True, text=True)
-        if checked.returncode:
-            print(f"notes: rules patch failed {check}; publication skipped", file=sys.stderr)
-            git("reset", "-q", "--hard")
-            git("checkout", "-q", "-")
-            return ""
+    try:
+        check_generated_markdown(staged)
+    except subprocess.CalledProcessError:
+        print("notes: rules patch failed validation; publication skipped", file=sys.stderr)
+        git("reset", "-q", "--hard")
+        git("checkout", "-q", "-")
+        return ""
     git(*IDENTITY, "commit", "-qm", f"Notes {day}: instruction updates from the daily reconciliation")
     authed_git("push", "origin", f"HEAD:refs/heads/{branch}")
     out = gh("pr", "create", "--draft", "--base", "main", "--head", branch,
@@ -2459,6 +2484,7 @@ def main(argv=None):
         sub.add_parser(name)
     p = sub.add_parser("images-ready")
     p.add_argument("--slots", default=".github/swarm/slots.json")
+    p.add_argument("--verified", action="store_true")
     p = sub.add_parser("budget-gate")
     p.add_argument("--cap", type=int, default=DEFAULT_MONTHLY_MINUTES)
     p = sub.add_parser("integrate-batch")
@@ -2474,6 +2500,7 @@ def main(argv=None):
     p.add_argument("--slots", default=".github/swarm/slots.json")
     p.add_argument("--file", default="TODO.md")
     p.add_argument("--repair-run", default="")
+    p.add_argument("--image-repair-only", action="store_true")
     sub.add_parser("watchdog")
     p = sub.add_parser("run-event")
     p.add_argument("--run", required=True)
@@ -2532,7 +2559,13 @@ def main(argv=None):
     if a.cmd == "ensure-labels":
         ensure_labels()
     elif a.cmd == "images-ready":
-        images_ready_command(a.slots)
+        ready, reason, _ = images_ready_command(a.slots)
+        if a.verified:
+            images = verified_slot_images(load_slots(a.slots))
+            fallback = bool(images) and reason == "the newest prepared-image build did not succeed"
+            emit("images", json.dumps(images, separators=(",", ":")))
+            emit("verified_ready", "true" if images and (ready or fallback) else "false")
+            emit("image_repair_only", "true" if fallback else "false")
     elif a.cmd == "slot-matrix":
         emit("matrix", json.dumps({"slot": [s["slot"] for s in load_slots(".github/swarm/slots.json")]},
                                   separators=(",", ":")))
@@ -2551,6 +2584,10 @@ def main(argv=None):
         print(f"{busy} worker(s) already running; room for {room} of {MAX_ACTIVE_WORKERS}.")
         include = plan_workers(min(a.max, room), rotate_slots(load_slots(a.slots), busy),
                                text, prs, repair, live)
+        if a.image_repair_only:
+            image_repairs = {f"Repair main: {name} failed" for name in ("Agent image", "Swarm slot images")}
+            include = [task for task in include if task["title"].split(": ", 1)[-1] in image_repairs
+                       or task["title"] in image_repairs][:1]
         claims = {t["id"]: f"swarm-{t['slot']}" for t in include if t["kind"] == "story"}
 
         granted = set()
