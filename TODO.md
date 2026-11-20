@@ -1754,8 +1754,8 @@ Every entry below is finished and verified. Do not take them again; they stay he
     db/migrations/V59__rx02_ambiguous_transition.sql already exists (added by the DLV-03 repair; its header is 'Change: expand' and .agent/pr-notes/DLV-03.md records V59 as consumed). However TODO.md line 817 says the persistence tasks reserve V59 to V66, and READY-35 (lines 821-830) reserves V59 and tells the worker to create db/migrations/V59__service_profiles.sql. When that worker runs, Flyway will see two migrations with version 59 and scripts/check-migrations.py will fail with 'duplicate migration version V59', so the first persistence story cannot go green until the tracker is corrected. Expected fix by the tracker owner: reassign READY-35..READY-42 to unused versions (for example V60..V67) and update each reserved: field, the 'V59 to V66' sentence, the V59__service_profiles.sql path in READY-35, and the proposed V59..V64 mapping in docs/decisions/0003-persistence-of-in-memory-stores.md before dispatching READY-35.
     Found by the daily audit. Synthetic fixtures only; failing tests first;
     stay inside the declared scope; record results in .agent/pr-notes/<story-id>.md.
-- [-] AUD-20261120-12 · Patients cannot read instruction content: the only instruction reads deny the patient role
-  - agent: swarm-4
+- [x] AUD-20261120-12 · Patients cannot read instruction content: the only instruction reads deny the patient role
+  - pr: #219
   - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/messaging/instructions, apps/api/src/test/java/com/aurevia/smartclinic/messaging/instructions
   - details:
