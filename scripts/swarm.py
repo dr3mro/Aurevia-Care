@@ -619,6 +619,17 @@ def publish(task, directory):
     commits = int(read(directory / "commits", "0") or 0)
     bundle = directory / "result.bundle"
     pr = ""
+    if task["kind"] == "fix":
+        # A fix worker can outlive its pull request: the integrator may merge or a
+        # person may close it while the worker runs, and the branch is deleted.
+        # There is nothing to update then; failing the publish only raised noise.
+        state = gh("pr", "view", str(task["number"]), "--json", "state", "--jq", ".state",
+                   check=False).strip()
+        if state in ("MERGED", "CLOSED"):
+            print(f"publish: PR #{task['number']} is already {state.lower()}; "
+                  f"nothing to push for {task['id']}")
+            emit("blocked", "pr-closed")
+            return
     if commits > 0 and bundle.exists():
         branch = task["branch"] if task["kind"] == "fix" else read(directory / "branch")
         if not BRANCH.fullmatch(branch) or task_id_of(branch) != task["id"]:
