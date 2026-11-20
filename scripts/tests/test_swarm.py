@@ -1124,6 +1124,33 @@ class RepairTests(unittest.TestCase):
         self.assertFalse(start)
         self.assertTrue(fake.said("issue", "create"))
 
+    def test_a_red_main_comments_on_the_open_issue_instead_of_opening_another(self):
+        prs = [{"number": n, "title": f"FIX-{n}: x", "state": "MERGED", "createdAt": "2026-11-18T22:00:00Z"}
+               for n in range(3)]
+        title = "Main is red and automatic repair gave up"
+        issues = [{"number": 41, "title": title}, {"number": 12, "title": title},
+                  {"number": 50, "title": "Another problem"}]
+        fake = FakeGh(prs=prs, issues=issues)
+        with mock.patch.object(swarm, "gh", fake):
+            start, why = swarm.repair_gate("77", now=datetime.datetime(2026, 11, 19, 12, tzinfo=datetime.timezone.utc))
+        self.assertFalse(start)
+        self.assertFalse(fake.said("issue", "create"))
+        comment = next(c for c in fake.calls if c[:2] == ("issue", "comment"))
+        self.assertEqual(comment[2], "12")
+        body = comment[comment.index("--body") + 1]
+        self.assertRegex(body, r"\*\*\d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC\*\*")
+        self.assertIn("77", body)
+
+    def test_report_issue_opens_one_when_none_is_open(self):
+        fake = FakeGh(issues=[{"number": 3, "title": "Something else"}])
+        with mock.patch.object(swarm, "gh", fake):
+            self.assertEqual(swarm.report_issue("A problem", "details"), "")
+        create = next(c for c in fake.calls if c[:2] == ("issue", "create"))
+        body = create[create.index("--body") + 1]
+        self.assertTrue(body.startswith(swarm.MARK))
+        self.assertIn("details", body)
+        self.assertRegex(body, r"\d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC")
+
     def test_old_repairs_do_not_count(self):
         prs = [{"number": n, "title": f"FIX-{n}: x", "state": "MERGED", "createdAt": "2026-11-10T22:00:00Z"}
                for n in range(5)]
