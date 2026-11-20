@@ -57,8 +57,18 @@ def changed_paths(base="origin/main"):
     out = subprocess.run(["git", "diff", "--name-only", f"{base}...HEAD"],
                          capture_output=True, text=True)
     paths = out.stdout.split()
-    dirty = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True)
-    paths += [line[3:] for line in dirty.stdout.splitlines() if len(line) > 3]
+    dirty = subprocess.run(["git", "status", "--porcelain=v1", "-z"],
+                          capture_output=True, text=True)
+    for record in dirty.stdout.split("\0"):
+        if not record:
+            continue
+        # porcelain v1: "XY path" or "XY orig -> new" for renames; with -z the
+        # rename target follows the arrow. Keep the new path only.
+        if " -> " in record:
+            record = record.split(" -> ", 1)[1]
+        path = record[3:] if len(record) > 3 else record
+        if path:
+            paths.append(path)
     return paths
 
 
