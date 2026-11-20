@@ -359,6 +359,19 @@ class ClinicalNoteRevisionIntegrationTest {
     }
 
     @Test
+    void failedCommandAuditIsCommittedAfterRollback() throws Exception {
+        String id = field(create("clinician-a", ORG_A).getBody(), "id");
+        long before = auditCount("NOTE_SIGN", "NOT_FOUND", ORG_B);
+        // The sign of an invisible note fails with 404 inside the guarded
+        // transaction. Its NOT_FOUND audit must survive that rollback and be
+        // committed in the caller's tenant (OPS-02).
+        assertEquals(HttpStatus.NOT_FOUND, request(HttpMethod.POST,
+                "/api/v1/clinical-notes/" + id + "/sign",
+                "{\"attestation\":\"attested\"}", "clinician-b", ORG_B, "\"1\"").getStatusCode());
+        assertEquals(before + 1, auditCount("NOTE_SIGN", "NOT_FOUND", ORG_B));
+    }
+
+    @Test
     void revisionRowsAreAppendOnlyForEveryRole() throws Exception {
         String id = field(create("clinician-a", ORG_A).getBody(), "id");
         assertMutationRejected("smartclinic_migrate", "UPDATE public.clinical_note_revision "

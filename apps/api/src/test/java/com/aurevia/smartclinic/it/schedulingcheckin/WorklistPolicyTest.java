@@ -54,9 +54,17 @@ class WorklistPolicyTest {
     }
 
     @Test
-    void tenantAdminMayDoEverythingAndAuditorNothing() {
-        for (String action : ACTIONS) {
+    void tenantAdminMayRunClericalWorklistButNotClinicalActions() {
+        for (String action : List.of(WorklistPolicy.IDENTITY_VERIFY, WorklistPolicy.CHECK_IN,
+                WorklistPolicy.WORKLIST_READ, WorklistPolicy.WORKLIST_ASSIGN,
+                WorklistPolicy.HANDOFF, WorklistPolicy.INTAKE_LINK)) {
             assertTrue(policy.allows(action, "tenant_admin"), "admin should allow " + action);
+        }
+        assertFalse(policy.allows(WorklistPolicy.ENCOUNTER_OPEN, "tenant_admin"),
+                "opening a clinical encounter requires clinician privileges, not tenant administration");
+        assertFalse(policy.allows(WorklistPolicy.VITALS_RECORD, "tenant_admin"),
+                "recording vitals requires a clinical role, not tenant administration");
+        for (String action : ACTIONS) {
             assertFalse(policy.allows(action, "privacy_auditor"), "auditor must not allow " + action);
         }
     }
