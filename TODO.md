@@ -924,7 +924,7 @@ Do these after part 2 where `depends` says so. Persistence tasks run one at a ti
 - [ ] READY-42 · Durable idempotency ledger for write endpoints (ARC-03, ARC-04)
   - requirements: ARC-03, ARC-04
   - attempts: 0
-  - scope: apps/api/src/main/java/com/aurevia/smartclinic/api/x_01, apps/api/src/test/java/com/aurevia/smartclinic/api/x_01, apps/api/src/main/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/web, db/migrations/V66__idempotency_ledger.sql, apps/api/src/test/java/com/aurevia/smartclinic/it
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/api, apps/api/src/test/java/com/aurevia/smartclinic/api, apps/api/src/main/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/web, db/migrations/V66__idempotency_ledger.sql, apps/api/src/test/java/com/aurevia/smartclinic/it
   - depends: READY-41
   - reserved: V66
   - details:
