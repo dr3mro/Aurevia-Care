@@ -1,5 +1,7 @@
 package com.aurevia.smartclinic.tenancy;
 
+import java.util.List;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.springframework.dao.DuplicateKeyException;
@@ -20,6 +22,11 @@ import com.aurevia.smartclinic.tenant.TenantContext;
 public class FacilityService {
 
     private static final Pattern CODE = Pattern.compile("[A-Z0-9_-]{2,32}");
+    private static final Pattern CURSOR = Pattern.compile(
+            "([A-Z0-9_-]{2,32}):"
+            + "([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})");
+    private static final int DEFAULT_LIMIT = 50;
+    private static final int MAX_LIMIT = 200;
 
     private final FacilityRepository repository;
     private final ActionPolicy policy;
@@ -56,6 +63,69 @@ public class FacilityService {
             repository.appendAudit(TenantContext.current(), "FACILITY_READ", "FACILITY", code, "SUCCESS");
             return facility;
         });
+    }
+
+    /**
+     * Read one cursor-paginated page of facilities in the active organization.
+     *
+     * <p>The single-record read action is reused: a caller who may read one
+     * facility may list the same tenant's facilities. Validation happens before
+     * any transaction and the read itself is audited inside the guarded
+     * transaction.</p>
+     *
+     * @param cursor opaque {@code <code>:<id>} of the previous page's last row, or {@code null}
+     * @param limit  page size, or {@code null} for the default of 50
+     * @return one page with an opaque next cursor when more rows exist
+     * @throws ApiException on invalid input or denied access
+     */
+    public FacilityPage list(String cursor, String limit) {
+        FacilityCursor parsedCursor = parseCursor(cursor);
+        int parsedLimit = parseLimit(limit);
+        return transactions.execute(status -> {
+            authorize("FACILITY_READ");
+            List<FacilityRepository.FacilityRow> rows = repository.query(
+                    parsedCursor == null ? null : parsedCursor.code(),
+                    parsedCursor == null ? null : parsedCursor.id(), parsedLimit + 1);
+            boolean hasMore = rows.size() > parsedLimit;
+            List<FacilityRepository.FacilityRow> pageRows = hasMore ? rows.subList(0, parsedLimit) : rows;
+            List<Facility> items = pageRows.stream().map(FacilityRepository.FacilityRow::facility).toList();
+            String next = hasMore
+                    ? pageRows.get(pageRows.size() - 1).facility().code() + ":"
+                            + pageRows.get(pageRows.size() - 1).id()
+                    : null;
+            repository.appendAudit(TenantContext.current(), "FACILITY_READ", "FACILITY", "ALL", "SUCCESS");
+            return new FacilityPage(items, next);
+        });
+    }
+
+    private FacilityCursor parseCursor(String cursor) {
+        if (cursor == null || cursor.isBlank()) {
+            return null;
+        }
+        Matcher matcher = CURSOR.matcher(cursor);
+        if (!matcher.matches()) {
+            throw new ApiException(422, "INVALID_CURSOR", "cursor must be <code>:<id>");
+        }
+        return new FacilityCursor(matcher.group(1), matcher.group(2));
+    }
+
+    private int parseLimit(String limit) {
+        if (limit == null || limit.isBlank()) {
+            return DEFAULT_LIMIT;
+        }
+        try {
+            int value = Integer.parseInt(limit);
+            if (value < 1 || value > MAX_LIMIT) {
+                throw new NumberFormatException("limit out of range");
+            }
+            return value;
+        } catch (NumberFormatException exception) {
+            throw new ApiException(422, "INVALID_LIMIT", "limit must be 1-200");
+        }
+    }
+
+    /** Parsed opaque cursor: the facility code sort value and the immutable row id. */
+    private record FacilityCursor(String code, String id) {
     }
 
     /**
