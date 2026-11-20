@@ -20,14 +20,14 @@ An evidence artifact is a JSON object with these fields:
 | `results.p95_read_ms`, `results.p95_command_ms` | Server-side latency percentiles in milliseconds |
 | `results.total_requests`, `read_requests`, `command_requests` | Finite, positive counts proving a sustained mixed run, with each class at least 1% of the total |
 
-The [conforming fixture](../../../infra/s_g5_05/fixtures/synthetic_pilot_evidence.json)
-is a complete example. The [violation fixture](../../../infra/s_g5_05/fixtures/violation_pilot_evidence.json)
+The [conforming fixture](../../../infra/capacity/fixtures/synthetic_pilot_evidence.json)
+is a complete example. The [violation fixture](../../../infra/capacity/fixtures/violation_pilot_evidence.json)
 deliberately breaks several fields to demonstrate fail-closed reporting.
 
 ## Commands and results observed here
 
 ```
-$ python3 -I infra/s_g5_05/capacity_evidence.py infra/s_g5_05/fixtures/synthetic_pilot_evidence.json
+$ python3 -I infra/capacity/capacity_evidence.py infra/capacity/fixtures/synthetic_pilot_evidence.json
 OPS-03 capacity evidence: PASS
   evidence class: rehearsal (final: False)
   [PASS] profile.organizations: 20
@@ -43,12 +43,12 @@ exit 0
 
 The violation fixture exits 1 and reports `measurement.excluded`,
 `availability.window`, both p95 breaches and `results.sustained_rate` as failures.
-`bash infra/s_g5_05/check.sh` requires that exact exit code and all five named
+`bash infra/capacity/check.sh` requires that exact exit code and all five named
 breaches, so an unreadable fixture (exit 2) cannot silently pass the negative
 control.
 
 Line coverage of the evaluator is complete under stdlib `trace`
-(`python3 -m trace --count --coverdir <dir> infra/s_g5_05/tests/run_coverage.py`):
+(`python3 -m trace --count --coverdir <dir> infra/capacity/tests/run_coverage.py`):
 no line of `capacity_evidence.py` carries the unexecuted `>>>>>>` marker across
 55 unit tests. The runner imports the module, so the `if __name__ == "__main__"`
 body is not part of the traced execution; that CLI path is exercised by the

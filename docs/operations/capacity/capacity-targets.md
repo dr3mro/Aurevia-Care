@@ -1,7 +1,7 @@
 # Capacity targets (OPS-03)
 
 - Requirement: OPS-03
-- Machine source of truth: [capacity_evidence.py](../../../infra/s_g5_05/capacity_evidence.py).
+- Machine source of truth: [capacity_evidence.py](../../../infra/capacity/capacity_evidence.py).
   The constants there are the single enforced copy of these numbers; this page
   explains them and must be kept in step with that module.
 - Back to the [S-G5-05 handoff](README.md).

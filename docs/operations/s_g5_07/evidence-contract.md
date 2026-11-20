@@ -46,7 +46,7 @@ A `measured_deployment` artifact whose `source` contains `synthetic` records an
 `evidence_conflict` failure and is never final. It must also carry the six-field
 `provenance` object described above, so changing only `kind` and `source` on a
 rehearsal cannot promote it to final evidence. The sibling
-[OPS-03 evaluator](../s_g5_05/README.md) enforces the same rule with its own
+[OPS-03 evaluator](../capacity/README.md) enforces the same rule with its own
 classification key (`measured-pilot`) and provenance fields; the keys are not
 shared. Provenance is checked for presence and shape only — verifying that a
 rollout really happened, and G5 acceptance, remain human and cloud gated.

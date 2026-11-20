@@ -23,8 +23,8 @@ No new threshold or requirement ID is introduced by this handoff.
 
 | Tier | What it is | What it proves | What it does not prove |
 |---|---|---|---|
-| Target | The spec literals encoded in the [evaluator](../../../infra/s_g5_05/capacity_evidence.py) | Fidelity of the encoding and fail-closed validation | That any target was achieved |
-| Synthetic rehearsal | A seeded, synthetic artifact run by [`check.sh`](../../../infra/s_g5_05/check.sh) in this repository | That the evaluator accepts a conforming artifact and rejects breaches | Pilot capacity, latency or availability; no real request was served |
+| Target | The spec literals encoded in the [evaluator](../../../infra/capacity/capacity_evidence.py) | Fidelity of the encoding and fail-closed validation | That any target was achieved |
+| Synthetic rehearsal | A seeded, synthetic artifact run by [`check.sh`](../../../infra/capacity/check.sh) in this repository | That the evaluator accepts a conforming artifact and rejects breaches | Pilot capacity, latency or availability; no real request was served |
 | Pilot measured | An authorized load run and a calendar-month availability record, produced outside this repository, with provenance | Actual capacity and availability under the declared profile | Clinical or operational acceptance; that remains a G5 human gate. Provenance presence is checked, not its truth |
 
 A passing synthetic artifact is explicitly labelled `final_evidence: false`. The
@@ -38,20 +38,20 @@ evaluator never promotes a rehearsal to measured evidence.
 | [Pilot load profile](pilot-load-profile.md) | The specified scenario, the declared workload mix and synthetic dataset, warm-up/ramp handling |
 | [Performance evidence](performance-evidence.md) | Artifact schema, commands, the observed rehearsal result, the honesty boundary and the remaining gate |
 
-Executable material lives in `infra/s_g5_05`: the
-[evaluator](../../../infra/s_g5_05/capacity_evidence.py), the
-[pilot profile artifact](../../../infra/s_g5_05/pilot-load-profile.json), the
-[conforming](../../../infra/s_g5_05/fixtures/synthetic_pilot_evidence.json) and
-[violation](../../../infra/s_g5_05/fixtures/violation_pilot_evidence.json)
+Executable material lives in `infra/capacity`: the
+[evaluator](../../../infra/capacity/capacity_evidence.py), the
+[pilot profile artifact](../../../infra/capacity/pilot-load-profile.json), the
+[conforming](../../../infra/capacity/fixtures/synthetic_pilot_evidence.json) and
+[violation](../../../infra/capacity/fixtures/violation_pilot_evidence.json)
 fixtures, and the unit tests.
 
 ## Verification
 
 | Check | Command | Proves |
 |---|---|---|
-| Unit and fixture gate | `bash infra/s_g5_05/check.sh` | 55 synthetic unit tests pass; the conforming fixture passes and the violation fixture fails with the exact exit code 1 and all five named breaches |
-| Unit tests alone | `python3 -I -m unittest discover -s infra/s_g5_05/tests -q` | The evaluator's enumerated branches behave as specified |
-| Line coverage | `python3 -m trace --count --coverdir /tmp/opencode/s_g5_05_cov infra/s_g5_05/tests/run_coverage.py` | Every executable line of the evaluator runs; stdlib `trace` is used because `coverage.py` is not installed |
+| Unit and fixture gate | `bash infra/capacity/check.sh` | 55 synthetic unit tests pass; the conforming fixture passes and the violation fixture fails with the exact exit code 1 and all five named breaches |
+| Unit tests alone | `python3 -I -m unittest discover -s infra/capacity/tests -q` | The evaluator's enumerated branches behave as specified |
+| Line coverage | `python3 -m trace --count --coverdir /tmp/opencode/capacity_cov infra/capacity/tests/run_coverage.py` | Every executable line of the evaluator runs; stdlib `trace` is used because `coverage.py` is not installed |
 | Links and requirement IDs | `python3 -I scripts/check-docs.py` | Relative links resolve and every requirement ID is defined in the specification |
 | Credential and PHI shapes | `python3 -I scripts/check-secrets.py` | No credential or patient-identifier pattern was introduced |
 

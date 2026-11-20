@@ -1,7 +1,7 @@
 # Pilot load profile (OPS-03)
 
 - Requirement: OPS-03
-- Machine-readable artifact: [pilot-load-profile.json](../../../infra/s_g5_05/pilot-load-profile.json)
+- Machine-readable artifact: [pilot-load-profile.json](../../../infra/capacity/pilot-load-profile.json)
 - Back to the [S-G5-05 handoff](README.md).
 
 ## The specified scenario
@@ -15,7 +15,7 @@
 | Measured window | 30 minutes | Specification literal |
 
 These values are encoded identically in the artifact and enforced by the
-[evaluator](../../../infra/s_g5_05/capacity_evidence.py). The unit tests assert
+[evaluator](../../../infra/capacity/capacity_evidence.py). The unit tests assert
 the artifact and the module agree, so the two cannot drift silently.
 
 ## Declared workload mix — an assumption
@@ -53,9 +53,9 @@ The artifact in this repository is a *rehearsal*: it proves the evaluator and
 fixtures work, using synthetic numbers. Run it with:
 
 ```bash
-bash infra/s_g5_05/check.sh
-python3 -I infra/s_g5_05/capacity_evidence.py \
-  infra/s_g5_05/fixtures/synthetic_pilot_evidence.json
+bash infra/capacity/check.sh
+python3 -I infra/capacity/capacity_evidence.py \
+  infra/capacity/fixtures/synthetic_pilot_evidence.json
 ```
 
 A real run replaces the synthetic fixture with measurements collected by an
