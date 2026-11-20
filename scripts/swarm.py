@@ -31,7 +31,7 @@ BODY_LIMIT = 8000
 # estimates usage from finished run durations and refuses a wave near the cap.
 DEFAULT_MONTHLY_MINUTES = 10000
 BUDGET_WORKFLOWS = ("swarm.yml", "swarm-integrator.yml",
-                    "agent-image.yml", "swarm-images.yml", "main-repair.yml")
+                    "agent-image.yml", "swarm-images.yml", "fix-pr-gate.yml")
 BRANCH = re.compile(r"swarm/[A-Za-z0-9._-]+")
 LABELS = {
     "swarm": ("1d76db", "Pull request opened by a swarm worker"),
@@ -664,6 +664,49 @@ def add_repair_task(run_id, path="TODO.md"):
     return bool(added)
 
 
+REPAIR_WORKFLOWS = ("Delivery", "Agent swarm", "Agent image", "Swarm slot images")
+
+
+def failing_runs_on_main():
+    """Ids of the pipeline workflows' newest finished run on main, failures only.
+
+    Only the newest finished run of each workflow counts: a later green run means
+    that workflow is healthy again. Cancelled and skipped runs say nothing either
+    way and are passed over. The result is ordered newest first."""
+    runs = gh_json("run", "list", "--branch", "main", "--limit", "60",
+                   "--json", "databaseId,name,status,conclusion,createdAt") or []
+    seen, failing = set(), []
+    for run in sorted(runs, key=lambda r: r["createdAt"], reverse=True):
+        if run["name"] not in REPAIR_WORKFLOWS or run["name"] in seen:
+            continue
+        if run["status"] != "completed" or run["conclusion"] not in ("success", "failure"):
+            continue
+        seen.add(run["name"])
+        if run["conclusion"] == "failure":
+            failing.append(run["databaseId"])
+    return failing
+
+
+def add_latest_repair_task(path="TODO.md"):
+    """Queue a repair for the newest failing pipeline run on main. Returns True when added.
+
+    The scheduler calls this at the start of every plan, so a red main becomes a
+    repair task without a separate workflow run: no watchdog fires per failure and
+    nothing piles up in the Actions list. A run that already has its FIX- entry
+    (open or done) is not queued again, and a swarm run that failed only in
+    workers is routine and skipped, exactly as in add_repair_task."""
+    text = Path(path).read_text()
+    for run_id in failing_runs_on_main():
+        if f"FIX-{run_id}" in text:
+            continue
+        run = gh_json("run", "view", str(run_id), "--json", "name,jobs")
+        if only_worker_failures(run):
+            continue
+        return add_repair_task(run_id, path)
+    print("No failing pipeline run on main needs a repair task.")
+    return False
+
+
 MAX_ACTIVE_WORKERS = 20  # workers running at once across every wave
 
 
@@ -1056,7 +1099,9 @@ def main(argv=None):
     p = sub.add_parser("repair-gate")
     p.add_argument("--run", required=True)
     p = sub.add_parser("add-repair-task")
-    p.add_argument("--run", required=True)
+    p.add_argument("--run", default="")
+    p.add_argument("--latest", action="store_true",
+                   help="repair the newest failing pipeline run on main")
     p.add_argument("--file", default="TODO.md")
     for name in ("release", "publish"):
         p = sub.add_parser(name)
@@ -1124,7 +1169,10 @@ def main(argv=None):
     elif a.cmd == "add-audit-tasks":
         add_audit_tasks(a.findings, a.file)
     elif a.cmd == "add-repair-task":
-        emit("added", "true" if add_repair_task(a.run, a.file) else "false")
+        if not a.run and not a.latest:
+            sys.exit("add-repair-task needs --run <id> or --latest")
+        added = add_latest_repair_task(a.file) if a.latest else add_repair_task(a.run, a.file)
+        emit("added", "true" if added else "false")
     elif a.cmd == "repair-gate":
         start, why = repair_gate(a.run)
         print(why)

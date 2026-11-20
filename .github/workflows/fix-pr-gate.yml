@@ -1,4 +1,4 @@
-name: Fix PR repair
+name: Fix PR gate
 # Event-driven, not periodic. Any fix PR is validated and handed off automatically.
 # It validates that exact fix with the full gate and hands a green PR to the
 # integrator; a red fix goes back through swarm.py fail() for one bounded retry.
@@ -10,7 +10,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: fix-pr-repair
+  group: fix-pr-gate
   cancel-in-progress: false
   queue: max
 jobs:
