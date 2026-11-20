@@ -35,6 +35,8 @@ public class IdentityProofingService {
     private static final Pattern TOKEN = Pattern.compile("[A-Za-z0-9_.:-]{8,128}");
     private static final Pattern REASON = Pattern.compile("[A-Za-z0-9 ._.,:-]{2,120}");
     private static final Set<String> PURPOSES = Set.of("ENROLL", "LINK", "REVERIFY");
+    /** Audit action for invitations retired as a side effect of another identity command (OPS-02). */
+    private static final String INVITATION_RETIRE = "INVITATION_RETIRE";
 
     private static final SecureRandom RANDOM = new SecureRandom();
 
@@ -193,6 +195,11 @@ public class IdentityProofingService {
     /**
      * Unlink an account from a chart; the caller is either the account itself or staff.
      *
+     * <p>Outstanding invitations for the relationship are retired before the
+     * link precondition is evaluated, so even a rejected unlink (no current
+     * link) cannot leave a stale token that would silently restore access. The
+     * revocation and the command audit commit in the same guarded transaction.</p>
+     *
      * @param subject account subject owning the link
      * @param chartId patient chart identifier
      * @param reason  reason recorded on the unlink event
@@ -223,14 +230,16 @@ public class IdentityProofingService {
                 }
                 method = "STAFF_ACTION";
             }
+            // Retire unspent invitations before the link precondition. When no
+            // link exists the command still returns 404, but a token issued for
+            // this relationship must never outlive an unlink attempt: a dispute
+            // can be raised before the patient has redeemed the invitation.
+            retireOutstandingInvitations(context, subject, chartId);
             if (repository.currentLink(subject, chartId).isEmpty()) {
                 repository.appendAudit(context, "CHART_UNLINK", chartId, "NOT_FOUND");
                 failure.set(new ApiException(404, "LINK_NOT_FOUND", "no current link for this chart"));
                 return null;
             }
-            // Retire unspent invitations in the same transaction: a stale token
-            // must not silently re-establish access ended by this unlink.
-            repository.consumeOutstandingInvitations(subject, chartId);
             repository.insertLink(context.organizationId(), UUID.randomUUID().toString(), subject,
                     chartId, "unlinked", method, reason);
             repository.appendAudit(context, "CHART_UNLINK", chartId, "SUCCESS");
@@ -246,7 +255,9 @@ public class IdentityProofingService {
      * Re-verify a relationship after lost access or a disputed identity.
      *
      * <p>Atomically unlinks the current link and issues a fresh invitation; the
-     * account regains access only after the new invitation is redeemed.</p>
+     * account regains access only after the new invitation is redeemed. Prior
+     * invitations are retired before the link precondition is evaluated, so a
+     * rejected re-verification cannot leave a stale token valid.</p>
      *
      * @param subject account subject owning the link
      * @param chartId patient chart identifier
@@ -277,14 +288,15 @@ public class IdentityProofingService {
                 failure.set(new ApiException(404, "CHART_NOT_FOUND", "chart not found"));
                 return null;
             }
+            // Retire old invitations before the link precondition so a rejected
+            // re-verification cannot leave a stale token valid. Only a fresh
+            // invitation issued by a successful re-verification may restore access.
+            retireOutstandingInvitations(context, subject, chartId);
             if (repository.currentLink(subject, chartId).isEmpty()) {
                 repository.appendAudit(context, "LINK_REVERIFY", chartId, "NOT_FOUND");
                 failure.set(new ApiException(404, "LINK_NOT_FOUND", "no current link for this chart"));
                 return null;
             }
-            // Old invitations are invalidated before the fresh one is issued, so
-            // only the new token can restore access after re-verification.
-            repository.consumeOutstandingInvitations(subject, chartId);
             repository.insertLink(context.organizationId(), UUID.randomUUID().toString(), subject,
                     chartId, "unlinked", "REVERIFICATION", reason);
             String token = newToken();
@@ -363,6 +375,25 @@ public class IdentityProofingService {
         byte[] bytes = new byte[32];
         RANDOM.nextBytes(bytes);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+
+    /**
+     * Retire unspent invitations for one account and chart, auditing the
+     * side effect when invitations were actually invalidated (OPS-02).
+     *
+     * <p>A 404 that retires a credential must be distinguishable in the audit
+     * trail from a 404 that changed nothing. The count is returned by the
+     * repository; no new public command or HTTP contract is introduced.</p>
+     *
+     * @param context  active tenant context for the audit stamp
+     * @param subject  account subject owning the invitations
+     * @param chartId  chart whose invitations are retired
+     */
+    private void retireOutstandingInvitations(TenantContext context, String subject, String chartId) {
+        int retired = repository.consumeOutstandingInvitations(subject, chartId);
+        if (retired > 0) {
+            repository.appendAudit(context, INVITATION_RETIRE, chartId, "SUCCESS");
+        }
     }
 
     private ApiException denyUnlessStaff(TenantContext context, String action, String auditAction, String resourceId) {
