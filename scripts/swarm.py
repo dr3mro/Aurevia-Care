@@ -2292,11 +2292,11 @@ def run_gate(gate, extra_env=None):
     return done.returncode == 0, log
 
 
-def candidate_scope(task_id, before_merge):
+def candidate_scope(task_id, before_merge, candidate="HEAD"):
     """Check the actual merge diff and read only the assigned task's own handoff."""
     tasks = parse_tasks(git("show", f"{before_merge}:TODO.md"))
     scope = next((task["scope"] for task in tasks if task["id"] == task_id or task_id in task["aliases"]), [])
-    changed = git("diff", "--no-renames", "--name-only", "-z", before_merge, "HEAD", "--")
+    changed = git("diff", "--no-renames", "--name-only", "-z", before_merge, candidate, "--")
     notes_pattern = re.compile(rf"\.agent/pr-notes/{re.escape(task_id)}(?:-fix)?-\d{{8}}-\d{{6}}\.md")
     outside, notes = [], []
     for path in changed.rstrip("\0").split("\0"):
@@ -2305,7 +2305,131 @@ def candidate_scope(task_id, before_merge):
         elif path and not any(prefix == "*" or path == prefix.rstrip("/")
                               or path.startswith(prefix.rstrip("/") + "/") for prefix in scope):
             outside.append(path)
-    return outside, any(not missing_handoff_sections(git("show", f"HEAD:{path}")) for path in notes)
+    return outside, any(not missing_handoff_sections(git("show", f"{candidate}:{path}")) for path in notes)
+
+
+def fetch_candidate_tree(pr, base, sha):
+    """Fetch the current PR head and calculate its merge tree without checking out code."""
+    authed_git("fetch", "--no-tags", "origin", f"refs/pull/{pr}/head")
+    if git("rev-parse", "FETCH_HEAD").strip() != sha:
+        return "", []
+    result = subprocess.run(["git", "merge-tree", "--write-tree", "--name-only", "-z", base, sha],
+                            text=True, capture_output=True)
+    fields = result.stdout.split("\0")
+    if result.returncode == 1:
+        return "", [name for name in fields[1:] if name][:10] or ["merge conflict"]
+    result.check_returncode()
+    return fields[0].strip(), []
+
+
+def prepare_integration(queue):
+    """Select at most one candidate and emit trusted merge metadata for validation."""
+    base = git("rev-parse", "HEAD").strip()
+    conflicts = []
+    candidate = {}
+    for pr in queue:
+        current = gh_json("pr", "view", str(pr), "--json", "headRefName,headRefOid,isDraft,state") or {}
+        if current.get("isDraft") or current.get("state") != "OPEN":
+            continue
+        task_id = task_id_of(current["headRefName"])
+        if not task_id or guard(pr, is_repair(pr)):
+            continue
+        gate, gate_env = gate_for(pr, "scripts/integrator-gate.sh")
+        sha = current["headRefOid"]
+        readiness = "green" if gate == REPAIR_GATE else delivery_pr_state(pr, sha)
+        if readiness != "green":
+            print(f"PR #{pr}: Delivery is {readiness} for {sha}.")
+            if readiness == "failed":
+                fail(pr, f"Delivery failed for the current branch tip {sha}")
+            continue
+        tree, conflict = fetch_candidate_tree(pr, base, sha)
+        if conflict:
+            tries = resolve_attempts(pr)
+            if tries < MAX_RESOLVE:
+                conflicts.append(pr)
+                gh("pr", "comment", str(pr), "--body",
+                   f"{RESOLVE_MARK}\nMerge conflict with main. Automatic resolution queued "
+                   f"({tries + 1} of {MAX_RESOLVE}).", check=False)
+            else:
+                fail(pr, "Merge conflict with main")
+        if not tree:
+            continue
+        if gate != REPAIR_GATE:
+            outside, handoff = candidate_scope(task_id, base, tree)
+            if outside:
+                add_labels(pr, "needs-human")
+                print(f"PR #{pr} touches files outside {task_id}'s scope: {', '.join(outside)}")
+                continue
+            if not handoff:
+                fail(pr, "The committed worker handoff is missing required sections")
+                continue
+        candidate = {"pr": pr, "base": base, "sha": sha, "tree": tree, "task": task_id,
+                     "gate": gate, "repair_story": gate_env.get("STORY_ID", "")}
+        break
+    emit("candidate", json.dumps(candidate, separators=(",", ":")))
+    emit("conflicted", json.dumps(conflicts))
+    return candidate
+
+
+def validate_candidate(candidate):
+    """Verify the prepared tree in the read-only runner."""
+    base, sha, tree = (candidate[key] for key in ("base", "sha", "tree"))
+    if git("rev-parse", "HEAD").strip() != base:
+        raise SystemExit("Validation checkout does not match the prepared base.")
+    actual, _ = fetch_candidate_tree(candidate["pr"], base, sha)
+    if actual != tree:
+        raise SystemExit("The prepared candidate changed before validation.")
+    env = {}
+    if candidate["gate"] == REPAIR_GATE:
+        story = candidate["repair_story"]
+        tasks = parse_tasks(git("show", f"{base}:TODO.md"))
+        task = next((task for task in tasks if task["id"] == story), None)
+        env = {"STORY_ID": story, "STORY_BODY": f"{task['task']}\n{task['details']}" if task else ""}
+    commit = git(*IDENTITY, "commit-tree", tree, "-p", base, "-p", sha,
+                 "-m", f"Validate PR #{candidate['pr']}").strip()
+    git("checkout", "--detach", commit)
+    ok, log = run_gate(candidate["gate"], env)
+    if log:
+        print(clean(log, 12000, 150))
+    return ok
+
+
+def publish_candidate(candidate, validated):
+    """Publish only the validated code tree plus trusted tracker evidence."""
+    pr, base, sha = (candidate[key] for key in ("pr", "base", "sha"))
+    current = gh_json("pr", "view", str(pr), "--json", "headRefOid,isDraft,state") or {}
+    authed_git("fetch", "--no-tags", "origin", "refs/heads/main")
+    if (git("rev-parse", "FETCH_HEAD").strip() != base or git("rev-parse", "HEAD").strip() != base
+            or current.get("headRefOid") != sha or current.get("isDraft") or current.get("state") != "OPEN"):
+        print(f"PR #{pr} or main changed; fresh validation is required.")
+        return False
+    if not validated:
+        fail(pr, f"The isolated merge gate failed for {sha}")
+        return False
+    tree, _ = fetch_candidate_tree(pr, base, sha)
+    if tree != candidate["tree"]:
+        print(f"PR #{pr} no longer matches the validated merge tree.")
+        return False
+    task_id, gate = candidate["task"], candidate["gate"]
+    comment = record_merge(pr, task_id, sha, gate)
+    changed = ["TODO.md", f"docs/swarm/{task_id}.md"]
+    check_generated_markdown(changed)
+    # The writer keeps the trusted base checked out. Only the index contains
+    # candidate code. Verify that tracker publication cannot replace code.
+    git("read-tree", tree)
+    git("add", "--", *changed)
+    final = git("write-tree").strip()
+    metadata = git("diff", "--no-renames", "--name-only", "-z", tree, final, "--").split("\0")
+    if set(filter(None, metadata)) - set(changed):
+        raise SystemExit("Publication would alter the validated code tree.")
+    commit = git(*IDENTITY, "commit-tree", final, "-p", base, "-p", sha,
+                 "-m", f"Integrate swarm PR #{pr}").strip()
+    authed_git("push", "origin", f"{commit}:refs/heads/main")
+    gh("pr", "comment", str(pr), "--body", comment, check=False)
+    close_merged_issues([(pr, task_id)])
+    dispatch_delivery()
+    gh("workflow", "run", "swarm-integrator.yml", check=False)
+    return True
 
 
 def integrate_batch(queue, gate="scripts/quick-check.sh", *, require_delivery=False):
@@ -2487,6 +2611,13 @@ def main(argv=None):
     p.add_argument("--verified", action="store_true")
     p = sub.add_parser("budget-gate")
     p.add_argument("--cap", type=int, default=DEFAULT_MONTHLY_MINUTES)
+    p = sub.add_parser("prepare-integration")
+    p.add_argument("--queue", required=True)
+    p = sub.add_parser("validate-candidate")
+    p.add_argument("--candidate", required=True)
+    p = sub.add_parser("publish-candidate")
+    p.add_argument("--candidate", required=True)
+    p.add_argument("--validated", choices=("success", "failure"), required=True)
     p = sub.add_parser("integrate-batch")
     p.add_argument("--queue", required=True, help="JSON array of pull request numbers")
     p.add_argument("--gate", default="scripts/quick-check.sh")
@@ -2691,6 +2822,13 @@ def main(argv=None):
         emit("start", "true" if allowed else "false")
         # A wave never starts more workers than the remaining budget can pay for.
         emit("workers", affordable_workers(used, a.cap))
+    elif a.cmd == "prepare-integration":
+        prepare_integration(json.loads(a.queue))
+    elif a.cmd == "validate-candidate":
+        if not validate_candidate(json.loads(a.candidate)):
+            return 1
+    elif a.cmd == "publish-candidate":
+        publish_candidate(json.loads(a.candidate), a.validated == "success")
     elif a.cmd == "integrate-batch":
         integrate_batch(json.loads(a.queue), a.gate, require_delivery=True)
     elif a.cmd == "resolve-publish":
