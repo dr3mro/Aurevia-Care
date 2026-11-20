@@ -981,9 +981,10 @@ Do these after part 2 where `depends` says so. Persistence tasks run one at a ti
     5. Run `apps/staff-web/check.sh` (must still pass) and `python3 -I scripts/check-docs.py`.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT change files outside `scope`, add patient data to logs, or edit any existing migration.
-- [ ] READY-46 · Launch checklist document with the owner of every item that needs a person
+- [-] READY-46 · Launch checklist document with the owner of every item that needs a person
+  - agent: swarm-3
+  - attempts: 1
   - requirements: WEB-01, WEB-11, WEB-12
-  - attempts: 0
   - scope: docs/operations/production-readiness
   - details:
     Several launch items cannot be done by an agent (they need cloud access, a decision, or workflow permissions). Make them impossible to forget.
