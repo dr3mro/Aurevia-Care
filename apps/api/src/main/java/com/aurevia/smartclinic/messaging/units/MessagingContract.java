@@ -5,6 +5,8 @@ import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonValue;
 
+import com.aurevia.smartclinic.messaging.conversations.ConversationContract.UnitKey;
+
 /**
  * Domain contract for the MSG-01 / ARC-07 care-unit directory and patient-unit
  * connections.
@@ -123,11 +125,13 @@ public final class MessagingContract {
     /**
      * One staffed inbox a verified patient may connect to (MSG-01, MSG-06).
      *
-     * <p>The optional {@code unitKey} declares the bounded conversation unit
-     * category this inbox serves. It is tenant-scoped directory data: a
-     * protected messaging command derives the unit of a verified connection by
-     * resolving its unit identifier through this record, never from a global or
-     * client-supplied mapping.</p>
+     * <p>{@code unitKey} is the bounded conversation unit category this inbox
+     * serves. It is tenant-scoped directory data: a protected messaging command
+     * derives the unit of a verified connection by resolving its unit identifier
+     * through this record, never from a global or client-supplied mapping. The
+     * unit category binds the directory identity to the conversation unit
+     * vocabulary so a connection to one kind cannot be used to address another
+     * kind. {@link com.aurevia.smartclinic.messaging.units.MessagingContract.CareUnit#kind()} is the conversation-domain alias for the same value.</p>
      *
      * @return the immutable value
      */
@@ -135,7 +139,8 @@ public final class MessagingContract {
                            List<String> topics, boolean active, String unitKey) {
         /**
          * Create a care unit without a conversation unit category. Kept for
-         * directories that only support connection and directory operations.
+         * directories that only support connection and directory operations; a
+         * protected messaging command denies such a unit when it is resolved.
          *
          * @param id             care-unit identifier
          * @param organizationId owning organization
@@ -150,11 +155,58 @@ public final class MessagingContract {
         }
 
         /**
+         * Create a care unit with a bounded conversation unit kind. This is the
+         * conversation-domain constructor: the kind is validated against the
+         * approved {@link com.aurevia.smartclinic.messaging.conversations.ConversationContract.UnitKey} vocabulary at construction so an unknown kind
+         * never reaches a directory or a connection.
+         *
+         * @param id             care-unit identifier
+         * @param organizationId owning organization
+         * @param facilityId     owning facility
+         * @param name           display name
+         * @param kind           bounded conversation unit key
+         * @param topics         supported topics
+         * @param active         whether the unit is staffed and accepting messages
+         * @throws IllegalArgumentException when the kind is not an approved care unit key
+         */
+        public CareUnit(String id, String organizationId, String facilityId, String name,
+                        String kind, List<String> topics, boolean active) {
+            this(id, organizationId, facilityId, name, topics, active, requireKind(kind));
+        }
+
+        /**
+         * Validate a conversation unit kind and return its stable wire value.
+         *
+         * @param value supplied kind
+         * @return the canonical wire value
+         * @throws IllegalArgumentException when the kind is unknown or absent
+         */
+        private static String requireKind(String value) {
+            try {
+                return UnitKey.from(value).wire();
+            } catch (IllegalArgumentException exception) {
+                throw new IllegalArgumentException("unknown care unit kind: " + value, exception);
+            }
+        }
+
+        /**
          * Defensively copy the topic list.
          *
          */
         public CareUnit {
             topics = List.copyOf(topics);
+        }
+
+        /**
+         * Return the bounded conversation unit category declared by this inbox.
+         *
+         * <p>This is the conversation-domain alias of the directory's
+         * {@link com.aurevia.smartclinic.messaging.units.MessagingContract.CareUnit#unitKey()} and is always the same value.</p>
+         *
+         * @return the bounded unit key, or {@code null} for a directory-only unit
+         */
+        public String kind() {
+            return unitKey;
         }
     }
 
