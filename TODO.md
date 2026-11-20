@@ -566,9 +566,10 @@ Order of work for the whole production-readiness effort: (1) security and platfo
     Do NOT change existing endpoints, response shapes or migrations.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
-- [ ] READY-18 · List invoices (GET /api/v1/finance/invoices)
+- [-] READY-18 · List invoices (GET /api/v1/finance/invoices)
+  - agent: swarm-1
+  - attempts: 1
   - requirements: ARC-03
-  - attempts: 0
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/finance, apps/api/src/test/java/com/aurevia/smartclinic/finance, contracts/openapi
   - depends: DLV-04
   - details:
@@ -1740,8 +1741,8 @@ Every entry below is finished and verified. Do not take them again; they stay he
     Do NOT invent evidence, links or owners, and do NOT mark any row done.
 
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` (API tasks) or `bash apps/staff-web/check.sh` (staff web tasks) must pass. Synthetic data only; write the failing test first; stay inside the declared scope; name folders and packages after what they hold, never a task ID; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
-- [-] AUD-20261120-10 · Attachment event history returns every event in the tenant, not the requested file's trail
-  - agent: swarm-2
+- [x] AUD-20261120-10 · Attachment event history returns every event in the tenant, not the requested file's trail
+  - pr: #220
   - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/messaging/attachments, apps/api/src/test/java/com/aurevia/smartclinic/messaging/attachments
   - details:
