@@ -30,10 +30,27 @@ export interface TransportErrorDetails {
   fieldErrors?: FieldError[];
 }
 
+/** Generate an opaque request id, using the platform UUID when available. */
+export function newCorrelationId(): string {
+  try {
+    return (globalThis.crypto as { randomUUID(): string }).randomUUID();
+  } catch {
+    const time = Date.now().toString(16);
+    const entropy = Math.floor(Math.random() * 0xffffffff)
+      .toString(16)
+      .padStart(8, '0');
+    return `${time}-${entropy}`;
+  }
+}
+
 /**
  * A failed API call. The message is always derived from the kind, so neither
  * the request token nor untrusted response text can reach logs or the UI
  * through it.
+ *
+ * Callers that already have a request correlation id must pass it. When details
+ * omit ``correlationId`` (tests, wrapping an unexpected throw), the error leaves
+ * it undefined rather than inventing a server request reference.
  */
 export class TransportError extends Error {
   readonly kind: TransportErrorKind;
@@ -41,7 +58,7 @@ export class TransportError extends Error {
   readonly code: string | undefined;
   readonly fieldErrors: readonly FieldError[];
 
-  constructor(kind: TransportErrorKind, details: TransportErrorDetails) {
+  constructor(kind: TransportErrorKind, details: Partial<TransportErrorDetails> = {}) {
     super(`Request failed: ${kind}`);
     this.name = 'TransportError';
     this.kind = kind;
@@ -49,6 +66,17 @@ export class TransportError extends Error {
     this.code = details.code;
     this.fieldErrors = details.fieldErrors ?? [];
   }
+}
+
+/** Prefer a typed transport failure; wrap anything else as ``kind``. */
+export function asTransportError(
+  error: unknown,
+  kind: TransportErrorKind = 'network',
+): TransportError {
+  if (error instanceof TransportError) {
+    return error;
+  }
+  return new TransportError(kind, {});
 }
 
 /** Supplies the current session credential immediately before each request. */
@@ -192,19 +220,6 @@ function assertSecureBaseUrl(baseUrl: string): void {
     return;
   }
   throw new Error('Transport base URL must use HTTPS (localhost is allowed only in development)');
-}
-
-/** Generate an opaque request id, using the platform UUID when available. */
-function newCorrelationId(): string {
-  try {
-    return (globalThis.crypto as { randomUUID(): string }).randomUUID();
-  } catch {
-    const time = Date.now().toString(16);
-    const entropy = Math.floor(Math.random() * 0xffffffff)
-      .toString(16)
-      .padStart(8, '0');
-    return `${time}-${entropy}`;
-  }
 }
 
 /** Perform one credentialed request with a bounded deadline. */

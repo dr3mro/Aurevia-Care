@@ -409,6 +409,20 @@ class PlanTests(unittest.TestCase):
                        "Reserved migration version: V4", "Details for staff."):
             self.assertIn(needle, body)
 
+    def test_task_text_requires_patient_mobile_typecheck_gate(self):
+        text = swarm.task_text({"task": "T", "scope": ["apps/patient-mobile/src/app"],
+                                "details": "Screens."})
+        self.assertIn("Frontend rule:", text)
+        self.assertIn("apps/patient-mobile/check.sh", text)
+        self.assertIn("typecheck", text)
+        self.assertNotIn("apps/staff-web/check.sh", text)
+
+    def test_task_text_requires_staff_web_typecheck_gate(self):
+        text = swarm.task_text({"task": "T", "scope": ["apps/staff-web/src"],
+                                "details": "Shell."})
+        self.assertIn("apps/staff-web/check.sh", text)
+        self.assertIn("typecheck", text)
+
     def test_open_pull_requests_block_their_task_and_overlapping_scopes(self):
         ids = [t["id"] for t in self.plan([pr(7, "swarm/CW-001-4")])]
         self.assertEqual(ids, ["CW-002", "CW-006"])
@@ -882,6 +896,12 @@ class IntegrationTests(unittest.TestCase):
                {"number": 4, "labels": labels("swarm"), "isCrossRepository": False}]
         with mock.patch.object(swarm, "gh", FakeGh(prs=prs)):
             self.assertEqual(swarm.plan_integration(), [3, 4])
+
+    def test_queue_skips_draft_pull_requests(self):
+        prs = [{"number": 5, "labels": labels("swarm"), "isCrossRepository": False, "isDraft": True},
+               {"number": 6, "labels": labels("swarm"), "isCrossRepository": False, "isDraft": False}]
+        with mock.patch.object(swarm, "gh", FakeGh(prs=prs)):
+            self.assertEqual(swarm.plan_integration(), [6])
 
     def test_guard_stops_protected_paths_for_a_human(self):
         fake = FakeGh(diff="apps/api/src/A.java\n.github/workflows/x.yml\nscripts/swarm.py\n")
