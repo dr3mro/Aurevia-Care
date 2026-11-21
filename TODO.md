@@ -61,7 +61,8 @@ Main's Delivery run is red; these tasks restore it. They share `apps/api`, so th
 
 ## Audit 2026-11-20 (whole-project audit)
 
-- [ ] AUD-20261120-05 · Rename the story-ID folders under infra/ and docs/operations/ to business names
+- [x] AUD-20261120-05 · Rename the story-ID folders under infra/ and docs/operations/ to business names
+  - evidence: git mv of infra/s_g5_05..11 and docs/operations/s_g5_05..11 to capacity, recovery, delivery-safety, tenant-lifecycle, onboarding, accessibility and ops-queues (docs recovery files moved into the existing docs/operations/recovery); 32 files had path strings updated; legacy entries removed from scripts/check-names.py; check-names, check-docs, check-pack, the seven infra check scripts and 441 tooling tests pass; maintainer change, simulated review only
   - attempts: 1
   - depends: REFACTOR-PACKAGES-02
   - details:
@@ -2782,6 +2783,137 @@ The design docs and WEB-07 currently show only a notice on a staff web screen na
     1. Read `docs/reference/index.md`. List which of these exist now: `docs/design/responsive-layout.md`, `docs/decisions/0004-responsive-staff-web.md`, `docs/decisions/0005-patient-app-tablets.md`.
     2. Add one line for each page that exists and is not linked, with a one-line description, in the section where it fits. Do not link a page that does not exist.
     3. Run `python3 -I scripts/check-docs.py` and paste the result.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+## Pending human work, prepared for the swarm (decision packs, evidence packs and one isolation test)
+
+The human tasks `S-G1-09`, `S-G2-11`, `S-G3-13`, `S-G4-07`, `S-G5-01` to `S-G5-04`, `S-G5-12` and `S-G0-04` need a person to accept or decide. These tasks prepare the evidence and the decision packs so a person only has to read and sign. They never record an approval.
+
+- [ ] GATE-ISOLATION-SURFACES · G0 isolation across API, search, files, workers and exports: two tenants with identical local IDs (test and gap note)
+  - requirements: ARC-02, IAM-01
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/tenancy/clauses/IsolationAcrossSurfacesTest.java, docs/gates/g0-isolation-surfaces.md
+  - details:
+    1. Read `S-G0-04` in `TODO.md` (its blocker says the search, files, workers and exports surfaces did not all exist), the G0 row of section 9 of `SMARTCLINIC_V1_SPEC.md`, ARC-02, and the tenant, patient, documents, events and tenant-export packages under `apps/api/src/main/java/com/aurevia/smartclinic`. List which of the five surfaces exist today and the class that serves each.
+    2. Write `IsolationAcrossSurfacesTest` with the same database fixtures the neighbouring integration tests use: create two organizations that reuse the same local identifiers (the same MRN, the same order code, the same file name) and prove, for each surface that exists, that tenant A never sees, reads, downloads, exports or processes tenant B data, and that a missing tenant context fails closed. Surfaces: API reads and writes; patient search; file and attachment retrieval; worker or outbox processing; tenant export.
+    3. For a surface that does not exist yet, write the full test and mark it `@Disabled("GAP: <what is missing>")`; do not write production code and do not leave a failing test.
+    4. Write `docs/gates/g0-isolation-surfaces.md`: a table with one row per surface (exists or not, class, test method, status Proven, Partly proven or Not built) and a list of the stories still needed to create each missing surface. Run `python3 -I scripts/check-docs.py` and the backend skill checks and paste the results.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] GATE-PACK-G0 · Gate G0 (platform): evidence pack for the Product Owner to accept
+  - requirements: PRD-01
+  - scope: docs/gates/g0-evidence-pack.md
+  - depends: SPEC-G0-01, SPEC-G0-02, SPEC-G0-03, GATE-ISOLATION-SURFACES
+  - details:
+    1. Read the G0 row of section 9 of `SMARTCLINIC_V1_SPEC.md` (IAM, tenant model, catalog, audit and infrastructure), every `docs/spec/clauses/gates` and `docs/spec/clauses/launch-gates` note whose name starts with `g0-`, and the clause notes of the requirements the G0 gate needs.
+    2. Write `docs/gates/g0-evidence-pack.md`: (1) the required evidence sentences of the gate, each with the status from its clause note (Proven, Partly proven, Not built, Built and verified), links to the notes and test classes, and the command that reproduces it; (2) the open gaps with the task IDs that close them; (3) a plain verdict line "Ready for acceptance" or "Not ready" with the reasons; (4) a sign-off table with the roles and an empty Name, Date and Decision column.
+    3. Never fill in the sign-off table, never write that the gate is accepted and never mark acceptance as simulated or implied: acceptance is a human decision. Run `python3 -I scripts/check-docs.py` and paste the result.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] GATE-PACK-G1 · Gate G1 (clinic): evidence pack for the Product Owner to accept
+  - requirements: PRD-01
+  - scope: docs/gates/g1-evidence-pack.md
+  - depends: SPEC-G1-01, SPEC-G1-02, SPEC-G1-03, SPEC-G1-04, SPEC-G1-05
+  - details:
+    1. Read the G1 row of section 9 of `SMARTCLINIC_V1_SPEC.md` (scheduling, staff workflows, chart, templates, signing and documents), every `docs/spec/clauses/gates` and `docs/spec/clauses/launch-gates` note whose name starts with `g1-`, and the clause notes of the requirements the G1 gate needs.
+    2. Write `docs/gates/g1-evidence-pack.md`: (1) the required evidence sentences of the gate, each with the status from its clause note (Proven, Partly proven, Not built, Built and verified), links to the notes and test classes, and the command that reproduces it; (2) the open gaps with the task IDs that close them; (3) a plain verdict line "Ready for acceptance" or "Not ready" with the reasons; (4) a sign-off table with the roles and an empty Name, Date and Decision column.
+    3. Never fill in the sign-off table, never write that the gate is accepted and never mark acceptance as simulated or implied: acceptance is a human decision. Run `python3 -I scripts/check-docs.py` and paste the result.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] GATE-PACK-G2 · Gate G2 (labs and exchange): evidence pack for the Product Owner to accept
+  - requirements: PRD-01
+  - scope: docs/gates/g2-evidence-pack.md
+  - depends: SPEC-G2-01, SPEC-G2-02, SPEC-G2-03, SPEC-G2-04
+  - details:
+    1. Read the G2 row of section 9 of `SMARTCLINIC_V1_SPEC.md` (requisitions, specimens, reports, escalation, reconciliation and release), every `docs/spec/clauses/gates` and `docs/spec/clauses/launch-gates` note whose name starts with `g2-`, and the clause notes of the requirements the G2 gate needs.
+    2. Write `docs/gates/g2-evidence-pack.md`: (1) the required evidence sentences of the gate, each with the status from its clause note (Proven, Partly proven, Not built, Built and verified), links to the notes and test classes, and the command that reproduces it; (2) the open gaps with the task IDs that close them; (3) a plain verdict line "Ready for acceptance" or "Not ready" with the reasons; (4) a sign-off table with the roles and an empty Name, Date and Decision column.
+    3. Never fill in the sign-off table, never write that the gate is accepted and never mark acceptance as simulated or implied: acceptance is a human decision. Run `python3 -I scripts/check-docs.py` and paste the result.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] GATE-PACK-G3 · Gate G3 (patient and operations): evidence pack for the Product Owner to accept
+  - requirements: PRD-01
+  - scope: docs/gates/g3-evidence-pack.md
+  - depends: SPEC-G3-01, SPEC-G3-02, SPEC-G3-03, SPEC-G3-04, SPEC-G3-05
+  - details:
+    1. Read the G3 row of section 9 of `SMARTCLINIC_V1_SPEC.md` (mobile access, support, exports, recovery, metrics and privacy), every `docs/spec/clauses/gates` and `docs/spec/clauses/launch-gates` note whose name starts with `g3-`, and the clause notes of the requirements the G3 gate needs.
+    2. Write `docs/gates/g3-evidence-pack.md`: (1) the required evidence sentences of the gate, each with the status from its clause note (Proven, Partly proven, Not built, Built and verified), links to the notes and test classes, and the command that reproduces it; (2) the open gaps with the task IDs that close them; (3) a plain verdict line "Ready for acceptance" or "Not ready" with the reasons; (4) a sign-off table with the roles and an empty Name, Date and Decision column.
+    3. Never fill in the sign-off table, never write that the gate is accepted and never mark acceptance as simulated or implied: acceptance is a human decision. Run `python3 -I scripts/check-docs.py` and paste the result.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] GATE-PACK-G4 · Gate G4 (specialty and finance): evidence pack for the Product Owner to accept
+  - requirements: PRD-01
+  - scope: docs/gates/g4-evidence-pack.md
+  - depends: SPEC-G4-01, SPEC-G4-02, SPEC-G4-03, SPEC-G4-04, SPEC-G4-05
+  - details:
+    1. Read the G4 row of section 9 of `SMARTCLINIC_V1_SPEC.md` (radiology, therapy, pharmacy and self-pay), every `docs/spec/clauses/gates` and `docs/spec/clauses/launch-gates` note whose name starts with `g4-`, and the clause notes of the requirements the G4 gate needs.
+    2. Write `docs/gates/g4-evidence-pack.md`: (1) the required evidence sentences of the gate, each with the status from its clause note (Proven, Partly proven, Not built, Built and verified), links to the notes and test classes, and the command that reproduces it; (2) the open gaps with the task IDs that close them; (3) a plain verdict line "Ready for acceptance" or "Not ready" with the reasons; (4) a sign-off table with the roles and an empty Name, Date and Decision column.
+    3. Never fill in the sign-off table, never write that the gate is accepted and never mark acceptance as simulated or implied: acceptance is a human decision. Run `python3 -I scripts/check-docs.py` and paste the result.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] GATE-PACK-G5 · Gate G5 (launch): evidence pack for the Product Owner to accept
+  - requirements: PRD-01
+  - scope: docs/gates/g5-evidence-pack.md
+  - depends: SPEC-G5-01, SPEC-G5-02, SPEC-G5-03
+  - details:
+    1. Read the G5 row of section 9 of `SMARTCLINIC_V1_SPEC.md` (site configuration and approvals), every `docs/spec/clauses/gates` and `docs/spec/clauses/launch-gates` note whose name starts with `g5-`, and the clause notes of the requirements the G5 gate needs.
+    2. Write `docs/gates/g5-evidence-pack.md`: (1) the required evidence sentences of the gate, each with the status from its clause note (Proven, Partly proven, Not built, Built and verified), links to the notes and test classes, and the command that reproduces it; (2) the open gaps with the task IDs that close them; (3) a plain verdict line "Ready for acceptance" or "Not ready" with the reasons; (4) a sign-off table with the roles and an empty Name, Date and Decision column.
+    3. Never fill in the sign-off table, never write that the gate is accepted and never mark acceptance as simulated or implied: acceptance is a human decision. Run `python3 -I scripts/check-docs.py` and paste the result.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] GATE-DECISION-POLICY-PACK · Decision pack for a person to approve: Market policy pack, hosting region, jurisdiction and data handling map
+  - requirements: OPS-01, PRD-05
+  - scope: docs/launch/policy-pack.md
+  - details:
+    1. Read section 10 and the G5 row of section 9 of `SMARTCLINIC_V1_SPEC.md`, `docs/operations/production-readiness`, `docs/decisions` and the clause notes under `docs/spec/clauses` that relate to this decision. The decision in `TODO.md` task `S-G5-01` needs people; this task prepares everything they need and decides nothing.
+    2. Write `docs/launch/policy-pack.md` covering: launch jurisdiction, hosting region and pilot scope; applicable law; retention and legal hold rules; patient release rules; incident notification; supplier obligations; prescribing constraints; and for a U.S. launch the HIPAA risk analysis and agreements. Use these headings: `## Decision needed`, `## Why it matters` (cite the requirement IDs), `## Options` (a table with the option, what it commits the platform to, risks and the evidence each needs), `## What the repository already supports` (links to files that exist), `## What is missing` (task IDs or NO TASK), `## Questions for the owner`, `## Evidence checklist` (an unchecked checkbox per artifact a site must hold) and `## Approval record` (accountable roles from section 10; Name, Date and Decision columns left empty).
+    3. Do not choose an option, do not invent a jurisdiction, region, partner, name or date, and never fill the approval record. Mark the status line "Not approved". Run `python3 -I scripts/check-docs.py` and paste the result.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] GATE-DECISION-CLINICAL-APPROVALS · Decision pack for a person to approve: Clinical templates, code sets, interpreting privileges and result escalation approvals
+  - requirements: ADM-01, CLN-04
+  - scope: docs/launch/clinical-approvals.md
+  - details:
+    1. Read section 10 and the G5 row of section 9 of `SMARTCLINIC_V1_SPEC.md`, `docs/operations/production-readiness`, `docs/decisions` and the clause notes under `docs/spec/clauses` that relate to this decision. The decision in `TODO.md` task `S-G5-02` needs people; this task prepares everything they need and decides nothing.
+    2. Write `docs/launch/clinical-approvals.md` covering: approved templates and field dictionaries, diagnosis and procedure code sets, imaging interpretation privileges, critical-result escalation rules and coverage rosters, each needing a named clinical approver and effective dates. Use these headings: `## Decision needed`, `## Why it matters` (cite the requirement IDs), `## Options` (a table with the option, what it commits the platform to, risks and the evidence each needs), `## What the repository already supports` (links to files that exist), `## What is missing` (task IDs or NO TASK), `## Questions for the owner`, `## Evidence checklist` (an unchecked checkbox per artifact a site must hold) and `## Approval record` (accountable roles from section 10; Name, Date and Decision columns left empty).
+    3. Do not choose an option, do not invent a jurisdiction, region, partner, name or date, and never fill the approval record. Mark the status line "Not approved". Run `python3 -I scripts/check-docs.py` and paste the result.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] GATE-DECISION-RELEASE-AND-RECOVERY-RULES · Decision pack for a person to approve: Result release rules, sensitive information handling and identity recovery approvals
+  - requirements: XCH-06, IAM-05
+  - scope: docs/launch/release-and-recovery-rules.md
+  - details:
+    1. Read section 10 and the G5 row of section 9 of `SMARTCLINIC_V1_SPEC.md`, `docs/operations/production-readiness`, `docs/decisions` and the clause notes under `docs/spec/clauses` that relate to this decision. The decision in `TODO.md` task `S-G5-03` needs people; this task prepares everything they need and decides nothing.
+    2. Write `docs/launch/release-and-recovery-rules.md` covering: release policies (immediate, timed, holds), sensitive-information handling, patient identity recovery and re-verification, with an enrollment rehearsal and an access review. Use these headings: `## Decision needed`, `## Why it matters` (cite the requirement IDs), `## Options` (a table with the option, what it commits the platform to, risks and the evidence each needs), `## What the repository already supports` (links to files that exist), `## What is missing` (task IDs or NO TASK), `## Questions for the owner`, `## Evidence checklist` (an unchecked checkbox per artifact a site must hold) and `## Approval record` (accountable roles from section 10; Name, Date and Decision columns left empty).
+    3. Do not choose an option, do not invent a jurisdiction, region, partner, name or date, and never fill the approval record. Mark the status line "Not approved". Run `python3 -I scripts/check-docs.py` and paste the result.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] GATE-DECISION-PARTNER-INTERFACES · Decision pack for a person to approve: Laboratory, PACS and pharmacy interface contracts, credentials and outage drills
+  - requirements: ARC-05, XCH-04
+  - scope: docs/launch/partner-interfaces.md
+  - details:
+    1. Read section 10 and the G5 row of section 9 of `SMARTCLINIC_V1_SPEC.md`, `docs/operations/production-readiness`, `docs/decisions` and the clause notes under `docs/spec/clauses` that relate to this decision. The decision in `TODO.md` task `S-G5-04` needs people; this task prepares everything they need and decides nothing.
+    2. Write `docs/launch/partner-interfaces.md` covering: per partner: interface contract, conformance results, approved credentials, reconciliation evidence and a timed outage drill. Use these headings: `## Decision needed`, `## Why it matters` (cite the requirement IDs), `## Options` (a table with the option, what it commits the platform to, risks and the evidence each needs), `## What the repository already supports` (links to files that exist), `## What is missing` (task IDs or NO TASK), `## Questions for the owner`, `## Evidence checklist` (an unchecked checkbox per artifact a site must hold) and `## Approval record` (accountable roles from section 10; Name, Date and Decision columns left empty).
+    3. Do not choose an option, do not invent a jurisdiction, region, partner, name or date, and never fill the approval record. Mark the status line "Not approved". Run `python3 -I scripts/check-docs.py` and paste the result.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] GATE-DECISION-SITE-LAUNCH-APPROVALS · Decision pack for a person to approve: Per-site launch approvals and final G5 acceptance
+  - requirements: OPS-01, MSG-06
+  - scope: docs/launch/site-launch-approvals.md
+  - details:
+    1. Read section 10 and the G5 row of section 9 of `SMARTCLINIC_V1_SPEC.md`, `docs/operations/production-readiness`, `docs/decisions` and the clause notes under `docs/spec/clauses` that relate to this decision. The decision in `TODO.md` task `S-G5-12` needs people; this task prepares everything they need and decides nothing.
+    2. Write `docs/launch/site-launch-approvals.md` covering: per site: approved workflow, release policy, market constraints, integrations, identity procedures, staffing and downtime drills; for messaging: patient eligibility rules, inbox ownership, after-hours guidance and backup coverage. Use these headings: `## Decision needed`, `## Why it matters` (cite the requirement IDs), `## Options` (a table with the option, what it commits the platform to, risks and the evidence each needs), `## What the repository already supports` (links to files that exist), `## What is missing` (task IDs or NO TASK), `## Questions for the owner`, `## Evidence checklist` (an unchecked checkbox per artifact a site must hold) and `## Approval record` (accountable roles from section 10; Name, Date and Decision columns left empty).
+    3. Do not choose an option, do not invent a jurisdiction, region, partner, name or date, and never fill the approval record. Mark the status line "Not approved". Run `python3 -I scripts/check-docs.py` and paste the result.
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
