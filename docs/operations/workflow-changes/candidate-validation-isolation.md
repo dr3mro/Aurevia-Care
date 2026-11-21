@@ -48,8 +48,9 @@ never checks out or executes the candidate's code.
    trusted `integrate-validate` subcommand that merges and gates but does not
    push. Add a `publish` job that holds the write token, downloads the validated
    manifest and bundle, and calls a new trusted `integrate-publish` subcommand
-   that re-checks every SHA before pushing and reporting. `resolve` now follows
-   `publish` and consumes its `conflicted` output.
+   that re-checks every SHA before pushing and reporting. `resolve` still follows
+   `publish`, but reads `conflicted` from `validate` directly, so it also runs when
+   `publish` is skipped (a batch with conflicts but no accepted PRs).
 3. `fix-pr-gate.yml`: the existing `validate` job records `git rev-parse HEAD`
    as `sha` and loses its `NVD_API_KEY`. The `handoff` job re-reads the PR's
    current `merge_commit_sha` and aborts unless it still equals the validated
@@ -62,8 +63,23 @@ never checks out or executes the candidate's code.
 | worker `work` | `worker-<slot>` artifact (`result.bundle`, `result`, `checks`, `branch`) | worker `validate` | Bundle must exist and be non-empty. |
 | worker `validate` | outputs `passed`, `sha`; `validate-<slot>` log artifact | worker `publish` | `passed == true`, `sha` non-empty, bundle HEAD `== sha` before push. |
 | integrator `pick` | outputs `queue`, `count`, `image` | integrator `validate` | Same queue the planner produced. |
-| integrator `validate` | outputs `accepted`, `conflicted`; `validated-batch` artifact containing `manifest.json` and `main.bundle` | integrator `publish`, then `resolve` | Each PR's current `headRefOid == head_sha` and bundle HEAD `== merge_sha`; `conflicted` passed through unchanged. |
+| integrator `validate` | outputs `accepted`, `conflicted`; `validated-batch` artifact containing `manifest.json` and `main.bundle` | integrator `publish` and `resolve` (both read `validate`'s outputs directly) | Each PR's current `headRefOid == head_sha` and bundle HEAD `== merge_sha`; `resolve` uses `validate`'s `conflicted` output, not `publish`'s, so it is not skipped when `publish` has no accepted PRs. |
 | fix `validate` | outputs `passed`, `sha`; `fix-pr-gate-log` artifact | fix `handoff` | PR `merge_commit_sha == sha` before any write. |
+
+### Fix pass (2026-11-21)
+
+The first draft of this patch had two defects in the `resolve` wiring; both are
+corrected in the diff below and re-verified with `git apply --check` and a YAML
+parse of the patched files:
+
+- `resolve`'s `CONFLICTED` environment value still read
+  `${{ needs.integrate.outputs.conflicted }}` after `integrate` was renamed to
+  `validate`, so the conflict agent received an empty list. It now reads
+  `${{ needs.validate.outputs.conflicted }}`.
+- `resolve`'s `if` read `needs.publish.outputs.conflicted`, but `publish` is
+  skipped when `accepted` is empty. A batch made only of conflicting PRs would
+  skip `resolve` entirely. `resolve` now reads `validate`'s output directly and
+  `publish`'s unused `conflicted` output was removed.
 
 ## Prerequisite (blocking) — trusted script change
 
@@ -286,7 +302,7 @@ copies. `git apply --check` against the current repository passes.
      steps:
        - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
          with:
-@@ -107,15 +113,53 @@
+@@ -107,15 +113,51 @@
            done
            exit 1
        - uses: ./.github/actions/setup-tooling-python
@@ -315,8 +331,6 @@ copies. `git apply --check` against the current repository passes.
 +    if: needs.validate.outputs.accepted != '' && needs.validate.outputs.accepted != '[]'
 +    runs-on: ubuntu-latest
 +    timeout-minutes: 20
-+    outputs:
-+      conflicted: ${{ needs.validate.outputs.conflicted }}
 +    permissions:
 +      contents: write
 +      pull-requests: write
@@ -346,17 +360,26 @@ copies. `git apply --check` against the current repository passes.
  
    # A PR that conflicts with main is not failed right away: the agent merges main
    # into its branch and fixes the conflicts, then a separate trusted job pushes
-@@ -123,8 +167,8 @@
+@@ -123,8 +165,8 @@
    # to the workers. The agent and the push token never share a runner.
    resolve:
      name: Resolve merge conflicts
 -    needs: [pick, integrate]
 -    if: always() && needs.integrate.outputs.conflicted != '' && needs.integrate.outputs.conflicted != '[]'
 +    needs: [pick, validate, publish]
-+    if: always() && needs.publish.outputs.conflicted != '' && needs.publish.outputs.conflicted != '[]'
++    if: always() && needs.validate.outputs.conflicted != '' && needs.validate.outputs.conflicted != '[]'
      runs-on: ubuntu-latest
      timeout-minutes: 90
      container:
+@@ -139,7 +181,7 @@
+       run:
+         shell: bash
+     env:
+-      CONFLICTED: ${{ needs.integrate.outputs.conflicted }}
++      CONFLICTED: ${{ needs.validate.outputs.conflicted }}
+       BASE_BRANCH: ${{ github.event.repository.default_branch }}
+       MODEL: opencode-go/hy4-flash-free
+       SWARM: '1'
 --- a/.github/workflows/fix-pr-gate.yml
 +++ b/.github/workflows/fix-pr-gate.yml
 @@ -34,6 +34,7 @@
@@ -454,7 +477,10 @@ read the job list, not just the run conclusion.
    `validate` shows the full gate passing with no `secrets.*` in its step, and
    `publish` shows the SHA re-check followed by a single push. The required
    Delivery checks on the pushed SHA must be green. Confirm the old job named
-   `integrate` is gone.
+   `integrate` is gone. Negative checks: dispatch a batch whose every PR
+   conflicts — `publish` is skipped but `resolve` still starts with a non-empty
+   `CONFLICTED` value (this proves both wiring defects above are fixed); and grep
+   the patched file to confirm no `needs.integrate` reference remains.
 3. **Fix PR gate**: open a synthetic fix PR (a `FIX-` title or `autofix` label).
    Green looks like: `validate` is green with no `NVD_API_KEY` in its step,
    `handoff` logs `Re-check the validated SHA before touching the repository`
