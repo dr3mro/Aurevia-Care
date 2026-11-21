@@ -16,10 +16,10 @@ Line numbers refer to the files as they exist before this patch.
 | Workflow | Job | Candidate code it runs | Credential in the same job | Finding |
 |---|---|---|---|---|
 | `.github/workflows/swarm-worker.yml` | `work` (lines 27-248) | `scripts/agent-run.sh implement`, `merge-main` and `bundle`; `bundle` runs `scripts/worker-check.sh` on the candidate tree (`agent-run.sh:251-272`) | `OPENCODE_API_KEY` (agent model key) and `secrets.GITHUB_TOKEN` used only as a container pull credential; job permissions are `contents: read`, `packages: read`, `issues: read` | No repository write token, so not a push/publish boundary. The candidate's own `checks` output is self-reported by this untrusted job. |
-| `.github/workflows/swarm-worker.yml` | `publish` (lines 249-292) | None directly — it checks out `main`, downloads the worker artifact and runs trusted `scripts/swarm.py publish` | `GH_TOKEN: secrets.SWARM_TOKEN || github.token`, `contents: write`, `pull-requests: write`, `issues: write`, `actions: read` | `publish` pushes the **candidate bundle** (`swarm.py:1541-1564`) and trusts the unvalidated `checks` flag from `work`. There is no validation job and no SHA cross-check between validation and publication. |
-| `.github/workflows/swarm-integrator.yml` | `integrate` (lines 48-118) | Merges PR branches into local `main` and runs the full gate `scripts/integrator-gate.sh` through `integrate-batch` (lines 113-118, `swarm.py:2399-2436`) | `GH_TOKEN: secrets.SWARM_TOKEN || github.token`, `NVD_API_KEY`, `contents: write`, `pull-requests: write`, `issues: write`, `actions: write` | **Primary finding.** Candidate code is compiled and executed in the job that owns the write token. `run_gate` (`swarm.py:2387-2396`) removes `GH_TOKEN`, `GITHUB_TOKEN` and `SWARM_TOKEN` from the gate's environment, but that is not a boundary: the parent `swarm.py` process still holds `GH_TOKEN`, a test process runs under the same UID and can read `/proc/<parent-pid>/environ`, and runner-provided tokens are not in the strip list. `NVD_API_KEY` is also present at job level. |
+| `.github/workflows/swarm-worker.yml` | `publish` (lines 249-292) | None directly — it checks out `main`, downloads the worker artifact and runs trusted `scripts/swarm.py publish` | `GH_TOKEN: secrets.SWARM_TOKEN \|\| github.token`, `contents: write`, `pull-requests: write`, `issues: write`, `actions: read` | `publish` pushes the **candidate bundle** (`swarm.py:1541-1564`) and trusts the unvalidated `checks` flag from `work`. There is no validation job and no SHA cross-check between validation and publication. |
+| `.github/workflows/swarm-integrator.yml` | `integrate` (lines 48-118) | Merges PR branches into local `main` and runs the full gate `scripts/integrator-gate.sh` through `integrate-batch` (lines 113-118, `swarm.py:2399-2436`) | `GH_TOKEN: secrets.SWARM_TOKEN \|\| github.token`, `NVD_API_KEY`, `contents: write`, `pull-requests: write`, `issues: write`, `actions: write` | **Primary finding.** Candidate code is compiled and executed in the job that owns the write token. `run_gate` (`swarm.py:2387-2396`) removes `GH_TOKEN`, `GITHUB_TOKEN` and `SWARM_TOKEN` from the gate's environment, but that is not a boundary: the parent `swarm.py` process still holds `GH_TOKEN`, a test process runs under the same UID and can read `/proc/<parent-pid>/environ`, and runner-provided tokens are not in the strip list. `NVD_API_KEY` is also present at job level. |
 | `.github/workflows/swarm-integrator.yml` | `resolve` (lines 124-173) | Agent merges main into conflicted candidate branches and runs the quick check via `agent-run.sh resolve` | `OPENCODE_API_KEY`, `secrets.GITHUB_TOKEN` as a read-only image pull credential; `contents: read`, `packages: read` | No write token; push is isolated in `resolve-publish`. Model-key exposure remains (see Risks). |
-| `.github/workflows/swarm-integrator.yml` | `resolve-publish` (lines 174-208) | None — trusted scripts from `main` | Write permissions and `secrets.SWARM_TOKEN || github.token` | Correctly isolated. |
+| `.github/workflows/swarm-integrator.yml` | `resolve-publish` (lines 174-208) | None — trusted scripts from `main` | Write permissions and `secrets.SWARM_TOKEN \|\| github.token` | Correctly isolated. |
 | `.github/workflows/fix-pr-gate.yml` | `validate` (lines 23-85) | Checks out the PR merge commit and runs `scripts/check.sh` from that tree | `permissions: contents: read`; no write token, but `NVD_API_KEY` secret at job level (line 71) | Already the right job split for write access. Remove the secret so validation is credential-free; the pass flag has no SHA binding, so a PR could move between validation and handoff. |
 | `.github/workflows/fix-pr-gate.yml` | `handoff` (lines 86-130) | None — sparse checkout of trusted `scripts` from `main` | `pull-requests: write`, `issues: write`, `actions: write`, `GH_TOKEN: github.token` | Correctly isolated, but acts on `needs.validate.outputs.passed` without re-checking that the PR's commit is still the one validated. |
 
@@ -248,7 +248,7 @@ copies. `git apply --check` against the current repository passes.
        - name: Push the branch and open the pull request
 +        if: env.PUBLISH != 'skip'
          env:
-           GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
+           GH_TOKEN: ${{ secrets.SWARM_TOKEN \|\| github.token }}
            # Issues and labels use the job's own token, which always has issues: write.
 --- a/.github/workflows/swarm-integrator.yml
 +++ b/.github/workflows/swarm-integrator.yml
@@ -291,7 +291,7 @@ copies. `git apply --check` against the current repository passes.
            --health-cmd "pg_isready -U postgres"
            --health-interval 10s --health-timeout 5s --health-retries 5
      env:
--      GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
+-      GH_TOKEN: ${{ secrets.SWARM_TOKEN \|\| github.token }}
 +      # Read-only token for listing PR heads only: no push, label or comment.
 +      # No SWARM_TOKEN and no NVD_API_KEY: OWASP uses the restored cache, which is
 +      # the documented fallback when the key is absent.
@@ -338,7 +338,7 @@ copies. `git apply --check` against the current repository passes.
 +      issues: write
 +      actions: write
 +    env:
-+      GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
++      GH_TOKEN: ${{ secrets.SWARM_TOKEN \|\| github.token }}
 +      GH_ISSUES_TOKEN: ${{ github.token }}
 +    steps:
 +      # Trusted scripts from main in a runner the candidate code never touched.
