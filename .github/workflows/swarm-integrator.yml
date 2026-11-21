@@ -103,6 +103,7 @@ jobs:
             sleep $((attempt * 10))
           done
           exit 1
+      - uses: ./.github/actions/setup-tooling-python
       # One job for the batch. The trusted command keeps GH_TOKEN for guard,
       # merge and finalize, and strips it from the gate subprocess so agent-written
       # code never sees a token. Delivery re-verifies main after the push.

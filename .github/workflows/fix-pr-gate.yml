@@ -64,6 +64,7 @@ jobs:
           key: owasp-nvd-${{ runner.os }}-${{ runner.arch }}-${{ github.sha }}
           restore-keys: |
             owasp-nvd-${{ runner.os }}-${{ runner.arch }}-
+      - uses: ./.github/actions/setup-tooling-python
       - name: Run the full gate (no GitHub token in this job)
         id: gate
         env:

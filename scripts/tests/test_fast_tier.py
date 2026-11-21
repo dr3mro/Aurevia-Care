@@ -55,12 +55,14 @@ class FastTierTagTests(unittest.TestCase):
         fast = next((p for p in profiles.findall("m:profile", NS)
                      if p.findtext("m:id", namespaces=NS) == "fast"), None)
         self.assertIsNotNone(fast)
-        groups = fast.find(".//m:excludedGroups", NS)
+        surefire = ".//m:plugin[m:artifactId='maven-surefire-plugin']"
+        excluded_groups = surefire + "//m:excludedGroups"
+        groups = fast.find(excluded_groups, NS)
         self.assertIsNotNone(groups)
         self.assertEqual("integration", groups.text.strip())
-        for element in root.iter():
-            if element.tag.endswith("excludedGroups") and element is not groups:
-                self.fail("integration excluded outside the fast profile")
+        # The opt-in PIT mutation run has its own selector. This gate checks
+        # the Surefire configuration used by the quick and full test tiers.
+        self.assertEqual(root.findall(excluded_groups, NS), [groups])
 
     def test_full_tier_still_runs_every_test(self):
         text = FULL_CHECK.read_text(encoding="utf-8")
