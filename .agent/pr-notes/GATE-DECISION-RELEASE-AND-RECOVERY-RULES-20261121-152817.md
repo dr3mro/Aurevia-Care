@@ -71,14 +71,15 @@ Not applicable: no production code, branch, method, class or configuration was a
 
 ## Clinical and architecture review
 
-Not claimed. The pack was prepared for review by the privacy lead and clinical safety lead; it does not attest to clinical or human acceptance. A bounded simulated QA review was requested of `smartclinic-qa-reviewer` to check the "decides nothing" constraints and link/heading accuracy; its result is recorded in Findings.
+Not claimed. The pack was prepared for review by the privacy lead and clinical safety lead; it does not attest to clinical or human acceptance. A bounded simulated QA review was requested of `smartclinic-qa-reviewer` to check the "decides nothing" constraints and link/heading accuracy; it returned "no findings" (simulated reviewer evidence). No human clinical or privacy feedback was supplied or claimed.
 
 ## Findings
 
 - `docs/spec/clauses` does not exist in this checkout. The task text asks the pack to read clause notes there, and `TODO.md` lists open clause tasks (`SPEC-XCH-06-C01`, `SPEC-XCH-06-C02`, `SPEC-XCH-06-C03`, `SPEC-IAM-05-C01`). The pack records this under "What is missing" rather than inventing note contents. This is not a blocker: the required section 10, G5 row, production-readiness docs and decisions were all read and used.
 - `docs/launch` did not exist before this task; it was created by writing the single in-scope file. A sibling worker is preparing `docs/launch/policy-pack.md`; no link to that not-yet-present file was added, which keeps `check-docs.py` green in this checkout.
 - Observation only (not asserted in the pack and not acted on, because it is outside scope): `TODO.md` marks `BUILD-50` (staff-web release-policy admin screens) as `[x]` with PR #314, but this checkout has no `apps/staff-web/src/features/policies` directory. The pack therefore links only to release-policy files that exist (API release package, migrations and tests). The integrator or a person may reconcile that entry.
-- No reproducible defect was found in the in-scope change.
+- Independent bounded review by `smartclinic-qa-reviewer` (simulated reviewer evidence) returned "no findings". It verified, read-only: no option selected or recommended and no invented date, name, jurisdiction or partner; no filled approval cell and no implied acceptance; every link target exists; all eight required headings and all coverage areas are present; all cited requirement IDs are defined in `SMARTCLINIC_V1_SPEC.md`. The reviewer made no edits.
+- No reproducible defect was found in the in-scope change by tool or reviewer evidence. Human/participant evidence: none.
 
 ## Lessons for workers
 
