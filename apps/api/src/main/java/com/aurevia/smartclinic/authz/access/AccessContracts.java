@@ -57,10 +57,21 @@ public record RevokeRequest(String reason) {
     /**
      * Command to record an independent review of an emergency grant.
      *
-     * @param note reviewer's finding; the grantee cannot review their own grant
- * @return this record
- */
-public record ReviewRequest(String note) {
+     * @param note   reviewer's finding; the grantee cannot review their own grant
+     * @param outcome closure outcome, or {@code null} when a legacy caller omits it
+     * @return this record
+     */
+public record ReviewRequest(String note, String outcome) {
+        /**
+         * Create a review command without an explicit outcome, as legacy callers and
+         * the backward-compatible {@code {"note":...}} JSON body do. The domain
+         * service substitutes the explicit recorded outcome before persisting it.
+         *
+         * @param note reviewer's finding
+         */
+        public ReviewRequest(String note) {
+            this(note, null);
+        }
     }
 
     /**
