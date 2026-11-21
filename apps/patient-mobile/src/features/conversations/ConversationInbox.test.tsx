@@ -61,4 +61,28 @@ describe('ConversationInbox', () => {
     expect(view.queryByLabelText('Synthetic Lab: awaiting_staff')).toBeNull();
     await view.unmount();
   });
+
+  it('prefers the authoritative server unread count when supplied', async () => {
+    const view = await render(
+      <ConversationInbox
+        conversations={[conversation('conv-1', 'Synthetic Lab', false)]}
+        unreadByConversation={{ 'conv-1': 5 }}
+        onOpen={jest.fn()}
+      />,
+    );
+    expect(view.getByLabelText('Synthetic Lab: awaiting_staff, 5 unread')).toBeTruthy();
+    await view.unmount();
+  });
+
+  it('falls back to the local count when the server map has no entry', async () => {
+    const view = await render(
+      <ConversationInbox
+        conversations={[conversation('conv-1', 'Synthetic Lab', true)]}
+        unreadByConversation={{}}
+        onOpen={jest.fn()}
+      />,
+    );
+    expect(view.getByLabelText('Synthetic Lab: awaiting_staff, 2 unread')).toBeTruthy();
+    await view.unmount();
+  });
 });

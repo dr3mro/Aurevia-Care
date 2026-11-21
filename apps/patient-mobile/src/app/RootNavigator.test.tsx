@@ -10,6 +10,9 @@ import { registerRootComponent } from 'expo';
 
 import App from '../../App';
 import '../../index';
+import { clearToken } from '../api/tokenStore';
+import { TransportError } from '../api/transport';
+import type { Transport } from '../api/transport';
 import { appText } from './messages';
 import { RootNavigator } from './RootNavigator';
 import { TAB_DEFINITIONS } from './tabs';
@@ -17,6 +20,70 @@ import { TAB_DEFINITIONS } from './tabs';
 jest.mock('expo', () => ({
   registerRootComponent: jest.fn(),
 }));
+
+// The shell creates a transport on mount; headless tests supply synthetic
+// empty projections and observe token clearing without touching OS storage.
+jest.mock('../api/tokenStore', () => ({
+  clearToken: jest.fn(async () => undefined),
+  loadToken: jest.fn(async () => null),
+  saveToken: jest.fn(async () => undefined),
+}));
+
+jest.mock('./providers', () => {
+  const actual = jest.requireActual<Record<string, unknown>>('./providers');
+  return {
+    ...actual,
+    createPatientTransport: jest.fn(() => ({
+      get: jest.fn(async (path: string) => {
+        if (path.includes('/conversations/inbox')) {
+          return {
+            entries: [{
+              conversation: {
+                id: 'conv-1',
+                version: 1,
+                patientId: 'synthetic-patient',
+                patientSubject: 'synthetic-subject',
+                unitKey: 'synthetic-lab',
+                connectionId: 'conn-1',
+                topic: 'follow up',
+                state: 'awaiting_staff',
+                assigneeSubject: null,
+                patientReadSequence: 0,
+                staffReadSequence: 1,
+                createdAt: '2026-11-21T10:00:00Z',
+              },
+              unreadCount: 1,
+            }],
+          };
+        }
+        if (path.includes('/patient/reports')) {
+          return [{
+            reportId: 'report-1',
+            revision: 1,
+            issuingOrganization: 'Synthetic clinic',
+            effectiveDate: '2026-11-20',
+            language: 'en',
+            correctionReason: null,
+            supersedesRevision: null,
+          }];
+        }
+        return [{
+          id: 'apt-1',
+          version: 1,
+          patientId: 'synthetic-patient',
+          facilityCode: 'synthetic-facility',
+          facilityTimeZone: 'Asia/Riyadh',
+          startsAt: '2026-11-21T10:00:00Z',
+          status: 'booked',
+          confirmationEnabled: true,
+          confirmedAt: null,
+        }];
+      }),
+      post: jest.fn(async () => undefined),
+      put: jest.fn(async () => undefined),
+    })),
+  };
+});
 
 // The native direction flag is exercised through its own unit test; the
 // navigator test only needs the shell, not a platform restart side effect.
@@ -89,7 +156,7 @@ describe('four-tab navigation', () => {
   it('renders the initial Appointments screen', async () => {
     const view = await render(<RootNavigator locale="en" />);
 
-    expect(view.getByTestId('appointment-list')).toBeTruthy();
+    await waitFor(() => expect(view.getByTestId('appointment-list')).toBeTruthy());
   });
 
   it('renders each tab screen when that tab is pressed', async () => {
@@ -153,5 +220,83 @@ describe('four-tab navigation', () => {
 
     fireEvent.press(view.getByTestId('stack-messages-open-instructions'));
     await waitFor(() => expect(view.getByTestId('messages-screen-instructions')).toBeTruthy());
+  });
+});
+
+describe('session expiry', () => {
+  it('clears the stored token and navigates to the signed-out screen on 401', async () => {
+    jest.mocked(clearToken).mockClear();
+    const expiredTransport: Transport = {
+      get: jest.fn(async () => {
+        throw new TransportError('unauthenticated', {});
+      }) as Transport['get'],
+      post: jest.fn(async () => undefined) as Transport['post'],
+      put: jest.fn(async () => undefined) as Transport['put'],
+    };
+    const view = await render(<RootNavigator locale="en" transport={expiredTransport} />);
+
+    await waitFor(() => expect(view.getByTestId('signed-out-screen')).toBeTruthy());
+    expect(clearToken).toHaveBeenCalledTimes(1);
+    expect(view.getByTestId('signed-out-title')).toHaveTextContent(appText('en', 'signedOutTitle'));
+  });
+
+  it('still signs out when clearing the stored credential fails', async () => {
+    jest.mocked(clearToken).mockRejectedValueOnce(new Error('keychain unavailable'));
+    const expiredTransport: Transport = {
+      get: jest.fn(async () => {
+        throw new TransportError('unauthenticated', {});
+      }) as Transport['get'],
+      post: jest.fn(async () => undefined) as Transport['post'],
+      put: jest.fn(async () => undefined) as Transport['put'],
+    };
+    const view = await render(<RootNavigator locale="en" transport={expiredTransport} />);
+
+    await waitFor(() => expect(view.getByTestId('signed-out-screen')).toBeTruthy());
+  });
+
+  it('forwards the optional session-expiry hook', async () => {
+    jest.mocked(clearToken).mockClear();
+    const onSessionExpired = jest.fn();
+    const expiredTransport: Transport = {
+      get: jest.fn(async () => {
+        throw new TransportError('unauthenticated', {});
+      }) as Transport['get'],
+      post: jest.fn(async () => undefined) as Transport['post'],
+      put: jest.fn(async () => undefined) as Transport['put'],
+    };
+    await render(
+      <RootNavigator locale="en" transport={expiredTransport} onSessionExpired={onSessionExpired} />,
+    );
+    await waitFor(() => expect(onSessionExpired).toHaveBeenCalledTimes(1));
+  });
+
+  it('returns to the tabs when the patient chooses to sign in again', async () => {
+    let calls = 0;
+    const recoveringTransport: Transport = {
+      get: jest.fn(async () => {
+        calls += 1;
+        if (calls === 1) {
+          throw new TransportError('unauthenticated', {});
+        }
+        return [{
+          id: 'apt-1',
+          version: 1,
+          patientId: 'synthetic-patient',
+          facilityCode: 'synthetic-facility',
+          facilityTimeZone: 'Asia/Riyadh',
+          startsAt: '2026-11-21T10:00:00Z',
+          status: 'booked',
+          confirmationEnabled: true,
+          confirmedAt: null,
+        }];
+      }) as Transport['get'],
+      post: jest.fn(async () => undefined) as Transport['post'],
+      put: jest.fn(async () => undefined) as Transport['put'],
+    };
+    const view = await render(<RootNavigator locale="en" transport={recoveringTransport} />);
+    await waitFor(() => expect(view.getByTestId('signed-out-screen')).toBeTruthy());
+
+    await fireEvent.press(view.getByTestId('sign-in-action'));
+    await waitFor(() => expect(view.getByTestId('tab-button-appointments')).toBeTruthy());
   });
 });
