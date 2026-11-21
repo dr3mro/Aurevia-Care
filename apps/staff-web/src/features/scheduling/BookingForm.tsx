@@ -7,25 +7,54 @@ import type { Appointment, BookingRequest } from './domain';
 import { conflictingAppointment } from './domain';
 import { schedulingText } from './messages';
 
-/** Props for the synthetic protected-resource booking form. */
+/**
+ * A booking draft with the clinical context the real API requires. The
+ * synthetic `BookingRequest` fields stay unchanged; the extra values are
+ * entered by the user so no patient identity is invented on their behalf.
+ */
+export type BookingInput = BookingRequest & {
+  facilityCode: string;
+  patientId: string;
+  visitType: string;
+};
+
+/** Props for the protected-resource booking form. */
 export interface BookingFormProps {
   /** Appointments already scoped to the active tenant. */
   appointments: readonly Appointment[];
   organizationId: string;
-  onBook: (request: BookingRequest) => void;
+  onBook: (request: BookingInput) => void;
 }
 
-/** Build a local booking draft and warn about a same-tenant occupied slot. */
+/** Build a booking draft and warn about a same-tenant occupied slot. */
 export function BookingForm({ appointments, organizationId, onBook }: BookingFormProps) {
   const { locale } = useI18n();
   const { tokens } = useTheme();
   const [resourceId, setResourceId] = useState('');
   const [scheduledAt, setScheduledAt] = useState('');
+  const [facilityCode, setFacilityCode] = useState('');
+  const [patientId, setPatientId] = useState('');
+  const [visitType, setVisitType] = useState('');
 
   const resource = resourceId.trim();
   const start = scheduledAt.trim();
-  const ready = resource.length > 0 && start.length > 0;
-  const request: BookingRequest = { organizationId, resourceId: resource, scheduledAt: start };
+  const facility = facilityCode.trim();
+  const patient = patientId.trim();
+  const visit = visitType.trim();
+  const ready =
+    resource.length > 0 &&
+    start.length > 0 &&
+    facility.length > 0 &&
+    patient.length > 0 &&
+    visit.length > 0;
+  const request: BookingInput = {
+    organizationId,
+    resourceId: resource,
+    scheduledAt: start,
+    facilityCode: facility,
+    patientId: patient,
+    visitType: visit,
+  };
   const conflict = ready ? conflictingAppointment(appointments, request) : undefined;
 
   function handleSubmit() {
@@ -33,7 +62,7 @@ export function BookingForm({ appointments, organizationId, onBook }: BookingFor
       return;
     }
     onBook(request);
-    // Clear the draft so a committed booking cannot conflict with itself.
+    // Clear the slot so a committed booking cannot conflict with itself.
     setResourceId('');
     setScheduledAt('');
   }
@@ -45,11 +74,32 @@ export function BookingForm({ appointments, organizationId, onBook }: BookingFor
       onSubmit={handleSubmit}
     >
       <FormField
+        id="booking-facility"
+        label={schedulingText(locale, 'facilityCode')}
+        value={facilityCode}
+        onChange={setFacilityCode}
+        placeholder="MAIN"
+      />
+      <FormField
+        id="booking-patient"
+        label={schedulingText(locale, 'patientId')}
+        value={patientId}
+        onChange={setPatientId}
+        placeholder="synthetic-patient-001"
+      />
+      <FormField
+        id="booking-visit"
+        label={schedulingText(locale, 'visitType')}
+        value={visitType}
+        onChange={setVisitType}
+        placeholder="follow-up"
+      />
+      <FormField
         id="booking-resource"
         label={schedulingText(locale, 'resource')}
         value={resourceId}
         onChange={setResourceId}
-        placeholder="room-1"
+        placeholder="clinician-7"
       />
       <p style={{ color: tokens.foreground }}>{schedulingText(locale, 'resourceHint')}</p>
       <FormField
