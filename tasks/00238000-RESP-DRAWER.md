@@ -1,4 +1,6 @@
-- [ ] RESP-DRAWER · Staff web: off-canvas navigation drawer component for phones (new files)
+- [-] RESP-DRAWER · Staff web: off-canvas navigation drawer component for phones (new files)
+  - agent: swarm-7
+  - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/app/NavigationDrawer.tsx, apps/staff-web/tests/app/NavigationDrawer.test.tsx
   - depends: RESP-BREAKPOINTS, RESP-STYLESHEET
