@@ -94,7 +94,7 @@ Each task adds new files in its own folder, depends on nothing and does not touc
     1. Read `docs/operations/recovery/runbook.md`, `docs/operations/production-readiness/launch-checklist.md`, `SMARTCLINIC_V1_SPEC.md` (OPS requirements) and the existing code that handles secrets, logging and alerts.
     2. Write four short runbooks under `docs/operations/runbooks/` plus an `index.md`: incident response (severity, who is called, first 15 minutes, patient-safety escalation, evidence to keep), secret and key rotation (what rotates, how often, how to check nothing broke), on-call handover (what the outgoing person writes, open alerts, what is on fire), and a bad deploy (how to tell, roll back, roll forward, what to tell users).
     3. Each runbook has: when to use it, who may act, numbered steps a tired person can follow, how to check it worked, and what to record. Use only what the repository really does; where a step needs a tool or contact that does not exist yet, write `NOT YET IN PLACE:` and the gap instead of inventing it.
-    4. Link the new index from `docs/operations/production-readiness/README.md`. Run `python3 -I scripts/check-docs.py` and paste the result.
+    4. Do not edit any shared index: START-18 links this page. Run `python3 -I scripts/check-docs.py` and paste the result.
     5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 - [ ] START-05 · Docs: one task guide per role (reception, clinician, laboratory, radiology, finance, administrator, patient)
@@ -104,7 +104,7 @@ Each task adds new files in its own folder, depends on nothing and does not touc
     1. Read `docs/design/approved/README.md`, the screens in `apps/staff-web/src/features` and `apps/patient-mobile/src`, and the role names in `apps/staff-web/src/app/navigation.ts`.
     2. Write one page per role under `docs/guides/` plus an `index.md`. Each page lists the five to eight things that role does most, as numbered steps with the screen name and the button or field names exactly as the interface says them, and what the person should see when it worked.
     3. Describe only screens that exist in the code today; mark a planned screen with `PLANNED:` and the task id from TODO.md. Plain language, short sentences, no patient data.
-    4. Link the index from `docs/reference/index.md`. Run `python3 -I scripts/check-docs.py` and paste the result.
+    4. Do not edit `docs/reference/index.md`: START-18 links this page. Run `python3 -I scripts/check-docs.py` and paste the result.
     5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 - [ ] START-06 · Docs: data dictionary built from the migrations
@@ -114,7 +114,7 @@ Each task adds new files in its own folder, depends on nothing and does not touc
     1. Read every file in `db/migrations` in version order (V1 to the newest) and `scripts/check-migrations.py` for the rules the migrations follow.
     2. Write `docs/reference/data-dictionary.md`: one section per table with its purpose in one line, columns with type and meaning, keys and constraints, whether it is append-only or row-level-secured by tenant, and the migration version that created or last changed it. Group tables by area (identity, scheduling, chart, exchange, finance, messaging and so on).
     3. State at the top the newest migration version the dictionary covers. Where a column's meaning is not clear from the migration, write `UNCLEAR:` and the question; do not guess.
-    4. Link it from `docs/reference/index.md`. Run `python3 -I scripts/check-docs.py` and paste the result.
+    4. Do not edit `docs/reference/index.md`: START-18 links this page. Run `python3 -I scripts/check-docs.py` and paste the result.
     5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 - [ ] START-07 · Docs: threat model for the staff web, the patient app and the API
@@ -124,7 +124,7 @@ Each task adds new files in its own folder, depends on nothing and does not touc
     1. Read `SMARTCLINIC_V1_SPEC.md` (security and privacy requirements), `docs/decisions`, the authorization, tenancy, audit and web packages under `apps/api/src/main/java`, and the web security configuration.
     2. Write `docs/security/threat-model.md` with a diagram-free table per area (staff web, patient app, API, database, background workers, partner exchange): assets, who can attack it, the main threats (spoofing, tampering, repudiation, disclosure, denial of service, elevation of privilege), the control that already exists with the file that implements it, and what is missing.
     3. Every control you cite must name a real file or test; every gap becomes a line `GAP:` with a suggested task title. Do not describe controls that are not in the code.
-    4. Create `docs/security/README.md` as an index and link it from `docs/reference/index.md`. Run `python3 -I scripts/check-docs.py` and paste the result.
+    4. Create `docs/security/README.md` as an index of the security pages (it lives in your scope folder). Do not edit `docs/reference/index.md`: START-18 links it. Run `python3 -I scripts/check-docs.py` and paste the result.
     5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
