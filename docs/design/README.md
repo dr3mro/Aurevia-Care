@@ -31,6 +31,7 @@ result rules; catalog and policy values are site configuration.
 | [Token contract](token-contract.md) | Naming grammar, platform derivation, colour, typography, spacing, radius, border, elevation, motion, layer, theming, contrast measurements, adoption and versioning |
 | [RTL and localization](rtl-and-localization.md) | Direction model, logical properties, mirroring rules, numerals and units, identifiers, local-name display, mixed-script text, translation rules, verification |
 | [Accessibility patterns](accessibility-patterns.md) | Focus and keyboard, forms, tables and worklists, dialogs, critical-result banners, status messages, motion, native patterns, verification |
+| [Approved screen designs](approved/README.md) | Pictures and page layout of the reception worklist, clinician chart, results and critical queue, operations and unit inbox, and the patient app |
 
 Related material: the [maintainer guide](../reference/maintainer.md) for the
 per-module trace, the [delivery workflow](../WORKFLOW.md) for review routing, the
