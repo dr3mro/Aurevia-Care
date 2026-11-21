@@ -194,6 +194,19 @@ class StuckTests(unittest.TestCase):
                  "apps/patient-mobile/jest.config.ts"]
         self.assertEqual(swarm.protected_files(gates + ["apps/api/src/main/java/A.java"]), gates)
 
+    def test_a_repair_may_change_scripts_but_never_the_gate_configuration(self):
+        for files, blocked in (("scripts/swarm.py\n.github/workflows/delivery.yml", False),
+                               ("scripts/swarm.py\napps/api/spotbugs-exclude.xml", True),
+                               ("scripts/wiring-baseline.json", True)):
+            fake = Gh(pr_info={"title": "FIX-1", "headRefName": "swarm/FIX-1-1", "url": "u"})
+            real = fake.__call__
+
+            def gh(*args, check=True, real=real, files=files):
+                return files if args[:2] == ("pr", "diff") else real(*args, check=check)
+
+            with mock.patch.object(swarm, "gh", gh):
+                self.assertEqual(bool(swarm.guard(9, repair=True)), blocked, files)
+
     def test_guard_opens_an_issue_for_protected_files_and_for_too_many_files(self):
         for diff, cause in (("scripts/x.sh\n", "protected files changed"),
                             ("\n".join(f"a/{i}.txt" for i in range(swarm.MAX_PR_FILES + 1)), "too many files")):
