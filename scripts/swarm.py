@@ -2358,7 +2358,9 @@ def restore_trackers():
     """Take the trackers from fresh main: the files, the view and the notes."""
     if Path(store().ROOT).exists():
         shutil.rmtree(store().ROOT)
-    git("checkout", "origin/main", "--", "TODO.md", store().ROOT, "docs/swarm", check=False)
+    # One path at a time: a path main does not have must not stop the others from being restored.
+    for path in ("TODO.md", store().ROOT, "docs/swarm"):
+        git("checkout", "origin/main", "--", path, check=False)
 
 
 def merge_local(pr):
