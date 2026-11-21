@@ -262,6 +262,22 @@ describe('PatientsPage registration', () => {
     expect(descriptorAt(0).body?.['dobUnknownReason']).toBe('not_known');
   });
 
+  it('sends only one registration for two rapid submits', async () => {
+    const pending = deferred<typeof syntheticAlphaPatients[number]>();
+    sendMock.mockReturnValueOnce(pending.promise);
+    wrap(<PatientsPage />);
+    fireEvent.click(screen.getByRole('button', { name: 'Register' }));
+    fillRegistration();
+    const submit = screen.getByRole('button', { name: 'Save registration' });
+    fireEvent.click(submit);
+    fireEvent.click(submit);
+
+    expect(sendMock).toHaveBeenCalledTimes(1);
+    expect(descriptorAt(0).headers['Idempotency-Key']).toMatch(/^[0-9a-f-]{36}$/);
+    pending.resolve({ ...syntheticAlphaPatients[0]!, displayName: 'Synthetic New Patient' });
+    expect(await screen.findByText('Registered Synthetic New Patient')).toBeTruthy();
+  });
+
   it('links a server validation code to its field and keeps the typed values', async () => {
     sendMock.mockRejectedValueOnce(transportFailure('invalid', 'INVALID_MRN'));
     wrap(<PatientsPage />);

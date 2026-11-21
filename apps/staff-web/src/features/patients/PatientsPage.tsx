@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useActiveOrganization } from '../../api/activeOrganization';
 import type { TransportError } from '../../api/transport';
 import { ApiPage } from '../../components/ApiPage';
@@ -51,6 +51,9 @@ function PatientsContent({ organizationId }: PatientsContentProps) {
   const [registerError, setRegisterError] = useState<TransportError | undefined>(undefined);
   const [registeredName, setRegisteredName] = useState<string | undefined>(undefined);
   const [reloadToken, setReloadToken] = useState(0);
+  // A synchronous guard: a second rapid submit must not mint a second
+  // idempotency key and register a duplicate patient (IAM-03).
+  const registering = useRef(false);
 
   function handleSearch() {
     const issue = searchError(searchInput);
@@ -79,32 +82,40 @@ function PatientsContent({ organizationId }: PatientsContentProps) {
   }
 
   async function handleRegister() {
-    setRegisterError(undefined);
-    setRegisteredName(undefined);
-    const errors = validateRegistration(draft);
-    setFieldErrors(errors);
-    if (Object.keys(errors).length > 0) {
+    if (registering.current) {
       return;
     }
+    registering.current = true;
     try {
-      const created = await registerPatient(draft, organizationId);
-      setDraft(EMPTY_REGISTRATION);
-      setFieldErrors({});
-      setRegisteredName(created.displayName);
-      setRegisterOpen(false);
-      setReloadToken((value) => value + 1);
-    } catch (failure: unknown) {
-      const error = asPatientsTransportError(failure);
-      if (error.kind === 'invalid') {
-        const field = serverFieldForCode(error.code);
-        if (field !== undefined) {
-          setFieldErrors({ [field]: validationKeyForField(field) });
+      setRegisterError(undefined);
+      setRegisteredName(undefined);
+      const errors = validateRegistration(draft);
+      setFieldErrors(errors);
+      if (Object.keys(errors).length > 0) {
+        return;
+      }
+      try {
+        const created = await registerPatient(draft, organizationId);
+        setDraft(EMPTY_REGISTRATION);
+        setFieldErrors({});
+        setRegisteredName(created.displayName);
+        setRegisterOpen(false);
+        setReloadToken((value) => value + 1);
+      } catch (failure: unknown) {
+        const error = asPatientsTransportError(failure);
+        if (error.kind === 'invalid') {
+          const field = serverFieldForCode(error.code);
+          if (field !== undefined) {
+            setFieldErrors({ [field]: validationKeyForField(field) });
+          } else {
+            setRegisterError(error);
+          }
         } else {
           setRegisterError(error);
         }
-      } else {
-        setRegisterError(error);
       }
+    } finally {
+      registering.current = false;
     }
   }
 
