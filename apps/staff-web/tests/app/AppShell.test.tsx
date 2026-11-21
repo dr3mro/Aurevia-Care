@@ -129,6 +129,10 @@ describe('route registry', () => {
   it('registers only welcome, the development preview and a catch-all', () => {
     expect(createRoutes(false).map((route) => route.pattern)).toEqual([
       '/',
+      '/signed-out',
+      '/session-expired',
+      '/forbidden',
+      '/not-found',
       '/schedule',
       '/schedule/book',
       '/patients/:id/chart',
@@ -139,6 +143,10 @@ describe('route registry', () => {
     ]);
     expect(createRoutes(true).map((route) => route.pattern)).toEqual([
       '/',
+      '/signed-out',
+      '/session-expired',
+      '/forbidden',
+      '/not-found',
       '/schedule',
       '/schedule/book',
       '/patients/:id/chart',

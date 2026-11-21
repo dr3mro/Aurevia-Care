@@ -19,6 +19,10 @@ describe('createRoutes', () => {
   it('resolves every existing path', () => {
     expect(createRoutes(false).map((candidate) => candidate.pattern)).toEqual([
       '/',
+      '/signed-out',
+      '/session-expired',
+      '/forbidden',
+      '/not-found',
       '/schedule',
       '/schedule/book',
       '/patients/:id/chart',
