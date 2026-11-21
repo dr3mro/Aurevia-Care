@@ -1,15 +1,20 @@
 package com.aurevia.smartclinic.web;
 
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.web.servlet.MockMvc;
@@ -32,6 +37,15 @@ class SecurityFilterChainHttpTest {
 
     private static final String ISSUER_PROPERTY = "spring.security.oauth2.resourceserver.jwt.issuer-uri";
     private static final String ORG = "11111111-1111-1111-1111-111111111111";
+
+    private JdbcTemplate jdbc;
+
+    /** A synthetic, in-memory probe result so the readiness route needs no database. */
+    @BeforeEach
+    void stubProbeJdbc() {
+        jdbc = mock(JdbcTemplate.class);
+        when(jdbc.queryForObject("SELECT 1", Integer.class)).thenReturn(1);
+    }
 
     /** Minimal protected endpoint used to observe admission. */
     @RestController
@@ -79,6 +93,32 @@ class SecurityFilterChainHttpTest {
     }
 
     @Test
+    void unauthenticatedLiveProbeReturns200() throws Throwable {
+        new WebApplicationContextRunner()
+                .withUserConfiguration(SecurityConfiguration.class, DecoderStub.class)
+                .withPropertyValues(ISSUER_PROPERTY + "=https://issuer.example.test")
+                .run(context -> {
+                    assertNull(context.getStartupFailure());
+                    mvc(context).perform(get("/health/live"))
+                            .andExpect(status().isOk())
+                            .andExpect(jsonPath("$.status").value("UP"));
+                });
+    }
+
+    @Test
+    void unauthenticatedReadyProbeReturns200() throws Throwable {
+        new WebApplicationContextRunner()
+                .withUserConfiguration(SecurityConfiguration.class, DecoderStub.class)
+                .withPropertyValues(ISSUER_PROPERTY + "=https://issuer.example.test")
+                .run(context -> {
+                    assertNull(context.getStartupFailure());
+                    mvc(context).perform(get("/health/ready"))
+                            .andExpect(status().isOk())
+                            .andExpect(jsonPath("$.status").value("UP"));
+                });
+    }
+
+    @Test
     void postWithoutAuthorizationIsRejectedByCsrf() {
         new WebApplicationContextRunner()
                 .withUserConfiguration(SecurityConfiguration.class, DecoderStub.class)
@@ -110,11 +150,12 @@ class SecurityFilterChainHttpTest {
                         .andExpect(status().isUnauthorized()));
     }
 
-    private static MockMvc mvc(org.springframework.context.ApplicationContext context) {
+    private MockMvc mvc(org.springframework.context.ApplicationContext context) {
         SecurityFilterChain chain = context.getBean(SecurityFilterChain.class);
-        return MockMvcBuilders.standaloneSetup(new ProbeController())
+        return MockMvcBuilders.standaloneSetup(new ProbeController(), new HealthController(jdbc))
                 .setControllerAdvice(new ApiErrorHandler())
-                .addInterceptors(new TenantContextInterceptor(context.getEnvironment()))
+                .addMappedInterceptors(new String[] {"/api/v1/**"},
+                        new TenantContextInterceptor(context.getEnvironment()))
                 .addFilters(chain.getFilters().toArray(new Filter[0]))
                 .build();
     }
