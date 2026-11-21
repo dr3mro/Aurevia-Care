@@ -325,20 +325,25 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False, loading=frozenset()):
 
     live = sorted([r for r in runs if r.get("status") != "completed"], key=lambda r: r.get("createdAt") or "")
     done = [r for r in runs if r.get("status") == "completed"]
-    last20 = done  # every finished run in the list (newest 100)
-    rate = sum(1 for r in last20 if state(r) == "success") / len(last20) if last20 else 0.0
+    jobs = data.get("jobs") or {}
+
+    def bad(r):  # failed, or still running with a job that already failed; a run in progress counts as good otherwise
+        return state(r) in FAILED or (r.get("status") != "completed"
+                                      and any(j.get("conclusion") in FAILED for j in jobs.get(r.get("databaseId")) or []))
+
+    last20 = runs  # every run in the list (newest 100), finished or still running
+    rate = sum(1 for r in last20 if not bad(r)) / len(last20) if last20 else 0.0
     durs = sorted((ts(r["updatedAt"]) - ts(r.get("startedAt") or r["createdAt"])).total_seconds()
                   for r in done if r.get("updatedAt"))
     median = durs[len(durs) // 2] if durs else 0
-    runs_day = done  # every finished run the list returned (the newest 100), not a time window
-    failed_day = [r for r in runs_day if state(r) in FAILED]
+    runs_day = runs  # every run the list returned (the newest 100), not a time window
+    failed_day = [r for r in runs_day if bad(r)]
     merged_day = [p for p in merged if day(p.get("mergedAt"))]
     closed_day = [p for p in closed if not p.get("mergedAt") and day(p.get("closedAt"))]
     main = next((r for r in done if r.get("workflowName") == "Delivery" and r.get("headBranch") == "main"), None)
     mstate = state(main) if main else "unknown"
     msym, mcol = SYM.get(mstate, ("•", "gray"))
     wave = next((r for r in runs if r.get("workflowName") == "Agent swarm"), None)
-    jobs = data.get("jobs") or {}
     churn = data.get("churn") or {}
     todo = parse_tasks(data.get("todo"))
     n_done = sum(1 for t in todo if t["status"] == "done") + len(re.findall(r"^- \[x\] ", data.get("archive") or "", re.M))
@@ -412,8 +417,8 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False, loading=frozenset()):
         return row + [(" " * gap, "")] + right if gap >= 2 else row
 
     iw_top = W - 6
-    shown = done[:max(min(len(done), iw_top - 90), 0)]  # as many marks as the line has room for (the newest ones)
-    hist = [("┃", "green" if state(r) == "success" else "red" if state(r) in FAILED else "gray") for r in shown[::-1]]
+    shown = runs[:max(min(len(runs), iw_top - 90), 0)]  # as many marks as the line has room for (the newest ones)
+    hist = [("┃", "red" if bad(r) else "gray" if state(r) in ("cancelled", "skipped") else "green") for r in shown[::-1]]
     pace = sum(1 for p in merged if ts(p.get("mergedAt")) and (now - ts(p["mergedAt"])).total_seconds() < 21600) / 6
     pending = n_open + len(taken)
     eta = span(pending / pace * 3600) if pace else "-"
