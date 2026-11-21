@@ -1,9 +1,9 @@
 # Prepared base image for OpenCode agent runs. Built once by agent-image.yml and
 # reused by every worker; nothing here is rebuilt per task. The warm Maven
 # repository is written in a single RUN layer so slot images stay config-only.
-FROM eclipse-temurin:21-jdk AS jdk
-FROM maven:3-eclipse-temurin-21 AS maven
-FROM node:22-bookworm-slim
+FROM eclipse-temurin:21-jdk@sha256:8ad118b146aa92da815b576441acd6b42b38236797ad0b6edc8c200b85bb0734 AS jdk # eclipse-temurin:21-jdk
+FROM maven:3-eclipse-temurin-21@sha256:3e18d95a0a49d18aa5b075e5ee3c30a98078c382850467dcd4caa49bb7dc4038 AS maven # maven:3-eclipse-temurin-21
+FROM node:22-bookworm-slim@sha256:e9f565d32859f0cbfb52125eafe8be39390f24dac302dc3cdf566e8ba3ab21ee # node:22-bookworm-slim
 ARG OPENCODE_VERSION=2.3.2
 COPY --from=jdk /opt/java/openjdk /opt/java/openjdk
 COPY --from=maven /usr/share/maven /usr/share/maven
@@ -28,7 +28,7 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends postgresql-17 \
  && (pg_dropcluster --stop 17 main || true) \
  && rm -rf /var/lib/apt/lists/* \
- && npm install -g "@opencode/cli@${OPENCODE_VERSION}" \
+ && npm install -g "@opencode/cli@${OPENCODE_VERSION}" --integrity=sha512-U/DD6X8kgnEFM3VYT7+QN/UJotW++qOxTJtPEUiNzKwu9tNHtAC1jOtup1gpk773j0AFNmMBbLNou4YkdvlRKA== \
  && npm cache clean --force \
  && opencode --version && java -version && mvn -v \
  && python3 -I -c 'import yaml'
