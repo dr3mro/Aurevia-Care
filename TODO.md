@@ -119,7 +119,7 @@ Each task adds new files in its own folder, depends on nothing and does not touc
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 - [ ] START-07 · Docs: threat model for the staff web, the patient app and the API
   - requirements: IAM-01, ARC-02, OPS-02, WEB-04
-  - scope: docs/security/threat-model.md
+  - scope: docs/security/threat-model.md, docs/security/README.md
   - details:
     1. Read `SMARTCLINIC_V1_SPEC.md` (security and privacy requirements), `docs/decisions`, the authorization, tenancy, audit and web packages under `apps/api/src/main/java`, and the web security configuration.
     2. Write `docs/security/threat-model.md` with a diagram-free table per area (staff web, patient app, API, database, background workers, partner exchange): assets, who can attack it, the main threats (spoofing, tampering, repudiation, disclosure, denial of service, elevation of privilege), the control that already exists with the file that implements it, and what is missing.
