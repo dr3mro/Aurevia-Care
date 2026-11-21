@@ -1,44 +1,49 @@
-import { useState } from 'react';
-import type { ReactNode } from 'react';
+import { Suspense, useEffect, useRef } from 'react';
 import { Button } from '../components/Button';
-import { DataTable } from '../components/DataTable';
-import { Dialog } from '../components/Dialog';
-import { Form } from '../components/Form';
-import { FormField } from '../components/FormField';
 import { MixedScriptText } from '../components/MixedScriptText';
-import { ErrorBoundary } from './ErrorBoundary';
-import {
-  mixedScriptLabel,
-  syntheticFacility,
-  syntheticOrganizations,
-  syntheticPerson,
-} from '../fixtures/synthetic';
-import { displayLocalName, formatMeasurement } from '../i18n/format';
+import { syntheticOrganizations, syntheticStaff } from '../fixtures/synthetic';
 import { useI18n } from '../i18n/I18nProvider';
 import { useTheme } from '../theme/ThemeProvider';
+import { ErrorBoundary } from './ErrorBoundary';
 import { groupLabelKey, navigationGroupsFor, navigationLabel } from './navigation';
 import type { Role } from './navigation';
 import { OrgSwitcher } from './OrgSwitcher';
-import { ProtectedRoute } from './ProtectedRoute';
-import { SignInPlaceholder } from './SignInPlaceholder';
+import { Link, matchRoute, useRoute } from './router';
+import { routes } from './routes';
+import { shellText } from './shellText';
+import { useRole } from './useRole';
 
-/** Props for the staff portal shell. Children are the active route content. */
+/** Props for the single authenticated staff portal shell. */
 export interface AppShellProps {
-  /** Route content rendered inside the main landmark. */
-  children?: ReactNode;
-  /**
-   * Signed-in role. Defaults to the synthetic reception fixture so the demo
-   * shell renders a rail; the real shell story sources it from authentication.
-   */
-  role?: Role;
+  /** Optional role override for isolated rendering; production uses `useRole`. */
+  role?: Role | undefined;
+  /** Invoked by the user-menu Sign out button when a session owns it. */
+  onSignOut?: (() => void) | undefined;
 }
 
-/** Root visual layout for the staff portal; all content is synthetic. */
-export function AppShell({ children, role = 'reception' }: AppShellProps) {
+/**
+ * Application shell from the screen map: header, role-scoped rail, status
+ * banner and the matched route inside the main landmark. All data is synthetic.
+ */
+export function AppShell({ role, onSignOut }: AppShellProps) {
   const { locale, t, toggleLocale } = useI18n();
   const { mode, tokens, toggleMode } = useTheme();
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [note, setNote] = useState('');
+  const signedInRole = useRole();
+  const activeRole = role ?? signedInRole;
+  const { path } = useRoute();
+  const mainRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    // The effect runs only while <main> is mounted, so the ref is populated.
+    mainRef.current!.focus();
+  }, [path]);
+
+  const matched = routes.find(
+    (candidate) => candidate.pattern !== '*' && matchRoute(candidate.pattern, path) !== null,
+  );
+  const catchAll = routes.find((candidate) => candidate.pattern === '*');
+  const ActivePage = (matched ?? catchAll)!.component;
+  const isActive = (pattern: string): boolean => matchRoute(pattern, path) !== null;
 
   return (
     <ErrorBoundary>
@@ -57,73 +62,59 @@ export function AppShell({ children, role = 'reception' }: AppShellProps) {
           <Button variant="secondary" onClick={toggleLocale} pressed={locale === 'ar'}>
             {t('language')}
           </Button>
+          <div role="group" aria-label={shellText(locale, 'userMenu')}>
+            <span>{syntheticStaff.displayName}</span>
+            <Button
+              onClick={() => {
+                if (onSignOut !== undefined) {
+                  onSignOut();
+                }
+              }}
+            >
+              {shellText(locale, 'signOut')}
+            </Button>
+          </div>
         </header>
 
         <div style={{ display: 'flex', flexDirection: 'row', gap: tokens.spacing.lg }}>
           <div
             role="group"
             aria-label={navigationLabel(locale, 'navigation')}
-            style={{ flex: '0 0 auto' }}
+            style={{ flex: '0 0 auto', position: 'sticky', insetInlineStart: 0 }}
           >
-            {navigationGroupsFor(role).map((group) => {
-              const label = navigationLabel(locale, groupLabelKey(group.group));
-              return (
-                <section key={group.group} aria-labelledby={`nav-heading-${group.group}`}>
-                  <h2 id={`nav-heading-${group.group}`}>{label}</h2>
-                  <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-                    {group.items.map((item) => (
-                      <li key={item.id}>
-                        <a href={item.route}>{navigationLabel(locale, item.labelKey)}</a>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              );
-            })}
+            {navigationGroupsFor(activeRole).map((group) => (
+              <section key={group.group} aria-labelledby={`nav-heading-${group.group}`}>
+                <h2 id={`nav-heading-${group.group}`}>
+                  {navigationLabel(locale, groupLabelKey(group.group))}
+                </h2>
+                <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+                  {group.items.map((item) => (
+                    <li key={item.id}>
+                      <Link
+                        to={item.route}
+                        ariaCurrent={isActive(item.route) ? 'page' : undefined}
+                      >
+                        {navigationLabel(locale, item.labelKey)}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
           </div>
-          <main id="main" tabIndex={-1} style={{ padding: tokens.spacing.lg }}>
-            <h2>{t('mixedScriptNote')}</h2>
-            <p>
-              <MixedScriptText text={mixedScriptLabel} lang={locale} />
-            </p>
-            <p>
-              <MixedScriptText text={displayLocalName(syntheticPerson, locale)} lang={locale} />
-            </p>
-            <p>{formatMeasurement(12.5, 'cm', locale)}</p>
 
-            <DataTable
-              caption={t('facilities')}
-              columns={[
-                { key: 'code', header: t('code') },
-                { key: 'name', header: t('name') },
-              ]}
-              rows={[{ code: syntheticFacility.code, name: syntheticFacility.name }]}
-              emptyLabel={t('facilities')}
+          <div style={{ flex: '1 1 auto' }}>
+            <div
+              role="status"
+              aria-label={shellText(locale, 'notifications')}
+              aria-live="polite"
             />
-
-            <Button onClick={() => setDialogOpen(true)}>{t('showDetails')}</Button>
-            <Dialog
-              open={dialogOpen}
-              title={t('facilityDetails')}
-              closeLabel={t('closeDialog')}
-              onClose={() => setDialogOpen(false)}
-            >
-              <MixedScriptText text={syntheticFacility.name} lang={locale} />
-            </Dialog>
-
-            <Form label={t('noteForm')} submitLabel={t('saveNote')} onSubmit={() => setNote(note)}>
-              <FormField id="shift-note" label={t('shiftNote')} value={note} onChange={setNote} />
-            </Form>
-            <output aria-label={t('echo')} role="status">
-              {note}
-            </output>
-
-            <SignInPlaceholder />
-            <ProtectedRoute>
-              <p>synthetic protected content</p>
-            </ProtectedRoute>
-            {children}
-          </main>
+            <main id="main" tabIndex={-1} ref={mainRef} style={{ padding: tokens.spacing.lg }}>
+              <Suspense fallback={<p role="status">Loading</p>}>
+                <ActivePage />
+              </Suspense>
+            </main>
+          </div>
         </div>
 
         <footer role="contentinfo" style={{ padding: tokens.spacing.lg }}>
