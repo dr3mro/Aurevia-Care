@@ -3016,7 +3016,9 @@ The open remainder of `OPS-WORKFLOW-AUDIT` and `OPS-WORKER-QUALITY`. Script chan
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
-- [ ] WFAUDIT-05 · Swarm audit: reject an unknown or missing worker in the agent inventory (check and tests)
+- [-] WFAUDIT-05 · Swarm audit: reject an unknown or missing worker in the agent inventory (check and tests)
+  - agent: swarm-6
+  - attempts: 1
   - requirements: OPS-06
   - scope: scripts/check-pack.py, scripts/tests/test_check_pack.py
   - details:
@@ -3036,7 +3038,9 @@ The open remainder of `OPS-WORKFLOW-AUDIT` and `OPS-WORKER-QUALITY`. Script chan
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
-- [ ] WFAUDIT-07 · Swarm audit: validate generated Markdown before it is committed (check and tests)
+- [-] WFAUDIT-07 · Swarm audit: validate generated Markdown before it is committed (check and tests)
+  - agent: swarm-7
+  - attempts: 1
   - requirements: OPS-06
   - scope: scripts/check-docs.py, scripts/tests/test_check_docs.py
   - details:
@@ -3046,7 +3050,9 @@ The open remainder of `OPS-WORKFLOW-AUDIT` and `OPS-WORKER-QUALITY`. Script chan
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
-- [ ] WFAUDIT-08 · Swarm audit: reconcile the runbook and swarm guide with what the code does today (documentation)
+- [-] WFAUDIT-08 · Swarm audit: reconcile the runbook and swarm guide with what the code does today (documentation)
+  - agent: swarm-8
+  - attempts: 1
   - requirements: OPS-06, OPS-05
   - scope: docs/SWARM.md, docs/TEAM-ACTIONS.md
   - details:
@@ -3088,7 +3094,9 @@ The open remainder of `OPS-WORKFLOW-AUDIT` and `OPS-WORKER-QUALITY`. Script chan
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
-- [ ] WQUALITY-03 · Swarm quality: validate scope and structured hand-offs on the pinned candidate (script and tests)
+- [-] WQUALITY-03 · Swarm quality: validate scope and structured hand-offs on the pinned candidate (script and tests)
+  - agent: swarm-9
+  - attempts: 1
   - requirements: OPS-06
   - scope: scripts/worker_gate.py, scripts/tests/test_worker_gate.py
   - details:
@@ -3098,7 +3106,9 @@ The open remainder of `OPS-WORKFLOW-AUDIT` and `OPS-WORKER-QUALITY`. Script chan
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
-- [ ] WQUALITY-04 · Swarm quality: add frontend dependency scanning to the frontend check (script and tests)
+- [-] WQUALITY-04 · Swarm quality: add frontend dependency scanning to the frontend check (script and tests)
+  - agent: swarm-10
+  - attempts: 1
   - requirements: WEB-12, OPS-06
   - scope: scripts/frontend-check.sh, scripts/tests/test_frontend_check.py
   - details:
