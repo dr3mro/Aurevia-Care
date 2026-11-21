@@ -613,8 +613,8 @@ Order of work for the whole production-readiness effort: (1) security and platfo
     Do NOT add react-router or any other router package, and do NOT delete the demo content (move it).
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
-- [-] READY-20 · Staff web data-loading hook and page wrapper (no cross-organization data)
-  - agent: swarm-3
+- [x] READY-20 · Staff web data-loading hook and page wrapper (no cross-organization data)
+  - pr: #248
   - attempts: 1
   - requirements: UX-01, WEB-09
   - scope: apps/staff-web/src/api, apps/staff-web/src/components, apps/staff-web/tests/api
@@ -837,8 +837,8 @@ Do these after part 2 where `depends` says so. Persistence tasks run one at a ti
 
 ### Phase A — Durable state (nothing may stay in memory at launch; see docs/decisions/0003)
 
-- [-] READY-35 · Persist service profiles in PostgreSQL (V59) instead of memory
-  - agent: swarm-4
+- [x] READY-35 · Persist service profiles in PostgreSQL (V59) instead of memory
+  - pr: #247
   - attempts: 1
   - requirements: ARC-01, ARC-02, OPS-02
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/messaging/service, apps/api/src/test/java/com/aurevia/smartclinic/messaging/service, db/migrations/V59__service_profiles.sql, apps/api/src/test/java/com/aurevia/smartclinic/it
@@ -855,9 +855,10 @@ Do these after part 2 where `depends` says so. Persistence tasks run one at a ti
     If the interface cannot be implemented with a clean table design, STOP and write exactly which method and why into `.agent/pr-notes/<task-id>.md`; make no code changes.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT change files outside `scope`, add patient data to logs, or edit any existing migration.
-- [ ] READY-36 · Persist care units in PostgreSQL (V60) instead of memory
+- [-] READY-36 · Persist care units in PostgreSQL (V60) instead of memory
+  - agent: swarm-2
+  - attempts: 1
   - requirements: ARC-01, ARC-02, OPS-02
-  - attempts: 0
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/messaging/units, apps/api/src/test/java/com/aurevia/smartclinic/messaging/units, db/migrations/V60__care_units.sql, apps/api/src/test/java/com/aurevia/smartclinic/it
   - depends: READY-35
   - reserved: V60
