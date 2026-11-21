@@ -193,7 +193,7 @@ class TuiCase(unittest.TestCase):
     def advance(self, seconds):
         self.now += seconds
 
-    def fetch_stub(self, emit=None):
+    def fetch_stub(self, emit=None, full=True):
         self.fetch_calls.append(emit)
         payload = self.payloads.pop(0) if self.payloads else {}
         if emit:
