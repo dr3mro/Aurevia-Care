@@ -202,8 +202,8 @@ Cadence and limits:
     Done when: `ClaimsTenantResolverTest` has at least 7 tests (happy path, missing sub, blank sub, missing orgs, malformed org list, org not in token, malformed header) and passes.
 
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` must pass for the classes you touched. Synthetic data only; write the failing test first; stay inside the declared scope; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
-- [-] AUD-20261120-03 · Production authentication, part 2: validate OIDC bearer tokens and bind the tenant context
-  - agent: swarm-1
+- [x] AUD-20261120-03 · Production authentication, part 2: validate OIDC bearer tokens and bind the tenant context
+  - pr: #251
   - attempts: 1
   - scope: apps/api/pom.xml, apps/api/src/main/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/web, apps/api/src/main/resources
   - depends: AUD-20261120-02
@@ -323,8 +323,9 @@ Cadence and limits:
 
 Found while extending the specification (section 8.1 and docs/design/screens-and-navigation.md). Run after the main repair tasks; each task states its own dependency.
 
-- [ ] READY-01 · Health endpoints /health/live and /health/ready (WEB-05)
-  - attempts: 0
+- [-] READY-01 · Health endpoints /health/live and /health/ready (WEB-05)
+  - agent: swarm-2
+  - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/web
   - depends: AUD-20261120-03
   - details:
@@ -597,8 +598,8 @@ Order of work for the whole production-readiness effort: (1) security and platfo
 
 ### Phase 3 — Staff web foundation (router, data loading)
 
-- [-] READY-19 · Staff web router and application shell with role-based navigation
-  - agent: swarm-2
+- [x] READY-19 · Staff web router and application shell with role-based navigation
+  - pr: #249
   - attempts: 1
   - requirements: UX-01, WEB-07, WEB-09
   - scope: apps/staff-web/src/app, apps/staff-web/src/App.tsx, apps/staff-web/tests/app
@@ -631,9 +632,10 @@ Order of work for the whole production-readiness effort: (1) security and platfo
 
 ### Phase 4 — Wire the three existing screens to the real API
 
-- [ ] READY-21 · Scheduling page: /schedule and /schedule/book on the real API
+- [-] READY-21 · Scheduling page: /schedule and /schedule/book on the real API
+  - agent: swarm-3
+  - attempts: 1
   - requirements: CLN-01, CLN-02
-  - attempts: 0
   - scope: apps/staff-web/src/features/scheduling, apps/staff-web/src/app/routes.tsx, apps/staff-web/src/app/navigation.ts
   - depends: READY-19, READY-20, READY-13
   - details:
@@ -1002,9 +1004,10 @@ Do these after part 2 where `depends` says so. Persistence tasks run one at a ti
     5. Run `bash scripts/worker-check.sh`.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT change files outside `scope`, add patient data to logs, or edit any existing migration.
-- [ ] READY-45 · Automated accessibility and end-to-end test harness for the staff web (WEB-10)
+- [-] READY-45 · Automated accessibility and end-to-end test harness for the staff web (WEB-10)
+  - agent: swarm-4
+  - attempts: 1
   - requirements: WEB-10, UX-01
-  - attempts: 0
   - scope: apps/staff-web/e2e, apps/staff-web/package.json, package.json, package-lock.json, apps/staff-web/README.md
   - depends: READY-19
   - details:
@@ -1048,8 +1051,8 @@ Do these after part 2 where `depends` says so. Persistence tasks run one at a ti
     Do NOT build login in this task; PKCE needs the identity provider details from a person (see launch checklist).
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT change files outside `scope`, add patient data to logs, or edit any existing migration.
-- [-] READY-48 · Patient app screens read their data from the API through the transport
-  - agent: swarm-5
+- [x] READY-48 · Patient app screens read their data from the API through the transport
+  - pr: #250
   - attempts: 1
   - requirements: PAT-01, PAT-02, PAT-03
   - scope: apps/patient-mobile/src/features, apps/patient-mobile/src/app, apps/patient-mobile/tests
