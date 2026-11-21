@@ -215,10 +215,15 @@ def issues_enabled():
     return os.environ.get("SWARM_ISSUES", "on").strip().lower() not in ("off", "0", "false", "no")
 
 
+def mask(text):
+    """Hide tokens and neutralise code fences, the way every shown log is masked."""
+    return SECRET.sub("***", text).replace("```", "'''")
+
+
 def clean(text, limit=3000, lines=60):
     """The end of a log, safe to show: tokens masked, code fences neutralised."""
     tail = "\n".join((text or "").splitlines()[-lines:])[-limit:]
-    return SECRET.sub("***", tail).replace("```", "'''")
+    return mask(tail)
 
 
 def fingerprint(*parts):
@@ -307,16 +312,17 @@ def close_issues(kind, parts_or_value, why, by="fingerprint"):
 
 
 @best_effort
-def report_pr_stuck(pr, cause, detail, review=False):
+def report_pr_stuck(pr, cause, detail, review=False, log_text=""):
     """Why a pull request will not merge by itself: one issue per PR, updated if the cause changes."""
     info = gh_json("pr", "view", str(pr), "--json", "title,headRefName,url") or {}
     task = task_id_of(info.get("headRefName", ""))
     link = info.get("url") or f"#{pr}"
     action = ("Review it and merge it yourself if it is right." if review else
               "Decide how to continue: fix it on the branch, merge it yourself, or close it.")
-    body = (f"**Pull request:** {link}\n**Task:** {task or 'unknown'}\n**Cause:** {cause}\n\n"
-            f"{detail}\n\n**What to do:** {action} This issue closes itself when the pull request "
-            "is merged or closed.")
+    body = (f"**Pull request:** {link}\n**Task:** {task or 'unknown'}\n"
+            f"{diagnosis(log_text)}\n\n"
+            f"**Cause:** {cause}\n\n{detail}\n\n**What to do:** {action} This issue closes itself "
+            "when the pull request is merged or closed.")
     return record_issue("pr-stuck", [str(pr)], f"PR #{pr} needs a person: {cause}"[:200], body,
                         labels=("needs-review" if review else "needs-human",),
                         markers={"pr": pr, "task": task})
@@ -339,7 +345,7 @@ def report_worker_handoff(task, result, checks, merged, directory, pr=""):
             f"**Result:** {result} · **Local checks:** {checks} · **Merge with main:** {merged}\n"
             f"**Run:** {run_url()}\n\n"
             f"**Why it did not finish (the worker's own words):**\n\n{clean(why, 2500, 40)}\n\n"
-            + (f"**End of the check log:**\n\n```text\n{clean(log)}\n```\n\n" if log else "")
+            + (f"**Structured diagnosis and check log:**\n\n{diagnosis(log)}\n\n" if log else "")
             + "**Next worker:** continue on this branch from the notes in the pull request; "
               "do not start over. Findings you add to your notes are posted here.")
     if re.fullmatch(r"ISS-\d+", task["id"]):
@@ -391,6 +397,102 @@ def first_error(log):
         if ERROR_LINE.search(line) and not NOISE_LINE.search(line):
             return re.sub(r"\s+", " ", line)[:100]
     return ""
+
+
+# Signatures that name the tool which produced a log, in priority order.
+TOOL_SIGNATURES = (
+    ("SpotBugs", re.compile(r"\bspotbugs\b|BugInstance|Total bugs", re.I)),
+    ("ESLint", re.compile(r"\beslint\b|@typescript-eslint|problems?\s*\(\d+", re.I)),
+    ("TypeScript", re.compile(r"error TS\d+|\btsc\b", re.I)),
+    ("Vitest", re.compile(r"\bvitest\b|Test Files\s+\d+", re.I)),
+    ("Jest", re.compile(r"\bjest\b|Test Suites:|Tests:\s+\d+", re.I)),
+    ("Maven", re.compile(r"BUILD FAILURE|\[ERROR\]|\bmvn\b|Tests run:", re.I)),
+    ("Python unittest", re.compile(r"FAILED \(|Ran \d+ test|AssertionError|Traceback", re.I)),
+    ("shell", re.compile(r"exit code|command not found|\bbash:|\./check\.sh|set -e", re.I)),
+)
+STEP_LINE = re.compile(
+    r"(?:^|\n)[ \t]*(?:##\[group\]|\[INFO\] ---|\$|Running|Step\s*\d+:|"
+    r">\s*(?:vitest|jest|mvn|npm|npx|tsc|eslint|spotbugs|python|pytest|bash|sh)\b)[^\n]*", re.I)
+EXIT_CODE = re.compile(r"(?:exit code|exited with code|exit status)\D{0,12}(\d+)", re.I)
+NAME_PATTERNS = (
+    re.compile(r"\b(?:FAIL:|FAIL(?:ED)?\s+)\s*(\S.+)$", re.I | re.M),
+    re.compile(r"[✗×●❯]\s+(.+)$", re.M),
+    re.compile(r"^([\w./$-]+\.tsx?)(?:\(\d+,\d+\)|:\d+:\d+)\s*-?\s*error TS\d+", re.I | re.M),
+    re.compile(r"(?<![\w./-])((?:\./)?[\w./-]+\.(?:java|tsx?|jsx?|py|sh|sql))\b", re.I),
+)
+# Why a run failed, in priority order: the most actionable cause wins.
+CLASS_SIGNATURES = (
+    ("infrastructure", re.compile(
+        r"quota|rate limit|bad credentials|permission denied|connection refused|service unavailable|"
+        r"timed? out|timeout|out of memory|\boom\b|killed|HTTP 5\d\d|no space left|ECONNRESET", re.I)),
+    ("task-policy", re.compile(
+        r"task[- ]policy|protected file|needs-human|unknown requirement|no such task|not in scope|"
+        r"requirement .{0,40}not found|TODO\.md", re.I)),
+    ("missing-tests", re.compile(
+        r"coverage|uncovered|below .{0,24}threshold|no tests|tests? missing|100%", re.I)),
+    ("check-parity", re.compile(
+        r"check parity|openapi|\bcontract\b|mismatch|not in the contract|missing from|drift|route registry", re.I)),
+    ("implementation", re.compile(
+        r"BUILD FAILURE|AssertionError|Error:|error TS\d+|\bFAIL(?:ED)?\b|[✗×●]|exception|"
+        r"BugInstance|Total bugs|\bspotbugs\b", re.I)),
+)
+
+
+def diagnose(log_text):
+    """Summarise a failed log without leaking secrets.
+
+    The returned dictionary names the tool, the failing step, the exit code when
+    the log reports one, up to five failing test or file names, the first error
+    line and a problem class. Every string is masked the way clean() masks a raw
+    tail, so the result is safe to paste into a public issue.
+    """
+    text = log_text or ""
+    lines = text.splitlines()
+    tool = "unknown"
+    for name, signature in TOOL_SIGNATURES:
+        if signature.search(text):
+            tool = name
+            break
+    step_match = STEP_LINE.search(text)
+    step = mask(step_match.group(0).strip())[:160] if step_match else ""
+    exit_match = EXIT_CODE.search(text)
+    exit_code = int(exit_match.group(1)) if exit_match else None
+    names = []
+    for line in lines:
+        for pattern in NAME_PATTERNS:
+            match = pattern.search(line)
+            if match:
+                name = mask(match.group(1).strip())[:200]
+                if name not in names:
+                    names.append(name)
+                break
+        if len(names) == 5:
+            break
+    problem_class = "unknown"
+    for name, signature in CLASS_SIGNATURES:
+        if signature.search(text):
+            problem_class = name
+            break
+    return {
+        "tool": tool,
+        "step": step,
+        "exit_code": exit_code,
+        "names": names,
+        "error": mask(first_error(text)),
+        "class": problem_class,
+    }
+
+
+def diagnosis(log_text, limit=6000, lines=80):
+    """A structured summary of a failure, followed by its masked, clipped raw tail."""
+    report = diagnose(log_text)
+    code = report["exit_code"] if report["exit_code"] is not None else "unknown"
+    names = ", ".join(report["names"]) or "none"
+    summary = (f"**Diagnosis** — tool: {report['tool']}; class: {report['class']}; "
+               f"step: {report['step'] or 'unknown'}; exit code: {code}; "
+               f"failures: {names}; error: {report['error'] or 'none'}")
+    tail = clean(log_text, limit, lines)
+    return summary + (f"\n\n```text\n{tail}\n```" if tail else "")
 
 
 def workflow_slug(name):
@@ -2140,8 +2242,7 @@ def fail(pr, reason, log_text=""):
     """Send a pull request back to the workers, or stop after MAX_FIX attempts."""
     info = gh_json("pr", "view", str(pr), "--json", "labels")
     attempts = len([n for n in label_names(info) if re.fullmatch(r"fix-\d", n)])
-    tail = "\n".join(log_text.splitlines()[-80:])[-6000:].replace("```", "'''")
-    detail = f"\n\n```text\n{tail}\n```" if tail else ""
+    detail = f"\n\n{diagnosis(log_text)}" if log_text else ""
     if attempts >= MAX_FIX:
         add_labels(pr, "needs-human")
         remove_label(pr, "needs-fix")
@@ -2149,8 +2250,7 @@ def fail(pr, reason, log_text=""):
            f"{MARK}\nIntegration still fails after {MAX_FIX} fix attempts: {reason}. "
            f"A person must take over.{detail}")
         report_pr_stuck(pr, f"still failing after {MAX_FIX} fix attempts",
-                        f"**Why it was stopped:** {reason}\n\n"
-                        + (f"```text\n{clean(log_text)}\n```" if log_text else ""))
+                        f"**Why it was stopped:** {reason}", log_text=log_text)
         return False
     attempt = attempts + 1
     add_labels(pr, "needs-fix", f"fix-{attempt}")
