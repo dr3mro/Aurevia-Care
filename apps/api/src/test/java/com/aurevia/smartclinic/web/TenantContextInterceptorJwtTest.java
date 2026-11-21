@@ -4,11 +4,14 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.io.IOException;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 
 import org.junit.jupiter.api.AfterEach;
@@ -144,6 +147,34 @@ class TenantContextInterceptorJwtTest {
                 .andExpect(jsonPath("$.organizationId").value(ORG))
                 .andExpect(jsonPath("$.subject").value(SUBJECT))
                 .andExpect(jsonPath("$.correlationId").value("corr-jwt"));
+    }
+
+    @Test
+    void jwtOverLimitRequestReturns429WithRetryAfterHeader() throws Exception {
+        // Drive the production OIDC branch (not just synthetic-auth) through a
+        // limiter of one call so the 429 contract is proven on the real path.
+        MockEnvironment environment = new MockEnvironment();
+        environment.setActiveProfiles("oidc");
+        MockMvc limitedMvc = MockMvcBuilders.standaloneSetup(new ProbeController())
+                .setControllerAdvice(new ApiErrorHandler())
+                .addInterceptors(new TenantContextInterceptor(environment,
+                        new RateLimiter(Clock.fixed(Instant.parse("2026-11-21T00:00:00Z"), ZoneOffset.UTC), 1)))
+                .addFilters(new SecurityContextBridgeFilter())
+                .build();
+
+        limitedMvc.perform(get("/api/v1/probe")
+                        .with(jwt().jwt(tokenWith(List.of(ORG))))
+                        .header("X-Active-Organization", ORG))
+                .andExpect(status().isOk());
+
+        limitedMvc.perform(get("/api/v1/probe")
+                        .with(jwt().jwt(tokenWith(List.of(ORG))))
+                        .header("X-Active-Organization", ORG))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().string("Retry-After", "60"))
+                .andExpect(jsonPath("$.code").value("RATE_LIMITED"));
+
+        assertNull(TenantContext.current(), "a rejected JWT request must not leak tenant context");
     }
 
     @Test
