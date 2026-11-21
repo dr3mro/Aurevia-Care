@@ -3133,6 +3133,229 @@ The open remainder of `OPS-WORKFLOW-AUDIT` and `OPS-WORKER-QUALITY`. Script chan
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
+## Script test coverage: bring every Python script to 100% line and branch coverage (new test files only)
+
+On 2026-11-21 the scripts measured 70% overall: `swarm.py` 88%, `monitor.py` and `project-name.py` 0%. Each task adds one new test file for one script or one part of a script and changes nothing else. `COVPY-GATE` then adds a gate that fails below 100%. Tasks that depend on the audit and quality work run after it so they cover the final code.
+
+- [ ] COVPY-CHECK-DOCS · Script tests: reach 100% line and branch coverage of `scripts/check-docs.py`
+  - requirements: OPS-06
+  - scope: scripts/tests/test_check_docs_coverage.py
+  - depends: WFAUDIT-07
+  - details:
+    1. Read `scripts/check-docs.py` completely and the existing tests for it under `scripts/tests`.
+    2. Measure first: `pip install --break-system-packages coverage` if it is missing, then `python3 -m coverage run --branch --source=scripts -m unittest discover -s scripts/tests` and `python3 -m coverage report -m --include=scripts/check-docs.py`. The lines listed below were uncovered on 2026-11-21; other tasks may have changed the file since, so use the report, not the list. Uncovered then: lines 76-79, 83 and one partial branch.
+    3. Write only new test code in the single new test file named in `scope`: no change to the script under test, to any existing test, and no `# pragma: no cover`. Test behaviour through the script's public functions and command line with temporary directories, mocked `gh` and subprocess calls and synthetic data; never call the network. Cover every line and every branch (both outcomes of each `if`, each `except`, each loop with zero and many items). If a line is unreachable by any input, do not edit the script: list the line and why under `## Why this is not finished` so a person can remove it.
+    4. Run `python3 -I -m unittest discover -s scripts/tests` and then the coverage report; paste the final report line for `scripts/check-docs.py` (it must read 100%) under `## Coverage` in your notes.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] COVPY-CHECK-MIGRATIONS · Script tests: reach 100% line and branch coverage of `scripts/check-migrations.py`
+  - requirements: OPS-06
+  - scope: scripts/tests/test_check_migrations_coverage.py
+  - details:
+    1. Read `scripts/check-migrations.py` completely and the existing tests for it under `scripts/tests`.
+    2. Measure first: `pip install --break-system-packages coverage` if it is missing, then `python3 -m coverage run --branch --source=scripts -m unittest discover -s scripts/tests` and `python3 -m coverage report -m --include=scripts/check-migrations.py`. The lines listed below were uncovered on 2026-11-21; other tasks may have changed the file since, so use the report, not the list. Uncovered then: lines 97-99, 115-117, 126-128, 134, 264 and branches at 94, 112 and 138.
+    3. Write only new test code in the single new test file named in `scope`: no change to the script under test, to any existing test, and no `# pragma: no cover`. Test behaviour through the script's public functions and command line with temporary directories, mocked `gh` and subprocess calls and synthetic data; never call the network. Cover every line and every branch (both outcomes of each `if`, each `except`, each loop with zero and many items). If a line is unreachable by any input, do not edit the script: list the line and why under `## Why this is not finished` so a person can remove it.
+    4. Run `python3 -I -m unittest discover -s scripts/tests` and then the coverage report; paste the final report line for `scripts/check-migrations.py` (it must read 100%) under `## Coverage` in your notes.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] COVPY-CHECK-NAMES · Script tests: reach 100% line and branch coverage of `scripts/check-names.py`
+  - requirements: OPS-06
+  - scope: scripts/tests/test_check_names_coverage.py
+  - details:
+    1. Read `scripts/check-names.py` completely and the existing tests for it under `scripts/tests`.
+    2. Measure first: `pip install --break-system-packages coverage` if it is missing, then `python3 -m coverage run --branch --source=scripts -m unittest discover -s scripts/tests` and `python3 -m coverage report -m --include=scripts/check-names.py`. The lines listed below were uncovered on 2026-11-21; other tasks may have changed the file since, so use the report, not the list. Uncovered then: lines 37-42, 58-59, 70-74, 78.
+    3. Write only new test code in the single new test file named in `scope`: no change to the script under test, to any existing test, and no `# pragma: no cover`. Test behaviour through the script's public functions and command line with temporary directories, mocked `gh` and subprocess calls and synthetic data; never call the network. Cover every line and every branch (both outcomes of each `if`, each `except`, each loop with zero and many items). If a line is unreachable by any input, do not edit the script: list the line and why under `## Why this is not finished` so a person can remove it.
+    4. Run `python3 -I -m unittest discover -s scripts/tests` and then the coverage report; paste the final report line for `scripts/check-names.py` (it must read 100%) under `## Coverage` in your notes.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] COVPY-CHECK-PACK · Script tests: reach 100% line and branch coverage of `scripts/check-pack.py`
+  - requirements: OPS-06
+  - scope: scripts/tests/test_check_pack_coverage.py
+  - depends: WFAUDIT-05
+  - details:
+    1. Read `scripts/check-pack.py` completely and the existing tests for it under `scripts/tests`.
+    2. Measure first: `pip install --break-system-packages coverage` if it is missing, then `python3 -m coverage run --branch --source=scripts -m unittest discover -s scripts/tests` and `python3 -m coverage report -m --include=scripts/check-pack.py`. The lines listed below were uncovered on 2026-11-21; other tasks may have changed the file since, so use the report, not the list. Uncovered then: lines 51, 54-55, 62-63, 67, 69, 78, 83, 91, 93, 107-114, 118.
+    3. Write only new test code in the single new test file named in `scope`: no change to the script under test, to any existing test, and no `# pragma: no cover`. Test behaviour through the script's public functions and command line with temporary directories, mocked `gh` and subprocess calls and synthetic data; never call the network. Cover every line and every branch (both outcomes of each `if`, each `except`, each loop with zero and many items). If a line is unreachable by any input, do not edit the script: list the line and why under `## Why this is not finished` so a person can remove it.
+    4. Run `python3 -I -m unittest discover -s scripts/tests` and then the coverage report; paste the final report line for `scripts/check-pack.py` (it must read 100%) under `## Coverage` in your notes.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] COVPY-CHECK-SECRETS · Script tests: reach 100% line and branch coverage of `scripts/check-secrets.py`
+  - requirements: OPS-06
+  - scope: scripts/tests/test_check_secrets_coverage.py
+  - details:
+    1. Read `scripts/check-secrets.py` completely and the existing tests for it under `scripts/tests`.
+    2. Measure first: `pip install --break-system-packages coverage` if it is missing, then `python3 -m coverage run --branch --source=scripts -m unittest discover -s scripts/tests` and `python3 -m coverage report -m --include=scripts/check-secrets.py`. The lines listed below were uncovered on 2026-11-21; other tasks may have changed the file since, so use the report, not the list. Uncovered then: lines 64-67, 71.
+    3. Write only new test code in the single new test file named in `scope`: no change to the script under test, to any existing test, and no `# pragma: no cover`. Test behaviour through the script's public functions and command line with temporary directories, mocked `gh` and subprocess calls and synthetic data; never call the network. Cover every line and every branch (both outcomes of each `if`, each `except`, each loop with zero and many items). If a line is unreachable by any input, do not edit the script: list the line and why under `## Why this is not finished` so a person can remove it.
+    4. Run `python3 -I -m unittest discover -s scripts/tests` and then the coverage report; paste the final report line for `scripts/check-secrets.py` (it must read 100%) under `## Coverage` in your notes.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] COVPY-CHECK-WIRING · Script tests: reach 100% line and branch coverage of `scripts/check-wiring.py`
+  - requirements: OPS-06
+  - scope: scripts/tests/test_check_wiring_coverage.py
+  - details:
+    1. Read `scripts/check-wiring.py` completely and the existing tests for it under `scripts/tests`.
+    2. Measure first: `pip install --break-system-packages coverage` if it is missing, then `python3 -m coverage run --branch --source=scripts -m unittest discover -s scripts/tests` and `python3 -m coverage report -m --include=scripts/check-wiring.py`. The lines listed below were uncovered on 2026-11-21; other tasks may have changed the file since, so use the report, not the list. Uncovered then: line 127 and one partial branch.
+    3. Write only new test code in the single new test file named in `scope`: no change to the script under test, to any existing test, and no `# pragma: no cover`. Test behaviour through the script's public functions and command line with temporary directories, mocked `gh` and subprocess calls and synthetic data; never call the network. Cover every line and every branch (both outcomes of each `if`, each `except`, each loop with zero and many items). If a line is unreachable by any input, do not edit the script: list the line and why under `## Why this is not finished` so a person can remove it.
+    4. Run `python3 -I -m unittest discover -s scripts/tests` and then the coverage report; paste the final report line for `scripts/check-wiring.py` (it must read 100%) under `## Coverage` in your notes.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] COVPY-GEN-OPENCODE · Script tests: reach 100% line and branch coverage of `scripts/gen-opencode.py`
+  - requirements: OPS-06
+  - scope: scripts/tests/test_gen_opencode_coverage.py
+  - depends: WQUALITY-05
+  - details:
+    1. Read `scripts/gen-opencode.py` completely and the existing tests for it under `scripts/tests`.
+    2. Measure first: `pip install --break-system-packages coverage` if it is missing, then `python3 -m coverage run --branch --source=scripts -m unittest discover -s scripts/tests` and `python3 -m coverage report -m --include=scripts/gen-opencode.py`. The lines listed below were uncovered on 2026-11-21; other tasks may have changed the file since, so use the report, not the list. Uncovered then: lines 124-128, 133.
+    3. Write only new test code in the single new test file named in `scope`: no change to the script under test, to any existing test, and no `# pragma: no cover`. Test behaviour through the script's public functions and command line with temporary directories, mocked `gh` and subprocess calls and synthetic data; never call the network. Cover every line and every branch (both outcomes of each `if`, each `except`, each loop with zero and many items). If a line is unreachable by any input, do not edit the script: list the line and why under `## Why this is not finished` so a person can remove it.
+    4. Run `python3 -I -m unittest discover -s scripts/tests` and then the coverage report; paste the final report line for `scripts/gen-opencode.py` (it must read 100%) under `## Coverage` in your notes.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] COVPY-PROJECT-NAME · Script tests: reach 100% line and branch coverage of `scripts/project-name.py`
+  - requirements: OPS-06
+  - scope: scripts/tests/test_project_name_coverage.py
+  - details:
+    1. Read `scripts/project-name.py` completely and the existing tests for it under `scripts/tests`.
+    2. Measure first: `pip install --break-system-packages coverage` if it is missing, then `python3 -m coverage run --branch --source=scripts -m unittest discover -s scripts/tests` and `python3 -m coverage report -m --include=scripts/project-name.py`. The lines listed below were uncovered on 2026-11-21; other tasks may have changed the file since, so use the report, not the list. Uncovered then: every line (0% today; it is imported by no test).
+    3. Write only new test code in the single new test file named in `scope`: no change to the script under test, to any existing test, and no `# pragma: no cover`. Test behaviour through the script's public functions and command line with temporary directories, mocked `gh` and subprocess calls and synthetic data; never call the network. Cover every line and every branch (both outcomes of each `if`, each `except`, each loop with zero and many items). If a line is unreachable by any input, do not edit the script: list the line and why under `## Why this is not finished` so a person can remove it.
+    4. Run `python3 -I -m unittest discover -s scripts/tests` and then the coverage report; paste the final report line for `scripts/project-name.py` (it must read 100%) under `## Coverage` in your notes.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] COVPY-WORKER-GATE · Script tests: reach 100% line and branch coverage of `scripts/worker_gate.py`
+  - requirements: OPS-06
+  - scope: scripts/tests/test_worker_gate_coverage.py
+  - depends: WQUALITY-03
+  - details:
+    1. Read `scripts/worker_gate.py` completely and the existing tests for it under `scripts/tests`.
+    2. Measure first: `pip install --break-system-packages coverage` if it is missing, then `python3 -m coverage run --branch --source=scripts -m unittest discover -s scripts/tests` and `python3 -m coverage report -m --include=scripts/worker_gate.py`. The lines listed below were uncovered on 2026-11-21; other tasks may have changed the file since, so use the report, not the list. Uncovered then: lines 30-32, 57-62, 91-100, 104.
+    3. Write only new test code in the single new test file named in `scope`: no change to the script under test, to any existing test, and no `# pragma: no cover`. Test behaviour through the script's public functions and command line with temporary directories, mocked `gh` and subprocess calls and synthetic data; never call the network. Cover every line and every branch (both outcomes of each `if`, each `except`, each loop with zero and many items). If a line is unreachable by any input, do not edit the script: list the line and why under `## Why this is not finished` so a person can remove it.
+    4. Run `python3 -I -m unittest discover -s scripts/tests` and then the coverage report; paste the final report line for `scripts/worker_gate.py` (it must read 100%) under `## Coverage` in your notes.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] COVPY-MONITOR-FETCH · Script tests: monitor tool coverage, fetch part (to 100% together with the other three parts)
+  - requirements: OPS-06
+  - scope: scripts/tests/test_monitor_fetch_coverage.py
+  - details:
+    1. Read `scripts/monitor.py` and `scripts/monitor.sh`. The monitor has no tests today (0% of 606 statements). Four tasks split it; this one covers the data layer: the `gh` call table, `fetch`, `merge_runs`, `add_jobs`, the churn and compare step, caching and error handling (roughly lines 1-300). Another task owns each other part, so cover only your part's lines.
+    2. Measure first: `pip install --break-system-packages coverage` if it is missing, then `python3 -m coverage run --branch --source=scripts -m unittest discover -s scripts/tests` and `python3 -m coverage report -m --include=scripts/monitor.py`. The lines listed below were uncovered on 2026-11-21; other tasks may have changed the file since, so use the report, not the list. Because four test files share the module, report the lines of your part that are covered by your file alone: run your file alone with `python3 -I -m coverage run --branch --source=scripts -m unittest scripts/tests/test_monitor_fetch_coverage.py`-style discovery (`discover -s scripts/tests -p "test_monitor_fetch_coverage.py"`).
+    3. Write only new test code in the single new test file named in `scope`: no change to the script under test, to any existing test, and no `# pragma: no cover`. Test behaviour through the script's public functions and command line with temporary directories, mocked `gh` and subprocess calls and synthetic data; never call the network. Cover every line and every branch (both outcomes of each `if`, each `except`, each loop with zero and many items). If a line is unreachable by any input, do not edit the script: list the line and why under `## Why this is not finished` so a person can remove it. Fake the `gh` calls with canned JSON, fake time, and give curses a stub window that records `addstr` calls; never start a real terminal.
+    4. Paste the coverage lines for your part under `## Coverage` in your notes.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] COVPY-MONITOR-COMPOSE · Script tests: monitor tool coverage, compose part (to 100% together with the other three parts)
+  - requirements: OPS-06
+  - scope: scripts/tests/test_monitor_compose_coverage.py
+  - details:
+    1. Read `scripts/monitor.py` and `scripts/monitor.sh`. The monitor has no tests today (0% of 606 statements). Four tasks split it; this one covers the screen model: `compose`, `bad`, `cap`, the history strip colours, Recent Runs, Failed, Next Up and the alert logic (roughly lines 300-600). Another task owns each other part, so cover only your part's lines.
+    2. Measure first: `pip install --break-system-packages coverage` if it is missing, then `python3 -m coverage run --branch --source=scripts -m unittest discover -s scripts/tests` and `python3 -m coverage report -m --include=scripts/monitor.py`. The lines listed below were uncovered on 2026-11-21; other tasks may have changed the file since, so use the report, not the list. Because four test files share the module, report the lines of your part that are covered by your file alone: run your file alone with `python3 -I -m coverage run --branch --source=scripts -m unittest scripts/tests/test_monitor_compose_coverage.py`-style discovery (`discover -s scripts/tests -p "test_monitor_compose_coverage.py"`).
+    3. Write only new test code in the single new test file named in `scope`: no change to the script under test, to any existing test, and no `# pragma: no cover`. Test behaviour through the script's public functions and command line with temporary directories, mocked `gh` and subprocess calls and synthetic data; never call the network. Cover every line and every branch (both outcomes of each `if`, each `except`, each loop with zero and many items). If a line is unreachable by any input, do not edit the script: list the line and why under `## Why this is not finished` so a person can remove it. Fake the `gh` calls with canned JSON, fake time, and give curses a stub window that records `addstr` calls; never start a real terminal.
+    4. Paste the coverage lines for your part under `## Coverage` in your notes.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] COVPY-MONITOR-TUI · Script tests: monitor tool coverage, tui part (to 100% together with the other three parts)
+  - requirements: OPS-06
+  - scope: scripts/tests/test_monitor_tui_coverage.py
+  - details:
+    1. Read `scripts/monitor.py` and `scripts/monitor.sh`. The monitor has no tests today (0% of 606 statements). Four tasks split it; this one covers the curses loop: `tui`, `part`, `refresh`, the loading screen, key handling, the clock and the alarm beeps; fake `curses` with a stub screen object (roughly lines 600-829). Another task owns each other part, so cover only your part's lines.
+    2. Measure first: `pip install --break-system-packages coverage` if it is missing, then `python3 -m coverage run --branch --source=scripts -m unittest discover -s scripts/tests` and `python3 -m coverage report -m --include=scripts/monitor.py`. The lines listed below were uncovered on 2026-11-21; other tasks may have changed the file since, so use the report, not the list. Because four test files share the module, report the lines of your part that are covered by your file alone: run your file alone with `python3 -I -m coverage run --branch --source=scripts -m unittest scripts/tests/test_monitor_tui_coverage.py`-style discovery (`discover -s scripts/tests -p "test_monitor_tui_coverage.py"`).
+    3. Write only new test code in the single new test file named in `scope`: no change to the script under test, to any existing test, and no `# pragma: no cover`. Test behaviour through the script's public functions and command line with temporary directories, mocked `gh` and subprocess calls and synthetic data; never call the network. Cover every line and every branch (both outcomes of each `if`, each `except`, each loop with zero and many items). If a line is unreachable by any input, do not edit the script: list the line and why under `## Why this is not finished` so a person can remove it. Fake the `gh` calls with canned JSON, fake time, and give curses a stub window that records `addstr` calls; never start a real terminal.
+    4. Paste the coverage lines for your part under `## Coverage` in your notes.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] COVPY-MONITOR-CLI · Script tests: monitor tool coverage, cli part (to 100% together with the other three parts)
+  - requirements: OPS-06
+  - scope: scripts/tests/test_monitor_cli_coverage.py
+  - details:
+    1. Read `scripts/monitor.py` and `scripts/monitor.sh`. The monitor has no tests today (0% of 606 statements). Four tasks split it; this one covers argument parsing, `main`, the auto-start launch and exit paths. Another task owns each other part, so cover only your part's lines.
+    2. Measure first: `pip install --break-system-packages coverage` if it is missing, then `python3 -m coverage run --branch --source=scripts -m unittest discover -s scripts/tests` and `python3 -m coverage report -m --include=scripts/monitor.py`. The lines listed below were uncovered on 2026-11-21; other tasks may have changed the file since, so use the report, not the list. Because four test files share the module, report the lines of your part that are covered by your file alone: run your file alone with `python3 -I -m coverage run --branch --source=scripts -m unittest scripts/tests/test_monitor_cli_coverage.py`-style discovery (`discover -s scripts/tests -p "test_monitor_cli_coverage.py"`).
+    3. Write only new test code in the single new test file named in `scope`: no change to the script under test, to any existing test, and no `# pragma: no cover`. Test behaviour through the script's public functions and command line with temporary directories, mocked `gh` and subprocess calls and synthetic data; never call the network. Cover every line and every branch (both outcomes of each `if`, each `except`, each loop with zero and many items). If a line is unreachable by any input, do not edit the script: list the line and why under `## Why this is not finished` so a person can remove it. Fake the `gh` calls with canned JSON, fake time, and give curses a stub window that records `addstr` calls; never start a real terminal.
+    4. Paste the coverage lines for your part under `## Coverage` in your notes.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] COVPY-SWARM-PLAN · Script tests: swarm.py coverage, plan part (to 100% together with the other parts)
+  - requirements: OPS-06
+  - scope: scripts/tests/test_swarm_plan_coverage.py
+  - depends: WFAUDIT-02, WFAUDIT-06, WQUALITY-01, WQUALITY-02
+  - details:
+    1. Read `scripts/swarm.py` and `scripts/tests/test_swarm.py`, `test_swarm_issues.py`, `test_swarm_monitor.py` for the fixtures (`FakeGh` and friends). Five tasks split the file; this one covers lines 1-700: constants, labels, issue recording, stuck-PR reports, notes sections, hand-offs and helpers. Cover only the uncovered lines in that range.
+    2. Measure first: `pip install --break-system-packages coverage` if it is missing, then `python3 -m coverage run --branch --source=scripts -m unittest discover -s scripts/tests` and `python3 -m coverage report -m --include=scripts/swarm.py`. The lines listed below were uncovered on 2026-11-21; other tasks may have changed the file since, so use the report, not the list.
+    3. Write only new test code in the single new test file named in `scope`: no change to the script under test, to any existing test, and no `# pragma: no cover`. Test behaviour through the script's public functions and command line with temporary directories, mocked `gh` and subprocess calls and synthetic data; never call the network. Cover every line and every branch (both outcomes of each `if`, each `except`, each loop with zero and many items). If a line is unreachable by any input, do not edit the script: list the line and why under `## Why this is not finished` so a person can remove it. Reuse the existing fake `gh` approach by copying the small helper into your file (do not import from another test file).
+    4. Paste the coverage lines of your range under `## Coverage` in your notes.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] COVPY-SWARM-SCHEDULE · Script tests: swarm.py coverage, schedule part (to 100% together with the other parts)
+  - requirements: OPS-06
+  - scope: scripts/tests/test_swarm_schedule_coverage.py
+  - depends: WFAUDIT-02, WFAUDIT-06, WQUALITY-01, WQUALITY-02
+  - details:
+    1. Read `scripts/swarm.py` and `scripts/tests/test_swarm.py`, `test_swarm_issues.py`, `test_swarm_monitor.py` for the fixtures (`FakeGh` and friends). Five tasks split the file; this one covers lines 700-1250: budgets, daily slots, images ready, task file parsing and status updates. Cover only the uncovered lines in that range.
+    2. Measure first: `pip install --break-system-packages coverage` if it is missing, then `python3 -m coverage run --branch --source=scripts -m unittest discover -s scripts/tests` and `python3 -m coverage report -m --include=scripts/swarm.py`. The lines listed below were uncovered on 2026-11-21; other tasks may have changed the file since, so use the report, not the list.
+    3. Write only new test code in the single new test file named in `scope`: no change to the script under test, to any existing test, and no `# pragma: no cover`. Test behaviour through the script's public functions and command line with temporary directories, mocked `gh` and subprocess calls and synthetic data; never call the network. Cover every line and every branch (both outcomes of each `if`, each `except`, each loop with zero and many items). If a line is unreachable by any input, do not edit the script: list the line and why under `## Why this is not finished` so a person can remove it. Reuse the existing fake `gh` approach by copying the small helper into your file (do not import from another test file).
+    4. Paste the coverage lines of your range under `## Coverage` in your notes.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] COVPY-SWARM-WORKERS · Script tests: swarm.py coverage, workers part (to 100% together with the other parts)
+  - requirements: OPS-06
+  - scope: scripts/tests/test_swarm_workers_coverage.py
+  - depends: WFAUDIT-02, WFAUDIT-06, WQUALITY-01, WQUALITY-02
+  - details:
+    1. Read `scripts/swarm.py` and `scripts/tests/test_swarm.py`, `test_swarm_issues.py`, `test_swarm_monitor.py` for the fixtures (`FakeGh` and friends). Five tasks split the file; this one covers lines 1250-1850: `plan_workers`, publish, instruction reconciler, notes files and repair planning. Cover only the uncovered lines in that range.
+    2. Measure first: `pip install --break-system-packages coverage` if it is missing, then `python3 -m coverage run --branch --source=scripts -m unittest discover -s scripts/tests` and `python3 -m coverage report -m --include=scripts/swarm.py`. The lines listed below were uncovered on 2026-11-21; other tasks may have changed the file since, so use the report, not the list.
+    3. Write only new test code in the single new test file named in `scope`: no change to the script under test, to any existing test, and no `# pragma: no cover`. Test behaviour through the script's public functions and command line with temporary directories, mocked `gh` and subprocess calls and synthetic data; never call the network. Cover every line and every branch (both outcomes of each `if`, each `except`, each loop with zero and many items). If a line is unreachable by any input, do not edit the script: list the line and why under `## Why this is not finished` so a person can remove it. Reuse the existing fake `gh` approach by copying the small helper into your file (do not import from another test file).
+    4. Paste the coverage lines of your range under `## Coverage` in your notes.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] COVPY-SWARM-INTEGRATOR · Script tests: swarm.py coverage, integrator part (to 100% together with the other parts)
+  - requirements: OPS-06
+  - scope: scripts/tests/test_swarm_integrator_coverage.py
+  - depends: WFAUDIT-02, WFAUDIT-06, WQUALITY-01, WQUALITY-02
+  - details:
+    1. Read `scripts/swarm.py` and `scripts/tests/test_swarm.py`, `test_swarm_issues.py`, `test_swarm_monitor.py` for the fixtures (`FakeGh` and friends). Five tasks split the file; this one covers lines 1850-2450: `guard`, merge, gate, fix and repair, resolve conflicts, delivery dispatch and the kill switch. Cover only the uncovered lines in that range.
+    2. Measure first: `pip install --break-system-packages coverage` if it is missing, then `python3 -m coverage run --branch --source=scripts -m unittest discover -s scripts/tests` and `python3 -m coverage report -m --include=scripts/swarm.py`. The lines listed below were uncovered on 2026-11-21; other tasks may have changed the file since, so use the report, not the list.
+    3. Write only new test code in the single new test file named in `scope`: no change to the script under test, to any existing test, and no `# pragma: no cover`. Test behaviour through the script's public functions and command line with temporary directories, mocked `gh` and subprocess calls and synthetic data; never call the network. Cover every line and every branch (both outcomes of each `if`, each `except`, each loop with zero and many items). If a line is unreachable by any input, do not edit the script: list the line and why under `## Why this is not finished` so a person can remove it. Reuse the existing fake `gh` approach by copying the small helper into your file (do not import from another test file).
+    4. Paste the coverage lines of your range under `## Coverage` in your notes.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] COVPY-SWARM-CLI · Script tests: swarm.py coverage, cli part (to 100% together with the other parts)
+  - requirements: OPS-06
+  - scope: scripts/tests/test_swarm_cli_coverage.py
+  - depends: WFAUDIT-02, WFAUDIT-06, WQUALITY-01, WQUALITY-02
+  - details:
+    1. Read `scripts/swarm.py` and `scripts/tests/test_swarm.py`, `test_swarm_issues.py`, `test_swarm_monitor.py` for the fixtures (`FakeGh` and friends). Five tasks split the file; this one covers lines 2450-2800: slot rotation, release and audit helpers, the argument parser and every subcommand of `main` with its output. Cover only the uncovered lines in that range.
+    2. Measure first: `pip install --break-system-packages coverage` if it is missing, then `python3 -m coverage run --branch --source=scripts -m unittest discover -s scripts/tests` and `python3 -m coverage report -m --include=scripts/swarm.py`. The lines listed below were uncovered on 2026-11-21; other tasks may have changed the file since, so use the report, not the list.
+    3. Write only new test code in the single new test file named in `scope`: no change to the script under test, to any existing test, and no `# pragma: no cover`. Test behaviour through the script's public functions and command line with temporary directories, mocked `gh` and subprocess calls and synthetic data; never call the network. Cover every line and every branch (both outcomes of each `if`, each `except`, each loop with zero and many items). If a line is unreachable by any input, do not edit the script: list the line and why under `## Why this is not finished` so a person can remove it. Reuse the existing fake `gh` approach by copying the small helper into your file (do not import from another test file).
+    4. Paste the coverage lines of your range under `## Coverage` in your notes.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] COVPY-GATE · Script tests: a coverage gate that fails below 100% for the scripts (script, test and proposed workflow patch)
+  - requirements: OPS-06
+  - scope: scripts/python-coverage.sh, scripts/tests/test_python_coverage_gate.py, docs/operations/workflow-changes/python-coverage-in-delivery.md
+  - depends: COVPY-CHECK-DOCS, COVPY-CHECK-MIGRATIONS, COVPY-CHECK-NAMES, COVPY-CHECK-PACK, COVPY-CHECK-SECRETS, COVPY-CHECK-WIRING, COVPY-GEN-OPENCODE, COVPY-PROJECT-NAME, COVPY-WORKER-GATE, COVPY-MONITOR-FETCH, COVPY-MONITOR-COMPOSE, COVPY-MONITOR-TUI, COVPY-MONITOR-CLI, COVPY-SWARM-PLAN, COVPY-SWARM-SCHEDULE, COVPY-SWARM-WORKERS, COVPY-SWARM-INTEGRATOR, COVPY-SWARM-CLI
+  - details:
+    1. Read `scripts/check.sh`, `scripts/quick-check.sh`, `scripts/worker-check.sh` and `.github/workflows/delivery.yml`.
+    2. Write `scripts/python-coverage.sh`: run the whole tooling test suite under `coverage run --branch --source=scripts`, then `coverage report --fail-under=100 --omit="scripts/tests/*"`; if `coverage` is not installed print how to install it and exit non-zero; print the uncovered lines on failure. Do not edit `scripts/check.sh` or `worker-check.sh` (other tasks own them); write the one-line change that adds the call as part of the proposed patch.
+    3. Write `docs/operations/workflow-changes/python-coverage-in-delivery.md` with the exact diff for `.github/workflows/delivery.yml` (install `coverage`, run the script in the tooling job) and for `scripts/check.sh`, how to apply it, how to verify it on GitHub and how to roll it back. A worker cannot edit workflow files, so do not edit them.
+    4. Write `scripts/tests/test_python_coverage_gate.py`: the script exits non-zero when a stub `coverage` reports 99% and zero at 100%, and prints the install hint when `coverage` is missing.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
 ## Spec clause coverage: one task per sentence of the specification (new files only, no dependencies)
 
 Every sentence of the requirement tables, the role matrix, the gate evidence, the cross-cutting scenarios and the architecture decisions in `SMARTCLINIC_V1_SPEC.md` has its own task. Each writes one test file (or only a note when the clause needs human, partner or cloud evidence) and one status note under `docs/spec/clauses`. A clause that is not built gets a skipped test marked `GAP:` and a gap note, so the next round of tasks is generated from these notes. The result is a measured, clause-by-clause view of how much of the specification is built.
