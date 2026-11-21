@@ -1,4 +1,6 @@
-- [ ] RESP-APIPAGE · Staff web: responsive `ApiPage` component
+- [-] RESP-APIPAGE · Staff web: responsive `ApiPage` component
+  - agent: swarm-10
+  - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/components/ApiPage.tsx, apps/staff-web/tests/components/ApiPage.responsive.test.tsx
   - depends: RESP-BREAKPOINTS, RESP-STYLESHEET
