@@ -15,17 +15,18 @@ Diagnose a failing check through a reproducible evidence trail. Guessing wastes 
 
 ## The stop-the-line rule
 
-1. Stop adding features. A bug left in step 3 makes steps 4 to 6 wrong.
+1. Stop adding features. A bug left in an early step makes every later step wrong.
 2. Preserve evidence: the exact command, the environment, the first actionable error, the log.
-3. Diagnose with the triage below. 4. Fix the root cause. 5. Guard against recurrence with a failing test first. 6. Resume only after the checks pass.
+3. Diagnose with the triage below.
+4. The fix, the guard test and the final verification belong to the fix worker that receives your report. You stay read-only: write the plan, do not edit files.
 
 ## Triage
 
 1. **Reproduce.** Make it fail reliably with the narrowest command (one class or file). If it will not fail, check timing, environment and shared state: run it alone, after other tests, and on a clean worktree of `main`.
 2. **Localize.** Is it in the branch or already on `main`? A failure that also fails on `main` is pre-existing: report it separately and do not blame the branch. Use `git bisect` or `git log` to find the first bad commit.
 3. **Reduce.** Remove inputs until the smallest case still fails. Distinguish a code bug, a test bug, a missing migration or configuration, a flaky or order dependent test, and an environment limit of the runner.
-4. **Fix the cause.** A bounded fix with a regression test that fails without it. Never weaken, skip or delete a test and never lower a threshold to turn a gate green.
-5. **Verify.** Run the original failing command, then the checks of every area touched.
+4. **Plan the fix.** Describe a bounded fix and the regression test that fails without it, for the fix worker. Never propose weakening, skipping or deleting a test or lowering a threshold to turn a gate green.
+5. **Prove it.** Show the plan is sound by naming the original failing command and the checks of every touched area the fix worker must run.
 
 Keep secrets and clinical payloads out of diagnostics.
 
@@ -55,7 +56,7 @@ Write `yes` only with a fix plan another worker can follow without rediscovering
 
 ## Red flags
 
-- A fix with no failing test written first.
+- A fix plan with no failing test to write first, or any file edited by the debugger.
 - A diagnosis that names no file, line or command.
 - A report that repeats what an earlier round already tried and ruled out.
 - Logs or diagnostics containing PHI, tokens or secrets.
