@@ -18,7 +18,7 @@ python3 -I scripts/check-secrets.py
 python3 -I scripts/check-names.py
 python3 -I scripts/check-wiring.py
 python3 -I scripts/check-migrations.py --require-baseline
-python3 -I -m unittest discover -s scripts/tests -q
+bash scripts/python-coverage.sh
 
 # Compile and unit tests only. The no-security profile skips OWASP and SpotBugs;
 # the fast profile excludes @Tag("integration") suites that need PostgreSQL.
