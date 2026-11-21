@@ -54,6 +54,7 @@ public class RxService {
     private final RxActions actions;
     private final TransactionTemplate transactions;
     private final AuditAppender audit;
+    private final LocalPrescriptionPrint printer = new LocalPrescriptionPrint();
 
     /**
      * Create the service.
@@ -380,6 +381,35 @@ public class RxService {
             Prescription prescription = repository.find(id).orElseThrow(notFound());
             success(RxActions.READ, id);
             return new View(prescription, repository.events(id));
+        });
+    }
+
+    /**
+     * Produce the printable local prescription for an attested, locally routed
+     * prescription.
+     *
+     * <p>Market entitlement and channel approval are re-derived inside the same
+     * tenant-guarded transaction as the document, so a revocation after the
+     * original print instruction fails closed. The channel on the document is
+     * the one recorded on the prescription; no submission or pharmacy outcome is
+     * created by reading the printable form.</p>
+     *
+     * @param id prescription identifier
+     * @return the immutable print-ready prescription with the prescriber attestation
+     * @throws ApiException on denial, invisible prescription, missing entitlement,
+     *         an unapproved local print channel or a prescription that was not
+     *         printed locally
+     */
+    public PrintablePrescription printable(String id) {
+        RxInputs.uuid(id, "id");
+        return execute(RxActions.READ, id, sink -> {
+            Prescription prescription = repository.find(id).orElseThrow(notFound());
+            requireEntitlement(prescription.prescriberSubject());
+            requireApprovedChannel(RxChannel.PRINTABLE_LOCAL.wire());
+            PrintablePrescription document = printer.issue(
+                    new View(prescription, repository.events(id)));
+            success(RxActions.READ, id);
+            return document;
         });
     }
 
