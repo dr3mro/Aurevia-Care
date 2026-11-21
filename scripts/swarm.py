@@ -131,16 +131,14 @@ def report_issue(title, body):
     The swarm hits the same problem on every wave (main still red, the budget cap
     still reached), and one issue per wave buried the issue list. When an open
     issue with this exact title exists, add a comment stamped with the date and
-    time instead; otherwise open one."""
+    time instead; otherwise open one (a closed issue stays closed)."""
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     text = f"{MARK}\n**{stamp}**\n\n{body}"
     found = gh_json("issue", "list", "--state", "all", "--search", f"{title} in:title",
                     "--limit", "30", "--json", "number,title,state") or []
-    same = [i for i in found if i.get("title") == title]
+    same = [i for i in found if i.get("title") == title and i.get("state") != "CLOSED"]
     if same:
         number = str(min(i["number"] for i in same))
-        if any(i.get("state") == "CLOSED" for i in same if str(i.get("number")) == number):
-            gh("issue", "reopen", number, check=False)
         gh("issue", "comment", number, "--body", text, check=False)
         return number
     gh("issue", "create", "--title", title, "--body", text, check=False)
@@ -231,25 +229,14 @@ def issues_with(kind, value):
 
 
 def record_issue(kind, parts, title, body, labels=(), markers=None):
-    """Open one issue for a cause, or comment on the open one. Returns its number or ''."""
+    """Open one issue for a cause, or comment on the open one. Returns its number or ''.
+
+    A closed issue is never reopened: a person closed it on purpose, so a repeat opens a new one."""
     if not issues_enabled():
         return ""
     fp = fingerprint(kind, *parts)
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     existing = issues_with("fingerprint", fp)
-    if not existing:
-        # Reopen a previously closed issue with the same fingerprint instead of
-        # opening a duplicate when the problem comes back.
-        closed = gh_json("issue", "list", "--state", "closed",
-                         "--search", f"{fp} in:body", "--limit", "10",
-                         "--json", "number,title,body") or []
-        closed = [i for i in closed if f"<!-- swarm-fingerprint:{fp} -->" in (i.get("body") or "")]
-        if closed:
-            number = str(min(i["number"] for i in closed))
-            gh("issue", "reopen", number, check=False)
-            text = clip_to(f"{MARK}\n**{stamp}** seen again.\n\n{body}", ISSUE_BODY_LIMIT)
-            gh("issue", "comment", number, "--body", text, check=False)
-            return number
     if existing:
         number = str(min(i["number"] for i in existing))
         text = clip_to(f"{MARK}\n**{stamp}** seen again.\n\n{body}", ISSUE_BODY_LIMIT)
@@ -355,6 +342,23 @@ def classify_failure(log, failed=None):
     return "unknown"
 
 
+ERROR_LINE = re.compile(r"\b(?:FAIL(?:ED)?|AssertionError|TypeError|ReferenceError|SyntaxError|Error:|error TS\d+|"
+                        r"ERROR|Exception|BUILD FAILURE|Tests? failed)\b|✗|×")
+NOISE_LINE = re.compile(r"Process completed|exit code|\bLOG:|^\s*$|##\[(?:group|endgroup)\]")
+
+
+def first_error(log):
+    """The first line of a failed log that names an error, without timestamp, colour codes or
+    numbers. It tells one cause from another when the same job and step fail for different reasons."""
+    for raw in (log or "").splitlines():
+        line = re.sub(r"\x1b\[[0-9;]*m", "", raw)
+        line = re.sub(r"^.*?\t\d{4}-\d\d-\d\dT[\d:.]+Z\s*", "", line)  # gh's "job<TAB>step<TAB>timestamp " prefix
+        line = line.removeprefix("##[error]").strip()
+        if ERROR_LINE.search(line) and not NOISE_LINE.search(line):
+            return re.sub(r"\s+", " ", line)[:100]
+    return ""
+
+
 def workflow_slug(name):
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
 
@@ -410,7 +414,7 @@ def run_event(run_id):
             f"**Failed:** {where}\n**Class:** {kind}"
             + (" (a person must fix this: a token, permission or limit)" if kind != "unknown" else "")
             + f"\n\n```text\n{clean(log)}\n```")
-    number = record_issue("ci", [name, *[f"{j}::{s}" for j, s in failed]],
+    number = record_issue("ci", [name, *[f"{j}::{s}" for j, s in failed], f"error::{first_error(log)}"],
                           f"{name} failed: {where}"[:200], body,
                           # Not agent-fixable: a red main already becomes a repair task, and the
                           # other workflows fail in protected files no agent may merge.
@@ -2385,7 +2389,7 @@ def integrate_batch(queue, gate="scripts/quick-check.sh"):
     files = ["TODO.md"] + [f"docs/swarm/{t}.md" for _, t, _ in merged]
     git("add", *files)
     try:
-        git(*IDENTITY, "commit", "-qm", "--allow-empty", f"Integrate {len(merged)} swarm pull request(s)")
+        git(*IDENTITY, "commit", "-q", "--allow-empty", "-m", f"Integrate {len(merged)} swarm pull request(s)")
     except subprocess.CalledProcessError as error:
         status = git("status", "--short", check=False)
         staged = git("diff", "--cached", "--stat", check=False)
@@ -2419,7 +2423,12 @@ def integrate_batch(queue, gate="scripts/quick-check.sh"):
             renv = next((e for g, e in gates.values() if g == regate), {})
             ok, log = run_gate(regate, renv)
             if not ok:
-                raise subprocess.CalledProcessError(1, ("gate", regate), "", log)
+                # Nothing was pushed. Failing the job here left every pull request waiting with
+                # nobody told, so send the whole batch back to the workers instead.
+                for pr, _, _ in merged:
+                    fail(pr, f"Merge gate ({regate}) failed on the merge of the newest main and this batch", log)
+                emit("merged", 0)
+                return 0
     for (pr, _, _), comment in zip(merged, comments):
         gh("pr", "comment", str(pr), "--body", comment)
     close_merged_issues([(pr, task_id) for pr, task_id, _ in merged])

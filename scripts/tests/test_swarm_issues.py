@@ -30,11 +30,11 @@ class Gh:
     """A scripted gh: records every call and answers the few queries the issue code makes."""
 
     def __init__(self, issues=None, comments=None, runs=None, run_info=None, log="",
-                 pr_state="OPEN", pr_info=None, fail_first_create=False):
+                 pr_state="OPEN", pr_info=None, fail_first_create=False, closed=None):
         self.calls, self.issues, self.comments = [], issues or [], comments or []
         self.runs, self.run_info, self.log = runs or [], run_info or {}, log
         self.pr_state, self.pr_info = pr_state, pr_info or {}
-        self.fail_first_create, self.created = fail_first_create, 0
+        self.fail_first_create, self.created, self.closed = fail_first_create, 0, closed or []
 
     def __call__(self, *args, check=True):
         self.calls.append(args)
@@ -42,6 +42,8 @@ class Gh:
             return json.dumps(self.issues)
         if args[0] == "api" and "/comments" in args[-1]:
             return json.dumps(self.comments)
+        if args[:2] == ("issue", "list") and "closed" in args:
+            return json.dumps(self.closed)
         if args[:2] == ("issue", "create"):
             self.created += 1
             if self.fail_first_create and self.created == 1:
@@ -96,10 +98,35 @@ class CoreTests(unittest.TestCase):
             self.assertEqual([i["number"] for i in swarm.trusted_issues()], [2])
 
 
+class FirstErrorTests(unittest.TestCase):
+    LOG = ("job\tStep 8\t2026-11-21T04:41:42.6Z  2026-11-21 04:41:42.692 UTC [49] LOG:  shutting down\n"
+           "job\tStep 8\t2026-11-21T04:44:00.1Z  FAIL  tests/app/AppShell.test.tsx > route registry\n"
+           "job\tStep 8\t2026-11-21T04:44:01.1Z ##[error]Process completed with exit code 1.")
+
+    def test_the_first_real_error_line_is_found_without_timestamp_or_noise(self):
+        self.assertEqual(swarm.first_error(self.LOG), "FAIL tests/app/AppShell.test.tsx > route registry")
+
+    def test_a_log_without_an_error_gives_an_empty_string(self):
+        self.assertEqual(swarm.first_error("all good\nnothing here"), "")
+
+    def test_two_causes_in_the_same_step_get_different_fingerprints(self):
+        a = swarm.fingerprint("ci", "Agent swarm", "j::s", "error::" + swarm.first_error(self.LOG))
+        b = swarm.fingerprint("ci", "Agent swarm", "j::s", "error::" + swarm.first_error("x\nFAIL other.test.ts > another"))
+        self.assertNotEqual(a, b)
+
+
 class RecordTests(unittest.TestCase):
     def record(self, fake, **kw):
         with mock.patch.object(swarm, "gh", fake):
             return swarm.record_issue("ci", ["x"], "Title", "Body", **kw)
+
+    def test_a_closed_issue_with_the_same_cause_is_not_reopened(self):
+        tag = "<!-- swarm-fingerprint:%s -->" % swarm.fingerprint("ci", "x")
+        fake = Gh(closed=[issue(9, tag)])
+        with mock.patch.object(swarm, "gh", fake), mock.patch.object(swarm, "gh_json", lambda *a, **k: json.loads(fake(*a) or "[]")):
+            swarm.record_issue("ci", ["x"], "Title", "Body")
+        self.assertFalse(any(c[:2] == ("issue", "reopen") for c in fake.calls))
+        self.assertEqual(fake.created, 1)
 
     def test_a_new_cause_opens_an_issue_with_markers_and_labels(self):
         fake = Gh()
