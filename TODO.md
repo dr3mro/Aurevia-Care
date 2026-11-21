@@ -515,8 +515,9 @@ Do these after part 2 where `depends` says so. Persistence tasks run one at a ti
 
 Each task below owns its own files, so the planner can run them side by side with the staff web screens.
 
-- [-] READY-51 · Staff web: every feature registers its own routes
-  - agent: swarm-2
+- [x] READY-51 · Staff web: every feature registers its own routes
+  - pr: #269
+  - evidence: PR #269; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/READY-51.md; simulated review only
   - attempts: 1
   - requirements: WEB-09
   - scope: apps/staff-web/src/app/routes.tsx, apps/staff-web/src/app/routes.test.tsx, apps/staff-web/src/features/admin/routes.ts, apps/staff-web/src/features/scheduling/routes.ts, apps/staff-web/src/features/chart/routes.ts
@@ -553,8 +554,9 @@ Each task below owns its own files, so the planner can run them side by side wit
     3. Content comes from the approved wording in `docs/` where it exists; otherwise write short neutral text and mark the legal sections `Pending approval` rather than inventing legal claims.
     4. Test in `apps/staff-web/tests/publicPages.test.ts` (vitest, read the files from disk): all six pages exist, each links to the privacy notice, accessibility statement and terms, none loads an external resource or contains a `<script>` tag, and none mentions patient, MRN or chart data.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
-- [-] READY-54 · Recovery drill runbook and evidence template (OPS-04)
-  - agent: swarm-4
+- [x] READY-54 · Recovery drill runbook and evidence template (OPS-04)
+  - pr: #268
+  - evidence: PR #268; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/READY-54.md; simulated review only
   - attempts: 1
   - requirements: OPS-04
   - scope: docs/operations/recovery

@@ -7,11 +7,11 @@ FIELDS = "databaseId,workflowName,displayTitle,conclusion,status,headSha,headBra
 TEXT = ("repo", "todo", "archive", "total")  # plain-text results; everything else is JSON
 CALLS = {
     "repo": ["repo", "view", "--json", "nameWithOwner", "-q", ".nameWithOwner"],
-    "issues": ["issue", "list", "--state", "open", "--limit", "300", "--json", "number,title,labels,createdAt"],
-    "prs": ["pr", "list", "--state", "open", "--limit", "300", "--json", "number,title,isDraft,labels,headRefName,createdAt"],
-    "merged": ["pr", "list", "--state", "merged", "--limit", "300", "--json", "number,title,mergedAt"],
-    "closed": ["pr", "list", "--state", "closed", "--limit", "300", "--json", "number,title,closedAt,mergedAt"],
-    "runs": ["run", "list", "--limit", "300", "--json", FIELDS],
+    "issues": ["issue", "list", "--state", "open", "--limit", "40", "--json", "number,title,labels,createdAt"],
+    "prs": ["pr", "list", "--state", "open", "--limit", "40", "--json", "number,title,isDraft,labels,headRefName,createdAt"],
+    "merged": ["pr", "list", "--state", "merged", "--limit", "50", "--json", "number,title,mergedAt"],
+    "closed": ["pr", "list", "--state", "closed", "--limit", "30", "--json", "number,title,closedAt,mergedAt"],
+    "runs": ["run", "list", "--limit", "100", "--json", FIELDS],
     "total": ["api", "graphql", "-F", "o={owner}", "-F", "n={repo}", "-q", ".data.repository.defaultBranchRef.target.history.totalCount",
               "-f", "query=query($o:String!,$n:String!){repository(owner:$o,name:$n){defaultBranchRef{target{... on Commit{history{totalCount}}}}}}"],
     "todo": ["api", "repos/{owner}/{repo}/contents/TODO.md", "-H", "Accept: application/vnd.github.raw"],
@@ -38,9 +38,9 @@ def collect(procs, text_keys=()):
 
 def fetch():
     since = (datetime.now(timezone.utc) - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%SZ")
-    calls = dict(CALLS, commits=["api", "--paginate", f"repos/{{owner}}/{{repo}}/commits?since={since}&per_page=100", "-q",
-                                 '.[] | "\\(.sha) \\(.parents[0].sha // "")"'])
-    data = collect({k: spawn(a) for k, a in calls.items()}, (*TEXT, "commits"))
+    calls = dict(CALLS, commits=["api", f"repos/{{owner}}/{{repo}}/commits?since={since}&per_page=100", "-q",
+                                 "[.[] | {sha: .sha, parent: (.parents[0].sha // \"\")}]"])
+    data = collect({k: spawn(a) for k, a in calls.items()}, TEXT)
     if data.get("repo"):
         data["repo"] = data["repo"].strip()
     # Second wave: job detail for the runs that are live or recently failed.
@@ -52,8 +52,7 @@ def fetch():
     jobs = collect({i: spawn(["run", "view", str(i), "--json", "jobs"]) for i in want})
     data["jobs"] = {i: (j or {}).get("jobs", []) for i, j in jobs.items() if isinstance(j, dict) or j is None}
     # Third step: what those commits changed, as one compare between the day's first parent and the latest commit.
-    rows = [line.split(" ") for line in (data.pop("commits", None) or "").splitlines() if line.strip()]
-    commits = [{"sha": r[0], "parent": r[1] if len(r) > 1 else ""} for r in rows]
+    commits = data.pop("commits", None) or []
     if commits and commits[-1].get("parent"):
         total = spawn(["api", f"repos/{{owner}}/{{repo}}/compare/{commits[-1]['parent']}...{commits[0]['sha']}", "-q",
                        "{files: (.files | length), add: ([.files[].additions] | add // 0), del: ([.files[].deletions] | add // 0)}"])
