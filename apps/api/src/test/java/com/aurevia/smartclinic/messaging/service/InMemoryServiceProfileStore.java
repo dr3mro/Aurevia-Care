@@ -9,8 +9,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.springframework.stereotype.Repository;
-
 import com.aurevia.smartclinic.messaging.units.MessagingContract.MessagingAudit;
 import com.aurevia.smartclinic.messaging.service.ServiceProfileContract.ServiceProfile;
 import com.aurevia.smartclinic.messaging.service.ServiceProfileContract.WorkItemFact;
@@ -19,11 +17,11 @@ import com.aurevia.smartclinic.messaging.service.ServiceProfileContract.WorkItem
  * Synthetic, tenant-scoped in-memory adapter for MSG-06 unit tests.
  *
  * <p>Keys are always the active organization plus a local identifier, so the
- * same local identifier in two tenants cannot collide. This is not a production
- * store: it has no forced row-level security, durable uniqueness or atomic
- * outbox. Those are recorded as a G5 production gap.</p>
+ * same local identifier in two tenants cannot collide. This is a test fake only:
+ * production uses {@link com.aurevia.smartclinic.messaging.service.JdbcServiceProfileStore}
+ * with forced row-level security, durable uniqueness and an append-only audit
+ * table. No Spring stereotype is present so it is never a production bean.</p>
  */
-@Repository
 public class InMemoryServiceProfileStore implements ServiceProfileStore {
 
     private final Map<String, String> roles = new ConcurrentHashMap<>();
