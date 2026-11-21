@@ -1482,7 +1482,9 @@ Screens the earlier parts did not cover. Each exports its routes from `features/
 
 Prescriptions already have draft, attestation and a channel choice (BUILD-45, BUILD-10). These tasks add the same for lab and imaging orders: the clinician places an order from the chart, chooses electronic delivery, print or both, and a failed send can switch to print without a duplicate order. ORDER-01 to ORDER-04 are the API; ORDER-05 to ORDER-08 are the staff web; ORDER-09 and ORDER-10 are the browser test and docs. The print tasks below depend on these.
 
-- [ ] ORDER-01 · API: orderable test and study catalog per facility (versioned)
+- [-] ORDER-01 · API: orderable test and study catalog per facility (versioned)
+  - agent: swarm-5
+  - attempts: 1
   - requirements: LAB-01, RAD-01, XCH-01
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/orderentry/catalog, apps/api/src/test/java/com/aurevia/smartclinic/orderentry/catalog
   - details:
@@ -1575,7 +1577,9 @@ Prescriptions already have draft, attestation and a channel choice (BUILD-45, BU
     2. Write the journey: search and place a lab order sent electronically; place an imaging order with a clinical question; make the partner stub fail and print instead; cancel an order and amend another. Check the status wording and that one order exists after the switch to print. Run it in English and Arabic.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
-- [ ] ORDER-10 · Docs: clinician workflow guide for prescriptions and orders (electronic or printed) and UAT scenario
+- [-] ORDER-10 · Docs: clinician workflow guide for prescriptions and orders (electronic or printed) and UAT scenario
+  - agent: swarm-6
+  - attempts: 1
   - requirements: RX-02, LAB-01, RAD-01, XCH-02
   - scope: docs/operations/clinician-orders
   - details:
@@ -1588,7 +1592,9 @@ Prescriptions already have draft, attestation and a channel choice (BUILD-45, BU
 
 The clinician side is in ORDER-01 to ORDER-10. These tasks add the receiving sides and the links between them. PHARM: routed inbox, status events, clarification thread, substitution proposals the prescriber must approve, and plain patient status. LABFLOW: collection, rejection and recollection, result entry and verification with change checks, corrections and release, outage fallback and a turnaround board. RADFLOW: performing-site worklist and report or addendum delivery with acknowledgment. TRACK: one journey timeline, a patient 'where is it' tracker, a partner outage board, an end-to-end test and a care-loop diagram.
 
-- [ ] PHARM-01 · API: routed-prescription inbox for pharmacy staff (only items explicitly routed to that pharmacy)
+- [-] PHARM-01 · API: routed-prescription inbox for pharmacy staff (only items explicitly routed to that pharmacy)
+  - agent: swarm-7
+  - attempts: 1
   - requirements: RX-02, XCH-01
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/pharmacyflow/inbox, apps/api/src/test/java/com/aurevia/smartclinic/pharmacyflow/inbox
   - details:
@@ -1669,7 +1675,9 @@ The clinician side is in ORDER-01 to ORDER-10. These tasks add the receiving sid
     2. Write `docs/operations/pharmacy-workflow/README.md` with the same steps in plain language and what each status means.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
-- [ ] LABFLOW-01 · API: specimen collection with patient and accession match, and label data
+- [-] LABFLOW-01 · API: specimen collection with patient and accession match, and label data
+  - agent: swarm-8
+  - attempts: 1
   - requirements: LAB-01
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/labflow/collection, apps/api/src/test/java/com/aurevia/smartclinic/labflow/collection
   - details:
@@ -1766,7 +1774,9 @@ The clinician side is in ORDER-01 to ORDER-10. These tasks add the receiving sid
     2. Write `docs/operations/lab-workflow/README.md` with the steps in plain language, the outage route and the correction rules.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
-- [ ] RADFLOW-01 · API: performing-site worklist and handoff (received, scheduled, performed, reported)
+- [-] RADFLOW-01 · API: performing-site worklist and handoff (received, scheduled, performed, reported)
+  - agent: swarm-9
+  - attempts: 1
   - requirements: RAD-01
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/radflow/worklist, apps/api/src/test/java/com/aurevia/smartclinic/radflow/worklist
   - details:
@@ -1811,7 +1821,9 @@ The clinician side is in ORDER-01 to ORDER-10. These tasks add the receiving sid
     2. Write `docs/operations/radiology-workflow/README.md` with the steps in plain language.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
-- [ ] TRACK-01 · API: one order journey timeline for any prescription, lab order, imaging order or referral
+- [-] TRACK-01 · API: one order journey timeline for any prescription, lab order, imaging order or referral
+  - agent: swarm-10
+  - attempts: 1
   - requirements: XCH-03, RX-02, LAB-01, RAD-01
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/journey, apps/api/src/test/java/com/aurevia/smartclinic/journey
   - details:
