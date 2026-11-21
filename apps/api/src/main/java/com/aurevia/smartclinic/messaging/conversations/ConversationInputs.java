@@ -5,6 +5,7 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 
 import com.aurevia.smartclinic.api.ApiException;
+import com.aurevia.smartclinic.api.contract.Subject;
 import com.aurevia.smartclinic.messaging.conversations.ConversationContract.UnitKey;
 
 /**
@@ -18,7 +19,6 @@ public final class ConversationInputs {
 
     private static final Pattern UUID_PATTERN = Pattern.compile(
             "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
-    private static final Pattern SUBJECT = Pattern.compile("[a-z0-9][a-z0-9-]{1,63}");
     private static final Pattern OPAQUE_ID = Pattern.compile("[A-Za-z0-9][A-Za-z0-9._:-]{0,127}");
     private static final int MAX_BODY = 4000;
     private static final int MAX_REASON = 500;
@@ -58,7 +58,7 @@ public final class ConversationInputs {
     }
 
     /**
-     * Validate a lowercase subject key.
+     * Validate a lowercase subject key against the one canonical rule.
      *
      * @param value value supplied by the caller
      * @param field field name used in the error code
@@ -66,11 +66,12 @@ public final class ConversationInputs {
      * @throws ApiException when the value is not a bounded lowercase subject
      */
     public static String subject(String value, String field) {
-        if (value == null || !SUBJECT.matcher(value).matches()) {
+        try {
+            return Subject.subject(value).value();
+        } catch (IllegalArgumentException exception) {
             throw new ApiException(422, "INVALID_" + field.toUpperCase(Locale.ROOT),
                     field + " must be a lowercase subject key");
         }
-        return value;
     }
 
     /**

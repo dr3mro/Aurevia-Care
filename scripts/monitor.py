@@ -22,15 +22,67 @@ CALLS = {
     "runs_more": ["run", "list", "--limit", "300", "--json", FIELDS],  # three pages, merged in when it arrives
     "total": ["api", "graphql", "-F", "o={owner}", "-F", "n={repo}", "-q", ".data.repository.defaultBranchRef.target.history.totalCount",
               "-f", "query=query($o:String!,$n:String!){repository(owner:$o,name:$n){defaultBranchRef{target{... on Commit{history{totalCount}}}}}}"],
-    # The tasks are one file each under tasks/ (TODO.md is not in git): one GraphQL call reads every file.
+    # The tasks are one file each under tasks/ (TODO.md is not in git). This call lists only "name oid" lines;
+    # todo_text() then reads the files it has not seen yet, 100 per call, and keeps the rest in a local cache.
     "todo": ["api", "graphql", "-F", "o={owner}", "-F", "n={repo}", "-q",
-             '[.data.repository.t.entries[]? | select(.name | test("^[0-9].*[.]md$")) | .object.text // ""] | join("")',
-             "-f", 'query=query($o:String!,$n:String!){repository(owner:$o,name:$n){t:object(expression:"HEAD:tasks"){... on Tree{entries{name object{... on Blob{text}}}}}}}'],
+             '.data.repository.t.entries[]? | select(.name | test("^[0-9].*[.]md$")) | "\\(.name) \\(.oid)"',
+             "-f", 'query=query($o:String!,$n:String!){repository(owner:$o,name:$n){t:object(expression:"HEAD:tasks"){... on Tree{entries{name oid}}}}}'],
     # Finished tasks: one file each under tasks/done, plus the older archive file.
     "archive": ["api", "graphql", "-F", "o={owner}", "-F", "n={repo}", "-q",
                 '[(.data.repository.d.entries // [])[].object.text, .data.repository.a.text] | map(select(. != null)) | join("\n")',
                 "-f", 'query=query($o:String!,$n:String!){repository(owner:$o,name:$n){d:object(expression:"HEAD:tasks/done"){... on Tree{entries{object{... on Blob{text}}}}} a:object(expression:"HEAD:docs/archive/TODO-DONE.md"){... on Blob{text}}}}'],
 }
+
+
+TASK_CACHE = os.path.join(tempfile.gettempdir(), "swarm-monitor-tasks.json")
+TASK_BATCH = 100
+
+
+def read_blobs(owner, repo, oids):
+    """Text of the given blobs, one GraphQL call (aliases a0, a1, ...). A blob that fails is left out."""
+    body = " ".join(f'a{i}:object(oid:"{o}"){{... on Blob{{text}}}}' for i, o in enumerate(oids))
+    query = f'query($o:String!,$n:String!){{repository(owner:$o,name:$n){{{body}}}}}'
+    got = collect({"x": spawn(["api", "graphql", "-F", f"o={owner}", "-F", f"n={repo}", "-f", f"query={query}"])})["x"]
+    repo_data = ((got or {}).get("data") or {}).get("repository") or {}
+    return {o: (repo_data.get(f"a{i}") or {}).get("text") for i, o in enumerate(oids)}
+
+
+def todo_text(listing):
+    """All task files as one text, in file-name order. Files never change once their oid is known, so only
+    new or edited ones are read (100 per call, a few calls at once); everything else comes from the cache."""
+    entries = [ln.split(" ") for ln in (listing or "").splitlines() if ln.count(" ") == 1]
+    if "repo" not in CACHE:  # this section runs beside the repo lookup, so it asks for the name itself
+        CACHE["repo"] = (collect({"x": spawn(["repo", "view", "--json", "nameWithOwner", "-q", ".nameWithOwner"])}, ("x",))["x"] or "").strip()
+    owner, _, repo = CACHE["repo"].partition("/")
+    if not repo:
+        CACHE.pop("repo")
+        return None
+    try:
+        with open(TASK_CACHE) as f:
+            cache = json.load(f)
+    except (OSError, ValueError):
+        cache = {}
+    missing = [o for _, o in entries if o not in cache]
+    batches = [missing[i:i + TASK_BATCH] for i in range(0, len(missing), TASK_BATCH)]
+    for i in range(0, len(batches), 4):
+        threads, results = [], []
+        for b in batches[i:i + 4]:
+            t = threading.Thread(target=lambda b=b: results.append(read_blobs(owner, repo, b)), daemon=True)
+            t.start()
+            threads.append(t)
+        for t in threads:
+            t.join()
+        for r in results:
+            cache.update({o: text for o, text in r.items() if text is not None})
+    if any(o not in cache for _, o in entries):
+        return None  # a batch failed: keep the previous value rather than show a partial list
+    keep = {o: cache[o] for _, o in entries}
+    try:
+        with open(TASK_CACHE, "w") as f:
+            json.dump(keep, f)
+    except OSError:
+        pass
+    return "".join(keep[o] for _, o in sorted(entries))
 
 
 # ---- data ---------------------------------------------------------------------------------
@@ -102,6 +154,10 @@ def fetch(emit=None, full=True):
             return put({k: None}) if k not in ("commits", "runs") else None
         if k == "repo":
             val = val.strip()
+        if k == "todo":
+            val = todo_text(val)
+            if val is None:
+                return put({k: None})
         if k == "commits":
             commits = [{"sha": f[0], "parent": f[1] if len(f) > 1 else ""}
                        for f in (ln.split(" ") for ln in val.split("\n") if ln.strip())]
