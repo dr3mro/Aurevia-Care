@@ -1,8 +1,10 @@
 package com.aurevia.smartclinic.web;
 
+import java.time.Clock;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
 import org.springframework.security.core.Authentication;
@@ -35,14 +37,28 @@ public class TenantContextInterceptor implements HandlerInterceptor, WebMvcConfi
     private static final Pattern CORRELATION_PATTERN = Pattern.compile("[A-Za-z0-9._-]{1,128}");
 
     private final Environment environment;
+    private final RateLimiter rateLimiter;
 
     /**
-     * Create the interceptor.
+     * Create the interceptor for direct unit use with a wall-clock limiter.
      *
-     * @param environment spring environment used for profile checks
+     * @param environment spring environment used for profile and limit checks
      */
     public TenantContextInterceptor(Environment environment) {
+        this(environment, new RateLimiter(Clock.systemUTC(),
+                environment.getProperty("smartclinic.rate-limit.per-minute", Integer.class, 600)));
+    }
+
+    /**
+     * Create the interceptor with its instance-local limiter.
+     *
+     * @param environment spring environment used for profile checks
+     * @param rateLimiter limiter keyed by organization and subject
+     */
+    @Autowired
+    public TenantContextInterceptor(Environment environment, RateLimiter rateLimiter) {
         this.environment = environment;
+        this.rateLimiter = rateLimiter;
     }
 
     /**
@@ -74,6 +90,7 @@ public class TenantContextInterceptor implements HandlerInterceptor, WebMvcConfi
             }
             TenantContext.set(new ClaimsTenantResolver().resolve(token.getToken().getClaims(),
                     request.getHeader("X-Active-Organization"), correlation));
+            enforceRateLimit(response);
             return true;
         }
         String subject = request.getHeader("X-Synthetic-Subject");
@@ -85,7 +102,28 @@ public class TenantContextInterceptor implements HandlerInterceptor, WebMvcConfi
             throw new ApiException(422, "INVALID_TENANT_SELECTION", "an active organization must be selected");
         }
         TenantContext.set(new TenantContext(organization, subject, TenantContext.PURPOSE, correlation));
+        enforceRateLimit(response);
         return true;
+    }
+
+    /**
+     * Reject an over-limit call after the tenant context is bound (WEB-04).
+     *
+     * @param response current response, given the Retry-After header on rejection
+     * @throws ApiException with status 429 when the key has used its allowance
+     */
+    private void enforceRateLimit(HttpServletResponse response) {
+        TenantContext context = TenantContext.current();
+        long retryAfter = rateLimiter.retryAfterSeconds(
+                context.organizationId() + ":" + context.subject());
+        if (retryAfter > 0) {
+            response.setHeader("Retry-After", Long.toString(retryAfter));
+            // A throw from preHandle skips this interceptor's afterCompletion,
+            // so clear the thread-local here to avoid leaking tenant identity
+            // to the next request served on this servlet thread.
+            TenantContext.clear();
+            throw new ApiException(429, "RATE_LIMITED", "too many requests");
+        }
     }
 
     /**
