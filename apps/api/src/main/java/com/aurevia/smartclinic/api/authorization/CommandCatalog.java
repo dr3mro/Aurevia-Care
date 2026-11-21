@@ -13,7 +13,7 @@ import com.aurevia.smartclinic.authz.ActionPolicy;
 import com.aurevia.smartclinic.authz.specialty.SpecialtyActions;
 import com.aurevia.smartclinic.exchange.critical.CriticalActions;
 import com.aurevia.smartclinic.exchange.release.ReleaseActionPolicy;
-import com.aurevia.smartclinic.exchange.response.Xch03ActionPolicy;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseActionPolicy;
 import com.aurevia.smartclinic.finance.FinanceActions;
 import com.aurevia.smartclinic.lab.accession.LabActionPolicy;
 import com.aurevia.smartclinic.messaging.acknowledgment.InstructionFactActions;
@@ -38,8 +38,16 @@ public final class CommandCatalog {
     public static final String LAB_POLICY = "LabActionPolicy";
     /** Specialty verification, signing and attestation commands. */
     public static final String SPECIALTY_POLICY = "SpecialtyActions";
-    /** Recipient order response commands owned by the XCH-03 policy. */
-    public static final String EXCHANGE_POLICY = "Xch03ActionPolicy";
+    /**
+     * Recipient order response commands owned by the exchange-response policy.
+     *
+     * <p>The value is a published {@code x-smartclinic-policy} identifier in the
+     * generated OpenAPI contract (kept stable for contract/rollback compatibility,
+     * like the {@code /api/v1/xch03/orders} route). The owning Java class is
+     * {@link com.aurevia.smartclinic.exchange.response.ExchangeResponseActionPolicy};
+     * the wire identifier is deliberately retained as documented debt.</p>
+     */
+    public static final String EXCHANGE_RESPONSE_POLICY = "Xch03ActionPolicy";
     /** Patient release decisions owned by the XCH-06 policy. */
     public static final String RELEASE_POLICY = "ReleaseActionPolicy";
     /** Critical-result workflow commands owned by the XCH-05 policy. */
@@ -162,10 +170,10 @@ public final class CommandCatalog {
                         "/api/v1/therapy/referrals/{id}/accept", SPECIALTY_POLICY),
                 new CommandDefinition("attestClinicalDecision", SpecialtyActions.ATTEST, "POST",
                         "/api/v1/specialty/attestations", SPECIALTY_POLICY),
-                new CommandDefinition("acceptOrder", Xch03ActionPolicy.EXCHANGE_ACCEPT, "POST",
-                        "/api/v1/orders/{id}/accept", EXCHANGE_POLICY),
-                new CommandDefinition("rejectOrder", Xch03ActionPolicy.EXCHANGE_REJECT, "POST",
-                        "/api/v1/orders/{id}/reject", EXCHANGE_POLICY),
+                new CommandDefinition("acceptOrder", ExchangeResponseActionPolicy.EXCHANGE_ACCEPT, "POST",
+                        "/api/v1/orders/{id}/accept", EXCHANGE_RESPONSE_POLICY),
+                new CommandDefinition("rejectOrder", ExchangeResponseActionPolicy.EXCHANGE_REJECT, "POST",
+                        "/api/v1/orders/{id}/reject", EXCHANGE_RESPONSE_POLICY),
                 new CommandDefinition("authorizeRelease", ReleaseActionPolicy.AUTHORIZE, "POST",
                         "/api/v1/releases/{id}/authorize", RELEASE_POLICY),
                 new CommandDefinition("correctRelease", ReleaseActionPolicy.CORRECT, "POST",

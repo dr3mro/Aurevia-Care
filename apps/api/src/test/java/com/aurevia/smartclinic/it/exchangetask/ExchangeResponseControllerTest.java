@@ -16,34 +16,34 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.aurevia.smartclinic.api.ApiException;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.ExchangeEvent;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.ExchangeOrder;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.ExchangeEvent;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.ExchangeOrder;
 import com.aurevia.smartclinic.exchange.response.ExchangeState;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.OrderView;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.Revision;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.AcceptRequest;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.CancellationResponseRequest;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.ChangeResponseRequest;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.ClarifyRequest;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.ProposeChangeRequest;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.ReasonRequest;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.RevokeRequest;
-import com.aurevia.smartclinic.exchange.response.Xch03Controller;
-import com.aurevia.smartclinic.exchange.response.Xch03Service;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.OrderView;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.Revision;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.AcceptRequest;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.CancellationResponseRequest;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.ChangeResponseRequest;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.ClarifyRequest;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.ProposeChangeRequest;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.ReasonRequest;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.RevokeRequest;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseController;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseService;
 
 /** HTTP adapter delegation and version-precondition parsing for XCH-03. */
-class Xch03ControllerTest {
+class ExchangeResponseControllerTest {
 
     private static final String ID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
 
-    private Xch03Service service;
-    private Xch03Controller controller;
+    private ExchangeResponseService service;
+    private ExchangeResponseController controller;
     private ExchangeOrder order;
 
     @BeforeEach
     void setUp() {
-        service = mock(Xch03Service.class);
-        controller = new Xch03Controller(service);
+        service = mock(ExchangeResponseService.class);
+        controller = new ExchangeResponseController(service);
         order = new ExchangeOrder(ID, 2, "LAB-REQ-1", ExchangeState.ACCEPTED, 1, "a".repeat(64),
                 null, null, null, null, null, null);
         when(service.get(anyString())).thenReturn(new OrderView(order, List.of(), List.of(),

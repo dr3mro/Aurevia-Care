@@ -29,23 +29,23 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import com.aurevia.smartclinic.api.ApiException;
 import com.aurevia.smartclinic.audit.AuditAppender;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.ExchangeEvent;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.ExchangeOrder;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.ExchangeEvent;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.ExchangeOrder;
 import com.aurevia.smartclinic.exchange.response.ExchangeState;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.Notification;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.OrderView;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.RetainedCopy;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.Revision;
-import com.aurevia.smartclinic.exchange.response.Xch03ActionPolicy;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.AcceptRequest;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.ChangeResponseRequest;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.ClarifyRequest;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.CancellationResponseRequest;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.ProposeChangeRequest;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.ReasonRequest;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.RevokeRequest;
-import com.aurevia.smartclinic.exchange.response.Xch03Repository;
-import com.aurevia.smartclinic.exchange.response.Xch03Service;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.Notification;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.OrderView;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.RetainedCopy;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.Revision;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseActionPolicy;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.AcceptRequest;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.ChangeResponseRequest;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.ClarifyRequest;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.CancellationResponseRequest;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.ProposeChangeRequest;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.ReasonRequest;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.RevokeRequest;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseRepository;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseService;
 import com.aurevia.smartclinic.tenant.TenantContext;
 
 /**
@@ -54,7 +54,7 @@ import com.aurevia.smartclinic.tenant.TenantContext;
  * revisions and retained copies, cancellation response, revocation blocking and
  * downstream notification. No Spring context or database is used.
  */
-class Xch03ServiceTest {
+class ExchangeResponseServiceTest {
 
     private static final String ORG = "11111111-1111-1111-1111-111111111111";
     private static final String ACTOR = "lab-verifier-a";
@@ -64,16 +64,16 @@ class Xch03ServiceTest {
     private static final String CHECKSUM = "a".repeat(64);
     private static final String NEXT_CHECKSUM = "b".repeat(64);
 
-    private Xch03Repository repository;
+    private ExchangeResponseRepository repository;
     private AuditAppender audit;
-    private Xch03Service service;
+    private ExchangeResponseService service;
 
     @BeforeEach
     void setUp() {
-        repository = mock(Xch03Repository.class);
+        repository = mock(ExchangeResponseRepository.class);
         audit = mock(AuditAppender.class);
         TransactionTemplate transactions = mock(TransactionTemplate.class);
-        service = new Xch03Service(repository, new Xch03ActionPolicy(), transactions, audit);
+        service = new ExchangeResponseService(repository, new ExchangeResponseActionPolicy(), transactions, audit);
         doAnswer(invocation -> {
             TransactionCallback<?> callback = invocation.getArgument(0);
             return callback.doInTransaction(mock(TransactionStatus.class));

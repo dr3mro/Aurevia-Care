@@ -13,7 +13,7 @@ import com.aurevia.smartclinic.api.ApiException;
  * opens, so an invalid command never reaches durable state. Optional blank
  * values become {@code null}.</p>
  */
-public final class Xch03Inputs {
+public final class ExchangeResponseInputs {
 
     /** Approved retention policies; a legal hold suspends scheduled expiry. */
     public static final Set<String> RETENTION_POLICIES = Set.of("STANDARD", "EXTENDED", "LEGAL_HOLD");
@@ -21,7 +21,7 @@ public final class Xch03Inputs {
     private static final Pattern CODE = Pattern.compile("[A-Za-z0-9_.:-]{1,64}");
     private static final Pattern CHECKSUM = Pattern.compile("[0-9a-fA-F]{64}");
 
-    private Xch03Inputs() {
+    private ExchangeResponseInputs() {
     }
 
     /**

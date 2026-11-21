@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
  * policy is not widened outside its scope.</p>
  */
 @Component
-public class Xch03ActionPolicy {
+public class ExchangeResponseActionPolicy {
 
     /** Accept a released order. */
     public static final String EXCHANGE_ACCEPT = "EXCHANGE_ACCEPT";

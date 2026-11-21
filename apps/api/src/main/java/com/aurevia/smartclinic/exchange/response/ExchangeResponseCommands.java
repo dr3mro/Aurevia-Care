@@ -9,9 +9,9 @@ import java.util.List;
  * <p>Every record is immutable; the actor, tenant and timestamp of a command come
  * from the authenticated request context, never from the client payload.</p>
  */
-public final class Xch03Commands {
+public final class ExchangeResponseCommands {
 
-    private Xch03Commands() {
+    private ExchangeResponseCommands() {
     }
 
     /**
