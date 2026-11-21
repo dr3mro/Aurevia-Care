@@ -1200,7 +1200,9 @@ PAT-01 to PAT-03 and UX-01 for the iOS and Android app. BUILD-19 to BUILD-21 cov
     3. Ask for sign-in again before a sensitive account change.
     4. Tests: nothing clinical reaches persistent storage, sign-out clears memory, idle timeout signs out.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] BUILD-55 · Patient app: Arabic, RTL and accessibility pass on every screen
+- [-] BUILD-55 · Patient app: Arabic, RTL and accessibility pass on every screen
+  - agent: swarm-3
+  - attempts: 1
   - requirements: UX-01
   - scope: apps/patient-mobile/src/app
   - details:
@@ -1214,7 +1216,9 @@ PAT-01 to PAT-03 and UX-01 for the iOS and Android app. BUILD-19 to BUILD-21 cov
 
 OPS-03, OPS-06, WEB-08 and WEB-10.
 
-- [ ] BUILD-56 · Staff web: route chunk budget, self-hosted fonts and no third-party scripts
+- [-] BUILD-56 · Staff web: route chunk budget, self-hosted fonts and no third-party scripts
+  - agent: swarm-4
+  - attempts: 1
   - requirements: WEB-08
   - scope: apps/staff-web/scripts, apps/staff-web/vite.config.ts, apps/staff-web/public
   - details:
@@ -1223,7 +1227,9 @@ OPS-03, OPS-06, WEB-08 and WEB-10.
     3. Add a check that no third-party script, font or tracker URL appears in the build output.
     4. Tests: a fixture bundle over the limit fails, a bundle with an external URL fails.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] BUILD-57 · Load test profile and report for the pilot size
+- [-] BUILD-57 · Load test profile and report for the pilot size
+  - agent: swarm-5
+  - attempts: 1
   - requirements: OPS-03
   - scope: infra/loadtest
   - details:
@@ -1232,7 +1238,9 @@ OPS-03, OPS-06, WEB-08 and WEB-10.
     3. It reports p95 for reads and commands separately and exits non-zero when reads are over 500 ms or commands over 900 ms.
     4. Tests run a short profile against a local fake server; never point the script at a real environment by default.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] BUILD-58 · Infrastructure as code for ECS, RDS and private S3 (staging and production)
+- [-] BUILD-58 · Infrastructure as code for ECS, RDS and private S3 (staging and production)
+  - agent: swarm-6
+  - attempts: 1
   - requirements: OPS-06, OPS-02
   - scope: infra/cloud
   - details:
@@ -1395,7 +1403,9 @@ The screen designs were reviewed against the specification. Each task makes one 
 
 Screens the earlier parts did not cover. Each exports its routes from `features/<name>/routes.ts`; BUILD-76 registers them.
 
-- [ ] BUILD-72 · Staff web: scheduling administration (resources, availability, visit types, booking rules)
+- [-] BUILD-72 · Staff web: scheduling administration (resources, availability, visit types, booking rules)
+  - agent: swarm-7
+  - attempts: 1
   - requirements: CLN-01, ADM-01, WEB-09
   - scope: apps/staff-web/src/features/availability
   - details:
@@ -1405,7 +1415,9 @@ Screens the earlier parts did not cover. Each exports its routes from `features/
     4. Tests: a change with an effective date in the past is refused, affected bookings are listed, forbidden state for non-admin roles, English and Arabic.
     5. If the API you need is missing from `contracts/openapi.yaml`, do not invent it: write what is missing under `## Why this is not finished` in your notes and stop.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] BUILD-73 · Staff web: referral partner directory and coverage rosters
+- [-] BUILD-73 · Staff web: referral partner directory and coverage rosters
+  - agent: swarm-8
+  - attempts: 1
   - requirements: ADM-01, XCH-05, MSG-06
   - scope: apps/staff-web/src/features/coverage
   - details:
@@ -1426,7 +1438,9 @@ Screens the earlier parts did not cover. Each exports its routes from `features/
     4. Tests: a quarantined file cannot be opened, rotation does not change the stored file, a void asks for a reason and keeps the history, English and Arabic.
     5. If the API you need is missing from `contracts/openapi.yaml`, do not invent it: write what is missing under `## Why this is not finished` in your notes and stop.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] BUILD-75 · Staff web: care-team action tasks (owner, due date, status)
+- [-] BUILD-75 · Staff web: care-team action tasks (owner, due date, status)
+  - agent: swarm-9
+  - attempts: 1
   - requirements: CLN-06, ADM-02, WEB-09
   - scope: apps/staff-web/src/features/caretasks
   - details:
