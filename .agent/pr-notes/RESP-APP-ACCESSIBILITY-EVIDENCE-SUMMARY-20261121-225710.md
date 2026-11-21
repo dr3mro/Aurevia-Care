@@ -62,9 +62,10 @@ check.sh). All commands executed by the tool; no human or clinical evidence.
 - **Green target suites** — `npx jest src/features/evidence/AccessibilityEvidenceSummary.tablet.test.tsx src/features/evidence/index.test.tsx --runInBand --no-coverage`
   → `Test Suites: 2 passed, 2 total`, `Tests: 29 passed, 29 total`.
 - **Canonical module gate** — `bash apps/patient-mobile/check.sh`
-  → `Test Suites: 63 passed, 63 total`; `Tests: 660 passed, 660 total`;
-  `Time: 14.499 s`, `Ran all test suites.` (includes `npm ci`, typecheck, lint,
-  Jest with enforced 100% global coverage).
+  → `Test Suites: 63 passed, 63 total`; `Tests: 661 passed, 661 total`;
+  `Time: 5.528 s`, `Ran all test suites.` (includes `npm ci`, typecheck, lint,
+  Jest with enforced 100% global coverage). The extra test is the review-driven
+  focus/reading-order assertion.
 - **Typecheck final lines** (`npm run typecheck`):
   ```
   > patient-mobile@0.1.0 typecheck
@@ -114,19 +115,25 @@ New/changed branches and the test that takes each side:
 | `windowClass === 'large' ? LARGE_CONTAINER_STYLE : {}` | matrix rows `large portrait`/`large landscape` assert `maxWidth`/`alignSelf`; compact/regular rows assert `undefined`; rotation test crosses compact → large |
 | `typeof SafeAreaContext.useSafeAreaInsets === 'function' ? real : fallback` | `.tablet.test.tsx` local `jest.mock` supplies the named export (real side); legacy `index.test.tsx` uses the partial global mock (fallback side, also invoking the fallback arrow) |
 
-Font scale needs no production branch: the three scale cases assert the text
-nodes carry no `numberOfLines`, `adjustsFontSizeToFit` or `maxFontSizeMultiplier`,
-that `allowFontScaling` is not `false`, and that the container uses `flexWrap:
-'wrap'` with `flexShrink: 1` children — so nothing is clipped by construction at
-200%. The rotation test proves the window class is recomputed from the new width.
+Font scale needs no production branch: the three scale cases assert on the Text
+**props** (not style keys, per the senior-mobile review) that `numberOfLines` and
+`maxFontSizeMultiplier` are absent, `adjustsFontSizeToFit` is falsy and
+`allowFontScaling` is not `false`, plus the style keys `flexShrink`/`minHeight`/
+`minWidth` and the container's `flexWrap: 'wrap'` — so a future clipping
+regression fails CI at 200%. The focus/reading-order test asserts the same
+ordered `testID` sequence for `isRTL={false}` and `isRTL={true}`, and the rotation
+test proves the window class is recomputed from the new width.
 
 ## Clinical and architecture review
 
 No signed data, cross-organization sharing, patient association, prescribing or
-critical result is involved. A bounded senior-mobile review was requested (files
-and acceptance criteria only); no reviewer result was available at commit time,
-so delegation is reported as unavailable rather than assumed green. This is
-simulated/synthetic evidence, not clinical or patient acceptance.
+critical result is involved. A bounded senior-mobile review completed: it was
+static only (the reviewer session had no shell/execute tool, so it ran no tests),
+and reported three findings. Findings 2 and 3 were accepted and fixed in this
+file (font-scale assertions now read Text props, and a focus/reading-order
+assertion was added). Finding 1 is pre-existing behavior that this story must
+not change (see Findings). This is simulated/synthetic evidence, not clinical or
+patient acceptance.
 
 ## Findings
 
@@ -159,6 +166,24 @@ simulated/synthetic evidence, not clinical or patient acceptance.
    `apps/api/check.sh` (full Maven verify, forbidden for workers) and
    `db/check.sh` (PostgreSQL integration tests). The module gate and the fast
    policy/frontend scripts above were run instead.
+5. **RTL double-mirroring is a pre-existing defect (senior-mobile review, static).**
+   `RootNavigator.tsx` applies `I18nManager.forceRTL` via `direction.ts`, so under
+   native RTL Yoga already mirrors `flexDirection: 'row'`; the pre-existing
+   `isRTL ? 'row-reverse' : 'row'` then reverses it back to LTR visual order, and
+   the manual inset swap double-mirrors padding. Fixing this means dropping
+   `row-reverse`, but the out-of-scope legacy `index.test.tsx:163` asserts it and
+   the story forbids behaviour changes, so it was deliberately not changed here.
+   Recorded for an owner-coordinated follow-up (pin `direction: 'ltr'` on this
+   container with explicit physical padding, or update the legacy assertion and
+   let the single native-direction boundary mirror). The new order test proves
+   the rendered focus/reading sequence is unchanged, but cannot detect the
+   painted double-mirror; that needs a device RTL pass.
+6. **Review-driven test quality fixes applied.** The senior-mobile review found
+   the font-scale assertions targeted style keys that can never carry Text props
+   (tautologies) and that focus order was unasserted. Both were fixed in
+   `AccessibilityEvidenceSummary.tablet.test.tsx` (assert props for clipping
+   controls, and compare rendered `testID` order in LTR and RTL); re-ran the full
+   gate green with 661 tests.
 
 ## Lessons for workers
 
@@ -171,3 +196,7 @@ simulated/synthetic evidence, not clinical or patient acceptance.
 - Workers should use `bash apps/patient-mobile/check.sh` plus the fast policy
   scripts; the root `scripts/check.sh` pulls in the >10-minute Maven verify and
   the database integration suite.
+- Assert React Native clipping controls (`numberOfLines`, `adjustsFontSizeToFit`,
+  `maxFontSizeMultiplier`, `allowFontScaling`) on element **props**, never on
+  `props.style`; style-key assertions on those names are tautologies and let a
+  200% text regression through.

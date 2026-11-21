@@ -48,6 +48,34 @@ function styleOf(view: Awaited<ReturnType<typeof render>>, testID: string): Styl
   return view.getByTestId(testID).props.style as Style;
 }
 
+function propsOf(view: Awaited<ReturnType<typeof render>>, testID: string): Record<string, unknown> {
+  return view.getByTestId(testID).props as Record<string, unknown>;
+}
+
+/** Host testIDs in rendered (focus/reading) order. */
+function renderedTestIds(view: Awaited<ReturnType<typeof render>>): string[] {
+  const ids: string[] = [];
+  type Node = { props?: { testID?: string }; children?: readonly (Node | string)[] | null };
+  const visit = (node: Node | string | null): void => {
+    if (!node || typeof node === 'string') {
+      return;
+    }
+    if (typeof node.props?.testID === 'string') {
+      ids.push(node.props.testID);
+    }
+    for (const child of node.children ?? []) {
+      visit(child);
+    }
+  };
+  const root = view.toJSON();
+  if (Array.isArray(root)) {
+    root.forEach((node) => visit(node as Node));
+  } else {
+    visit(root as Node | null);
+  }
+  return ids;
+}
+
 describe('AccessibilityEvidenceSummary responsive layout', () => {
   beforeEach(() => {
     mockWindow = { width: 390, height: 844, scale: 2, fontScale: 1 };
@@ -91,11 +119,15 @@ describe('AccessibilityEvidenceSummary responsive layout', () => {
       const view = await render(<AccessibilityEvidenceSummary report={report} isRTL={false} />);
 
       for (const id of ['a11y-evidence-title', 'a11y-evidence-status', 'a11y-evidence-detail']) {
+        // These are Text props, not style keys: assert them on props so a future
+        // numberOfLines / maxFontSizeMultiplier regression is actually caught.
+        const props = propsOf(view, id);
+        expect(props.numberOfLines).toBeUndefined();
+        expect(props.adjustsFontSizeToFit).toBeFalsy();
+        expect(props.maxFontSizeMultiplier).toBeUndefined();
+        expect(props.allowFontScaling).not.toBe(false);
+
         const style = styleOf(view, id);
-        expect(style.numberOfLines).toBeUndefined();
-        expect(style.adjustsFontSizeToFit).toBeUndefined();
-        expect(style.maxFontSizeMultiplier).toBeUndefined();
-        expect(style.allowFontScaling).not.toBe(false);
         expect(style.flexShrink).toBe(1);
         expect(style.minHeight).toBe(MIN_TARGET_SIZE);
         expect(style.minWidth).toBe(MIN_TARGET_SIZE);
@@ -116,6 +148,21 @@ describe('AccessibilityEvidenceSummary responsive layout', () => {
     expect(view.getByLabelText(detailLabel)).toBeTruthy();
     expect(view.getByTestId('a11y-evidence-status').props.accessibilityRole).toBe('text');
     expect(view.getByTestId('a11y-evidence-title').props.accessibilityRole).toBe('header');
+  });
+
+  it('keeps the same rendered focus and reading order in LTR and RTL', async () => {
+    const ltr = await render(<AccessibilityEvidenceSummary report={report} isRTL={false} />);
+    const ltrOrder = renderedTestIds(ltr);
+    await ltr.unmount();
+
+    const rtl = await render(<AccessibilityEvidenceSummary report={report} isRTL={true} />);
+    expect(renderedTestIds(rtl)).toEqual(ltrOrder);
+    expect(ltrOrder).toEqual([
+      'a11y-evidence-summary',
+      'a11y-evidence-title',
+      'a11y-evidence-status',
+      'a11y-evidence-detail',
+    ]);
   });
 
   it('recomputes the layout class when a window rotates to large landscape', async () => {
