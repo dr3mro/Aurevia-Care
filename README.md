@@ -49,6 +49,20 @@ Options: `--runtime`, `--memory`, `--cpus`, `--name`, `--image`, `--web-port`, `
 
 `install.sh` accepts `--ref`, `--dir`, `--bin-dir`, `--no-rc`, `--uninstall` and `--replace`. It installs into `~/.local/share/aurevia`, links `aurevia` into `~/.local/bin`, and adds a marked PATH and tab-completion block to `~/.zshrc`, `~/.bashrc` (and `~/.bash_profile` on macOS). Running it again updates the tool. To install from a local checkout: `AUREVIA_SOURCE=. sh install.sh`.
 
+## Swarm monitor
+
+`aurevia monitor` opens a live terminal dashboard for the OpenCode agent swarm. It needs the GitHub CLI (`gh`, signed in) and `python3`, and refreshes every 30 seconds.
+
+![The swarm monitor: status cards, pipeline progress, the task in progress, recent and failed runs, open PRs and the next tasks](docs/images/swarm-monitor.png)
+
+- **Top cards:** the state of `main`, active runs, merged PRs, failed runs, closed PRs, commits (all time and the last 24 hours, with lines added and removed), the median run time and items that need a person.
+- **Pipeline:** success rate of the last 20 runs, tasks done against the total, open and taken tasks, merged PRs, the last wave, the pace per hour and an ETA.
+- **In Progress:** each task a worker holds, with the worker, its current step and how long it has run.
+- **Recent Runs and Failed 24h:** every run with its trigger, commit and duration; a failed run also names the job and step that failed.
+- **Right column:** open PRs and issues, tasks taken by the swarm, the next tasks in line and the PRs merged in the last 24 hours.
+
+Keys: `q` quits and `r` refreshes now. A new failed run rings the terminal bell until you press any key. Other options: `aurevia monitor --once` prints one snapshot, `--interval SECONDS` changes the refresh time and `--recent N` changes how many runs are listed.
+
 ## The image
 
 `Dockerfile.app` builds the single image in three stages: the staff web (`npm run build`), the API (a runnable Spring Boot jar) and a PostgreSQL 17 base that adds nginx and Java. `infra/app/start.sh` starts PostgreSQL, applies the migrations, then starts the API and nginx. nginx serves the web on 3000 and proxies `/api` to the API.
