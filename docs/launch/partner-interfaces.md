@@ -1,0 +1,197 @@
+# Partner interface decision pack — laboratory, PACS and pharmacy
+
+Status: **Not approved**.
+
+This pack collects what a person needs in order to decide whether any laboratory,
+PACS (imaging) or pharmacy partner interface may be enabled for a site. It does
+not choose an option, does not name a partner, jurisdiction, region, person or
+date, and records no approval. Section 10 of the specification requires partner
+traffic to remain disabled until the corresponding evidence exists; a synthetic
+adapter or simulated drill in this repository is not that evidence.
+
+## Decision needed
+
+For each site and each partner kind below, an accountable person must decide
+whether to enable live traffic, keep the partner synthetic, use an approved
+manual workflow, or defer. The decision is per site and per partner kind; this
+pack only frames it.
+
+| Partner kind | Interface contract a person must accept | Conformance result a person must accept | Credentials a person must approve | Reconciliation evidence a person must accept | Timed outage drill a person must accept |
+|---|---|---|---|---|---|
+| Laboratory partner | The site's laboratory order/result interface: the agreed profile and channel (FHIR R4 `ServiceRequest`, `Specimen`, `Observation` and `DiagnosticReport`, and HL7 v2 ORM/ORU only where the contract requires them), with the authorised payload, recipient, purpose, retained-copy terms and duration stated in the contract. | A recorded conformance run against the partner's agreed profile, covering identifier matching, a duplicate, a correction, an out-of-order event and a partial outage, with the acceptor and the result recorded. | Approved, scoped partner credentials with an owner, a rotation and revocation record; no credential value appears in the repository or in evidence links. | Evidence that final, corrected and critical results are routed to a named owner and coverage queue; that patient, source, accession, destination and order identifiers are matched before import; and that unmatched or conflicting reports wait in the reconciliation queue instead of being imported. | A timed drill in which laboratory results stop arriving and orders accumulate, recording detection, fallback, backlog handling, recovery and reconciliation before writes resume. |
+| PACS / imaging partner | The site's imaging interface: the agreed study association and reporting channel, including `ImagingStudy`/study-instance-UID and accession rules, the partner diagnostic workstation boundary, and the contract's position on DICOMweb. The platform boundary is the partner workstation, not an in-house image viewer or PACS. | A recorded conformance run covering study association, a wrong-patient or mismatched-accession refusal, a signed interpretation and an addendum reaching the referrer, with the acceptor and result recorded. | Approved, scoped partner credentials with an owner, a rotation and revocation record; no credential value appears in the repository or in evidence links. | Evidence that a study is linked only after patient and accession match, that a mismatch goes to review, and that corrections or addenda preserve prior versions and reopen review where required. | A timed drill in which the imaging association/reporting channel is unavailable, recording refusal to link on mismatch, manual fallback, backlog handling and reconciliation after recovery. |
+| Pharmacy partner | The site's prescription channel: the agreed routing for `MedicationRequest`/e-prescribing or a locally approved printable prescription, with the actual channel, submission identifiers, pharmacy acceptance/rejection and the boundary that the platform does not hold inventory or perform dispensing. | A recorded conformance run covering submission, delivery confirmation, pharmacy status, an ambiguous transmission and the absence of a duplicate on retry, with the acceptor and result recorded. | Approved, scoped partner credentials with an owner, a rotation and revocation record; no credential value appears in the repository or in evidence links. | Evidence that submitted, delivery-confirmed, pharmacy-accepted/rejected, clarification, renewal and cancellation events are tracked separately, that dispensing evidence is distinguished from acceptance, and that an ambiguous transmission is verified with the partner before any retry. | A timed drill in which the pharmacy channel is unavailable, recording how an ambiguous transmission is held, verified and reconciled without sending a duplicate, and how the site falls back under its approved policy. |
+
+## Why it matters
+
+- **ARC-05 (Delivery)** requires atomic commit of state, audit and outbox,
+  immutable event IDs, consumer deduplication inside the sender/type namespace,
+  holding out-of-order changes, bounded retry, a restricted dead-letter queue,
+  authorised and reasoned replays, and confirmation of order and patient
+  identifiers before external data is linked. It also requires synthetic
+  contract fixtures with duplicates, corrections and partial partner outages.
+  These are the platform guarantees a partner conformance result must exercise;
+  they are not proof that a particular partner satisfies them.
+- **XCH-04** requires every final, corrected and critical result to be routed to
+  a named owner and coverage queue, identifier matching before import, a
+  reconciliation queue for unmatched or conflicting reports, and corrections
+  that preserve prior versions and reopen review. Without accepted
+  reconciliation evidence, a partner feed can silently mis-attribute results.
+- **XCH-01**, **XCH-02** and **XCH-03** require the sending organisation to
+  authorise the specific payload, recipient, purpose and duration; keep
+  workflow, transmission and clinical review states separate; and require a
+  recipient response to changes and revocation. A contract decision fixes these
+  boundaries for a site.
+- **PRD-02** states that partner-specific interfaces require approval and that
+  manual workflows must clearly identify delivery and verification evidence.
+- **LAB-02**, **RAD-01** and **RX-02** add the laboratory, imaging and pharmacy
+  integrity rules that conformance results and reconciliation evidence must
+  cover, including versioned critical policies, patient/accession verification
+  before a study is linked, and separate prescription status events.
+- **OPS-01** and section 10 require the market policy pack, data handling map and
+  named owners before live operation; the G5 row of section 9 requires each site
+  to approve its integrations and downtime drills and to have no unresolved
+  patient-safety, tenant-isolation, record-integrity or critical-escalation
+  defect in enabled scope.
+- **OPS-05** requires monitoring of partner delivery and unmatched reports and
+  downtime runbooks for manual capture, patient identification, critical contacts
+  and supervised back-entry. A timed outage drill is how those runbooks are
+  tested rather than merely written.
+
+## Options
+
+These are the alternatives a person may decide between. None is selected here.
+
+| Option | What it commits the platform to | Risks | Evidence each needs |
+|---|---|---|---|
+| Enable live partner traffic for a site, using the interface family its contract specifies (FHIR R4, HL7 v2 where required, DICOMweb or e-prescribing routing where required) | Operating an approved adapter for that partner, scoped credentials with rotation and revocation, monitored delivery, reconciliation ownership, and the site's downtime and escalation procedures | Wrong-patient or wrong-order association; duplicate, corrected or out-of-order reports overwriting a final revision; credential exposure; silent delivery failure; an unstaffed reconciliation or coverage queue | Per partner: signed interface contract, conformance results, approved credential record, reconciliation evidence and a timed outage drill, each accepted by the accountable roles |
+| Keep the partner synthetic (mock partner against the repository's fixtures) | No live partner connection; all testing remains on synthetic identities and event sequences | Synthetic conformance does not prove the real partner's profile, transport, credentials or behaviour; a later switch to live traffic still needs the full evidence set | Recorded synthetic conformance results and an explicit site record that live partner traffic stays disabled; the section 10 decision still outstanding |
+| Use an approved manual workflow with documented delivery and verification evidence | Staff follow the site's approved manual process; the platform records the delivery and verification evidence it can attest to | Delivery and verification evidence can be incomplete or ambiguous; higher risk of re-entry errors, duplicates and delayed critical results; no automated partner monitoring | Site-approved manual procedure naming who delivers and who verifies, the recorded delivery/verification evidence, and a drill of the manual fallback |
+| Defer enablement for the site or partner kind | No partner traffic; orders, results and prescriptions are handled within the site's existing approved scope | Delayed specialist access or result turnaround; order and result backlog; unmet pilot metrics | A site record that the interface is out of scope for the current approval, the backlog owner, and the trigger for revisiting the decision |
+
+## What the repository already supports
+
+All items below exist today and are synthetic. They show what the platform can
+exercise; none is partner evidence, a credential record or an approval.
+
+- The [ARC-05 durable delivery contract](../../contracts/events/README.md) and
+  its [delivery service](../../apps/api/src/main/java/com/aurevia/smartclinic/events/DurableEventContract.java)
+  describe atomic commit, idempotency, deduplication, bounded retry, dead-letter
+  review and external-link confirmation.
+- The [synthetic partner event fixtures](../../contracts/events/fixtures/partner-events.json)
+  carry duplicate, correction, out-of-order, partial-outage and
+  unconfirmed-identifier scenarios with expected outcomes.
+- The [conformance fixtures](../../apps/api/src/main/java/com/aurevia/smartclinic/exchange/conformance/ConformanceFixtures.java)
+  and [result routing service](../../apps/api/src/main/java/com/aurevia/smartclinic/exchange/result/ResultRoutingService.java)
+  are the current in-repository surface for partner event conformance and
+  result routing.
+- The [REST API contract](../../contracts/openapi.yaml) is the documented entry
+  point for the commands a partner-facing integration would drive.
+- The [queue catalog](../../docs/operations/ops-queues/queue-catalog.md) defines
+  the `unreconciled_reports`, `unacknowledged_critical_findings`,
+  `rejected_exchanges` and `missing_coverage` operator queues and their states.
+- The [production readiness evidence register](../../docs/operations/production-readiness/README.md)
+  and [launch checklist](../../docs/operations/production-readiness/launch-checklist.md)
+  list the human-owned items, including secrets held in a secret manager and the
+  named on-call and incident runbooks.
+- The [recovery drill evidence template](../../docs/operations/recovery/drill-evidence.md)
+  and [operational runbooks](../../docs/operations/recovery/operational-runbooks.md)
+  define how a timed drill is recorded and which signals, owners and downtime
+  topics must be covered; both are empty templates, not completed drills.
+- The [tenant isolation decision](../../docs/decisions/0001-g0-tenant-isolation.md)
+  and [migration change-safety decision](../../docs/decisions/0002-ops06-migration-change-safety.md)
+  record the isolation and change discipline that any partner adapter must keep.
+- The authoritative clauses are in [section 7 (Interoperability and Identity),
+  section 9 (G5) and section 10](../../SMARTCLINIC_V1_SPEC.md) of the
+  specification.
+
+## What is missing
+
+Task IDs below refer to `TODO.md` and are recorded as open, taken or done at the
+time of writing; a task is not evidence that its artifact exists at a site.
+`NO TASK` means no tracked task supplies that artifact. The clause note
+directory `docs/spec/clauses` does not exist at the time of writing, so there
+were no clause notes to read; the authoritative specification sections above
+were used instead.
+
+| Artifact a person needs | Laboratory | PACS / imaging | Pharmacy |
+|---|---|---|---|
+| Signed interface contract | NO TASK (partner and site artifact) | `SPEC-LAYER-INTEROPERABILITY-3`, `SPEC-PRD-06-C02` define the boundary; the signed contract itself is NO TASK | `BUILD-10` records the channel; the signed contract itself is NO TASK |
+| Conformance results | `BUILD-35`, `BUILD-37`, `BUILD-38` (all open); `BUILD-38` adds duplicates, corrections, reordering and outages | `BUILD-36` (open); a wrong-patient study is covered by `BUILD-11` (done) | `BUILD-10` (taken) covers channel evidence; partner conformance is NO TASK |
+| Approved credentials | `SPEC-LAYER-IDENTITY-4`, `SPEC-LAYER-IDENTITY-5` (open); the launch-checklist secret-manager row has NO TASK | same as laboratory | same as laboratory |
+| Reconciliation evidence | `BUILD-08` (taken), `READY-27` (done), `SPEC-XCH-04-C01`, `SPEC-XCH-04-C02`, `SPEC-XCH-04-C03` (open) | `BUILD-11` (done) covers study-link refusal; partner addendum reconciliation is NO TASK | `BUILD-10` (taken) covers status events; pharmacy reconciliation is NO TASK |
+| Timed outage drill | `START-16` (taken, includes a partner outage drill sheet); the drill evidence template is empty until a drill is run | `START-16` (taken); the imaging-specific drill is NO TASK | `START-16` (taken); the pharmacy-specific drill is NO TASK |
+| Human acceptance | `S-G5-04` (open) is the decision this pack prepares; no approval is recorded here | `S-G5-04` (open) | `S-G5-04` (open) |
+
+Related operator documentation still pending: `START-04` (taken) covers key
+rotation and incident runbooks, and `SPEC-PRD-02-C02` (open) is the clause note
+for "partner-specific interfaces require approval".
+
+## Questions for the owner
+
+1. Which interface family does each partner contract actually require — FHIR R4
+   with which partner-specific profile, HL7 v2 ORM/ORU, DICOMweb, or e-prescribing
+   routing — and where is the signed, versioned contract held?
+2. Who accepts the conformance result for each partner, and what counts as a
+   pass for identifier matching, duplicates, corrections, out-of-order events
+   and a partial outage?
+3. Which credentials are approved for each partner, who owns them, how are they
+   rotated and revoked, and how is a revoked credential proven to stop access?
+4. Who owns the reconciliation queue for each feed, what is the coverage roster
+   and backup, and what evidence shows no unmatched report was silently
+   imported?
+5. What are the timed outage drill's scenario, duration, injects, pass criteria
+   and stop condition for each partner, and who declares the result?
+6. What is the approved manual fallback when a partner is unavailable, and how
+   is supervised back-entry kept free of duplicates?
+7. Which site-specific policy pack, market constraints and hosting region apply,
+   and where are the corresponding owner signatures recorded? These are not
+   stated in this pack.
+8. Under which conditions would live traffic be withheld or withdrawn, and who
+   has authority to stop a partner feed?
+
+## Evidence checklist
+
+A site must hold every artifact below before its partner interface is enabled.
+All boxes are intentionally unchecked; this pack asserts none of them.
+
+### Laboratory partner
+
+- [ ] Signed, versioned interface contract naming the agreed profile, channel, payload, recipient, purpose and duration
+- [ ] Conformance result for the agreed profile, including a duplicate, a correction, an out-of-order event and a partial outage, with the acceptor recorded
+- [ ] Approved credential record with an owner, scope, rotation schedule and revocation test evidence, with no credential value stored in the repository or evidence links
+- [ ] Reconciliation evidence showing named-owner and coverage-queue routing, identifier matching before import, and unmatched or conflicting reports held for review
+- [ ] Timed outage drill record with scenario, duration, detection, fallback, backlog handling, recovery and reconciliation before writes resumed
+
+### PACS / imaging partner
+
+- [ ] Signed, versioned interface contract naming the study-association and reporting channel, study-instance-UID and accession rules, and the partner workstation boundary
+- [ ] Conformance result covering a valid study association, a wrong-patient or mismatched-accession refusal, a signed interpretation and an addendum reaching the referrer
+- [ ] Approved credential record with an owner, scope, rotation schedule and revocation test evidence, with no credential value stored in the repository or evidence links
+- [ ] Reconciliation evidence showing that no study was linked on a mismatch and that corrections or addenda preserve prior versions and reopen review
+- [ ] Timed outage drill record with scenario, duration, detection, fallback, backlog handling, recovery and reconciliation before writes resumed
+
+### Pharmacy partner
+
+- [ ] Signed, versioned interface contract naming the prescription channel, submission identifiers and the division of responsibility for acceptance versus dispensing
+- [ ] Conformance result covering submission, delivery confirmation, pharmacy status, an ambiguous transmission and no duplicate on retry
+- [ ] Approved credential record with an owner, scope, rotation schedule and revocation test evidence, with no credential value stored in the repository or evidence links
+- [ ] Reconciliation evidence showing separate status events, dispensing evidence distinguished from acceptance, and partner verification before any retry on ambiguity
+- [ ] Timed outage drill record with scenario, duration, detection, held transmissions, verification, reconciliation and no duplicate sent after recovery
+
+### Shared
+
+- [ ] Site record stating that live partner traffic stays disabled until these artifacts are accepted
+- [ ] Site policy pack and data handling map, with the applicable market constraints and the accountable owners named
+- [ ] Monitoring evidence that partner delivery and unmatched reports are observed and alerted, with a named on-call owner and escalation trail
+- [ ] Downtime and recovery runbooks covering manual capture, patient identification, critical contacts and supervised back-entry, with a recorded drill
+
+## Approval record
+
+Accountable roles from section 10 of the specification. Every cell below is
+left empty on purpose; this pack records no decision.
+
+| Role (section 10) | Name | Date | Decision |
+|---|---|---|---|
+| Integration lead |  |  |  |
+| Partner owner |  |  |  |
