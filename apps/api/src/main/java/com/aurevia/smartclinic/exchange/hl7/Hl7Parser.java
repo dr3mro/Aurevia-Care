@@ -14,7 +14,7 @@ import java.util.regex.Pattern;
 <<<<<<< HEAD
  * a deterministic {@link com.aurevia.smartclinic.exchange.hl7.Hl7ParseException} that maps to a negative
 =======
- * a deterministic {@link Hl7ParseException} that maps to a negative
+ * a deterministic {@link com.aurevia.smartclinic.exchange.hl7.Hl7ParseException} that maps to a negative
 >>>>>>> origin/swarm/BUILD-37-469
  * acknowledgment.</p>
  */

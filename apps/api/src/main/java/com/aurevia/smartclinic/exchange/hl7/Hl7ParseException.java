@@ -6,7 +6,7 @@ package com.aurevia.smartclinic.exchange.hl7;
 <<<<<<< HEAD
  * <p>The machine-readable {@link com.aurevia.smartclinic.exchange.hl7.Hl7ParseException#reason()} is carried into the MSA/ERR portion
 =======
- * <p>The machine-readable {@link #reason()} is carried into the MSA/ERR portion
+ * <p>The machine-readable {@link com.aurevia.smartclinic.exchange.hl7.Hl7ParseException#reason()} is carried into the MSA/ERR portion
 >>>>>>> origin/swarm/BUILD-37-469
  * of the negative acknowledgment so a partner receives a stable error code
  * rather than a free-text diagnosis (XCH-01, XCH-04).</p>
