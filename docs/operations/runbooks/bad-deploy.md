@@ -136,10 +136,13 @@ or when the old artifact is no longer promotable.
   the launch checklist row is open. Use the approved out-of-band channel and
   record the gap.
 
-## How to check it worked / what to record
+## How to check it worked
 
 - Probes UP, logs within OPS-03 targets, sign-in and the affected flow working,
   running digest matches the promoted artifact, no duplicate work created.
+
+## What to record
+
 - Record the UTC detection, decision and recovery instants, symptoms and
   correlation IDs, tag and digest rolled back from and to, migration state,
   commands with final lines, who approved and who performed each action, user

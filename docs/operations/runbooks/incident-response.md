@@ -105,10 +105,11 @@ telemetry; a passing evaluation is not proof an alert fired.
     hold (OPS-01, OPS-07), flag the privacy owner at once.
     `NOT YET IN PLACE:` an approved legal-hold placement tool or policy pack.
     A real `POST /api/v1/messaging-governance/legal-holds` endpoint exists, but
-    its policy tuple is a versioned-in-code stand-in rather than a live binding
-    to an approved policy pack, as the
-    [s_g5_08 README](../s_g5_08/README.md) states; it is not an approved hold
-    system for incident use. The hold rules are documented in
+    no approved policy pack is bound to it in this repository and no named hold
+    authority is configured here; it is not an approved hold system for incident
+    use. The [s_g5_08 README](../s_g5_08/README.md) states that legal-hold
+    authority belongs to qualified site, privacy and clinical owners, not to a
+    tool or flag, and the hold rules are documented in
     [retention and offboarding](../s_g5_08/retention-and-offboarding.md).
 11. **Hand over if the shift ends.** Use
     [on-call handover](on-call-handover.md); do not leave an open Sev 1 or Sev 2
