@@ -24,6 +24,7 @@ const pending: AppointmentView = {
   localStart: '10:00',
   status: 'booked',
   confirmation: { kind: 'pending', confirmedAt: null },
+  confirmedLocal: null,
 };
 
 const activeDevice: DeviceToken = {
@@ -78,6 +79,7 @@ describe('AppointmentListScreen', () => {
     const confirmed: AppointmentView = {
       ...pending,
       confirmation: { kind: 'confirmed', confirmedAt: '2026-11-19T10:00:00Z' },
+      confirmedLocal: '12:00',
     };
     const view = await render(
       <AppointmentListScreen
@@ -90,7 +92,7 @@ describe('AppointmentListScreen', () => {
         onRevokeDevice={recorder().fn}
       />,
     );
-    expect(view.getByTestId('confirmed-apt-1')).toBeTruthy();
+    expect(view.getByTestId('confirmed-apt-1').props.children).toContain('12:00');
     expect(view.queryByTestId('confirm-apt-1')).toBeNull();
   });
 
@@ -98,6 +100,7 @@ describe('AppointmentListScreen', () => {
     const unavailable: AppointmentView = {
       ...pending,
       confirmation: { kind: 'unavailable', confirmedAt: null },
+      confirmedLocal: null,
     };
     const view = await render(
       <AppointmentListScreen
