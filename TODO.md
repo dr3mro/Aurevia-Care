@@ -379,8 +379,9 @@ Do these after part 2 where `depends` says so. Persistence tasks run one at a ti
 
 ### Phase A — Durable state (nothing may stay in memory at launch; see docs/decisions/0003)
 
-- [-] READY-37 · Persist flow policies in PostgreSQL (V61) instead of memory
-  - agent: swarm-1
+- [x] READY-37 · Persist flow policies in PostgreSQL (V61) instead of memory
+  - pr: #275
+  - evidence: PR #275; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/READY-37.md; simulated review only
   - attempts: 2
   - requirements: ARC-01, ARC-02, OPS-02
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/messaging/flows, apps/api/src/test/java/com/aurevia/smartclinic/messaging/flows, db/migrations/V61__flow_policies.sql, apps/api/src/test/java/com/aurevia/smartclinic/it
