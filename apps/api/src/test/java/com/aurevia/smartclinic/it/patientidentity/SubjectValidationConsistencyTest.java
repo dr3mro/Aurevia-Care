@@ -165,9 +165,9 @@ class SubjectValidationConsistencyTest {
 
     @Test
     void dottedAndUnderscoredSubjectsStayValidUnderTheCanonicalRule() {
-        // AUD-20261121-10 migrates the conversation request boundary to this same
-        // canonical rule; until that lands, the shared rule (not the legacy strict
-        // regex still in ConversationInputs) is the parity oracle for these inputs.
+        // AUD-20261121-10 migrated the conversation request boundary to this same
+        // canonical primitive, so the shared rule is both the parity oracle and
+        // the decision each migrated boundary now applies.
         assertEquals(ACCEPTED, canonicalDecision("patient.one"));
         assertEquals(ACCEPTED, canonicalDecision("patient_one"));
         assertEquals(canonicalDecision("patient.one"), identityDecision("patient.one"));
@@ -175,17 +175,16 @@ class SubjectValidationConsistencyTest {
     }
 
     @Test
-    void dottedAndUnderscoredParityIsPendingTheConversationMigration() {
-        // Honest characterisation of the cross-story gap, not a hidden omission:
-        // identity now applies the canonical loose rule but ConversationInputs
-        // still applies the legacy strict rule, so these inputs genuinely
-        // disagree today. AUD-20261121-10 migrates ConversationInputs to the
-        // canonical primitive; when that lands both decisions must become ACCEPT
-        // and this assertion must be changed to one of parity.
+    void dottedAndUnderscoredParityAfterTheConversationMigration() {
+        // AUD-20261121-10 migrated ConversationInputs to the canonical primitive,
+        // so identity and conversation now agree on these exact inputs. The former
+        // divergence assertion is replaced by parity; see the staff/conversation
+        // HTTP parity test in staff.SubjectBoundaryConsistencyTest for the other
+        // request boundary pair named by that story.
         assertEquals(ACCEPTED, identityDecision("patient.one"));
-        assertEquals(INVALID, conversationDecision("patient.one"));
+        assertEquals(ACCEPTED, conversationDecision("patient.one"));
         assertEquals(ACCEPTED, identityDecision("patient_one"));
-        assertEquals(INVALID, conversationDecision("patient_one"));
+        assertEquals(ACCEPTED, conversationDecision("patient_one"));
     }
 
     @Test
