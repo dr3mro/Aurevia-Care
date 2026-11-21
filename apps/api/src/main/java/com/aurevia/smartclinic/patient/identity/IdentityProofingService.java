@@ -28,7 +28,16 @@ import com.aurevia.smartclinic.tenant.TenantContext;
 @Service
 public class IdentityProofingService {
 
-    private static final Pattern SUBJECT = Pattern.compile("[a-z0-9_.:-]{3,64}");
+    /**
+     * The bounded lowercase subject key mirrored from the product's request
+     * boundaries. An alphanumeric start and the exclusion of {@code :} keep the
+     * value safe as a routing/log token; dot and underscore stay valid because
+     * staff and authz subjects already use them. This mirrors the loose rule
+     * pending the canonical {@code subject(...)} primitive from the request
+     * boundary unification; replace this pattern with a call to that primitive
+     * when it becomes available rather than keeping a second copy of the rule.
+     */
+    private static final Pattern SUBJECT = Pattern.compile("[a-z0-9][a-z0-9._-]{1,63}");
     private static final Pattern DISPLAY_NAME = Pattern.compile("[\\p{L}\\p{M} '.-]{2,120}");
     private static final Pattern CHART_ID = Pattern.compile(
             "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
@@ -67,7 +76,7 @@ public class IdentityProofingService {
      * @throws ApiException on invalid input, denial or an existing account
      */
     public PatientAccount enroll(String subject, String displayName) {
-        require(SUBJECT, subject, "INVALID_SUBJECT", "subject must be 3-64 lowercase letters, digits or _ . : -");
+        require(SUBJECT, subject, "INVALID_SUBJECT", "subject must be 2-64 lowercase letters, digits, . _ or -");
         require(DISPLAY_NAME, displayName, "INVALID_NAME", "name must be 2-120 letters, spaces or ' . -");
         AtomicReference<ApiException> failure = new AtomicReference<>();
         PatientAccount account = transactions.execute(status -> {
@@ -104,7 +113,7 @@ public class IdentityProofingService {
      * @throws ApiException on invalid input, denial or an unknown account or chart
      */
     public InvitationIssue issueInvitation(String subject, String chartId, String purpose, long ttlSeconds) {
-        require(SUBJECT, subject, "INVALID_SUBJECT", "subject must be 3-64 lowercase letters, digits or _ . : -");
+        require(SUBJECT, subject, "INVALID_SUBJECT", "subject must be 2-64 lowercase letters, digits, . _ or -");
         require(CHART_ID, chartId, "INVALID_CHART_ID", "chartId must be a UUID");
         if (purpose == null || !PURPOSES.contains(purpose)) {
             throw new ApiException(422, "INVALID_PURPOSE", "purpose must be ENROLL, LINK or REVERIFY");
@@ -205,7 +214,7 @@ public class IdentityProofingService {
      * @throws ApiException on invalid input, denial or an unknown link
      */
     public ChartLink unlink(String subject, String chartId, String reason) {
-        require(SUBJECT, subject, "INVALID_SUBJECT", "subject must be 3-64 lowercase letters, digits or _ . : -");
+        require(SUBJECT, subject, "INVALID_SUBJECT", "subject must be 2-64 lowercase letters, digits, . _ or -");
         require(CHART_ID, chartId, "INVALID_CHART_ID", "chartId must be a UUID");
         require(REASON, reason, "INVALID_REASON", "reason must be 2-120 characters");
         AtomicReference<ApiException> failure = new AtomicReference<>();
@@ -264,7 +273,7 @@ public class IdentityProofingService {
      * @throws ApiException on invalid input, denial or an unknown link or account
      */
     public InvitationIssue reverify(String subject, String chartId, String reason) {
-        require(SUBJECT, subject, "INVALID_SUBJECT", "subject must be 3-64 lowercase letters, digits or _ . : -");
+        require(SUBJECT, subject, "INVALID_SUBJECT", "subject must be 2-64 lowercase letters, digits, . _ or -");
         require(CHART_ID, chartId, "INVALID_CHART_ID", "chartId must be a UUID");
         require(REASON, reason, "INVALID_REASON", "reason must be 2-120 characters");
         AtomicReference<ApiException> failure = new AtomicReference<>();
@@ -319,7 +328,7 @@ public class IdentityProofingService {
      * @throws ApiException on invalid input or denial
      */
     public boolean hasAccess(String subject, String chartId) {
-        require(SUBJECT, subject, "INVALID_SUBJECT", "subject must be 3-64 lowercase letters, digits or _ . : -");
+        require(SUBJECT, subject, "INVALID_SUBJECT", "subject must be 2-64 lowercase letters, digits, . _ or -");
         require(CHART_ID, chartId, "INVALID_CHART_ID", "chartId must be a UUID");
         AtomicReference<ApiException> failure = new AtomicReference<>();
         Boolean access = transactions.execute(status -> {
@@ -347,7 +356,7 @@ public class IdentityProofingService {
      * @throws ApiException on invalid input or denial
      */
     public List<ChartLink> links(String subject) {
-        require(SUBJECT, subject, "INVALID_SUBJECT", "subject must be 3-64 lowercase letters, digits or _ . : -");
+        require(SUBJECT, subject, "INVALID_SUBJECT", "subject must be 2-64 lowercase letters, digits, . _ or -");
         AtomicReference<ApiException> failure = new AtomicReference<>();
         List<ChartLink> links = transactions.execute(status -> {
             TenantContext context = TenantContext.current();

@@ -1,0 +1,27 @@
+# Production-only profile (WEB-01, WEB-05) layered on application.yml.
+# Activate with SPRING_PROFILES_ACTIVE=production. Every deployment-specific
+# value comes from the environment; this file contains no credential.
+server:
+  # WEB-05: drain in-flight requests during a rolling deploy.
+  shutdown: graceful
+  tomcat:
+    connection-timeout: 10s
+    # WEB-04: bound the request body Tomcat swallows on an aborted request.
+    max-swallow-size: 2MB
+  error:
+    # WEB-04: never leak messages, stack traces or internal class names.
+    include-message: never
+    include-stacktrace: never
+  # WEB-01: honour X-Forwarded-* from the TLS-terminating edge.
+  forward-headers-strategy: framework
+
+spring:
+  lifecycle:
+    # WEB-05: at least 30 seconds to drain in-flight requests.
+    timeout-per-shutdown-phase: 30s
+  datasource:
+    hikari:
+      maximum-pool-size: ${SMARTCLINIC_DB_POOL:20}
+      connection-timeout: 5000
+      max-lifetime: 1500000
+      leak-detection-threshold: 20000

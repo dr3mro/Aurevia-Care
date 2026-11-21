@@ -1,4 +1,5 @@
 import type { Locale } from '../../i18n/messages';
+import { fillMessagePlaceholders } from '../duplicates/messagePlaceholders';
 
 /**
  * Patient registration and search labels. The feature owns a small parity-checked
@@ -182,5 +183,5 @@ export function patientsMessage(
   key: PatientsMessageKey,
   values: Readonly<Record<string, string>> = {},
 ): string {
-  return patientsText(locale, key).replace(/\{(\w+)\}/g, (whole, name: string) => values[name] ?? whole);
+  return fillMessagePlaceholders(patientsText(locale, key), values);
 }

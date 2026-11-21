@@ -86,8 +86,8 @@ public record Interpretation(String organizationId, String orderId, int version,
         append(builder, attestation);
         append(builder, templateVersion);
         append(builder, reason);
-        // Intentional reuse of the g1.s_g1_05 SHA-256 utility: keep one digest rule
-        // rather than adding a fourth local copy; no clinical rule crosses packages.
+        // Reuse NoteChecksum.sha256 from the clinical.notes domain rather than
+        // adding a fourth local copy; no clinical rule crosses packages.
         return NoteChecksum.sha256(builder.toString());
     }
 

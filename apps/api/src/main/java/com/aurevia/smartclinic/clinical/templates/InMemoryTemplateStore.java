@@ -20,6 +20,7 @@ public final class InMemoryTemplateStore implements TemplateStore {
 
     private final Map<String, FieldDictionary> dictionaries = new ConcurrentHashMap<>();
     private final Map<String, Map<Integer, TemplateVersion>> versions = new ConcurrentHashMap<>();
+    private final Map<String, Map<String, SavedNoteRevision>> notes = new ConcurrentHashMap<>();
     private final Map<String, CopyOnWriteArrayList<TemplateAuditEvent>> audit = new ConcurrentHashMap<>();
 
     private static String familyKey(String organizationId, TemplateKind kind) {
@@ -66,6 +67,17 @@ public final class InMemoryTemplateStore implements TemplateStore {
             return family;
         });
         return created.get();
+    }
+
+    @Override
+    public void saveNoteRevision(String organizationId, SavedNoteRevision revision) {
+        notes.computeIfAbsent(organizationId, key -> new ConcurrentHashMap<>())
+                .put(revision.noteId(), revision);
+    }
+
+    @Override
+    public Optional<SavedNoteRevision> noteRevision(String organizationId, String noteId) {
+        return Optional.ofNullable(notes.getOrDefault(organizationId, Map.of()).get(noteId));
     }
 
     @Override

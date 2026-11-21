@@ -1,4 +1,5 @@
 import type { Locale } from '../../i18n/messages';
+import { fillMessagePlaceholders } from '../duplicates/messagePlaceholders';
 import type { AccessState, AuditOutcome } from './domain';
 import type { StaffHistoryEvent } from './domain';
 
@@ -453,5 +454,5 @@ export function adminMessage(
   key: AdminMessageKey,
   values: Readonly<Record<string, string>> = {},
 ): string {
-  return adminText(locale, key).replace(/\{(\w+)\}/g, (whole, name: string) => values[name] ?? whole);
+  return fillMessagePlaceholders(adminText(locale, key), values);
 }
