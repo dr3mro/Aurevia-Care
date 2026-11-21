@@ -1,9 +1,13 @@
 import { useEffect, useRef } from 'react';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { useTheme } from '../theme/ThemeProvider';
-import { Button } from './Button';
+import { useBreakpoint } from '../theme/useBreakpoint';
 
-/** Props for a labelled modal placeholder. */
+/** Native controls inside a dialog that participate in the Tab cycle. */
+const focusableSelector =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/** Props for a labelled modal that adapts to the available inline space. */
 export interface DialogProps {
   open: boolean;
   title: string;
@@ -12,31 +16,59 @@ export interface DialogProps {
   children: ReactNode;
 }
 
-/** Render a labelled modal when open; render nothing when closed. */
+/**
+ * Render a labelled modal when open; render nothing when closed.
+ *
+ * Below the medium breakpoint the panel is a full-screen sheet with a sticky
+ * heading and action row, page-scroll locking and logical safe-area padding
+ * from the `sheet` class. From medium upward the same panel is a centred dialog
+ * with a maximum width. Direction is inherited from the document, so every
+ * inline style uses logical properties and the same DOM mirrors under RTL.
+ * Tab cycles through focusable controls inside the dialog and focus returns to
+ * the opener on close (WEB-07, UX-01).
+ */
 export function Dialog({ open, title, closeLabel, onClose, children }: DialogProps) {
   const { tokens } = useTheme();
+  const breakpoint = useBreakpoint();
+  const compact = breakpoint === 'compact';
   const closeRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) {
       return undefined;
     }
     const previous = document.activeElement as HTMLElement | null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
     closeRef.current!.focus();
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         onClose();
+        return;
       }
-      // The close control is the only focusable element in this placeholder,
-      // so keeping Tab on it prevents focus from reaching the obscured page.
       if (event.key === 'Tab') {
-        event.preventDefault();
-        closeRef.current!.focus();
+        const focusables = Array.from(
+          panelRef.current!.querySelectorAll<HTMLElement>(focusableSelector),
+        );
+        const first = focusables[0]!;
+        const last = focusables[focusables.length - 1]!;
+        const active = document.activeElement;
+        if (event.shiftKey) {
+          if (active === first) {
+            event.preventDefault();
+            last.focus();
+          }
+        } else if (active === last) {
+          event.preventDefault();
+          first.focus();
+        }
       }
     };
     document.addEventListener('keydown', onKeyDown);
     return () => {
       document.removeEventListener('keydown', onKeyDown);
+      document.body.style.overflow = previousOverflow;
       if (previous) {
         previous.focus();
       }
@@ -46,6 +78,36 @@ export function Dialog({ open, title, closeLabel, onClose, children }: DialogPro
   if (!open) {
     return null;
   }
+
+  // Logical inline styles for the sticky chrome: responsive.css has no
+  // dialog-specific sticky-header/action classes, so these use logical
+  // properties and inherit the direction from the document.
+  const stickyHeader: CSSProperties | undefined = compact
+    ? {
+        position: 'sticky',
+        insetBlockStart: '0px',
+        zIndex: 1,
+        background: tokens.background,
+        paddingBlock: tokens.spacing.md,
+        paddingInline: tokens.spacing.lg,
+        borderBlockEnd: `1px solid ${tokens.border}`,
+      }
+    : undefined;
+  const stickyActions: CSSProperties | undefined = compact
+    ? {
+        position: 'sticky',
+        insetBlockEnd: '0px',
+        zIndex: 1,
+        background: tokens.background,
+        paddingBlock: tokens.spacing.md,
+        paddingInline: tokens.spacing.lg,
+        borderBlockStart: `1px solid ${tokens.border}`,
+      }
+    : undefined;
+  const scrollPadding: CSSProperties | undefined = compact
+    ? { scrollPaddingBlockStart: '3rem', scrollPaddingBlockEnd: '4rem' }
+    : undefined;
+
   return (
     <div
       style={{
@@ -57,22 +119,45 @@ export function Dialog({ open, title, closeLabel, onClose, children }: DialogPro
       }}
     >
       <div
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="staff-dialog-title"
+        className="sheet"
+        data-breakpoint={breakpoint}
+        data-dialog-view={compact ? 'sheet' : 'centered'}
         style={{
           background: tokens.background,
           color: tokens.foreground,
           border: `1px solid ${tokens.border}`,
-          padding: tokens.spacing.lg,
-          minWidth: '280px',
+          overflowWrap: 'anywhere',
+          ...scrollPadding,
         }}
       >
-        <h2 id="staff-dialog-title">{title}</h2>
-        <div>{children}</div>
-        <Button buttonRef={closeRef} variant="secondary" onClick={onClose}>
-          {closeLabel}
-        </Button>
+        <h2 id="staff-dialog-title" data-dialog-region="header" style={stickyHeader}>
+          {title}
+        </h2>
+        <div className="stack">{children}</div>
+        <div data-dialog-region="actions" style={stickyActions}>
+          <button
+            ref={closeRef}
+            type="button"
+            className="touch"
+            onClick={onClose}
+            style={{
+              paddingBlock: tokens.spacing.sm,
+              paddingInline: tokens.spacing.md,
+              border: `1px solid ${tokens.border}`,
+              borderRadius: tokens.spacing.sm,
+              background: 'transparent',
+              color: tokens.foreground,
+              cursor: 'pointer',
+              font: 'inherit',
+            }}
+          >
+            {closeLabel}
+          </button>
+        </div>
       </div>
     </div>
   );
