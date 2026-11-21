@@ -1,6 +1,8 @@
 import importlib.util
 import io
 import json
+import runpy
+import sys
 import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
@@ -89,6 +91,16 @@ class CoverageGateTests(unittest.TestCase):
         self.assertEqual(code, 1)
         code, out, _ = self.run_main({"files": {}}, "--full")
         self.assertEqual((code, "script line" in out), (0, True))
+
+    def test_running_the_file_as_a_script_exits_with_the_result(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "r.json"
+            path.write_text(json.dumps({"files": {}}))
+            argv = ["python_coverage.py", str(path), "--full"]
+            with mock.patch.object(sys, "argv", argv), redirect_stdout(io.StringIO()):
+                with self.assertRaises(SystemExit) as raised:
+                    runpy.run_path(str(Path(pc.__file__)), run_name="__main__")
+        self.assertEqual(raised.exception.code, 0)
 
 
 if __name__ == "__main__":
