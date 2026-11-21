@@ -7,13 +7,17 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.aurevia.smartclinic.tenant.TenantContext;
+
 /**
  * Thin HTTP adapter for controlled onboarding commits, sign-off and reversal (OPS-08).
  *
- * <p>All reconciliation, resumability and authorization rules live in
+ * <p>All reconciliation, resumability and role rules live in
  * {@link com.aurevia.smartclinic.tenant.importing.ControlledImportService}; this
- * adapter only carries the manifest, the resumable checkpoint and the sign-off
- * to that service and returns its result. It never mutates a store itself.</p>
+ * adapter carries the manifest, the resumable checkpoint and the sign-off
+ * to that service and returns its result. It additionally binds the named
+ * approver to the authenticated subject so one user cannot sign off as another.
+ * It never mutates a store itself.</p>
  */
 @RestController
 @RequestMapping("/api/v1/tenant/imports")
@@ -48,11 +52,22 @@ public class ControlledImportController {
     /**
      * Attempt an authorized sign-off over the submitted checkpoint.
      *
+     * <p>The named approver must be the authenticated subject; an absent
+     * identity or a different subject is refused before the service is called.
+     * Full verification of the claimed role against a verified membership is
+     * owned by the identity boundary and is a separate story.</p>
+     *
      * @param request manifest, checkpoint and named sign-off
      * @return acceptance or refusal with a reason
      */
     @PostMapping("/sign-off")
     public SignOffResult signOff(@RequestBody SignOffRequest request) {
+        TenantContext context = TenantContext.current();
+        if (request.signOff() != null
+                && (context == null
+                        || !Objects.equals(context.subject(), request.signOff().approver()))) {
+            return new SignOffResult(false, "approver", request.progress());
+        }
         return service.signOff(request.manifest(), request.progress(), request.signOff());
     }
 

@@ -9,10 +9,13 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+
+import com.aurevia.smartclinic.tenant.TenantContext;
 
 /** OPS-08 entry points: staged commit, authorized sign-off and reversal over HTTP. */
 class ControlledImportControllerTest {
@@ -21,6 +24,11 @@ class ControlledImportControllerTest {
     private final MockMvc mvc = MockMvcBuilders
             .standaloneSetup(new ControlledImportController(service))
             .build();
+
+    @AfterEach
+    void clearTenantContext() {
+        TenantContext.clear();
+    }
 
     @Test
     void commitEndpointStagesBatchesWithoutChangingSourceOfTruth() throws Exception {
@@ -53,6 +61,7 @@ class ControlledImportControllerTest {
 
     @Test
     void signOffEndpointAcceptsAuthorizedRole() throws Exception {
+        TenantContext.set(new TenantContext("org-1", "admin", "ONBOARDING", "corr-1"));
         ImportManifest manifest = manifest();
         String body = signOffBody(manifest, "tenant_admin", service.contentDigest(manifest));
 
@@ -65,6 +74,7 @@ class ControlledImportControllerTest {
 
     @Test
     void signOffEndpointRefusesUnauthorizedRole() throws Exception {
+        TenantContext.set(new TenantContext("org-1", "admin", "ONBOARDING", "corr-1"));
         ImportManifest manifest = manifest();
         String body = signOffBody(manifest, "reception", service.contentDigest(manifest));
 
@@ -75,6 +85,49 @@ class ControlledImportControllerTest {
                 .andExpect(jsonPath("$.reason")
                         .value(org.hamcrest.Matchers.containsString("unauthorized")))
                 .andExpect(jsonPath("$.progress.finalized").value(false));
+    }
+
+    @Test
+    void signOffEndpointRefusesApproverWhoIsNotTheAuthenticatedSubject() throws Exception {
+        TenantContext.set(new TenantContext("org-1", "someone-else", "ONBOARDING", "corr-1"));
+        ImportManifest manifest = manifest();
+        String body = signOffBody(manifest, "tenant_admin", service.contentDigest(manifest));
+
+        mvc.perform(post("/api/v1/tenant/imports/sign-off")
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accepted").value(false))
+                .andExpect(jsonPath("$.reason").value("approver"))
+                .andExpect(jsonPath("$.progress.finalized").value(false));
+    }
+
+    @Test
+    void signOffEndpointRefusesWhenNoSubjectIsAuthenticated() throws Exception {
+        TenantContext.clear();
+        ImportManifest manifest = manifest();
+        String body = signOffBody(manifest, "tenant_admin", service.contentDigest(manifest));
+
+        mvc.perform(post("/api/v1/tenant/imports/sign-off")
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accepted").value(false))
+                .andExpect(jsonPath("$.reason").value("approver"))
+                .andExpect(jsonPath("$.progress.finalized").value(false));
+    }
+
+    @Test
+    void signOffEndpointDelegatesMissingSignOffToTheService() throws Exception {
+        TenantContext.set(new TenantContext("org-1", "admin", "ONBOARDING", "corr-1"));
+        ImportManifest manifest = manifest();
+        String body = "{\"manifest\": " + manifestJson(manifest)
+                + ", \"progress\": {\"manifestVersion\":7,\"committedSequences\":[1,2],"
+                + "\"committedSourceIds\":[\"r1\",\"r2\",\"r3\"],\"finalized\":false}}";
+
+        mvc.perform(post("/api/v1/tenant/imports/sign-off")
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accepted").value(false))
+                .andExpect(jsonPath("$.reason").value("missing sign-off"));
     }
 
     @Test

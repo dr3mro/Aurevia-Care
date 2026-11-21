@@ -59,13 +59,19 @@ public class ControlledImportService {
      *
      * <p>Batches already present in the checkpoint are skipped. The first batch
      * that fails reconciliation stops the run; later batches are not attempted.
-     * Applying batches never finalizes the import.</p>
+     * Applying batches never finalizes the import. A checkpoint bound to a
+     * different manifest version is refused before any batch is applied, so a
+     * stale checkpoint cannot silently skip reconciliation of a newer manifest.</p>
      *
      * @param manifest versioned onboarding manifest
      * @param progress checkpoint from a previous attempt, or {@code empty}
-     * @return the updated checkpoint, one result per attempted batch and a stop flag
+     * @return the updated checkpoint, one result per attempted batch, a stop flag
+     *         and a report-level refusal reason
      */
     public CommitReport commitBatches(ImportManifest manifest, ImportProgress progress) {
+        if (progress.manifestVersion() != manifest.manifestVersion()) {
+            return new CommitReport(progress, List.of(), true, "manifest version mismatch");
+        }
         List<BatchCommit> results = new ArrayList<>();
         ImportProgress current = progress;
         boolean stopped = false;
@@ -83,7 +89,7 @@ public class ControlledImportService {
             }
             current = current.recordBatch(sequence, batch.recordIds());
         }
-        return new CommitReport(current, results, stopped);
+        return new CommitReport(current, results, stopped, "");
     }
 
     /**
@@ -156,7 +162,9 @@ public class ControlledImportService {
      * <p>A sign-off is accepted only when it names an approver in an authorized
      * role, decides {@code approved}, matches this manifest version, covers every
      * batch and binds to the recomputed content digest, the approval time is
-     * present and every batch has been applied. A refusal leaves the checkpoint
+     * present and every batch has been applied. The submitted checkpoint must also
+     * be bound to this manifest version, so a checkpoint from another version
+     * cannot carry staged work into a new manifest. A refusal leaves the checkpoint
      * unchanged and reversible.</p>
      *
      * @param manifest versioned onboarding manifest
@@ -168,6 +176,9 @@ public class ControlledImportService {
             ImportSignOff signOff) {
         if (signOff == null) {
             return refused(progress, "missing sign-off");
+        }
+        if (progress == null || progress.manifestVersion() != manifest.manifestVersion()) {
+            return refused(progress, "version");
         }
         if (!isNonBlank(signOff.approver())) {
             return refused(progress, "approver");

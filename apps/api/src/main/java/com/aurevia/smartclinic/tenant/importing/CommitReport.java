@@ -13,8 +13,10 @@ import java.util.List;
  * @param progress the resumable checkpoint after this attempt
  * @param results  one result per attempted batch, in sequence order
  * @param stopped  true when a batch was rejected and later batches were skipped
+ * @param reason   short machine-readable reason for a report-level refusal; empty on success
  */
-public record CommitReport(ImportProgress progress, List<BatchCommit> results, boolean stopped) {
+public record CommitReport(ImportProgress progress, List<BatchCommit> results, boolean stopped,
+        String reason) {
 
     /**
      * Freeze the result list.

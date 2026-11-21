@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
@@ -175,6 +176,43 @@ class ControlledImportServiceTest {
 
         assertThrows(IllegalStateException.class,
                 () -> failing.reconcile(manifest, manifest.batches().get(0)));
+    }
+
+    @Test
+    void staleCheckpointVersionIsRefusedByCommit() {
+        ImportManifest manifest = twoBatchManifest();
+        ImportProgress stale = ImportProgress.empty(8);
+
+        CommitReport report = service.commitBatches(manifest, stale);
+
+        assertTrue(report.stopped());
+        assertTrue(report.results().isEmpty());
+        assertEquals("manifest version mismatch", report.reason());
+        assertEquals(8, report.progress().manifestVersion());
+        assertTrue(report.progress().committedSequences().isEmpty());
+    }
+
+    @Test
+    void staleCheckpointVersionIsRefusedBySignOff() {
+        ImportManifest manifest = twoBatchManifest();
+        ImportProgress stale = new ImportProgress(8, Set.of(1, 2),
+                Set.of("r1", "r2", "r3"), false);
+
+        SignOffResult result = service.signOff(manifest, stale, validSignOff(manifest));
+
+        assertFalse(result.accepted());
+        assertEquals("version", result.reason());
+        assertFalse(result.progress().finalized());
+    }
+
+    @Test
+    void nullCheckpointIsRefusedBySignOff() {
+        ImportManifest manifest = twoBatchManifest();
+
+        SignOffResult result = service.signOff(manifest, null, validSignOff(manifest));
+
+        assertFalse(result.accepted());
+        assertEquals("version", result.reason());
     }
 
     @Test
