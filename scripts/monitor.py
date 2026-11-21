@@ -1,10 +1,10 @@
 import curses, json, re, shutil, subprocess, sys, threading, time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 INTERVAL, RECENT, ONCE = int(sys.argv[1]), int(sys.argv[2]), sys.argv[3] == "1"
 FAILED = ("failure", "timed_out")
-FIELDS = "databaseId,workflowName,conclusion,status,headSha,headBranch,event,createdAt,startedAt,updatedAt,url"
-TEXT = ("repo", "todo", "archive")  # plain-text results; everything else is JSON
+FIELDS = "databaseId,workflowName,displayTitle,conclusion,status,headSha,headBranch,event,createdAt,startedAt,updatedAt,url"
+TEXT = ("repo", "todo", "archive", "total")  # plain-text results; everything else is JSON
 CALLS = {
     "repo": ["repo", "view", "--json", "nameWithOwner", "-q", ".nameWithOwner"],
     "issues": ["issue", "list", "--state", "open", "--limit", "40", "--json", "number,title,labels,createdAt"],
@@ -12,6 +12,8 @@ CALLS = {
     "merged": ["pr", "list", "--state", "merged", "--limit", "50", "--json", "number,title,mergedAt"],
     "closed": ["pr", "list", "--state", "closed", "--limit", "30", "--json", "number,title,closedAt,mergedAt"],
     "runs": ["run", "list", "--limit", "100", "--json", FIELDS],
+    "total": ["api", "graphql", "-F", "o={owner}", "-F", "n={repo}", "-q", ".data.repository.defaultBranchRef.target.history.totalCount",
+              "-f", "query=query($o:String!,$n:String!){repository(owner:$o,name:$n){defaultBranchRef{target{... on Commit{history{totalCount}}}}}}"],
     "todo": ["api", "repos/{owner}/{repo}/contents/TODO.md", "-H", "Accept: application/vnd.github.raw"],
     "archive": ["api", "repos/{owner}/{repo}/contents/docs/archive/TODO-DONE.md", "-H", "Accept: application/vnd.github.raw"],
 }
@@ -35,7 +37,10 @@ def collect(procs, text_keys=()):
 
 
 def fetch():
-    data = collect({k: spawn(a) for k, a in CALLS.items()}, TEXT)
+    since = (datetime.now(timezone.utc) - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    calls = dict(CALLS, commits=["api", f"repos/{{owner}}/{{repo}}/commits?since={since}&per_page=100", "-q",
+                                 "[.[] | {sha: .sha, parent: (.parents[0].sha // \"\")}]"])
+    data = collect({k: spawn(a) for k, a in calls.items()}, TEXT)
     if data.get("repo"):
         data["repo"] = data["repo"].strip()
     # Second wave: job detail for the runs that are live or recently failed.
@@ -46,11 +51,20 @@ def fetch():
              and r.get("updatedAt") and (now - ts(r["updatedAt"])).total_seconds() < 86400][:6]
     jobs = collect({i: spawn(["run", "view", str(i), "--json", "jobs"]) for i in want})
     data["jobs"] = {i: (j or {}).get("jobs", []) for i, j in jobs.items() if isinstance(j, dict) or j is None}
+    # Third step: what those commits changed, as one compare between the day's first parent and the latest commit.
+    commits = data.pop("commits", None) or []
+    if commits and commits[-1].get("parent"):
+        total = spawn(["api", f"repos/{{owner}}/{{repo}}/compare/{commits[-1]['parent']}...{commits[0]['sha']}", "-q",
+                       "{files: (.files | length), add: ([.files[].additions] | add // 0), del: ([.files[].deletions] | add // 0)}"])
+        got = collect({"x": total})["x"]
+        data["churn"] = dict(got, commits=len(commits)) if isinstance(got, dict) else None
+    else:
+        data["churn"] = {"commits": len(commits), "files": 0, "add": 0, "del": 0} if data.get("runs") is not None else None
     return data
 
 
 def blank(k):
-    return "" if k in TEXT else {} if k == "jobs" else []
+    return "" if k in TEXT else {} if k in ("jobs", "churn") else []
 
 
 def ts(v):
@@ -177,6 +191,7 @@ def clipline(line, n):
 
 def box(title, badge, col, border, rows, iw, height):
     """A rounded card of exactly `height` lines; rows are clipped or padded to the inside width."""
+    border = "line" if border == "gray" else border
     t, b = f" {title} ", f" {badge} " if badge != "" else ""
     fill = max(iw - len(t) - len(b), 0)
     lines = [[("╭─", border), (t[: iw], col), ("─" * fill, border), (b, "b_" + col), ("─╮", border)]]
@@ -249,6 +264,7 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False):
     msym, mcol = SYM.get(mstate, ("•", "gray"))
     wave = next((r for r in runs if r.get("workflowName") == "Agent swarm"), None)
     jobs = data.get("jobs") or {}
+    churn = data.get("churn") or {}
     todo = parse_tasks(data.get("todo"))
     n_done = sum(1 for t in todo if t["status"] == "done") + len(re.findall(r"^- \[x\] ", data.get("archive") or "", re.M))
     n_open = sum(1 for t in todo if t["status"] == "todo")
@@ -266,18 +282,31 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False):
              ("MERGED 24h", str(len(merged_day)), "b_green" if merged_day else "gray", "pull requests"),
              ("FAILED 24h", str(len(failed_day)), "b_red" if failed_day else "b_green", f"of {len(runs_day)} runs"),
              ("CLOSED 24h", str(len(closed_day)), "b_yellow" if closed_day else "gray", "not merged"),
+             ("COMMITS", (data.get("total") or "").strip() or "-", "b_blue" if data.get("total") else "gray", "all time"),
+             ("COMMITS LAST 24H", str(churn.get("commits", "-")), "b_blue" if churn else "gray",
+              f"+{churn.get('add', 0)} -{churn.get('del', 0)} {churn.get('files', 0)}f" if churn else "no data"),
              ("MEDIAN RUN", span(median), "b_cyan", f"{len(durs)} runs"),
              ("NEEDS HUMAN", str(hot), "b_red" if hot else "b_green", "issues, PRs")]
-    if (H is None or H >= 24) and W >= 121:
-        spare = W - 2 - len(cards) * 17  # share leftover width out so the cards reach the right edge
+    def base(c):  # a card is at least 16 wide and grows when its label, value or caption needs more
+        sub = c[3] if isinstance(c[3], str) else "".join(t for t, _ in c[3])
+        return max(16, len(c[0]) + 5, len(sub) + 3, len(c[1]) + 3)
+
+    for extra in ("CLOSED 24h", "MEDIAN RUN"):  # too narrow for every card: drop the least useful ones first
+        if W - 2 < sum(base(c) + 1 for c in cards):
+            cards = [c for c in cards if c[0] != extra]
+    if (H is None or H >= 24) and W - 2 >= sum(base(c) + 1 for c in cards):
+        spare = W - 2 - sum(base(c) + 1 for c in cards)  # share leftover width out so the cards reach the right edge
         rows = [[], [], [], []]
         for n, (label, value, style, sub) in enumerate(cards):
-            w = 16 + spare // len(cards) + (1 if n < spare % len(cards) else 0)
+            w = base(cards[n]) + spare // len(cards) + (1 if n < spare % len(cards) else 0)
             inner = w - 2
-            rows[0] += [("╭" + f"─ {label} ".ljust(inner, "─") + "╮ ", "gray")]
-            rows[1] += [("│", "gray"), ((" " + value).ljust(inner)[:inner], style), ("│ ", "gray")]
-            rows[2] += [("│", "gray"), ((" " + sub).ljust(inner)[:inner], "dim"), ("│ ", "gray")]
-            rows[3] += [("╰" + "─" * inner + "╯ ", "gray")]
+            rows[0] += [("╭" + f"─ {label} ".ljust(inner, "─") + "╮ ", "line")]
+            rows[1] += [("│", "line"), ((" " + value).ljust(inner)[:inner], style), ("│ ", "line")]
+            segs = sub if isinstance(sub, list) else [(sub, "dim")]
+            segs = [(" ", "")] + segs
+            used = sum(len(t) for t, _ in segs)
+            rows[2] += [("│", "line")] + clipline(segs, inner)[0] + [(" " * max(inner - used, 0), ""), ("│ ", "line")]
+            rows[3] += [("╰" + "─" * inner + "╯ ", "line")]
         top += [[(" ", "")] + r for r in rows]
     else:
         line = [(" ", "")]
@@ -287,7 +316,7 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False):
     # ---- pipeline card: two meter rows on one grid (label, bar, figures, flush-right extras)
     def bar(share, color, n=22):
         full = round(share * n)  # single-width box-drawing glyphs only, so every terminal draws the same width
-        return [("━" * full, color), ("╌" * (n - full), "gray")]
+        return [("━" * full, color), ("╌" * (n - full), "line")]
 
     def meter(label, share, color, first, second, right, extra=()):
         row = [(f"{label:<6}", "gray")] + bar(share, color) + [("  ", "")]
@@ -314,13 +343,18 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False):
                      (f"   PRs {len(prs)} ({sum(1 for p in prs if p.get('isDraft'))} draft)", "gray"),
                      (f"   median {span(median)}", "gray"),
                      (f"   {len(failed_day)} failed / {len(runs_day)} runs 24h", "red" if failed_day else "gray")])]
+    load = {}
+    for t in taken:
+        load[t["agent"] or "-"] = load.get(t["agent"] or "-", 0) + 1
     nxt = next((t for t in todo if t["status"] == "todo"), None)
     if todo:
         share = n_done / n_all if n_all else 0.0
         meters.append(meter("tasks", share, "cyan", f"{n_done}/{n_all} done ({share * 100:.0f}%)",
                             [(f"{len(taken)} taken", "b_yellow"), (f"   {n_open} open", "gray")],
                             [(f"pace {pace:.1f}/h  ETA ", "gray"), (eta, "b_cyan")],
-                            [(f"   next: {nxt['id']} {nxt['title']}", "", True)] if nxt else []))
+                            [(f"   {len(merged_day)} merged 24h", "green" if merged_day else "gray"),
+                             (f"   {sum(1 for x in prs if any(l['name'] == 'needs-fix' for l in x.get('labels', [])))} needs-fix", "gray"),
+                             ("   " + "  ".join(f"{a}:{c}" for a, c in sorted(load.items())) if load else "", "magenta")]))
     if H is None or H >= 24:
         top += box("PIPELINE", "", "cyan", "gray", meters, W - 6, len(meters) + 2)
     else:
@@ -329,6 +363,20 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False):
     # ---- columns
     cw = (W - 2) // 2
     iw = cw - 4
+
+    def trigger_of(r):
+        return {"workflow_run": "chained", "workflow_dispatch": "manual", "pull_request": "PR",
+                "workflow_call": "called"}.get(r.get("event"), r.get("event") or "")
+
+    def natural(r):
+        start, end = ts(r.get("startedAt") or r.get("createdAt")), ts(r.get("updatedAt"))
+        took = span((end - start).total_seconds()) if start and end else ""
+        return [r.get("workflowName", ""), mid(r.get("headBranch") or "", 24), trigger_of(r),
+                (r.get("headSha") or "")[:7], took, (age(r["updatedAt"]) if end else "")]
+
+    wide_w = [max([len(natural(r)[i]) for r in done[:RECENT] + live] or [1]) for i in range(6)]
+    spare = max(iw - 2 - sum(wide_w), 5)
+    gaps = [spare // 5 + (1 if i < spare % 5 else 0) for i in range(5)]  # near-equal gaps between the six columns
 
     def run_row(r, running):
         s = state(r)
@@ -339,9 +387,20 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False):
         else:
             when = (span((end - start).total_seconds()) + " · " if start and end else "") + (age(r["updatedAt"]) if end else "")
         name_style = "fail" if r["databaseId"] in alarm_ids else ("" if s != "failure" else "red")
-        return cells(iw, (sym, "fail" if r["databaseId"] in alarm_ids else col, 1),
-                     (r.get("workflowName", ""), name_style, None),
-                     (mid(r.get("headBranch") or "", 14), "gray", 14), (when, "dim", 20, "r"))
+        mark = (sym, "fail" if r["databaseId"] in alarm_ids else col, 1)
+        branch = (mid(r.get("headBranch") or "", 14), "gray", 14)
+        if iw >= 70:  # wide card: columns keep their natural width and the spare space becomes even gaps
+            took, _, ago = when.partition(" · ")
+            if not ago:
+                took, ago = "", when
+            cols = [(r.get("workflowName", ""), name_style), (mid(r.get("headBranch") or "", 24), "gray"),
+                    (trigger_of(r), "magenta"), ((r.get("headSha") or "")[:7], "blue"), (took, "dim"), (ago, "dim")]
+            row = [(mark[0], mark[1])]
+            for i, (text, style) in enumerate(cols):
+                row += [(" " * gaps[i - 1], "")] if i else [(" ", "")]
+                row.append((text.rjust(wide_w[i]) if i >= 4 else text.ljust(wide_w[i]), style))
+            return row
+        return cells(iw, mark, (r.get("workflowName", ""), name_style, None), branch, (when, "dim", 20, "r"))
 
     def detail(text, col):
         return [("  - ", "dim"), (clip(text, iw - 4), col)]
@@ -361,12 +420,48 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False):
             rows.append([("  └ ", "dim"), (clip(job, iw - 4), "red")] + tail)
         return rows
 
+    titles = {t["id"]: t["title"] for t in todo}
+    task_id = re.compile(r"\b[A-Z]+-(?:\d{8}-)?\d+\b")
+
+    shown = []
+
     def with_detail(r, running):
-        rows = [run_row(r, running)]
+        """A live run gets one line per running job: the task it works on, its title and the current step."""
+        head = [run_row(r, running)]
+        rows = []
         js = jobs.get(r["databaseId"]) or []
-        text = job_summary(js, now) if running else ""
-        if js and text:
+        if not (running and js):
+            return head
+        live_jobs = [j for j in js if j.get("status") == "in_progress"]
+        tasked = []
+        for j in live_jobs[:3]:
+            m = task_id.search(j.get("name", ""))
+            step = next((st.get("name", "") for st in j.get("steps", []) if st.get("status") == "in_progress"), "")
+            t0 = ts(j.get("startedAt"))
+            took = span((now - t0).total_seconds()) if t0 else ""
+            if not m:
+                rows.append([("  > ", "yellow"), (clip(j.get("name", ""), iw - 4), "dim")])
+                continue
+            agent = next((t["agent"] for t in todo if t["id"] == m.group(0) and t["agent"]), "")
+            title = titles.get(m.group(0), "(not in TODO.md)")
+            rows.append([("  > ", "b_yellow"), (m.group(0) + "  ", "b_cyan"),
+                         (clip(title, iw - 6 - len(m.group(0))), "b_white")])
+            info = [(agent, "magenta"), (step, "yellow"), (took, "green")]
+            line = [("    ", "")]
+            for text, style in [x for x in info if x[0]]:
+                if len(line) > 1:
+                    line.append((" · ", "gray"))
+                line.append((text, style))
+            rows.append(clipline(line, iw)[0])
+            tasked.append(1)
+        text = job_summary(js, now)
+        if len(live_jobs) > 3 or not live_jobs:
             rows.append(detail(text, "dim"))
+        if not tasked:
+            rows = head + rows  # no task found in the job names: fall back to the run line
+        if shown:
+            rows.insert(0, [("┄" * iw, "gray")])  # divider between live runs
+        shown.append(1)
         return rows
 
     flat = lambda rs, running: [row for r in rs for row in with_detail(r, running)]
@@ -377,12 +472,33 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False):
                  items=[run_row(r, False) for r in done[:RECENT]]),
             dict(title="Failed 24h", total=len(failed_day), col="red", border="red" if failed_day else "gray", prio=1,
                  items=[row for r in failed_day for row in failed_rows(r)])]
+    prefix = re.compile(r"^([A-Z]+-(?:\d{8}-)?\d+)(:)(.*)$")
+
+    def merged_row(p):
+        """Merged PR line: number in blue, task ID in teal, bot bumps in lavender, the rest in plain text."""
+        room = iw - 1 - 1 - 5 - 1 - 1 - 10
+        title = clip(p["title"], room)
+        m = prefix.match(title)
+        if m:
+            body = [(m.group(1), "b_cyan"), (m.group(2), "gray"), (m.group(3), "")]
+        elif title.startswith("Bump "):
+            body = [("Bump ", "magenta"), (title[5:], "dim")]
+        else:
+            body = [(title, "")]
+        used = sum(len(t) for t, _ in body)
+        return ([("+", "green"), (" ", ""), (f"#{p['number']}".ljust(5), "blue"), (" ", "")] + body
+                + [(" " * (room - used + 1), ""), (age(p["mergedAt"]).rjust(10), "dim")])
+
+    idw = max([len(t["id"]) for t in taken] or [8])
+    queue = [t for t in todo if t["status"] == "todo"]
+    qw = max([len(t["id"]) for t in queue[:12]] or [8])
     right = [dict(title="Swarm Tasks Taken", total=len(taken), col="cyan", border="gray", prio=2,
-                  items=[cells(iw, (">", "yellow", 1), (t["agent"] or "-", "gray", 9), (t["id"], "", 18), (t["title"], "", None))
+                  items=[cells(iw, (">", "yellow", 1), (t["agent"] or "-", "magenta", 9), (t["id"], "b_cyan", idw), (t["title"], "", None))
                          for t in taken]),
+             dict(title="Next Up", total=len(queue), col="blue", border="gray", prio=1,
+                  items=[cells(iw, ("-", "gray", 1), (t["id"], "b_cyan", qw), (t["title"], "", None)) for t in queue[:12]]),
              dict(title="Merged PRs 24h", total=len(merged_day), col="green", border="gray", prio=3,
-                  items=[cells(iw, ("+", "green", 1), (f"#{p['number']}", "", 5), (p["title"], "", None),
-                               (age(p["mergedAt"]), "dim", 10, "r")) for p in merged_day]),
+                  items=[merged_row(p) for p in merged_day]),
              dict(title="Open PRs", total=len(prs), col="blue", border="gray", prio=0,
                   items=[cells(iw, ("d" if p.get("isDraft") else "o", "yellow" if p.get("isDraft") else "green", 1),
                                (f"#{p['number']}", "", 5), (p["title"], "", None), (labels(p), "red", 11)) for p in prs]),
@@ -391,13 +507,36 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False):
                                (f"#{i['number']}", "", 5), (i["title"], "", None), (age(i["createdAt"]), "dim", 10, "r"))
                          for i in issues])]
     body = None if H is None else max(H - len(top) - 1, 0)
+    right = [right[i] for i in (3, 4, 0, 1, 2)]  # open PRs and issues first
     return top, fit_col(left, body, iw), fit_col(right, body, iw), cw
 
 
 # ---- once: one static frame ---------------------------------------------------------------------
-ANSI = {"": "0", "title": "1;36", "bar": "1;7;36", "fail": "1;31", "green": "32", "red": "31", "yellow": "33",
-        "blue": "34", "magenta": "35", "cyan": "36", "gray": "90", "dim": "2", "b_green": "1;32", "b_red": "1;31",
-        "b_yellow": "1;33", "b_cyan": "1;36", "b_blue": "1;34", "b_magenta": "1;35", "b_gray": "1;90", "b_white": "1"}
+# Dusty, low-saturation 256-colour palette: soft text, one quiet border grey, calm accents.
+THEME = {"white": 252, "gray": 245, "line": 240, "green": 108, "red": 174, "yellow": 180, "blue": 109,
+         "magenta": 139, "cyan": 109}
+BAR_FG, BAR_BG = 253, 66  # title bar: light text on dusty teal
+
+
+def ansi_code(style):
+    if style == "":
+        return f"38;5;{THEME['white']}"
+    if style == "dim":
+        return f"38;5;{THEME['gray']}"
+    if style == "bar":
+        return f"1;38;5;{BAR_FG};48;5;{BAR_BG}"
+    if style == "fail":
+        return f"1;38;5;{THEME['red']}"
+    bold, name = ("1;", style[2:]) if style.startswith("b_") else ("", style)
+    return f"{bold}38;5;{THEME.get(name, THEME['white'])}"
+
+
+class AnsiMap(dict):
+    def get(self, style, default="0"):
+        return ansi_code(style)
+
+
+ANSI = AnsiMap()
 
 
 def once():
@@ -428,20 +567,23 @@ def beep():
 def tui(stdscr):
     curses.curs_set(0)
     curses.use_default_colors()
-    base = {"green": curses.COLOR_GREEN, "red": curses.COLOR_RED, "yellow": curses.COLOR_YELLOW,
-            "blue": curses.COLOR_BLUE, "magenta": curses.COLOR_MAGENTA, "cyan": curses.COLOR_CYAN,
-            "gray": 8 if curses.COLORS >= 16 else curses.COLOR_WHITE, "white": -1}
+    rich = curses.COLORS >= 256
+    base = dict(THEME) if rich else {"green": curses.COLOR_GREEN, "red": curses.COLOR_RED, "yellow": curses.COLOR_YELLOW,
+                                      "blue": curses.COLOR_BLUE, "magenta": curses.COLOR_MAGENTA, "cyan": curses.COLOR_CYAN,
+                                      "gray": 8 if curses.COLORS >= 16 else curses.COLOR_WHITE, "line": 8 if curses.COLORS >= 16
+                                      else curses.COLOR_WHITE, "white": -1}
     pair = {}
     for n, (name, fg) in enumerate(base.items(), 1):
         curses.init_pair(n, fg, -1)
         pair[name] = curses.color_pair(n)
-    attr = {"": 0, "dim": pair["gray"], "title": pair["cyan"] | curses.A_BOLD,
-            "bar": pair["cyan"] | curses.A_BOLD | curses.A_REVERSE, "fail": pair["red"] | curses.A_BOLD}
+    curses.init_pair(40, BAR_FG if rich else curses.COLOR_BLACK, BAR_BG if rich else curses.COLOR_CYAN)
+    attr = {"": pair["white"], "dim": pair["gray"], "title": pair["cyan"] | curses.A_BOLD,
+            "bar": curses.color_pair(40) | curses.A_BOLD, "fail": pair["red"] | curses.A_BOLD}
     for name in base:
         attr[name] = pair[name]
         attr["b_" + name] = pair[name] | curses.A_BOLD
 
-    st = {"data": {k: blank(k) for k in [*CALLS, "jobs"]}, "busy": False, "at": 0.0}
+    st = {"data": {k: blank(k) for k in [*CALLS, "jobs", "churn"]}, "busy": False, "at": 0.0}
     lock = threading.Lock()
 
     def refresh():
