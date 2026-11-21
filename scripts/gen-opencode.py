@@ -1,11 +1,15 @@
 """Generate opencode.json and .github/opencode.ci.json from the agent inventory in .opencode/agents.
 
 The committed file is generated so the 33 permission blocks cannot drift.
-Usage: gen-opencode.py [--check]. Without --check the file is rewritten.
-With --check it exits 1 when the committed file differs from the generated one.
+Usage: gen-opencode.py [--check | --check-runtime]. Without a flag the file is
+rewritten. With --check it exits 1 when a committed file differs from the
+generated one. With --check-runtime it validates the CI runtime profile against
+the unattended-swarm security policy, independently of the generated config.
 """
 import argparse
+import fnmatch
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -105,16 +109,107 @@ def build(names, ci=False):
 
 OUTPUTS = {"opencode.json": False, ".github/opencode.ci.json": True}
 
+# The CI profile is copied over opencode.json in unattended workers, so its policy
+# needs its own gate. check-pack validates the generated local config for drift;
+# check-runtime validates the profile the workers actually load (OPS-06).
+RUNTIME_PROFILE = ".github/opencode.ci.json"
+SLOTS_FILE = ".github/swarm/slots.json"
+CATCH_ALL_DENY = {"action": "*", "resource": "*", "effect": "deny"}
+BASH_ACTIONS = frozenset({"shell", "bash"})
+WRITE_ACTIONS = frozenset({"write", "edit", "patch"})
+READ_ONLY_ACTIONS = frozenset({"read", "glob", "grep", "skill"})
+# Representative files prove whether a write rule can reach a protected tree.
+PROTECTED_FILES = (
+    ".github/workflows/delivery.yml",
+    "TODO.md",
+    ".opencode/agents/example.md",
+)
+SECRET_PATTERNS = (
+    ("api key/token variable",
+     re.compile(r"\b[A-Z][A-Z0-9_]*_(?:KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL)\b")),
+    ("GitHub token", re.compile(r"gh[pousr]_[A-Za-z0-9]{16,}")),
+    ("GitHub fine-grained token", re.compile(r"github_pat_[A-Za-z0-9_]{16,}")),
+    ("service API key", re.compile(r"sk-[A-Za-z0-9]{16,}")),
+    ("AWS access key", re.compile(r"AKIA[0-9A-Z]{16}")),
+)
+
 
 def render(root=ROOT, ci=False):
     names = [p.stem for p in (root / ".opencode/agents").glob("*.md")]
     return json.dumps(build(names, ci), indent=2) + "\n"
 
 
+def _read_json(path, label, violations):
+    """Load a policy file, recording a violation when it is missing or malformed."""
+    try:
+        return json.loads(path.read_text())
+    except (OSError, ValueError):
+        violations.append(f"{label}: {path} is missing or not valid JSON")
+        return None
+
+
+def check_runtime(root=ROOT):
+    """Return the policy violations in the CI runtime profile under ``root``.
+
+    An empty list means the profile is safe for unattended swarm workers. The
+    profile is judged on its own: a fresh generated config does not excuse a
+    runtime profile that grants write access, pins an unapproved model or
+    carries a credential.
+    """
+    violations = []
+    profile = _read_json(root / RUNTIME_PROFILE, "runtime profile", violations)
+    slots = _read_json(root / SLOTS_FILE, "swarm slots", violations)
+    if profile is None or slots is None:
+        return violations
+
+    for path in profile.get("instructions", []):
+        if not (root / path).is_file():
+            violations.append(f"runtime profile: instruction file {path} does not exist")
+
+    models = {slot.get("model") for slot in slots.get("slots", [])}
+    declared_models = [("runtime profile", profile.get("model"))]
+    declared_models += [(name, config.get("model"))
+                        for name, config in profile.get("agents", {}).items()]
+    for label, declared in declared_models:
+        if declared is not None and declared not in models:
+            violations.append(f"{label}: model {declared!r} is not allowed by {SLOTS_FILE}")
+
+    for name, config in profile.get("agents", {}).items():
+        permissions = config.get("permissions", [])
+        reviewer = CATCH_ALL_DENY in permissions
+        bash_rules = [perm for perm in permissions if perm.get("action") in BASH_ACTIONS]
+        if reviewer:
+            if any(perm.get("effect") == "allow"
+                   and perm.get("action") not in READ_ONLY_ACTIONS for perm in permissions):
+                violations.append(f"agent {name}: read-only reviewer has edit permission")
+        elif not bash_rules:
+            violations.append(f"agent {name}: editing agent has no bash permission list")
+        for perm in permissions:
+            if perm.get("action") in WRITE_ACTIONS and perm.get("effect") == "allow":
+                for protected in PROTECTED_FILES:
+                    if fnmatch.fnmatchcase(protected, perm.get("resource", "")):
+                        violations.append(
+                            f"agent {name}: write permission targets {protected} "
+                            f"via {perm.get('resource', '')}")
+        for label, pattern in SECRET_PATTERNS:
+            if pattern.search(json.dumps(config)):
+                violations.append(f"agent {name}: contains a {label}")
+    for label, pattern in SECRET_PATTERNS:
+        if pattern.search(json.dumps({k: v for k, v in profile.items() if k != "agents"})):
+            violations.append(f"runtime profile: contains a {label}")
+    return violations
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true")
+    parser.add_argument("--check-runtime", action="store_true", dest="check_runtime")
     args = parser.parse_args(argv)
+    if args.check_runtime:
+        violations = check_runtime(ROOT)
+        for violation in violations:
+            print(violation, file=sys.stderr)
+        return 1 if violations else 0
     status = 0
     for name, ci in OUTPUTS.items():
         target = ROOT / name
