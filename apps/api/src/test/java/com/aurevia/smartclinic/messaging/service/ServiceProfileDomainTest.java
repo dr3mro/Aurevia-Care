@@ -85,6 +85,24 @@ class ServiceProfileDomainTest {
     }
 
     @Test
+    void aUnitIsEnabledOnlyWhenAnEffectiveProfileNamesAnOwnerAndBackup() {
+        ServiceProfile base = profile(List.of("collection"), List.of(new LocalizedText("en", "call us")));
+        assertTrue(base.enablesUnitAt(NOW));
+        assertFalse(withStaffing(base, "   ", List.of("backup")).enablesUnitAt(NOW));
+        assertFalse(withStaffing(base, null, List.of("backup")).enablesUnitAt(NOW));
+        assertFalse(withStaffing(base, "nurse-lead", List.of()).enablesUnitAt(NOW));
+        assertFalse(withStaffing(base, "nurse-lead", List.of("  ")).enablesUnitAt(NOW));
+        assertFalse(base.enablesUnitAt(NOW.minusSeconds(1)));
+
+        ServiceProfile draft = new ServiceProfile(base.id(), base.organizationId(), base.unitId(),
+                base.version(), ProfileStatus.DRAFT, base.hours(), base.responseTargetMinutes(),
+                base.topics(), base.urgentInstructions(), base.queueOwner(), base.backupCoverage(),
+                base.escalationChannel(), base.urgentChannel(), base.downtimeChannel(),
+                base.createdBy(), null, null, null, base.effectiveFrom(), base.createdAt());
+        assertFalse(draft.enablesUnitAt(NOW));
+    }
+
+    @Test
     void zoneAcceptsAnIanaIdentifierAndRejectsOffsetsAndMalformedValues() {
         assertEquals(ZoneId.of("America/New_York"), ServiceProfileInputs.zone("America/New_York"));
         assertEquals(422, assertThrows(ApiException.class, () -> ServiceProfileInputs.zone("Z")).status());
@@ -219,6 +237,14 @@ class ServiceProfileDomainTest {
         assertFalse(actions.allows("SUPERVISOR_VIEW", "patient"));
         assertFalse(actions.allows("PROFILE_VIEW", "reception"));
         assertFalse(actions.allows("UNKNOWN", "tenant_admin"));
+    }
+
+    private static ServiceProfile withStaffing(ServiceProfile base, String owner, List<String> backups) {
+        return new ServiceProfile(base.id(), base.organizationId(), base.unitId(), base.version(),
+                base.status(), base.hours(), base.responseTargetMinutes(), base.topics(),
+                base.urgentInstructions(), owner, backups, base.escalationChannel(),
+                base.urgentChannel(), base.downtimeChannel(), base.createdBy(), base.approvedBy(),
+                base.approvedAt(), base.approvalNote(), base.effectiveFrom(), base.createdAt());
     }
 
     private static ServiceProfile profile(List<String> topics, List<LocalizedText> instructions) {
