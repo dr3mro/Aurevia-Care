@@ -102,6 +102,17 @@ class StaffInvitationServiceTest {
     }
 
     @Test
+    void createAcceptsTheCanonicalDottedAndUnderscoredSubjects() {
+        authorized();
+        when(staff.findUserIdBySubject("patient.one")).thenReturn(Optional.empty());
+        assertEquals("patient.one", service.create("patient.one", "Name", FACILITY,
+                List.of("reception"), 600L).subject());
+        when(staff.findUserIdBySubject("patient_one")).thenReturn(Optional.empty());
+        assertEquals("patient_one", service.create("patient_one", "Name", FACILITY,
+                List.of("reception"), 600L).subject());
+    }
+
+    @Test
     void createDeniesInactiveMembershipAndAudits() {
         when(staff.hasActiveMembership(ACTOR)).thenReturn(false);
         ApiException failure = assertThrows(ApiException.class,
