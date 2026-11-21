@@ -39,3 +39,6 @@ __pycache__/
 # Stryker mutation testing output (opt-in npm run mutation)
 apps/*/.stryker-tmp/
 apps/*/reports/mutation/
+
+# Generated from tasks/ by scripts/taskstore.py; not stored in git
+/TODO.md

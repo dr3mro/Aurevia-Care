@@ -17,8 +17,14 @@ CALLS = {
     "runs_more": ["run", "list", "--limit", "300", "--json", FIELDS],  # three pages, merged in when it arrives
     "total": ["api", "graphql", "-F", "o={owner}", "-F", "n={repo}", "-q", ".data.repository.defaultBranchRef.target.history.totalCount",
               "-f", "query=query($o:String!,$n:String!){repository(owner:$o,name:$n){defaultBranchRef{target{... on Commit{history{totalCount}}}}}}"],
-    "todo": ["api", "repos/{owner}/{repo}/contents/TODO.md", "-H", "Accept: application/vnd.github.raw"],
-    "archive": ["api", "repos/{owner}/{repo}/contents/docs/archive/TODO-DONE.md", "-H", "Accept: application/vnd.github.raw"],
+    # The tasks are one file each under tasks/ (TODO.md is not in git): one GraphQL call reads every file.
+    "todo": ["api", "graphql", "-F", "o={owner}", "-F", "n={repo}", "-q",
+             '[.data.repository.t.entries[]? | select(.name | test("^[0-9].*[.]md$")) | .object.text // ""] | join("")',
+             "-f", 'query=query($o:String!,$n:String!){repository(owner:$o,name:$n){t:object(expression:"HEAD:tasks"){... on Tree{entries{name object{... on Blob{text}}}}}}}'],
+    # Finished tasks: one file each under tasks/done, plus the older archive file.
+    "archive": ["api", "graphql", "-F", "o={owner}", "-F", "n={repo}", "-q",
+                '[(.data.repository.d.entries // [])[].object.text, .data.repository.a.text] | map(select(. != null)) | join("\n")',
+                "-f", 'query=query($o:String!,$n:String!){repository(owner:$o,name:$n){d:object(expression:"HEAD:tasks/done"){... on Tree{entries{object{... on Blob{text}}}}} a:object(expression:"HEAD:docs/archive/TODO-DONE.md"){... on Blob{text}}}}'],
 }
 
 

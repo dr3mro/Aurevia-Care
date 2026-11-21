@@ -125,26 +125,18 @@ class StoreTests(Base):
         Path("tasks/00009000-ODD.md").write_text("stray text\n")
         self.assertEqual(taskstore.first_id(Path("tasks/00009000-ODD.md")), "ODD")
 
-    def test_an_edit_made_to_the_view_alone_is_adopted(self):
+    def test_an_edit_to_the_local_view_is_overwritten_by_the_files(self):
         taskstore.migrate()
         Path("TODO.md").write_text(TEXT.replace("[ ] A-01", "[-] A-01"))
-        self.assertIn("[-] A-01", taskstore.read())
-        self.assertIn("[-] A-01", Path("tasks/00001000-A-01.md").read_text())
-
-    def test_when_both_changed_the_files_win(self):
-        taskstore.migrate()
-        Path("TODO.md").write_text(TEXT.replace("[ ] A-01", "[-] A-01"))
-        Path("tasks/00003000-A-03.md").write_text("- [x] A-03 · Third, edited\n")
-        text = taskstore.read()
-        self.assertIn("Third, edited", text)
-        self.assertIn("[ ] A-01", text)
-        self.assertEqual(Path("TODO.md").read_text(), text)
-
-    def test_a_stale_marker_is_refreshed(self):
-        taskstore.migrate()
-        Path("tasks/.sharded").write_text("old\n")
         self.assertEqual(taskstore.read(), TEXT)
-        self.assertEqual(Path("tasks/.sharded").read_text().strip(), taskstore.digest(TEXT))
+        self.assertEqual(Path("TODO.md").read_text(), TEXT)
+
+    def test_the_marker_never_changes_after_the_move(self):
+        taskstore.migrate()
+        before = Path("tasks/.sharded").read_text()
+        taskstore.save(TEXT.replace("[ ] A-01", "[-] A-01"))
+        taskstore.read()
+        self.assertEqual(Path("tasks/.sharded").read_text(), before)
 
     def test_a_missing_view_is_regenerated(self):
         taskstore.migrate()
@@ -178,6 +170,17 @@ class MainTests(Base):
             self.assertEqual(taskstore.main(["migrate"]), 0)
         self.assertIn("moved 3", shown.call_args_list[0].args[0])
         self.assertEqual(shown.call_args_list[1].args[0], "nothing to migrate")
+
+    def test_view_command_rebuilds_the_local_view(self):
+        taskstore.migrate()
+        Path("TODO.md").unlink()
+        self.assertEqual(taskstore.main(["view"]), 0)
+        self.assertEqual(Path("TODO.md").read_text(), TEXT)
+
+    def test_view_command_before_the_move_changes_nothing(self):
+        self.assertEqual(taskstore.main(["view"]), 0)
+        self.assertEqual(Path("TODO.md").read_text(), TEXT)
+        self.assertFalse(Path("tasks").exists())
 
     def test_unknown_command_prints_usage(self):
         with mock.patch("builtins.print"):

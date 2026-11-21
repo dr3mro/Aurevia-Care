@@ -69,8 +69,8 @@ FIELD = re.compile(r"^  - ([a-z]+):[ \t]*(.*)$")
 
 
 # Tasks live in tasks/<sequence>-<ID>.md once scripts/taskstore.py has moved them (the integrator
-# does that by itself on its first run). TODO.md is then a generated view. Until then, and in
-# every test that works in a temporary folder, TODO.md is read and written directly.
+# did that by itself on its first run). TODO.md is then a local copy that git ignores. Until then,
+# and in every test that works in a temporary folder, TODO.md is read and written directly.
 _store = None
 
 
@@ -97,7 +97,7 @@ def todo_write(path, text):
 
 def todo_paths(path="TODO.md"):
     """What to `git add` after a task edit."""
-    return ["TODO.md", store().ROOT] if path == "TODO.md" and store().active() else [path]
+    return [store().ROOT] if path == "TODO.md" and store().active() else [path]
 
 
 def is_issue_call(args):
@@ -482,7 +482,7 @@ def stall_status():
 def sync_issues():
     """Close issues whose pull request is merged or closed, or whose task is done."""
     closed = []
-    todo = todo_read() if Path("TODO.md").exists() else ""
+    todo = todo_read() if store().active() or Path("TODO.md").exists() else ""
     done = {t["id"] for t in parse_tasks(todo) if t["status"] == "done"}
     issues = trusted_issues()
     # One list call for every pull request state instead of one view call per issue: this
@@ -2355,11 +2355,11 @@ def is_tracker(name):
 
 
 def restore_trackers():
-    """Take the trackers from fresh main: the files, the view and the notes."""
+    """Take the trackers from fresh main: the task files and the notes."""
     if Path(store().ROOT).exists():
         shutil.rmtree(store().ROOT)
     # One path at a time: a path main does not have must not stop the others from being restored.
-    for path in ("TODO.md", store().ROOT, "docs/swarm"):
+    for path in (store().ROOT, "docs/swarm"):
         git("checkout", "origin/main", "--", path, check=False)
 
 
@@ -2468,7 +2468,8 @@ def migrate_tasks(attempts=4):
     while True:
         attempt += 1
         moved = store().migrate()
-        git("add", "TODO.md", store().ROOT)
+        git("add", store().ROOT)
+        git("rm", "--cached", "-q", "--ignore-unmatch", "TODO.md")
         git(*IDENTITY, "commit", "-qm", f"Move {moved} task(s) into one file each [skip ci]")
         try:
             authed_git("push", "origin", "HEAD:main")

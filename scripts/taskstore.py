@@ -8,13 +8,12 @@ The sequence number keeps the order of the old file; new tasks get a number betw
 neighbours, so inserting never renames anything else.
 
 Everything else in the swarm still sees one text: `read()` joins the files and `save()`
-splits an edited text back, rewriting only the files that changed. `TODO.md` stays as a
-generated view for people, shell scripts and the documentation checks. If something still
-edits the view (an old copy of the swarm code), the next read adopts that edit.
+splits an edited text back, rewriting only the files that changed. `TODO.md` is a local copy
+of that text for people and scripts. It is not in git (it is ignored): it is rebuilt whenever
+the tasks are read or written, or by `taskstore.py view`, and an edit made to it is lost.
 
 Run from the repository root, like the rest of the swarm scripts.
 """
-import hashlib
 import re
 import sys
 from pathlib import Path
@@ -23,7 +22,7 @@ ROOT = "tasks"
 VIEW = "TODO.md"
 DONE = "done"
 HEAD = "_head.md"
-MARK = ".sharded"           # holds the hash of the text the view was last generated from
+MARK = ".sharded"           # present once the tasks are in files; its content never changes
 STEP = 1000                 # gap between neighbouring sequence numbers
 ENTRY = re.compile(r"^- \[([ x-])\] (\S+) · ")
 NAME = re.compile(r"^(\d{8})-(.+)\.md$")
@@ -50,10 +49,6 @@ def split(text):
 def safe(task_id):
     """The id as part of a file name."""
     return re.sub(r"[^A-Za-z0-9._-]", "_", task_id)
-
-
-def digest(text):
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
 def active(root=ROOT):
@@ -147,33 +142,23 @@ def write(text, root=ROOT):
 
 
 def sync_view(root=ROOT, view=VIEW):
-    """Regenerate the view from the files and remember what it was made from."""
+    """Write the local TODO.md from the task files."""
     text = joined(root)
     Path(view).write_text(text, encoding="utf-8")
-    (Path(root) / MARK).write_text(digest(text) + "\n", encoding="utf-8")
     return text
 
 
 def read(root=ROOT, view=VIEW):
-    """The tasks as one text.
-
-    If the view was edited since it was generated while the files were not, the edit came
-    from code that still writes the view: adopt it. If the files changed too, they win."""
+    """The tasks as one text. The local TODO.md is rebuilt when it is missing or out of date."""
     text = joined(root)
-    marker = (Path(root) / MARK).read_text(encoding="utf-8").strip()
     path = Path(view)
-    if digest(text) == marker and path.exists():
-        edited = path.read_text(encoding="utf-8")
-        if edited != text:
-            write(edited, root)
-            return sync_view(root, view)
-    if digest(text) != marker or not path.exists() or path.read_text(encoding="utf-8") != text:
-        sync_view(root, view)
+    if not path.exists() or path.read_text(encoding="utf-8") != text:
+        path.write_text(text, encoding="utf-8")
     return text
 
 
 def save(text, root=ROOT, view=VIEW):
-    """Store an edited text and refresh the view."""
+    """Store an edited text and refresh the local TODO.md."""
     write(text, root)
     return sync_view(root, view)
 
@@ -186,6 +171,7 @@ def migrate(root=ROOT, view=VIEW):
     write(text, root)
     if joined(root) != text:
         raise SystemExit("task files do not rebuild TODO.md exactly; nothing was kept")
+    (Path(root) / MARK).write_text("one file per task\n", encoding="utf-8")
     sync_view(root, view)
     return len(split(text)[1])
 
@@ -209,8 +195,12 @@ def archived(root=ROOT):
 
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
+    if argv == ["view"]:
+        if active():
+            sync_view()
+        return 0
     if argv != ["migrate"]:
-        print("usage: taskstore.py migrate", file=sys.stderr)
+        print("usage: taskstore.py migrate | view", file=sys.stderr)
         return 2
     moved = migrate()
     print(f"moved {moved} task(s) into {ROOT}/" if moved else "nothing to migrate")

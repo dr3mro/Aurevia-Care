@@ -47,7 +47,7 @@ class ReadWriteTests(Work):
         swarm.todo_write("TODO.md", TEXT.replace("[ ] A-01", "[-] A-01"))
         self.assertIn("[-] A-01", Path("tasks/00001000-A-01.md").read_text())
         self.assertIn("[-] A-01", swarm.todo_read())
-        self.assertEqual(swarm.todo_paths(), ["TODO.md", "tasks"])
+        self.assertEqual(swarm.todo_paths(), ["tasks"])
 
     def test_tasks_are_a_tracker(self):
         self.assertTrue(swarm.is_tracker("tasks/00001000-A-01.md"))
@@ -61,7 +61,7 @@ class UpdateTests(Work):
         with mock.patch.object(swarm, "git") as git, mock.patch.object(swarm, "authed_git"):
             changed = swarm.update_todo(lambda t: t.replace("[ ] A-01", "[-] A-01"), "Take A-01")
         self.assertTrue(changed)
-        git.assert_any_call("add", "TODO.md", "tasks")
+        git.assert_any_call("add", "tasks")
         self.assertIn("[-] A-01", Path("tasks/00001000-A-01.md").read_text())
 
     def test_an_update_that_changes_nothing_pushes_nothing(self):
@@ -113,7 +113,8 @@ class MigrateTests(Work):
         moved, git, authed = self.run_migrate()
         self.assertEqual(moved, 3)
         self.assertTrue(taskstore.active())
-        git.assert_any_call("add", "TODO.md", "tasks")
+        git.assert_any_call("add", "tasks")
+        git.assert_any_call("rm", "--cached", "-q", "--ignore-unmatch", "TODO.md")
         authed.assert_called_once_with("push", "origin", "HEAD:main")
 
     def test_the_switch_turns_it_off(self):

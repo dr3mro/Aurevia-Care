@@ -22,7 +22,7 @@ on:
         default: false
   push:
     branches: [main]
-    paths: [TODO.md]
+    paths: [tasks/**]
   # Safety net: one wave per hour at minute 7 if the event chain ever stalls.
   # An idle plan job costs about one minute.
   schedule:

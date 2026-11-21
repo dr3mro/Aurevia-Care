@@ -91,9 +91,10 @@ The waves, slot images, integrator and repair loop have run on GitHub. Written a
 
 ## Task files
 
-Tasks live one per file in `tasks/<sequence>-<ID>.md`, so two writers only conflict when they touch the same task. `TODO.md` is a generated view of those files: it is kept up to date on every write and is what people, scripts and the documentation checks read. The sequence number keeps the old order; a new task gets a number between its neighbours, and nothing else is renamed. Finished tasks are archived under `tasks/done/` and still satisfy `depends`.
+Tasks live one per file in `tasks/<sequence>-<ID>.md`, so two writers only conflict when they touch the same task. `TODO.md` is no longer stored in git: it is a local copy that git ignores, rebuilt from `tasks/` whenever the swarm reads or writes the tasks, or by `python3 scripts/taskstore.py view`. Workers, `scripts/check.sh` readers and people get it that way; the GitHub monitor reads the files directly. The sequence number keeps the old order; a new task gets a number between its neighbours and nothing else is renamed. Finished tasks are archived under `tasks/done/` and still satisfy `depends`.
 
-- **The move is automatic.** The first integrator run after `scripts/taskstore.py` reached `main` splits `TODO.md` into task files in one commit and rebuilds `TODO.md` from them byte for byte, or keeps nothing. Running it again does nothing. Set the repository variable `SWARM_TASK_FILES` to `off` to stop it.
-- **Adding or editing a task by hand.** Edit `TODO.md` and push: if the task files were not changed meanwhile, the next swarm run adopts the edit into the files. Or edit or add the file in `tasks/` directly.
+- **Adding or editing a task by hand.** Edit or add the file in `tasks/` (keep the `- [ ] ID · title` line first). Edits to the local `TODO.md` are lost the next time it is rebuilt.
+- **The move was automatic.** The first integrator run after `scripts/taskstore.py` reached `main` split the old `TODO.md` into task files in one commit and checked that it rebuilds byte for byte. Set the repository variable `SWARM_TASK_FILES` to `off` to stop it in a fresh copy of the template.
 - **Conflicts.** A pull request that touches `TODO.md` or `tasks/` is not the source of truth: the integrator keeps main's version of those files and goes on merging.
-- **Code.** `scripts/taskstore.py` (split, join, write, view, archive) and the `todo_read`, `todo_write`, `todo_paths` helpers in `scripts/swarm.py`. Without `tasks/.sharded` everything still works on `TODO.md` directly.
+- **Waves.** `swarm.yml` starts on a push that changes `tasks/**`.
+- **Code.** `scripts/taskstore.py` (split, join, write, view, archive) and the `todo_read`, `todo_write`, `todo_paths` helpers in `scripts/swarm.py`. Without `tasks/.sharded` everything still works on a plain `TODO.md`.
