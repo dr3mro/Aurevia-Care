@@ -100,6 +100,25 @@ class CatalogServiceTest {
     }
 
     @Test
+    void codeValidationUsesTheSharedBoundedRule() {
+        String max = "a".repeat(64);
+        when(configurations.create("catalog.diagnosis." + max, "v", null)).thenReturn(draft());
+        service.define("diagnosis", max, "v", null);
+        verify(configurations).create("catalog.diagnosis." + max, "v", null);
+
+        ApiException invalidCode = assertThrows(ApiException.class,
+                () -> service.define("diagnosis", "a".repeat(65), "v", null));
+        assertEquals(422, invalidCode.status());
+        assertEquals("INVALID_CODE", invalidCode.code());
+        assertEquals(422, assertThrows(ApiException.class,
+                () -> service.define("diagnosis", "رمز", "v", null)).status());
+        assertEquals(422, assertThrows(ApiException.class,
+                () -> service.effective("diagnosis", "a".repeat(65))).status());
+        assertEquals(422, assertThrows(ApiException.class,
+                () -> service.approve("diagnosis", "رمز", 1, null)).status());
+    }
+
+    @Test
     void defineDelegatesToConfigurationService() {
         when(configurations.create("catalog.diagnosis.R51", "Headache", null)).thenReturn(draft());
         assertEquals(1, service.define("diagnosis", "R51", "Headache", null).version());

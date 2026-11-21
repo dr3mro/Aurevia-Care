@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.aurevia.smartclinic.api.ApiException;
+import com.aurevia.smartclinic.api.contract.CatalogCode;
 import com.aurevia.smartclinic.authz.ActionPolicy;
 import com.aurevia.smartclinic.configuration.ConfigEntry;
 import com.aurevia.smartclinic.configuration.ConfigurationService;
@@ -25,7 +26,6 @@ import com.aurevia.smartclinic.tenant.TenantContext;
 public class CatalogService {
 
     private static final Pattern FAMILY = Pattern.compile("[a-z][a-z0-9_]{1,31}");
-    private static final Pattern CODE = Pattern.compile("[A-Za-z0-9][A-Za-z0-9_.:-]{1,63}");
     private static final int MAX_VALUE = 4000;
 
     private final CatalogRepository repository;
@@ -154,8 +154,16 @@ public class CatalogService {
     }
 
     private void validateName(String value, String name) {
-        Pattern pattern = "family".equals(name) ? FAMILY : CODE;
-        if (value == null || !pattern.matcher(value).matches()) {
+        if ("code".equals(name)) {
+            try {
+                CatalogCode.code(value);
+            } catch (IllegalArgumentException invalid) {
+                throw new ApiException(422, "INVALID_" + name.toUpperCase(java.util.Locale.ROOT),
+                        CatalogCode.INVALID_MESSAGE);
+            }
+            return;
+        }
+        if (value == null || !FAMILY.matcher(value).matches()) {
             throw new ApiException(422, "INVALID_" + name.toUpperCase(java.util.Locale.ROOT),
                     name + " must be 2-64 letters, digits or _ . : -");
         }
