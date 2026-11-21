@@ -915,6 +915,28 @@ class IntegrationTests(unittest.TestCase):
             self.assertEqual(swarm.guard(9), [".github/workflows/x.yml", "scripts/swarm.py"])
         self.assertTrue(fake.said("labels[]=needs-human"))
 
+    def test_kill_switch_lets_protected_paths_merge_and_says_so(self):
+        fake = FakeGh(diff="apps/api/pom.xml\n.github/workflows/x.yml\n")
+        with mock.patch.dict(os.environ, {"SWARM_ALLOW_PROTECTED": "1"}), \
+                mock.patch.object(swarm, "gh", fake):
+            self.assertEqual(swarm.guard(9), [])
+        self.assertFalse(fake.said("labels[]=needs-human"))
+        self.assertTrue(any("Kill switch SWARM_ALLOW_PROTECTED is on" in " ".join(call) for call in fake.calls))
+
+    def test_kill_switch_off_values_keep_the_secure_rule(self):
+        for value in ("", "0", "false", "no"):
+            fake = FakeGh(diff="apps/api/pom.xml\n")
+            with mock.patch.dict(os.environ, {"SWARM_ALLOW_PROTECTED": value}), \
+                    mock.patch.object(swarm, "gh", fake):
+                self.assertEqual(swarm.guard(9), ["apps/api/pom.xml"])
+            self.assertTrue(fake.said("labels[]=needs-human"))
+
+    def test_kill_switch_does_not_lift_the_tracker_rule(self):
+        fake = FakeGh(diff="TODO.md\nscripts/swarm.py\n")
+        with mock.patch.dict(os.environ, {"SWARM_ALLOW_PROTECTED": "1"}), \
+                mock.patch.object(swarm, "gh", fake):
+            self.assertEqual(swarm.guard(9), ["TODO.md"])
+
     def test_repair_pr_bypasses_protected_path_guard(self):
         fake = FakeGh(diff="apps/api/src/A.java\n.github/workflows/x.yml\nscripts/swarm.py\n")
         with mock.patch.object(swarm, "gh", fake):

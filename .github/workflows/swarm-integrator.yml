@@ -16,6 +16,9 @@ concurrency:
 env:
   SWARM_GIT_NAME: ${{ vars.SWARM_GIT_NAME }}
   SWARM_GIT_EMAIL: ${{ vars.SWARM_GIT_EMAIL }}
+  # Kill switch: set the repository variable SWARM_ALLOW_PROTECTED to 1 to merge protected files
+  # automatically (full gate still runs); delete it or set it to 0 to restore the secure rule.
+  SWARM_ALLOW_PROTECTED: ${{ vars.SWARM_ALLOW_PROTECTED }}
 
 jobs:
   pick:

@@ -2218,6 +2218,15 @@ def repair_gate(run_id, now=None):
     return True, "Starting a repair."
 
 
+def protected_override():
+    """True while the kill switch is on: repository variable SWARM_ALLOW_PROTECTED=1.
+
+    The switch only lifts the "never merge protected files automatically" rule. The
+    full gate, the tracker rule and the file-count limit still apply. Turn it off by
+    deleting the variable or setting it to 0; nothing else changes."""
+    return os.environ.get("SWARM_ALLOW_PROTECTED", "").strip().lower() in {"1", "true", "yes", "on"}
+
+
 def guard(pr, repair=False):
     """Return the files that stop an automatic merge and label accordingly.
 
@@ -2228,6 +2237,11 @@ def guard(pr, repair=False):
     """
     files = gh("pr", "diff", str(pr), "--name-only").split()
     touched = [f for f in files if f in GATE_CONFIG] if repair else protected_files(files)
+    if touched and protected_override():
+        gh("pr", "comment", str(pr), "--body",
+           f"{MARK}\nKill switch SWARM_ALLOW_PROTECTED is on: the protected-file rule was skipped for "
+           f"{', '.join(touched[:10])}. The full gate still runs before the merge.")
+        touched = []
     if touched:
         add_labels(pr, "needs-human")
         gh("pr", "comment", str(pr), "--body",
