@@ -417,6 +417,100 @@ paths:
         '401': { description: Authentication required }
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { description: Invalid cursor, limit, status or tenant selection }
+  /api/v1/order-entry/drafts:
+    post:
+      operationId: saveOrderDraft
+      summary: Save an editable order draft from the chart in the active organization
+      tags: [order-entry]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/IdempotencyKeyOptional'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PlacedOrderRequest' }
+      responses:
+        '201':
+          description: Created draft at version one
+          headers:
+            Location: { schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrderDraft' }
+        '401': { description: Authentication required }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { description: Invalid order content or tenant selection }
+  /api/v1/order-entry/drafts/{id}:
+    put:
+      operationId: editOrderDraft
+      summary: Replace a draft's content under an If-Match version precondition
+      tags: [order-entry]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/IdempotencyKeyOptional'
+        - $ref: '#/components/parameters/IfMatch'
+        - { name: id, in: path, required: true, description: Tenant-local draft identifier, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PlacedOrderRequest' }
+      responses:
+        '200':
+          description: The new immutable draft revision
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrderDraft' }
+        '401': { description: Authentication required }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: Draft not found or inaccessible; existence is concealed }
+        '412': { description: Stale If-Match version }
+        '422': { description: Invalid order content or tenant selection }
+        '428': { description: If-Match precondition required }
+  /api/v1/order-entry/drafts/{id}/place:
+    post:
+      operationId: placeOrder
+      summary: Place a draft, storing its delivery mode; immutable and idempotent on retry
+      tags: [order-entry]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/IfMatch'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - { name: id, in: path, required: true, description: Tenant-local draft identifier, schema: { type: string } }
+      responses:
+        '200':
+          description: The immutable placed order with its recorded delivery mode
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlacedOrder' }
+        '401': { description: Authentication required }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: Draft not found or inaccessible; existence is concealed }
+        '409': { description: Idempotency key belongs to a different order }
+        '412': { description: Stale If-Match version }
+        '428': { description: If-Match or Idempotency-Key precondition required }
+  /api/v1/order-entry/orders/{id}:
+    get:
+      operationId: getPlacedOrder
+      summary: Read one immutable placed order in the active organization
+      tags: [order-entry]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - { name: id, in: path, required: true, description: Tenant-local placed-order identifier, schema: { type: string } }
+      responses:
+        '200':
+          description: The immutable placed order
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlacedOrder' }
+        '401': { description: Authentication required }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: Order not found or inaccessible; existence is concealed }
 components:
   parameters:
     ActiveOrganization:
@@ -443,6 +537,24 @@ components:
       required: true
       description: Tenant-local configuration key.
       schema: { type: string, pattern: '^[a-z][a-z0-9._-]{2,63}$' }
+    IfMatch:
+      name: If-Match
+      in: header
+      required: true
+      description: Version of the draft the caller last read; weak and quoted validators are accepted.
+      schema: { type: string }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Opaque key that makes a retried placement produce a single order.
+      schema: { type: string, minLength: 1, maxLength: 255 }
+    IdempotencyKeyOptional:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: Reserved retry-correlation header for draft commands; durable deduplication applies to placement.
+      schema: { type: string, minLength: 1, maxLength: 255 }
   responses:
     Forbidden:
       description: No active membership or missing action permission
@@ -773,6 +885,55 @@ components:
           type: array
           items: { $ref: '#/components/schemas/InvoiceView' }
         nextCursor: { type: string, nullable: true }
+    DeliveryMode:
+      type: string
+      enum: [ELECTRONIC, PRINT, BOTH]
+      description: Send electronically to the partner, print for the patient to carry, or both.
+    OrderSelection:
+      type: object
+      required: [itemId, version]
+      additionalProperties: false
+      properties:
+        itemId: { type: string, minLength: 1 }
+        version: { type: integer, minimum: 1 }
+    PlacedOrderRequest:
+      type: object
+      required: [patientId, encounterId, facilityId, items, clinicalQuestion, priority, destinationPartnerId, deliveryMode]
+      additionalProperties: false
+      properties:
+        patientId: { type: string, minLength: 1 }
+        encounterId: { type: string, minLength: 1 }
+        facilityId: { type: string, minLength: 1 }
+        items:
+          type: array
+          minItems: 1
+          items: { $ref: '#/components/schemas/OrderSelection' }
+        clinicalQuestion: { type: string, minLength: 1 }
+        priority: { type: string, enum: [routine, urgent, stat] }
+        preparationInstructions: { type: string, nullable: true }
+        destinationPartnerId: { type: string, minLength: 1 }
+        deliveryMode: { $ref: '#/components/schemas/DeliveryMode' }
+    OrderDraft:
+      type: object
+      properties:
+        organizationId: { type: string }
+        id: { type: string }
+        version: { type: integer }
+        request: { $ref: '#/components/schemas/PlacedOrderRequest' }
+        createdBy: { type: string }
+        createdAt: { type: string, format: date-time }
+    PlacedOrder:
+      type: object
+      properties:
+        organizationId: { type: string }
+        id: { type: string }
+        draftId: { type: string }
+        version: { type: integer }
+        request: { $ref: '#/components/schemas/PlacedOrderRequest' }
+        payload: { type: string }
+        placedBy: { type: string }
+        placedAt: { type: string, format: date-time }
+        idempotencyKey: { type: string }
     Error:
       type: object
       properties:
