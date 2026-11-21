@@ -147,11 +147,15 @@ These are code and migration facts in this checkout, not approvals:
   read from approved configuration; the named interpreters, modalities and
   effective windows are site evidence a person must supply, not code this pack
   adds.
-- NO TASK in this pack — clause notes under `docs/spec/clauses/` that relate to
-  this decision. That directory is produced by separate `SPEC-*` evidence-note
-  tasks and is absent from this checkout; the authoritative clause text is in
-  sections 9 and 10 of [SMARTCLINIC_V1_SPEC.md](../../SMARTCLINIC_V1_SPEC.md).
-  Nothing here depends on those notes being present.
+- `SPEC-DECISIONS` — the evidence note for section 10 (decisions required before
+  production enablement), the section that assigns this decision. Related
+  clause notes for the requirements cited here come from `SPEC-ADM-01-C01`
+  (ADM-01 tenant configuration) and `SPEC-CLN-04-C02` (CLN-04 operative note
+  fields). These `SPEC-*` evidence-note tasks write under `docs/spec/clauses/`,
+  which is absent from this checkout, so their notes are not yet available as
+  evidence. The authoritative clause text is in sections 9 and 10 of
+  [SMARTCLINIC_V1_SPEC.md](../../SMARTCLINIC_V1_SPEC.md). Nothing here depends
+  on those notes being present.
 
 ## Questions for the owner
 
