@@ -172,7 +172,9 @@ Same rules as the first group. The documentation tasks do not edit the shared in
     4. Tests: a small invalid contract held as a string fails each rule once, and the real contract passes.
     5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] START-10 · Docs: bilingual glossary of clinical and product terms
+- [-] START-10 · Docs: bilingual glossary of clinical and product terms
+  - agent: swarm-2
+  - attempts: 1
   - requirements: UX-01, PRD-01
   - scope: docs/reference/glossary.md
   - details:
@@ -183,7 +185,9 @@ Same rules as the first group. The documentation tasks do not edit the shared in
     5. Run `python3 -I scripts/check-docs.py` and paste the result.
     6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] START-11 · Docs: Arabic interface style guide
+- [-] START-11 · Docs: Arabic interface style guide
+  - agent: swarm-3
+  - attempts: 1
   - requirements: UX-01
   - scope: docs/design/arabic-style-guide.md
   - details:
@@ -194,7 +198,9 @@ Same rules as the first group. The documentation tasks do not edit the shared in
     5. Run `python3 -I scripts/check-docs.py` and paste the result.
     6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] START-12 · Docs: service level objectives and alert thresholds
+- [-] START-12 · Docs: service level objectives and alert thresholds
+  - agent: swarm-4
+  - attempts: 1
   - requirements: OPS-03, OPS-05
   - scope: docs/operations/slo.md
   - details:
@@ -205,7 +211,9 @@ Same rules as the first group. The documentation tasks do not edit the shared in
     5. Run `python3 -I scripts/check-docs.py` and paste the result.
     6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] START-13 · Docs: partner integration guide for the exchange API
+- [-] START-13 · Docs: partner integration guide for the exchange API
+  - agent: swarm-5
+  - attempts: 1
   - requirements: XCH-01, XCH-05, WEB-04
   - scope: docs/reference/partner-api-guide.md
   - details:
@@ -216,7 +224,9 @@ Same rules as the first group. The documentation tasks do not edit the shared in
     5. Run `python3 -I scripts/check-docs.py` and paste the result.
     6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] START-14 · Docs: catalogue of the synthetic test data
+- [-] START-14 · Docs: catalogue of the synthetic test data
+  - agent: swarm-6
+  - attempts: 1
   - requirements: OPS-06, ARC-02
   - scope: docs/reference/synthetic-data.md
   - details:
@@ -227,7 +237,9 @@ Same rules as the first group. The documentation tasks do not edit the shared in
     5. Run `python3 -I scripts/check-docs.py` and paste the result.
     6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] START-15 · Docs: personal data inventory (what is stored, where, how long)
+- [-] START-15 · Docs: personal data inventory (what is stored, where, how long)
+  - agent: swarm-7
+  - attempts: 1
   - requirements: OPS-01, ARC-03, PAT-03
   - scope: docs/security/data-inventory.md
   - details:
@@ -238,7 +250,9 @@ Same rules as the first group. The documentation tasks do not edit the shared in
     5. Run `python3 -I scripts/check-docs.py` and paste the result.
     6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] START-16 · Docs: restore and failure drill scripts for the operations team
+- [-] START-16 · Docs: restore and failure drill scripts for the operations team
+  - agent: swarm-8
+  - attempts: 1
   - requirements: OPS-04, OPS-07
   - scope: docs/operations/exercises
   - details:
@@ -248,7 +262,9 @@ Same rules as the first group. The documentation tasks do not edit the shared in
     4. Run `python3 -I scripts/check-docs.py` and paste the result.
     5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] START-17 · Docs: testing guide (every check, what it proves, how to run it)
+- [-] START-17 · Docs: testing guide (every check, what it proves, how to run it)
+  - agent: swarm-9
+  - attempts: 1
   - requirements: OPS-06, WEB-09
   - scope: docs/reference/testing-guide.md
   - details:
@@ -273,7 +289,9 @@ Same rules as the first group. The documentation tasks do not edit the shared in
 
 Each task reads one package and writes one page. They share no files, so they all run at once.
 
-- [ ] START-19 · Docs: module guide for the API package `api`
+- [-] START-19 · Docs: module guide for the API package `api`
+  - agent: swarm-10
+  - attempts: 1
   - requirements: WEB-04
   - scope: docs/reference/modules/api-api.md
   - details:
