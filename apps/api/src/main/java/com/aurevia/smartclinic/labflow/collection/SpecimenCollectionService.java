@@ -26,6 +26,12 @@ import com.aurevia.smartclinic.tenant.TenantContext;
  * work so an attempted mislabelled collection is always attributable. Reads,
  * writes and patient lookups all run under forced row-level security, so a peer
  * tenant's specimen is concealed as a not-found result.</p>
+ *
+ * <p>Invariant: an outcome that must be audited writes the row and then returns
+ * {@code null} from the guarded callback, deferring the exception until after
+ * commit; an outcome that writes no audit (stale version, illegal state, lost
+ * update) may throw inside the callback. Never place an audit append immediately
+ * before an in-callback {@code throw} — the rollback would discard the audit.</p>
  */
 @Service
 public class SpecimenCollectionService {
@@ -134,7 +140,8 @@ public class SpecimenCollectionService {
      *
      * @param id opaque specimen identifier
      * @return the accession, patient and collection label fields
-     * @throws com.aurevia.smartclinic.api.ApiException on invalid input, denial or concealment
+     * @throws com.aurevia.smartclinic.api.ApiException on invalid input, denial, concealment or
+     *                                                  when the specimen has not been collected
      */
     public SpecimenLabelData labelData(String id) {
         String specimenId = LabInputs.id(id);
@@ -151,6 +158,13 @@ public class SpecimenCollectionService {
                 audit.append(context, PURPOSE, LabActionPolicy.ACCESSION_READ, RESOURCE_TYPE,
                         SCOPE, specimenId, "NOT_FOUND");
                 failure.set(new ApiException(404, "NOT_FOUND", "accession not found"));
+                return null;
+            }
+            if (accession.state() == AccessionState.ACCESSIONED) {
+                audit.append(context, PURPOSE, LabActionPolicy.ACCESSION_READ, RESOURCE_TYPE,
+                        SCOPE, specimenId, "CONFLICT");
+                failure.set(new ApiException(409, "INVALID_STATE",
+                        "specimen has not been collected; label data is incomplete"));
                 return null;
             }
             Patient patient = patients.findById(accession.patientId()).orElse(null);

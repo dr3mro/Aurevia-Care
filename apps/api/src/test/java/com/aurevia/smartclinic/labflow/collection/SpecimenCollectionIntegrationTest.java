@@ -193,8 +193,9 @@ class SpecimenCollectionIntegrationTest {
                 "/api/v1/audit-events?action=LAB_SPECIMEN_COLLECT&outcome=MISMATCH",
                 null, "auditor-a", ORG_A);
         assertEquals(HttpStatus.OK, audit.getStatusCode(), audit.getBody());
-        assertTrue(audit.getBody().contains("LAB_SPECIMEN_COLLECT"), audit.getBody());
-        assertTrue(audit.getBody().contains("MISMATCH"), audit.getBody());
+        assertTrue(audit.getBody().contains("\"action\":\"LAB_SPECIMEN_COLLECT\""), audit.getBody());
+        assertTrue(audit.getBody().contains("\"outcome\":\"MISMATCH\""), audit.getBody());
+        assertTrue(audit.getBody().contains("\"resourceType\":\"SPECIMEN\""), audit.getBody());
         assertFalse(audit.getBody().contains("MRN-LABFLOW-2"), audit.getBody());
     }
 
@@ -207,6 +208,10 @@ class SpecimenCollectionIntegrationTest {
                 collect(id, "ACC-9", patient, 1, "lab-b", ORG_B).getStatusCode());
         assertEquals(HttpStatus.NOT_FOUND,
                 label(id, "lab-b", ORG_B).getStatusCode());
+        // A label is only produced once collection is recorded (LAB-01 label completeness).
+        assertEquals(409, label(id, "lab-a", ORG_A).getStatusCode().value());
+        assertEquals(HttpStatus.OK,
+                collect(id, "ACC-9", patient, 1, "lab-a", ORG_A).getStatusCode());
         assertEquals(HttpStatus.OK, label(id, "lab-a", ORG_A).getStatusCode());
     }
 }

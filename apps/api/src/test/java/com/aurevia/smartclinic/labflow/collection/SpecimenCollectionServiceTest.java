@@ -230,6 +230,20 @@ class SpecimenCollectionServiceTest {
     }
 
     @Test
+    void labelDataRefusesAnUncollectedSpecimenAsIncomplete() {
+        authorizedCollector();
+        when(accessions.findById(ID)).thenReturn(Optional.of(specimen(AccessionState.ACCESSIONED, 1)));
+
+        ApiException failure = assertThrows(ApiException.class, () -> service.labelData(ID));
+
+        assertEquals(409, failure.status());
+        assertEquals("INVALID_STATE", failure.code());
+        verify(patients, never()).findById(anyString());
+        verify(audit).append(any(), eq(PURPOSE), eq(LabActionPolicy.ACCESSION_READ),
+                eq(RESOURCE), eq(SCOPE), eq(ID), eq("CONFLICT"));
+    }
+
+    @Test
     void labelDataDeniesWithoutMembership() {
         when(accessions.hasActiveMembership(SUBJECT)).thenReturn(false);
 
