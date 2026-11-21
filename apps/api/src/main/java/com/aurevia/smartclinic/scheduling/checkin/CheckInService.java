@@ -102,6 +102,12 @@ public class CheckInService {
                 return null;
             }
             Appointment appointment = appointments.get(appointmentId).appointment();
+            ApiException scopeDenial = facilityDenial(context, WorklistPolicy.IDENTITY_VERIFY,
+                    appointmentId, appointment.facilityCode());
+            if (scopeDenial != null) {
+                failure.set(scopeDenial);
+                return null;
+            }
             if (repository.hasVerification(appointmentId)) {
                 throw new ApiException(409, "DUPLICATE_VERIFICATION",
                         "identity was already verified for this appointment");
@@ -152,6 +158,12 @@ public class CheckInService {
                         "identity must be verified before check-in");
             }
             Appointment checkedIn = appointments.checkIn(id, expectedVersion);
+            ApiException scopeDenial = facilityDenial(context, WorklistPolicy.CHECK_IN, id,
+                    checkedIn.facilityCode());
+            if (scopeDenial != null) {
+                failure.set(scopeDenial);
+                return null;
+            }
             int priority = priorityFor(checkedIn.visitType());
             String facilityId = repository.facilityId(checkedIn.facilityCode())
                     .orElseThrow(() -> new ApiException(404, "NOT_FOUND", "facility not found"));
@@ -189,6 +201,11 @@ public class CheckInService {
                 failure.set(denial);
                 return List.<WorklistItem>of();
             }
+            ApiException scopeDenial = facilityDenial(context, WorklistPolicy.WORKLIST_READ, code, code);
+            if (scopeDenial != null) {
+                failure.set(scopeDenial);
+                return List.<WorklistItem>of();
+            }
             List<WorklistItem> items = repository.listWorklist(code, size);
             audit.append(context, "WORKLIST_READ", "WORKLIST_READ", RESOURCE_TYPE, SCOPE, code,
                     "SUCCESS");
@@ -222,6 +239,12 @@ public class CheckInService {
             }
             WorklistItem current = repository.findItemForUpdate(id)
                     .orElseThrow(() -> new ApiException(404, "NOT_FOUND", "worklist item not found"));
+            ApiException scopeDenial = facilityDenial(context, WorklistPolicy.WORKLIST_ASSIGN, id,
+                    current.facilityCode());
+            if (scopeDenial != null) {
+                failure.set(scopeDenial);
+                return null;
+            }
             requireVersion(current.version(), expectedVersion);
             if (current.assigneeSubject() != null) {
                 throw new ApiException(409, "ALREADY_ASSIGNED", "the item already has an assignee");
@@ -266,6 +289,12 @@ public class CheckInService {
             }
             WorklistItem current = repository.findItemForUpdate(id)
                     .orElseThrow(() -> new ApiException(404, "NOT_FOUND", "worklist item not found"));
+            ApiException scopeDenial = facilityDenial(context, WorklistPolicy.HANDOFF, id,
+                    current.facilityCode());
+            if (scopeDenial != null) {
+                failure.set(scopeDenial);
+                return null;
+            }
             requireVersion(current.version(), expectedVersion);
             if (current.assigneeSubject() == null) {
                 throw new ApiException(409, "NO_ACTIVE_ASSIGNEE",
@@ -312,6 +341,12 @@ public class CheckInService {
             ApiException denial = authorize(context, WorklistPolicy.INTAKE_LINK, patientId);
             if (denial != null) {
                 failure.set(denial);
+                return null;
+            }
+            ApiException scopeDenial = facilityDenial(context, WorklistPolicy.INTAKE_LINK, patientId,
+                    facilityCode);
+            if (scopeDenial != null) {
+                failure.set(scopeDenial);
                 return null;
             }
             if (!repository.patientExists(patientId)) {
@@ -399,6 +434,26 @@ public class CheckInService {
                 .noneMatch(role -> policy.allows(action, role))) {
             audit.append(context, action, action, RESOURCE_TYPE, SCOPE, resourceId, "DENIED");
             return new ApiException(403, "FORBIDDEN", "missing worklist permission");
+        }
+        return null;
+    }
+
+    /**
+     * Apply the IAM-01 facility scope to a facility-aware command. The denial is
+     * returned, not thrown, so the guarded transaction still commits its DENIED
+     * audit row before the caller reports the failure to the client.
+     *
+     * @param context      active tenant context
+     * @param action       action key being authorized
+     * @param resourceId   resource addressed by the command, for the audit row
+     * @param facilityCode facility the resource belongs to
+     * @return the denial to throw after commit, or {@code null} when in scope
+     */
+    private ApiException facilityDenial(TenantContext context, String action, String resourceId,
+                                        String facilityCode) {
+        if (repository.outsideAssignedFacilities(context.subject(), facilityCode)) {
+            audit.append(context, action, action, RESOURCE_TYPE, SCOPE, resourceId, "DENIED");
+            return new ApiException(403, "FORBIDDEN", "facility is outside the assigned scope");
         }
         return null;
     }
