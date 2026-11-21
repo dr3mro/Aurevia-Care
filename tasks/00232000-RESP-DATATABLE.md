@@ -1,5 +1,5 @@
-- [-] RESP-DATATABLE · Staff web: responsive `DataTable` component
-  - agent: swarm-6
+- [x] RESP-DATATABLE · Staff web: responsive `DataTable` component
+  - pr: #584
   - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/components/DataTable.tsx, apps/staff-web/tests/components/DataTable.responsive.test.tsx
