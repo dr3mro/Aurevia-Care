@@ -220,6 +220,58 @@ class InstructionFactServiceTest {
     }
 
     @Test
+    void anAcknowledgmentOfAnOldRevisionDoesNotSatisfyANewOne() {
+        asStaff();
+        service.publish(publish(INSTRUCTION, PATIENT, UNIT, 1, true, NOW.plusSeconds(60).toString(),
+                true, "client-1"));
+        asPatient();
+        Acknowledgment first = service.acknowledge(new AcknowledgeCommand(INSTRUCTION, 1, "ack-1"));
+        assertEquals(1, first.revision());
+        assertEquals(1, store.acknowledgments(ORG, INSTRUCTION, 1).size());
+
+        // A later revision requests its own receipt. The receipt recorded while
+        // revision 1 was current names exactly revision 1 and must not be
+        // carried over to satisfy revision 2 (MSG-05: bind to the exact revision).
+        asStaff();
+        service.publish(publish(INSTRUCTION, PATIENT, UNIT, 2, true, NOW.plusSeconds(60).toString(),
+                true, "client-2"));
+        asPatient();
+        assertEquals(1, store.acknowledgments(ORG, INSTRUCTION, 1).size());
+        assertTrue(store.acknowledgments(ORG, INSTRUCTION, 2).isEmpty());
+
+        Acknowledgment second = service.acknowledge(new AcknowledgeCommand(INSTRUCTION, 2, "ack-2"));
+        assertEquals(2, second.revision());
+        assertNotEquals(first, second);
+        assertEquals(1, store.acknowledgments(ORG, INSTRUCTION, 2).size());
+        // Both receipts survive as distinct facts, each naming its own revision.
+        assertEquals(2, service.facts(INSTRUCTION).facts().stream()
+                .filter(fact -> fact.type() == FactType.ACKNOWLEDGMENT)
+                .map(fact -> ((Acknowledgment) fact).revision())
+                .distinct().count());
+    }
+
+    @Test
+    void anAcknowledgmentOfAnOldRevisionDoesNotSuppressTheNewRevisionsOverdueFollowUp() {
+        asStaff();
+        service.publish(publish(INSTRUCTION, PATIENT, UNIT, 1, true, NOW.minusSeconds(120).toString(),
+                true, "client-1"));
+        asPatient();
+        service.acknowledge(new AcknowledgeCommand(INSTRUCTION, 1, "ack-1"));
+        asStaff();
+        // Revision 1 is acknowledged and is the latest revision: nothing is overdue yet.
+        assertTrue(service.overdueFollowUps(UNIT).isEmpty());
+
+        // A later, unacknowledged revision must be routed on its own revision,
+        // not suppressed by the earlier revision's receipt.
+        service.publish(publish(INSTRUCTION, PATIENT, UNIT, 2, true, NOW.minusSeconds(60).toString(),
+                true, "client-2"));
+        List<FollowUp> followUps = service.overdueFollowUps(UNIT);
+        assertEquals(1, followUps.size());
+        assertEquals(2, followUps.get(0).revision());
+        assertEquals(UNIT, followUps.get(0).unitId());
+    }
+
+    @Test
     void acknowledgmentIsIdempotentAndConflictsOnClientIdReuse() {
         asStaff();
         service.publish(publish(INSTRUCTION, PATIENT, UNIT, 1, true, NOW.toString(), true, "client-1"));

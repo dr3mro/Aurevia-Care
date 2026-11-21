@@ -77,6 +77,25 @@ public class AccessRepository {
     }
 
     /**
+     * Ask the database whether a facility is outside the caller's assigned scope.
+     *
+     * <p>The tenant-owned membership-facility fold is re-read inside the guarded
+     * transaction. A member with no recorded assignment keeps the previous
+     * organization-wide behaviour; a member with assignments is confined to them,
+     * except for the oversight roles that the database fold exempts.</p>
+     *
+     * @param subject      authenticated subject in the active organization
+     * @param facilityCode tenant-local facility code being accessed
+     * @return {@code true} when this facility must be refused to the subject
+     */
+    public boolean outsideAssignedFacilities(String subject, String facilityCode) {
+        Boolean outside = jdbc.queryForObject(
+                "SELECT public.is_facility_out_of_scope(:subject, :facilityCode)",
+                Map.of("subject", subject, "facilityCode", facilityCode), Boolean.class);
+        return Boolean.TRUE.equals(outside);
+    }
+
+    /**
      * Check that a facility is visible in the active organization.
      *
      * @param code tenant-local facility code
