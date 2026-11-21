@@ -473,9 +473,11 @@ class AttachmentAcceptanceTest {
         }
         assertThrows(IllegalArgumentException.class, () -> EventType.from("unknown"));
         for (AttachmentState state : AttachmentState.values()) {
+            assertEquals(state, AttachmentState.from(state.wire()));
             assertTrue(state.canTransitionTo(state));
             assertEquals(state.wire().toLowerCase(), state.wire());
         }
+        assertThrows(IllegalArgumentException.class, () -> AttachmentState.from("unknown"));
         assertTrue(AttachmentState.QUARANTINED.canTransitionTo(AttachmentState.CLEAN));
         assertTrue(AttachmentState.QUARANTINED.canTransitionTo(AttachmentState.FAILED));
         assertTrue(AttachmentState.QUARANTINED.canTransitionTo(AttachmentState.REMOVED));

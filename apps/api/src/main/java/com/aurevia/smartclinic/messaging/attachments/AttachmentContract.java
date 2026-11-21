@@ -197,6 +197,21 @@ public final class AttachmentContract {
         }
 
         /**
+         * Parse a stored lifecycle key.
+         *
+         * @return the matching state
+         * @throws IllegalArgumentException when the key is unknown
+         */
+        public static AttachmentState from(String value) {
+            for (AttachmentState candidate : values()) {
+                if (candidate.wire.equals(value)) {
+                    return candidate;
+                }
+            }
+            throw new IllegalArgumentException("unknown attachment state: " + value);
+        }
+
+        /**
          * Decide whether a transition is permitted.
          *
          * @return {@code true} for an allowed transition or an explicit no-op
