@@ -256,6 +256,18 @@ class ServiceProfileServiceTest {
     }
 
     @Test
+    void aUnitWithoutANamedOwnerCannotBeEnabled() {
+        // A persisted profile that has lost its named queue owner and backup must not
+        // enable the unit for patients, even though it is approved and effective.
+        ServiceProfile unstaffed = new ServiceProfile(PROFILE_ID, ORG, UNIT, 1, ProfileStatus.APPROVED,
+                hours(), 30, List.of("collection"), instructions(), "  ", List.of("  "),
+                "escalation", "urgent", "downtime", ADMIN, ADMIN, NOW, "site-policy", NOW, NOW);
+        store.addProfile(unstaffed);
+        assertEquals(404, assertThrows(ApiException.class, () -> service.viewProfile(UNIT)).status());
+        assertEquals(404, assertThrows(ApiException.class, () -> service.availability(UNIT)).status());
+    }
+
+    @Test
     void aConnectedUnitWithoutAnEffectiveProfileIsConcealedButStillSupervised() {
         String noProfileUnit = "99999999-9999-9999-9999-999999999999";
         store.addUnit(ORG, noProfileUnit);
