@@ -50,6 +50,11 @@ GET /api/v1/imaging/orders/{}
 GET /api/v1/instructions/overdue-follow-ups
 GET /api/v1/instructions/{}/facts
 GET /api/v1/lab/accessions/{}
+GET /api/v1/lab/outage/orders/{}/attachment
+GET /api/v1/lab/outage/orders/{}/history
+GET /api/v1/lab/outage/unmatched
+GET /api/v1/lab/releases/{}
+GET /api/v1/lab/releases/{}/history
 GET /api/v1/lab/results/{}
 GET /api/v1/lab/specimens/{}/history
 GET /api/v1/lab/specimens/{}/label
@@ -214,6 +219,10 @@ POST /api/v1/lab/accessions/{}/collect
 POST /api/v1/lab/accessions/{}/receive
 POST /api/v1/lab/accessions/{}/recollect
 POST /api/v1/lab/accessions/{}/reject
+POST /api/v1/lab/outage/orders/{}/manual-results
+POST /api/v1/lab/releases
+POST /api/v1/lab/releases/{}/correct
+POST /api/v1/lab/releases/{}/withdraw
 POST /api/v1/lab/results/{}
 POST /api/v1/lab/results/{}/correct
 POST /api/v1/lab/results/{}/error
