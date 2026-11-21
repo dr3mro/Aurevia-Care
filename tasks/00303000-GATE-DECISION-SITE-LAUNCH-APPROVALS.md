@@ -1,5 +1,5 @@
-- [-] GATE-DECISION-SITE-LAUNCH-APPROVALS · Decision pack for a person to approve: Per-site launch approvals and final G5 acceptance
-  - agent: swarm-10
+- [x] GATE-DECISION-SITE-LAUNCH-APPROVALS · Decision pack for a person to approve: Per-site launch approvals and final G5 acceptance
+  - pr: #372
   - attempts: 1
   - requirements: OPS-01, MSG-06
   - scope: docs/launch/site-launch-approvals.md
