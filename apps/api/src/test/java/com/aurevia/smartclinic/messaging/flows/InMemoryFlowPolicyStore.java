@@ -5,8 +5,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-import org.springframework.stereotype.Repository;
-
 import com.aurevia.smartclinic.messaging.flows.PatientFlowContract.AppLocale;
 import com.aurevia.smartclinic.messaging.flows.PatientFlowContract.AppPlatform;
 import com.aurevia.smartclinic.messaging.flows.PatientFlowContract.FlowAudit;
@@ -17,11 +15,10 @@ import com.aurevia.smartclinic.messaging.flows.PatientFlowContract.NoticeKind;
  *
  * <p>This adapter exists so the presentation domain can be exercised
  * deterministically without a database. It is deliberately not the
- * authoritative store: a production adapter must persist policy and audit with
+ * authoritative store: the production adapter persists policy and audit with
  * forced tenant row-level security. Every method takes the active organization
- * and never merges rows across tenants.</p>
+ * and never merges rows across tenants. This class is test-scope only.</p>
  */
-@Repository
 public class InMemoryFlowPolicyStore implements FlowPolicyStore {
 
     private final Map<String, Boolean> memberships = new ConcurrentHashMap<>();

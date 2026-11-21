@@ -148,8 +148,8 @@ Cadence and limits:
 
 Found while extending the specification (section 8.1 and docs/design/screens-and-navigation.md). Run after the main repair tasks; each task states its own dependency.
 
-- [-] READY-03 · Per-subject rate limiting with 429 and Retry-After (WEB-04)
-  - agent: swarm-2
+- [x] READY-03 · Per-subject rate limiting with 429 and Retry-After (WEB-04)
+  - pr: #265
   - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/web, apps/api/src/main/resources
   - depends: READY-02
@@ -161,8 +161,9 @@ Found while extending the specification (section 8.1 and docs/design/screens-and
     Do NOT add a library dependency, do NOT key by IP address, do NOT log the key.
 
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` (API tasks) or `bash apps/staff-web/check.sh` (staff web tasks) must pass. Synthetic data only; write the failing test first; stay inside the declared scope; name folders and packages after what they hold, never a task ID; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
-- [ ] READY-04 · Request size limits and an exact-origin CORS allowlist (WEB-04)
-  - attempts: 0
+- [-] READY-04 · Request size limits and an exact-origin CORS allowlist (WEB-04)
+  - agent: swarm-2
+  - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/web, apps/api/src/main/resources
   - depends: READY-03
   - details:
@@ -366,8 +367,7 @@ Do these after part 2 where `depends` says so. Persistence tasks run one at a ti
 
 ### Phase A — Durable state (nothing may stay in memory at launch; see docs/decisions/0003)
 
-- [-] READY-37 · Persist flow policies in PostgreSQL (V61) instead of memory
-  - agent: swarm-3
+- [ ] READY-37 · Persist flow policies in PostgreSQL (V61) instead of memory
   - attempts: 1
   - requirements: ARC-01, ARC-02, OPS-02
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/messaging/flows, apps/api/src/test/java/com/aurevia/smartclinic/messaging/flows, db/migrations/V61__flow_policies.sql, apps/api/src/test/java/com/aurevia/smartclinic/it
