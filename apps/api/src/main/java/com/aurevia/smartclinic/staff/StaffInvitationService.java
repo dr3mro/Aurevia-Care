@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.aurevia.smartclinic.api.ApiException;
+import com.aurevia.smartclinic.api.contract.Subject;
 import com.aurevia.smartclinic.authz.ActionPolicy;
 import com.aurevia.smartclinic.tenant.TenantContext;
 
@@ -31,7 +32,6 @@ import com.aurevia.smartclinic.tenant.TenantContext;
 @Service
 public class StaffInvitationService {
 
-    private static final Pattern SUBJECT = Pattern.compile("[a-z0-9][a-z0-9._-]{1,63}");
     private static final Pattern TOKEN = Pattern.compile("[A-Za-z0-9_.:-]{8,128}");
     private static final Pattern UUID_KEY = Pattern.compile(
             "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
@@ -232,7 +232,9 @@ public class StaffInvitationService {
     }
 
     private static void validateSubject(String subject) {
-        if (subject == null || !SUBJECT.matcher(subject).matches()) {
+        try {
+            Subject.subject(subject);
+        } catch (IllegalArgumentException exception) {
             throw new ApiException(422, "INVALID_SUBJECT", "subject must be 2-64 lowercase letters, digits, . _ or -");
         }
     }
