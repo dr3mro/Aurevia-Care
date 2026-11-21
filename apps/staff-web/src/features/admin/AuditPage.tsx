@@ -1,0 +1,231 @@
+import { useCallback, useState } from 'react';
+import { useActiveOrganization } from '../../api/activeOrganization';
+import { ApiPage } from '../../components/ApiPage';
+import { Button } from '../../components/Button';
+import { Form } from '../../components/Form';
+import { FormField } from '../../components/FormField';
+import { useI18n } from '../../i18n/I18nProvider';
+import type { Locale } from '../../i18n/messages';
+import { useTheme } from '../../theme/ThemeProvider';
+import {
+  auditEventsFromPage,
+  isValidUtcInstant,
+  queryAuditEvents,
+} from './api';
+import type { AuditEventResponse, AuditFilters } from './api';
+
+import { AuditEventList } from './AuditEventList';
+import { FieldErrorSummary } from './FieldErrorSummary';
+import type { FieldErrorLink } from './FieldErrorSummary';
+import { syntheticTimeZone } from '../../fixtures/synthetic';
+import { adminMessage, adminText } from './messages';
+import type { AdminMessageKey } from './messages';
+import { PageSink } from './PageSink';
+
+/** Empty form reused after a successful submit or a filter reset. */
+const EMPTY_FORM = { action: '', outcome: '', resourceType: '', from: '', to: '' };
+
+/** Validation result for the two instant filters. */
+type FilterErrors = Partial<Record<'from' | 'to', AdminMessageKey>>;
+
+/** Props for the tenant-keyed audit content. */
+interface AuditContentProps {
+  organizationId: string;
+}
+
+/** Props for the explicit no-events state. */
+interface AuditEmptyProps {
+  locale: Locale;
+  onClear: () => void;
+}
+
+/** A clear empty state that explains the filters and offers the next action. */
+function AuditEmpty({ locale, onClear }: AuditEmptyProps) {
+  const { tokens } = useTheme();
+  return (
+    <section
+      role="status"
+      aria-label={adminText(locale, 'auditNoEvents')}
+      style={{ display: 'grid', gap: tokens.spacing.md }}
+    >
+      <h3>{adminText(locale, 'auditNoEvents')}</h3>
+      <p>{adminText(locale, 'auditNoEventsHint')}</p>
+      <Button onClick={onClear}>{adminText(locale, 'auditClearFilters')}</Button>
+    </section>
+  );
+}
+
+/** Filter form, cursor paging and tenant-scoped audit events for one organization. */
+function AuditContent({ organizationId }: AuditContentProps) {
+  const { locale } = useI18n();
+  const { tokens } = useTheme();
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [applied, setApplied] = useState<AuditFilters>({});
+  const [filterErrors, setFilterErrors] = useState<FilterErrors>({});
+  const [cursor, setCursor] = useState<string | undefined>(undefined);
+  const [accumulated, setAccumulated] = useState<readonly AuditEventResponse[]>([]);
+
+  // A stable callback keeps one resolved page from being appended twice by a
+  // re-render (for example a locale change after the page was loaded).
+  const append = useCallback((page: { events?: readonly AuditEventResponse[] }) => {
+    setAccumulated((current) => [...current, ...(page.events ?? [])]);
+  }, []);
+
+  function applyFilters() {
+    const errors: FilterErrors = {};
+    const from = form.from.trim();
+    const to = form.to.trim();
+    if (from !== '' && !isValidUtcInstant(from)) {
+      errors.from = 'invalidAuditInstant';
+    }
+    if (to !== '' && !isValidUtcInstant(to)) {
+      errors.to = 'invalidAuditInstant';
+    }
+    setFilterErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      return;
+    }
+    // A new filter set is a different result set: clear the earlier rows and
+    // the old cursor in the same update so only one request is issued.
+    setApplied({
+      ...(form.action.trim() === '' ? {} : { action: form.action.trim() }),
+      ...(form.outcome.trim() === '' ? {} : { outcome: form.outcome.trim() }),
+      ...(form.resourceType.trim() === '' ? {} : { resourceType: form.resourceType.trim() }),
+      ...(from === '' ? {} : { from }),
+      ...(to === '' ? {} : { to }),
+    });
+    setAccumulated([]);
+    setCursor(undefined);
+  }
+
+  function clearFilters() {
+    setForm(EMPTY_FORM);
+    setFilterErrors({});
+    setApplied({});
+    setAccumulated([]);
+    setCursor(undefined);
+  }
+
+  const errorLinks: FieldErrorLink[] = [];
+  if (filterErrors.from !== undefined) {
+    errorLinks.push({
+      id: 'audit-from',
+      label: adminText(locale, 'auditFrom'),
+      message: adminText(locale, filterErrors.from),
+    });
+  }
+  if (filterErrors.to !== undefined) {
+    errorLinks.push({
+      id: 'audit-to',
+      label: adminText(locale, 'auditTo'),
+      message: adminText(locale, filterErrors.to),
+    });
+  }
+  const fromError = filterErrors.from === undefined ? undefined : adminText(locale, filterErrors.from);
+  const toError = filterErrors.to === undefined ? undefined : adminText(locale, filterErrors.to);
+
+  return (
+    <div style={{ display: 'grid', gap: tokens.spacing.lg }}>
+      <section aria-label={adminText(locale, 'auditFilters')} style={{ display: 'grid', gap: tokens.spacing.md }}>
+        <h2>{adminText(locale, 'auditPageTitle')}</h2>
+        <FieldErrorSummary title={adminText(locale, 'errorSummary')} errors={errorLinks} />
+        <Form
+          label={adminText(locale, 'auditFilters')}
+          submitLabel={adminText(locale, 'auditApplyFilters')}
+          onSubmit={applyFilters}
+        >
+          <div style={{ display: 'grid', gap: tokens.spacing.md }}>
+            <FormField
+              id="audit-action"
+              label={adminText(locale, 'auditActionFilter')}
+              value={form.action}
+              onChange={(value) => setForm((current) => ({ ...current, action: value }))}
+            />
+            <FormField
+              id="audit-outcome"
+              label={adminText(locale, 'auditOutcomeFilter')}
+              value={form.outcome}
+              onChange={(value) => setForm((current) => ({ ...current, outcome: value }))}
+            />
+            <FormField
+              id="audit-resource"
+              label={adminText(locale, 'auditResourceFilter')}
+              value={form.resourceType}
+              onChange={(value) => setForm((current) => ({ ...current, resourceType: value }))}
+            />
+            <FormField
+              id="audit-from"
+              label={adminText(locale, 'auditFrom')}
+              value={form.from}
+              onChange={(value) => {
+                setForm((current) => ({ ...current, from: value }));
+                setFilterErrors({});
+              }}
+              placeholder="2026-03-01T00:00:00Z"
+              {...(fromError === undefined ? {} : { error: fromError })}
+            />
+            <FormField
+              id="audit-to"
+              label={adminText(locale, 'auditTo')}
+              value={form.to}
+              onChange={(value) => {
+                setForm((current) => ({ ...current, to: value }));
+                setFilterErrors({});
+              }}
+              placeholder="2026-03-08T00:00:00Z"
+              {...(toError === undefined ? {} : { error: toError })}
+            />
+          </div>
+        </Form>
+        <Button variant="secondary" onClick={clearFilters}>
+          {adminText(locale, 'auditClearFilters')}
+        </Button>
+      </section>
+
+      <ApiPage
+        resource={{
+          label: adminText(locale, 'auditEvents'),
+          load: () =>
+            queryAuditEvents(
+              { ...applied, ...(cursor === undefined ? {} : { cursor }) },
+              organizationId,
+            ),
+          deps: [applied, cursor, organizationId],
+        }}
+      >
+        {(page) => {
+          const next = page.nextCursor;
+          return (
+            <>
+              <PageSink page={page} onPage={append} />
+              <p>
+                {adminMessage(locale, 'auditFacilityZone', { zone: syntheticTimeZone })}
+              </p>
+              {accumulated.length === 0 ? (
+                <AuditEmpty locale={locale} onClear={clearFilters} />
+              ) : (
+                <>
+                  <AuditEventList
+                    events={auditEventsFromPage({ events: accumulated }, organizationId, locale)}
+                    organizationId={organizationId}
+                    showChain={false}
+                    timeZone={syntheticTimeZone}
+                  />
+                  {next !== null && next !== undefined ? (
+                    <Button onClick={() => setCursor(next)}>{adminText(locale, 'loadMore')}</Button>
+                  ) : null}
+                </>
+              )}
+            </>
+          );
+        }}
+      </ApiPage>
+    </div>
+  );
+}
+
+/** API-backed audit page; the tenant key prevents cross-tenant state. */
+export function AuditPage() {
+  const organizationId = useActiveOrganization();
+  return <AuditContent key={organizationId} organizationId={organizationId} />;
+}
