@@ -328,6 +328,18 @@ public class ResultRepository {
     }
 
     /**
+     * Read one reconciliation entry by its opaque identifier.
+     *
+     * @param id queue entry identifier
+     * @return the entry when visible in the active tenant
+     */
+    public Optional<ReconciliationEntry> findReconciliation(String id) {
+        return jdbc.query("SELECT " + RECONCILIATION_COLUMNS
+                        + " FROM public.xch04_reconciliation WHERE id = CAST(:id AS uuid)",
+                Map.of("id", id), RECONCILIATION_MAPPER).stream().findFirst();
+    }
+
+    /**
      * List distinct owners of earlier revisions of one order.
      *
      * @param orderRef tenant-local order identifier
