@@ -20,7 +20,7 @@ The Arabic column is copied **verbatim** from the message files; no Arabic term 
 | Invite staff | دعوة موظف | Create an invitation to join the organization. | `StaffInvitation`, `staff_invitation` |
 | Deactivate | إلغاء التنشيط | Switch a staff member off; their access ends on the next request. | `StaffService`, `membership` |
 | Grantor | المانح | Who granted a role. | `role_assignment.granted_by` |
-| Audit event | حدث غير قابل للتعديل | Immutable record of a sensitive action. | `AuditEvent`, `audit_event` |
+| Append-only event | حدث غير قابل للتعديل | Immutable record of a sensitive action. | `AuditEvent`, `audit_event` |
 | Audit trail / audit review | أحداث التدقيق وسلامة السلسلة | The record of sensitive actions and the check that it has not been altered. | `AuditService`, `audit_event` |
 | Purpose | الغرض | Business reason recorded for a sensitive action. | `AuditEvent.purpose` |
 | Scope | النطاق | What an audited action covered. | `AuditEvent.scope` |
@@ -101,7 +101,7 @@ The Arabic column is copied **verbatim** from the message files; no Arabic term 
 | Quarantined / clean / failed | في الحجر — غير متاح بعد / نظيف — جاهز بعد الإرسال المصرّح به / فشل الفحص — احذف أو استبدل | File-scan outcomes. | `AttachmentService`, `QuarantineService` |
 | Provenance | السجل المصدر | Origin and custodian of a file or record. | `ImportProvenance` |
 | Patient-supplied material | مواد قدّمها المريض | A file sent by the patient to a unit. | `AttachmentService` |
-| Loading / empty / retry | جار التحميل… / لا يوجد شيء لعرضه / إعادة المحاولة | Common screen states. | `components/stateViewMessages.ts` |
+| Loading / empty / retry | جار التحميل… / لا يوجد شيء لعرضه / إعادة المحاولة | Common screen states. | none (UI-only; bundle listed above) |
 | Forbidden | لا تملك صلاحية الوصول | The role cannot perform the action (403). | `AccessController` |
 | Conflict | تغيّر هذا السجل | The record changed since it was opened (409). | `ApiErrorHandler` |
 | Session expired | انتهت جلستك | The authenticated session has ended. | `SecurityConfiguration` |
