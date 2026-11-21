@@ -51,7 +51,7 @@ Options: `--runtime`, `--memory`, `--cpus`, `--name`, `--image`, `--web-port`, `
 
 ## Swarm monitor
 
-`aurevia monitor` opens a live terminal dashboard for the OpenCode agent swarm. It needs the GitHub CLI (`gh`, signed in) and `python3`, and refreshes every 30 seconds.
+`aurevia monitor` opens a live terminal dashboard for the OpenCode agent swarm. It needs the GitHub CLI (`gh`, signed in) and `python3`, and refreshes every 60 seconds (the slow lists every 5 minutes) to stay well under the GitHub rate limit.
 
 ![The swarm monitor: status cards, pipeline progress, the task in progress, recent and failed runs, open PRs and the next tasks](docs/images/swarm-monitor.png)
 

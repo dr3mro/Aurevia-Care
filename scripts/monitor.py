@@ -7,6 +7,11 @@ LIVE = ("queued", "in_progress", "waiting", "pending", "requested")
 FAILED = ("failure", "timed_out")
 FIELDS = "databaseId,workflowName,displayTitle,conclusion,status,headSha,headBranch,event,createdAt,startedAt,updatedAt,url"
 TEXT = ("repo", "todo", "archive", "total", "commits")  # plain-text results; everything else is JSON
+# Sections that change slowly are re-read every SLOW_EVERY seconds, not on every refresh, and the jobs of a
+# finished run never change, so they are looked up once. This keeps the GitHub rate limit for other work.
+SLOW = ("archive", "total", "closed", "merged", "commits", "runs_more")
+SLOW_EVERY = 300
+CACHE = {"jobs": {}, "slow_at": 0.0}
 CALLS = {
     "repo": ["repo", "view", "--json", "nameWithOwner", "-q", ".nameWithOwner"],
     "issues": ["issue", "list", "--state", "open", "--limit", "300", "--json", "number,title,labels,createdAt"],
@@ -65,14 +70,18 @@ def merge_runs(a, b):
     return sorted(seen.values(), key=lambda r: r.get("createdAt") or "", reverse=True)
 
 
-def fetch(emit=None):
+def fetch(emit=None, full=True):
     """Load every section in parallel. Each section is handed to `emit(part)` the moment it is ready, so a
     screen can fill in piece by piece; the merged result is also returned (a section that failed is None)."""
     since = (datetime.now(timezone.utc) - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%SZ")
-    calls = {k: [a.replace("{since}", since) for a in v] for k, v in CALLS.items()}
+    full = full or time.time() - CACHE["slow_at"] >= SLOW_EVERY
+    if full:
+        CACHE["slow_at"] = time.time()
+    calls = {k: [a.replace("{since}", since) for a in v] for k, v in CALLS.items() if full or k not in SLOW}
     # One line per commit ("sha parent"), newest first; --paginate so a busy day is not capped at one page of 100.
-    calls["commits"] = ["api", f"repos/{{owner}}/{{repo}}/commits?since={since}&per_page=100", "--paginate", "-q",
-                        ".[] | \"\\(.sha) \\(.parents[0].sha // \"\")\""]
+    if full:
+        calls["commits"] = ["api", f"repos/{{owner}}/{{repo}}/commits?since={since}&per_page=100", "--paginate", "-q",
+                            ".[] | \"\\(.sha) \\(.parents[0].sha // \"\")\""]
     out, guard, timings, began, claimed = {}, threading.Lock(), [], time.monotonic(), set()
 
     def put(part):
@@ -117,8 +126,10 @@ def fetch(emit=None):
         want = [r["databaseId"] for r in runs if r.get("status") != "completed"]
         want += [r["databaseId"] for r in runs if r.get("status") == "completed" and state(r) in FAILED
                  and r.get("updatedAt") and (now - ts(r["updatedAt"])).total_seconds() < 86400]
+        done = {r["databaseId"] for r in runs if r.get("status") == "completed"}
         with guard:
-            want = [i for i in dict.fromkeys(want) if i not in claimed]
+            cached = dict(CACHE["jobs"])
+            want = [i for i in dict.fromkeys(want) if i not in claimed and i not in cached]
             claimed.update(want)
         if not want and out.get("jobs") is not None:
             return
@@ -127,7 +138,9 @@ def fetch(emit=None):
         timed("jobs", t1, f"{len(want)} run view calls")
         with guard:
             have = dict(out.get("jobs") or {})
-        have.update({i: (j or {}).get("jobs", []) for i, j in jobs.items() if isinstance(j, dict) or j is None})
+        found = {i: (j or {}).get("jobs", []) for i, j in jobs.items() if isinstance(j, dict) or j is None}
+        CACHE["jobs"].update({i: j for i, j in found.items() if i in done})
+        have = {**cached, **have, **found}
         put({"jobs": have})
 
     # Start order follows the measured cost, cheapest first (timing log: issues, repo, prs, total, archive,
@@ -725,7 +738,7 @@ def tui(stdscr):
             st["at"] = time.time()
 
     def refresh():
-        fetch(part)
+        fetch(part, full=False)
         with lock:
             st["busy"] = False
             st["loaded"] |= set(st["data"])  # a section that failed shows empty instead of loading forever
