@@ -1,4 +1,6 @@
-- [ ] RESP-APP-SIGNED-OUT-SCREEN · Patient app: tablet, landscape and large-text layout for `SignedOutScreen` (app)
+- [-] RESP-APP-SIGNED-OUT-SCREEN · Patient app: tablet, landscape and large-text layout for `SignedOutScreen` (app)
+  - agent: swarm-10
+  - attempts: 1
   - requirements: PAT-01, PAT-02, UX-01
   - scope: apps/patient-mobile/src/app/SignedOutScreen.tsx, apps/patient-mobile/src/app/SignedOutScreen.tablet.test.tsx
   - depends: RESP-APP-LAYOUT-HOOK, RESP-APP-CONFIG
