@@ -22,8 +22,8 @@ and values in the product are synthetic.
 
 3. **Read the chart.** Screen: **Longitudinal chart** (heading "Patient chart
    summary"). Read the "Problems", "Allergies", "Medications" and "Vitals with
-   units" cards. Press "Load more entries" if more history is available. The
-   "Chart status" line confirms the chart you are viewing.
+   units" cards. Press "Load more" if more history is available; the chart shows
+   the patient's name and an opaque patient id above the cards.
 
 4. **Write the note.** Screen: **Clinical note**. Fill the four fields "Chief
    concern and history", "Examination and findings", "Assessment and diagnoses"
@@ -35,7 +35,7 @@ and values in the product are synthetic.
 5. **Sign the note.** Screen: **Clinical note**. Tick "I attest to this note and
    its patient context" and press "Sign draft". A "Sign clinical note" dialog
    explains: "Signing makes this revision read only and records your
-   attestation." Press "Sign". You should see "Note signed. The revision is now
+   attestation." Press "Sign draft" again to confirm. You should see "Note signed. The revision is now
    read only." and the note becomes read only. If you still have unsaved text,
    you see "Save your changes before signing. Unsaved text is not signed."
 
@@ -47,12 +47,12 @@ and values in the product are synthetic.
    prior revision is preserved." Signed revisions show "Signed revisions are
    read only" and stay in "Revision history".
 
-7. **Manage chart documents and stale saves.** Screen: **Chart and document
-   associations**. A document can be "Active" or "Voided"; "Void association"
-   asks for a "Reason", and "Rotate view" changes the display rotation. If
-   another clinician saved first, the app offers "Compare", "Reload" and "Copy
-   my changes" under "Compare the saved revision with your changes"; choose one
-   before saving again.
+7. **Recover from a stale save.** Screen: **Clinical note**. If another
+   clinician saved first, the app offers "Compare", "Reload" and "Copy my
+   changes" under "Compare the saved revision with your changes"; choose one
+   before saving again. Managing chart documents (a "Chart and document
+   associations" list with "Void association" and "Rotate view") is
+   `PLANNED: BUILD-74`; that screen is not reachable from the portal today.
 
 8. **Order and review results.** The "Orders", "Results" and "Critical results"
    screens, and the "New order" and "Prescribe" actions on the patient banner,

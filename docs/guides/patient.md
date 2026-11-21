@@ -20,8 +20,8 @@ and values in the product are synthetic.
 2. **See your appointments.** Screen: **Appointments**. Each card shows the
    status word from the service — `booked`, `checked_in`, `in_progress`,
    `completed`, `cancelled` or `no_show` — followed by the date and time with the
-   facility time zone and the visit line. A generic notice appears above the
-   cards. You should see your appointments in time order. With none, you see
+   facility time zone. A generic notice appears above the cards. You should see
+   your appointments in time order. With none, you see
    "No appointments".
 
 3. **Confirm or inspect an appointment.** Screen: **Appointments**. On a card
@@ -37,13 +37,11 @@ and values in the product are synthetic.
    should see the download begin for the revision you chose. With nothing
    released you see "No released reports".
 
-5. **Message a care unit.** Screens: **Messages** → conversation inbox →
-   conversation thread. The inbox lists each unit with its state and an unread
-   count; press a row to open it. In the thread, read the messages in order, type
-   in the "reply input" and press "Send". You should see the reply in the
-   conversation. A closed thread or revoked connection shows "This conversation
-   is read only." and has no send button. With no conversations you see "No
-   conversations".
+5. **Message a care unit.** Screen: **Messages**. The inbox lists each unit with
+   its state and an unread count. You should see your conversations and their
+   unread counts. With none, you see "No conversations". Opening a conversation
+   to read messages and use the "reply input" and "Send" button is
+   `PLANNED: BUILD-71`: today a row press does not open a thread.
 
 6. **Review attachments before sending.** Screen: **Review attachments** under
    Messages. Each pending file shows its "Scan state": "In quarantine — not

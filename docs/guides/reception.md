@@ -16,21 +16,21 @@ product are synthetic.
    table with the columns "Patient", "Time", "Protected resource", "Visit
    state", "Assign to" and "Actions". Each row shows a state word: "Booked",
    "Checked in", "In progress", "Completed", "Cancelled" or "No-show". An empty
-   range shows "No appointments in this range."
+   range shows the generic message "Nothing to show".
 
 2. **Check a patient in.** Screen: **Scheduling**. In the row's "Actions", press
    "Check in". The button is only available while the state is "Booked". You
    should see "Command sent to the appointment API" in the "Scheduling status"
    line; after the list reloads the badge reads "Checked in".
 
-3. **Assign an appointment.** Screen: **Scheduling**. In the "Assign to" column
-   of a row, choose "Unassigned", "Synthetic Reception" or "Synthetic Nurse".
-   You should see the chosen name in that cell. A row in a completed state
-   cannot be reassigned.
+3. **Assign an appointment.** Screen: **Scheduling**. In the "Actions" column of
+   a row, use the assignment selector and choose "Unassigned", "Synthetic
+   Reception" or "Synthetic Nurse". You should see the chosen subject in that
+   row's "Assign to" cell. A row in a completed state cannot be reassigned.
 
 4. **Book an appointment.** Screen: **Scheduling**. In "Book an appointment",
    fill "Facility code", "Patient identifier", "Visit type", "Protected
-   resource" and "Start instant (UTC)", then press "Book". All five fields are
+   resource" and "Start instant (UTC ISO)", then press "Book". All five fields are
    needed. "Enter the clinician resource code. The room is not selected in this
    screen." explains the resource field. You should see "Command sent to the
    appointment API" and a new row in the worklist. If the resource is already

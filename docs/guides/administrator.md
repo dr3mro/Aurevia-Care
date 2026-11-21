@@ -14,7 +14,7 @@ and values in the product are synthetic.
 ## What you do most
 
 1. **Check what you can access.** Screen: **Administration and audit review**.
-   The "Access review" section shows "Access permitted for this active
+   The "Access review states" section shows "Access permitted for this active
    organization and role." If membership or the reviewing role is missing you
    see "Permission denied: active membership or a reviewing role is missing.",
    and a concealed resource shows "Resource not found."
