@@ -2961,6 +2961,178 @@ The human tasks `S-G1-09`, `S-G2-11`, `S-G3-13`, `S-G4-07`, `S-G5-01` to `S-G5-0
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
+## Swarm pipeline audit work, split into tasks (script changes are protected; workflow changes are delivered as patches for a person)
+
+The open remainder of `OPS-WORKFLOW-AUDIT` and `OPS-WORKER-QUALITY`. Script changes merge through the integrator (the kill switch opens an oversight issue). Workflow changes cannot be pushed by the swarm token, so those tasks write a proposed patch and a verification checklist under `docs/operations/workflow-changes`; a person applies and verifies them on GitHub. The two parent tasks stay open until then.
+
+- [ ] WFAUDIT-01 · Swarm audit: isolate candidate validation from publication credentials (proposed workflow patch)
+  - requirements: OPS-06, WEB-12
+  - scope: docs/operations/workflow-changes/candidate-validation-isolation.md
+  - details:
+    1. Read `.github/workflows/swarm-worker.yml`, `swarm-integrator.yml`, `fix-pr-gate.yml` and `docs/SWARM.md`. Find every step that runs code from a pull request branch (tests, build scripts, `scripts/*`) in a job or step that also holds a token able to push, publish an image or write to the repository.
+    2. Design the split: a validation job with `permissions: contents: read`, no secrets and no registry login that runs the candidate code, and a separate publication job that holds the credentials, takes only the validated commit SHA as input (never branch code) and re-checks that the SHA is the one validated. State which jobs change and what the artifacts between them are.
+    3. A worker cannot change files under `.github/workflows` (the swarm token has no workflow permission), so do not edit them. Instead write the change as a proposed patch for a person to apply: a document with the problem, the exact unified diff in a ```diff block that `git apply` accepts against the current file, how to apply it (`git apply`), how to verify it on GitHub after the push (the workflow to run and what green looks like), and how to roll it back. Take the diff from a scratch copy of the workflow; never leave a changed workflow file in the pull request.
+    4. Name in the document every place where code from the candidate would still run with a credential after the patch (there should be none) and list any that remain as risks.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] WFAUDIT-02 · Swarm audit: choose the last good slot image by immutable generation (script function and tests)
+  - requirements: OPS-06
+  - scope: scripts/swarm.py, scripts/tests/test_slot_generations.py
+  - details:
+    1. Read `images_ready`, `image_runs`, `slot_manifests_exist` and `images_ready_command` in `scripts/swarm.py`, `.github/workflows/swarm-images.yml`, `agent-image.yml` and `.github/swarm/slots.json`. Today workers pull `:latest`, so a cancelled or partial publish can leave a slot with a stale or half-written image.
+    2. Add pure functions: `generation_tag(sha, run_number)` (an immutable tag such as `g<run>-<sha12>`), `pick_generation(generations)` that returns the newest generation for which every slot image exists and its digest is recorded, and `last_good(generations)` that falls back to the previous complete generation. Wire `images_ready_command` to report which generation a wave will use and to fall back to the last good one when the newest is incomplete. Do not change any workflow file; the matching workflow change is a separate task.
+    3. Tests in the new test file: a complete newest generation wins; an incomplete newest generation falls back to the previous complete one; no complete generation returns none and the wave waits; tag format is stable and unique per run. Scripts are protected files: the swarm may now merge them (the integrator opens an oversight issue). Keep the change small and covered by tests.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] WFAUDIT-03 · Swarm audit: publish slot images under immutable generation tags and keep `:latest` as a moving pointer (proposed workflow patch)
+  - requirements: OPS-06
+  - scope: docs/operations/workflow-changes/slot-image-generations.md
+  - depends: WFAUDIT-02
+  - details:
+    1. Read `.github/workflows/agent-image.yml`, `swarm-images.yml`, `swarm.yml` (the `image:` line that uses `:latest`) and the generation functions added by `WFAUDIT-02` in `scripts/swarm.py`.
+    2. Design the publish steps: build and push each slot image as `<slot>:g<run>-<sha12>`, verify every digest, and only then move `:latest` (and a `:last-good` tag) to the new generation; a cancelled or failed publish must never move the pointer. Workers should start from the generation the plan step chose.
+    3. A worker cannot change files under `.github/workflows` (the swarm token has no workflow permission), so do not edit them. Instead write the change as a proposed patch for a person to apply: a document with the problem, the exact unified diff in a ```diff block that `git apply` accepts against the current file, how to apply it (`git apply`), how to verify it on GitHub after the push (the workflow to run and what green looks like), and how to roll it back. Take the diff from a scratch copy of the workflow; never leave a changed workflow file in the pull request.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] WFAUDIT-04 · Swarm audit: the first release must not fail for a missing local architecture tag (proposed workflow patch)
+  - requirements: OPS-06, WEB-11
+  - scope: docs/operations/workflow-changes/first-release-architecture-tag.md
+  - details:
+    1. Read `.github/workflows/release-app-image.yml` and the multi-architecture step in `.github/workflows/delivery.yml` (the loop that loads `smoke-tested-image-$arch`, checks `.Architecture` and pushes `$image-$arch`).
+    2. Find why the first release of a version fails when the per-architecture tag does not exist locally or in the registry yet (for example a `docker pull` of `$image-$arch` before it was pushed, or a `manifest create` that references a tag that is only local). Show the failing sequence with a dry run of the shell logic using stubbed `docker` commands if you can.
+    3. A worker cannot change files under `.github/workflows` (the swarm token has no workflow permission), so do not edit them. Instead write the change as a proposed patch for a person to apply: a document with the problem, the exact unified diff in a ```diff block that `git apply` accepts against the current file, how to apply it (`git apply`), how to verify it on GitHub after the push (the workflow to run and what green looks like), and how to roll it back. Take the diff from a scratch copy of the workflow; never leave a changed workflow file in the pull request.
+    4. The patch must make the first release and a re-run of the same release both succeed, never overwrite an existing version tag with different content, and keep `:latest` off pre-release versions.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] WFAUDIT-05 · Swarm audit: reject an unknown or missing worker in the agent inventory (check and tests)
+  - requirements: OPS-06
+  - scope: scripts/check-pack.py, scripts/tests/test_check_pack.py
+  - details:
+    1. Read `scripts/check-pack.py` (it reports "33 agents, 33 skills"), `.opencode/agents`, `.opencode/skills`, `scripts/gen-opencode.py` and `.github/swarm/slots.json`.
+    2. Make the pack check fail closed on inventory drift: an agent file that is not in the generated `opencode.json`, a configured agent with no file, a skill referenced by an agent but missing on disk, a skill with no `SKILL.md`, a duplicate agent name, and a worker role named in `docs/WORKFLOW.md` or the orchestrator prompt that has no agent. Each error names the file.
+    3. Tests in the existing `test_check_pack.py` (keep every existing test): one new test per drift case using temporary directories, and the real repository passes. Scripts are protected files: the swarm may now merge them (the integrator opens an oversight issue). Keep the change small and covered by tests.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] WFAUDIT-06 · Swarm audit: structured diagnostics instead of raw log tails (function and tests)
+  - requirements: OPS-06
+  - scope: scripts/swarm.py, scripts/tests/test_swarm_diagnostics.py
+  - details:
+    1. Read `clean`, `fail`, `report_pr_stuck` and `report_worker_handoff` in `scripts/swarm.py`. They paste the last lines of a log into comments and issues.
+    2. Add `diagnose(log_text)` returning a dictionary with: the tool (Maven, Vitest, Jest, SpotBugs, ESLint, TypeScript, Python unittest, shell or unknown), the failing step, the exit code when present, up to five failing test or file names, the first error message line, and `class`: one of `task-policy`, `missing-tests`, `check-parity`, `implementation`, `infrastructure` or `unknown`. Keep secrets masked as `clean` does. Use it in `fail` and in the stuck and handoff issues: show the structured summary first and the clipped raw tail below it.
+    3. Tests in the new file with log fixtures for each tool: the tool, names and class are right, a secret is masked, an empty log and a huge log are handled. Scripts are protected files: the swarm may now merge them (the integrator opens an oversight issue). Keep the change small and covered by tests.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] WFAUDIT-07 · Swarm audit: validate generated Markdown before it is committed (check and tests)
+  - requirements: OPS-06
+  - scope: scripts/check-docs.py, scripts/tests/test_check_docs.py
+  - details:
+    1. Read `scripts/check-docs.py`, its tests and how `docs/swarm/*.md` notes, `docs/archive/TODO-DONE.md` and the reconciler pull request are generated in `scripts/swarm.py`.
+    2. Add checks for generated Markdown: balanced code fences, a heading level that never jumps by more than one, tables with the same number of cells in every row, no raw control characters, no unmasked token pattern, and no unclosed HTML comment or marker (`<!-- ... -->`). Report the file and line. Keep the existing link and requirement ID checks as they are.
+    3. Tests: one passing and one failing sample per rule using temporary files, and the repository itself still passes. Scripts are protected files: the swarm may now merge them (the integrator opens an oversight issue). Keep the change small and covered by tests.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] WFAUDIT-08 · Swarm audit: reconcile the runbook and swarm guide with what the code does today (documentation)
+  - requirements: OPS-06, OPS-05
+  - scope: docs/SWARM.md, docs/TEAM-ACTIONS.md
+  - details:
+    1. Read `docs/SWARM.md`, `docs/TEAM-ACTIONS.md` and the constants and rules in `scripts/swarm.py` (`MAX_ATTEMPTS`, `MAX_FIX`, wave and worker caps, `PROTECTED`, the new `SWARM_ALLOW_PROTECTED` kill switch and its oversight issue, the labels, when a task becomes `needs-human`).
+    2. List every statement in the two documents that no longer matches the code or the workflows (numbers, labels, who merges what, what a person must do) and correct it. Add a short section "Kill switch" describing `SWARM_ALLOW_PROTECTED`: how to turn it on and off, what it still enforces, and the `protected-change` oversight issue. Do not change code.
+    3. End with a table "Statement, old value, new value, source line" in your notes. Run `python3 -I scripts/check-docs.py` and paste the result.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] WFAUDIT-09 · Swarm audit: GitHub verification checklist for the audit changes (documentation)
+  - requirements: OPS-06
+  - scope: docs/operations/workflow-changes/github-verification-checklist.md
+  - depends: WFAUDIT-01, WFAUDIT-03, WFAUDIT-04
+  - details:
+    1. Read the other documents in `docs/operations/workflow-changes` and `docs/SWARM.md`.
+    2. Write `github-verification-checklist.md`: for each proposed workflow patch and each script change from `WFAUDIT-01` to `WFAUDIT-08`, the order a person applies and verifies them, the exact workflow to run on GitHub, what green looks like, the log line that proves the change works, and the rollback. Mark every box unchecked; nothing here is verified until a person runs it.
+    3. Run `python3 -I scripts/check-docs.py` and paste the result.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] WQUALITY-01 · Swarm quality: the integrator tells failed, pending, missing and approval-required Delivery apart (function and tests)
+  - requirements: OPS-06
+  - scope: scripts/swarm.py, scripts/tests/test_swarm_delivery_state.py
+  - details:
+    1. Read how the integrator decides whether a pull request has current-head Delivery evidence (search `scripts/swarm.py` for `Delivery`, `statusCheckRollup` and the run listing) and `.github/workflows/delivery.yml`.
+    2. Add `delivery_state(runs, head_sha)` returning exactly one of `passed`, `failed`, `pending`, `missing` or `approval-required` for the current head SHA (a run for an older SHA is `missing`; a run waiting for a first-time-contributor approval or an environment gate is `approval-required`; cancelled counts as `failed`; skipped Markdown-only runs follow the existing documentation rule). Use it in the integrator so only `passed` (or the documented documentation exception) merges, `pending` waits without a label, `failed` goes to the fix workers, and `missing` or `approval-required` asks for a run and never merges.
+    3. Tests: each of the five states, an older-SHA run, a re-run that supersedes a failure, and the documentation exception. Scripts are protected files: the swarm may now merge them (the integrator opens an oversight issue). Keep the change small and covered by tests.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] WQUALITY-02 · Swarm quality: recover ordinary draft pull requests (function and tests)
+  - requirements: OPS-06
+  - scope: scripts/swarm.py, scripts/tests/test_swarm_drafts.py
+  - depends: WQUALITY-01
+  - details:
+    1. Read the draft handling in `scripts/swarm.py` near the lines that pass `--draft` when a worker did not finish cleanly, and `plan_integration`, which skips drafts.
+    2. A draft opened because local checks failed is never retried today unless a fix worker undrafts it. Add `draft_recovery(pr_info)`: an ordinary (not repair, not reconciler) swarm draft whose latest push has Delivery `passed` (use `delivery_state` from `WQUALITY-01`) and no `needs-fix` or `needs-human` label is marked ready for review by the plan step and queued; a draft whose checks still fail goes to a fix worker once per head SHA and then `needs-human`. Reconciler drafts for instruction documents stay drafts for a person.
+    3. Tests: recoverable draft, still failing draft, reconciler draft untouched, labelled draft untouched. Scripts are protected files: the swarm may now merge them (the integrator opens an oversight issue). Keep the change small and covered by tests.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] WQUALITY-03 · Swarm quality: validate scope and structured hand-offs on the pinned candidate (script and tests)
+  - requirements: OPS-06
+  - scope: scripts/worker_gate.py, scripts/tests/test_worker_gate.py
+  - details:
+    1. Read `scripts/worker_gate.py` and where the worker job calls it in `.github/workflows/swarm-worker.yml` (read only).
+    2. Add checks that run against the exact candidate commit: every changed file is inside the task `scope` (or is the worker notes file), no tracker file (`TODO.md`, `MEMORY.md`, `WORKSPACE.md`, `BUGS.md`, `PROJECT.md`) changed, the notes file has the headings `## Test evidence` and `## Coverage` and, when the worker did not finish, `## Why this is not finished`, and the hand-off is parseable (the sections are non-empty, with no placeholder text such as `<...>`). Return a structured result: the list of violations with file and rule.
+    3. Tests with synthetic diffs and notes: a clean candidate passes; each violation is reported with the right rule; a candidate that changes after validation (a different SHA) is rejected. Scripts are protected files: the swarm may now merge them (the integrator opens an oversight issue). Keep the change small and covered by tests.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] WQUALITY-04 · Swarm quality: add frontend dependency scanning to the frontend check (script and tests)
+  - requirements: WEB-12, OPS-06
+  - scope: scripts/frontend-check.sh, scripts/tests/test_frontend_check.py
+  - details:
+    1. Read `scripts/frontend-check.sh`, `scripts/worker-check.sh`, `apps/staff-web/package.json` and `apps/patient-mobile/package.json`. Delivery runs OWASP dependency checks for Java; no equivalent runs for the npm packages.
+    2. Add a step that runs `npm audit --omit=dev --audit-level=high` in each frontend app and fails on any high or critical finding in production dependencies; development-only findings are printed as warnings. Make it skippable only through an explicit `FRONTEND_AUDIT=skip` variable that prints a loud notice, and make a registry outage a clear `infrastructure` failure rather than a pass. Do not change `package.json` or lock files.
+    3. Tests (Python, using a stub `npm` on `PATH`): a high finding fails, a moderate finding passes, a dev-only finding warns, a registry error is reported as infrastructure, and the skip variable prints the notice. Scripts are protected files: the swarm may now merge them (the integrator opens an oversight issue). Keep the change small and covered by tests.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] WQUALITY-05 · Swarm quality: validate the runtime OpenCode profile separately from the generated config (check and tests)
+  - requirements: OPS-06
+  - scope: scripts/gen-opencode.py, scripts/tests/test_opencode_profile.py
+  - details:
+    1. Read `scripts/gen-opencode.py`, `.github/opencode.ci.json` (generated), `opencode.json` and `.github/swarm/slots.json`.
+    2. Add `--check-runtime`: validate the CI runtime profile on its own: every agent allowed to edit has a bash permission list, read-only reviewers have no edit permission, no agent can write `.github/*`, `TODO.md` or `.opencode/*`, the instructions list files that exist, the model names match `slots.json`, and no key or token appears. Keep the existing `--check` behaviour unchanged.
+    3. Tests with temporary profile files: each rule fails with a message naming the agent, and the repository profile passes. Scripts are protected files: the swarm may now merge them (the integrator opens an oversight issue). Keep the change small and covered by tests.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] WQUALITY-06 · Swarm quality: classify swarm pull request failures and name the layer that should catch each (function, guide and tests)
+  - requirements: OPS-06
+  - scope: scripts/failure_classes.py, scripts/tests/test_failure_classes.py, docs/swarm/failure-classification.md
+  - depends: WFAUDIT-06
+  - details:
+    1. Read `diagnose` from `WFAUDIT-06` in `scripts/swarm.py`, `docs/WORKFLOW.md`, and the notes under `docs/swarm` and `.agent/pr-notes` from the last pull requests that needed a fix pass.
+    2. Write `failure_classes.py` with `classify(log, task_text, changed_files)` returning one of `task-policy`, `missing-tests`, `check-parity` (a check that passes locally and fails in Delivery), `implementation` or `infrastructure`, plus `catch_layer`: where a regression test belongs (`worker-check`, `integrator-gate`, `unit test`, `contract test`, `task template`). Use plain keyword and pattern rules; no network.
+    3. Write `docs/swarm/failure-classification.md`: the five classes with an example log for each, the rule to apply after every five swarm pull requests (classify the failures, add one regression at the layer that should have caught each new class), and a table to record each review (date, pull requests, class, regression added). Leave the table empty.
+    4. Tests with a fixture log per class. Scripts are protected files: the swarm may now merge them (the integrator opens an oversight issue). Keep the change small and covered by tests.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] WQUALITY-07 · Swarm quality: GitHub verification checklist for the quality changes (documentation)
+  - requirements: OPS-06
+  - scope: docs/operations/workflow-changes/quality-verification-checklist.md
+  - depends: WQUALITY-01, WQUALITY-02, WQUALITY-03, WQUALITY-04, WQUALITY-05, WQUALITY-06
+  - details:
+    1. Read `WQUALITY-01` to `WQUALITY-06` in `TODO.md` and the code they add.
+    2. Write `quality-verification-checklist.md`: for each change, how a person confirms it on GitHub (open a draft pull request that fails a check, one that passes, one with a stale Delivery run; read the issue the integrator opens), the exact observation that proves it, and a rollback. Leave every box unchecked; nothing is verified until a person runs it. Include the Docker image rebuild and exact-SHA checks the audit still lists as pending.
+    3. Run `python3 -I scripts/check-docs.py` and paste the result.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
 ## Spec clause coverage: one task per sentence of the specification (new files only, no dependencies)
 
 Every sentence of the requirement tables, the role matrix, the gate evidence, the cross-cutting scenarios and the architecture decisions in `SMARTCLINIC_V1_SPEC.md` has its own task. Each writes one test file (or only a note when the clause needs human, partner or cloud evidence) and one status note under `docs/spec/clauses`. A clause that is not built gets a skipped test marked `GAP:` and a gap note, so the next round of tasks is generated from these notes. The result is a measured, clause-by-clause view of how much of the specification is built.
