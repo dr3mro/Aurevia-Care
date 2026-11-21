@@ -93,6 +93,19 @@ class RateLimiterTest {
     }
 
     @Test
+    void organizationHalfOfKeyIsIndependent() {
+        RateLimiter limiter = new RateLimiter(new MutableClock(START), 1);
+
+        // Same subject, different organizations: each must own a separate counter.
+        // If the organization half were dropped from the key, one of these first
+        // calls would already be rejected.
+        assertEquals(0, limiter.retryAfterSeconds("org-a:subject"));
+        assertEquals(0, limiter.retryAfterSeconds("org-b:subject"));
+        assertTrue(limiter.retryAfterSeconds("org-a:subject") > 0, "org-a exhausted independently");
+        assertTrue(limiter.retryAfterSeconds("org-b:subject") > 0, "org-b exhausted independently");
+    }
+
+    @Test
     void retryAfterCountsDownWithinTheWindow() {
         MutableClock clock = new MutableClock(START);
         RateLimiter limiter = new RateLimiter(clock, 1);

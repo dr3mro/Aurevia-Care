@@ -340,6 +340,7 @@ class RunEventTests(unittest.TestCase):
         self.assertEqual(swarm.classify_failure(log, gate), "unknown")
         self.assertEqual(swarm.classify_failure(log, [("Publish", "Push the branch")]), "credentials")
 
+
 class WatchdogTests(unittest.TestCase):
     def setUp(self):
         self.old = os.getcwd()
