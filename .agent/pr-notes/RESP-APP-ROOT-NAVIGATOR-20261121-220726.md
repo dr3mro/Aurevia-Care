@@ -135,3 +135,42 @@ All acceptance criteria for PAT-01, PAT-02 and UX-01 are met within the two-file
 ### Finding carried forward (out of scope, not modified)
 
 `git grep -nE '^(<<<<<<<|>>>>>>>) '` reports conflict markers in three committed API files under `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/` (`Hl7ParseException.java`, `Hl7Parser.java`, `Hl7Segment.java`). `git show HEAD:<path>` confirms they are already committed on `main`; they were not produced by this branch's merge (which was "Already up to date") and are outside this story's scope, so I did not modify them. Flagging for the integrator/Delivery: these markers would break the Java compile gate. No `task-requests` block is filed because this is a pre-existing `main` defect, not a dependency of this story.
+
+## Coverage repair — attempt 1 (2026-11-21, orchestrator repair worker)
+
+### Branch-to-test list for the changed scope (unchanged; all branches covered)
+
+The only production file this story changed is `apps/patient-mobile/src/app/RootNavigator.tsx`. It is at **100% statements / branches / functions / lines**; every branch already has a deterministic test (no new test was needed, and no uncovered line or branch was found in the changed scope). Re-running `cd apps/patient-mobile && npx jest --coverage --runInBand --silent` this attempt: `All files | 100 | 100 | 100 | 100` and `RootNavigator.tsx | 100 | 100 | 100 | 100`, `Test Suites: 63 passed`, `Tests: 665 passed`, exit 0. The gate log confirms the patient-mobile and staff-web sections completed (coverage tables all 100%).
+
+| Branch in `RootNavigator.tsx` | Test that takes it |
+|---|---|
+| `layout.windowClass === 'large' ? styles.contentLarge : null` (true / false) | `RootNavigator.tablet.test.tsx` “centres content … on a large window” / “uses the full width on a compact window” + structural `it.each` compact/regular rows |
+| `isRTL ? 'rtl' : 'ltr'` (content `direction`) | RTL test / LTR inset-mapping test |
+| `isRTL ? layout.insets.right : layout.insets.left` (`paddingStart`) | RTL test (`30`) / LTR test (`10`) |
+| `isRTL ? layout.insets.left : layout.insets.right` (`paddingEnd`) | RTL test (`10`) / LTR test (`30`) |
+| `TabViewport`: `if (layout.windowClass === 'large')` (true / false) | structural `it.each` large rows, RTL test, live-`Dimensions`-change test (after) / compact & regular rows, live-change test (before) |
+| `isRTL ? 'rtl' : 'ltr'` (`two-pane` style) | RTL test / large `it.each` rows |
+| `signedOut` early return (pre-existing) | existing session-expiry tests / all other tests |
+| `TabContent` switch (pre-existing, 4 cases) | existing “renders each tab screen when that tab is pressed” |
+
+No threshold, exclusion, skip, disable or `pragma` was added or changed.
+
+### Why the coverage gate actually failed (NOT a coverage gap)
+
+`scripts/coverage-check.sh` uses `base-sha = 36cf64ce…` (local `main` captured at worker start). Because this branch merged `origin/main`, `git diff 36cf64ce..HEAD` contains **64 `apps/api/`+`db/` files** from other workers' merged stories, so the gate ran `mvn -f apps/api/pom.xml -Pno-security verify`. Maven failed in **surefire, before JaCoCo ran**: 4 *contract-policy* test failures (`Tests run: 4095, Failures: 4`). All four are pre-existing defects already present on `origin/main`, byte-for-byte:
+
+- `OpenApiRouteParityTest.everyControllerRouteIsDocumentedOrBaselined` — NEW undocumented controller routes (`/api/v1/pharmacy/substitutions/*`, `/api/v1/staff/mail/*`, `/health/metrics`; plus routes not in `contracts/openapi/missing-routes.txt`).
+- `OpenApiPaginationRulesTest.committedContractPassesEveryPaginationRule` and `…theOnlyExemptionIsTheBareArrayCatalogFamilyList` — merged `listInstantMessages` / `listInstantUnreadCounts` / `listInstantConversations` operations lack `cursor`/`limit`/`nextCursor`.
+- `OpenApiContractRulesTest.committedStaffApiContractSatisfiesEveryRule` — merged `/api/v1/staff/instant/*` operations lack `tags` and the `Idempotency-Key` header.
+
+Tool evidence (blob IDs, HEAD == origin/main for every failing artifact): `OpenApiRouteParityTest.java 984ea88b`, `OpenApiPaginationRulesTest.java d9d028a6`, `OpenApiContractRulesTest.java f86e3404`, `contracts/openapi.yaml 188fe4c7`, `contracts/openapi/missing-routes.txt 058b181d`. Controllers `InstantMessagingController.java 3f98f721` and `MetricsController.java 3926eb42` also match origin/main. The full log is `.agent/coverage.log`; patient-mobile (line 11099) and staff-web (line 11737) sections both completed with 100% tables.
+
+These are cross-boundary Java/OpenAPI-contract integration defects owned by the substitution, mail, metrics and instant-messaging stories and the integrator — not by this patient-mobile presentation story. Fixing them means editing the shared `contracts/openapi.yaml`, its baseline and Java contract tests across several other workers' domains, which would break swarm scope, risk parallel-PR conflicts and is outside a 2-file patient-mobile change. I did not make those edits.
+
+### Why this is not finished
+
+- **Failing command:** `bash scripts/coverage-check.sh 36cf64ce…` → `mvn … -Pno-security verify` exit 1 with 4 OpenAPI contract-policy test failures in surefire (no JaCoCo coverage violation; patient-mobile/staff-web both 100%).
+- **Most likely cause:** a pre-existing `origin/main` defect — merged routes from other workers are missing from the shared OpenAPI contract/baseline and violate contract rules. Every worker that merges current `main` hits the same gate.
+- **What I tried:** reproduced the gate, read `.agent/coverage.log`, proved the changed-file set is the main merge (64 api/db files, not my 2 patient-mobile files), and proved by blob identity that the failing tests, contract and controllers are identical on HEAD and `origin/main`. Re-ran patient-mobile Jest coverage: 100% on my scope. Considered patching the contract, but declined as out-of-scope cross-worker work.
+- **Exact next step (for integrator/Delivery, not this worker):** on `origin/main`, reconcile `contracts/openapi.yaml` + `contracts/openapi/missing-routes.txt` with the merged substitution/mail/metrics/instant controllers (add missing route docs or baselines, `tags`, `Idempotency-Key` headers and pagination params), or fix the responsible workers' stories; then re-run `bash scripts/coverage-check.sh`. Once main is green, this story's branch needs no source change — its own scope is already at 100%.
+- **Evidence source:** tool-executed commands in this worker only (git, grep, `npx jest --coverage`, reading `.agent/coverage.log`). No reviewer, simulated user or human participant was involved in this repair segment.
