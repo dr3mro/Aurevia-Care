@@ -25,7 +25,7 @@ import com.aurevia.smartclinic.messaging.evidence.GateEvidenceContract.Verdict;
  * outside this slice.</p>
  */
 @Service
-public class G3EvidenceService {
+public class GateEvidenceService {
 
     private final GateEvidenceEvaluator evaluator = new GateEvidenceEvaluator();
     private final EvidenceHash hash;
@@ -38,7 +38,7 @@ public class G3EvidenceService {
      * @param hash  deterministic evidence hasher
      * @param clock injected clock for the report's generation instant
      */
-    public G3EvidenceService(EvidenceHash hash, Clock clock) {
+    public GateEvidenceService(EvidenceHash hash, Clock clock) {
         this.hash = hash;
         this.ledger = new EvidenceLedger(hash);
         this.clock = clock;
@@ -86,8 +86,8 @@ public class G3EvidenceService {
      *
      * @return the most recently produced evidence ledger
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP", justification = "Evidence ledger is the owned domain aggregate")
+    // EI_EXPOSE_REP is excluded centrally for this aggregate accessor: the ledger is
+    // the service's owned domain aggregate, exposed only for chain verification.
     public EvidenceLedger ledger() {
         return ledger;
     }

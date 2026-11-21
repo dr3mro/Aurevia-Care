@@ -49,5 +49,123 @@ class RepositoryTests(unittest.TestCase):
         self.assertEqual(errors, [])
 
 
+class StructureTests(unittest.TestCase):
+    """One passing and one failing sample per generated-Markdown rule."""
+
+    def repo(self, note, name="NOTE.md", extra=None):
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp)
+        (tmp / docs.SPEC).write_text("| IAM-01 | x |\n")
+        (tmp / name).write_text(note)
+        for rel, text in (extra or {}).items():
+            path = tmp / rel
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(text)
+        return tmp
+
+    def errors(self, note, **kwargs):
+        return docs.check(self.repo(note, **kwargs))
+
+    def assert_one(self, errors, line, keyword):
+        self.assertEqual(len(errors), 1, errors)
+        self.assertIn(f"NOTE.md:{line}", errors[0])
+        self.assertIn(keyword, errors[0])
+
+    # Code fences -----------------------------------------------------------
+    def test_balanced_fence_passes(self):
+        self.assertEqual(self.errors("text\n```python\nprint(1)\n```\nafter\n"), [])
+
+    def test_unbalanced_fence_reports_line(self):
+        self.assert_one(self.errors("text\n```python\nprint(1)\nafter\n"), 2, "fence")
+
+    # Headings --------------------------------------------------------------
+    def test_heading_levels_pass(self):
+        self.assertEqual(self.errors("# A\n## B\n### C\n## D\n"), [])
+
+    def test_heading_jump_reports_line(self):
+        self.assert_one(self.errors("# A\n### C\n"), 2, "heading")
+
+    def test_first_heading_may_be_deep(self):
+        # No previous heading yet, so a deep first heading is not a jump.
+        self.assertEqual(self.errors("### Deep\n#### Deeper\n"), [])
+
+    def test_same_level_and_in_code_are_ignored(self):
+        note = "# A\n## B\n```\n###### shell comment\n```\n## C\n"
+        self.assertEqual(self.errors(note), [])
+
+    # Tables ----------------------------------------------------------------
+    def test_consistent_table_passes(self):
+        self.assertEqual(self.errors("| A | B |\n|---|---|\n| 1 | 2 |\n"), [])
+
+    def test_ragged_table_reports_line(self):
+        table = "| A | B |\n|---|---|\n| 1 | 2 |\n| 3 | 4 | 5 |\n"
+        self.assert_one(self.errors(table), 4, "table")
+
+    def test_escaped_pipes_are_not_cells(self):
+        self.assertEqual(self.errors("| A | B |\n|---|---|\n| 1 \\| 2 | 3 |\n"), [])
+
+    def test_table_inside_code_is_ignored(self):
+        note = "```\n| A | B |\n|---|---|\n| 1 | 2 | 3 |\n```\n"
+        self.assertEqual(self.errors(note), [])
+
+    def test_code_line_ends_table_scan(self):
+        note = "| A | B |\n|---|---|\n```text\n| 1 | 2 | 3 |\n```\n"
+        self.assertEqual(self.errors(note), [])
+
+    def test_blank_line_ends_table(self):
+        self.assertEqual(self.errors("| A | B |\n|---|---|\n| 1 | 2 |\n\nprose\n"), [])
+
+    # Control characters ----------------------------------------------------
+    def test_no_control_characters_passes(self):
+        self.assertEqual(self.errors("plain text\n"), [])
+
+    def test_control_character_reports_line(self):
+        self.assert_one(self.errors("ok\nraw\x07bell\n"), 2, "control")
+
+    # Tokens ----------------------------------------------------------------
+    def test_ordinary_words_are_not_tokens(self):
+        self.assertEqual(self.errors("risk-transitions-available-including.md\n"), [])
+
+    def test_unmasked_token_reports_line(self):
+        self.assert_one(self.errors("ok\ntoken ghp_" + "a" * 24 + "\n"), 2, "token")
+
+    def test_other_token_shapes_are_reported(self):
+        for token in ("github_pat_" + "a" * 24, "sk-" + "b" * 24):
+            with self.subTest(prefix=token[:6]):
+                self.assert_one(self.errors("x " + token + "\n"), 1, "token")
+
+    # HTML comments and markers ---------------------------------------------
+    def test_closed_marker_passes(self):
+        self.assertEqual(self.errors("<!-- swarm-task:X -->\nbody\n"), [])
+
+    def test_unclosed_marker_reports_line(self):
+        self.assert_one(self.errors("ok\n<!-- open marker\nbody\n"), 2, "comment")
+
+    def test_multiple_opens_report_first_line(self):
+        self.assert_one(self.errors("<!-- one\n<!-- two\n<!-- three\n"), 1, "comment")
+
+    # File selection and combined document ----------------------------------
+    def test_generated_files_exclude_records_and_notes(self):
+        root = self.repo("IAM-01 clean\n", extra={
+            "docs/swarm/REC.md": "# Record\n",
+            ".agent/pr-notes/N.md": "# Note\n",
+            "docs/archive/OLD.md": "# Old\n",
+            "docs/GOOD.md": "# Good\n",
+        })
+        names = sorted(p.relative_to(root).as_posix()
+                       for p in docs.generated_markdown_files(root))
+        self.assertEqual(names,
+                         ["NOTE.md", "SMARTCLINIC_V1_SPEC.md", "docs/GOOD.md"])
+
+    def test_clean_document_passes_all_rules(self):
+        doc = ("# Title\n\n## Section\n\ntext\n\n```python\nx = 1\n```\n\n"
+               "| A | B |\n|---|---|\n| 1 | 2 |\n\n<!-- swarm-task:X -->\n")
+        self.assertEqual(self.errors(doc), [])
+
+    def test_cells_ignores_escaped_pipes(self):
+        self.assertEqual(docs._cells("| a \\| b | c |"), 3)
+        self.assertEqual(docs._cells("| a | b |"), 3)
+
+
 if __name__ == "__main__":
     unittest.main()

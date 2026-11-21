@@ -13,20 +13,20 @@ import com.aurevia.smartclinic.messaging.evidence.GateEvidenceContract.GateEvide
  *
  * <p>The organization is taken from the request tenant context, never from the
  * fixture body; evaluation, hashing and the append-only ledger live in
- * {@link com.aurevia.smartclinic.messaging.evidence.G3EvidenceService}.</p>
+ * {@link com.aurevia.smartclinic.messaging.evidence.GateEvidenceService}.</p>
  */
 @RestController
 @RequestMapping("/api/v1/gate-evidence")
 public final class GateEvidenceController {
 
-    private final G3EvidenceService service;
+    private final GateEvidenceService service;
 
     /**
      * Create the route over the gate-evidence service bean.
      *
      * @param service composite evidence service
      */
-    public GateEvidenceController(G3EvidenceService service) {
+    public GateEvidenceController(GateEvidenceService service) {
         this.service = service;
     }
 

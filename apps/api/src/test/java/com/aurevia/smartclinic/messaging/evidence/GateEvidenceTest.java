@@ -399,7 +399,7 @@ class GateEvidenceTest {
 
     @Test
     void serviceProducesAllFiveRecordsAndAValidChain() {
-        G3EvidenceService service = new G3EvidenceService(new EvidenceHash(), fixedClock());
+        GateEvidenceService service = new GateEvidenceService(new EvidenceHash(), fixedClock());
         var report = service.produce(ORG, input());
         assertEquals(ORG, report.organizationId());
         assertEquals(5, report.records().size());
@@ -417,13 +417,13 @@ class GateEvidenceTest {
     void serviceReportsFailVerdictWhenAnyCategoryFails() {
         EvidenceInput failing = new EvidenceInput(SNAPSHOT, JOURNAL, RESTORE, RUNBOOK, COMMANDS, EFFECTS,
                 PROFILE, SAMPLES, AVAILABILITY, List.of(), AUDIT);
-        G3EvidenceService service = new G3EvidenceService(new EvidenceHash(), fixedClock());
+        GateEvidenceService service = new GateEvidenceService(new EvidenceHash(), fixedClock());
         assertEquals(Verdict.FAIL, service.produce(ORG, failing).verdict());
     }
 
     @Test
     void serviceRejectsMissingOrganization() {
-        G3EvidenceService service = new G3EvidenceService(new EvidenceHash(), fixedClock());
+        GateEvidenceService service = new GateEvidenceService(new EvidenceHash(), fixedClock());
         assertEquals(422, assertThrows(ApiException.class,
                 () -> service.produce(null, input())).status());
         assertEquals("INVALID_ORGANIZATION", assertThrows(ApiException.class,
