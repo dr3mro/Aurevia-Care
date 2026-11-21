@@ -25,9 +25,9 @@ export interface FieldError {
 
 /** Diagnostic metadata that is safe to carry alongside a typed failure. */
 export interface TransportErrorDetails {
-  correlationId?: string;
-  code?: string;
-  fieldErrors?: FieldError[];
+  correlationId: string;
+  code: string | undefined;
+  fieldErrors: FieldError[] | undefined;
 }
 
 /**
@@ -219,7 +219,7 @@ async function send<T>(
   try {
     const token = await config.getToken();
     if (typeof token !== 'string' || token.trim().length === 0) {
-      throw new TransportError('unauthenticated', { correlationId });
+      throw new TransportError('unauthenticated', { correlationId, code: undefined, fieldErrors: undefined });
     }
 
     const headers: Record<string, string> = {
@@ -237,12 +237,15 @@ async function send<T>(
     const url = `${config.baseUrl.replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}`;
     controller = new AbortController();
     timer = setTimeout(() => controller?.abort(), TIMEOUT_MS);
-    const response = await config.fetchImpl(url, {
+    const requestInit: RequestInit = {
       method,
       headers,
-      body: serialized,
       signal: controller.signal,
-    });
+    };
+    if (serialized !== undefined) {
+      requestInit.body = serialized;
+    }
+    const response = await config.fetchImpl(url, requestInit);
     if (!response.ok) {
       throw await toTransportError(response, correlationId);
     }
@@ -254,9 +257,9 @@ async function send<T>(
       throw error;
     }
     if (controller?.signal.aborted === true) {
-      throw new TransportError('timeout', { correlationId });
+      throw new TransportError('timeout', { correlationId, code: undefined, fieldErrors: undefined });
     }
-    throw new TransportError('network', { correlationId });
+    throw new TransportError('network', { correlationId, code: undefined, fieldErrors: undefined });
   } finally {
     if (timer !== undefined) {
       clearTimeout(timer);
