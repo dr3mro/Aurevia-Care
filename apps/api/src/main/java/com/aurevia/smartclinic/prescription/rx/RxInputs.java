@@ -5,6 +5,7 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 
 import com.aurevia.smartclinic.api.ApiException;
+import com.aurevia.smartclinic.api.contract.CanonicalUuid;
 
 /**
  * Pure, total validation of every RX-02 command field.
@@ -15,8 +16,6 @@ import com.aurevia.smartclinic.api.ApiException;
  */
 public final class RxInputs {
 
-    private static final Pattern UUID_PATTERN = Pattern.compile(
-            "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
     private static final Pattern SUBJECT = Pattern.compile("[a-z0-9][a-z0-9-]{1,63}");
     private static final Pattern CHANNEL = Pattern.compile("[A-Z][A-Z0-9_]{1,31}");
     private static final int MAX_QUANTITY = 999;
@@ -29,14 +28,15 @@ public final class RxInputs {
      *
      * @param value value supplied by the caller
      * @param field field name used in the error code
-     * @return the validated value
-     * @throws ApiException when the value is not a UUID
+     * @return the validated canonical lowercase UUID text
+     * @throws ApiException when the value is not a canonical UUID
      */
     public static String uuid(String value, String field) {
-        if (value == null || !UUID_PATTERN.matcher(value).matches()) {
+        try {
+            return CanonicalUuid.uuid(value).value();
+        } catch (IllegalArgumentException exception) {
             throw new ApiException(422, "INVALID_" + field.toUpperCase(Locale.ROOT), field + " must be a UUID");
         }
-        return value;
     }
 
     /**

@@ -4,6 +4,7 @@ import java.util.Locale;
 import java.util.UUID;
 
 import com.aurevia.smartclinic.api.ApiException;
+import com.aurevia.smartclinic.api.contract.CanonicalUuid;
 
 /**
  * Total, synthetic-safe validation of RX-01 request fields (ARC-03).
@@ -32,7 +33,7 @@ public final class PrescriptionInputs {
             throw new ApiException(422, "INVALID_" + field.toUpperCase(Locale.ROOT), "identifier required");
         }
         try {
-            return UUID.fromString(value).toString();
+            return CanonicalUuid.uuid(value).value();
         } catch (IllegalArgumentException exception) {
             throw new ApiException(422, "INVALID_" + field.toUpperCase(Locale.ROOT), "identifier must be a UUID");
         }
