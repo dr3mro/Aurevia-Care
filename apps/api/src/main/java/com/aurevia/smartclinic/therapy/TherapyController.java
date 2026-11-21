@@ -1,7 +1,6 @@
 package com.aurevia.smartclinic.therapy;
 
 import java.net.URI;
-import java.time.Clock;
 import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,25 +37,14 @@ public final class TherapyController {
     private final TransactionTemplate transactions;
 
     /**
-     * Create the route with the synthetic in-memory therapy store.
+     * Create the route with the injected therapy domain service.
      *
-     * @param clock        shared application clock
+     * @param service      therapy domain service backed by the durable store
      * @param staff        fresh membership and role source
      * @param transactions tenant-guarded transaction template
      */
     @Autowired
-    public TherapyController(Clock clock, StaffRepository staff, TransactionTemplate transactions) {
-        this(new TherapyService(new InMemoryTherapyStore(), clock), staff, transactions);
-    }
-
-    /**
-     * Create the route over a supplied service, used by HTTP tests with fixtures.
-     *
-     * @param service      therapy domain service
-     * @param staff        fresh membership and role source
-     * @param transactions tenant-guarded transaction template
-     */
-    TherapyController(TherapyService service, StaffRepository staff, TransactionTemplate transactions) {
+    public TherapyController(TherapyService service, StaffRepository staff, TransactionTemplate transactions) {
         this.service = service;
         this.staff = staff;
         this.transactions = transactions;
