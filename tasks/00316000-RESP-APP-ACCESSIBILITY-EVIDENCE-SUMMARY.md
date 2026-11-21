@@ -1,4 +1,6 @@
-- [ ] RESP-APP-ACCESSIBILITY-EVIDENCE-SUMMARY · Patient app: tablet, landscape and large-text layout for `AccessibilityEvidenceSummary` (evidence)
+- [-] RESP-APP-ACCESSIBILITY-EVIDENCE-SUMMARY · Patient app: tablet, landscape and large-text layout for `AccessibilityEvidenceSummary` (evidence)
+  - agent: swarm-8
+  - attempts: 1
   - requirements: PAT-01, PAT-02, UX-01
   - scope: apps/patient-mobile/src/features/evidence/AccessibilityEvidenceSummary.tsx, apps/patient-mobile/src/features/evidence/AccessibilityEvidenceSummary.tablet.test.tsx
   - depends: RESP-APP-LAYOUT-HOOK, RESP-APP-CONFIG

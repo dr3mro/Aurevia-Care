@@ -1,4 +1,6 @@
-- [ ] RESP-APP-MESSAGING-AUDIT-PANEL · Patient app: tablet, landscape and large-text layout for `MessagingAuditPanel` (governance)
+- [-] RESP-APP-MESSAGING-AUDIT-PANEL · Patient app: tablet, landscape and large-text layout for `MessagingAuditPanel` (governance)
+  - agent: swarm-10
+  - attempts: 1
   - requirements: PAT-01, PAT-02, UX-01
   - scope: apps/patient-mobile/src/features/governance/MessagingAuditPanel.tsx, apps/patient-mobile/src/features/governance/MessagingAuditPanel.tablet.test.tsx
   - depends: RESP-APP-LAYOUT-HOOK, RESP-APP-CONFIG

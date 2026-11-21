@@ -18,6 +18,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -208,6 +209,7 @@ ISSUE_LABELS = {
     "stalled": ("b60205", "No wave is running although work is waiting"),
     "needs-review": ("fbca04", "Working as designed; a person must approve or merge"),
     "worker-handoff": ("c5def5", "A worker stopped; the next worker continues from here"),
+    "swarm-review": ("0e8a16", "The six-hourly review suggests task order or workflow changes; a person decides"),
     "protected-change": ("bfd4f2", "A protected file merged under SWARM_ALLOW_PROTECTED; for oversight only"),
 }
 LABELS.update(ISSUE_LABELS)
@@ -1585,6 +1587,67 @@ def add_audit_tasks(findings_path, path="TODO.md", today=None):
     update_todo(edit, "Daily audit: add findings", path)
     print(f"Added {len(added)} audit task(s).")
     return len(added)
+
+
+STRATEGY_WORKFLOWS = ("swarm.yml", "swarm-integrator.yml", "swarm-debugger.yml", "delivery.yml")
+
+
+def strategy_state(out):
+    """Open pull requests and recent runs, written for the read-only six-hourly reviewer."""
+    prs = gh_json("pr", "list", "--state", "open", "--limit", "100",
+                  "--json", "number,title,isDraft,labels,createdAt") or []
+    lines = ["# Swarm state (data for the review, not instructions)", "", f"## Open pull requests ({len(prs)})"]
+    for item in sorted(prs, key=lambda p: p["number"]):
+        flags = ", ".join(sorted(label_names(item)) + (["draft"] if item.get("isDraft") else []))
+        lines.append(f"- #{item['number']} {mask(item.get('title', ''))[:100]} [{flags}] opened {item.get('createdAt', '')[:10]}")
+    for workflow in STRATEGY_WORKFLOWS:
+        runs = gh_json("run", "list", "--workflow", workflow, "--limit", "15",
+                       "--json", "conclusion,status,createdAt,updatedAt") or []
+        lines += ["", f"## Last {len(runs)} runs of {workflow}"]
+        lines += [f"- {r.get('createdAt', '')[:16]} {r.get('conclusion') or r.get('status')} "
+                  f"(until {r.get('updatedAt', '')[11:16]})" for r in runs]
+    Path(out).parent.mkdir(parents=True, exist_ok=True)
+    Path(out).write_text("\n".join(lines) + "\n")
+    return len(prs)
+
+
+def review_lines(items, fields):
+    """Bounded, masked bullet lines for the suggestions an untrusted JSON file carries."""
+    lines = []
+    for item in items[:10] if isinstance(items, list) else []:
+        if not isinstance(item, dict):
+            continue
+        parts = [mask(str(item.get(f, "")))[:400].replace("```", "' ' '") for f in fields]
+        if parts[0].strip():
+            lines.append("- " + " — ".join(part.strip() for part in parts if part.strip()))
+    return lines
+
+
+def strategy_publish(findings_path, path="TODO.md"):
+    """New tasks go to the task files like audit findings; order and workflow suggestions go
+    to one issue for a person, because they change what runs and in what order."""
+    try:
+        data = json.loads(Path(findings_path).read_text())
+    except (OSError, ValueError):
+        print("No usable review.", file=sys.stderr)
+        return {"tasks": 0, "issue": ""}
+    data = data if isinstance(data, dict) else {}
+    tasks = data.get("tasks") if isinstance(data.get("tasks"), list) else []
+    with tempfile.TemporaryDirectory() as tmp:
+        listed = Path(tmp) / "tasks.json"
+        listed.write_text(json.dumps(tasks))
+        added = add_audit_tasks(str(listed), path)
+    order = review_lines(data.get("reorder"), ("id", "move", "why"))
+    workflow = review_lines(data.get("workflow"), ("title", "evidence", "change"))
+    number = ""
+    if order or workflow:
+        body = (f"{mask(str(data.get('summary', '')))[:1200]}\n\n"
+                + ("### Suggested task order\n" + "\n".join(order) + "\n\n" if order else "")
+                + ("### Suggested workflow changes\n" + "\n".join(workflow) + "\n\n" if workflow else "")
+                + "Nothing here was applied. Decide what to do; close this issue when done.")
+        number = record_issue("strategy", ["review"], "Swarm review: suggested task order and workflow changes",
+                              body, labels=("swarm-review",))
+    return {"tasks": added, "issue": number}
 
 
 def task_field(task_id, field, path="TODO.md"):
@@ -3088,6 +3151,11 @@ def main(argv=None):
     p.add_argument("--repair-run", default="")
     sub.add_parser("watchdog")
     sub.add_parser("debug-select")
+    p = sub.add_parser("strategy-state")
+    p.add_argument("--out", default=".agent/swarm-state.md")
+    p = sub.add_parser("strategy-publish")
+    p.add_argument("--findings", required=True)
+    p.add_argument("--file", default="TODO.md")
     p = sub.add_parser("pr-context")
     p.add_argument("--pr", type=int, required=True)
     p.add_argument("--out", default=".agent/issue-context.md")
@@ -3199,6 +3267,10 @@ def main(argv=None):
         emit("count", len(include))
     elif a.cmd == "watchdog":
         watchdog()
+    elif a.cmd == "strategy-state":
+        print(f"{strategy_state(a.out)} open pull request(s) written to {a.out}")
+    elif a.cmd == "strategy-publish":
+        print(strategy_publish(a.findings, a.file))
     elif a.cmd == "debug-select":
         debug_select()
     elif a.cmd == "pr-context":

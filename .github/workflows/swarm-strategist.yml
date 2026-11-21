@@ -1,0 +1,105 @@
+name: Swarm strategist
+# Every six hours a read-only agent reviews the code base, the tasks and the way the swarm
+# runs, and suggests three things: new tasks, a better task order and workflow optimizations.
+# A trusted job adds the valid new tasks to the task files (the same checks as the daily
+# audit) and puts the order and workflow suggestions in one issue for a person. Nothing
+# about order or workflows is applied automatically. The agent never holds a GitHub token.
+on:
+  schedule:
+    - cron: '23 */6 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: swarm-strategist
+  cancel-in-progress: false
+env:
+  SWARM_GIT_NAME: ${{ vars.SWARM_GIT_NAME }}
+  SWARM_GIT_EMAIL: ${{ vars.SWARM_GIT_EMAIL }}
+
+jobs:
+  prep:
+    name: Prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      # Slot 4's image and account, so the review never competes with worker slot 1.
+      image: ${{ steps.image.outputs.image }}
+    steps:
+      - id: image
+        run: echo "image=ghcr.io/${GITHUB_REPOSITORY,,}-agent-4:latest" >> "$GITHUB_OUTPUT"
+  review:
+    name: Review the swarm
+    needs: prep
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    container:
+      image: ${{ needs.prep.outputs.image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    permissions:
+      contents: read
+      packages: read
+      pull-requests: read
+      actions: read
+    defaults:
+      run:
+        shell: bash
+    env:
+      MODEL: opencode-go/hy4-flash-free
+      SWARM: '1'
+      AGENT_TIMEOUT: 60m
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Collect the swarm state (read-only token, before the agent runs)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 -I scripts/swarm.py strategy-state || true
+      - name: Review (no GitHub token in this step)
+        env:
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY_4 || secrets.OPENCODE_API_KEY }}
+        run: scripts/agent-run.sh strategy
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always()
+        with:
+          name: strategy-review
+          path: .agent/strategy.json
+          if-no-files-found: ignore
+          retention-days: 1
+  publish:
+    name: Add tasks and open the suggestions issue
+    needs: review
+    if: always() && needs.review.result != 'skipped'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      issues: write
+    steps:
+      # Trusted copy of the scripts from main: the review job never had a token.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        continue-on-error: true
+        with:
+          name: strategy-review
+          path: review
+      - name: Warn when SWARM_TOKEN is not configured
+        env:
+          HAS_SWARM_TOKEN: ${{ secrets.SWARM_TOKEN != '' }}
+        run: |
+          if [[ "$HAS_SWARM_TOKEN" != "true" ]]; then
+            echo "::warning title=SWARM_TOKEN missing::Falling back to the job token: it cannot push workflow files or open pull requests that trigger other workflows."
+          fi
+      - name: Publish the review
+        env:
+          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
+          GH_ISSUES_TOKEN: ${{ github.token }}
+        run: python3 -I scripts/swarm.py strategy-publish --findings review/strategy.json

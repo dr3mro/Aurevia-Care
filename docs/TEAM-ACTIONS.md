@@ -24,6 +24,7 @@ Follow the setup in [SWARM.md](SWARM.md#setup): run **Agent image** once, save `
 | 05:10 daily | `daily-notes.yml`: reconcile yesterday's worker notes |
 | 06:00 (summer) or 07:00 (winter) daily | `swarm-issue-monitor.yml`: 2:00 AM New York pass over issues with no progress for 24 hours |
 | 07:17 daily | `daily-audit.yml` |
+| Every 6 hours at :23 | `swarm-strategist.yml`: suggests tasks, task order and workflow changes |
 | 47 past every hour | `swarm-debugger.yml` (safety net; normally dispatched when fix attempts run out) |
 | 04:17 on the 1st | `agent-image.yml` refresh |
 
