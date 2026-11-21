@@ -128,6 +128,11 @@ class ConversationContractTest {
     @Test
     void subjectValidationMatchesSyntheticShape() {
         assertEquals("patient-a", ConversationInputs.subject("patient-a", "patientSubject"));
+        assertEquals("patient.one", ConversationInputs.subject("patient.one", "patientSubject"));
+        assertEquals("patient_one", ConversationInputs.subject("patient_one", "patientSubject"));
+        assertEquals("a".repeat(64), ConversationInputs.subject("a".repeat(64), "patientSubject"));
+        assertEquals(422, assertThrows(ApiException.class,
+                () -> ConversationInputs.subject("مريض", "patientSubject")).status());
         assertEquals(422, assertThrows(ApiException.class,
                 () -> ConversationInputs.subject(null, "patientSubject")).status());
         assertEquals(422, assertThrows(ApiException.class,

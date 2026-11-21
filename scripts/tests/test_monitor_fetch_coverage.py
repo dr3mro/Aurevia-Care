@@ -97,6 +97,8 @@ def classify(args):
         if "graphql" in text:
             if "TODO-DONE.md" in text:
                 return "archive"
+            if 'object(oid:' in text:
+                return "blobs"
             if 'HEAD:tasks"' in text:
                 return "todo"
             return "total"
@@ -139,18 +141,68 @@ class FakeGh:
         return proc
 
 
-def run_fetch(gh, emit=None, timing_path=None, full=True, keep_cache=False):
+def run_fetch(gh, emit=None, timing_path=None, full=True, keep_cache=False, task_cache=None):
     """Call monitor.fetch with synchronous threads, a faked gh and a scratch timing log."""
     if not keep_cache:
         monitor.CACHE["jobs"].clear()
         monitor.CACHE["slow_at"] = 0.0
+        monitor.CACHE.pop("repo", None)
     tmp = tempfile.mkdtemp()
     log_path = timing_path or os.path.join(tmp, "timing.log")
     fake_threading = types.SimpleNamespace(Thread=SyncThread, Lock=threading.Lock)
     with mock.patch.object(monitor, "threading", fake_threading), \
             mock.patch.object(monitor, "spawn", gh.spawn), \
+            mock.patch.object(monitor, "TASK_CACHE", task_cache or os.path.join(tmp, "tasks.json")), \
             mock.patch.object(monitor, "TIMING_LOG", log_path):
         return monitor.fetch(emit, full=full), log_path
+
+
+class TaskLoadingTests(unittest.TestCase):
+    """The task files are listed by oid; only files not in the local cache are read."""
+
+    def setUp(self):
+        monitor.CACHE.pop("repo", None)
+        self.cache = os.path.join(tempfile.mkdtemp(), "tasks.json")
+
+    def run_todo(self, gh, listing):
+        fake_threading = types.SimpleNamespace(Thread=SyncThread, Lock=threading.Lock)
+        with mock.patch.object(monitor, "threading", fake_threading), mock.patch.object(monitor, "spawn", gh.spawn), \
+                mock.patch.object(monitor, "TASK_CACHE", self.cache):
+            return monitor.todo_text(listing)
+
+    def blobs(self, **texts):
+        return {"data": {"repository": {k: {"text": v} for k, v in texts.items()}}}
+
+    def test_reads_new_files_once_and_joins_them_in_name_order(self):
+        gh = FakeGh({"repo": "acme/clinic", "blobs": self.blobs(a0="- [ ] B-1 · b\n", a1="- [x] A-1 · a\n")})
+        text = self.run_todo(gh, "00000200-B-1.md o2\n00000100-A-1.md o1\n")
+        self.assertEqual(text, "- [x] A-1 · a\n- [ ] B-1 · b\n")
+        gh2 = FakeGh({"repo": "acme/clinic"})
+        again = self.run_todo(gh2, "00000200-B-1.md o2\n00000100-A-1.md o1\n")
+        self.assertEqual(again, text)
+        self.assertFalse(any(classify(a) == "blobs" for a in gh2.seen))  # all from the cache
+
+    def test_a_failed_batch_gives_none_and_a_bad_listing_line_is_skipped(self):
+        gh = FakeGh({"repo": "acme/clinic"}, fail={"blobs"})
+        self.assertIsNone(self.run_todo(gh, "00000100-A-1.md o1\nnot a listing line here\n"))
+
+    def test_an_unknown_repo_name_gives_none(self):
+        gh = FakeGh({"repo": ""})
+        self.assertIsNone(self.run_todo(gh, "00000100-A-1.md o1\n"))
+        self.assertNotIn("repo", monitor.CACHE)
+
+    def test_an_unwritable_cache_still_gives_the_tasks(self):
+        self.cache = os.path.join(tempfile.mkdtemp(), "missing-folder", "tasks.json")
+        gh = FakeGh({"repo": "acme/clinic", "blobs": self.blobs(a0="- [ ] A-1 · a\n")})
+        self.assertEqual(self.run_todo(gh, "00000100-A-1.md o1\n"), "- [ ] A-1 · a\n")
+
+    def test_an_unreadable_cache_file_is_ignored_and_rewritten(self):
+        with open(self.cache, "w") as f:
+            f.write("{not json")
+        gh = FakeGh({"repo": "acme/clinic", "blobs": self.blobs(a0="- [ ] A-1 · a\n")})
+        self.assertEqual(self.run_todo(gh, "00000100-A-1.md o1\n"), "- [ ] A-1 · a\n")
+        with open(self.cache) as f:
+            self.assertEqual(json.load(f), {"o1": "- [ ] A-1 · a\n"})
 
 
 class CommandTableAndSpawnTests(unittest.TestCase):
@@ -243,7 +295,8 @@ class FetchTests(unittest.TestCase):
             "closed": [{"number": 10, "title": "Closed PR", "closedAt": stamp(40), "mergedAt": None}],
             "total": "12345",
             "archive": "- [x] OLD-9 · done\n",
-            "todo": "- [ ] NEW-8 · Work\n",
+            "todo": "00000100-NEW-8.md abc123\n",
+            "blobs": {"data": {"repository": {"a0": {"text": "- [ ] NEW-8 · Work\n"}}}},
             "commits": "aaa111 bbb000\nccc222 \n",  # last line has no parent -> no compare call
             "runs": self.runs[:4],
             "runs_more": self.runs[3:] + [{"databaseId": 99, "status": "completed",
@@ -264,7 +317,7 @@ class FetchTests(unittest.TestCase):
         self.assertEqual(out["merged"], self.payload["merged"])
         self.assertEqual(out["closed"], self.payload["closed"])
         self.assertEqual(out["total"], "12345")
-        self.assertEqual(out["todo"], self.payload["todo"])
+        self.assertEqual(out["todo"], "- [ ] NEW-8 · Work\n")
         self.assertEqual(out["archive"], self.payload["archive"])
         self.assertEqual(out["churn"], {"commits": 2, "files": 0, "add": 0, "del": 0})
         self.assertIn("runs", out)
