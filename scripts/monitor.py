@@ -807,7 +807,7 @@ def tui(stdscr):
         threading.Thread(target=refresh, daemon=True).start()
 
     seen, alarm, checked_at, last = None, None, 0.0, None
-    started_at, started_note = 0.0, ""
+    started_at, started_note, muted = 0.0, "", False
     stdscr.timeout(200)
     kick()
     while True:
@@ -819,6 +819,8 @@ def tui(stdscr):
                 return
             elif key in (ord("r"), ord("R")):
                 kick()
+            elif key in (ord("m"), ord("M")):
+                muted = not muted  # the alarm still shows; only the sound stops
         if st["at"] and time.time() - st["at"] >= INTERVAL:
             kick()
         with lock:
@@ -847,11 +849,12 @@ def tui(stdscr):
                 started_note = (f"swarm start failed: {err}" if err else
                                 f"swarm was idle, started a wave at {datetime.now().strftime('%H:%M')}")
         if alarm and now >= alarm["next"]:
-            beep()
+            if not muted:
+                beep()
             alarm["next"] = now + 5
         H, W = stdscr.getmaxyx()
         phase = int(now * 3) % 2 if alarm else 0
-        sig = (H, W, at, busy, phase, bool(alarm), int(now // 5), started_note, len(loading), ready)
+        sig = (H, W, at, busy, phase, bool(alarm), int(now // 5), started_note, len(loading), ready, muted)
         if sig == last:
             continue
         last = sig
@@ -885,13 +888,13 @@ def tui(stdscr):
             if i < len(right):
                 put(y, cw + 1, right[i], min(cw, W - cw - 2))
         if alarm:
-            msg = f" !! NEW FAILED RUN: {alarm['text']}  -  press ANY KEY to silence the alarm (beeps every 5s) "
+            msg = f" !! NEW FAILED RUN: {alarm['text']}  -  press ANY KEY to silence the alarm ({'muted' if muted else 'beeps every 5s'}) "
             a = pair["red"] | curses.A_BOLD | (curses.A_REVERSE if phase else 0)
             stdscr.addstr(H - 1, 0, msg.ljust(W - 1)[: W - 1], a)
         else:
             status = (f"loading {len(st['data']) - len(loading)}/{len(st['data'])}..." if loading else "refreshing..." if busy
                       else f"updated {span(time.time() - at)} ago")
-            foot = f" q quit · r refresh · every {INTERVAL}s · {status}"
+            foot = f" q quit · r refresh · m {'unmute' if muted else 'mute'}{' (MUTED)' if muted else ''} · every {INTERVAL}s · {status}"
             if AUTOSTART:
                 foot += f" · {started_note or f'auto-start on ({AUTOSTART}m)'}"
             stdscr.addstr(H - 1, 0, foot[: W - 1], attr["dim"])

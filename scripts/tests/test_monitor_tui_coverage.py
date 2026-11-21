@@ -410,6 +410,41 @@ class AlarmTests(TuiCase):
         self.assertEqual(screen.text().count("NEW FAILED RUN"), 1)
         self.assertEqual(self.beep_mock.call_count, 1)
 
+    def test_m_mutes_the_beep_but_not_the_alarm_and_unmutes_again(self):
+        fail = lambda n: (lambda: (self.advance(10), self.arrive(self.payload(runs=[self.failed(n)]))), -1)
+        steps = [
+            (lambda: self.arrive(self.payload()), -1),
+            (None, ord("m")),  # muted before any failure
+            fail(1),
+            (None, -1),  # any key silences the alarm
+            (None, ord("M")),  # unmuted again
+            fail(2),
+            (None, ord("q")),
+        ]
+        screen = self.run_tui(steps)
+        self.assertIn("NEW FAILED RUN", screen.text())
+        self.assertIn("m mute", screen.text())
+        self.assertEqual(self.beep_mock.call_count, 1)  # only the second failure beeped
+
+    def test_the_footer_and_alarm_say_when_muted(self):
+        steps = [
+            (lambda: self.arrive(self.payload()), -1),
+            (None, ord("m")),
+            (None, -1),
+            (None, ord("q")),
+        ]
+        self.run_tui(steps)
+        self.assertIn("m unmute (MUTED)", self.screen.text())
+        steps = [
+            (lambda: self.arrive(self.payload()), -1),
+            (None, ord("m")),
+            (lambda: (self.advance(10), self.arrive(self.payload(runs=[self.failed(1)]))), -1),
+            (None, ord("q")),
+        ]
+        self.run_tui(steps)
+        self.assertIn("(muted)", self.screen.text())
+        self.assertEqual(self.beep_mock.call_count, 0)
+
     def test_multiple_fresh_failures_are_grouped_and_beeped_every_five_seconds(self):
         runs = [self.failed(1), self.failed(2)]
         steps = [
