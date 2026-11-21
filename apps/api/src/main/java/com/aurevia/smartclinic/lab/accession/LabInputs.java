@@ -5,6 +5,7 @@ import java.time.format.DateTimeParseException;
 import java.util.regex.Pattern;
 
 import com.aurevia.smartclinic.api.ApiException;
+import com.aurevia.smartclinic.api.contract.IssuerCode;
 
 /**
  * Validation of every client-supplied laboratory field at the API boundary.
@@ -16,9 +17,7 @@ import com.aurevia.smartclinic.api.ApiException;
 public final class LabInputs {
 
     private static final Pattern ACCESSION = Pattern.compile("[A-Za-z0-9_.:/-]{3,64}");
-    private static final Pattern ISSUER = Pattern.compile("[A-Za-z0-9_.:-]{2,32}");
     private static final Pattern ORDER_REF = Pattern.compile("[A-Za-z0-9_.:/-]{2,128}");
-    private static final Pattern CODE = Pattern.compile("[A-Za-z0-9_.:-]{2,32}");
     private static final Pattern TEXT = Pattern.compile("[\\p{L}\\p{M}0-9 '.,/:@_-]{2,200}");
     private static final Pattern UUID = Pattern.compile(
             "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
@@ -33,7 +32,7 @@ public final class LabInputs {
 
     /** @return the bounded accession issuer */
     public static String issuer(String value) {
-        return require(value, ISSUER, "INVALID_ISSUER", "accessionIssuer is malformed");
+        return issuerCode(value, "INVALID_ISSUER", "accessionIssuer is malformed");
     }
 
     /** @return the bounded source order reference */
@@ -43,12 +42,12 @@ public final class LabInputs {
 
     /** @return the bounded specimen type code */
     public static String specimenType(String value) {
-        return require(value, CODE, "INVALID_SPECIMEN_TYPE", "specimenType is malformed");
+        return issuerCode(value, "INVALID_SPECIMEN_TYPE", "specimenType is malformed");
     }
 
     /** @return the bounded collection site code */
     public static String siteCode(String value) {
-        return require(value, CODE, "INVALID_SITE", "siteCode is malformed");
+        return issuerCode(value, "INVALID_SITE", "siteCode is malformed");
     }
 
     /** @return the bounded collector name */
@@ -58,7 +57,7 @@ public final class LabInputs {
 
     /** @return the bounded quality code */
     public static String quality(String value) {
-        return require(value, CODE, "INVALID_QUALITY", "quality is malformed");
+        return issuerCode(value, "INVALID_QUALITY", "quality is malformed");
     }
 
     /** @return the bounded rejection reason */
@@ -119,6 +118,24 @@ public final class LabInputs {
             return Instant.parse(value);
         } catch (DateTimeParseException exception) {
             throw new ApiException(422, "INVALID_TIMESTAMP", field + " must be an ISO-8601 instant");
+        }
+    }
+
+    /**
+     * Validate an issuer-style value with the shared primitive and translate its rejection
+     * into this field's machine-readable error.
+     *
+     * @param value client-supplied value
+     * @param code field-specific error code
+     * @param message field-specific detail message
+     * @return the validated value
+     * @throws ApiException when the value is outside the shared issuer/code boundary
+     */
+    private static String issuerCode(String value, String code, String message) {
+        try {
+            return IssuerCode.issuerCode(value).value();
+        } catch (IllegalArgumentException invalid) {
+            throw new ApiException(422, code, message);
         }
     }
 
