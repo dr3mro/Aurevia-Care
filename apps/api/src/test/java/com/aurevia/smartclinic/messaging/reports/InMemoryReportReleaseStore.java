@@ -2,6 +2,7 @@ package com.aurevia.smartclinic.messaging.reports;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -11,14 +12,13 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Pattern;
 
 /**
- * Synthetic, thread-safe store for patient links and report revisions (PAT-02, ARC-02).
+ * Synthetic, thread-safe test adapter for the report-release port (PAT-02, ARC-02).
  *
- * <p>This is the bounded persistence boundary for the slice. Every key includes the organization so
- * two tenants with identical local identifiers cannot collide. A production adapter can replace it
- * without changing the authorization rules in
- * {@link com.aurevia.smartclinic.messaging.reports.ReleasedReportService}.</p>
+ * <p>Every key includes the organization so two tenants with identical local identifiers
+ * cannot collide. Release decisions are appended to an immutable list and the current
+ * access state is updated, mirroring the JDBC adapter's transactional contract.</p>
  */
-public final class InMemoryReportReleaseStore {
+final class InMemoryReportReleaseStore implements ReportReleaseStore {
 
     private static final Pattern UUID_PATTERN =
             Pattern.compile("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
@@ -26,15 +26,9 @@ public final class InMemoryReportReleaseStore {
 
     private final ConcurrentMap<String, PatientChartLink> links = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, ReleasedReport> reports = new ConcurrentHashMap<>();
+    private final List<ReportRelease> history = new ArrayList<>();
 
-    /**
-     * Register a verified patient link for a subject in one organization.
-     *
-     * @param organizationId active organization identifier
-     * @param subject        authenticated patient subject
-     * @param link           link state, re-read on every protected action
-     * @throws IllegalArgumentException when any input is malformed or missing
-     */
+    @Override
     public void putLink(String organizationId, String subject, PatientChartLink link) {
         if (organizationId == null || !UUID_PATTERN.matcher(organizationId).matches()) {
             throw new IllegalArgumentException("invalid organization");
@@ -48,23 +42,12 @@ public final class InMemoryReportReleaseStore {
         links.put(linkKey(organizationId, subject), link);
     }
 
-    /**
-     * Read the current link for a subject in one organization.
-     *
-     * @param organizationId active organization identifier
-     * @param subject        authenticated patient subject
-     * @return the link when one exists in this tenant
-     */
+    @Override
     public Optional<PatientChartLink> link(String organizationId, String subject) {
         return Optional.ofNullable(links.get(linkKey(organizationId, subject)));
     }
 
-    /**
-     * Store one report revision. Inputs are validated because they cross the synthetic boundary.
-     *
-     * @param report report revision to store
-     * @throws IllegalArgumentException when the revision is malformed
-     */
+    @Override
     public void putReport(ReleasedReport report) {
         if (report == null) {
             throw new IllegalArgumentException("missing report");
@@ -89,25 +72,12 @@ public final class InMemoryReportReleaseStore {
         reports.put(reportKey(report.organizationId(), report.id(), report.revision()), report);
     }
 
-    /**
-     * Find one exact revision in one organization.
-     *
-     * @param organizationId active organization identifier
-     * @param id             report identifier
-     * @param revision       requested revision
-     * @return the revision when present in this tenant
-     */
+    @Override
     public Optional<ReleasedReport> find(String organizationId, String id, int revision) {
         return Optional.ofNullable(reports.get(reportKey(organizationId, id, revision)));
     }
 
-    /**
-     * List every revision of a patient's reports in one organization, newest first.
-     *
-     * @param organizationId active organization identifier
-     * @param patientId      linked patient identifier
-     * @return immutable list of the patient's revisions
-     */
+    @Override
     public List<ReleasedReport> reportsFor(String organizationId, String patientId) {
         return reports.values().stream()
                 .filter(report -> organizationId.equals(report.organizationId()))
@@ -117,17 +87,7 @@ public final class InMemoryReportReleaseStore {
                 .toList();
     }
 
-    /**
-     * Return the highest currently released revision for a report in one organization.
-     *
-     * Only released revisions that are effective on the given civil date count as current, so a
-     * future-dated release never makes today's accessible revision stale.
-     *
-     * @param organizationId active organization identifier
-     * @param id             report identifier
-     * @param effectiveOn    civil date at which access is evaluated
-     * @return the latest effective released revision, or empty when none qualifies
-     */
+    @Override
     public OptionalInt latestReleasedRevision(String organizationId, String id, LocalDate effectiveOn) {
         return reports.values().stream()
                 .filter(report -> organizationId.equals(report.organizationId()))
@@ -138,17 +98,7 @@ public final class InMemoryReportReleaseStore {
                 .max();
     }
 
-    /**
-     * Whether a revision has been replaced by a later correction in the same tenant.
-     *
-     * <p>A correction that was released and later withdrawn still supersedes its predecessor: the
-     * withdrawn content must not be replaced by silently re-serving the older revision. A held
-     * correction has not taken effect yet, so it does not hide the current release.</p>
-     *
-     * @param organizationId active organization identifier
-     * @param report         revision to test
-     * @return {@code true} when a later effective correction supersedes this revision
-     */
+    @Override
     public boolean isSuperseded(String organizationId, ReleasedReport report) {
         return reports.values().stream()
                 .filter(candidate -> organizationId.equals(candidate.organizationId()))
@@ -160,18 +110,11 @@ public final class InMemoryReportReleaseStore {
                 .anyMatch(correction -> correction.supersedesRevision() == report.revision());
     }
 
-    /**
-     * Withdraw one exact revision, retaining its history (XCH-06).
-     *
-     * @param organizationId active organization identifier
-     * @param id             report identifier
-     * @param revision       revision to withdraw
-     * @return {@code true} when the revision existed and was withdrawn
-     */
-    public boolean withdraw(String organizationId, String id, int revision) {
+    @Override
+    public synchronized boolean withdraw(String organizationId, String id, int revision) {
         String key = reportKey(organizationId, id, revision);
         ReleasedReport current = reports.get(key);
-        if (current == null) {
+        if (current == null || current.status() == ReleasedReport.Status.WITHDRAWN) {
             return false;
         }
         ReleasedReport withdrawn = new ReleasedReport(current.id(), current.revision(), current.patientId(),
@@ -179,7 +122,25 @@ public final class InMemoryReportReleaseStore {
                 current.language(), current.documentId(), current.checksum(),
                 ReleasedReport.Status.WITHDRAWN, current.correction());
         reports.put(key, withdrawn);
+        history.add(new ReportRelease(current, 1, java.time.Instant.parse(current.effectiveDate() + "T00:00:00Z"),
+                null, null, java.time.Instant.parse(current.effectiveDate() + "T00:00:00Z")));
         return true;
+    }
+
+    @Override
+    public synchronized void recordRelease(ReportRelease release) {
+        ReleasedReport revision = release.revision();
+        reports.put(reportKey(revision.organizationId(), revision.id(), revision.revision()), revision);
+        history.add(release);
+    }
+
+    @Override
+    public synchronized List<ReportRelease> releaseHistory(String organizationId, String reportId, int revision) {
+        return history.stream()
+                .filter(fact -> organizationId.equals(fact.revision().organizationId()))
+                .filter(fact -> reportId.equals(fact.revision().id()))
+                .filter(fact -> revision == fact.revision().revision())
+                .toList();
     }
 
     private static String linkKey(String organizationId, String subject) {
