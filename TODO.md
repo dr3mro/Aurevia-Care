@@ -72,15 +72,17 @@ Main's Delivery run is red; these tasks restore it. They share `apps/api`, so th
     Naming against CODING_STYLE.md, which explicitly forbids class names such as `Xch03Service` and states requirement IDs belong in Javadoc only. Six production classes in `exchange/response` carry the prefix: `Xch03ActionPolicy`, `Xch03Commands`, `Xch03Controller`, `Xch03Inputs`, `Xch03Repository`, `Xch03Service`. Callers include `api/authorization/CommandAuthorization.java:16,354` and `CommandCatalog.java:16,42,165-167` (constant `EXCHANGE_POLICY = "Xch03ActionPolicy"`), plus `it/exchangetask/Xch03SupportTest.java` and `it/exchange/response` tests. These are grandfathered under `requirement-id-name` in `scripts/wiring-baseline.json`; the check passes only because of that allowlist. Expected fix: rename to a business-domain prefix (e.g. `ExchangeResponse*`) across these files and tests, rename the catalog identifier, and add a test that the new names are used. Keep the public route `/api/v1/xch03/orders` and the `xch03_*` DB table names unchanged for contract/rollback compatibility and record them as deliberate debt; do not edit `scripts/wiring-baseline.json` or `scripts/` (maintainer-owned — the rename leaves only stale 'is fixed' notes). No TODO.md task covers the rename (START-136/165 only add edge-case tests). Evidence source: executed grep and file reads (tool).
     Found by the daily audit. Synthetic fixtures only; failing tests first;
     stay inside the declared scope; record results in your notes file (the path in your prompt).
-- [ ] AUD-20261121-03 · Rename G3EvidenceService to a business-domain class name
-  - attempts: 0
+- [-] AUD-20261121-03 · Rename G3EvidenceService to a business-domain class name
+  - agent: swarm-6
+  - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/messaging/evidence, apps/api/src/test/java/com/aurevia/smartclinic/messaging/evidence
   - details:
     CODING_STYLE.md explicitly lists `G3EvidenceService` as a forbidden requirement-ID class name. `messaging/evidence/G3EvidenceService.java` is such a name; it is also listed under `requirement-id-name` and `fb-suppression` in `scripts/wiring-baseline.json`, so `scripts/check-wiring.py` passes only through grandfathering. All references are confined to `messaging/evidence` (2 main and 2 test files), so this is a bounded rename. The sibling `GateEvidenceController` already uses a domain name and the route is `/api/v1/gate-evidence`. Expected fix: rename the class to a domain name (e.g. `GateEvidenceService`), update its tests, imports and any Javadoc, and keep its justified `@SuppressFBWarnings` annotation/comment intact (or move it to the central exclusion as the Java skill requires). Leave `scripts/` and the shared tracker alone. TODO.md only references this class in START-189 (edge-case tests), not a rename. Evidence source: executed grep and file reads (tool).
     Found by the daily audit. Synthetic fixtures only; failing tests first;
     stay inside the declared scope; record results in your notes file (the path in your prompt).
-- [ ] AUD-20261121-04 · Deduplicate the catalog CODE validation regex across three classes
-  - attempts: 0
+- [-] AUD-20261121-04 · Deduplicate the catalog CODE validation regex across three classes
+  - agent: swarm-7
+  - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/api/contract, apps/api/src/main/java/com/aurevia/smartclinic/catalog, apps/api/src/main/java/com/aurevia/smartclinic/catalog/dictionary, apps/api/src/test/java/com/aurevia/smartclinic/catalog
   - details:
     The identical pattern `Pattern.compile("[A-Za-z0-9][A-Za-z0-9_.:-]{1,63}")` is declared three times: `catalog/CatalogService.java:28`, `catalog/dictionary/DiagnosisCode.java:18` and `catalog/dictionary/DictionaryField.java:18`. This is a duplicated validation rule at the trust boundary; any tightening (length, allowed characters, Unicode) must be changed in three places and can drift. CODING_STYLE.md says to avoid duplicated rules across layers and to extract shared behaviour after a stable contract emerges. `api/contract` already owns request primitives (`IdempotencyKey`, `Cursor`, `RequestDigest`) and is the natural home. Expected fix: add one typed `code(...)` primitive in `api/contract` with deterministic invalid-input errors, replace all three declarations and their usages with it, and update/add tests for valid, invalid, max-length and Arabic/RTL inputs in each caller. Evidence source: executed grep and file reads (tool).
@@ -2965,7 +2967,9 @@ The human tasks `S-G1-09`, `S-G2-11`, `S-G3-13`, `S-G4-07`, `S-G5-01` to `S-G5-0
 
 The open remainder of `OPS-WORKFLOW-AUDIT` and `OPS-WORKER-QUALITY`. Script changes merge through the integrator (the kill switch opens an oversight issue). Workflow changes cannot be pushed by the swarm token, so those tasks write a proposed patch and a verification checklist under `docs/operations/workflow-changes`; a person applies and verifies them on GitHub. The two parent tasks stay open until then.
 
-- [ ] WFAUDIT-01 · Swarm audit: isolate candidate validation from publication credentials (proposed workflow patch)
+- [-] WFAUDIT-01 · Swarm audit: isolate candidate validation from publication credentials (proposed workflow patch)
+  - agent: swarm-8
+  - attempts: 1
   - requirements: OPS-06, WEB-12
   - scope: docs/operations/workflow-changes/candidate-validation-isolation.md
   - details:
@@ -2976,7 +2980,9 @@ The open remainder of `OPS-WORKFLOW-AUDIT` and `OPS-WORKER-QUALITY`. Script chan
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
-- [ ] WFAUDIT-02 · Swarm audit: choose the last good slot image by immutable generation (script function and tests)
+- [-] WFAUDIT-02 · Swarm audit: choose the last good slot image by immutable generation (script function and tests)
+  - agent: swarm-9
+  - attempts: 1
   - requirements: OPS-06
   - scope: scripts/swarm.py, scripts/tests/test_slot_generations.py
   - details:
@@ -2997,7 +3003,9 @@ The open remainder of `OPS-WORKFLOW-AUDIT` and `OPS-WORKER-QUALITY`. Script chan
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
-- [ ] WFAUDIT-04 · Swarm audit: the first release must not fail for a missing local architecture tag (proposed workflow patch)
+- [-] WFAUDIT-04 · Swarm audit: the first release must not fail for a missing local architecture tag (proposed workflow patch)
+  - agent: swarm-10
+  - attempts: 1
   - requirements: OPS-06, WEB-11
   - scope: docs/operations/workflow-changes/first-release-architecture-tag.md
   - details:
