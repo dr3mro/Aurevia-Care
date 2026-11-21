@@ -196,6 +196,56 @@ public class AccessRepository {
     }
 
     /**
+     * Open the privacy-auditor review that accompanies a new emergency grant. The
+     * organization and grant identity are bound as parameters and confined by
+     * forced row-level security; the recipient is fixed in the database.
+     *
+     * @param organizationId active organization identifier
+     * @param grantId        newly persisted grant identifier
+     * @param subject        grantee subject, preserved for separation of duties
+     * @param openedAt       opening instant
+     */
+    public void openReview(String organizationId, String grantId, String subject, Instant openedAt) {
+        jdbc.update("""
+                INSERT INTO public.emergency_access_review
+                    (organization_id, grant_id, subject, opened_at)
+                VALUES (CAST(:organizationId AS uuid), CAST(:grantId AS uuid), :subject,
+                        CAST(:openedAt AS timestamptz))
+                """, params(organizationId)
+                .addValue("grantId", grantId)
+                .addValue("subject", subject)
+                .addValue("openedAt", openedAt.toString()));
+    }
+
+    /**
+     * Close the still-open review with an explicit outcome. The {@code status =
+     * 'open'} guard makes the closure single-shot; a zero-row result is not an
+     * error because the preceding grant UPDATE is authoritative and the legacy
+     * direct-SQL grants have no review row. Forced row-level security confines the
+     * UPDATE to the active organization.
+     *
+     * @param grantId  grant identifier as text
+     * @param reviewer independent reviewer subject
+     * @param outcome  bounded closure outcome
+     * @param note     reviewer finding
+     * @param closedAt closure instant
+     * @return number of closed review rows
+     */
+    public int closeReview(String grantId, String reviewer, String outcome, String note, Instant closedAt) {
+        return jdbc.update("""
+                UPDATE public.emergency_access_review
+                   SET status = 'closed', outcome = :outcome, reviewer = :reviewer,
+                       note = :note, closed_at = CAST(:closedAt AS timestamptz)
+                 WHERE grant_id = CAST(:grantId AS uuid) AND status = 'open'
+                """, new MapSqlParameterSource()
+                .addValue("grantId", grantId)
+                .addValue("reviewer", reviewer)
+                .addValue("outcome", outcome)
+                .addValue("note", note)
+                .addValue("closedAt", closedAt.toString()));
+    }
+
+    /**
      * List all visible grants with unreviewed ones first.
      *
      * @return grants ordered by review state and start time

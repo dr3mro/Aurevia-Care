@@ -20,7 +20,11 @@ public final class AccessRules {
     public static final int MAX_DURATION_MINUTES = 60;
     /** Longest accepted support incident window in minutes. */
     public static final int MAX_WINDOW_MINUTES = 240;
+    /** Outcome recorded when a legacy review command omits an explicit outcome. */
+    public static final String DEFAULT_REVIEW_OUTCOME = "recorded";
 
+    private static final Set<String> REVIEW_OUTCOMES =
+            Set.of("approved", "concerns_noted", "action_required", DEFAULT_REVIEW_OUTCOME);
     private static final java.util.regex.Pattern CODE =
             java.util.regex.Pattern.compile("[A-Za-z0-9][A-Za-z0-9._-]{0,63}");
     private static final java.util.regex.Pattern REFERENCE =
@@ -135,5 +139,27 @@ public final class AccessRules {
      */
     public static boolean isAdmin(List<String> roles) {
         return roles.contains("tenant_admin");
+    }
+
+    /**
+     * Decide whether a value is one of the bounded review-closure outcomes.
+     *
+     * @param value outcome supplied by a reviewer, or {@code null}
+     * @return {@code true} only for a known outcome; {@code null} is refused
+     */
+    public static boolean isReviewOutcome(String value) {
+        return value != null && REVIEW_OUTCOMES.contains(value);
+    }
+
+    /**
+     * Validate the explicit outcome that closes an emergency access review.
+     *
+     * @param value outcome supplied by a reviewer
+     * @throws ApiException when the outcome is absent or outside the bounded set
+     */
+    public static void validateReviewOutcome(String value) {
+        if (!isReviewOutcome(value)) {
+            throw new ApiException(422, "INVALID_OUTCOME", "review outcome must be one of " + REVIEW_OUTCOMES);
+        }
     }
 }
