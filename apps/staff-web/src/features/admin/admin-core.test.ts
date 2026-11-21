@@ -25,7 +25,7 @@ import {
   syntheticStaffEvents,
   tamperedAuditOrganizationId,
 } from './fixtures';
-import { adminKeys, adminText, accessStateMessageKey, outcomeMessageKey, proposalAnnouncement, staffEventMessageKey } from './messages';
+import { adminKeys, adminMessage, adminText, accessStateMessageKey, outcomeMessageKey, proposalAnnouncement, staffEventMessageKey } from './messages';
 
 const alphaViewer: ViewerPermission = {
   organizationId: alphaOrganizationId,
@@ -221,6 +221,16 @@ describe('localized labels', () => {
     expect(adminText('en', 'admin')).not.toBe(adminText('ar', 'admin'));
     expect(proposalAnnouncement('en', 'MAIN', 5)).toBe('Proposed version 5 for MAIN');
     expect(proposalAnnouncement('ar', 'MAIN', 5)).toContain('5');
+  });
+
+  it('fills named placeholders and leaves unknown placeholders visible', () => {
+    expect(adminMessage('en', 'facilityCreated', { name: 'Synthetic Lab' })).toBe(
+      'Created facility Synthetic Lab',
+    );
+    expect(adminMessage('en', 'deactivated', { name: 'Synthetic Auditor', reason: 'Synthetic offboarding' })).toBe(
+      'Deactivated Synthetic Auditor. Reason entered: Synthetic offboarding (not stored by the API)',
+    );
+    expect(adminMessage('en', 'facilityCreated')).toBe('Created facility {name}');
   });
 
   it('maps every access state, staff event kind and outcome to a defined key', () => {
