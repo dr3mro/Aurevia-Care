@@ -88,3 +88,12 @@ The worker image installs Debian's `python3-yaml` and checks the import with `py
 The waves, slot images, integrator and repair loop have run on GitHub. Written and unit tested (`scripts/tests`) but not yet run there: the watchdog, the issue monitor and its triage worker, the daily notes job and its rules pull request, and the two-job fix PR gate. Run **Swarm issue monitor** (mode `hourly`, then `daily`) and **Daily notes** once by hand and read their logs before relying on the schedules.
 
 **Budget gate.** `swarm.py budget-gate` pauses waves near an estimated monthly runner-minute cap (default 10000). It is off for public repositories, where standard GitHub-hosted runners are free; it was pausing a free swarm. The plan job has `issues: write`, so a pause opens an issue instead of failing silently.
+
+## Task files
+
+Tasks live one per file in `tasks/<sequence>-<ID>.md`, so two writers only conflict when they touch the same task. `TODO.md` is a generated view of those files: it is kept up to date on every write and is what people, scripts and the documentation checks read. The sequence number keeps the old order; a new task gets a number between its neighbours, and nothing else is renamed. Finished tasks are archived under `tasks/done/` and still satisfy `depends`.
+
+- **The move is automatic.** The first integrator run after `scripts/taskstore.py` reached `main` splits `TODO.md` into task files in one commit and rebuilds `TODO.md` from them byte for byte, or keeps nothing. Running it again does nothing. Set the repository variable `SWARM_TASK_FILES` to `off` to stop it.
+- **Adding or editing a task by hand.** Edit `TODO.md` and push: if the task files were not changed meanwhile, the next swarm run adopts the edit into the files. Or edit or add the file in `tasks/` directly.
+- **Conflicts.** A pull request that touches `TODO.md` or `tasks/` is not the source of truth: the integrator keeps main's version of those files and goes on merging.
+- **Code.** `scripts/taskstore.py` (split, join, write, view, archive) and the `todo_read`, `todo_write`, `todo_paths` helpers in `scripts/swarm.py`. Without `tasks/.sharded` everything still works on `TODO.md` directly.
