@@ -9,6 +9,12 @@
  * instead of clipping, 44x44 touch targets, safe-area padding and RTL mirroring.
  * Accessibility roles, labels and reading order stay identical across all
  * window classes, orientations and font scales.
+ *
+ * The font-scale matrix guards against props that suppress scaling (a layout
+ * proxy): a headless renderer cannot paint 200% text. Real no-clip verification
+ * remains a device UX-01 pass. The `useSafeAreaInsets` named-export path below is
+ * covered here, while the `default`-export fallback path is covered by the
+ * existing `index.test.tsx` through the shared Jest setup mock.
  */
 import { jest } from '@jest/globals';
 import { render } from '@testing-library/react-native';
@@ -21,6 +27,7 @@ type WindowSize = { width: number; height: number; scale: number; fontScale: num
 type Insets = { top: number; right: number; bottom: number; left: number };
 
 const MIN_TOUCH_TARGET = 44;
+const GUTTER = 12;
 
 let mockWindow: WindowSize = { width: 390, height: 844, scale: 2, fontScale: 1 };
 let mockInsets: Insets = { top: 16, right: 24, bottom: 32, left: 20 };
@@ -125,11 +132,18 @@ describe.each([
       expect(text.props?.allowFontScaling).not.toBe(false);
     }
 
-    // Safe-area insets are honoured at all four edges.
-    expect(listStyle.paddingTop as number).toBeGreaterThanOrEqual(mockInsets.top);
-    expect(listStyle.paddingBottom as number).toBeGreaterThanOrEqual(mockInsets.bottom);
-    expect(listStyle.paddingStart as number).toBeGreaterThanOrEqual(mockInsets.left);
-    expect(listStyle.paddingEnd as number).toBeGreaterThanOrEqual(mockInsets.right);
+    // Safe-area insets are honoured at all four edges. Exact values are asserted
+    // so a swapped left/right or top/bottom mapping would fail.
+    expect(listStyle.paddingTop).toBe(mockInsets.top + GUTTER);
+    expect(listStyle.paddingBottom).toBe(mockInsets.bottom + GUTTER);
+    expect(listStyle.paddingStart).toBe(mockInsets.left + GUTTER);
+    expect(listStyle.paddingEnd).toBe(mockInsets.right + GUTTER);
+
+    // A card never grows wider than its window, so a long identifier cannot
+    // force the row wider than a compact viewport at 200% text.
+    for (const unit of UNITS) {
+      expect(styleOf(view, `unit-${unit.id}`).maxWidth).toBe('100%');
+    }
 
     // Large windows get a centred, bounded reading column; small ones fill space.
     if (width >= 840) {
@@ -152,8 +166,8 @@ describe.each([
       'Connect to Synthetic Radiology',
     ]);
     // Insets follow the reading direction: the inline start is the right edge in RTL.
-    expect(styleOf(view, 'unit-directory').paddingStart as number).toBeGreaterThanOrEqual(mockInsets.right);
-    expect(styleOf(view, 'unit-directory').paddingEnd as number).toBeGreaterThanOrEqual(mockInsets.left);
+    expect(styleOf(view, 'unit-directory').paddingStart).toBe(mockInsets.right + GUTTER);
+    expect(styleOf(view, 'unit-directory').paddingEnd).toBe(mockInsets.left + GUTTER);
   });
 });
 

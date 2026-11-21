@@ -5,8 +5,10 @@
 Made the patient `CareUnitDirectory` presentation responsive to the current
 window (decision 0005) without changing its data, text, connect action or public
 API. Large windows get a centred, bounded reading column; every window wraps so
-200% text reflows; controls keep a 44x44 touch floor; safe-area insets pad all
-four edges and mirror with RTL. Roles, labels and reading order are unchanged.
+200% text reflows; controls keep a 44x44 touch floor; each unit card is capped
+at the window width so a long identifier cannot push a row wider than a compact
+viewport; safe-area insets pad all four edges and mirror with RTL. Roles, labels
+and reading order are unchanged.
 Added a dedicated tablet/landscape/large-text test that renders the component at
 each window class (compact, regular, large) and font scale (1.0, 1.5, 2.0),
 plus landscape and RTL cases. Only the two in-scope files changed; no dependency,
@@ -122,6 +124,23 @@ integration gate (`apps/api/check.sh`, `db/check.sh`), which the story forbids
 for a worker. Those are the integrator's and Delivery's gates; only the patient
 module gate was run here.
 
+Fix-pass verification after the simulated reviewer's two Medium findings
+(exact safe-area assertions and window-width-capped cards), tool evidence:
+
+```
+$ cd apps/patient-mobile && npx jest src/features/units/CareUnitDirectory.tablet.test.tsx src/features/units/index.test.tsx --runInBand --silent
+Test Suites: 2 passed, 2 total
+Tests:       31 passed, 31 total
+
+$ bash apps/patient-mobile/check.sh
+EXIT=0
+All files          |     100 |      100 |     100 |     100 |
+...features/units |     100 |      100 |     100 |     100 |
+...Directory.tsx |     100 |      100 |     100 |     100 |
+Test Suites: 63 passed, 63 total
+Tests:       665 passed, 665 total
+```
+
 Branch sync: `git merge --no-edit origin/main` was a no-op — HEAD and
 `origin/main` were both `fb8e2174` (0/0). No conflicts in the touched files
 (`git grep -nE '^(<<<<<<<|>>>>>>>) ' -- apps/patient-mobile/src/features/units`
@@ -177,6 +196,18 @@ review was requested; its findings (if any) are recorded under Findings.
   both shapes are covered by tests. A cleaner repo-level fix is to make the
   shared mock expose named exports too — tracked as a finding for the owner,
   not changed here.
+- **Simulated senior-mobile review (no blocking findings).** Two Medium
+  findings were addressed in a fix pass: (a) the safe-area assertions used
+  `toBeGreaterThanOrEqual`, which would not catch a swapped left/right or
+  top/bottom mapping — they now assert exact `inset + GUTTER` values in both
+  LTR and RTL; (b) a headless renderer cannot prove real 200% no-clip, and long
+  unbreakable identifiers could make a card wider than a compact window — each
+  unit card is now capped at `maxWidth: '100%'` and that cap is asserted.
+  Residual limitation, recorded honestly: a real 200% text/no-clip device pass
+  (UX-01) is still required; the test's font-scale matrix is a proxy that proves
+  no scaling-suppressing props and stable structure, not painted layout. The
+  reviewer also noted the shim's branch-coverage coupling, now documented in
+  the test header.
 - **Two-pane not applicable** to a list-only directory (see Summary).
 
 ## Lessons for workers

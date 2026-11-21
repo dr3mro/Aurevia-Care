@@ -81,7 +81,12 @@ export function CareUnitDirectory({ units, isRTL, onConnect }: CareUnitDirectory
         <Text accessibilityRole="text">No eligible care units</Text>
       ) : (
         units.map((unit) => (
-          <View key={unit.id} testID={`unit-${unit.id}`} accessibilityRole="text" style={{ minHeight: MIN_TOUCH_TARGET }}>
+          <View
+            key={unit.id}
+            testID={`unit-${unit.id}`}
+            accessibilityRole="text"
+            style={{ minHeight: MIN_TOUCH_TARGET, maxWidth: '100%' }}
+          >
             <Text accessibilityRole="header">{unit.name}</Text>
             <Text>{unit.organizationId}</Text>
             <Text>{unit.facilityId}</Text>
