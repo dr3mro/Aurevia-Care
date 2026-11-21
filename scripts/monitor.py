@@ -425,40 +425,60 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False):
 
     shown = []
 
+    def trigger_name(r):
+        return trigger_of(r)
+
+    def generic_rows(r, js):
+        """Two lines in the same style as a swarm worker: the workflow and its commit title, then
+        branch, trigger, commit, the job that runs now with its step, and how long it has run."""
+        live_jobs = [j for j in js if j.get("status") == "in_progress"]
+        job = live_jobs[0] if live_jobs else None
+        step = next((st.get("name", "") for st in (job or {}).get("steps", []) if st.get("status") == "in_progress"), "")
+        t0 = ts((job or {}).get("startedAt") or r.get("startedAt") or r.get("createdAt"))
+        took = ("run " if job else "wait ") + span((now - t0).total_seconds()) if t0 else ""
+        title = r.get("displayTitle") or ""
+        title = "" if title == r.get("workflowName") else title
+        name = r.get("workflowName", "")
+        head = [("  > " if job else "  ~ ", "b_yellow"), (name + "  ", "b_cyan"),
+                (clip(title, max(iw - 6 - len(name), 4)), "b_white")]
+        parts = [(r.get("headBranch") or "", "magenta"), (trigger_name(r), "magenta"),
+                 ((r.get("headSha") or "")[:7], "blue"),
+                 (took, "green"), (": ".join(x for x in ((job or {}).get("name", ""), step) if x), "yellow")]
+        if len(live_jobs) > 1:
+            parts.insert(4, (f"+{len(live_jobs) - 1} more jobs", "gray"))
+        line = [("    ", "")]
+        for text, style in [x for x in parts if x[0]]:
+            if len(line) > 1:
+                line.append((" · ", "gray"))
+            line.append((text, style))
+        return [head, clipline(line, iw)[0]]
+
     def with_detail(r, running):
-        """A live run gets one line per running job: the task it works on, its title and the current step."""
-        head = [run_row(r, running)]
+        """A live run gets the same two-line look as every other live run, workers and pipelines alike."""
+        if not running:
+            return [run_row(r, running)]
         rows = []
         js = jobs.get(r["databaseId"]) or []
-        if not (running and js):
-            return head
         live_jobs = [j for j in js if j.get("status") == "in_progress"]
-        tasked = []
         for j in live_jobs[:3]:
             m = task_id.search(j.get("name", ""))
+            if not m:
+                continue
             step = next((st.get("name", "") for st in j.get("steps", []) if st.get("status") == "in_progress"), "")
             t0 = ts(j.get("startedAt"))
             took = span((now - t0).total_seconds()) if t0 else ""
-            if not m:
-                rows.append([("  > ", "yellow"), (clip(j.get("name", ""), iw - 4), "dim")])
-                continue
             agent = next((t["agent"] for t in todo if t["id"] == m.group(0) and t["agent"]), "")
             title = titles.get(m.group(0), "(not in TODO.md)")
             rows.append([("  > ", "b_yellow"), (m.group(0) + "  ", "b_cyan"),
                          (clip(title, iw - 6 - len(m.group(0))), "b_white")])
-            info = [(agent, "magenta"), (step, "yellow"), (took, "green")]
             line = [("    ", "")]
-            for text, style in [x for x in info if x[0]]:
+            for text, style in [x for x in [(agent, "magenta"), (step, "yellow"), (took, "green")] if x[0]]:
                 if len(line) > 1:
                     line.append((" · ", "gray"))
                 line.append((text, style))
             rows.append(clipline(line, iw)[0])
-            tasked.append(1)
-        text = job_summary(js, now)
-        if len(live_jobs) > 3 or not live_jobs:
-            rows.append(detail(text, "dim"))
-        if not tasked:
-            rows = head + rows  # no task found in the job names: fall back to the run line
+        if not rows:
+            rows = generic_rows(r, js)  # no task id in the job names: a pipeline run such as Delivery
         if shown:
             rows.insert(0, [("┄" * iw, "gray")])  # divider between live runs
         shown.append(1)
