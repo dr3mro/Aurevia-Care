@@ -349,6 +349,25 @@ class AgentRunTests(unittest.TestCase):
         self.assertEqual(self.outputs()["merge"], "merged")
         self.assertTrue((self.repo / "other.txt").exists())
 
+    def test_the_bundle_is_built_on_the_branch_tip_not_on_the_start_merge(self):
+        # A fix worker merges main before its base is recorded; the publish job only has the
+        # remote branch tip, so the bundle's prerequisite must be that tip.
+        self.git("push", "-q", "origin", "HEAD:refs/heads/opencode/fix")
+        self.git("checkout", "-q", "-b", "fix-work")
+        tip = subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.repo, capture_output=True,
+                             text=True).stdout.strip()
+        self.push_to_main("other.txt", "from main\n")
+        self.run_cmd("fetch-main")
+        self.run_cmd("merge-main", FAKE_MODE="none", SYNC_ONLY="1")
+        self.assertEqual((self.repo / ".agent/bundle-base").read_text(), tip)
+        self.run_cmd("implement", FAKE_MODE="commit", MODE="fix", BRANCH="opencode/fix")
+        self.assertEqual(self.run_cmd("bundle").returncode, 0)
+        verify = subprocess.run(["git", "bundle", "verify", ".agent/result.bundle"], cwd=self.repo,
+                                capture_output=True, text=True)
+        self.assertIn(tip, verify.stdout + verify.stderr)
+        self.run_cmd("merge-main", FAKE_MODE="none", SYNC_ONLY="1")
+        self.assertEqual((self.repo / ".agent/bundle-base").read_text(), tip)
+
     def test_the_story_prompt_tells_the_agent_to_keep_merging_main(self):
         text = (ROOT / "scripts/agent-run.sh").read_text()
         self.assertIn("Keep the branch current with the base branch", text)

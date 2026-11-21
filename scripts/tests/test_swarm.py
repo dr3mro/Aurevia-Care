@@ -620,6 +620,25 @@ class PlanTests(unittest.TestCase):
             self.assertEqual(swarm.gh("pr", "create"), "ok")
         self.assertEqual(run.call_count, 2)
 
+    def test_gh_retries_rate_limits_and_dropped_connections(self):
+        for message in ("HTTP 500: Internal Server Error", "You have exceeded a secondary rate limit",
+                        "read tcp: connection reset by peer", "net/http: TLS handshake timeout",
+                        "Get https://api.github.com: unexpected EOF"):
+            with self.subTest(message=message):
+                responses = [subprocess.CompletedProcess([], 1, "", message),
+                             subprocess.CompletedProcess([], 0, "ok", "")]
+                with mock.patch.object(swarm.subprocess, "run", side_effect=responses) as run, \
+                     mock.patch.object(swarm.time, "sleep"):
+                    self.assertEqual(swarm.gh("pr", "view"), "ok")
+                self.assertEqual(run.call_count, 2)
+
+    def test_gh_gives_up_after_four_transient_failures(self):
+        failed = subprocess.CompletedProcess([], 1, "", "HTTP 503: Service Unavailable")
+        with mock.patch.object(swarm.subprocess, "run", return_value=failed) as run, \
+             mock.patch.object(swarm.time, "sleep"), self.assertRaises(subprocess.CalledProcessError):
+            swarm.gh("pr", "view")
+        self.assertEqual(run.call_count, 4)
+
     def test_gh_does_not_retry_permanent_errors(self):
         with mock.patch.object(swarm.subprocess, "run",
                                return_value=subprocess.CompletedProcess(

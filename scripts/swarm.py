@@ -118,22 +118,28 @@ def is_issue_call(args):
 def gh(*args, check=True):
     """Run a gh CLI command, retrying transient GitHub API failures.
 
-    A 502/503/504 during `gh pr create` is a GitHub-side blip: the branch is
-    already pushed, so a retry is safe. Permanent errors (permissions, missing
-    refs) are raised immediately with the CLI stderr visible in the job log.
+    A 5xx during `gh pr create`, a secondary rate limit or a dropped connection is a
+    GitHub-side or network blip: the branch is already pushed, so a retry is safe. Permanent
+    errors (permissions, missing refs) are raised immediately with the CLI stderr visible
+    in the job log.
     """
-    transient = re.compile(r"\b(?:502|503|504)\b|Bad Gateway|Service Unavailable", re.I)
+    transient = re.compile(
+        r"\b(?:500|502|503|504)\b|Bad Gateway|Service Unavailable|Internal Server Error"
+        r"|secondary rate limit|abuse detection|rate limit exceeded|connection reset"
+        r"|timed out|TLS handshake|temporary failure|unexpected EOF", re.I)
     # Issue, comment and label calls use the job's own token when GH_ISSUES_TOKEN is set:
     # it always has issues: write, while SWARM_TOKEN (used for pushes) may not.
     env = None
     if os.environ.get("GH_ISSUES_TOKEN") and is_issue_call(args):
         env = {**os.environ, "GH_TOKEN": os.environ["GH_ISSUES_TOKEN"]}
-    for attempt in range(3):
+    attempt = 0
+    while True:  # the last attempt always returns or raises
         done = subprocess.run(["gh", *args], capture_output=True, text=True, env=env)
         if not (check and done.returncode):
             return done.stdout
-        if transient.search(done.stderr or "") and attempt < 2:
+        if transient.search(done.stderr or "") and attempt < 3:
             time.sleep(2 ** attempt)
+            attempt += 1
             continue
         # Surface the CLI error; a bare CalledProcessError hides why a label,
         # comment or workflow dispatch was refused.
@@ -141,7 +147,6 @@ def gh(*args, check=True):
             print(f"gh {' '.join(str(a) for a in args[:3])}: {done.stderr.strip()}",
                   file=sys.stderr)
         raise subprocess.CalledProcessError(done.returncode, args, done.stdout, done.stderr)
-    return done.stdout
 
 
 def git(*args, check=True):
@@ -1267,10 +1272,6 @@ def failure_report(directory):
 
 def clip(text):
     return (text or "")[:BODY_LIMIT]
-
-
-def table_cells(line):
-    return [c.strip() for c in line.strip().strip("|").split("|")]
 
 
 def split_list(value):
