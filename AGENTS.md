@@ -1,6 +1,6 @@
 # SmartClinic working rules
 
-**Read the relevant docs before writing code.** List the repository's Markdown files and read the ones that govern your task (working rules, README/setup, CODING_STYLE.md, docs/WORKFLOW.md, architecture decisions, the maintainer guide and API conventions). Follow the code style and testing guidelines there; `opencode.json` and `.github/opencode.ci.json` also load these files as `instructions` for every agent, including swarm workers.
+**Read the relevant docs before writing code.** List the repository's Markdown files and read the ones that govern your task (working rules, README/setup, CODING_STYLE.md, docs/WORKFLOW.md, architecture decisions, the maintainer guide and API conventions). Follow the code style and testing guidelines there; `opencode.json` and `.github/opencode.ci.json` load only AGENTS.md, CODING_STYLE.md, README-SETUP.md and docs/WORKFLOW.md for every agent. Read the rest on demand: SMARTCLINIC_V1_SPEC.md by requirement ID, `docs/decisions/` and `docs/reference/` for the area you change, the module README under `apps/`, `contracts/` or `db/`, and `docs/SWARM.md` when working on the swarm.
 
 Read WORKSPACE.md and TODO.md first. TODO.md is the single task file: `[ ]` open, `[-]` taken by an agent, `[x]` done. Read MEMORY.md, BUGS.md and SMARTCLINIC_V1_SPEC.md by relevant IDs. Current code and executed checks are implementation evidence. Preserve unrelated changes. Never include patient data or credentials in agent context, tests, logs or trackers.
 
