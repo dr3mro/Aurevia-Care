@@ -14,7 +14,7 @@ for the rows that still need an owner and real evidence.
 
 | Runbook | Use when | Requirements |
 |---|---|---|
-| [Incident response](incident-response.md) | A patient-safety, availability, tenant-isolation or security event is suspected | OPS-01, OPS-03, OPS-04, OPS-05, WEB-06 |
+| [Incident response](incident-response.md) | A patient-safety, availability, tenant-isolation or security event is suspected | OPS-01, OPS-03, OPS-04, OPS-05, OPS-07, WEB-06 |
 | [Secret and key rotation](key-rotation.md) | A credential or key is due for rotation, or may be exposed | OPS-01, OPS-02, WEB-12 |
 | [On-call handover](on-call-handover.md) | The operational on-call role changes hands | OPS-05 |
 | [Bad deploy](bad-deploy.md) | Health, error rate or latency worsens after a release | OPS-06, WEB-05, WEB-11 |
