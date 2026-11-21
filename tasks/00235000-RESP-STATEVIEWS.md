@@ -1,4 +1,6 @@
-- [ ] RESP-STATEVIEWS · Staff web: responsive `StateViews` component
+- [-] RESP-STATEVIEWS · Staff web: responsive `StateViews` component
+  - agent: swarm-9
+  - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/components/StateViews.tsx, apps/staff-web/tests/components/StateViews.responsive.test.tsx
   - depends: RESP-BREAKPOINTS, RESP-STYLESHEET
