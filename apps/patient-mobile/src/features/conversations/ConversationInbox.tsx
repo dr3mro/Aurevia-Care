@@ -1,8 +1,10 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text } from 'react-native';
+
+import { resolveScreenLocale, screenText, ScreenFrame, SCREEN_TOKENS } from '../appointments/patientDesign';
+import type { Locale, TabId } from '../appointments/patientDesign';
 
 import type { Conversation } from './domain';
 import { unreadCount } from './domain';
-import { activeLayoutDirection } from './layout';
 
 /** Props for the patient conversation inbox. */
 export interface ConversationInboxProps {
@@ -16,20 +18,44 @@ export interface ConversationInboxProps {
   readonly unreadByConversation?: Readonly<Record<string, number>>;
   /** Called when the patient opens a conversation. */
   readonly onOpen: (conversationId: string) => void;
+  /** Active display locale; defaults to English for embedders without a locale prop. */
+  readonly locale?: Locale;
+  /** Render the standalone phone-frame tab bar for a design review. */
+  readonly showTabBar?: boolean;
+  /** Highlighted standalone tab. */
+  readonly activeTab?: TabId;
+  /** Standalone tab handler. */
+  readonly onTab?: (tab: TabId) => void;
 }
 
 /**
  * Patient conversation inbox with per-unit unread badges and state labels.
  *
  * Business logic stays in {@link unreadCount}; this component only renders the
- * projection and mirrors the device layout direction (MSG-02, UX-01).
+ * projection and labels the unit, state and unread count for screen readers
+ * (MSG-02, UX-01).
  *
  * @param props conversations and open handler
  */
-export function ConversationInbox({ conversations, unreadByConversation, onOpen }: ConversationInboxProps) {
-  const direction = activeLayoutDirection();
+export function ConversationInbox({
+  conversations,
+  unreadByConversation,
+  onOpen,
+  locale = resolveScreenLocale(),
+  showTabBar = false,
+  activeTab = 'messages',
+  onTab,
+}: ConversationInboxProps) {
   return (
-    <View accessibilityLabel="conversation inbox" style={[styles.list, { direction }]}>
+    <ScreenFrame
+      testID="conversation-inbox"
+      rootLabel="conversation inbox"
+      locale={locale}
+      title={screenText(locale, 'messagesTitle')}
+      subtitle={screenText(locale, 'messagesSubtitle')}
+      showTabBar={showTabBar}
+      activeTab={activeTab}
+      onTab={onTab}>
       {conversations.map(conversation => {
         const unread = unreadByConversation?.[conversation.id] ?? unreadCount(conversation);
         const hasUnread = unread > 0;
@@ -37,26 +63,25 @@ export function ConversationInbox({ conversations, unreadByConversation, onOpen 
           <Pressable
             key={conversation.id}
             accessibilityRole="button"
+            accessibilityLanguage={locale}
             // Child texts are grouped into the pressable on device, so the
             // unread count must be part of this label to be announced (UX-01).
             accessibilityLabel={`${conversation.unitName}: ${conversation.state}`
               + (hasUnread ? `, ${unread} unread` : '')}
             onPress={() => onOpen(conversation.id)}
-            style={styles.row}
-          >
-            <Text style={styles.unit}>{conversation.unitName}</Text>
-            <Text>{conversation.state}</Text>
-            {hasUnread ? <Text style={styles.badge}>{unread}</Text> : null}
+            style={styles.row}>
+            <Text accessibilityLanguage={locale} style={styles.unit}>{conversation.unitName}</Text>
+            <Text accessibilityLanguage={locale}>{conversation.state}</Text>
+            {hasUnread ? <Text accessibilityLanguage={locale} style={styles.badge}>{unread}</Text> : null}
           </Pressable>
         );
       })}
-    </View>
+    </ScreenFrame>
   );
 }
 
 const styles = StyleSheet.create({
-  list: { flexGrow: 1 },
-  row: { paddingVertical: 12, paddingHorizontal: 16 },
-  unit: { fontWeight: '600' },
-  badge: { color: '#0a7d3c' },
+  row: { paddingVertical: SCREEN_TOKENS.space.three, paddingHorizontal: SCREEN_TOKENS.space.four },
+  unit: { color: SCREEN_TOKENS.color.textPrimary, fontWeight: SCREEN_TOKENS.font.semibold },
+  badge: { color: SCREEN_TOKENS.color.successText },
 });

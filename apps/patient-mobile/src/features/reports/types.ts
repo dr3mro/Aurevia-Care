@@ -32,6 +32,16 @@ export interface ReleasedReport {
   readonly language: ReportLanguage;
   readonly correctionReason: string | null;
   readonly supersedesRevision: number | null;
+  /** Optional document title; the issuer remains shown even when present. */
+  readonly title?: string;
+  /** One patient-visible result value shown on a second card, when released. */
+  readonly result?: {
+    readonly label: string;
+    readonly value: string;
+    readonly referenceRange: string;
+  };
+  /** Current releases may be downloaded; withdrawn releases may not (XCH-06). */
+  readonly releaseState?: ReleaseState;
 }
 
 /**
