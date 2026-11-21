@@ -22,8 +22,8 @@ and values in the product are synthetic.
 
 3. **Read the chart.** Screen: **Longitudinal chart** (heading "Patient chart
    summary"). Read the "Problems", "Allergies", "Medications" and "Vitals with
-   units" cards. Press "Load more" if more history is available; the chart shows
-   the patient's name and an opaque patient id above the cards.
+   units" cards. Press "Load more entries" if more history is available; the
+   chart shows the patient's name and an opaque patient id above the cards.
 
 4. **Write the note.** Screen: **Clinical note**. Fill the four fields "Chief
    concern and history", "Examination and findings", "Assessment and diagnoses"
