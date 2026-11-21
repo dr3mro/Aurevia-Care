@@ -1,0 +1,11 @@
+{
+  "name": "Aurevia Care Staff Portal",
+  "short_name": "Staff Portal",
+  "display": "standalone",
+  "start_url": "/",
+  "scope": "/",
+  "theme_color": "#0b5cab",
+  "background_color": "#ffffff",
+  "dir": "auto",
+  "lang": "en"
+}
