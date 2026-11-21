@@ -43,6 +43,7 @@
 #
 # Options
 #   --repo DIR         Repository checkout to work on (default: auto-detected).
+#   --runtime RT       container (Apple) or docker. Default: container when installed, else docker.
 #   --name NAME        Container name (default aurevia).
 #   --image NAME       Image for `run` and `build` (default ghcr.io/dr3mro/aurevia-care-app:latest;
 #                      `build` tags aurevia-app:latest and `run` prefers it when it exists).
@@ -51,6 +52,8 @@
 #   -p, --persist      Save the database on stop and restore it on start (default off:
 #                      the database is in memory and starts empty).
 #   --no-persist       Turn persistence off for this run.
+#   --memory GB        Memory for the container (default 3; Apple container defaults to 1, too little).
+#   --cpus N           CPUs for the container (default 2).
 #   -n, --dry-run      Print the commands instead of running them.
 #   -y, --yes          Do not ask before destructive actions.
 #   -h, --help         Show this text.
@@ -58,6 +61,7 @@
 # Environment
 #   AUREVIA_REPO       Same as --repo.
 #   AUREVIA_IMAGE, AUREVIA_NAME, AUREVIA_WEB_PORT, AUREVIA_API_PORT, AUREVIA_PERSIST   Same as the options.
+#   AUREVIA_RUNTIME, AUREVIA_MEMORY_GB, AUREVIA_CPUS   Same as the options.
 #   AUREVIA_DATA_DIR   Where saved databases live (default ~/.local/share/aurevia/dumps).
 #   NO_COLOR           Turn colours off.
 
@@ -77,6 +81,9 @@ NAME=${AUREVIA_NAME:-aurevia}
 WEB_PORT=${AUREVIA_WEB_PORT:-3000}
 API_PORT=${AUREVIA_API_PORT:-8080}
 PERSIST=${AUREVIA_PERSIST:-0}
+RT=${AUREVIA_RUNTIME:-}
+MEMORY_GB=${AUREVIA_MEMORY_GB:-3}
+CPUS=${AUREVIA_CPUS:-2}
 DATA_DIR=${AUREVIA_DATA_DIR:-$HOME/.local/share/aurevia/dumps}
 REMOTE_IMAGE=ghcr.io/dr3mro/aurevia-care-app:latest
 LOCAL_IMAGE=aurevia-app:latest
@@ -128,87 +135,153 @@ need_repo() {
 
 need() { command -v "$1" >/dev/null 2>&1 || die "$1 is required but not installed"; }
 
-image_ref() {
-  [[ -n "$IMAGE" ]] && { printf '%s\n' "$IMAGE"; return; }
-  if docker image inspect "$LOCAL_IMAGE" >/dev/null 2>&1; then printf '%s\n' "$LOCAL_IMAGE"; else printf '%s\n' "$REMOTE_IMAGE"; fi
+pick_runtime() {
+  if [[ -z "$RT" ]]; then
+    if command -v container >/dev/null 2>&1; then RT=container   # Apple's runtime wins when installed.
+    else RT=docker; fi
+  fi
+  case $RT in
+    docker|container) ;;
+    *) die "unknown runtime '$RT' (docker or container)" ;;
+  esac
+  need "$RT"
+  if [[ $RT == container ]]; then
+    need python3   # container inspect prints JSON; python3 reads it.
+    if ! container system status >/dev/null 2>&1; then
+      step "starting the Apple container service"
+      run container system start
+    fi
+  fi
 }
 
-exists()  { docker container inspect "$NAME" >/dev/null 2>&1; }
-running() { [[ "$(docker container inspect -f '{{.State.Running}}' "$NAME" 2>/dev/null)" == true ]]; }
+rt() { if [[ $RT == docker ]]; then docker "$@"; else container "$@"; fi; }
+
+# Read one field of `container inspect` (JSON) with a python expression over d.
+apple_inspect() {
+  container inspect "$NAME" 2>/dev/null | python3 -c '
+import json, sys
+d = json.load(sys.stdin)
+d = d[0] if isinstance(d, list) else d
+print(eval(sys.argv[1]))' "$1" 2>/dev/null
+}
+
+exists() { rt inspect "$NAME" >/dev/null 2>&1; }
+
+state() {
+  if [[ $RT == docker ]]; then
+    docker container inspect -f '{{.State.Status}}' "$NAME" 2>/dev/null
+  else
+    apple_inspect '(lambda s: s if isinstance(s, str) else s.get("state", ""))(d.get("status", ""))'
+  fi
+}
+
+running() { [[ "$(state)" == running ]]; }
+
+image_exists() { rt image inspect "$1" >/dev/null 2>&1; }
+
+image_ref() {
+  [[ -n "$IMAGE" ]] && { printf '%s\n' "$IMAGE"; return; }
+  if image_exists "$LOCAL_IMAGE"; then printf '%s\n' "$LOCAL_IMAGE"; else printf '%s\n' "$REMOTE_IMAGE"; fi
+}
+
+pull_image() { if [[ $RT == docker ]]; then run docker pull "$1"; else run container image pull "$1"; fi; }
 
 cmd_build() {
-  need_repo; need docker
+  need_repo; pick_runtime
   local tag=${1:-$LOCAL_IMAGE}
   [[ -f "$ROOT/Dockerfile.app" ]] || die "Dockerfile.app not found in $ROOT"
-  step "building $tag (staff web, API and PostgreSQL in one image)"
-  run docker build -f "$ROOT/Dockerfile.app" -t "$tag" \
+  if [[ $RT == container ]]; then
+    # The default builder has little memory; the Vite and Maven builds need more.
+    run container builder start --cpus 4 --memory 8g >/dev/null 2>&1 || true
+  fi
+  step "building $tag with $RT (staff web, API and PostgreSQL in one image)"
+  run rt build -f "$ROOT/Dockerfile.app" -t "$tag" \
     --build-arg "VERSION=$(git -C "$ROOT" describe --always --dirty 2>/dev/null || echo dev)" \
     --build-arg "REVISION=$(git -C "$ROOT" rev-parse HEAD 2>/dev/null || echo unknown)" "$ROOT"
   ok "built $tag"
 }
 
 cmd_run() {
-  need docker
+  pick_runtime
   [[ -n "${1:-}" ]] && IMAGE=$1
   if exists; then
     if running; then ok "already running: web http://127.0.0.1:$WEB_PORT"; return 0; fi
+    warn "$NAME already exists; its image, ports and persistence setting are kept (use delete to change them)"
     step "starting the existing container $NAME"
-    run docker start "$NAME" >/dev/null
+    run rt start "$NAME" >/dev/null
   else
     local image data
     image=$(image_ref)
-    docker image inspect "$image" >/dev/null 2>&1 || { step "pulling $image"; run docker pull "$image"; }
+    image_exists "$image" || { step "pulling $image"; pull_image "$image"; }
     data=$DATA_DIR/$NAME
     mkdir -p "$data"; chmod 777 "$data"
-    step "creating $NAME from $image (persistence $([[ $PERSIST == 1 ]] && echo on || echo off))"
-    run docker run -d --name "$NAME" --stop-timeout 60 \
-      -p "127.0.0.1:$WEB_PORT:3000" -p "127.0.0.1:$API_PORT:8080" \
-      --tmpfs /pgdata:rw,size=1g,uid=70,gid=70,mode=0700 \
-      -v "$data:/dumps" -e "AUREVIA_PERSIST=$PERSIST" "$image" >/dev/null
+    local -a args=(-d --name "$NAME"
+      -p "127.0.0.1:$WEB_PORT:3000" -p "127.0.0.1:$API_PORT:8080"
+      -v "$data:/dumps" -e "AUREVIA_PERSIST=$PERSIST")
+    if [[ $RT == docker ]]; then
+      # The database lives in a memory-backed directory; Apple container has no tmpfs option, so
+      # there the database sits on the container's own disk and is wiped at every start.
+      args+=(--cpus "$CPUS" --memory "${MEMORY_GB}g" --tmpfs /pgdata:rw,size=1g,uid=70,gid=70,mode=0700)
+    else
+      args+=(-c "$CPUS" -m "${MEMORY_GB}G")
+    fi
+    step "creating $NAME from $image with $RT (persistence $([[ $PERSIST == 1 ]] && echo on || echo off))"
+    run rt run "${args[@]}" "$image" >/dev/null
   fi
   ok "started: web http://127.0.0.1:$WEB_PORT · API http://127.0.0.1:$API_PORT"
 }
 
 cmd_stop() {
-  need docker
+  pick_runtime
   exists || die "container $NAME does not exist"
   step "stopping $NAME (a persistent database is saved first)"
-  run docker stop "$NAME" >/dev/null
+  run rt stop -t 60 "$NAME" >/dev/null
   ok "stopped"
 }
 
 cmd_restart() { cmd_stop; cmd_run; }
 
+remove_container() { if [[ $RT == docker ]]; then run docker rm "$NAME" >/dev/null; else run container delete "$NAME" >/dev/null; fi; }
+
 cmd_delete() {
-  need docker
+  pick_runtime
   exists || die "container $NAME does not exist"
   confirm "Remove the container $NAME? (saved databases in $DATA_DIR/$NAME are kept)" || die "cancelled"
-  run docker rm -f "$NAME" >/dev/null
+  running && { step "stopping $NAME first (a persistent database is saved)"; run rt stop -t 60 "$NAME" >/dev/null; }
+  remove_container
   ok "removed"
 }
 
 cmd_status() {
-  need docker
+  pick_runtime
   exists || { echo "$NAME: not created (aurevia run)"; return 0; }
-  docker container inspect -f '{{.Name}}: {{.State.Status}} · image {{.Config.Image}} · health {{if .State.Health}}{{.State.Health.Status}}{{else}}n/a{{end}}' "$NAME"
-  docker port "$NAME" 2>/dev/null || true
+  if [[ $RT == docker ]]; then
+    docker container inspect -f '{{.Name}}: {{.State.Status}} · image {{.Config.Image}} · health {{if .State.Health}}{{.State.Health.Status}}{{else}}n/a{{end}}' "$NAME"
+    docker port "$NAME" 2>/dev/null || true
+  else
+    echo "$NAME: $(state) · runtime container · web http://127.0.0.1:$WEB_PORT · API http://127.0.0.1:$API_PORT"
+  fi
   [[ -f "$DATA_DIR/$NAME/persist.sql" ]] && echo "saved database: $DATA_DIR/$NAME/persist.sql"
   return 0
 }
 
-cmd_logs()  { need docker; exists || die "container $NAME does not exist"; run docker logs --tail "${1:-100}" -f "$NAME"; }
-cmd_shell() { need docker; running || die "$NAME is not running (aurevia run)"; run docker exec -it "$NAME" sh; }
-cmd_psql()  { need docker; running || die "$NAME is not running (aurevia run)"; run docker exec -it "$NAME" psql -h 127.0.0.1 -U postgres -d smartclinic; }
+cmd_logs() {
+  pick_runtime; exists || die "container $NAME does not exist"
+  if [[ $RT == docker ]]; then run docker logs --tail "${1:-100}" -f "$NAME"; else run container logs -f -n "${1:-100}" "$NAME"; fi
+}
+
+cmd_shell() { pick_runtime; running || die "$NAME is not running (aurevia run)"; run rt exec -it "$NAME" sh; }
+cmd_psql()  { pick_runtime; running || die "$NAME is not running (aurevia run)"; run rt exec -it "$NAME" psql -h 127.0.0.1 -U postgres -d smartclinic; }
 
 cmd_dump() {
-  need docker; running || die "$NAME is not running (aurevia run)"
+  pick_runtime; running || die "$NAME is not running (aurevia run)"
   local out=${1:-aurevia-$(date +%Y%m%d-%H%M%S).sql}
-  run docker exec "$NAME" pg_dump -h 127.0.0.1 -U postgres smartclinic > "$out"
+  run rt exec "$NAME" pg_dump -h 127.0.0.1 -U postgres smartclinic > "$out"
   ok "wrote $out"
 }
 
 cmd_restore() {
-  need docker
+  pick_runtime
   local file=${1:-}
   [[ -n "$file" && -f "$file" ]] || die "usage: $PROG restore <dump.sql>"
   confirm "Replace the saved database with $file and restart?" || die "cancelled"
@@ -216,7 +289,7 @@ cmd_restore() {
   [[ -f "$DATA_DIR/$NAME/persist.sql" ]] && cp "$DATA_DIR/$NAME/persist.sql" "$DATA_DIR/$NAME/persist.sql.prev"
   cp "$file" "$DATA_DIR/$NAME/persist.sql"
   PERSIST=1
-  if exists; then running && cmd_stop; run docker rm -f "$NAME" >/dev/null; fi
+  if exists; then running && cmd_stop; remove_container; fi
   cmd_run
 }
 
@@ -256,9 +329,10 @@ cmd_todo() {
 
 cmd_doctor() {
   local missing=0 tool
-  for tool in git bash python3 docker curl; do
+  for tool in git bash python3 curl; do
     if command -v "$tool" >/dev/null 2>&1; then ok "$tool"; else warn "$tool is missing"; missing=1; fi
   done
+  if command -v container >/dev/null 2>&1; then ok "container (Apple)"; elif command -v docker >/dev/null 2>&1; then ok docker; else warn "neither container nor docker is installed"; missing=1; fi
   for tool in gh node npm mvn; do
     if command -v "$tool" >/dev/null 2>&1; then ok "$tool"; else printf '%s- %s not found (optional)%s\n' "$C_DIM" "$tool" "$C_OFF"; fi
   done
@@ -293,6 +367,9 @@ while [[ $# -gt 0 ]]; do
   case $1 in
     --repo)   REPO=${2:?--repo needs a directory}; shift 2 ;;
     --image)  IMAGE=${2:?--image needs a name}; shift 2 ;;
+    --runtime) RT=${2:?--runtime needs docker or container}; shift 2 ;;
+    --memory) MEMORY_GB=${2:?--memory needs a number}; shift 2 ;;
+    --cpus)   CPUS=${2:?--cpus needs a number}; shift 2 ;;
     --name)   NAME=${2:?--name needs a value}; shift 2 ;;
     --web-port) WEB_PORT=${2:?--web-port needs a number}; shift 2 ;;
     --api-port) API_PORT=${2:?--api-port needs a number}; shift 2 ;;

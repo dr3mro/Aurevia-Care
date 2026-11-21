@@ -13,7 +13,7 @@ aurevia run
 
 Open <http://localhost:3000> for the staff web and <http://localhost:8080> for the API. The image runs with the `synthetic-auth` profile, so no identity provider is needed. Use synthetic data only.
 
-Requirements: Docker, `curl`, and `git` and `python3` for the repository commands.
+Requirements: Apple `container` (preferred when installed, needs `python3`) or Docker, plus `curl`, and `git` and `python3` for the repository commands. Choose with `--runtime container|docker` or `AUREVIA_RUNTIME`. Apple `container` has no tmpfs option, so there the database sits on the container's disk and is wiped at every start; it also defaults to 1 GB of memory, so the tool passes `--memory 3` (change with `--memory GB`).
 
 ### Database and persistence
 
@@ -44,7 +44,7 @@ On a clean stop (`aurevia stop`) the database is saved to `~/.local/share/aurevi
 | `aurevia doctor` | Check that the needed tools are installed. |
 | `aurevia install` / `uninstall` | Update or remove the tool. |
 
-Options: `--name`, `--image`, `--web-port`, `--api-port`, `-p/--persist`, `--no-persist`, `--repo`, `-n/--dry-run` and `-y/--yes`. Run `aurevia help` for the full text.
+Options: `--runtime`, `--memory`, `--cpus`, `--name`, `--image`, `--web-port`, `--api-port`, `-p/--persist`, `--no-persist`, `--repo`, `-n/--dry-run` and `-y/--yes`. Run `aurevia help` for the full text.
 
 ### Install options
 
