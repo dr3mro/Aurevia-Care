@@ -1,5 +1,5 @@
-- [-] FIX-CHART-DDL-01 · Move the chart_entry schema into db/migrations so production Flyway creates it (CLN-03)
-  - agent: swarm-3
+- [x] FIX-CHART-DDL-01 · Move the chart_entry schema into db/migrations so production Flyway creates it (CLN-03)
+  - pr: #510
   - attempts: 1
   - requirements: CLN-03, ARC-04
   - scope: db/migrations, apps/api/src/test/java/com/aurevia/smartclinic/it/chart/record/migrations
