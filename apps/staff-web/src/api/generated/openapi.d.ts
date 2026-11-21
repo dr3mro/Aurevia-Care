@@ -329,6 +329,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/order-entry/drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Save an editable order draft from the chart in the active organization */
+        post: operations["saveOrderDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/order-entry/drafts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace a draft's content under an If-Match version precondition */
+        put: operations["editOrderDraft"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/order-entry/drafts/{id}/place": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Place a draft, storing its delivery mode; immutable and idempotent on retry */
+        post: operations["placeOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/order-entry/orders/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read one immutable placed order in the active organization */
+        get: operations["getPlacedOrder"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -665,6 +733,48 @@ export interface components {
             items?: components["schemas"]["InvoiceView"][];
             nextCursor?: string | null;
         };
+        /**
+         * @description Send electronically to the partner, print for the patient to carry, or both.
+         * @enum {string}
+         */
+        DeliveryMode: "ELECTRONIC" | "PRINT" | "BOTH";
+        OrderSelection: {
+            itemId: string;
+            version: number;
+        };
+        PlacedOrderRequest: {
+            patientId: string;
+            encounterId: string;
+            facilityId: string;
+            items: components["schemas"]["OrderSelection"][];
+            clinicalQuestion: string;
+            /** @enum {string} */
+            priority: "routine" | "urgent" | "stat";
+            preparationInstructions?: string | null;
+            destinationPartnerId: string;
+            deliveryMode: components["schemas"]["DeliveryMode"];
+        };
+        OrderDraft: {
+            organizationId?: string;
+            id?: string;
+            version?: number;
+            request?: components["schemas"]["PlacedOrderRequest"];
+            createdBy?: string;
+            /** Format: date-time */
+            createdAt?: string;
+        };
+        PlacedOrder: {
+            organizationId?: string;
+            id?: string;
+            draftId?: string;
+            version?: number;
+            request?: components["schemas"]["PlacedOrderRequest"];
+            payload?: string;
+            placedBy?: string;
+            /** Format: date-time */
+            placedAt?: string;
+            idempotencyKey?: string;
+        };
         Error: {
             code?: string;
             message?: string;
@@ -691,6 +801,12 @@ export interface components {
         Subject: string;
         /** @description Tenant-local configuration key. */
         ConfigKey: string;
+        /** @description Version of the draft the caller last read; weak and quoted validators are accepted. */
+        IfMatch: string;
+        /** @description Opaque key that makes a retried placement produce a single order. */
+        IdempotencyKey: string;
+        /** @description Reserved retry-correlation header for draft commands; durable deduplication applies to placement. */
+        IdempotencyKeyOptional: string;
     };
     requestBodies: never;
     headers: never;
@@ -1576,6 +1692,236 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             /** @description Invalid cursor */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    saveOrderDraft: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Reserved retry-correlation header for draft commands; durable deduplication applies to placement. */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKeyOptional"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlacedOrderRequest"];
+            };
+        };
+        responses: {
+            /** @description Created draft at version one */
+            201: {
+                headers: {
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderDraft"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            /** @description Invalid order content or tenant selection */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    editOrderDraft: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Reserved retry-correlation header for draft commands; durable deduplication applies to placement. */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKeyOptional"];
+                /** @description Version of the draft the caller last read; weak and quoted validators are accepted. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                /** @description Tenant-local draft identifier */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlacedOrderRequest"];
+            };
+        };
+        responses: {
+            /** @description The new immutable draft revision */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderDraft"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            /** @description Draft not found or inaccessible; existence is concealed */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Stale If-Match version */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid order content or tenant selection */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description If-Match precondition required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    placeOrder: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Version of the draft the caller last read; weak and quoted validators are accepted. */
+                "If-Match": components["parameters"]["IfMatch"];
+                /** @description Opaque key that makes a retried placement produce a single order. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Tenant-local draft identifier */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The immutable placed order with its recorded delivery mode */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlacedOrder"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            /** @description Draft not found or inaccessible; existence is concealed */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Idempotency key belongs to a different order */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Stale If-Match version */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description If-Match or Idempotency-Key precondition required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getPlacedOrder: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                /** @description Tenant-local placed-order identifier */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The immutable placed order */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlacedOrder"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            /** @description Order not found or inaccessible; existence is concealed */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
