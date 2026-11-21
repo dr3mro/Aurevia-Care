@@ -33,6 +33,27 @@ public final class FhirSupport {
     /** UCUM system used by FHIR Quantity values. */
     public static final String UCUM_SYSTEM = "http://unitsofmeasure.org";
 
+    /** Synthetic identifier system for the DICOM Study Instance UID (RAD-01). */
+    public static final String STUDY_UID_IDENTIFIER_SYSTEM = "urn:smartclinic:fhir:identifier:study-instance-uid";
+
+    /** Synthetic identifier system for an issuer-scoped imaging accession (RAD-01). */
+    public static final String ACCESSION_IDENTIFIER_SYSTEM = "urn:smartclinic:fhir:identifier:accession";
+
+    /** Synthetic identifier system for a retained document identifier (CLN-07). */
+    public static final String DOCUMENT_IDENTIFIER_SYSTEM = "urn:smartclinic:fhir:identifier:document";
+
+    /** Synthetic code system for DICOM imaging modality codes (RAD-01). */
+    public static final String DICOM_MODALITY_SYSTEM = "urn:smartclinic:fhir:dicom:modality";
+
+    /** Extension carrying the recorded void reason of a document (CLN-07). */
+    public static final String VOID_REASON_EXTENSION = "urn:smartclinic:fhir:void-reason";
+
+    /** Extension carrying the instant a document was voided (CLN-07). */
+    public static final String VOIDED_AT_EXTENSION = "urn:smartclinic:fhir:voided-at";
+
+    /** Extension carrying the intended pharmacy destination of a medication request (RX-01). */
+    public static final String DESTINATION_EXTENSION = "urn:smartclinic:fhir:medication-destination";
+
     private FhirSupport() {
     }
 
@@ -125,6 +146,33 @@ public final class FhirSupport {
         String value = node.path(field).asString();
         if (value.isBlank()) {
             throw new ApiException(422, errorCode, "missing " + field + " identifier");
+        }
+        return value;
+    }
+
+    /**
+     * Read a required identifier value by its declared system, independent of array order.
+     *
+     * <p>FHIR identifier arrays are unordered and may carry partner-specific extras. Matching
+     * on the system rather than on a fixed position keeps a swapped or augmented array from
+     * silently exchanging two business identifiers, one of which may feed a safety check.</p>
+     *
+     * @param resource  FHIR resource holding an {@code identifier} array
+     * @param system    identifier system to match exactly
+     * @param errorCode stable error code for the enclosing resource
+     * @return the non-blank value of the identifier with that system
+     * @throws ApiException when no identifier with the system carries a non-blank value
+     */
+    public static String identifierValue(JsonNode resource, String system, String errorCode) {
+        String value = "";
+        for (JsonNode identifier : resource.path("identifier")) {
+            if (system.equals(identifier.path("system").asString())) {
+                value = identifier.path("value").asString();
+                break;
+            }
+        }
+        if (value.isBlank()) {
+            throw new ApiException(422, errorCode, "missing " + system + " identifier");
         }
         return value;
     }

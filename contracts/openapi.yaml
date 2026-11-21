@@ -511,6 +511,82 @@ paths:
         '401': { description: Authentication required }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { description: Order not found or inaccessible; existence is concealed }
+  /api/v1/printing/handouts:
+    post:
+      operationId: printHandout
+      summary: Render a versioned patient handout for one exact signed or placed source revision
+      tags: [printing]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/IdempotencyKeyOptional'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PrintHandoutRequest' }
+      responses:
+        '201':
+          description: Immutable handout metadata; the download path is returned in Location
+          headers:
+            Location: { schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Handout' }
+        '401': { description: Authentication required }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: Source not found or inaccessible; existence is concealed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: Source is not in a printable signed or placed state, or has no approved channel
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: Invalid reason, language or source selector
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /api/v1/printing/handouts/download:
+    post:
+      operationId: downloadHandout
+      summary: Download one immutable handout version after re-checking permission
+      tags: [printing]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/IdempotencyKeyOptional'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DownloadHandoutRequest' }
+      responses:
+        '200':
+          description: Deterministic PDF bytes of the requested immutable version
+          content:
+            application/pdf:
+              schema: { type: string, format: binary }
+        '401': { description: Authentication required }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: Source not found or inaccessible; existence is concealed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: The requested version is stale; reload and request the current version
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: Invalid reason, language, source selector or version
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
 components:
   parameters:
     ActiveOrganization:
@@ -940,3 +1016,70 @@ components:
         code: { type: string }
         message: { type: string }
         correlationId: { type: string }
+    PrintReason:
+      type: string
+      enum: [give_to_patient, referral, patient_request]
+      description: Why a disclosure happened; recorded as the audit purpose, never the handout content.
+    HandoutKind:
+      type: string
+      enum: [PRESCRIPTION, LAB_ORDER, IMAGING_ORDER, CHART_SUMMARY, SIGNED_REPORT]
+      description: Stable kind of the patient handout.
+    HandoutSource:
+      type: object
+      required: [organizationId, kind, sourceId, revisionVersion, contentChecksum, state]
+      additionalProperties: false
+      description: Exact committed source revision selected for a handout; the server validates its printable state and tenant.
+      properties:
+        organizationId: { type: string, format: uuid }
+        kind: { $ref: '#/components/schemas/HandoutKind' }
+        sourceId: { type: string }
+        revisionVersion: { type: integer, minimum: 1 }
+        contentChecksum: { type: string, minLength: 64, maxLength: 64 }
+        state: { type: string }
+        attested: { type: boolean }
+        printChannel: { type: string, nullable: true }
+        patientId: { type: string }
+        patientName: { type: string }
+        clinician: { type: string }
+        facility: { type: string }
+        issueTime: { type: string, format: date-time }
+        sourceSystem: { type: string }
+        contentLines:
+          type: array
+          items: { type: string }
+    PrintHandoutRequest:
+      type: object
+      required: [source, language, reason]
+      additionalProperties: false
+      properties:
+        source: { $ref: '#/components/schemas/HandoutSource' }
+        language: { type: string, enum: [en, ar] }
+        reason: { $ref: '#/components/schemas/PrintReason' }
+    DownloadHandoutRequest:
+      type: object
+      required: [source, language, reason, version]
+      additionalProperties: false
+      properties:
+        source: { $ref: '#/components/schemas/HandoutSource' }
+        language: { type: string, enum: [en, ar] }
+        reason: { $ref: '#/components/schemas/PrintReason' }
+        version: { type: integer, minimum: 1 }
+    Handout:
+      type: object
+      description: Immutable rendering metadata; the PDF bytes are available only through the download path.
+      properties:
+        organizationId: { type: string, format: uuid }
+        handoutId: { type: string }
+        kind: { $ref: '#/components/schemas/HandoutKind' }
+        sourceId: { type: string }
+        sourceRevision: { type: integer }
+        sourceChecksum: { type: string }
+        version: { type: integer }
+        language: { type: string }
+        direction: { type: string }
+        pageCount: { type: integer }
+        byteSize: { type: integer, format: int64 }
+        sha256: { type: string }
+        provenance: { type: string }
+        producedAt: { type: string, format: date-time }
+        producedBy: { type: string }
