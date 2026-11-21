@@ -25,7 +25,10 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
@@ -300,6 +303,24 @@ class ConversationHttpSecurityTest {
             return MAPPER.readTree(response.getBody());
         } catch (Exception exception) {
             throw new IllegalStateException("cannot parse conversation response", exception);
+        }
+    }
+
+    /**
+     * Keep this HTTP security contract on the deterministic directory it was
+     * written for. The production bean is
+     * {@link com.aurevia.smartclinic.messaging.units.JdbcMessagingStore}; a primary
+     * test bean overrides it here.
+     */
+    @TestConfiguration
+    static class SyntheticDirectory {
+        /**
+         * @return the deterministic, test-only messaging directory
+         */
+        @Bean
+        @Primary
+        InMemoryMessagingStore inMemoryMessagingStore() {
+            return new InMemoryMessagingStore();
         }
     }
 }
