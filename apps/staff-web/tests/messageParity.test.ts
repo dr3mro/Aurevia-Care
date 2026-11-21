@@ -7,6 +7,7 @@ import { adminKeys, adminText } from '../src/features/admin/messages';
 import { chartKeys, chartText } from '../src/features/chart/messages';
 import { duplicateMessages } from '../src/features/duplicates/messages';
 import { patientMessages } from '../src/features/patients/messages';
+import { printMessageKeys, printText } from '../src/features/print/components/messages';
 import { schedulingKeys, schedulingText } from '../src/features/scheduling/messages';
 import { systemMessages } from '../src/features/system/messages';
 import { messages } from '../src/i18n/messages';
@@ -140,6 +141,7 @@ const BUNDLE_SOURCES: readonly string[] = [
   'i18n/messages.ts',
   'components/stateViewMessages.ts',
   'features/patients/messages.ts',
+  'features/print/components/messages.ts',
   'features/admin/messages.ts',
   'features/system/messages.ts',
   'features/duplicates/messages.ts',
@@ -173,6 +175,7 @@ const bundles: readonly MessageBundle[] = [
   fromRecord('duplicates', duplicateMessages.en, duplicateMessages.ar),
   fromKeysAndText('chart', chartKeys, chartText),
   fromKeysAndText('scheduling', schedulingKeys, schedulingText),
+  fromKeysAndText('print', printMessageKeys, printText),
   fromRecord('navigation', navigationLabels.en, navigationLabels.ar),
   fromRecord('shell', shellLabels.en, shellLabels.ar),
 ];
