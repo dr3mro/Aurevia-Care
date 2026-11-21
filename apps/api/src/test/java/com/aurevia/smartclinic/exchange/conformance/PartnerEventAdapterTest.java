@@ -20,9 +20,15 @@ class PartnerEventAdapterTest {
     private static final List<PartnerEventAdapter> ADAPTERS = List.of(
             new FhirPartnerEventAdapter(), new Hl7PartnerEventAdapter());
 
+    private static List<ConformanceFixture> everyFixture() {
+        List<ConformanceFixture> fixtures = new ArrayList<>(ConformanceFixtures.all());
+        fixtures.add(ConformanceFixtures.replayWithReason());
+        return fixtures;
+    }
+
     @Test
     void everyFixtureEventRoundTripsThroughBothAdapters() {
-        for (ConformanceFixture fixture : ConformanceFixtures.all()) {
+        for (ConformanceFixture fixture : everyFixture()) {
             for (PartnerEventAdapter adapter : ADAPTERS) {
                 for (PartnerEvent event : fixture.events()) {
                     PartnerEvent decoded = adapter.roundTrip(event);
@@ -50,6 +56,17 @@ class PartnerEventAdapterTest {
             assertEquals(withDelimiters, adapter.roundTrip(withDelimiters), adapter.name());
             assertNull(adapter.roundTrip(withoutUnit).unit(), adapter.name());
             assertFalse(adapter.encode(withDelimiters).isBlank());
+        }
+    }
+
+    @Test
+    void adaptersPreserveANullIdentifier() {
+        PartnerEvent event = new PartnerEvent("evt-null", "partner-lab", EventKind.RESULT,
+                "order-1", 1L, null, null, "7.1 mg/dL");
+        for (PartnerEventAdapter adapter : ADAPTERS) {
+            PartnerEvent decoded = adapter.roundTrip(event);
+            assertEquals(event, decoded, adapter.name());
+            assertNull(decoded.identifier(), adapter.name());
         }
     }
 

@@ -64,9 +64,13 @@ public final class FhirPartnerEventAdapter implements PartnerEventAdapter {
         if ("".equals(unit)) {
             unit = null;
         }
+        String identifier = fields.get("identifier");
+        if ("".equals(identifier)) {
+            identifier = null;
+        }
         return new PartnerEvent(resource.path("id").asString(), fields.get("sender"),
                 EventKind.from(kind), fields.get("aggregate-key"),
-                Long.parseLong(fields.get("revision")), fields.get("identifier"), unit,
+                Long.parseLong(fields.get("revision")), identifier, unit,
                 fields.get("payload"));
     }
 

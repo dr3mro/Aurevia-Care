@@ -17,8 +17,8 @@ import java.util.List;
  * @param latestPayload       payload of the latest preserved revision, or null when none
  * @param reviewOpen           whether a clinical review is currently open
  * @param releasedVersion      immutable revision a patient release is bound to, or null
- * @param reconciliationCount events held for identifier reconciliation
- * @param deadLetterCount     events whose retry budget was exhausted
+ * @param reconciliationCount events held for identifier reconciliation across the ledger
+ * @param deadLetterCount     events whose retry budget was exhausted across the ledger
  * @return this record
  */
 public record FinalReport(String aggregateKey, long lastRevision, int revisionCount,

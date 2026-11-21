@@ -21,9 +21,15 @@ class PartnerReportProcessorTest {
     private static final PartnerEventAdapter FHIR = new FhirPartnerEventAdapter();
     private static final PartnerEventAdapter HL7 = new Hl7PartnerEventAdapter();
 
+    private static List<ConformanceFixture> everyFixture() {
+        List<ConformanceFixture> fixtures = new ArrayList<>(ConformanceFixtures.all());
+        fixtures.add(ConformanceFixtures.replayWithReason());
+        return fixtures;
+    }
+
     @Test
     void everyFixtureReachesTheSameFinalReportThroughFhirAndHl7() {
-        for (ConformanceFixture fixture : ConformanceFixtures.all()) {
+        for (ConformanceFixture fixture : everyFixture()) {
             PartnerReportProcessor fhir = PartnerReportProcessor.forFixture(fixture);
             PartnerReportProcessor hl7 = PartnerReportProcessor.forFixture(fixture);
             List<Disposition> fhirOutcomes = new ArrayList<>();
@@ -87,15 +93,16 @@ class PartnerReportProcessorTest {
         assertEquals(event, replayed);
         PartnerReportProcessor processor = PartnerReportProcessor.forFixture(fixture);
         assertEquals(Disposition.DEAD_LETTER, processor.submit(event, FHIR).disposition());
-        ReplayRequest request = new ReplayRequest(event.eventId(), "partner outage cleared",
-                "operator-synthetic");
+        ReplayRequest request = new ReplayRequest(event.eventId(), event.sender(), event.kind(),
+                "partner outage cleared", "operator-synthetic");
         assertEquals(Disposition.APPLIED,
                 processor.replayThrough(replayed, HL7, request).disposition());
         assertEquals(List.of(request), processor.replays());
         assertEquals(event.eventId(), request.eventId());
         assertEquals(1, processor.finalReport("order-replay").revisionCount());
 
-        ReplayRequest wrong = new ReplayRequest("another-id", "typo", "operator-synthetic");
+        ReplayRequest wrong = new ReplayRequest("another-id", event.sender(), event.kind(),
+                "typo", "operator-synthetic");
         assertThrows(IllegalArgumentException.class,
                 () -> processor.replayThrough(replayed, FHIR, wrong));
         assertEquals(1, processor.replays().size());
@@ -112,8 +119,8 @@ class PartnerReportProcessorTest {
         PartnerReportProcessor processor = PartnerReportProcessor.forFixture(fixture);
         PartnerEvent event = fixture.events().get(0);
         assertEquals(Disposition.APPLIED, processor.apply(event).disposition());
-        ReplayRequest request = new ReplayRequest(event.eventId(), "duplicate suppression check",
-                "operator-synthetic");
+        ReplayRequest request = new ReplayRequest(event.eventId(), event.sender(), event.kind(),
+                "duplicate suppression check", "operator-synthetic");
         assertEquals(Disposition.DUPLICATE, processor.replay(event, request).disposition());
         assertEquals(1, processor.finalReport("order-outage").revisionCount());
     }

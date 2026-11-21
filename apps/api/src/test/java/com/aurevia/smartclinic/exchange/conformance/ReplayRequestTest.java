@@ -13,38 +13,65 @@ import org.junit.jupiter.api.Test;
  */
 class ReplayRequestTest {
 
+    private static final PartnerEvent EVENT = PartnerEvent.of("rec-1", EventKind.RESULT,
+            "order-recovered", 1L, "ACC-1001", "7.1 mg/dL");
+
     @Test
     void rejectsNullFields() {
         assertThrows(IllegalArgumentException.class,
-                () -> new ReplayRequest(null, "outage cleared", "operator-synthetic"));
+                () -> new ReplayRequest(null, "partner-lab", EventKind.RESULT,
+                        "outage cleared", "operator-synthetic"));
         assertThrows(IllegalArgumentException.class,
-                () -> new ReplayRequest("e1", null, "operator-synthetic"));
+                () -> new ReplayRequest("e1", null, EventKind.RESULT,
+                        "outage cleared", "operator-synthetic"));
         assertThrows(IllegalArgumentException.class,
-                () -> new ReplayRequest("e1", "outage cleared", null));
+                () -> new ReplayRequest("e1", "partner-lab", null,
+                        "outage cleared", "operator-synthetic"));
+        assertThrows(IllegalArgumentException.class,
+                () -> new ReplayRequest("e1", "partner-lab", EventKind.RESULT,
+                        null, "operator-synthetic"));
+        assertThrows(IllegalArgumentException.class,
+                () -> new ReplayRequest("e1", "partner-lab", EventKind.RESULT,
+                        "outage cleared", null));
     }
 
     @Test
     void rejectsBlankFields() {
         assertThrows(IllegalArgumentException.class,
-                () -> new ReplayRequest(" ", "outage cleared", "operator-synthetic"));
+                () -> new ReplayRequest(" ", "partner-lab", EventKind.RESULT,
+                        "outage cleared", "operator-synthetic"));
         assertThrows(IllegalArgumentException.class,
-                () -> new ReplayRequest("e1", " ", "operator-synthetic"));
+                () -> new ReplayRequest("e1", " ", EventKind.RESULT,
+                        "outage cleared", "operator-synthetic"));
         assertThrows(IllegalArgumentException.class,
-                () -> new ReplayRequest("e1", "outage cleared", " "));
+                () -> new ReplayRequest("e1", "partner-lab", EventKind.RESULT,
+                        " ", "operator-synthetic"));
+        assertThrows(IllegalArgumentException.class,
+                () -> new ReplayRequest("e1", "partner-lab", EventKind.RESULT,
+                        "outage cleared", " "));
     }
 
     @Test
-    void keepsReasonAndAuthorizationAndMatchesEventIdentity() {
-        ReplayRequest request = new ReplayRequest("rec-1", "partner outage cleared",
-                "operator-synthetic");
+    void keepsReasonAndAuthorization() {
+        ReplayRequest request = new ReplayRequest("rec-1", "partner-lab", EventKind.RESULT,
+                "partner outage cleared", "operator-synthetic");
         assertEquals("rec-1", request.eventId());
+        assertEquals("partner-lab", request.sender());
+        assertEquals(EventKind.RESULT, request.kind());
         assertEquals("partner outage cleared", request.reason());
         assertEquals("operator-synthetic", request.authorizedBy());
-        PartnerEvent matching = PartnerEvent.of("rec-1", EventKind.RESULT, "order-recovered", 1L,
-                "ACC-1001", "7.1 mg/dL");
-        PartnerEvent other = PartnerEvent.of("other", EventKind.RESULT, "order-recovered", 1L,
-                "ACC-1001", "7.1 mg/dL");
-        assertTrue(request.matches(matching));
-        assertFalse(request.matches(other));
+    }
+
+    @Test
+    void authorizesOnlyTheMatchingSenderTypeAndIdentifier() {
+        ReplayRequest request = new ReplayRequest("rec-1", "partner-lab", EventKind.RESULT,
+                "partner outage cleared", "operator-synthetic");
+        assertTrue(request.matches(EVENT));
+        assertFalse(new ReplayRequest("other", "partner-lab", EventKind.RESULT,
+                "r", "operator-synthetic").matches(EVENT));
+        assertFalse(new ReplayRequest("rec-1", "other-partner", EventKind.RESULT,
+                "r", "operator-synthetic").matches(EVENT));
+        assertFalse(new ReplayRequest("rec-1", "partner-lab", EventKind.CORRECTION,
+                "r", "operator-synthetic").matches(EVENT));
     }
 }

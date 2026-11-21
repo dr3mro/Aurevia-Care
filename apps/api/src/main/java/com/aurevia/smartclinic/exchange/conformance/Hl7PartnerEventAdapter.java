@@ -59,13 +59,17 @@ public final class Hl7PartnerEventAdapter implements PartnerEventAdapter {
         if ("".equals(unit)) {
             unit = null;
         }
+        String identifier = Hl7Escape.decode(fields[6], DELIMITERS);
+        if ("".equals(identifier)) {
+            identifier = null;
+        }
         return new PartnerEvent(
                 Hl7Escape.decode(fields[1], DELIMITERS),
                 Hl7Escape.decode(fields[2], DELIMITERS),
                 EventKind.from(Hl7Escape.decode(fields[3], DELIMITERS)),
                 Hl7Escape.decode(fields[4], DELIMITERS),
                 Long.parseLong(Hl7Escape.decode(fields[5], DELIMITERS)),
-                Hl7Escape.decode(fields[6], DELIMITERS),
+                identifier,
                 unit,
                 Hl7Escape.decode(fields[8], DELIMITERS));
     }
