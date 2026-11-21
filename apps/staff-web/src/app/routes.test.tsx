@@ -25,6 +25,8 @@ describe('createRoutes', () => {
       '/patients/:id/notes/:noteId',
       '/admin/facilities',
       '/admin/staff',
+      '/admin/config',
+      '/admin/audit',
       '*',
     ]);
   });

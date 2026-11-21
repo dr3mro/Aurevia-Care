@@ -135,6 +135,8 @@ describe('route registry', () => {
       '/patients/:id/notes/:noteId',
       '/admin/facilities',
       '/admin/staff',
+      '/admin/config',
+      '/admin/audit',
       '*',
     ]);
     expect(createRoutes(true).map((route) => route.pattern)).toEqual([
@@ -145,6 +147,8 @@ describe('route registry', () => {
       '/patients/:id/notes/:noteId',
       '/admin/facilities',
       '/admin/staff',
+      '/admin/config',
+      '/admin/audit',
       '/design-preview',
       '*',
     ]);
