@@ -8,7 +8,7 @@
 import { buildRequestDescriptor } from '../../api/client';
 import type { RequestDescriptor, RequestMeta } from '../../api/client';
 import { TransportError, send } from '../../api/transport';
-import type { StaffHistoryEvent } from './domain';
+import type { AuditEvent, AuditOutcome, ConfigurationVersion, StaffHistoryEvent } from './domain';
 import type { Locale } from '../../i18n/messages';
 import { adminText } from './messages';
 
@@ -213,13 +213,34 @@ function listDescriptor(
   return suffix === '' ? base : { ...base, url: `${base.url}?${suffix}` };
 }
 
+/** Build a POST descriptor for any contract path, keeping the shared metadata. */
+function postDescriptor(
+  path: string,
+  meta: RequestMeta,
+  body?: Record<string, unknown>,
+): RequestDescriptor {
+  const base = buildRequestDescriptor('POST', '/api/v1/facilities', meta, body);
+  return { ...base, url: path };
+}
+
 /** Build a POST descriptor with a fresh idempotency key for one user action. */
 function commandDescriptor(
   path: string,
   meta: RequestMeta,
   body?: Record<string, unknown>,
 ): RequestDescriptor {
-  const base = buildRequestDescriptor('POST', '/api/v1/facilities', meta, body);
+  return postDescriptor(path, meta, body);
+}
+
+/** Build a GET descriptor for a contract path template with a concrete suffix. */
+function getDescriptor(
+  pathTemplate: Parameters<typeof buildRequestDescriptor>[1],
+  path: string,
+  organizationId: string,
+): RequestDescriptor {
+  const base = buildRequestDescriptor('GET', pathTemplate, {
+    activeOrganization: organizationId,
+  });
   return { ...base, url: path };
 }
 
@@ -355,4 +376,293 @@ export function toStaffHistoryEvents(
     });
   }
   return events;
+}
+
+/** One immutable configuration version as returned by the real API (ADM-01). */
+export interface ConfigEntryResponse {
+  key?: string;
+  version?: number;
+  value?: string;
+  status?: 'pending' | 'approved';
+  effectiveFrom?: string | null;
+  createdBy?: string | null;
+  approvedBy?: string | null;
+  approvedAt?: string | null;
+  note?: string | null;
+}
+
+/** Append-only configuration history as returned by the real API. */
+export interface ConfigHistoryResponse {
+  key?: string;
+  entries?: readonly ConfigEntryResponse[];
+}
+
+/** One effective catalog entry as returned by the real API. */
+export interface CatalogEntryResponse {
+  family?: string;
+  code?: string;
+  version?: number;
+  value?: string;
+  effectiveFrom?: string;
+  approvedBy?: string;
+  approvedAt?: string;
+  note?: string | null;
+}
+
+/** One append-only audit event as returned by the real API (OPS-02). */
+export interface AuditEventResponse {
+  id?: string;
+  occurredAt?: string;
+  actorId?: string | null;
+  action?: string;
+  resourceType?: string | null;
+  resourceId?: string | null;
+  purpose?: string | null;
+  scope?: string | null;
+  correlationId?: string | null;
+  outcome?: string;
+  seq?: number;
+}
+
+/** One cursor-paginated page of audit events. */
+export interface AuditPageResponse {
+  events?: readonly AuditEventResponse[];
+  nextCursor?: string | null;
+}
+
+/** Fields sent to define one new configuration version. */
+export interface ConfigDraft {
+  key: string;
+  value: string;
+  /** UTC instant; omitted for a draft that takes effect on approval. */
+  effectiveFrom?: string;
+}
+
+/** Fields sent to define one new catalog entry version. */
+export interface CatalogDraft {
+  code: string;
+  value: string;
+  /** UTC instant; omitted for a draft that takes effect on approval. */
+  effectiveFrom?: string;
+}
+
+/** Validated query filters for the real audit endpoint. */
+export interface AuditFilters {
+  cursor?: string;
+  limit?: number;
+  action?: string;
+  outcome?: string;
+  resourceType?: string;
+  from?: string;
+  to?: string;
+}
+
+/**
+ * Build the audit query string in contract order, omitting absent, empty and
+ * zero-valued filters. Values are encoded once here so no caller concatenates
+ * untrusted filter text into a URL.
+ */
+export function auditQueryString(filters: AuditFilters): string {
+  const values: readonly (readonly [string, string | number | undefined])[] = [
+    ['cursor', filters.cursor],
+    ['limit', filters.limit],
+    ['action', filters.action],
+    ['outcome', filters.outcome],
+    ['resourceType', filters.resourceType],
+    ['from', filters.from],
+    ['to', filters.to],
+  ];
+  const params = new URLSearchParams();
+  for (const [name, value] of values) {
+    if (value !== undefined && value !== '' && value !== 0) {
+      params.set(name, String(value));
+    }
+  }
+  return params.toString();
+}
+
+/** Validate a tenant-local configuration key before it is placed in a path. */
+export function isValidConfigKey(value: string): boolean {
+  return /^[A-Za-z0-9_.:-]{2,200}$/.test(value.trim());
+}
+
+/** Validate a catalog family against the contract's family pattern. */
+export function isValidCatalogFamily(value: string): boolean {
+  return /^[a-z][a-z0-9_]{1,31}$/.test(value.trim());
+}
+
+/** Accept only a real UTC instant so a bad filter never reaches the API or Intl. */
+export function isValidUtcInstant(value: string): boolean {
+  const trimmed = value.trim();
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(trimmed)) {
+    return false;
+  }
+  const parsed = new Date(trimmed);
+  if (Number.isNaN(parsed.getTime())) {
+    return false;
+  }
+  return parsed.toISOString().startsWith(trimmed.slice(0, 19));
+}
+
+/** Collapse the four documented API outcomes onto the domain's outcome union. */
+export function normalizeAuditOutcome(outcome: string | undefined): AuditOutcome {
+  const upper = outcome?.toUpperCase();
+  if (upper === 'SUCCESS' || upper === 'NOT_FOUND' || upper === 'CONFLICT') {
+    return upper;
+  }
+  // DENIED is the safe presentation for an absent or unrecognised outcome: the
+  // row is still shown, and it is never described as a successful action.
+  return 'DENIED';
+}
+
+/** Read the one effective configuration entry for a key. */
+export async function getConfiguration(
+  key: string,
+  organizationId: string,
+): Promise<ConfigEntryResponse> {
+  return send<ConfigEntryResponse>(
+    getDescriptor(
+      '/api/v1/configuration/{key}',
+      `/api/v1/configuration/${encodeURIComponent(key)}`,
+      organizationId,
+    ),
+  );
+}
+
+/** Read the append-only version and approval history for a key. */
+export async function getConfigurationHistory(
+  key: string,
+  organizationId: string,
+): Promise<ConfigHistoryResponse> {
+  return send<ConfigHistoryResponse>(
+    getDescriptor(
+      '/api/v1/configuration/{key}/history',
+      `/api/v1/configuration/${encodeURIComponent(key)}/history`,
+      organizationId,
+    ),
+  );
+}
+
+/** Append a new configuration draft; organization and author stay server-side. */
+export async function defineConfiguration(
+  draft: ConfigDraft,
+  organizationId: string,
+): Promise<ConfigEntryResponse> {
+  const body: Record<string, unknown> = { key: draft.key, value: draft.value };
+  if (draft.effectiveFrom !== undefined) {
+    body.effectiveFrom = draft.effectiveFrom;
+  }
+  return send<ConfigEntryResponse>(
+    postDescriptor(
+      '/api/v1/configuration',
+      { activeOrganization: organizationId, idempotencyKey: crypto.randomUUID() },
+      body,
+    ),
+  );
+}
+
+/** Append a named approval for one immutable configuration version. */
+export async function approveConfiguration(
+  key: string,
+  version: number,
+  note: string,
+  organizationId: string,
+): Promise<ConfigEntryResponse> {
+  return send<ConfigEntryResponse>(
+    postDescriptor(
+      `/api/v1/configuration/${encodeURIComponent(key)}/versions/${version}/approve`,
+      { activeOrganization: organizationId, idempotencyKey: crypto.randomUUID() },
+      { note },
+    ),
+  );
+}
+
+/** List the effective entries of one catalog family. */
+export async function listCatalogFamily(
+  family: string,
+  organizationId: string,
+): Promise<CatalogEntryResponse[]> {
+  return send<CatalogEntryResponse[]>(
+    getDescriptor(
+      '/api/v1/catalogs/{family}',
+      `/api/v1/catalogs/${encodeURIComponent(family)}`,
+      organizationId,
+    ),
+  );
+}
+
+/** Append a pending version to one catalog family. */
+export async function defineCatalogEntry(
+  family: string,
+  draft: CatalogDraft,
+  organizationId: string,
+): Promise<ConfigEntryResponse> {
+  const body: Record<string, unknown> = { code: draft.code, value: draft.value };
+  if (draft.effectiveFrom !== undefined) {
+    body.effectiveFrom = draft.effectiveFrom;
+  }
+  return send<ConfigEntryResponse>(
+    postDescriptor(
+      `/api/v1/catalogs/${encodeURIComponent(family)}/entries`,
+      { activeOrganization: organizationId, idempotencyKey: crypto.randomUUID() },
+      body,
+    ),
+  );
+}
+
+/** Query one cursor-paginated page of the active tenant's audit trail. */
+export async function queryAuditEvents(
+  filters: AuditFilters,
+  organizationId: string,
+): Promise<AuditPageResponse> {
+  const base = getDescriptor('/api/v1/audit-events', '/api/v1/audit-events', organizationId);
+  const suffix = auditQueryString(filters);
+  return send<AuditPageResponse>(suffix === '' ? base : { ...base, url: `${base.url}?${suffix}` });
+}
+
+/**
+ * Map the API history into the civil-date domain versions the editor displays.
+ * An API instant is truncated to its UTC civil day so `effectiveVersion` can
+ * compare like with like; a missing instant becomes an explicit empty string,
+ * which the editor renders as "not applicable" rather than an invalid date.
+ */
+export function configurationVersionsFromHistory(
+  history: ConfigHistoryResponse,
+  organizationId: string,
+): ConfigurationVersion[] {
+  const key = history.key ?? '';
+  return (history.entries ?? []).map((entry) => ({
+    organizationId,
+    key: entry.key ?? key,
+    facilityCode: key,
+    version: entry.version ?? 0,
+    value: entry.value ?? '',
+    effectiveFrom: entry.effectiveFrom == null ? '' : entry.effectiveFrom.slice(0, 10),
+    approved: entry.status === 'approved',
+    ...(entry.approvedBy == null ? {} : { approver: entry.approvedBy }),
+  }));
+}
+
+/** Map one API audit page into the immutable rows the existing list renders. */
+export function auditEventsFromPage(
+  page: AuditPageResponse,
+  organizationId: string,
+  locale: Locale,
+): AuditEvent[] {
+  return (page.events ?? []).map((event) => ({
+    organizationId,
+    sequence: event.seq ?? 0,
+    actor: event.actorId ?? adminText(locale, 'systemActor'),
+    purpose: event.purpose ?? adminText(locale, 'unknown'),
+    scope: event.scope ?? adminText(locale, 'unknown'),
+    correlationId: event.correlationId ?? adminText(locale, 'unknown'),
+    action: event.action ?? adminText(locale, 'unknown'),
+    resourceId: event.resourceId ?? adminText(locale, 'unknown'),
+    outcome: normalizeAuditOutcome(event.outcome),
+    occurredAt: event.occurredAt ?? '',
+    // The real API does not project the hash chain. The list is told not to
+    // render a chain verdict for these rows instead of inventing one.
+    previousHash: '',
+    hash: '',
+  }));
 }
