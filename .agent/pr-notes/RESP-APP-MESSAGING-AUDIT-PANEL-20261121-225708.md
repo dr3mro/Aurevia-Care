@@ -57,9 +57,15 @@ Routine (contained presentation change to one patient-app component, per
 
 ## Review owner
 
-smartclinic-senior-mobile (bounded review); smartclinic-ux-reviewer skill loaded
-for the UX-01 accessibility/RTL criteria. No human, clinical or patient
-participant evidence — simulated/tool evidence only.
+smartclinic-senior-mobile (bounded review returned **no blocking defects** and
+no unmet acceptance criterion); smartclinic-ux-reviewer skill loaded for the
+UX-01 accessibility/RTL criteria. The reviewer verified the production safe-area
+path is valid: React Navigation's `SafeAreaProviderCompat` wraps screens, so
+`useWindowClass` has insets when the panel is mounted in a real screen. One
+non-blocking hardening item (weak font-scale evidence) was addressed in the
+follow-up commit; the other (normalise the global mock / prop seam) needs an
+out-of-scope tooling change and is retained under Findings. No human, clinical
+or patient participant evidence — simulated reviewer plus tool evidence only.
 
 ## Data changes
 
@@ -97,7 +103,8 @@ Commands and final lines (run from the repository root unless noted):
    Result: `MessagingAuditPanel.tsx | 100 | 100 | 100 | 100 |` (statements,
    branches, functions, lines).
 
-4. Mandatory frontend gate (exit 0):
+4. Mandatory frontend gate (exit 0, re-run after the reviewer-driven test
+   hardening):
    `bash apps/patient-mobile/check.sh`
    Result: `Test Suites: 63 passed, 63 total`, `Tests: 668 passed, 668 total`,
    `Snapshots: 0 total`; `CHECK_EXIT=0`. The coverage table shows

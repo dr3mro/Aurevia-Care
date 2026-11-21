@@ -126,8 +126,23 @@ describe('MessagingAuditPanel responsive layout', () => {
       expect(copy.props.style.minHeight).toBe(SCREEN_TOKENS.size.target);
       expect(copy.props.style.minWidth).toBe(SCREEN_TOKENS.size.target);
 
-      // At 200% text is reflowed, never clipped to a fixed line count.
-      expect(view.getByText('download').props.numberOfLines).toBeUndefined();
+      // At 200% text is reflowed, never clipped to a fixed line count, height
+      // or capped font scale. This assertion runs at every scale including 2.
+      const renderedTexts = [
+        'download', 'success', NOW, 'New messaging blocked', 'Attachments blocked',
+        'Prior conversations readable', 'Request a copy',
+      ];
+      for (const label of renderedTexts) {
+        const node = view.getByText(label);
+        expect(node.props.numberOfLines).toBeUndefined();
+        expect(node.props.maxFontSizeMultiplier).toBeUndefined();
+        expect(node.props.adjustsFontSizeToFit).toBeUndefined();
+        expect(node.props.style?.height).toBeUndefined();
+        expect(node.props.style?.maxHeight).toBeUndefined();
+      }
+      // The touch target is a minimum, not a fixed height.
+      expect(copy.props.style.height).toBeUndefined();
+      expect(copy.props.style.maxHeight).toBeUndefined();
     },
   );
 
