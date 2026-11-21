@@ -77,6 +77,12 @@ public class EmergencyAccessService {
                 failure.set(denial);
                 return null;
             }
+            ApiException scopeDenial = facilityDenial(context, "EMERGENCY_GRANT", scope,
+                    request.facilityCode(), request.facilityCode());
+            if (scopeDenial != null) {
+                failure.set(scopeDenial);
+                return null;
+            }
             if (!AccessRules.isEnabled(repository.effectiveConfig(CONFIG_KEY))) {
                 repository.appendAudit(context, PURPOSE, "EMERGENCY_GRANT", scope, GRANT_TYPE,
                         request.facilityCode(), "DENIED");
@@ -142,6 +148,12 @@ public class EmergencyAccessService {
             }
             GrantRow row = latest.get();
             String scope = CLINICIAN + ":" + row.facilityCode();
+            ApiException scopeDenial = facilityDenial(context, "EMERGENCY_ACTIVE_CHECK", scope,
+                    row.id(), row.facilityCode());
+            if (scopeDenial != null) {
+                failure.set(scopeDenial);
+                return null;
+            }
             if (row.revokedAt() != null) {
                 repository.appendAudit(context, PURPOSE, "EMERGENCY_ACTIVE_CHECK", scope, GRANT_TYPE,
                         row.id(), "DENIED");
@@ -279,6 +291,27 @@ public class EmergencyAccessService {
             throw failure.get();
         }
         return List.copyOf(result);
+    }
+
+    /**
+     * Apply the IAM-01 facility scope to a facility-aware access decision. The
+     * denial is returned so the guarded transaction commits its DENIED audit row
+     * before the caller reports the failure.
+     *
+     * @param context      active tenant context
+     * @param action       access action being authorized
+     * @param scope        bounded audit scope already computed by the caller
+     * @param resourceId   resource addressed by the command, for the audit row
+     * @param facilityCode facility the grant is scoped to
+     * @return the denial to throw after commit, or {@code null} when in scope
+     */
+    private ApiException facilityDenial(TenantContext context, String action, String scope,
+                                        String resourceId, String facilityCode) {
+        if (repository.outsideAssignedFacilities(context.subject(), facilityCode)) {
+            repository.appendAudit(context, PURPOSE, action, scope, GRANT_TYPE, resourceId, "DENIED");
+            return new ApiException(403, "FORBIDDEN", "facility is outside the assigned scope");
+        }
+        return null;
     }
 
     private ApiException authorize(TenantContext context, String action, String scope,
