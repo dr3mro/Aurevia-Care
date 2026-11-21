@@ -710,15 +710,30 @@ def tui(stdscr):
     st = {"data": {k: blank(k) for k in [*CALLS, "jobs", "churn"]}, "busy": False, "at": 0.0, "loaded": set()}
     lock = threading.Lock()
 
-    def part(got):  # a section arrived: show it now
+    def apply(got):
+        for k, v in got.items():
+            if v is not None:
+                st["data"][k] = v
+                st["loaded"].add(k)
+        st["at"] = time.time()
+
+    def part(got):  # first load: a section arrived, show it now
         with lock:
-            for k, v in got.items():
-                if v is not None:
-                    st["data"][k] = v
-                    st["loaded"].add(k)
-            st["at"] = time.time()
+            apply(got)
 
     def refresh():
+        if st.get("ready"):
+            # Later refreshes keep the screen as it is and swap in the new data only when all of it has arrived.
+            buf, hold = {}, threading.Lock()
+
+            def stash(got):
+                with hold:
+                    buf.update({k: v for k, v in got.items() if v is not None})
+            fetch(stash)
+            with lock:
+                apply(buf)
+                st["busy"] = False
+            return
         fetch(part)
         with lock:
             st["busy"] = False
