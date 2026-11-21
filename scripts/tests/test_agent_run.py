@@ -5,6 +5,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from helpers import ROOT
 
@@ -62,7 +63,14 @@ class AgentRunTests(unittest.TestCase):
             (bin_dir / name).write_text(body)
             (bin_dir / name).chmod(0o755 | stat.S_IXUSR)
         self.gh_log = tmp / "gh.log"
-        self.env = {**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}",
+        self.bin_dir = bin_dir
+
+    def fixture_environment(self):
+        tmp = self.tmp
+        host = {name: os.environ[name] for name in ("TMPDIR", "TMP", "TEMP", "LANG", "LC_ALL")
+                if name in os.environ}
+        return {**host, "PATH": f"{self.bin_dir}:{os.environ['PATH']}",
+                    "MODE": "story", "BRANCH_PREFIX": "opencode", "CHECK_SCRIPT": "scripts/check.sh",
                     "HOME": str(tmp / "home"), "GITHUB_WORKSPACE": str(self.repo),
                     "GITHUB_OUTPUT": str(tmp / "output"), "GITHUB_RUN_NUMBER": "9",
                     "GH_LOG": str(self.gh_log), "SEEN": str(tmp / "seen.json"), "MODEL": "opencode/test",
@@ -76,7 +84,7 @@ class AgentRunTests(unittest.TestCase):
 
     def run_cmd(self, command, **env):
         return subprocess.run(["bash", "scripts/agent-run.sh", command], cwd=self.repo,
-                              env={**self.env, **env}, capture_output=True, text=True)
+                              env={**self.fixture_environment(), **env}, capture_output=True, text=True)
 
     def outputs(self):
         lines = (self.tmp / "output").read_text().splitlines()
@@ -95,6 +103,22 @@ class AgentRunTests(unittest.TestCase):
                                capture_output=True, text=True).stdout
         self.assertIn("refs/heads/opencode/issue-5-9", heads)
 
+    def test_fixture_uses_its_own_story_settings_inside_a_worker(self):
+        worker_settings = {
+            "MODE": "fix", "BRANCH": "swarm/synthetic-fix", "BRANCH_PREFIX": "swarm",
+            "SWARM": "1", "CHECK_SCRIPT": "scripts/worker-check.sh", "PR_NUMBER": "123",
+            "SEGMENT": "2", "SEGMENTS": "4",
+        }
+        with patch.dict(os.environ, worker_settings):
+            result = self.run_cmd("implement", FAKE_MODE="commit")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            out = self.outputs()
+            self.assertEqual(out["branch"], "opencode/issue-5-9")
+            self.assertEqual(out["result"], "ok")
+            self.assertEqual(out["checks"], "passed")
+            self.assertEqual(self.run_cmd("publish").returncode, 0)
+            self.assertIn("pr create --base main", self.gh_log.read_text())
+
     def push_to_main(self, name, text):
         other = self.tmp / "other"
         if not other.exists():
@@ -102,7 +126,8 @@ class AgentRunTests(unittest.TestCase):
                            check=True, capture_output=True)
         (other / name).write_text(text)
         for args in (("add", name), ("commit", "-qm", f"main {name}"), ("push", "-q", "origin", "main")):
-            subprocess.run(["git", *args], cwd=other, check=True, capture_output=True, env=self.env)
+            subprocess.run(["git", *args], cwd=other, check=True, capture_output=True,
+                           env=self.fixture_environment())
 
     def merge_main(self, mode, **env):
         self.run_cmd("implement", FAKE_MODE="commit")

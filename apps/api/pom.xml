@@ -197,7 +197,7 @@
     <!-- Opt-in mutation testing for the safety-critical packages. Line and branch
          coverage prove the code ran, not that a test would notice a wrong result.
          Run: mvn -Pmutation test-compile org.pitest:pitest-maven:mutationCoverage
-         (or scripts/mutation-check.sh). Not part of check.sh: it is slow. -->
+         (or scripts/mutation-check.sh, which also excludes the integration tests). Not part of check.sh: it is slow. -->
     <profile>
       <id>mutation</id>
       <build>
@@ -210,7 +210,7 @@
               <dependency>
                 <groupId>org.pitest</groupId>
                 <artifactId>pitest-junit5-plugin</artifactId>
-                <version>1.2.1</version>
+                <version>1.2.3</version>
               </dependency>
             </dependencies>
             <configuration>
@@ -219,9 +219,6 @@
                 <param>com.aurevia.smartclinic.audit.*</param>
                 <param>com.aurevia.smartclinic.tenant.*</param>
               </targetClasses>
-              <excludedGroups>
-                <param>integration</param>
-              </excludedGroups>
               <mutationThreshold>${pitest.threshold}</mutationThreshold>
               <outputFormats>
                 <param>HTML</param>
