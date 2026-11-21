@@ -40,6 +40,16 @@ Gate evidence: two tenants with identical local IDs remain isolated across API, 
 
 Current source state (2026-11-19T07:19Z, from `main` at `311d69a`): 7 Flyway migrations `V1__tenant_schema.sql` … `V7__patient_registration.sql`; 6 API controllers (facility, staff, configuration, catalog, patient, audit); 191 Java `@Test` methods (Surefire: 191 tests, 0 failures, 0 errors); 7 Python tooling test files / 122 tests, 0 failures. `scripts/check.sh`, `scripts/quick-check.sh`, `scripts/docs.sh` all exit 0 locally. CI on `311d69a`: Policy and tooling, Frontend standards, Java and database verification and Verify and smoke image (amd64) success; Developer reference still in progress. Gate is not yet complete — S-G0-04 remains blocked (see below).
 
+- [ ] FIX-ROUTES-01 · Staff web: route tests must not hard-code the list of registered routes (HIGH PRIORITY: pull requests are failing on it)
+  - requirements: UX-01, WEB-09
+  - scope: apps/staff-web/src/app/routes.test.tsx, apps/staff-web/tests/app/AppShell.test.tsx
+  - details:
+    1. Open `src/app/routes.test.tsx` ("resolves every existing path") and `tests/app/AppShell.test.tsx` ("registers only welcome, the development preview and a catch-all"). Both compare `createRoutes(false)` with a fixed list of patterns, so every new feature route makes them fail. CI currently reports 27 registered routes against 20 expected.
+    2. Replace each fixed list with checks that stay true when routes are added: the first five patterns are `/`, `/signed-out`, `/session-expired`, `/forbidden` and `/not-found`; the last pattern is `*`; no pattern appears twice; `/design-preview` is absent when the preview flag is off and sits before `*` when it is on; every pattern is covered by `collectFeatureRoutes` of the feature modules. Do not list the feature routes by hand.
+    3. Keep the duplicate-pattern, ordering and preview-flag tests as they are. Do not change `routes.tsx` or any feature `routes.ts`.
+    4. Tests: adding a new feature route does not change the result of either test; a duplicate pattern still fails.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
 - [ ] S-G0-04 · Isolation across search, files, workers and exports plus concurrent-connection and transaction tests (ARC-02). Concurrent-connection test slice merged by swarm as CW-003; other surfaces remain.
   - blocker 2026-11-19T07:12Z: the search, files, workers and exports surfaces do not exist in `apps/api` yet (only patient normalized-name search), so their isolation cannot be tested. Needs Product Owner/Architect decomposition into stories that first create each surface. Do not claim as a single implementation story.
 
@@ -1179,7 +1189,7 @@ The staff web has admin, chart and scheduling. READY-24 to READY-32 add admin, p
 - [ ] BUILD-52 · Staff web: register the new feature routes and navigation
   - requirements: UX-01, WEB-09
   - scope: apps/staff-web/src/app
-  - depends: BUILD-45, BUILD-46, BUILD-47, BUILD-48, BUILD-49, BUILD-50, BUILD-51
+  - depends: FIX-ROUTES-01, BUILD-45, BUILD-46, BUILD-47, BUILD-48, BUILD-49, BUILD-50, BUILD-51
   - details:
     1. Read `app/routes.tsx`, `app/navigation.ts` and the `routes.ts` of each feature from BUILD-45 to BUILD-51.
     2. Register every route lazily so each feature is its own chunk, and add the navigation entries by role.
@@ -1466,7 +1476,7 @@ Screens the earlier parts did not cover. Each exports its routes from `features/
 - [ ] BUILD-76 · Staff web: register the routes of the added feature screens
   - requirements: UX-01, WEB-09
   - scope: apps/staff-web/src/app
-  - depends: BUILD-72, BUILD-73, BUILD-74, BUILD-75, BUILD-52
+  - depends: FIX-ROUTES-01, BUILD-72, BUILD-73, BUILD-74, BUILD-75, BUILD-52
   - details:
     1. Read `app/routes.tsx`, `app/navigation.ts` and the `routes.ts` of the features from BUILD-72 to BUILD-75.
     2. Register each route lazily so every feature is its own chunk, and add the navigation entries by role.
