@@ -474,15 +474,15 @@ class PlanTests(unittest.TestCase):
         plan = swarm.plan_workers(10, SLOTS, ALIASED, [])
         self.assertEqual([t["id"] for t in plan], ["CW-011"])
 
-    def test_each_claim_counts_an_attempt_and_the_third_stops_the_retries(self):
+    def test_each_claim_counts_an_attempt_and_the_last_one_stops_the_retries(self):
         text = TASKS
-        for tries in (1, 2, 3):
+        for tries in range(1, swarm.MAX_ATTEMPTS + 1):
             text = swarm.set_task_status(text, "CW-001", "taken", agent="swarm-1")
             task = {t["id"]: t for t in swarm.parse_tasks(text)}["CW-001"]
             self.assertEqual(task["attempts"], str(tries))
             text = swarm.set_task_status(text, "CW-001", "todo")
         self.assertNotIn("CW-001", [t["id"] for t in swarm.plan_workers(10, SLOTS, text, [])])
-        self.assertIn("  - attempts: 3\n", text)
+        self.assertIn(f"  - attempts: {swarm.MAX_ATTEMPTS}\n", text)
 
     def test_continue_starts_a_wave_only_when_work_is_ready_and_nothing_waits(self):
         self.assertTrue(swarm.continue_swarm(TASKS, []))
@@ -803,7 +803,7 @@ class PlanTests(unittest.TestCase):
             self.assertEqual(swarm.run_job_minutes(7), 1200.0)
 
     def test_pr_size_guard_is_enforced(self):
-        fake = FakeGh(diff="\n".join(f"apps/api/src/F{i}.java" for i in range(16)))
+        fake = FakeGh(diff="\n".join(f"apps/api/src/F{i}.java" for i in range(swarm.MAX_PR_FILES + 1)))
         with mock.patch.object(swarm, "gh", fake):
             self.assertTrue(swarm.guard(9))
         self.assertTrue(fake.said("labels[]=needs-human"))
