@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 
+import { windowClassFor } from '../../app/layout/useWindowClass';
 import {
   acknowledgeLabel,
   Card,
@@ -17,6 +18,9 @@ import type { Locale, TabId } from '../appointments/patientDesign';
 import { canReply, senderLabel } from './domain';
 import type { Conversation, LayoutDirection } from './domain';
 import { activeLayoutDirection } from './layout';
+
+/** Maximum readable width of the detail column on a large window, in dp. */
+const READING_WIDTH = 720;
 
 /** Props for the patient conversation thread. */
 export interface ConversationThreadProps {
@@ -61,6 +65,11 @@ export function ConversationThread({
 }: ConversationThreadProps) {
   const [draft, setDraft] = useState('');
   const layoutDirection = direction ?? activeLayoutDirection();
+  const { width, fontScale } = useWindowDimensions();
+  const windowClass = windowClassFor(width);
+  // Larger system text wraps into more lines: grow the column instead of
+  // capping the line count or shrinking the clinical values (UX-01).
+  const textRoom = Math.max(0, fontScale - 1) * SCREEN_TOKENS.space.four;
   const editable = canReply(conversation);
   const canSend = draft.trim().length > 0;
   // A disabled Pressable never fires onPress; the domain also rejects a blank body.
@@ -79,90 +88,103 @@ export function ConversationThread({
       showTabBar={showTabBar}
       activeTab={activeTab}
       onTab={onTab}>
-      <Text accessibilityLabel={`unit ${conversation.unitName}`} accessibilityLanguage={locale} style={styles.unit}>
-        {conversation.unitName}
-      </Text>
-      <Text accessibilityLabel={`state ${conversation.state}`} accessibilityLanguage={locale} style={styles.caption}>
-        {conversation.state}
-      </Text>
-      {conversation.serviceNotice === undefined ? null : (
-        <NoticeBox
-          testID="service-notice"
-          variant="info"
-          locale={locale}
-          lines={[
-            `${screenText(locale, 'serviceHours')}: ${conversation.serviceNotice.serviceHours}`,
-            `${screenText(locale, 'responseTarget')}: ${conversation.serviceNotice.responseTarget}`,
-          ]}
-        />
-      )}
-      {conversation.messages.map((message) => (
-        <MessageBubble
-          key={message.id}
-          testID={`message-${message.id}`}
-          own={message.senderRole === 'patient'}
-          label={`${senderLabel(message.senderRole)} said: ${message.body}`}
-          body={message.body}
-          time={message.sentAt}
-          locale={locale}
-        />
-      ))}
-      {instruction === undefined ? null : (
-        <Card testID={`instruction-${instruction.id}`}>
-          <Text accessibilityLabel="instruction-title" accessibilityLanguage={locale} style={styles.instructionTitle}>
-            {instruction.title}
-          </Text>
-          <Text accessibilityLabel="instruction-revision" accessibilityLanguage={locale}>
-            {`${screenText(locale, 'revision')} ${instruction.revision}`}
-          </Text>
-          {canAcknowledge && onAcknowledge !== undefined ? (
-            <PrimaryButton
-              testID={`acknowledge-${instruction.id}`}
-              label={acknowledgeLabel(locale, instruction.revision)}
-              locale={locale}
-              onPress={() => onAcknowledge(conversation.id, instruction.revision)}
-            />
-          ) : null}
-        </Card>
-      )}
-      <Text accessibilityLabel="to" accessibilityLanguage={locale} style={styles.to}>
-        {`${screenText(locale, 'to')}: ${conversation.unitName}`}
-      </Text>
-      {editable ? (
-        <View accessibilityLabel="reply composer">
-          <TextInput
-            accessibilityLabel="reply input"
-            accessibilityLanguage={locale}
-            value={draft}
-            onChangeText={setDraft}
-            style={styles.input}
-          />
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="send reply"
-            accessibilityLanguage={locale}
-            accessibilityState={{ disabled: !canSend }}
-            disabled={!canSend}
-            onPress={sendReply}
-            style={[styles.sendButton, !canSend ? styles.sendButtonDisabled : null]}>
-            <Text accessibilityLanguage={locale} style={[styles.sendText, !canSend ? styles.sendTextDisabled : null]}>
-              {screenText(locale, 'send')}
+      <SafeAreaView testID="conversation-thread-safe-area" style={styles.safeArea}>
+        <ScrollView testID="conversation-thread-scroll" style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+          <View
+            testID="conversation-thread-content"
+            style={[styles.content, windowClass === 'large' ? styles.wideContent : null, { paddingBottom: textRoom }]}>
+            <Text accessibilityLabel={`unit ${conversation.unitName}`} accessibilityLanguage={locale} style={styles.unit}>
+              {conversation.unitName}
             </Text>
-          </Pressable>
-          <Text accessibilityLabel="unsent-note" accessibilityLanguage={locale} style={styles.caption}>
-            {screenText(locale, 'unsentNote')}
-          </Text>
-        </View>
-      ) : (
-        <Text accessibilityLabel="read only" accessibilityLanguage={locale}>
-          {screenText(locale, 'readOnly')}
-        </Text>
-      )}
+            <Text accessibilityLabel={`state ${conversation.state}`} accessibilityLanguage={locale} style={styles.caption}>
+              {conversation.state}
+            </Text>
+            {conversation.serviceNotice === undefined ? null : (
+              <NoticeBox
+                testID="service-notice"
+                variant="info"
+                locale={locale}
+                lines={[
+                  `${screenText(locale, 'serviceHours')}: ${conversation.serviceNotice.serviceHours}`,
+                  `${screenText(locale, 'responseTarget')}: ${conversation.serviceNotice.responseTarget}`,
+                ]}
+              />
+            )}
+            {conversation.messages.map((message) => (
+              <MessageBubble
+                key={message.id}
+                testID={`message-${message.id}`}
+                own={message.senderRole === 'patient'}
+                label={`${senderLabel(message.senderRole)} said: ${message.body}`}
+                body={message.body}
+                time={message.sentAt}
+                locale={locale}
+              />
+            ))}
+            {instruction === undefined ? null : (
+              <Card testID={`instruction-${instruction.id}`}>
+                <Text accessibilityLabel="instruction-title" accessibilityLanguage={locale} style={styles.instructionTitle}>
+                  {instruction.title}
+                </Text>
+                <Text accessibilityLabel="instruction-revision" accessibilityLanguage={locale}>
+                  {`${screenText(locale, 'revision')} ${instruction.revision}`}
+                </Text>
+                {canAcknowledge && onAcknowledge !== undefined ? (
+                  <PrimaryButton
+                    testID={`acknowledge-${instruction.id}`}
+                    label={acknowledgeLabel(locale, instruction.revision)}
+                    locale={locale}
+                    onPress={() => onAcknowledge(conversation.id, instruction.revision)}
+                  />
+                ) : null}
+              </Card>
+            )}
+            <Text accessibilityLabel="to" accessibilityLanguage={locale} style={styles.to}>
+              {`${screenText(locale, 'to')}: ${conversation.unitName}`}
+            </Text>
+            {editable ? (
+              <View accessibilityLabel="reply composer">
+                <TextInput
+                  accessibilityLabel="reply input"
+                  accessibilityLanguage={locale}
+                  value={draft}
+                  onChangeText={setDraft}
+                  style={styles.input}
+                />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="send reply"
+                  accessibilityLanguage={locale}
+                  accessibilityState={{ disabled: !canSend }}
+                  disabled={!canSend}
+                  onPress={sendReply}
+                  style={[styles.sendButton, !canSend ? styles.sendButtonDisabled : null]}>
+                  <Text accessibilityLanguage={locale} style={[styles.sendText, !canSend ? styles.sendTextDisabled : null]}>
+                    {screenText(locale, 'send')}
+                  </Text>
+                </Pressable>
+                <Text accessibilityLabel="unsent-note" accessibilityLanguage={locale} style={styles.caption}>
+                  {screenText(locale, 'unsentNote')}
+                </Text>
+              </View>
+            ) : (
+              <Text accessibilityLabel="read only" accessibilityLanguage={locale}>
+                {screenText(locale, 'readOnly')}
+              </Text>
+            )}
+          </View>
+        </ScrollView>
+      </SafeAreaView>
     </ScreenFrame>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: { flex: 1 },
+  scroll: { flex: 1 },
+  scrollContent: { flexGrow: 1 },
+  content: { width: '100%' },
+  wideContent: { alignSelf: 'center', maxWidth: READING_WIDTH },
   unit: { color: SCREEN_TOKENS.color.textPrimary, fontSize: SCREEN_TOKENS.font.headingSm, fontWeight: SCREEN_TOKENS.font.semibold },
   caption: { color: SCREEN_TOKENS.color.textSecondary, fontSize: SCREEN_TOKENS.font.caption },
   instructionTitle: { color: SCREEN_TOKENS.color.warningText, fontWeight: SCREEN_TOKENS.font.semibold },
