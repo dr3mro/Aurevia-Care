@@ -209,6 +209,14 @@ describe('patient endpoint selection', () => {
     );
   });
 
+  it('renders an appointment whose status arrives in the server enum form', async () => {
+    const transport = fakeTransport(async () => [{ ...appointmentPayload[0]!, status: 'BOOKED' }]);
+    const view = await render(
+      <AppointmentListPage {...baseProps} transport={transport} onSessionExpired={() => undefined} />,
+    );
+    await waitFor(() => expect(view.getByTestId('status-apt-1')).toHaveTextContent('booked'));
+  });
+
   it('uses the patient released-report and conversation inbox endpoints', async () => {
     const reports = fakeTransport(async () => reportPayload);
     const conversations = fakeTransport(async () => inboxPayload);

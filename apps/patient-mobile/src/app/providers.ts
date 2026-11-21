@@ -73,9 +73,23 @@ function isCount(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value >= 0;
 }
 
-/** Narrow a string to one of the known appointment statuses. */
-function isAppointmentStatus(value: unknown): value is AppointmentStatus {
-  return typeof value === 'string' && (APPOINTMENT_STATUSES as readonly string[]).includes(value);
+/**
+ * Normalize an appointment status from the wire to the domain value.
+ *
+ * The OpenAPI contract documents lower-case values, but the Java
+ * `AppointmentStatus` enum is currently serialized by Jackson as its constant
+ * name (`BOOKED`). Accepting either form keeps the patient list working with
+ * the deployed server; the API-side mismatch is tracked for the owning story.
+ */
+function appointmentStatusFromWire(value: unknown): AppointmentStatus {
+  if (typeof value !== 'string') {
+    throw new Error('MALFORMED_APPOINTMENT');
+  }
+  const normalized = value.toLowerCase();
+  if (!(APPOINTMENT_STATUSES as readonly string[]).includes(normalized)) {
+    throw new Error('MALFORMED_APPOINTMENT');
+  }
+  return normalized as AppointmentStatus;
 }
 
 /** Narrow a string to one of the known conversation states. */
@@ -124,13 +138,13 @@ function parseAppointment(value: unknown): Appointment {
     throw new Error('MALFORMED_APPOINTMENT');
   }
   const { id, patientId, facilityCode, facilityTimeZone, startsAt, status, confirmationEnabled, confirmedAt } = value;
+  const normalizedStatus = appointmentStatusFromWire(status);
   if (
     !isText(id)
     || !isText(patientId)
     || !isText(facilityCode)
     || !isText(facilityTimeZone)
     || !isText(startsAt)
-    || !isAppointmentStatus(status)
     || typeof confirmationEnabled !== 'boolean'
     || !(confirmedAt === null || isText(confirmedAt))
   ) {
@@ -142,7 +156,7 @@ function parseAppointment(value: unknown): Appointment {
     facilityCode,
     facilityTimeZone,
     startsAt,
-    status,
+    status: normalizedStatus,
     confirmationEnabled,
     confirmedAt,
   };

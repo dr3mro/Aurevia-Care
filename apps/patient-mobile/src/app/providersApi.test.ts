@@ -52,6 +52,16 @@ describe('loadAppointments', () => {
     expect(rows[0]!.confirmation).toEqual({ kind: 'pending', confirmedAt: null });
   });
 
+  it('accepts the server-serialized uppercase status name', async () => {
+    const rows = await loadAppointments(
+      fakeTransport(async () => [{ ...payload[0]!, status: 'BOOKED' }]),
+      patientId,
+      organizationId,
+    );
+    expect(rows[0]!.status).toBe('booked');
+    expect(rows[0]!.confirmation).toEqual({ kind: 'pending', confirmedAt: null });
+  });
+
   it('marks a server-confirmed appointment as confirmed', async () => {
     const confirmed = [{ ...payload[0]!, confirmedAt: '2026-11-21T10:05:00Z' }];
     const rows = await loadAppointments(fakeTransport(async () => confirmed), patientId, organizationId);
