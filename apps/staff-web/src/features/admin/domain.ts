@@ -10,8 +10,8 @@ export type AdminRole = 'tenant_admin' | 'privacy_auditor' | 'reception';
 /** The three observable access states of a resource review (IAM-01). */
 export type AccessState = 'permitted' | 'denied' | 'concealed';
 
-/** Machine-readable outcome carried by every synthetic audit row (OPS-02). */
-export type AuditOutcome = 'SUCCESS' | 'DENIED';
+/** Machine-readable outcome carried by every audit row (OPS-02). */
+export type AuditOutcome = 'SUCCESS' | 'DENIED' | 'NOT_FOUND' | 'CONFLICT';
 
 /** Roles whose active members may review audit and access state. */
 export const AUDIT_REVIEW_ROLES: ReadonlySet<AdminRole> = new Set<AdminRole>([
