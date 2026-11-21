@@ -90,3 +90,7 @@ Playwright specs to their own runner.
 CI note: the repository developer-reference job must provide a pinned Node
 toolchain and run `npm ci --prefix apps/staff-web` before invoking this
 module's `docs.sh`; that wiring lives outside this module's scope.
+
+## Mutation testing
+
+Run `npm run mutation` (opt-in; not part of check.sh or CI by default). Configure scope in `stryker.config.json`.
