@@ -330,7 +330,7 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False, loading=frozenset()):
     durs = sorted((ts(r["updatedAt"]) - ts(r.get("startedAt") or r["createdAt"])).total_seconds()
                   for r in done[:30] if r.get("updatedAt"))
     median = durs[len(durs) // 2] if durs else 0
-    runs_day = [r for r in done if day(r.get("updatedAt"))]
+    runs_day = done  # every finished run the list returned (the newest 100), not a time window
     failed_day = [r for r in runs_day if state(r) in FAILED]
     merged_day = [p for p in merged if day(p.get("mergedAt"))]
     closed_day = [p for p in closed if not p.get("mergedAt") and day(p.get("closedAt"))]
@@ -348,21 +348,23 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False, loading=frozenset()):
     hot = sum(1 for x in issues + prs for l in x.get("labels", []) if l["name"] == "needs-human")
     day_ok = (len(runs_day) - len(failed_day)) / len(runs_day) if runs_day else 1.0
 
+    cap = lambda n: f"{n}+" if n >= 100 else str(n)  # a list that hit its 100-item page may hold more
+
     # ---- top: title bar, stat cards, progress lines
     stamp = datetime.now().strftime("%a %b %d  %H:%M:%S") + ("  *" if busy else "   ")
     title = f" {data['repo'] or 'repo'}  ·  swarm monitor"
     top = [[(title + " " * max(W - 2 - len(title) - len(stamp) - 1, 1) + stamp + " ", "bar")]]
     cards = [("MAIN", f"{msym} {mstate}", "b_" + mcol, age(main["updatedAt"]) if main else "-"),
              ("RUNNING", str(len(live)), "b_yellow" if live else "gray", "active runs"),
-             ("MERGED 24h", str(len(merged_day)), "b_green" if merged_day else "gray", "pull requests"),
-             ("FAILED 24h", str(len(failed_day)), "b_red" if failed_day else "b_green", f"of {len(runs_day)} runs"),
-             ("CLOSED 24h", str(len(closed_day)), "b_yellow" if closed_day else "gray", "not merged"),
+             ("MERGED 24h", cap(len(merged_day)), "b_green" if merged_day else "gray", "pull requests"),
+             ("FAILED", str(len(failed_day)), "b_red" if failed_day else "b_green", f"of last {len(runs_day)} runs"),
+             ("CLOSED 24h", cap(len(closed_day)), "b_yellow" if closed_day else "gray", "not merged"),
              ("COMMITS", (data.get("total") or "").strip() or "-", "b_blue" if data.get("total") else "gray", "all time"),
-             ("COMMITS LAST 24H", str(churn.get("commits", "-")), "b_blue" if churn else "gray",
+             ("COMMITS LAST 24H", cap(churn["commits"]) if churn else "-", "b_blue" if churn else "gray",
               f"+{churn.get('add', 0)} -{churn.get('del', 0)} {churn.get('files', 0)}f" if churn else "no data"),
              ("MEDIAN RUN", span(median), "b_cyan", f"{len(durs)} runs"),
              ("NEEDS HUMAN", str(hot), "b_red" if hot else "b_green", "issues, PRs")]
-    waits = {"MAIN": {"runs"}, "RUNNING": {"runs"}, "MERGED 24h": {"merged"}, "FAILED 24h": {"runs"}, "CLOSED 24h": {"closed"},
+    waits = {"MAIN": {"runs"}, "RUNNING": {"runs"}, "MERGED 24h": {"merged"}, "FAILED": {"runs"}, "CLOSED 24h": {"closed"},
              "COMMITS": {"total"}, "COMMITS LAST 24H": {"churn"}, "MEDIAN RUN": {"runs"}, "NEEDS HUMAN": {"issues", "prs"}}
     cards = [(c[0], "…", "gray", "loading") if waits.get(c[0], set()) & loading else c for c in cards]
 
@@ -415,13 +417,13 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False, loading=frozenset()):
     pending = n_open + len(taken)
     eta = span(pending / pace * 3600) if pace else "-"
     meters = [meter("runs", rate, "green", f"{rate * 100:.0f}% of last {len(last20)}",
-                    [("24h ok ", "gray"), (f"{day_ok * 100:.0f}%", "b_green" if day_ok >= 0.8 else "b_red"),
+                    [("ok ", "gray"), (f"{day_ok * 100:.0f}%", "b_green" if day_ok >= 0.8 else "b_red"),
                      (f"   last wave {age(wave['createdAt']) if wave else '-'}", "gray")],
                     [("last 30  ", "gray")] + hist,
                     [(f"   issues {len(issues)}", "magenta" if issues else "gray"),
                      (f"   PRs {len(prs)} ({sum(1 for p in prs if p.get('isDraft'))} draft)", "gray"),
                      (f"   median {span(median)}", "gray"),
-                     (f"   {len(failed_day)} failed / {len(runs_day)} runs 24h", "red" if failed_day else "gray")])]
+                     (f"   {len(failed_day)} failed / last {len(runs_day)} runs", "red" if failed_day else "gray")])]
     load = {}
     for t in taken:
         load[t["agent"] or "-"] = load.get(t["agent"] or "-", 0) + 1
@@ -573,7 +575,7 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False, loading=frozenset()):
                  items=flat(live, True)),
             dict(title="Recent Runs", total=len(done), col="cyan", border="gray", prio=2,
                  items=[run_row(r, False) for r in done[:RECENT]]),
-            dict(title="Failed 24h", total=len(failed_day), col="red", border="red" if failed_day else "gray", prio=1,
+            dict(title=f"Failed (last {len(runs_day)} runs)", total=len(failed_day), col="red", border="red" if failed_day else "gray", prio=1,
                  items=[row for r in failed_day for row in failed_rows(r)])]
     prefix = re.compile(r"^([A-Z]+-(?:\d{8}-)?\d+)(:)(.*)$")
 
