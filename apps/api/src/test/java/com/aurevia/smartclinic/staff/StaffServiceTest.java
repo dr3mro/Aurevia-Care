@@ -79,6 +79,20 @@ class StaffServiceTest {
     }
 
     @Test
+    void acceptsTheCanonicalDottedAndUnderscoredSubjects() {
+        authorized();
+        actorIdentity();
+        when(repository.findUserIdBySubject("patient.one")).thenReturn(Optional.empty());
+        when(repository.findBySubject("patient.one")).thenReturn(Optional.of(
+                new StaffMember("patient.one", "Name", "active", List.of("reception"))));
+        assertEquals("patient.one", service.invite("patient.one", "Name", "reception").subject());
+        when(repository.findUserIdBySubject("patient_one")).thenReturn(Optional.empty());
+        when(repository.findBySubject("patient_one")).thenReturn(Optional.of(
+                new StaffMember("patient_one", "Name", "active", List.of("reception"))));
+        assertEquals("patient_one", service.invite("patient_one", "Name", "reception").subject());
+    }
+
+    @Test
     void rejectsLongSubject() {
         assertEquals(422, assertThrows(ApiException.class,
                 () -> service.invite("a".repeat(65), "Name", "reception")).status());
