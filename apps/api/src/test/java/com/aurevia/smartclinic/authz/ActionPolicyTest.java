@@ -23,5 +23,15 @@ class ActionPolicyTest {
     @Test
     void otherActionsAreDenied() {
         assertFalse(policy.allows("FACILITY_DELETE", "tenant_admin"));
+        assertFalse(policy.allows("FACILITY_READ", "unknown"));
+    }
+
+    @Test
+    void roleHistoryReadIsTenantAdminOnly() {
+        assertTrue(policy.allows(ActionPolicy.ROLE_HISTORY_READ, "tenant_admin"));
+        assertFalse(policy.allows(ActionPolicy.ROLE_HISTORY_READ, "privacy_auditor"));
+        assertFalse(policy.allows(ActionPolicy.ROLE_HISTORY_READ, "reception"));
+        assertFalse(policy.allows(ActionPolicy.ROLE_HISTORY_READ, "clinician"));
+        assertTrue(policy.allows(ActionPolicy.APPOINTMENT_START, "clinician"));
     }
 }
