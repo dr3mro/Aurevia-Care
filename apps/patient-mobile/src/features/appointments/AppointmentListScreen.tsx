@@ -1,5 +1,9 @@
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import type { ViewStyle } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { windowClassFor } from '../../app/layout/useWindowClass';
+import type { WindowClass } from '../../app/layout/useWindowClass';
 import type { AppointmentView } from './appointments';
 import {
   Card,
@@ -37,6 +41,92 @@ export interface AppointmentListScreenProps {
   readonly activeTab?: TabId;
   /** Standalone tab handler. */
   readonly onTab?: (tab: TabId) => void;
+}
+
+/**
+ * Maximum inline width of the centred reading column. On a wide window the
+ * content stops growing here instead of stretching to the full tablet width,
+ * which keeps appointments readable at 200 percent text.
+ */
+const CONTENT_MAX_WIDTH = 960;
+
+/** Safe-area fallback for a host that does not provide the inset hook. */
+const EMPTY_INSETS = { top: 0, right: 0, bottom: 0, left: 0 };
+
+/**
+ * Resolve the safe-area hook once at module scope. Headless hosts and preview
+ * renderers may not expose it; in that case the layout keeps its regular
+ * spacing instead of failing to render.
+ */
+const readSafeAreaInsets = useSafeAreaInsets ?? (() => EMPTY_INSETS);
+
+/** Style set that turns the current window into the responsive two-pane frame. */
+interface ResponsiveStyles {
+  readonly content: ViewStyle;
+  readonly listPane: ViewStyle;
+  readonly detailPane: ViewStyle;
+}
+
+/**
+ * Derive the presentation-only layout styles from the current window.
+ *
+ * Width class decides the arrangement: large windows place the appointment
+ * list and its detail pane side by side (`row`), smaller windows stack them
+ * (`column`). Wrapping and zero minimum widths let a pane reflow instead of
+ * clipping when text scales. Safe-area insets are physical screen edges, so
+ * the inline pair is mapped once to logical start/end for the active direction
+ * (Arabic swaps them). The panes then use only logical padding and margins and
+ * mirror without a per-component direction branch. No clinical value, callback
+ * or accessibility label is affected by this function.
+ *
+ * @param windowClass class derived from the current window width
+ * @param fontScale system text scale, where 1 is 100% and 2 is 200%
+ * @param insets safe-area insets at the four viewport edges
+ * @param rtl whether the active layout direction is right-to-left
+ * @returns styles for the content frame and its two panes
+ */
+function responsiveStyles(
+  windowClass: WindowClass,
+  fontScale: number,
+  insets: typeof EMPTY_INSETS,
+  rtl: boolean,
+): ResponsiveStyles {
+  const isLarge = windowClass === 'large';
+  const paneFlex = isLarge ? 1 : undefined;
+  const inlineStartInset = rtl ? insets.right : insets.left;
+  const inlineEndInset = rtl ? insets.left : insets.right;
+  return {
+    content: {
+      alignSelf: 'center',
+      flexDirection: isLarge ? 'row' : 'column',
+      flexWrap: isLarge ? 'wrap' : 'nowrap',
+      maxWidth: CONTENT_MAX_WIDTH,
+      width: '100%',
+      paddingTop: Math.max(insets.top, 16),
+      paddingBottom: Math.max(insets.bottom, 16),
+      paddingStart: Math.max(inlineStartInset, 16),
+      paddingEnd: Math.max(inlineEndInset, 16),
+    },
+    listPane: { flex: paneFlex, minWidth: 0 },
+    detailPane: { flex: paneFlex, minWidth: 0, marginStart: isLarge ? paneGutter(fontScale) : 0 },
+  };
+}
+
+/**
+ * Gutter between the two panes grows with system text scale so larger text
+ * keeps a readable separation instead of running the panes together.
+ *
+ * @param fontScale system text scale, where 1 is 100% and 2 is 200%
+ * @returns the inline gutter in density-independent points
+ */
+function paneGutter(fontScale: number): number {
+  if (fontScale >= 2) {
+    return SCREEN_TOKENS.space.six;
+  }
+  if (fontScale >= 1.5) {
+    return SCREEN_TOKENS.space.five;
+  }
+  return SCREEN_TOKENS.space.four;
 }
 
 /** Status word and icon role for one card; colour is reinforcement only. */
@@ -87,6 +177,8 @@ export function AppointmentListScreen({
   activeTab = 'appointments',
   onTab,
 }: AppointmentListScreenProps) {
+  const { width, fontScale } = useWindowDimensions();
+  const panes = responsiveStyles(windowClassFor(width), fontScale, readSafeAreaInsets(), locale === 'ar');
   return (
     <ScreenFrame
       testID="appointment-list"
@@ -96,81 +188,87 @@ export function AppointmentListScreen({
       showTabBar={showTabBar}
       activeTab={activeTab}
       onTab={onTab}>
-      <Text testID="generic-notice" accessibilityLanguage={locale} style={styles.notice}>
-        {`${notice.title} — ${notice.body}`}
-      </Text>
-      {appointments.length === 0 ? (
-        <Text testID="empty-appointments" accessibilityLanguage={locale}>
-          {screenText(locale, 'noAppointments')}
-        </Text>
-      ) : null}
-      {appointments.map((row) => {
-        const status = statusPresentation(row, locale);
-        const time = `${row.dateLabel ?? ''} ${row.timeLabel ?? row.localStart} (${row.timeZone})`.trim();
-        const facility = `${row.facilityLine ?? ''} ${row.timeZone}`.trim();
-        return (
-          <Card key={row.key} testID={`appointment-${row.id}`}>
-            <StatusPill
-              testID={`status-pill-${row.id}`}
-              variant={status.variant}
-              label={status.label}
-              locale={locale}
-            />
-            <Text testID={`time-${row.id}`} accessibilityLanguage={locale} style={styles.dateTime}>
-              {time}
+      <View testID="appointment-content" style={panes.content}>
+        <View testID="appointment-list-pane" style={panes.listPane}>
+          <Text testID="generic-notice" accessibilityLanguage={locale} style={styles.notice}>
+            {`${notice.title} — ${notice.body}`}
+          </Text>
+          {appointments.length === 0 ? (
+            <Text testID="empty-appointments" accessibilityLanguage={locale}>
+              {screenText(locale, 'noAppointments')}
             </Text>
-            {row.visitLine === undefined ? null : (
-              <Text accessibilityLabel={`visit-${row.id}`} accessibilityLanguage={locale} style={styles.visitLine}>
-                {row.visitLine}
-              </Text>
-            )}
-            <Text accessibilityLabel={`facility-${row.id}`} accessibilityLanguage={locale} style={styles.facility}>
-              {facility}
-            </Text>
-            {/* Kept as the authoritative machine status; the pill above is the
-                patient-facing word with a shape-distinct icon (UX-01). */}
-            <Text testID={`status-${row.id}`} accessibilityLabel={status.label} accessibilityLanguage={locale} style={styles.statusCode}>
-              {row.status}
-            </Text>
-            {row.confirmation.kind === 'pending' ? (
-              <PrimaryButton
-                testID={`confirm-${row.id}`}
-                label={screenText(locale, 'confirmAppointment')}
-                locale={locale}
-                onPress={() => onConfirm(row.id)}
-              />
-            ) : null}
-            {row.confirmation.kind === 'confirmed' ? (
-              <Text testID={`confirmed-${row.id}`} accessibilityLanguage={locale} style={styles.confirmed}>
-                {`${screenText(locale, 'confirmed')} at ${row.confirmedLocal}`}
-              </Text>
-            ) : null}
-            <Pressable
-              testID={`details-${row.id}`}
-              accessibilityRole="button"
-              accessibilityLabel={screenText(locale, 'viewDetails')}
-              accessibilityLanguage={locale}
-              onPress={() => onOpenDetails(row.id)}
-              style={styles.details}>
-              <Text accessibilityLanguage={locale}>{screenText(locale, 'viewDetails')}</Text>
-            </Pressable>
-          </Card>
-        );
-      })}
-      {devices
-        .filter((device) => device.state === 'active' && device.patientId === patientId)
-        .map((device) => (
-          <Pressable
-            key={device.id}
-            testID={`revoke-${device.id}`}
-            accessibilityRole="button"
-            accessibilityLabel={screenText(locale, 'revokeDevice')}
-            accessibilityLanguage={locale}
-            onPress={() => onRevokeDevice(device.id)}
-            style={styles.details}>
-            <Text accessibilityLanguage={locale}>{screenText(locale, 'revokeDevice')}</Text>
-          </Pressable>
-        ))}
+          ) : null}
+          {appointments.map((row) => {
+            const status = statusPresentation(row, locale);
+            const time = `${row.dateLabel ?? ''} ${row.timeLabel ?? row.localStart} (${row.timeZone})`.trim();
+            const facility = `${row.facilityLine ?? ''} ${row.timeZone}`.trim();
+            return (
+              <Card key={row.key} testID={`appointment-${row.id}`}>
+                <StatusPill
+                  testID={`status-pill-${row.id}`}
+                  variant={status.variant}
+                  label={status.label}
+                  locale={locale}
+                />
+                <Text testID={`time-${row.id}`} accessibilityLanguage={locale} style={styles.dateTime}>
+                  {time}
+                </Text>
+                {row.visitLine === undefined ? null : (
+                  <Text accessibilityLabel={`visit-${row.id}`} accessibilityLanguage={locale} style={styles.visitLine}>
+                    {row.visitLine}
+                  </Text>
+                )}
+                <Text accessibilityLabel={`facility-${row.id}`} accessibilityLanguage={locale} style={styles.facility}>
+                  {facility}
+                </Text>
+                {/* Kept as the authoritative machine status; the pill above is the
+                    patient-facing word with a shape-distinct icon (UX-01). */}
+                <Text testID={`status-${row.id}`} accessibilityLabel={status.label} accessibilityLanguage={locale} style={styles.statusCode}>
+                  {row.status}
+                </Text>
+                {row.confirmation.kind === 'pending' ? (
+                  <PrimaryButton
+                    testID={`confirm-${row.id}`}
+                    label={screenText(locale, 'confirmAppointment')}
+                    locale={locale}
+                    onPress={() => onConfirm(row.id)}
+                  />
+                ) : null}
+                {row.confirmation.kind === 'confirmed' ? (
+                  <Text testID={`confirmed-${row.id}`} accessibilityLanguage={locale} style={styles.confirmed}>
+                    {`${screenText(locale, 'confirmed')} at ${row.confirmedLocal}`}
+                  </Text>
+                ) : null}
+                <Pressable
+                  testID={`details-${row.id}`}
+                  accessibilityRole="button"
+                  accessibilityLabel={screenText(locale, 'viewDetails')}
+                  accessibilityLanguage={locale}
+                  onPress={() => onOpenDetails(row.id)}
+                  style={styles.details}>
+                  <Text accessibilityLanguage={locale}>{screenText(locale, 'viewDetails')}</Text>
+                </Pressable>
+              </Card>
+            );
+          })}
+        </View>
+        <View testID="appointment-detail-pane" style={panes.detailPane}>
+          {devices
+            .filter((device) => device.state === 'active' && device.patientId === patientId)
+            .map((device) => (
+              <Pressable
+                key={device.id}
+                testID={`revoke-${device.id}`}
+                accessibilityRole="button"
+                accessibilityLabel={screenText(locale, 'revokeDevice')}
+                accessibilityLanguage={locale}
+                onPress={() => onRevokeDevice(device.id)}
+                style={styles.details}>
+                <Text accessibilityLanguage={locale}>{screenText(locale, 'revokeDevice')}</Text>
+              </Pressable>
+            ))}
+        </View>
+      </View>
     </ScreenFrame>
   );
 }
@@ -182,5 +280,9 @@ const styles = StyleSheet.create({
   facility: { color: SCREEN_TOKENS.color.textSecondary, fontSize: SCREEN_TOKENS.font.label },
   statusCode: { color: SCREEN_TOKENS.color.textSecondary, fontSize: SCREEN_TOKENS.font.caption },
   confirmed: { color: SCREEN_TOKENS.color.successText, fontSize: SCREEN_TOKENS.font.label },
-  details: { minHeight: SCREEN_TOKENS.size.target, justifyContent: 'center' },
+  details: {
+    minHeight: SCREEN_TOKENS.size.target,
+    minWidth: SCREEN_TOKENS.size.target,
+    justifyContent: 'center',
+  },
 });
