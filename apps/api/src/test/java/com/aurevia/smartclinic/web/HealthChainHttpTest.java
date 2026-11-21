@@ -41,6 +41,7 @@ import com.aurevia.smartclinic.tenant.TenantContext;
 class HealthChainHttpTest {
 
     private static final String ISSUER_PROPERTY = "spring.security.oauth2.resourceserver.jwt.issuer-uri";
+    private static final String AUDIENCE_PROPERTY = "spring.security.oauth2.resourceserver.jwt.audiences";
     private static final String ISSUER = "https://issuer.example.test";
 
     /** Minimal protected endpoint used to observe that the API stays guarded. */
@@ -121,6 +122,7 @@ class HealthChainHttpTest {
                         StaffWebLoginConfiguration.class, Stubs.class)
                 .withPropertyValues(
                         ISSUER_PROPERTY + "=" + ISSUER,
+                        AUDIENCE_PROPERTY + "=synthetic-api",
                         "smartclinic.oidc.client-id=synthetic-client",
                         "smartclinic.oidc.client-secret=synthetic-secret");
     }
