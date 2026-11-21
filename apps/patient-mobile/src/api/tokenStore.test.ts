@@ -16,7 +16,7 @@ describe('tokenStore', () => {
   });
 
   it('loads token', async () => {
-    (SecureStore.getItemAsync as jest.Mock).mockResolvedValue('abc');
+    (SecureStore.getItemAsync as unknown as jest.Mock).mockResolvedValue('abc' as never);
     await expect(loadToken()).resolves.toBe('abc');
     expect(SecureStore.getItemAsync).toHaveBeenCalledWith('session', { requireAuthentication: false });
   });
