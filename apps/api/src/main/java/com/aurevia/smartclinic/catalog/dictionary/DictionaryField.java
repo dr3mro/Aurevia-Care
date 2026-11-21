@@ -1,7 +1,8 @@
 package com.aurevia.smartclinic.catalog.dictionary;
 
 import java.util.List;
-import java.util.regex.Pattern;
+
+import com.aurevia.smartclinic.api.contract.CatalogCode;
 
 /**
  * One field definition in a versioned clinical dictionary (CLN-03, CLN-04).
@@ -15,17 +16,13 @@ import java.util.regex.Pattern;
 public record DictionaryField(String code, LocalizedText label, Requiredness requiredness,
                               List<String> allowedValues) {
 
-    private static final Pattern CODE = Pattern.compile("[A-Za-z0-9][A-Za-z0-9_.:-]{1,63}");
-
     /**
      * Validate and defensively copy the field definition.
      *
      * @throws IllegalArgumentException when a required component is missing or malformed
      */
     public DictionaryField {
-        if (code == null || !CODE.matcher(code).matches()) {
-            throw new IllegalArgumentException("invalid field code");
-        }
+        CatalogCode.code(code);
         if (label == null) {
             throw new IllegalArgumentException("label is required");
         }
