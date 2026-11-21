@@ -13471,3 +13471,47 @@ Every entry below is finished and verified. Do not take them again; they stay he
     Execute the shared senior engineering standard in docs/WORKFLOW.md. Locally added role-to-skill validation, fail-closed coverage base selection, coverage parity in the frontend gate, canonical staff coverage setup, and PyYAML in the worker image. Docker image rebuild and exact-SHA GitHub checks are pending.
     Remaining audit work: distinguish failed, pending, missing and approval-required Delivery; recover ordinary drafts; validate scope and structured handoffs on the pinned candidate; add frontend dependency scanning and validate the runtime OpenCode profile separately.
     After five swarm PRs, classify failures by task policy, missing tests, check parity or implementation, and add a regression at the layer that should catch each new failure.
+- [ ] FIX-44919572318 · Repair main: Agent swarm failed
+  - attempts: 0
+  - scope: *
+  - details:
+    Repair the failed 'Agent swarm' run on main (https://github.com/dr3mro/Aurevia-Care/actions/runs/44919572318, commit 9aa95073df86).
+    Reproduce it with the failing commands. When it is a real defect, write a failing test first, then make the smallest fix. When it is a transient or runner problem, say so in your notes file (the path in your prompt, never .agent/pr-notes.md) and change nothing.
+    Failing log tail:
+    ```text
+    e the ready batch	UNKNOWN STEP	2026-11-21T15:59:25.4802639Z  Success. You can now start the database server using:
+    Swarm integrator / Integrate the ready batch	UNKNOWN STEP	2026-11-21T15:59:25.4802917Z  
+    Swarm integrator / Integrate the ready batch	UNKNOWN STEP	2026-11-21T15:59:25.4803287Z      pg_ctl -D /var/lib/postgresql/data -l logfile start
+    Swarm integrator / Integrate the ready batch	UNKNOWN STEP	2026-11-21T15:59:25.4803567Z  
+    Swarm integrator / Integrate the ready batch	UNKNOWN STEP	2026-11-21T15:59:25.4804124Z  waiting for server to start....2026-11-21 15:58:31.749 UTC [49] LOG:  starting PostgreSQL 17.12 (Debian 17.12-1.pgdg13+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+    Swarm integrator / Integrate the ready batch	UNKNOWN STEP	2026-11-21T15:59:25.4804909Z  2026-11-21 15:58:31.750 UTC [49] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+    Swarm integrator / Integrate the ready batch	UNKNOWN STEP	2026-11-21T15:59:25.4805356Z  2026-11-21 15:58:31.751 UTC [52] LOG:  database system was shut down at 2026-11-21 15:58:31 UTC
+    Swarm integrator / Integrate the ready batch	UNKNOWN STEP	2026-11-21T15:59:25.4805845Z  2026-11-21 15:58:31.753 UTC [49] LOG:  database system is ready to accept connections
+    Swarm integrator / Integrate the ready batch	UNKNOWN STEP	2026-11-21T15:59:25.4806169Z   done
+    Swarm integrator / Integrate the ready batch	UNKNOWN STEP	2026-11-21T15:59:25.4806403Z  server started
+    Swarm integrator / Integrate the ready batch	UNKNOWN STEP	2026-11-21T15:59:25.4806636Z  
+    Swarm integrator / Integrate the ready batch	UNKNOWN STEP	2026-11-21T15:59:25.4807092Z  /usr/local/bin/docker-entrypoint.sh: ignoring /docker-entrypoint-initdb.d/*
+    Swarm integrator / Integrate the ready batch	UNKNOWN STEP	2026-11-21T15:59:25.4807462Z  
+    Swarm integrator / Integrate the ready batch	UNKNOWN STEP	2026-11-21T15:59:25.4807722Z  2026-11-21 15:58:31.861 UTC [49] LOG:  received fast shutdown request
+    Swarm integrator / Integrate the ready batch	UNKNOWN STEP	2026-11-21T15:59:25.4808183Z  waiting for server to shut down....2026-11-21 15:58:31.861 UTC [49] LOG:  aborting any active transactions
+    Swarm integrator / Integrate the ready batch	UNKNOWN STEP	2026-11-21T15:59:25.4808991Z  2026-11-21 15:58:31.863 UTC [49] LOG:  background worker "logical replication launcher" (PID 55) exited with exit code 1
+    Swarm integrator / Integrate the ready batch	UNKNOWN STEP	2026-11-21T15:59:25.4809444Z  2026-11-21 15:58:31.863 UTC [50] LOG:  shutting down
+    Swarm integrator / Integrate the ready batch	UNKNOWN STEP	2026-11-21T15:59:25.4809803Z  2026-11-21 15:58:31.864 UTC [50] LOG:  checkpoint starting: shutdown immediate
+    Swarm integrator / Integrate the ready batch	UNKNOWN STEP	2026-11-21T15:59:25.4810601Z  2026-11-21 15:58:31.865 UTC [50] LOG:  checkpoint complete: wrote 3 buffers (0.0%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.001 s, sync=0.001 s, total=0.002 s; sync files=2, longest=0.001 s, average=0.001 s; distance=0 kB, estimate=0 kB; lsn=0/15016F0, redo lsn=0/15016F0
+    Swarm integrator / Integrate the ready batch	UNKNOWN STEP	2026-11-21T15:59:25.4811385Z  2026-11-21 15:58:31.867 UTC [49] LOG:  database system is shut down
+    Swarm integrator / Integrate the ready batch	UNKNOWN STEP	2026-11-21T15:59:25.4811718Z   done
+    Swarm integrator / Integrate the ready batch	UNKNOWN STEP	2026-11-21T15:59:25.4811912Z  server stopped
+    Swarm integrator / Integrate the ready batch	UNKNOWN STEP	2026-11-21T15:59:25.4812155Z  
+    Swarm integrator / Integrate the ready batch	UNKNOWN STEP	2026-11-21T15:59:25.4812392Z  PostgreSQL init process complete; ready for start up.
+    Swarm integrator / Integrate the ready batch	UNKNOWN STEP	2026-11-21T15:59:25.4896606Z  
+    Swarm integrator / Integrate the ready batch	UNKNOWN STEP	2026-11-21T15:59:25.4902246Z Stop and remove container: 7b68e41144b646239e62a84cec1d80c5_postgres1712sha256b60e90042aa6b8dbecd58e224b3e36114dbf8ad754465264c2476ad58a86e45c_7f389f
+    Swarm integrator / Integrate the ready batch	UNKNOWN STEP	2026-11-21T15:59:25.4905681Z ##[command]/usr/bin/docker rm --force c2fa7a78e99a94aa5e32394e9fa7562ed72a561f79713403509382fe88915beb
+    Swarm integrator / Integrate the ready batch	UNKNOWN STEP	2026-11-21T15:59:26.8850888Z c2fa7a78e99a94aa5e32394e9fa7562ed72a561f79713403509382fe88915beb
+    Swarm integrator / Integrate the ready batch	UNKNOWN STEP	2026-11-21T15:59:26.8870326Z Remove container network: github_network_86cc304fadf343e292cbe985d0e27741
+    Swarm integrator / Integrate the ready batch	UNKNOWN STEP	2026-11-21T15:59:26.8873112Z ##[command]/usr/bin/docker network rm github_network_86cc304fadf343e292cbe985d0e27741
+    Swarm integrator / Integrate the ready batch	UNKNOWN STEP	2026-11-21T15:59:26.9917065Z github_network_86cc304fadf343e292cbe985d0e27741
+    Swarm integrator / Integrate the ready batch	UNKNOWN STEP	2026-11-21T15:59:26.9975917Z Evaluate and set job outputs
+    Swarm integrator / Integrate the ready batch	UNKNOWN STEP	2026-11-21T15:59:26.9981677Z Cleaning up orphan processes
+    ```
+    Repair PRs may touch workflow and script files. Reproduce first, fix the cause,
+    never weaken, skip or delete a test; record results in your notes file (the path in your prompt).
