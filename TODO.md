@@ -1521,7 +1521,9 @@ Cadence and limits:
 
 The design docs and WEB-07 currently show only a notice on a staff web screen narrower than 768 px. These tasks make the staff web usable on phones and tablets and the patient app usable on tablets and in landscape. `RESP-DECISION` records the change; a person must amend WEB-07 in the specification.
 
-- [ ] RESP-DECISION · Decision record: the staff web works on phones and tablets, not only 768 px and wider
+- [-] RESP-DECISION · Decision record: the staff web works on phones and tablets, not only 768 px and wider
+  - agent: swarm-3
+  - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: docs/decisions/0004-responsive-staff-web.md
   - details:
@@ -2516,7 +2518,9 @@ The design docs and WEB-07 currently show only a notice on a staff web screen na
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
-- [ ] RESP-APP-DECISION · Decision record: the patient app supports tablets and landscape
+- [-] RESP-APP-DECISION · Decision record: the patient app supports tablets and landscape
+  - agent: swarm-4
+  - attempts: 1
   - requirements: PAT-01, PAT-02, UX-01
   - scope: docs/decisions/0005-patient-app-tablets.md
   - details:
@@ -2790,7 +2794,9 @@ The design docs and WEB-07 currently show only a notice on a staff web screen na
 
 The human tasks `S-G1-09`, `S-G2-11`, `S-G3-13`, `S-G4-07`, `S-G5-01` to `S-G5-04`, `S-G5-12` and `S-G0-04` need a person to accept or decide. These tasks prepare the evidence and the decision packs so a person only has to read and sign. They never record an approval.
 
-- [ ] GATE-ISOLATION-SURFACES · G0 isolation across API, search, files, workers and exports: two tenants with identical local IDs (test and gap note)
+- [-] GATE-ISOLATION-SURFACES · G0 isolation across API, search, files, workers and exports: two tenants with identical local IDs (test and gap note)
+  - agent: swarm-5
+  - attempts: 1
   - requirements: ARC-02, IAM-01
   - scope: apps/api/src/test/java/com/aurevia/smartclinic/tenancy/clauses/IsolationAcrossSurfacesTest.java, docs/gates/g0-isolation-surfaces.md
   - details:
@@ -2867,7 +2873,9 @@ The human tasks `S-G1-09`, `S-G2-11`, `S-G3-13`, `S-G4-07`, `S-G5-01` to `S-G5-0
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
-- [ ] GATE-DECISION-POLICY-PACK · Decision pack for a person to approve: Market policy pack, hosting region, jurisdiction and data handling map
+- [-] GATE-DECISION-POLICY-PACK · Decision pack for a person to approve: Market policy pack, hosting region, jurisdiction and data handling map
+  - agent: swarm-6
+  - attempts: 1
   - requirements: OPS-01, PRD-05
   - scope: docs/launch/policy-pack.md
   - details:
@@ -2877,7 +2885,9 @@ The human tasks `S-G1-09`, `S-G2-11`, `S-G3-13`, `S-G4-07`, `S-G5-01` to `S-G5-0
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
-- [ ] GATE-DECISION-CLINICAL-APPROVALS · Decision pack for a person to approve: Clinical templates, code sets, interpreting privileges and result escalation approvals
+- [-] GATE-DECISION-CLINICAL-APPROVALS · Decision pack for a person to approve: Clinical templates, code sets, interpreting privileges and result escalation approvals
+  - agent: swarm-7
+  - attempts: 1
   - requirements: ADM-01, CLN-04
   - scope: docs/launch/clinical-approvals.md
   - details:
@@ -2887,7 +2897,9 @@ The human tasks `S-G1-09`, `S-G2-11`, `S-G3-13`, `S-G4-07`, `S-G5-01` to `S-G5-0
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
-- [ ] GATE-DECISION-RELEASE-AND-RECOVERY-RULES · Decision pack for a person to approve: Result release rules, sensitive information handling and identity recovery approvals
+- [-] GATE-DECISION-RELEASE-AND-RECOVERY-RULES · Decision pack for a person to approve: Result release rules, sensitive information handling and identity recovery approvals
+  - agent: swarm-8
+  - attempts: 1
   - requirements: XCH-06, IAM-05
   - scope: docs/launch/release-and-recovery-rules.md
   - details:
@@ -2897,7 +2909,9 @@ The human tasks `S-G1-09`, `S-G2-11`, `S-G3-13`, `S-G4-07`, `S-G5-01` to `S-G5-0
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
-- [ ] GATE-DECISION-PARTNER-INTERFACES · Decision pack for a person to approve: Laboratory, PACS and pharmacy interface contracts, credentials and outage drills
+- [-] GATE-DECISION-PARTNER-INTERFACES · Decision pack for a person to approve: Laboratory, PACS and pharmacy interface contracts, credentials and outage drills
+  - agent: swarm-9
+  - attempts: 1
   - requirements: ARC-05, XCH-04
   - scope: docs/launch/partner-interfaces.md
   - details:
@@ -2907,7 +2921,9 @@ The human tasks `S-G1-09`, `S-G2-11`, `S-G3-13`, `S-G4-07`, `S-G5-01` to `S-G5-0
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
-- [ ] GATE-DECISION-SITE-LAUNCH-APPROVALS · Decision pack for a person to approve: Per-site launch approvals and final G5 acceptance
+- [-] GATE-DECISION-SITE-LAUNCH-APPROVALS · Decision pack for a person to approve: Per-site launch approvals and final G5 acceptance
+  - agent: swarm-10
+  - attempts: 1
   - requirements: OPS-01, MSG-06
   - scope: docs/launch/site-launch-approvals.md
   - details:
