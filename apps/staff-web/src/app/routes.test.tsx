@@ -19,12 +19,20 @@ describe('createRoutes', () => {
   it('resolves every existing path', () => {
     expect(createRoutes(false).map((candidate) => candidate.pattern)).toEqual([
       '/',
+      '/signed-out',
+      '/session-expired',
+      '/forbidden',
+      '/not-found',
       '/schedule',
       '/schedule/book',
+      '/patients',
+      '/patients/:id',
       '/patients/:id/chart',
       '/patients/:id/notes/:noteId',
       '/admin/facilities',
       '/admin/staff',
+      '/admin/config',
+      '/admin/audit',
       '*',
     ]);
   });
