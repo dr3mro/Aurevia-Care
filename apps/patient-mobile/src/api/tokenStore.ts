@@ -1,5 +1,7 @@
 import * as SecureStore from 'expo-secure-store';
 
+import { clearClinicalCache } from './clinicalCache';
+
 /**
  * OS-backed session credential storage (PAT-01, ARC-03).
  *
@@ -24,7 +26,15 @@ export async function loadToken(): Promise<string | null> {
   return SecureStore.getItemAsync(TOKEN_KEY);
 }
 
-/** Remove the stored credential, for example after logout or revocation. */
+/**
+ * End the local session: remove the OS credential and discard all transient
+ * clinical memory. The cache is cleared in a `finally` block so it cannot
+ * survive sign-out even when the native keychain is temporarily unavailable.
+ */
 export async function clearToken(): Promise<void> {
-  await SecureStore.deleteItemAsync(TOKEN_KEY);
+  try {
+    await SecureStore.deleteItemAsync(TOKEN_KEY);
+  } finally {
+    clearClinicalCache();
+  }
 }

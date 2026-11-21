@@ -1,5 +1,11 @@
 import { jest } from '@jest/globals';
 
+import {
+  cacheClinical,
+  clearClinicalCache,
+  clinicalCacheSize,
+  readClinical,
+} from './clinicalCache';
 import { clearToken, loadToken, saveToken } from './tokenStore';
 
 /** The native adapter is replaced with a synthetic, in-memory SecureStore. */
@@ -32,6 +38,7 @@ beforeEach(() => {
   secureStore.setItemAsync.mockClear();
   secureStore.getItemAsync.mockClear();
   secureStore.deleteItemAsync.mockClear();
+  clearClinicalCache();
 });
 
 describe('tokenStore (PAT-02, ARC-03)', () => {
@@ -63,5 +70,28 @@ describe('tokenStore (PAT-02, ARC-03)', () => {
 
     expect(secureStore.deleteItemAsync).toHaveBeenCalledWith('session');
     await expect(loadToken()).resolves.toBeNull();
+  });
+
+  it('clears all in-memory clinical data at sign-out', async () => {
+    await saveToken(TOKEN);
+    cacheClinical('reports', 'report-1', { text: 'synthetic-report' });
+    cacheClinical('messages', 'msg-1', 'synthetic-message');
+    expect(clinicalCacheSize()).toBe(2);
+
+    await clearToken();
+
+    expect(clinicalCacheSize()).toBe(0);
+    expect(readClinical('reports', 'report-1')).toBeUndefined();
+    expect(readClinical('messages', 'msg-1')).toBeUndefined();
+  });
+
+  it('still clears clinical memory when secure storage removal fails', async () => {
+    cacheClinical('messages', 'msg-1', 'synthetic-message');
+    secureStore.deleteItemAsync.mockRejectedValueOnce(new Error('keychain unavailable'));
+
+    await expect(clearToken()).rejects.toThrow('keychain unavailable');
+
+    expect(clinicalCacheSize()).toBe(0);
+    expect(readClinical('messages', 'msg-1')).toBeUndefined();
   });
 });
