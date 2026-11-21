@@ -190,8 +190,9 @@ Found while extending the specification (section 8.1 and docs/design/screens-and
     Do NOT turn on request or response body logging, and do NOT put the subject or organization into every log line (identifiers only where needed).
 
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` (API tasks) or `bash apps/staff-web/check.sh` (staff web tasks) must pass. Synthetic data only; write the failing test first; stay inside the declared scope; name folders and packages after what they hold, never a task ID; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
-- [ ] READY-11 · Staff web OIDC login with a session cookie and CSRF protection (WEB-03)
-  - attempts: 0
+- [-] READY-11 · Staff web OIDC login with a session cookie and CSRF protection (WEB-03)
+  - agent: swarm-1
+  - attempts: 1
   - scope: apps/api/pom.xml, apps/api/src/main/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/web, apps/api/src/main/resources
   - depends: AUD-20261120-03, READY-05
   - details:
@@ -231,9 +232,10 @@ Order of work for the whole production-readiness effort: (1) security and platfo
     4. Tests: each state, create success, validation error summary, deactivate confirmation, history view.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
-- [ ] READY-24 · Admin pages: /admin/config and /admin/audit on the real API
+- [-] READY-24 · Admin pages: /admin/config and /admin/audit on the real API
+  - agent: swarm-2
+  - attempts: 1
   - requirements: ADM-01, OPS-02
-  - attempts: 0
   - scope: apps/staff-web/src/features/admin
   - depends: READY-19, READY-20, READY-51
   - details:
@@ -248,9 +250,10 @@ Order of work for the whole production-readiness effort: (1) security and platfo
 
 ### Phase 5 — New staff web screens (each follows docs/design/screen-recipe.md)
 
-- [ ] READY-25 · Patients: /patients search and register, /patients/:id overview
+- [-] READY-25 · Patients: /patients search and register, /patients/:id overview
+  - agent: swarm-3
+  - attempts: 1
   - requirements: PRD-01, IAM-03, IAM-04
-  - attempts: 0
   - scope: apps/staff-web/src/features/patients
   - depends: READY-19, READY-20, READY-51
   - details:
@@ -262,9 +265,10 @@ Order of work for the whole production-readiness effort: (1) security and platfo
     4. Tests: each state, short search rejected, register success and validation error, duplicate warning shown, Arabic name rendering.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
-- [ ] READY-26 · Orders: /orders list and /orders/:id detail with accept, reject, clarify
+- [-] READY-26 · Orders: /orders list and /orders/:id detail with accept, reject, clarify
+  - agent: swarm-4
+  - attempts: 1
   - requirements: XCH-01, XCH-02, XCH-03
-  - attempts: 0
   - scope: apps/staff-web/src/features/orders
   - depends: READY-19, READY-20, READY-16, READY-51
   - details:
@@ -276,9 +280,10 @@ Order of work for the whole production-readiness effort: (1) security and platfo
     3. Tests: each state, accept success, reject needs a reason, conflict keeps the typed reason, idempotency key is reused when the same action is retried and new for a new action.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
-- [ ] READY-27 · Results: /results inbox and /results/critical queue
+- [-] READY-27 · Results: /results inbox and /results/critical queue
+  - agent: swarm-5
+  - attempts: 1
   - requirements: XCH-04, XCH-05
-  - attempts: 0
   - scope: apps/staff-web/src/features/results
   - depends: READY-19, READY-20, READY-51
   - details:
@@ -290,9 +295,10 @@ Order of work for the whole production-readiness effort: (1) security and platfo
     3. Tests: each state, countdown uses a fake timer, overdue marking has text, escalate needs a reason, acknowledge conflict.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
-- [ ] READY-28 · Lab: /lab/accessions list and accession actions
+- [-] READY-28 · Lab: /lab/accessions list and accession actions
+  - agent: swarm-6
+  - attempts: 1
   - requirements: LAB-01, LAB-02
-  - attempts: 0
   - scope: apps/staff-web/src/features/lab
   - depends: READY-19, READY-20, READY-17, READY-51
   - details:
@@ -304,9 +310,10 @@ Order of work for the whole production-readiness effort: (1) security and platfo
     3. Tests: each state, only valid actions offered per state, reject needs a reason, recollect links the new specimen.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
-- [ ] READY-29 · Messages: /messages unit inbox and conversation view
+- [-] READY-29 · Messages: /messages unit inbox and conversation view
+  - agent: swarm-7
+  - attempts: 1
   - requirements: MSG-02, MSG-03
-  - attempts: 0
   - scope: apps/staff-web/src/features/messages
   - depends: READY-19, READY-20, READY-51
   - details:
@@ -318,9 +325,10 @@ Order of work for the whole production-readiness effort: (1) security and platfo
     4. Tests: each state, reply success and conflict, assign, unread count updates after read, title contains no patient data.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
-- [ ] READY-30 · Finance: /finance invoices with issue, payment, refund and void
+- [-] READY-30 · Finance: /finance invoices with issue, payment, refund and void
+  - agent: swarm-8
+  - attempts: 1
   - requirements: FIN-01, PRD-04
-  - attempts: 0
   - scope: apps/staff-web/src/features/finance
   - depends: READY-19, READY-20, READY-18, READY-51
   - details:
@@ -332,9 +340,10 @@ Order of work for the whole production-readiness effort: (1) security and platfo
     4. Tests: money formatting in English and Arabic, parser rejects bad input, each state, payment retry reuses the key, refund needs a reason.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
-- [ ] READY-31 · Operations: /operations/queues for the operational queues
+- [-] READY-31 · Operations: /operations/queues for the operational queues
+  - agent: swarm-9
+  - attempts: 1
   - requirements: ADM-02, OPS-05
-  - attempts: 0
   - scope: apps/staff-web/src/features/operations
   - depends: READY-19, READY-20, READY-51
   - details:
@@ -346,9 +355,10 @@ Order of work for the whole production-readiness effort: (1) security and platfo
     4. Tests: each state per tab, an action needs a reason, oldest age is computed from server timestamps, a failed retry is not repeated.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
-- [ ] READY-32 · System pages and browser-support check
+- [-] READY-32 · System pages and browser-support check
+  - agent: swarm-10
+  - attempts: 1
   - requirements: WEB-03, WEB-07
-  - attempts: 0
   - scope: apps/staff-web/src/features/system, apps/staff-web/src/main.tsx, apps/staff-web/tests
   - depends: READY-19, READY-51
   - details:
