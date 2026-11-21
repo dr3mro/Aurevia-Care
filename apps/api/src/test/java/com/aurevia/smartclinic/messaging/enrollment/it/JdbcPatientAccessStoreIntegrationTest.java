@@ -99,6 +99,9 @@ class JdbcPatientAccessStoreIntegrationTest {
         try (Connection root = DriverManager.getConnection(
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
+            // Roles must be created before CREATE DATABASE ... OWNER in the same
+            // @BeforeAll: JUnit does not guarantee the order of multiple @BeforeAll
+            // methods, so a separate roles() method could run after prepare().
             statement.execute("DO $$ BEGIN "
                     + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='smartclinic_migrate') THEN "
                     + "CREATE ROLE smartclinic_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
