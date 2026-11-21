@@ -5146,6 +5146,1275 @@ Screens the earlier parts did not cover. Each exports its routes from `features/
     4. Tests: every route renders under its role, a direct link without the role shows the forbidden state.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
+## Responsive and mobile: staff web on phones, tablets and desktop, patient app on tablets (new files and narrow edits, run in parallel after the foundation)
+
+The design docs and WEB-07 currently show only a notice on a staff web screen narrower than 768 px. These tasks make the staff web usable on phones and tablets and the patient app usable on tablets and in landscape. `RESP-DECISION` records the change; a person must amend WEB-07 in the specification.
+
+- [ ] RESP-DECISION · Decision record: the staff web works on phones and tablets, not only 768 px and wider
+  - requirements: WEB-07, UX-01
+  - scope: docs/decisions/0004-responsive-staff-web.md
+  - details:
+    1. Read `docs/decisions/template.md`, `docs/decisions/README.md`, `docs/design/screens-and-navigation.md` (supported widths) and WEB-07 in `SMARTCLINIC_V1_SPEC.md`. Today WEB-07 and the design docs say the staff web shows a plain "use a larger screen" notice below 768 px.
+    2. Write `docs/decisions/0004-responsive-staff-web.md` from the template. Decision: the staff web is fully usable on phones (320 to 767 px), tablets (768 to 1279 px, both orientations) and desktop (1280 px and above). State the breakpoints (compact 0, medium 768, expanded 1280), that navigation is an off-canvas drawer on phones, an icon rail on tablets and a full rail on desktop, that tables become labelled cards or labelled scroll regions on phones without hiding any clinical column, that touch targets are at least 44 by 44 CSS px for coarse pointers, that text works at 200 percent zoom and reflows at 320 px (WCAG 1.4.10), and that there is no offline clinical editing and no service worker cache of clinical data (PRD-06, PAT-02 spirit).
+    3. Record the consequences: WEB-07 in `SMARTCLINIC_V1_SPEC.md` must be amended by a person (the swarm may not edit the specification); until then the compact layout floor in code follows this decision. List the supported browser matrix for phones (latest two majors of iOS Safari, Chrome on Android, Samsung Internet is out of scope). Status: Proposed, with the owner Product.
+    4. Run `python3 -I scripts/check-docs.py` and paste the result.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-DESIGN · Design guide: responsive layout patterns for the staff web
+  - requirements: WEB-07, UX-01
+  - scope: docs/design/responsive-layout.md
+  - depends: RESP-DECISION
+  - details:
+    1. Read `docs/decisions/0004-responsive-staff-web.md`, `docs/design/screen-recipe.md`, `docs/design/token-contract.md`, `docs/design/accessibility-patterns.md` and `docs/design/rtl-and-localization.md`.
+    2. Write `docs/design/responsive-layout.md`: the breakpoints and what changes at each; the page grid and maximum content width; navigation per breakpoint; a table of every component pattern (data table, form, dialog, tab strip, toolbar, badge row, note editor, chart timeline, banner) with its phone, tablet and desktop behaviour; touch target and spacing rules; safe-area insets; on-screen keyboard behaviour (the focused field stays visible and the primary action reachable); orientation change without losing typed work (WEB-09); pointer versus touch (hover is never the only way); right-to-left behaviour; zoom and text-spacing rules; and the test method for each rule (jsdom, Playwright projects, axe).
+    3. Use only logical CSS properties in every example. Run `python3 -I scripts/check-docs.py` and paste the result.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-NAV-DOC · Docs: update the supported widths in the screen and navigation map
+  - requirements: WEB-07, UX-01
+  - scope: docs/design/screens-and-navigation.md
+  - depends: RESP-DECISION
+  - details:
+    1. Read `docs/design/screens-and-navigation.md` and `docs/decisions/0004-responsive-staff-web.md`.
+    2. Replace the statement that below 768 px the staff web shows a "use a larger screen" notice with the responsive rules from the decision: drawer on phones, icon rail from 768 to 1279 px, full rail from 1280 px. Update the navigation row and the supported widths paragraph only; keep every other line.
+    3. Run `python3 -I scripts/check-docs.py` and paste the result.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-BREAKPOINTS · Staff web: breakpoint tokens and a `useBreakpoint` hook (new files)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/theme/breakpoints.ts, apps/staff-web/src/theme/useBreakpoint.ts, apps/staff-web/tests/theme/breakpoints.test.ts
+  - depends: RESP-DECISION
+  - details:
+    1. Read `apps/staff-web/src/theme/tokens.ts`, `ThemeProvider.tsx` and `docs/decisions/0004-responsive-staff-web.md`.
+    2. Add `breakpoints.ts` exporting the widths (medium 768, expanded 1280), the media query strings and a pure function `breakpointFor(width)` returning `compact`, `medium` or `expanded`. Add `useBreakpoint.ts`: a hook built on `window.matchMedia` that returns the current class, updates on change, cleans up its listener and falls back to `expanded` when `matchMedia` does not exist (server render and old tests). Also export `usePointerCoarse()` (query `(pointer: coarse)`) and `useOrientation()`.
+    3. Tests: boundary widths 767, 768, 1279 and 1280; the hook updates when a mocked media query fires; listeners are removed on unmount; the fallback without `matchMedia`.
+    4. Do not edit `ThemeProvider.tsx` or `tokens.ts`.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-STYLESHEET · Staff web: responsive base stylesheet with layout utility classes (new file)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/theme/responsive.css, apps/staff-web/tests/theme/responsiveStylesheet.test.ts
+  - depends: RESP-DESIGN
+  - details:
+    1. Read `docs/design/responsive-layout.md`, `docs/design/token-contract.md` and the inline styles in `apps/staff-web/src/app/AppShell.tsx`. The staff web has no stylesheet today; media queries cannot be written as inline styles.
+    2. Write `responsive.css` using only CSS logical properties and the existing token names as CSS variables with the same fallback values: `.page` (padding and a maximum inline size), `.stack`, `.cluster` (wrapping row), `.grid-2` (one column on phones, two from 768 px), `.table-region` (scroll region), `.card-list` (card layout for rows), `.only-compact`, `.hide-compact`, `.touch` (minimum 44 px block and inline size when `(pointer: coarse)`), `.field` (full width, 16 px font so iOS does not zoom), `.sheet` (full-screen dialog on phones), `.app-shell` (drawer, rail and full rail layouts), safe-area padding with `env(safe-area-inset-*)`, `prefers-reduced-motion`, `overflow-wrap: anywhere` for long text, and `min-width: 0` on flex children. Keep the existing `.skip-link` and focus ring behaviour; do not remove them.
+    3. Tests: read the file as text and assert there is no physical property (`margin-left`, `padding-right`, `left:` outside the skip link, `float`), that every class above exists, that the media query widths are 768 and 1280 only, and that the file is under 6 KB gzip.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-VIEWPORT · Staff web: viewport meta, theme colour and safe-area support in `index.html`
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/index.html, apps/staff-web/tests/indexability.test.ts
+  - depends: RESP-DECISION
+  - details:
+    1. Read `apps/staff-web/index.html` and `tests/indexability.test.ts`.
+    2. Set the viewport meta to `width=device-width, initial-scale=1, viewport-fit=cover` (never `user-scalable=no` or `maximum-scale`, which would break zoom for low-vision users). Add `<meta name="theme-color">` for light and dark with `media` attributes. Keep `noindex, nofollow` and `color-scheme`.
+    3. Extend `indexability.test.ts` (keep its existing assertions) with: the viewport allows zoom, includes `viewport-fit=cover`, and both theme colours exist.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-SUPPORT · Staff web: phones and tablets count as supported widths
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/features/system/browserSupport.ts, apps/staff-web/tests/features/system/browserSupport.test.ts
+  - depends: RESP-DECISION
+  - details:
+    1. Read `browserSupport.ts`, its test and `docs/decisions/0004-responsive-staff-web.md`. `MIN_SUPPORTED_WIDTH` is 768 today, so a phone gets the plain notice and no data.
+    2. Lower the floor to 320 px and keep the browser-version rule. Add the mobile engines: iOS Safari and Chrome on iOS (they report `CriOS` and `FxiOS` on WebKit; judge them by the iOS version), Chrome on Android, Firefox on Android and Edge on Android, each within two majors of its baseline. Keep Internet Explorer and unknown engines unsupported. Update the doc comments.
+    3. Update the test matrix: user agents for iPhone, iPad, Android phone and Android tablet at 320, 360, 390, 768, 820 and 1024 px are supported; a width of 319 px is not; old versions on each platform are not.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-MAIN · Staff web: load the responsive stylesheet at start-up
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/main.tsx, apps/staff-web/tests/main.test.tsx
+  - depends: RESP-STYLESHEET, RESP-SUPPORT
+  - details:
+    1. Read `src/main.tsx` and `tests/main.test.tsx`.
+    2. Import `./theme/responsive.css` and keep the support check using the new floor. Re-evaluate support when the window resizes or the device rotates so rotating a tablet never swaps the application for the unsupported notice because of a transient width.
+    3. Tests: the stylesheet import is present; resizing across 768 px keeps the application mounted; an unsupported browser still gets the plain notice and no data.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-MANIFEST · Staff web: web app manifest so the portal can be added to a home screen (no service worker)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/public/manifest.webmanifest, apps/staff-web/tests/theme/manifest.test.ts
+  - depends: RESP-DECISION
+  - details:
+    1. Read `apps/staff-web/public` and `docs/decisions/0004-responsive-staff-web.md`.
+    2. Write `manifest.webmanifest`: name, short name, `display: standalone`, `start_url: "/"`, `scope: "/"`, `theme_color`, `background_color`, `dir: "auto"`, `lang: "en"`, no icons that do not exist in the repository. No service worker, no caching of clinical data and no offline mode: the portal must stay online-only.
+    3. Test: valid JSON, required members, no `serviceWorker`, `start_url` is relative and holds no patient data.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-BUTTON · Staff web: responsive `Button` component
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/components/Button.tsx, apps/staff-web/tests/components/Button.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. Buttons keep their label and pressed state; the primary action stays reachable above the on-screen keyboard.
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-DIALOG · Staff web: responsive `Dialog` component
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/components/Dialog.tsx, apps/staff-web/tests/components/Dialog.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. On phones a dialog is a full-screen sheet with a sticky header and action bar, scroll lock on the page behind it, focus trapped and returned, Escape and a visible close button; on tablets and desktop it stays a centred dialog with a maximum width.
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-DATATABLE · Staff web: responsive `DataTable` component
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/components/DataTable.tsx, apps/staff-web/tests/components/DataTable.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. On phones render each row as a labelled card (header text repeated as the label for each value, with `role` and `aria` kept correct) or, when the table must stay a table, wrap it in a labelled scroll region with `tabindex="0"` and `role="region"`; tablets and desktop keep the table. No column is dropped.
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-FORM · Staff web: responsive `Form` component
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/components/Form.tsx, apps/staff-web/tests/components/Form.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. Single column on phones, two columns from 768 px where the form has more than six fields; the submit bar sticks to the bottom on phones without covering the focused field; the error summary stays at the top.
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-FORMFIELD · Staff web: responsive `FormField` component
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/components/FormField.tsx, apps/staff-web/tests/components/FormField.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. Label above the input on phones, labels and hints wrap, error text is not truncated, `inputmode` and `autocomplete` stay as they are.
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-STATEVIEWS · Staff web: responsive `StateViews` component
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/components/StateViews.tsx, apps/staff-web/tests/components/StateViews.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. Loading, empty, error, timeout, forbidden, conflict and session-expired views are centred, readable and keep their action buttons full width on phones.
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-APIPAGE · Staff web: responsive `ApiPage` component
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/components/ApiPage.tsx, apps/staff-web/tests/components/ApiPage.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. The page wrapper uses the page class and the maximum content width.
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-MIXEDSCRIPTTEXT · Staff web: responsive `MixedScriptText` component
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/components/MixedScriptText.tsx, apps/staff-web/tests/components/MixedScriptText.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. Mixed Arabic and English runs wrap without breaking isolation marks.
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-DRAWER · Staff web: off-canvas navigation drawer component for phones (new files)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/app/NavigationDrawer.tsx, apps/staff-web/tests/app/NavigationDrawer.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET
+  - details:
+    1. Read `src/app/AppShell.tsx`, `src/app/navigation.ts`, `docs/design/accessibility-patterns.md` and `docs/design/responsive-layout.md`.
+    2. Write `NavigationDrawer`: a menu button (`aria-expanded`, `aria-controls`, label from the shell messages) that opens a modal navigation drawer with the same role-scoped groups and links the rail shows. It traps focus, closes on Escape, on a link choice and on a backdrop tap, returns focus to the menu button, locks page scroll while open, has a swipe-free close button (never gesture-only), opens from the inline-start side so right-to-left mirrors it, and respects `prefers-reduced-motion`. Items the role cannot use are not rendered.
+    3. Tests: open and close by button, Escape and backdrop; focus trap order; focus return; the links equal `navigationGroupsFor(role)`; right-to-left mirroring through the `dir` attribute; reduced motion.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-ORGSWITCH · Staff web: responsive organization switcher
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/app/OrgSwitcher.tsx, apps/staff-web/tests/app/OrgSwitcher.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-DIALOG
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. The switcher is a full-width select or a bottom sheet on phones and keeps its explicit switch confirmation (IAM-01).
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-SHELL · Staff web: responsive application shell (drawer, icon rail, full rail)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/app/AppShell.tsx, apps/staff-web/tests/app/AppShell.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-DRAWER, RESP-ORGSWITCH, RESP-BUTTON
+  - details:
+    1. Read `AppShell.tsx`, `navigation.ts`, `NavigationDrawer.tsx`, `OrgSwitcher.tsx`, `docs/design/screens-and-navigation.md` and `docs/design/responsive-layout.md`.
+    2. Use `useBreakpoint`: compact shows a slim header (menu button, title, organization switcher, user menu collapsed into one button) and the drawer; medium shows the icon rail with accessible names and tooltips that also work on focus and long press; expanded shows the full rail. Keep the skip link, the landmarks, focus to `<main>` on route change, the theme toggle, the locale toggle and sign out; they may move into the user menu on phones but stay reachable in two taps. The rail is on the inline-start side in both directions.
+    3. The main content uses the page class and never scrolls horizontally. Safe-area insets apply to the header and the bottom edge.
+    4. Tests: the structure at compact, medium and expanded; the landmarks at each; skip link; focus moves to main on navigation; right-to-left; the existing `AppShell.test.tsx` still passes untouched.
+    5. Do not edit `routes.tsx`, `router.tsx` or `navigation.ts`.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-DESIGN-PREVIEW · Staff web: responsive `DesignPreview` (app)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/app/DesignPreview.tsx, apps/staff-web/tests/responsive/app/DesignPreview.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. The preview page shows each component at the three width classes.
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-NOT-FOUND-PAGE · Staff web: responsive `NotFoundPage` (app)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/app/NotFoundPage.tsx, apps/staff-web/tests/responsive/app/NotFoundPage.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. 
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-SIGN-IN-PLACEHOLDER · Staff web: responsive `SignInPlaceholder` (app)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/app/SignInPlaceholder.tsx, apps/staff-web/tests/responsive/app/SignInPlaceholder.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. 
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-WELCOME-PAGE · Staff web: responsive `WelcomePage` (app)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/app/WelcomePage.tsx, apps/staff-web/tests/responsive/app/WelcomePage.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. 
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-ACCESS-STATE-NOTICE · Staff web: responsive `AccessStateNotice` (features-admin)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/features/admin/AccessStateNotice.tsx, apps/staff-web/tests/responsive/features-admin/AccessStateNotice.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. 
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-ADMIN-SCREEN · Staff web: responsive `AdminScreen` (features-admin)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/features/admin/AdminScreen.tsx, apps/staff-web/tests/responsive/features-admin/AdminScreen.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. 
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-ADMIN-TABLE-REGION · Staff web: responsive `AdminTableRegion` (features-admin)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/features/admin/AdminTableRegion.tsx, apps/staff-web/tests/responsive/features-admin/AdminTableRegion.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. Its table follows the DataTable pattern.
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-AUDIT-EVENT-LIST · Staff web: responsive `AuditEventList` (features-admin)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/features/admin/AuditEventList.tsx, apps/staff-web/tests/responsive/features-admin/AuditEventList.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. Event rows become cards on phones with actor, action, resource and time all visible.
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-AUDIT-PAGE · Staff web: responsive `AuditPage` (features-admin)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/features/admin/AuditPage.tsx, apps/staff-web/tests/responsive/features-admin/AuditPage.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. 
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-CONFIG-EDITOR · Staff web: responsive `ConfigEditor` (features-admin)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/features/admin/ConfigEditor.tsx, apps/staff-web/tests/responsive/features-admin/ConfigEditor.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. Long configuration values wrap and the editor is single column on phones.
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-CONFIG-PAGE · Staff web: responsive `ConfigPage` (features-admin)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/features/admin/ConfigPage.tsx, apps/staff-web/tests/responsive/features-admin/ConfigPage.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. 
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-FACILITIES-PAGE · Staff web: responsive `FacilitiesPage` (features-admin)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/features/admin/FacilitiesPage.tsx, apps/staff-web/tests/responsive/features-admin/FacilitiesPage.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. 
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-FIELD-ERROR-SUMMARY · Staff web: responsive `FieldErrorSummary` (features-admin)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/features/admin/FieldErrorSummary.tsx, apps/staff-web/tests/responsive/features-admin/FieldErrorSummary.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. 
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-STAFF-HISTORY-VIEW · Staff web: responsive `StaffHistoryView` (features-admin)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/features/admin/StaffHistoryView.tsx, apps/staff-web/tests/responsive/features-admin/StaffHistoryView.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. History rows become cards on phones.
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-STAFF-PAGE · Staff web: responsive `StaffPage` (features-admin)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/features/admin/StaffPage.tsx, apps/staff-web/tests/responsive/features-admin/StaffPage.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. 
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-STATE-BADGE · Staff web: responsive `StateBadge` (features-admin)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/features/admin/StateBadge.tsx, apps/staff-web/tests/responsive/features-admin/StateBadge.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. 
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-CHART-PAGE · Staff web: responsive `ChartPage` (features-chart)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/features/chart/ChartPage.tsx, apps/staff-web/tests/responsive/features-chart/ChartPage.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. 
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-CHART-SCREEN · Staff web: responsive `ChartScreen` (features-chart)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/features/chart/ChartScreen.tsx, apps/staff-web/tests/responsive/features-chart/ChartScreen.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. 
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-DOCUMENT-LIST · Staff web: responsive `DocumentList` (features-chart)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/features/chart/DocumentList.tsx, apps/staff-web/tests/responsive/features-chart/DocumentList.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. Document rows become cards with the file name wrapped, type, date and the download action.
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-ENTERED-IN-ERROR-BANNER · Staff web: responsive `EnteredInErrorBanner` (features-chart)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/features/chart/EnteredInErrorBanner.tsx, apps/staff-web/tests/responsive/features-chart/EnteredInErrorBanner.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. 
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-LONGITUDINAL-CHART · Staff web: responsive `LongitudinalChart` (features-chart)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/features/chart/LongitudinalChart.tsx, apps/staff-web/tests/responsive/features-chart/LongitudinalChart.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. The timeline is a single column on phones with dates on their own line; tablets keep two columns.
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-NOTE-EDITOR · Staff web: responsive `NoteEditor` (features-chart)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/features/chart/NoteEditor.tsx, apps/staff-web/tests/responsive/features-chart/NoteEditor.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. The editor fields stack, the signature bar sticks to the bottom on phones, unsaved typed work survives rotation and the on-screen keyboard (WEB-09).
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-NOTE-PAGE · Staff web: responsive `NotePage` (features-chart)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/features/chart/NotePage.tsx, apps/staff-web/tests/responsive/features-chart/NotePage.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. 
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-REVISION-HISTORY · Staff web: responsive `RevisionHistory` (features-chart)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/features/chart/RevisionHistory.tsx, apps/staff-web/tests/responsive/features-chart/RevisionHistory.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. Revisions list as cards on phones; the compare action stays reachable.
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-DUPLICATES-PAGE · Staff web: responsive `DuplicatesPage` (features-duplicates)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/features/duplicates/DuplicatesPage.tsx, apps/staff-web/tests/responsive/features-duplicates/DuplicatesPage.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. 
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-DUPLICATES-SCREEN · Staff web: responsive `DuplicatesScreen` (features-duplicates)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/features/duplicates/DuplicatesScreen.tsx, apps/staff-web/tests/responsive/features-duplicates/DuplicatesScreen.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. The two identities are shown stacked on phones and side by side from 768 px, with differences marked in text, not by colour alone.
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-PATIENT-OVERVIEW-PAGE · Staff web: responsive `PatientOverviewPage` (features-patients)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/features/patients/PatientOverviewPage.tsx, apps/staff-web/tests/responsive/features-patients/PatientOverviewPage.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. 
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-PATIENT-OVERVIEW-SCREEN · Staff web: responsive `PatientOverviewScreen` (features-patients)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/features/patients/PatientOverviewScreen.tsx, apps/staff-web/tests/responsive/features-patients/PatientOverviewScreen.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. 
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-PATIENTS-PAGE · Staff web: responsive `PatientsPage` (features-patients)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/features/patients/PatientsPage.tsx, apps/staff-web/tests/responsive/features-patients/PatientsPage.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. 
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-PATIENTS-SCREEN · Staff web: responsive `PatientsScreen` (features-patients)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/features/patients/PatientsScreen.tsx, apps/staff-web/tests/responsive/features-patients/PatientsScreen.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. 
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-REGISTER-PATIENT-FORM · Staff web: responsive `RegisterPatientForm` (features-patients)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/features/patients/RegisterPatientForm.tsx, apps/staff-web/tests/responsive/features-patients/RegisterPatientForm.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. Long forms group into labelled sections; the duplicate-warning stays above the submit bar.
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-APPOINTMENT-WORKLIST · Staff web: responsive `AppointmentWorklist` (features-scheduling)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/features/scheduling/AppointmentWorklist.tsx, apps/staff-web/tests/responsive/features-scheduling/AppointmentWorklist.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. The worklist rows become cards on phones showing time, patient, status and the next action.
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-BOOKING-FORM · Staff web: responsive `BookingForm` (features-scheduling)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/features/scheduling/BookingForm.tsx, apps/staff-web/tests/responsive/features-scheduling/BookingForm.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. Date and time pickers use native inputs on coarse pointers.
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-SCHEDULING-PAGE · Staff web: responsive `SchedulingPage` (features-scheduling)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/features/scheduling/SchedulingPage.tsx, apps/staff-web/tests/responsive/features-scheduling/SchedulingPage.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. 
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-SCHEDULING-SCREEN · Staff web: responsive `SchedulingScreen` (features-scheduling)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/features/scheduling/SchedulingScreen.tsx, apps/staff-web/tests/responsive/features-scheduling/SchedulingScreen.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. 
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-VISIT-STATE-BADGE · Staff web: responsive `VisitStateBadge` (features-scheduling)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/features/scheduling/VisitStateBadge.tsx, apps/staff-web/tests/responsive/features-scheduling/VisitStateBadge.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. 
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-FORBIDDEN-PAGE · Staff web: responsive `ForbiddenPage` (features-system)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/features/system/ForbiddenPage.tsx, apps/staff-web/tests/responsive/features-system/ForbiddenPage.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. 
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-NOT-FOUND-PAGE-2 · Staff web: responsive `NotFoundPage` (features-system)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/features/system/NotFoundPage.tsx, apps/staff-web/tests/responsive/features-system/NotFoundPage.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. 
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-SESSION-EXPIRED-PAGE · Staff web: responsive `SessionExpiredPage` (features-system)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/features/system/SessionExpiredPage.tsx, apps/staff-web/tests/responsive/features-system/SessionExpiredPage.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. 
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-SIGNED-OUT-PAGE · Staff web: responsive `SignedOutPage` (features-system)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/features/system/SignedOutPage.tsx, apps/staff-web/tests/responsive/features-system/SignedOutPage.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. 
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-SYSTEM-NOTICE · Staff web: responsive `SystemNotice` (features-system)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/features/system/SystemNotice.tsx, apps/staff-web/tests/responsive/features-system/SystemNotice.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. 
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-UNSUPPORTED-BROWSER-PAGE · Staff web: responsive `UnsupportedBrowserPage` (features-system)
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/src/features/system/UnsupportedBrowserPage.tsx, apps/staff-web/tests/responsive/features-system/UnsupportedBrowserPage.responsive.test.tsx
+  - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
+  - details:
+    1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
+    2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. 
+    3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.
+    4. Add a new test file (named in `scope`) that mocks `matchMedia` for compact, medium and expanded and asserts the structure at each (for example drawer or rail, cards or table, stacked or side-by-side fields), the labels and roles, the keyboard order, and the right-to-left case. Existing tests must still pass. jsdom cannot lay out pixels, so test classes, attributes and structure, and leave pixel checks to the Playwright tasks.
+    5. Do not change behaviour, text, API calls or exported names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-E2E-PROJECTS · Staff web end-to-end: add phone, tablet and desktop device projects to Playwright
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/e2e/playwright.config.ts
+  - depends: RESP-SHELL
+  - details:
+    1. Read `e2e/playwright.config.ts`, `e2e/smoke.spec.ts` and `docs/design/responsive-layout.md`.
+    2. Add projects: phone portrait 360x740 and 390x844 (touch, mobile), phone landscape 844x390, tablet portrait 768x1024 and 820x1180, tablet landscape 1024x768 and 1180x820, laptop 1280x720 and desktop 1920x1080. Use Chromium for all, and add WebKit and Firefox for the 390x844, 820x1180 and 1280x720 sizes only when the browsers are installed in CI (keep the existing project and its timeouts). Name projects by device class, for example `phone-portrait`.
+    3. Do not change `smoke.spec.ts`. Run `npx playwright test --list` and paste the project names.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-E2E-RESPONSIVE-LAYOUT · Staff web end-to-end: responsiveLayout across phone, tablet and desktop
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/e2e/responsiveLayout.spec.ts
+  - depends: RESP-E2E-PROJECTS
+  - details:
+    1. Read `e2e/playwright.config.ts`, `e2e/smoke.spec.ts` and `docs/design/responsive-layout.md`. List the routes from `src/app/routes.tsx` and the feature `routes.ts` files and use synthetic data only.
+    2. At every project width: no horizontal page scroll (`document.documentElement.scrollWidth <= innerWidth`) on every route, navigation is a drawer, rail or full rail as the width demands, the main landmark is reachable, and the page has a visible heading.
+    3. Write `e2e/responsiveLayout.spec.ts` with one test per route and project where it applies; failure messages name the route, project and measurement. If a check fails on a real defect, do not weaken the test and do not leave it red: mark that single test `test.fixme` with the reason and the route, and list each defect under `## Why this is not finished` so a follow-up task is written.
+    4. Run `npx playwright test --config e2e/playwright.config.ts e2e/responsiveLayout.spec.ts` if browsers are installed in the sandbox, otherwise run `npx playwright test --list` and say so in the notes.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-E2E-TOUCH-TARGETS · Staff web end-to-end: touchTargets across phone, tablet and desktop
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/e2e/touchTargets.spec.ts
+  - depends: RESP-E2E-PROJECTS
+  - details:
+    1. Read `e2e/playwright.config.ts`, `e2e/smoke.spec.ts` and `docs/design/responsive-layout.md`. List the routes from `src/app/routes.tsx` and the feature `routes.ts` files and use synthetic data only.
+    2. On the phone and tablet projects every button, link, input and select on every route measures at least 44 by 44 CSS px (24 px minimum is the WCAG 2.2 floor; 44 is the project rule), with the allowed exceptions listed in the test.
+    3. Write `e2e/touchTargets.spec.ts` with one test per route and project where it applies; failure messages name the route, project and measurement. If a check fails on a real defect, do not weaken the test and do not leave it red: mark that single test `test.fixme` with the reason and the route, and list each defect under `## Why this is not finished` so a follow-up task is written.
+    4. Run `npx playwright test --config e2e/playwright.config.ts e2e/touchTargets.spec.ts` if browsers are installed in the sandbox, otherwise run `npx playwright test --list` and say so in the notes.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-E2E-REFLOW-AND-ZOOM · Staff web end-to-end: reflowAndZoom across phone, tablet and desktop
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/e2e/reflowAndZoom.spec.ts
+  - depends: RESP-E2E-PROJECTS
+  - details:
+    1. Read `e2e/playwright.config.ts`, `e2e/smoke.spec.ts` and `docs/design/responsive-layout.md`. List the routes from `src/app/routes.tsx` and the feature `routes.ts` files and use synthetic data only.
+    2. At 320 px wide and at 200 percent and 400 percent browser zoom, content reflows without two-dimensional scrolling except in labelled scroll regions, and text spacing overrides (line height 1.5, letter spacing 0.12 em, word spacing 0.16 em) cause no clipping (WCAG 1.4.10 and 1.4.12).
+    3. Write `e2e/reflowAndZoom.spec.ts` with one test per route and project where it applies; failure messages name the route, project and measurement. If a check fails on a real defect, do not weaken the test and do not leave it red: mark that single test `test.fixme` with the reason and the route, and list each defect under `## Why this is not finished` so a follow-up task is written.
+    4. Run `npx playwright test --config e2e/playwright.config.ts e2e/reflowAndZoom.spec.ts` if browsers are installed in the sandbox, otherwise run `npx playwright test --list` and say so in the notes.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-E2E-ORIENTATION-CHANGE · Staff web end-to-end: orientationChange across phone, tablet and desktop
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/e2e/orientationChange.spec.ts
+  - depends: RESP-E2E-PROJECTS
+  - details:
+    1. Read `e2e/playwright.config.ts`, `e2e/smoke.spec.ts` and `docs/design/responsive-layout.md`. List the routes from `src/app/routes.tsx` and the feature `routes.ts` files and use synthetic data only.
+    2. Rotating the phone and the tablet between portrait and landscape keeps the route, the focus and any typed unsaved form text (WEB-09), and never shows the unsupported-browser notice.
+    3. Write `e2e/orientationChange.spec.ts` with one test per route and project where it applies; failure messages name the route, project and measurement. If a check fails on a real defect, do not weaken the test and do not leave it red: mark that single test `test.fixme` with the reason and the route, and list each defect under `## Why this is not finished` so a follow-up task is written.
+    4. Run `npx playwright test --config e2e/playwright.config.ts e2e/orientationChange.spec.ts` if browsers are installed in the sandbox, otherwise run `npx playwright test --list` and say so in the notes.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-E2E-RIGHT-TO-LEFT-RESPONSIVE · Staff web end-to-end: rightToLeftResponsive across phone, tablet and desktop
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/e2e/rightToLeftResponsive.spec.ts
+  - depends: RESP-E2E-PROJECTS
+  - details:
+    1. Read `e2e/playwright.config.ts`, `e2e/smoke.spec.ts` and `docs/design/responsive-layout.md`. List the routes from `src/app/routes.tsx` and the feature `routes.ts` files and use synthetic data only.
+    2. Everything in the layout tests above also holds with the Arabic locale and `dir="rtl"`: the rail and drawer sit on the inline-start side, no text overlaps, and numbers and Latin runs stay isolated.
+    3. Write `e2e/rightToLeftResponsive.spec.ts` with one test per route and project where it applies; failure messages name the route, project and measurement. If a check fails on a real defect, do not weaken the test and do not leave it red: mark that single test `test.fixme` with the reason and the route, and list each defect under `## Why this is not finished` so a follow-up task is written.
+    4. Run `npx playwright test --config e2e/playwright.config.ts e2e/rightToLeftResponsive.spec.ts` if browsers are installed in the sandbox, otherwise run `npx playwright test --list` and say so in the notes.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-E2E-DARK-MODE-RESPONSIVE · Staff web end-to-end: darkModeResponsive across phone, tablet and desktop
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/e2e/darkModeResponsive.spec.ts
+  - depends: RESP-E2E-PROJECTS
+  - details:
+    1. Read `e2e/playwright.config.ts`, `e2e/smoke.spec.ts` and `docs/design/responsive-layout.md`. List the routes from `src/app/routes.tsx` and the feature `routes.ts` files and use synthetic data only.
+    2. Light and dark visual checks at 390x844, 820x1180 and 1280x720 on the shell and one screen per feature; contrast and focus rings remain visible (WEB-10).
+    3. Write `e2e/darkModeResponsive.spec.ts` with one test per route and project where it applies; failure messages name the route, project and measurement. If a check fails on a real defect, do not weaken the test and do not leave it red: mark that single test `test.fixme` with the reason and the route, and list each defect under `## Why this is not finished` so a follow-up task is written.
+    4. Run `npx playwright test --config e2e/playwright.config.ts e2e/darkModeResponsive.spec.ts` if browsers are installed in the sandbox, otherwise run `npx playwright test --list` and say so in the notes.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-E2E-ACCESSIBILITY-SCAN-RESPONSIVE · Staff web end-to-end: accessibilityScanResponsive across phone, tablet and desktop
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/e2e/accessibilityScanResponsive.spec.ts
+  - depends: RESP-E2E-PROJECTS
+  - details:
+    1. Read `e2e/playwright.config.ts`, `e2e/smoke.spec.ts` and `docs/design/responsive-layout.md`. List the routes from `src/app/routes.tsx` and the feature `routes.ts` files and use synthetic data only.
+    2. An axe scan with the WCAG 2.2 AA tags at 360, 768 and 1280 px, in English and Arabic, reports zero serious or critical violations on every route (WEB-10).
+    3. Write `e2e/accessibilityScanResponsive.spec.ts` with one test per route and project where it applies; failure messages name the route, project and measurement. If a check fails on a real defect, do not weaken the test and do not leave it red: mark that single test `test.fixme` with the reason and the route, and list each defect under `## Why this is not finished` so a follow-up task is written.
+    4. Run `npx playwright test --config e2e/playwright.config.ts e2e/accessibilityScanResponsive.spec.ts` if browsers are installed in the sandbox, otherwise run `npx playwright test --list` and say so in the notes.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-E2E-SOFT-KEYBOARD-AND-FORMS · Staff web end-to-end: softKeyboardAndForms across phone, tablet and desktop
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/e2e/softKeyboardAndForms.spec.ts
+  - depends: RESP-E2E-PROJECTS
+  - details:
+    1. Read `e2e/playwright.config.ts`, `e2e/smoke.spec.ts` and `docs/design/responsive-layout.md`. List the routes from `src/app/routes.tsx` and the feature `routes.ts` files and use synthetic data only.
+    2. On the phone projects the focused field is never hidden by the sticky action bar, the primary action is reachable, field types open the right keyboard (`inputmode`), and a conflict or error summary is visible without scrolling horizontally.
+    3. Write `e2e/softKeyboardAndForms.spec.ts` with one test per route and project where it applies; failure messages name the route, project and measurement. If a check fails on a real defect, do not weaken the test and do not leave it red: mark that single test `test.fixme` with the reason and the route, and list each defect under `## Why this is not finished` so a follow-up task is written.
+    4. Run `npx playwright test --config e2e/playwright.config.ts e2e/softKeyboardAndForms.spec.ts` if browsers are installed in the sandbox, otherwise run `npx playwright test --list` and say so in the notes.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-E2E-MOBILE-PERFORMANCE · Staff web end-to-end: mobilePerformance across phone, tablet and desktop
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/e2e/mobilePerformance.spec.ts
+  - depends: RESP-E2E-PROJECTS
+  - details:
+    1. Read `e2e/playwright.config.ts`, `e2e/smoke.spec.ts` and `docs/design/responsive-layout.md`. List the routes from `src/app/routes.tsx` and the feature `routes.ts` files and use synthetic data only.
+    2. On an emulated mid-range phone over a throttled network, largest contentful paint is 4 s or less, interaction to next paint is 200 ms or less and layout shift is 0.1 or less on the sign-in-free welcome route and one feature route (WEB-08 sets the laptop targets; these are the mobile targets this task proposes). Also assert that no route chunk exceeds 250 KB gzip using the build output.
+    3. Write `e2e/mobilePerformance.spec.ts` with one test per route and project where it applies; failure messages name the route, project and measurement. If a check fails on a real defect, do not weaken the test and do not leave it red: mark that single test `test.fixme` with the reason and the route, and list each defect under `## Why this is not finished` so a follow-up task is written.
+    4. Run `npx playwright test --config e2e/playwright.config.ts e2e/mobilePerformance.spec.ts` if browsers are installed in the sandbox, otherwise run `npx playwright test --list` and say so in the notes.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-E2E-NAVIGATION-DRAWER-FLOW · Staff web end-to-end: navigationDrawerFlow across phone, tablet and desktop
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/e2e/navigationDrawerFlow.spec.ts
+  - depends: RESP-E2E-PROJECTS
+  - details:
+    1. Read `e2e/playwright.config.ts`, `e2e/smoke.spec.ts` and `docs/design/responsive-layout.md`. List the routes from `src/app/routes.tsx` and the feature `routes.ts` files and use synthetic data only.
+    2. On a phone a user can open the drawer, reach every item the role may use, choose one, and the drawer closes and focus lands on the main content; Escape and the backdrop also close it; the drawer never traps a screen-reader user.
+    3. Write `e2e/navigationDrawerFlow.spec.ts` with one test per route and project where it applies; failure messages name the route, project and measurement. If a check fails on a real defect, do not weaken the test and do not leave it red: mark that single test `test.fixme` with the reason and the route, and list each defect under `## Why this is not finished` so a follow-up task is written.
+    4. Run `npx playwright test --config e2e/playwright.config.ts e2e/navigationDrawerFlow.spec.ts` if browsers are installed in the sandbox, otherwise run `npx playwright test --list` and say so in the notes.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-E2E-FEATURE-PATIENTS · Staff web end-to-end: the patients screens work on phone, tablet and desktop
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/e2e/responsive-patients.spec.ts
+  - depends: RESP-E2E-PROJECTS
+  - details:
+    1. Read the `patients` feature under `apps/staff-web/src/features` (patient search, registration and overview) and `e2e/playwright.config.ts`.
+    2. Write `e2e/responsive-patients.spec.ts`: for every screen of the feature, at the phone, tablet and desktop projects, perform the main task of that screen with the keyboard and with touch (tap), and check no horizontal scroll, every value that is visible on desktop is still reachable on phone (cards or scroll region), and the screen works in English and Arabic.
+    3. A real defect becomes a `test.fixme` with the reason and is listed under `## Why this is not finished`. Never weaken an assertion.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-E2E-FEATURE-SCHEDULING · Staff web end-to-end: the scheduling screens work on phone, tablet and desktop
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/e2e/responsive-scheduling.spec.ts
+  - depends: RESP-E2E-PROJECTS
+  - details:
+    1. Read the `scheduling` feature under `apps/staff-web/src/features` (booking and the appointment worklist) and `e2e/playwright.config.ts`.
+    2. Write `e2e/responsive-scheduling.spec.ts`: for every screen of the feature, at the phone, tablet and desktop projects, perform the main task of that screen with the keyboard and with touch (tap), and check no horizontal scroll, every value that is visible on desktop is still reachable on phone (cards or scroll region), and the screen works in English and Arabic.
+    3. A real defect becomes a `test.fixme` with the reason and is listed under `## Why this is not finished`. Never weaken an assertion.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-E2E-FEATURE-CHART · Staff web end-to-end: the chart screens work on phone, tablet and desktop
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/e2e/responsive-chart.spec.ts
+  - depends: RESP-E2E-PROJECTS
+  - details:
+    1. Read the `chart` feature under `apps/staff-web/src/features` (longitudinal chart, note editor, documents and revisions) and `e2e/playwright.config.ts`.
+    2. Write `e2e/responsive-chart.spec.ts`: for every screen of the feature, at the phone, tablet and desktop projects, perform the main task of that screen with the keyboard and with touch (tap), and check no horizontal scroll, every value that is visible on desktop is still reachable on phone (cards or scroll region), and the screen works in English and Arabic.
+    3. A real defect becomes a `test.fixme` with the reason and is listed under `## Why this is not finished`. Never weaken an assertion.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-E2E-FEATURE-DUPLICATES · Staff web end-to-end: the duplicates screens work on phone, tablet and desktop
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/e2e/responsive-duplicates.spec.ts
+  - depends: RESP-E2E-PROJECTS
+  - details:
+    1. Read the `duplicates` feature under `apps/staff-web/src/features` (duplicate review) and `e2e/playwright.config.ts`.
+    2. Write `e2e/responsive-duplicates.spec.ts`: for every screen of the feature, at the phone, tablet and desktop projects, perform the main task of that screen with the keyboard and with touch (tap), and check no horizontal scroll, every value that is visible on desktop is still reachable on phone (cards or scroll region), and the screen works in English and Arabic.
+    3. A real defect becomes a `test.fixme` with the reason and is listed under `## Why this is not finished`. Never weaken an assertion.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-E2E-FEATURE-ADMIN · Staff web end-to-end: the admin screens work on phone, tablet and desktop
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/e2e/responsive-admin.spec.ts
+  - depends: RESP-E2E-PROJECTS
+  - details:
+    1. Read the `admin` feature under `apps/staff-web/src/features` (facilities, staff, configuration and audit) and `e2e/playwright.config.ts`.
+    2. Write `e2e/responsive-admin.spec.ts`: for every screen of the feature, at the phone, tablet and desktop projects, perform the main task of that screen with the keyboard and with touch (tap), and check no horizontal scroll, every value that is visible on desktop is still reachable on phone (cards or scroll region), and the screen works in English and Arabic.
+    3. A real defect becomes a `test.fixme` with the reason and is listed under `## Why this is not finished`. Never weaken an assertion.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-E2E-FEATURE-SYSTEM · Staff web end-to-end: the system screens work on phone, tablet and desktop
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/e2e/responsive-system.spec.ts
+  - depends: RESP-E2E-PROJECTS
+  - details:
+    1. Read the `system` feature under `apps/staff-web/src/features` (forbidden, not found, signed out, session expired and unsupported browser pages) and `e2e/playwright.config.ts`.
+    2. Write `e2e/responsive-system.spec.ts`: for every screen of the feature, at the phone, tablet and desktop projects, perform the main task of that screen with the keyboard and with touch (tap), and check no horizontal scroll, every value that is visible on desktop is still reachable on phone (cards or scroll region), and the screen works in English and Arabic.
+    3. A real defect becomes a `test.fixme` with the reason and is listed under `## Why this is not finished`. Never weaken an assertion.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-README · Staff web README: how to test and develop responsive layouts
+  - requirements: WEB-07, UX-01
+  - scope: apps/staff-web/README.md
+  - depends: RESP-E2E-PROJECTS
+  - details:
+    1. Read `apps/staff-web/README.md` and `docs/design/responsive-layout.md`.
+    2. Add one section "Responsive layout": the three width classes, the stylesheet and hook, how to run the device projects (`npm run e2e -- --project=phone-portrait`), how to emulate a phone in a desktop browser, and the rule that no feature may hide a clinical field on a small screen. Keep every other line.
+    3. Run `python3 -I scripts/check-docs.py` and paste the result.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-APP-DECISION · Decision record: the patient app supports tablets and landscape
+  - requirements: PAT-01, PAT-02, UX-01
+  - scope: docs/decisions/0005-patient-app-tablets.md
+  - details:
+    1. Read `docs/decisions/template.md`, `apps/patient-mobile/app.json` (iOS `supportsTablet` is false and orientation is portrait only) and the section 7 mobile row in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/decisions/0005-patient-app-tablets.md`: the patient app runs on iPhone, iPad, Android phones and Android tablets in portrait and landscape; layout classes compact, regular and large by window width (600 and 840 dp) rather than by device type; two-pane inbox and thread on large widths; text scales with system font size up to 200 percent; split-screen and slide-over on iPad keep working; screen-reader flows (UX-01) are tested on phone and tablet. Status Proposed, owner Product.
+    3. Run `python3 -I scripts/check-docs.py` and paste the result.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-APP-LAYOUT-HOOK · Patient app: window-size layout hook (new files)
+  - requirements: PAT-01, PAT-02, UX-01
+  - scope: apps/patient-mobile/src/app/layout/useWindowClass.ts, apps/patient-mobile/src/app/layout/useWindowClass.test.ts
+  - depends: RESP-APP-DECISION
+  - details:
+    1. Read `apps/patient-mobile/src/app` and `docs/decisions/0005-patient-app-tablets.md`.
+    2. Add `useWindowClass()` using React Native `useWindowDimensions`: `compact` below 600, `regular` 600 to 839, `large` 840 and above, plus `isLandscape`, `fontScale` and safe-area insets (use the existing safe-area library if the app already has one; otherwise take insets as an optional argument, add no dependency). Export a pure `windowClassFor(width)`.
+    3. Tests: boundary widths 599, 600, 839 and 840; landscape flag; the hook reacts to dimension changes.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-APP-CONFIG · Patient app: enable tablets and rotation in the Expo configuration
+  - requirements: PAT-01, PAT-02, UX-01
+  - scope: apps/patient-mobile/app.json
+  - depends: RESP-APP-DECISION
+  - details:
+    1. Read `apps/patient-mobile/app.json` and `docs/decisions/0005-patient-app-tablets.md`.
+    2. Set `ios.supportsTablet` to true, `orientation` to `default`, keep every other key, and add `ios.requireFullScreen: false` so split view and slide over work. Do not add a plugin or a dependency.
+    3. Run the JSON through `python3 -m json.tool`, then `bash apps/patient-mobile/check.sh`, and paste the results.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-APP-PATIENT-RESOURCE · Patient app: tablet, landscape and large-text layout for `PatientResource` (app)
+  - requirements: PAT-01, PAT-02, UX-01
+  - scope: apps/patient-mobile/src/app/PatientResource.tsx, apps/patient-mobile/src/app/PatientResource.tablet.test.tsx
+  - depends: RESP-APP-LAYOUT-HOOK, RESP-APP-CONFIG
+  - details:
+    1. Read the component, its existing test, `docs/decisions/0005-patient-app-tablets.md` and `src/app/layout/useWindowClass.ts`.
+    2. Make it work on compact, regular and large windows, portrait and landscape, with font scale 1.0, 1.5 and 2.0: content has a maximum readable width and is centred on large windows; lists and detail use two panes on large windows where the screen is a list plus a detail (inbox and thread, appointments and detail, reports and detail); touch targets are at least 44 by 44 points; nothing is clipped at 200 percent text; safe-area insets are respected; focus order and screen-reader labels are unchanged; right-to-left mirrors; no persistent clinical cache is added (PAT-02).
+    3. Add a new test file (named in `scope`) that renders the component at each window class and font scale and asserts the structure, the accessibility labels and the right-to-left case. Existing tests must still pass.
+    4. Do not change behaviour, text, API calls or exported names, and do not add a dependency.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-APP-ROOT-NAVIGATOR · Patient app: tablet, landscape and large-text layout for `RootNavigator` (app)
+  - requirements: PAT-01, PAT-02, UX-01
+  - scope: apps/patient-mobile/src/app/RootNavigator.tsx, apps/patient-mobile/src/app/RootNavigator.tablet.test.tsx
+  - depends: RESP-APP-LAYOUT-HOOK, RESP-APP-CONFIG
+  - details:
+    1. Read the component, its existing test, `docs/decisions/0005-patient-app-tablets.md` and `src/app/layout/useWindowClass.ts`.
+    2. Make it work on compact, regular and large windows, portrait and landscape, with font scale 1.0, 1.5 and 2.0: content has a maximum readable width and is centred on large windows; lists and detail use two panes on large windows where the screen is a list plus a detail (inbox and thread, appointments and detail, reports and detail); touch targets are at least 44 by 44 points; nothing is clipped at 200 percent text; safe-area insets are respected; focus order and screen-reader labels are unchanged; right-to-left mirrors; no persistent clinical cache is added (PAT-02).
+    3. Add a new test file (named in `scope`) that renders the component at each window class and font scale and asserts the structure, the accessibility labels and the right-to-left case. Existing tests must still pass.
+    4. Do not change behaviour, text, API calls or exported names, and do not add a dependency.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-APP-SCREEN-STACK · Patient app: tablet, landscape and large-text layout for `ScreenStack` (app)
+  - requirements: PAT-01, PAT-02, UX-01
+  - scope: apps/patient-mobile/src/app/ScreenStack.tsx, apps/patient-mobile/src/app/ScreenStack.tablet.test.tsx
+  - depends: RESP-APP-LAYOUT-HOOK, RESP-APP-CONFIG
+  - details:
+    1. Read the component, its existing test, `docs/decisions/0005-patient-app-tablets.md` and `src/app/layout/useWindowClass.ts`.
+    2. Make it work on compact, regular and large windows, portrait and landscape, with font scale 1.0, 1.5 and 2.0: content has a maximum readable width and is centred on large windows; lists and detail use two panes on large windows where the screen is a list plus a detail (inbox and thread, appointments and detail, reports and detail); touch targets are at least 44 by 44 points; nothing is clipped at 200 percent text; safe-area insets are respected; focus order and screen-reader labels are unchanged; right-to-left mirrors; no persistent clinical cache is added (PAT-02).
+    3. Add a new test file (named in `scope`) that renders the component at each window class and font scale and asserts the structure, the accessibility labels and the right-to-left case. Existing tests must still pass.
+    4. Do not change behaviour, text, API calls or exported names, and do not add a dependency.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-APP-SIGNED-OUT-SCREEN · Patient app: tablet, landscape and large-text layout for `SignedOutScreen` (app)
+  - requirements: PAT-01, PAT-02, UX-01
+  - scope: apps/patient-mobile/src/app/SignedOutScreen.tsx, apps/patient-mobile/src/app/SignedOutScreen.tablet.test.tsx
+  - depends: RESP-APP-LAYOUT-HOOK, RESP-APP-CONFIG
+  - details:
+    1. Read the component, its existing test, `docs/decisions/0005-patient-app-tablets.md` and `src/app/layout/useWindowClass.ts`.
+    2. Make it work on compact, regular and large windows, portrait and landscape, with font scale 1.0, 1.5 and 2.0: content has a maximum readable width and is centred on large windows; lists and detail use two panes on large windows where the screen is a list plus a detail (inbox and thread, appointments and detail, reports and detail); touch targets are at least 44 by 44 points; nothing is clipped at 200 percent text; safe-area insets are respected; focus order and screen-reader labels are unchanged; right-to-left mirrors; no persistent clinical cache is added (PAT-02).
+    3. Add a new test file (named in `scope`) that renders the component at each window class and font scale and asserts the structure, the accessibility labels and the right-to-left case. Existing tests must still pass.
+    4. Do not change behaviour, text, API calls or exported names, and do not add a dependency.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-APP-PATIENT-PAGES · Patient app: tablet, landscape and large-text layout for `patientPages` (app)
+  - requirements: PAT-01, PAT-02, UX-01
+  - scope: apps/patient-mobile/src/app/patientPages.tsx, apps/patient-mobile/src/app/patientPages.tablet.test.tsx
+  - depends: RESP-APP-LAYOUT-HOOK, RESP-APP-CONFIG
+  - details:
+    1. Read the component, its existing test, `docs/decisions/0005-patient-app-tablets.md` and `src/app/layout/useWindowClass.ts`.
+    2. Make it work on compact, regular and large windows, portrait and landscape, with font scale 1.0, 1.5 and 2.0: content has a maximum readable width and is centred on large windows; lists and detail use two panes on large windows where the screen is a list plus a detail (inbox and thread, appointments and detail, reports and detail); touch targets are at least 44 by 44 points; nothing is clipped at 200 percent text; safe-area insets are respected; focus order and screen-reader labels are unchanged; right-to-left mirrors; no persistent clinical cache is added (PAT-02).
+    3. Add a new test file (named in `scope`) that renders the component at each window class and font scale and asserts the structure, the accessibility labels and the right-to-left case. Existing tests must still pass.
+    4. Do not change behaviour, text, API calls or exported names, and do not add a dependency.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-APP-SCREEN-STATES · Patient app: tablet, landscape and large-text layout for `screenStates` (app)
+  - requirements: PAT-01, PAT-02, UX-01
+  - scope: apps/patient-mobile/src/app/screenStates.tsx, apps/patient-mobile/src/app/screenStates.tablet.test.tsx
+  - depends: RESP-APP-LAYOUT-HOOK, RESP-APP-CONFIG
+  - details:
+    1. Read the component, its existing test, `docs/decisions/0005-patient-app-tablets.md` and `src/app/layout/useWindowClass.ts`.
+    2. Make it work on compact, regular and large windows, portrait and landscape, with font scale 1.0, 1.5 and 2.0: content has a maximum readable width and is centred on large windows; lists and detail use two panes on large windows where the screen is a list plus a detail (inbox and thread, appointments and detail, reports and detail); touch targets are at least 44 by 44 points; nothing is clipped at 200 percent text; safe-area insets are respected; focus order and screen-reader labels are unchanged; right-to-left mirrors; no persistent clinical cache is added (PAT-02).
+    3. Add a new test file (named in `scope`) that renders the component at each window class and font scale and asserts the structure, the accessibility labels and the right-to-left case. Existing tests must still pass.
+    4. Do not change behaviour, text, API calls or exported names, and do not add a dependency.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-APP-INSTRUCTION-ACKNOWLEDGMENT-SCREEN · Patient app: tablet, landscape and large-text layout for `InstructionAcknowledgmentScreen` (acknowledgments)
+  - requirements: PAT-01, PAT-02, UX-01
+  - scope: apps/patient-mobile/src/features/acknowledgments/InstructionAcknowledgmentScreen.tsx, apps/patient-mobile/src/features/acknowledgments/InstructionAcknowledgmentScreen.tablet.test.tsx
+  - depends: RESP-APP-LAYOUT-HOOK, RESP-APP-CONFIG
+  - details:
+    1. Read the component, its existing test, `docs/decisions/0005-patient-app-tablets.md` and `src/app/layout/useWindowClass.ts`.
+    2. Make it work on compact, regular and large windows, portrait and landscape, with font scale 1.0, 1.5 and 2.0: content has a maximum readable width and is centred on large windows; lists and detail use two panes on large windows where the screen is a list plus a detail (inbox and thread, appointments and detail, reports and detail); touch targets are at least 44 by 44 points; nothing is clipped at 200 percent text; safe-area insets are respected; focus order and screen-reader labels are unchanged; right-to-left mirrors; no persistent clinical cache is added (PAT-02).
+    3. Add a new test file (named in `scope`) that renders the component at each window class and font scale and asserts the structure, the accessibility labels and the right-to-left case. Existing tests must still pass.
+    4. Do not change behaviour, text, API calls or exported names, and do not add a dependency.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-APP-APPOINTMENT-LIST-SCREEN · Patient app: tablet, landscape and large-text layout for `AppointmentListScreen` (appointments)
+  - requirements: PAT-01, PAT-02, UX-01
+  - scope: apps/patient-mobile/src/features/appointments/AppointmentListScreen.tsx, apps/patient-mobile/src/features/appointments/AppointmentListScreen.tablet.test.tsx
+  - depends: RESP-APP-LAYOUT-HOOK, RESP-APP-CONFIG
+  - details:
+    1. Read the component, its existing test, `docs/decisions/0005-patient-app-tablets.md` and `src/app/layout/useWindowClass.ts`.
+    2. Make it work on compact, regular and large windows, portrait and landscape, with font scale 1.0, 1.5 and 2.0: content has a maximum readable width and is centred on large windows; lists and detail use two panes on large windows where the screen is a list plus a detail (inbox and thread, appointments and detail, reports and detail); touch targets are at least 44 by 44 points; nothing is clipped at 200 percent text; safe-area insets are respected; focus order and screen-reader labels are unchanged; right-to-left mirrors; no persistent clinical cache is added (PAT-02).
+    3. Add a new test file (named in `scope`) that renders the component at each window class and font scale and asserts the structure, the accessibility labels and the right-to-left case. Existing tests must still pass.
+    4. Do not change behaviour, text, API calls or exported names, and do not add a dependency.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-APP-ATTACHMENT-REVIEW-SCREEN · Patient app: tablet, landscape and large-text layout for `AttachmentReviewScreen` (attachments)
+  - requirements: PAT-01, PAT-02, UX-01
+  - scope: apps/patient-mobile/src/features/attachments/AttachmentReviewScreen.tsx, apps/patient-mobile/src/features/attachments/AttachmentReviewScreen.tablet.test.tsx
+  - depends: RESP-APP-LAYOUT-HOOK, RESP-APP-CONFIG
+  - details:
+    1. Read the component, its existing test, `docs/decisions/0005-patient-app-tablets.md` and `src/app/layout/useWindowClass.ts`.
+    2. Make it work on compact, regular and large windows, portrait and landscape, with font scale 1.0, 1.5 and 2.0: content has a maximum readable width and is centred on large windows; lists and detail use two panes on large windows where the screen is a list plus a detail (inbox and thread, appointments and detail, reports and detail); touch targets are at least 44 by 44 points; nothing is clipped at 200 percent text; safe-area insets are respected; focus order and screen-reader labels are unchanged; right-to-left mirrors; no persistent clinical cache is added (PAT-02).
+    3. Add a new test file (named in `scope`) that renders the component at each window class and font scale and asserts the structure, the accessibility labels and the right-to-left case. Existing tests must still pass.
+    4. Do not change behaviour, text, API calls or exported names, and do not add a dependency.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-APP-CONVERSATION-INBOX · Patient app: tablet, landscape and large-text layout for `ConversationInbox` (conversations)
+  - requirements: PAT-01, PAT-02, UX-01
+  - scope: apps/patient-mobile/src/features/conversations/ConversationInbox.tsx, apps/patient-mobile/src/features/conversations/ConversationInbox.tablet.test.tsx
+  - depends: RESP-APP-LAYOUT-HOOK, RESP-APP-CONFIG
+  - details:
+    1. Read the component, its existing test, `docs/decisions/0005-patient-app-tablets.md` and `src/app/layout/useWindowClass.ts`.
+    2. Make it work on compact, regular and large windows, portrait and landscape, with font scale 1.0, 1.5 and 2.0: content has a maximum readable width and is centred on large windows; lists and detail use two panes on large windows where the screen is a list plus a detail (inbox and thread, appointments and detail, reports and detail); touch targets are at least 44 by 44 points; nothing is clipped at 200 percent text; safe-area insets are respected; focus order and screen-reader labels are unchanged; right-to-left mirrors; no persistent clinical cache is added (PAT-02).
+    3. Add a new test file (named in `scope`) that renders the component at each window class and font scale and asserts the structure, the accessibility labels and the right-to-left case. Existing tests must still pass.
+    4. Do not change behaviour, text, API calls or exported names, and do not add a dependency.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-APP-CONVERSATION-THREAD · Patient app: tablet, landscape and large-text layout for `ConversationThread` (conversations)
+  - requirements: PAT-01, PAT-02, UX-01
+  - scope: apps/patient-mobile/src/features/conversations/ConversationThread.tsx, apps/patient-mobile/src/features/conversations/ConversationThread.tablet.test.tsx
+  - depends: RESP-APP-LAYOUT-HOOK, RESP-APP-CONFIG
+  - details:
+    1. Read the component, its existing test, `docs/decisions/0005-patient-app-tablets.md` and `src/app/layout/useWindowClass.ts`.
+    2. Make it work on compact, regular and large windows, portrait and landscape, with font scale 1.0, 1.5 and 2.0: content has a maximum readable width and is centred on large windows; lists and detail use two panes on large windows where the screen is a list plus a detail (inbox and thread, appointments and detail, reports and detail); touch targets are at least 44 by 44 points; nothing is clipped at 200 percent text; safe-area insets are respected; focus order and screen-reader labels are unchanged; right-to-left mirrors; no persistent clinical cache is added (PAT-02).
+    3. Add a new test file (named in `scope`) that renders the component at each window class and font scale and asserts the structure, the accessibility labels and the right-to-left case. Existing tests must still pass.
+    4. Do not change behaviour, text, API calls or exported names, and do not add a dependency.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-APP-SCREENS · Patient app: tablet, landscape and large-text layout for `screens` (enrollment)
+  - requirements: PAT-01, PAT-02, UX-01
+  - scope: apps/patient-mobile/src/features/enrollment/screens.tsx, apps/patient-mobile/src/features/enrollment/screens.tablet.test.tsx
+  - depends: RESP-APP-LAYOUT-HOOK, RESP-APP-CONFIG
+  - details:
+    1. Read the component, its existing test, `docs/decisions/0005-patient-app-tablets.md` and `src/app/layout/useWindowClass.ts`.
+    2. Make it work on compact, regular and large windows, portrait and landscape, with font scale 1.0, 1.5 and 2.0: content has a maximum readable width and is centred on large windows; lists and detail use two panes on large windows where the screen is a list plus a detail (inbox and thread, appointments and detail, reports and detail); touch targets are at least 44 by 44 points; nothing is clipped at 200 percent text; safe-area insets are respected; focus order and screen-reader labels are unchanged; right-to-left mirrors; no persistent clinical cache is added (PAT-02).
+    3. Add a new test file (named in `scope`) that renders the component at each window class and font scale and asserts the structure, the accessibility labels and the right-to-left case. Existing tests must still pass.
+    4. Do not change behaviour, text, API calls or exported names, and do not add a dependency.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-APP-ACCESSIBILITY-EVIDENCE-SUMMARY · Patient app: tablet, landscape and large-text layout for `AccessibilityEvidenceSummary` (evidence)
+  - requirements: PAT-01, PAT-02, UX-01
+  - scope: apps/patient-mobile/src/features/evidence/AccessibilityEvidenceSummary.tsx, apps/patient-mobile/src/features/evidence/AccessibilityEvidenceSummary.tablet.test.tsx
+  - depends: RESP-APP-LAYOUT-HOOK, RESP-APP-CONFIG
+  - details:
+    1. Read the component, its existing test, `docs/decisions/0005-patient-app-tablets.md` and `src/app/layout/useWindowClass.ts`.
+    2. Make it work on compact, regular and large windows, portrait and landscape, with font scale 1.0, 1.5 and 2.0: content has a maximum readable width and is centred on large windows; lists and detail use two panes on large windows where the screen is a list plus a detail (inbox and thread, appointments and detail, reports and detail); touch targets are at least 44 by 44 points; nothing is clipped at 200 percent text; safe-area insets are respected; focus order and screen-reader labels are unchanged; right-to-left mirrors; no persistent clinical cache is added (PAT-02).
+    3. Add a new test file (named in `scope`) that renders the component at each window class and font scale and asserts the structure, the accessibility labels and the right-to-left case. Existing tests must still pass.
+    4. Do not change behaviour, text, API calls or exported names, and do not add a dependency.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-APP-PATIENT-FLOW-HOME · Patient app: tablet, landscape and large-text layout for `PatientFlowHome` (flows)
+  - requirements: PAT-01, PAT-02, UX-01
+  - scope: apps/patient-mobile/src/features/flows/PatientFlowHome.tsx, apps/patient-mobile/src/features/flows/PatientFlowHome.tablet.test.tsx
+  - depends: RESP-APP-LAYOUT-HOOK, RESP-APP-CONFIG
+  - details:
+    1. Read the component, its existing test, `docs/decisions/0005-patient-app-tablets.md` and `src/app/layout/useWindowClass.ts`.
+    2. Make it work on compact, regular and large windows, portrait and landscape, with font scale 1.0, 1.5 and 2.0: content has a maximum readable width and is centred on large windows; lists and detail use two panes on large windows where the screen is a list plus a detail (inbox and thread, appointments and detail, reports and detail); touch targets are at least 44 by 44 points; nothing is clipped at 200 percent text; safe-area insets are respected; focus order and screen-reader labels are unchanged; right-to-left mirrors; no persistent clinical cache is added (PAT-02).
+    3. Add a new test file (named in `scope`) that renders the component at each window class and font scale and asserts the structure, the accessibility labels and the right-to-left case. Existing tests must still pass.
+    4. Do not change behaviour, text, API calls or exported names, and do not add a dependency.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-APP-MESSAGING-AUDIT-PANEL · Patient app: tablet, landscape and large-text layout for `MessagingAuditPanel` (governance)
+  - requirements: PAT-01, PAT-02, UX-01
+  - scope: apps/patient-mobile/src/features/governance/MessagingAuditPanel.tsx, apps/patient-mobile/src/features/governance/MessagingAuditPanel.tablet.test.tsx
+  - depends: RESP-APP-LAYOUT-HOOK, RESP-APP-CONFIG
+  - details:
+    1. Read the component, its existing test, `docs/decisions/0005-patient-app-tablets.md` and `src/app/layout/useWindowClass.ts`.
+    2. Make it work on compact, regular and large windows, portrait and landscape, with font scale 1.0, 1.5 and 2.0: content has a maximum readable width and is centred on large windows; lists and detail use two panes on large windows where the screen is a list plus a detail (inbox and thread, appointments and detail, reports and detail); touch targets are at least 44 by 44 points; nothing is clipped at 200 percent text; safe-area insets are respected; focus order and screen-reader labels are unchanged; right-to-left mirrors; no persistent clinical cache is added (PAT-02).
+    3. Add a new test file (named in `scope`) that renders the component at each window class and font scale and asserts the structure, the accessibility labels and the right-to-left case. Existing tests must still pass.
+    4. Do not change behaviour, text, API calls or exported names, and do not add a dependency.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-APP-RELEASED-REPORTS-SCREEN · Patient app: tablet, landscape and large-text layout for `ReleasedReportsScreen` (reports)
+  - requirements: PAT-01, PAT-02, UX-01
+  - scope: apps/patient-mobile/src/features/reports/ReleasedReportsScreen.tsx, apps/patient-mobile/src/features/reports/ReleasedReportsScreen.tablet.test.tsx
+  - depends: RESP-APP-LAYOUT-HOOK, RESP-APP-CONFIG
+  - details:
+    1. Read the component, its existing test, `docs/decisions/0005-patient-app-tablets.md` and `src/app/layout/useWindowClass.ts`.
+    2. Make it work on compact, regular and large windows, portrait and landscape, with font scale 1.0, 1.5 and 2.0: content has a maximum readable width and is centred on large windows; lists and detail use two panes on large windows where the screen is a list plus a detail (inbox and thread, appointments and detail, reports and detail); touch targets are at least 44 by 44 points; nothing is clipped at 200 percent text; safe-area insets are respected; focus order and screen-reader labels are unchanged; right-to-left mirrors; no persistent clinical cache is added (PAT-02).
+    3. Add a new test file (named in `scope`) that renders the component at each window class and font scale and asserts the structure, the accessibility labels and the right-to-left case. Existing tests must still pass.
+    4. Do not change behaviour, text, API calls or exported names, and do not add a dependency.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-APP-SERVICE-PROFILE-NOTICE · Patient app: tablet, landscape and large-text layout for `ServiceProfileNotice` (service-profiles)
+  - requirements: PAT-01, PAT-02, UX-01
+  - scope: apps/patient-mobile/src/features/service-profiles/ServiceProfileNotice.tsx, apps/patient-mobile/src/features/service-profiles/ServiceProfileNotice.tablet.test.tsx
+  - depends: RESP-APP-LAYOUT-HOOK, RESP-APP-CONFIG
+  - details:
+    1. Read the component, its existing test, `docs/decisions/0005-patient-app-tablets.md` and `src/app/layout/useWindowClass.ts`.
+    2. Make it work on compact, regular and large windows, portrait and landscape, with font scale 1.0, 1.5 and 2.0: content has a maximum readable width and is centred on large windows; lists and detail use two panes on large windows where the screen is a list plus a detail (inbox and thread, appointments and detail, reports and detail); touch targets are at least 44 by 44 points; nothing is clipped at 200 percent text; safe-area insets are respected; focus order and screen-reader labels are unchanged; right-to-left mirrors; no persistent clinical cache is added (PAT-02).
+    3. Add a new test file (named in `scope`) that renders the component at each window class and font scale and asserts the structure, the accessibility labels and the right-to-left case. Existing tests must still pass.
+    4. Do not change behaviour, text, API calls or exported names, and do not add a dependency.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-APP-CARE-UNIT-DIRECTORY · Patient app: tablet, landscape and large-text layout for `CareUnitDirectory` (units)
+  - requirements: PAT-01, PAT-02, UX-01
+  - scope: apps/patient-mobile/src/features/units/CareUnitDirectory.tsx, apps/patient-mobile/src/features/units/CareUnitDirectory.tablet.test.tsx
+  - depends: RESP-APP-LAYOUT-HOOK, RESP-APP-CONFIG
+  - details:
+    1. Read the component, its existing test, `docs/decisions/0005-patient-app-tablets.md` and `src/app/layout/useWindowClass.ts`.
+    2. Make it work on compact, regular and large windows, portrait and landscape, with font scale 1.0, 1.5 and 2.0: content has a maximum readable width and is centred on large windows; lists and detail use two panes on large windows where the screen is a list plus a detail (inbox and thread, appointments and detail, reports and detail); touch targets are at least 44 by 44 points; nothing is clipped at 200 percent text; safe-area insets are respected; focus order and screen-reader labels are unchanged; right-to-left mirrors; no persistent clinical cache is added (PAT-02).
+    3. Add a new test file (named in `scope`) that renders the component at each window class and font scale and asserts the structure, the accessibility labels and the right-to-left case. Existing tests must still pass.
+    4. Do not change behaviour, text, API calls or exported names, and do not add a dependency.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-APP-README · Patient app README: tablets, landscape and how to test them
+  - requirements: PAT-01, PAT-02, UX-01
+  - scope: apps/patient-mobile/README.md
+  - depends: RESP-APP-LAYOUT-HOOK
+  - details:
+    1. Read `apps/patient-mobile/README.md` and `docs/decisions/0005-patient-app-tablets.md`.
+    2. Add a section "Tablets and landscape": the window classes, the hook, how to run the app on an iPad and an Android tablet simulator, and the screen-reader checks for both. Keep every other line.
+    3. Run `python3 -I scripts/check-docs.py` and paste the result.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RESP-INDEX · Docs: link the responsive layout guide and the two decision records
+  - requirements: WEB-07, UX-01
+  - scope: docs/reference/index.md
+  - depends: RESP-DESIGN, RESP-APP-DECISION
+  - details:
+    1. Read `docs/reference/index.md`. List which of these exist now: `docs/design/responsive-layout.md`, `docs/decisions/0004-responsive-staff-web.md`, `docs/decisions/0005-patient-app-tablets.md`.
+    2. Add one line for each page that exists and is not linked, with a one-line description, in the section where it fits. Do not link a page that does not exist.
+    3. Run `python3 -I scripts/check-docs.py` and paste the result.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
 ## Spec clause coverage: one task per sentence of the specification (new files only, no dependencies)
 
 Every sentence of the requirement tables, the role matrix, the gate evidence, the cross-cutting scenarios and the architecture decisions in `SMARTCLINIC_V1_SPEC.md` has its own task. Each writes one test file (or only a note when the clause needs human, partner or cloud evidence) and one status note under `docs/spec/clauses`. A clause that is not built gets a skipped test marked `GAP:` and a gap note, so the next round of tasks is generated from these notes. The result is a measured, clause-by-clause view of how much of the specification is built.
