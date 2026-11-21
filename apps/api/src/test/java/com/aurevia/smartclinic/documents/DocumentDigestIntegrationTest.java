@@ -2,8 +2,8 @@ package com.aurevia.smartclinic.documents;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
@@ -12,6 +12,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Optional;
 
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterAll;
@@ -19,11 +20,13 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
+import com.aurevia.smartclinic.documents.DocumentModel.VerifiedContent;
+
 /**
  * Real-PostgreSQL acceptance for the V75 verified-download function (CLN-07).
  *
  * <p>The digest is recomputed from the exact bytes retained in the association.
- * A tampered original is refused, a void keeps the original bytes, and forced
+ * A tampered original is flagged, a void keeps the original bytes, and forced
  * RLS conceals another tenant's association through this read path. All data is
  * synthetic; the test creates and drops its own database.</p>
  */
@@ -107,14 +110,20 @@ class DocumentDigestIntegrationTest {
         }
     }
 
-    private static byte[] verifiedContent(String id, String org, String subject) throws SQLException {
+    private static Optional<VerifiedContent> verifiedContent(String id, String org, String subject)
+            throws SQLException {
         try (Connection connection = appConnection(org, subject);
-             PreparedStatement query = connection.prepareStatement(
-                     "SELECT public.document_association_verified_content(CAST(? AS uuid))")) {
+             PreparedStatement query = connection.prepareStatement("""
+                     SELECT content, intact
+                       FROM public.document_association_verified_content(CAST(? AS uuid))
+                     """)) {
             query.setString(1, id);
             try (ResultSet resultSet = query.executeQuery()) {
-                resultSet.next();
-                return resultSet.getBytes(1);
+                if (!resultSet.next()) {
+                    return Optional.empty();
+                }
+                return Optional.of(new VerifiedContent(resultSet.getBytes("content"),
+                        resultSet.getBoolean("intact")));
             }
         }
     }
@@ -135,14 +144,16 @@ class DocumentDigestIntegrationTest {
     }
 
     @Test
-    void retainedBytesVerifyThenTamperingIsDetected() throws Exception {
+    void retainedBytesVerifyThenTamperingIsFlagged() throws Exception {
         String id = linkOriginal();
-        assertArrayEquals(ORIGINAL, verifiedContent(id, ORG_A, "clinician-a"));
+        VerifiedContent intact = verifiedContent(id, ORG_A, "clinician-a").orElseThrow();
+        assertArrayEquals(ORIGINAL, intact.content());
+        assertTrue(intact.intact());
 
         corruptBytes(id);
-        SQLException mismatch = assertThrows(SQLException.class,
-                () -> verifiedContent(id, ORG_A, "clinician-a"));
-        assertEquals("23514", mismatch.getSQLState());
+        VerifiedContent tampered = verifiedContent(id, ORG_A, "clinician-a").orElseThrow();
+        assertArrayEquals(TAMPERED, tampered.content());
+        assertFalse(tampered.intact(), "retained bytes must be flagged, not raised as a SQL error");
     }
 
     @Test
@@ -158,7 +169,9 @@ class DocumentDigestIntegrationTest {
             update.setString(1, id);
             assertEquals(1, update.executeUpdate());
         }
-        assertArrayEquals(ORIGINAL, verifiedContent(id, ORG_A, "clinician-a"));
-        assertNull(verifiedContent(id, ORG_B, "clinician-b"));
+        VerifiedContent kept = verifiedContent(id, ORG_A, "clinician-a").orElseThrow();
+        assertArrayEquals(ORIGINAL, kept.content());
+        assertTrue(kept.intact());
+        assertTrue(verifiedContent(id, ORG_B, "clinician-b").isEmpty());
     }
 }

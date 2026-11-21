@@ -22,7 +22,6 @@ import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -30,6 +29,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import com.aurevia.smartclinic.api.ApiException;
 import com.aurevia.smartclinic.audit.AuditAppender;
 import com.aurevia.smartclinic.documents.DocumentModel.DocumentAssoc;
+import com.aurevia.smartclinic.documents.DocumentModel.VerifiedContent;
 import com.aurevia.smartclinic.documents.DocumentPolicy;
 import com.aurevia.smartclinic.documents.DocumentRepository;
 import com.aurevia.smartclinic.documents.DocumentService;
@@ -71,7 +71,8 @@ class DocumentVerifiedDownloadTest {
         when(repository.hasActiveMembership(ACTOR)).thenReturn(true);
         when(repository.activeRoles(ACTOR)).thenReturn(List.of("clinician"));
         when(repository.findAssociation(ID)).thenReturn(Optional.of(assoc("active", 1, null)));
-        when(repository.verifiedAssociationContent(ID)).thenReturn(Optional.of(CONTENT));
+        when(repository.verifiedAssociationContent(ID))
+                .thenReturn(Optional.of(new VerifiedContent(CONTENT, true)));
         TenantContext.set(new TenantContext(ORG, ACTOR, "DOCUMENT_READ", "corr-1"));
     }
 
@@ -132,8 +133,9 @@ class DocumentVerifiedDownloadTest {
 
     @Test
     void downloadDetectsTamperedRetainedBytes() {
+        // The retained bytes are present but flagged: no SQL error aborts the transaction.
         when(repository.verifiedAssociationContent(ID))
-                .thenThrow(new DataIntegrityViolationException("stored sha256 mismatch"));
+                .thenReturn(Optional.of(new VerifiedContent(CONTENT, false)));
         ApiException failure = assertThrows(ApiException.class, () -> service.associationContent(ID));
         assertEquals(409, failure.status());
         assertEquals("CHECKSUM_MISMATCH", failure.code());

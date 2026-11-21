@@ -3,6 +3,7 @@ package com.aurevia.smartclinic.documents;
 import com.aurevia.smartclinic.documents.DocumentModel.DocumentAssoc;
 import com.aurevia.smartclinic.documents.DocumentModel.AssociationEvent;
 import com.aurevia.smartclinic.documents.DocumentModel.RenderedDocument;
+import com.aurevia.smartclinic.documents.DocumentModel.VerifiedContent;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -327,21 +328,24 @@ public class DocumentRepository {
      * Read an original's retained bytes after the database re-verifies them.
      *
      * <p>V75's {@code document_association_verified_content} recomputes the
-     * SHA-256 from the bytes actually stored for the association and compares it
-     * with the digest captured on upload. A matching row is returned only when
-     * the bytes are intact; a tampered original raises an integrity violation
-     * that the service maps to a concealed conflict. Forced RLS on the table
-     * still bounds the read to the active tenant, so a foreign identifier yields
-     * no bytes.</p>
+     * SHA-256 from the bytes actually stored for the association and returns an
+     * {@code intact} flag beside those bytes. A tampered original stays in the
+     * result but is flagged, so the service can audit the failure and answer 409
+     * without aborting the caller's transaction. Forced RLS bounds the read to
+     * the active tenant, so a foreign identifier yields no row.</p>
      *
      * @param id opaque association identifier
-     * @return the verified original bytes, or empty when the row is not visible
+     * @return the retained bytes with their verification flag, or empty when the
+     *         association is not visible in the active tenant
      */
-    public Optional<byte[]> verifiedAssociationContent(String id) {
-        byte[] content = jdbc.queryForObject("""
-                SELECT public.document_association_verified_content(CAST(:id AS uuid))
-                """, new MapSqlParameterSource().addValue("id", id), byte[].class);
-        return Optional.ofNullable(content);
+    public Optional<VerifiedContent> verifiedAssociationContent(String id) {
+        return jdbc.query("""
+                SELECT content, intact
+                  FROM public.document_association_verified_content(CAST(:id AS uuid))
+                """, Map.of("id", id),
+                (resultSet, rowNumber) -> new VerifiedContent(
+                        resultSet.getBytes("content"), resultSet.getBoolean("intact")))
+                .stream().findFirst();
     }
 
     private static DocumentAssoc mapAssoc(ResultSet resultSet, int rowNumber) throws SQLException {

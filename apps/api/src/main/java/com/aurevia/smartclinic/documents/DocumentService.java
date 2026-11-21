@@ -7,11 +7,11 @@ import com.aurevia.smartclinic.documents.DocumentModel.RenderedDocument;
 import com.aurevia.smartclinic.documents.DocumentModel.PdfSpec;
 import com.aurevia.smartclinic.documents.DocumentModel.LinkRequest;
 import com.aurevia.smartclinic.documents.DocumentModel.RenderRequest;
+import com.aurevia.smartclinic.documents.DocumentModel.VerifiedContent;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -154,13 +154,15 @@ public class DocumentService {
     /**
      * Download the retained original bytes after re-verifying their SHA-256.
      *
-     * <p>The database recomputes the digest from the exact stored bytes before
-     * returning them (CLN-07, ARC-06). A mismatch means the retained original was
-     * altered and is never served as the verified artifact; the denial is audited
-     * with a tamper outcome and surfaced as a conflict. Rotation is presentation
-     * metadata and never changes these bytes. Voiding does not remove the
-     * original: the history and the bytes remain available to an authorized
-     * reader.</p>
+     * <p>The database recomputes the digest from the exact stored bytes and
+     * reports whether they still match the digest captured on upload (CLN-07,
+     * ARC-06). A mismatch means the retained original was altered: its bytes are
+     * never served, the failure is audited with a tamper outcome and surfaced as
+     * a conflict. The verification result is returned rather than raised as a
+     * SQL error, so the transaction stays usable for the audit and the 409.
+     * Rotation is presentation metadata and never changes these bytes. Voiding
+     * does not remove the original: the history and bytes remain available to an
+     * authorized reader.</p>
      *
      * @param id opaque association identifier
      * @return the verified original bytes
@@ -182,22 +184,20 @@ public class DocumentService {
                 failure.set(new ApiException(404, "NOT_FOUND", "association not found"));
                 return null;
             }
-            byte[] bytes;
-            try {
-                bytes = repository.verifiedAssociationContent(id).orElse(null);
-            } catch (DataIntegrityViolationException tampered) {
+            VerifiedContent verified = repository.verifiedAssociationContent(id).orElse(null);
+            if (verified == null) {
+                audit.append(context, READ_PURPOSE, "DOCUMENT_CONTENT", RESOURCE_TYPE, SCOPE, id, "NOT_FOUND");
+                failure.set(new ApiException(404, "NOT_FOUND", "association content not found"));
+                return null;
+            }
+            if (!verified.intact()) {
                 audit.append(context, READ_PURPOSE, "DOCUMENT_CONTENT", RESOURCE_TYPE, SCOPE, id, "TAMPERED");
                 failure.set(new ApiException(409, "CHECKSUM_MISMATCH",
                         "retained original failed checksum verification"));
                 return null;
             }
-            if (bytes == null) {
-                audit.append(context, READ_PURPOSE, "DOCUMENT_CONTENT", RESOURCE_TYPE, SCOPE, id, "NOT_FOUND");
-                failure.set(new ApiException(404, "NOT_FOUND", "association content not found"));
-                return null;
-            }
             audit.append(context, READ_PURPOSE, "DOCUMENT_CONTENT", RESOURCE_TYPE, SCOPE, id, "SUCCESS");
-            return bytes;
+            return verified.content();
         });
         if (failure.get() != null) {
             throw failure.get();

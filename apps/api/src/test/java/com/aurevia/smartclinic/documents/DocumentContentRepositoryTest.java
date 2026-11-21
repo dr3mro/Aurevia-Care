@@ -1,25 +1,28 @@
 package com.aurevia.smartclinic.documents;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Optional;
+import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.jdbc.core.namedparam.SqlParameterSource;
+
+import com.aurevia.smartclinic.documents.DocumentModel.VerifiedContent;
 
 /**
- * CLN-07 verified-download SQL boundary. The database function recomputes the
- * digest from the retained bytes before returning them; this test proves the
- * repository maps its result and its empty result without touching a database.
+ * CLN-07 verified-download SQL boundary. The database function returns the
+ * retained bytes with an integrity flag; this test proves the repository maps
+ * both outcomes and the empty result without touching a database.
  */
 class DocumentContentRepositoryTest {
 
@@ -29,22 +32,48 @@ class DocumentContentRepositoryTest {
     private final NamedParameterJdbcTemplate jdbc = mock(NamedParameterJdbcTemplate.class);
     private final DocumentRepository repository = new DocumentRepository(jdbc);
 
-    @Test
-    void verifiedContentReturnsTheBytesFromTheDatabaseFunction() {
-        when(jdbc.queryForObject(anyString(), any(SqlParameterSource.class), eq(byte[].class)))
-                .thenReturn(CONTENT);
-
-        Optional<byte[]> content = repository.verifiedAssociationContent(ID);
-        assertTrue(content.isPresent());
-        assertArrayEquals(CONTENT, content.get());
-        verify(jdbc).queryForObject(anyString(), any(SqlParameterSource.class), eq(byte[].class));
+    @SuppressWarnings("unchecked")
+    private void functionReturns(List<VerifiedContent> rows) {
+        when(jdbc.query(anyString(), any(Map.class), any(RowMapper.class))).thenReturn(rows);
     }
 
     @Test
-    void verifiedContentIsEmptyWhenTheFunctionYieldsNoBytes() {
-        when(jdbc.queryForObject(anyString(), any(SqlParameterSource.class), eq(byte[].class)))
-                .thenReturn(null);
+    void verifiedContentReturnsTheBytesAndIntactFlagFromTheDatabaseFunction() {
+        functionReturns(List.of(new VerifiedContent(CONTENT, true)));
+
+        var content = repository.verifiedAssociationContent(ID);
+        assertTrue(content.isPresent());
+        assertArrayEquals(CONTENT, content.get().content());
+        assertTrue(content.get().intact());
+        verify(jdbc).query(anyString(), any(Map.class), any(RowMapper.class));
+    }
+
+    @Test
+    void verifiedContentCarriesTheTamperedFlagWithoutRaising() {
+        functionReturns(List.of(new VerifiedContent(CONTENT, false)));
+
+        var content = repository.verifiedAssociationContent(ID);
+        assertTrue(content.isPresent());
+        assertArrayEquals(CONTENT, content.get().content());
+        assertFalse(content.get().intact());
+    }
+
+    @Test
+    void verifiedContentIsEmptyWhenTheFunctionYieldsNoRow() {
+        functionReturns(List.of());
 
         assertTrue(repository.verifiedAssociationContent(ID).isEmpty());
+    }
+
+    @Test
+    void verifiedContentDefensivelyCopiesTheRetainedBytes() {
+        byte[] mutable = CONTENT.clone();
+        VerifiedContent content = new VerifiedContent(mutable, true);
+        mutable[0] = 'X';
+
+        assertArrayEquals(CONTENT, content.content());
+        byte[] exposed = content.content();
+        exposed[0] = 'Y';
+        assertArrayEquals(CONTENT, content.content());
     }
 }
