@@ -40,8 +40,8 @@ these steps rather than inventing a command.
 | Secrets in code | Dependencies, images and secrets scanned on every change; critical findings block merges; critical remediated within 7 days, high within 30; base images pinned by digest and CI actions by commit SHA | WEB-12 |
 | Permissions | Permission changes take effect on the next protected request; expired or removed membership fails closed | IAM-02 |
 | Emergency access | Qualified clinicians, own organization only, time-limited, reasoned, alerted and reviewed; support access disabled by default | IAM-06 |
-| Production access | Approved, attributable, audited, expiring, with separation of duties between requester and approver | OPS-06; [rollout and production access](../s_g5_07/rollout-and-production-access.md) |
-| Rollback | Promote one signed artifact with an SBOM; progressive rollout with automatic rollback on error-rate or latency breach | WEB-11; [signed builds and migration checks](../s_g5_07/build-and-migration-gates.md) |
+| Production access | Approved, attributable, audited, expiring, with separation of duties between requester and approver | OPS-06; [rollout and production access](../delivery-safety/rollout-and-production-access.md) |
+| Rollback | Promote one signed artifact with an SBOM; progressive rollout with automatic rollback on error-rate or latency breach | WEB-11; [signed builds and migration checks](../delivery-safety/build-and-migration-gates.md) |
 | Observability | Structured logs with correlation id, no tokens or patient fields; alert on availability and monitoring targets | WEB-06, OPS-03, OPS-05 |
 
 ## Preconditions and synthetic setup
@@ -70,9 +70,9 @@ these steps rather than inventing a command.
 | 15 | "This person had an active web and mobile session." | Owner terminates sessions server-side and requires renewed authentication for sensitive actions (WEB-03). `NOT YET IN PLACE:` no in-repository session-list or session-revoke endpoint was found in the API main source | The gap is recorded with the spec clause; no claim of a completed revocation |
 | 20 | "Rotate the affected integration secret." | Security owner rotates it in the managed secret manager and rebinds the runtime. `NVD_API_KEY` stays a runtime-only environment value. `NOT YET IN PLACE:` no in-repo secret-manager integration or rotation command | Rotation time, scope and verifier recorded; no secret in the log |
 | 25 | "Did the old secret ever land in the repository?" | Run `python3 -I scripts/check-secrets.py` and `python3 -I scripts/check-pack.py` over the checkout | Both exit 0; no credential- or PHI-shaped string found |
-| 30 | "Is production access still appropriate?" | Owner checks that the emergency production grant is approved, attributed, audited and expiring with requester distinct from approver; gate runs with `bash infra/s_g5_07/check.sh` | Evaluator passes; separation of duties and expiry declared, not asserted by a flag |
+| 30 | "Is production access still appropriate?" | Owner checks that the emergency production grant is approved, attributed, audited and expiring with requester distinct from approver; gate runs with `bash infra/delivery-safety/check.sh` | Evaluator passes; separation of duties and expiry declared, not asserted by a flag |
 | 35 | "Did any emergency access breach tenant or time limits?" | Site clinical coverage owner confirms any break-glass use was qualified, reasoned, alerted, reviewed and confined to its own organization (IAM-06). Audit chain and append-only history are proved on synthetic PostgreSQL by `bash db/check.sh` | Audit chain intact; no cross-tenant access; scope and reason recorded |
-| 40 | "What if the loss accompanied a bad release?" | If so, follow rollback under WEB-11 and the bad-deploy row of the [launch checklist](../production-readiness/launch-checklist.md): detect, roll back to the last signed digest, roll forward only with a verified artifact. `bash infra/s_g5_07/check.sh` checks the signed-build and migration declarations | Signed digest and promotion gate verified; no rebuild of the promoted artifact |
+| 40 | "What if the loss accompanied a bad release?" | If so, follow rollback under WEB-11 and the bad-deploy row of the [launch checklist](../production-readiness/launch-checklist.md): detect, roll back to the last signed digest, roll forward only with a verified artifact. `bash infra/delivery-safety/check.sh` checks the signed-build and migration declarations | Signed digest and promotion gate verified; no rebuild of the promoted artifact |
 | 45 | "Re-issue access to the legitimate person." | Issue a fresh synthetic credential, require MFA and renewed authentication for sensitive actions, and re-check current membership before the first protected request (IAM-02) | First protected request succeeds with the new credential only; the old one still fails |
 | 55 | Close-out | Owner records error rate and audit observations over the window, tracks the 7-day critical / 30-day high remediation clock (WEB-12) and writes corrective actions with owners | Every failed step has an owner and a next action |
 
@@ -102,9 +102,9 @@ these steps rather than inventing a command.
   re-issue time, each with the named role that acted.
 - Exact commands and final lines for `python3 -I scripts/check-secrets.py`,
   `python3 -I scripts/check-pack.py`, `bash db/check.sh` and
-  `bash infra/s_g5_07/check.sh`, plus the signed-build and rollout declarations
-  in [build and migration gates](../s_g5_07/build-and-migration-gates.md) and
-  [rollout and production access](../s_g5_07/rollout-and-production-access.md).
+  `bash infra/delivery-safety/check.sh`, plus the signed-build and rollout declarations
+  in [build and migration gates](../delivery-safety/build-and-migration-gates.md) and
+  [rollout and production access](../delivery-safety/rollout-and-production-access.md).
 - The audit-event references for the disable, rotate, emergency access and
   close-out decisions, with correlation ids and same-tenant resource ids.
 - The OPS-02 access review outcome and the WEB-12 remediation register with the
@@ -145,8 +145,8 @@ or a signed URL.
 | `bash db/check.sh` | 0; proves append-only staff history, next-request revocation, forced RLS and an intact audit chain on synthetic PostgreSQL |
 | `python3 -I scripts/check-secrets.py` | 0; no credential- or PHI-shaped strings in tracked files |
 | `python3 -I scripts/check-pack.py` | 0; agent pack and generated config valid |
-| `bash infra/s_g5_07/check.sh` | 0; OPS-06 evaluator unit tests, signed-build and migration fixture checks, and `check-migrations --require-baseline` |
-| `python3 -I infra/s_g5_06/recovery_evidence.py <artifact.json>` | 0 / 1 / 2, only when the drill also requires a data restore |
+| `bash infra/delivery-safety/check.sh` | 0; OPS-06 evaluator unit tests, signed-build and migration fixture checks, and `check-migrations --require-baseline` |
+| `python3 -I infra/recovery/recovery_evidence.py <artifact.json>` | 0 / 1 / 2, only when the drill also requires a data restore |
 
 `NOT YET IN PLACE:` managed IdP and secret-manager administration, a live
 session-revocation endpoint, an image and repository secret scanner wired to a

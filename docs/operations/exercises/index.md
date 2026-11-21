@@ -29,12 +29,12 @@ sheet is used for live acceptance.
    none of the steps below. Only an authorized operations team runs a drill.
 3. **Capture observed values, never targets.** Copying `15`, `4` or a target boolean
    into a measured field fabricates evidence (see
-   [recovery targets](../s_g5_06/recovery-targets.md)).
+   [recovery targets](../recovery/recovery-targets.md)).
 4. **Gates are declarations, not telemetry.** The offline evaluators check that a
    declared envelope is complete and fail-closed; they cannot prove a restore, an
    alert or an operator action happened. See
-   [recovery evidence](../s_g5_06/recovery-evidence.md) and
-   [operational runbooks](../s_g5_06/operational-runbooks.md).
+   [recovery evidence](../recovery/recovery-evidence.md) and
+   [operational runbooks](../recovery/operational-runbooks.md).
 5. **Record approvals by role, not by a passing check.** One person must not both
    execute a restore and be its sole approver.
 6. **Escalate out of scope.** If a step needs a tool, contact or authority that
@@ -48,12 +48,12 @@ these, or marks a step `NOT YET IN PLACE:`.
 | Command | What it proves | Source of truth |
 |---|---|---|
 | `bash db/check.sh` | Applies every Flyway migration to an ephemeral synthetic PostgreSQL database; asserts forced RLS, role separation, tenant isolation, append-only staff history, an intact audit hash chain and versioned config | [db/check.sh](../../../db/check.sh) |
-| `bash infra/s_g5_06/check.sh` | Recovery-evidence evaluator unit tests plus conforming and violating fixture runs | [recovery evidence](../s_g5_06/recovery-evidence.md) |
-| `python3 -I infra/s_g5_06/recovery_evidence.py <artifact.json>` | Evaluates an OPS-04/OPS-05 evidence artifact; exit 0 pass, 1 failed checks, 2 unreadable input | [recovery targets](../s_g5_06/recovery-targets.md) |
-| `bash infra/s_g5_08/check.sh` | OPS-07 tenant export/retention evaluator unit tests plus fixed positive and negative fixtures (a fixture gate, not an artifact evaluator) | [export manifest](../s_g5_08/export-manifest.md) |
-| `python3 -I infra/s_g5_08/tenant_lifecycle_evidence.py <artifact.json>` | Evaluates a drill-supplied OPS-07 export/retention artifact; exit 0 pass, 1 failed checks, 2 unreadable input | [tenant_lifecycle_evidence.py](../../../infra/s_g5_08/tenant_lifecycle_evidence.py) |
-| `bash infra/s_g5_11/check.sh` | ADM-02 operational-queues evaluator gate with positive and negative fixtures | [queue catalog](../s_g5_11/queue-catalog.md) |
-| `python3 -I infra/s_g5_11/ops_queues.py <artifact.json>` | Evaluates a synthetic or operator-attested queue snapshot | [ops_queues.py](../../../infra/s_g5_11/ops_queues.py) |
+| `bash infra/recovery/check.sh` | Recovery-evidence evaluator unit tests plus conforming and violating fixture runs | [recovery evidence](../recovery/recovery-evidence.md) |
+| `python3 -I infra/recovery/recovery_evidence.py <artifact.json>` | Evaluates an OPS-04/OPS-05 evidence artifact; exit 0 pass, 1 failed checks, 2 unreadable input | [recovery targets](../recovery/recovery-targets.md) |
+| `bash infra/tenant-lifecycle/check.sh` | OPS-07 tenant export/retention evaluator unit tests plus fixed positive and negative fixtures (a fixture gate, not an artifact evaluator) | [export manifest](../tenant-lifecycle/export-manifest.md) |
+| `python3 -I infra/tenant-lifecycle/tenant_lifecycle_evidence.py <artifact.json>` | Evaluates a drill-supplied OPS-07 export/retention artifact; exit 0 pass, 1 failed checks, 2 unreadable input | [tenant_lifecycle_evidence.py](../../../infra/tenant-lifecycle/tenant_lifecycle_evidence.py) |
+| `bash infra/ops-queues/check.sh` | ADM-02 operational-queues evaluator gate with positive and negative fixtures | [queue catalog](../ops-queues/queue-catalog.md) |
+| `python3 -I infra/ops-queues/ops_queues.py <artifact.json>` | Evaluates a synthetic or operator-attested queue snapshot | [ops_queues.py](../../../infra/ops-queues/ops_queues.py) |
 | `python3 -I scripts/check-secrets.py` | Fails on credential- or PHI-shaped strings in repository files | [check-secrets.py](../../../scripts/check-secrets.py) |
 | `python3 -I scripts/check-pack.py`, `python3 -I scripts/check-docs.py` | Validates the agent pack, Markdown links and requirement IDs | [check.sh](../../../scripts/check.sh) |
 | `curl -fsS http://127.0.0.1:8080/health.txt` | Bootstrap test-stack health response once the disposable stack is up | [README-SETUP.md](../../../README-SETUP.md) |
@@ -71,7 +71,7 @@ signal.
 - The empty envelope is [drill-evidence.md](../recovery/drill-evidence.md). It is
   a template, not a result.
 - The procedure it records is the [recovery drill runbook](../recovery/runbook.md)
-  and the [clean-environment restore procedure](../s_g5_06/restore-procedure.md).
+  and the [clean-environment restore procedure](../recovery/restore-procedure.md).
 - The launch item that needs a conducted restore is the OPS-04 row of the
   [launch checklist](../production-readiness/launch-checklist.md).
 - Deployment topology and operational expectations live in

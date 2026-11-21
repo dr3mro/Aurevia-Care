@@ -4,8 +4,8 @@ Back to the [exercise index](./index.md). This is a rehearsal script, **not**
 evidence, not a real outage and not an approval. Use synthetic partners, orders
 and results only. No drill was run to write this sheet. The symptoms under test
 are the signals and queues declared in
-[operational runbooks](../s_g5_06/operational-runbooks.md) and the
-[queue catalog](../s_g5_11/queue-catalog.md).
+[operational runbooks](../recovery/operational-runbooks.md) and the
+[queue catalog](../ops-queues/queue-catalog.md).
 
 ## Goal
 
@@ -34,11 +34,11 @@ log instead of inventing contacts.
 
 | Concern | Target | Source |
 |---|---|---|
-| Monitoring signals | All 13 declared: `error_rates`, `saturation`, `queue_age`, `partner_delivery`, `unmatched_reports`, `critical_acknowledgment_time`, `missing_coverage`, `unassigned_patient_messages`, `response_breaches`, `failed_instruction_notifications`, `overdue_instruction_acknowledgments`, `rendering_failures`, `backup_status` | OPS-05; [operational runbooks](../s_g5_06/operational-runbooks.md) |
+| Monitoring signals | All 13 declared: `error_rates`, `saturation`, `queue_age`, `partner_delivery`, `unmatched_reports`, `critical_acknowledgment_time`, `missing_coverage`, `unassigned_patient_messages`, `response_breaches`, `failed_instruction_notifications`, `overdue_instruction_acknowledgments`, `rendering_failures`, `backup_status` | OPS-05; [operational runbooks](../recovery/operational-runbooks.md) |
 | Ownership | `operational_on_call_owner` and `site_clinical_coverage_owner` are non-blank named roles | OPS-05 |
 | Routine API latency | p95 ≤ 500 ms reads and ≤ 900 ms commands, 99.9% monthly availability | OPS-03 |
-| Delivery and dedup | Immutable event IDs, per-aggregate version, one downstream effect and one clinical task per revision; retry with bounded backoff and a restricted dead-letter queue | ARC-05; [restore procedure](../s_g5_06/restore-procedure.md) |
-| Work-item discipline | Seven named queues; states `open → assigned → resolved` with `escalated`; non-open items justified by `assign`, `resolve`, `retry` or `escalate` with reason, owner, audit id and instant | ADM-02; [queue catalog](../s_g5_11/queue-catalog.md) |
+| Delivery and dedup | Immutable event IDs, per-aggregate version, one downstream effect and one clinical task per revision; retry with bounded backoff and a restricted dead-letter queue | ARC-05; [restore procedure](../recovery/restore-procedure.md) |
+| Work-item discipline | Seven named queues; states `open → assigned → resolved` with `escalated`; non-open items justified by `assign`, `resolve`, `retry` or `escalate` with reason, owner, audit id and instant | ADM-02; [queue catalog](../ops-queues/queue-catalog.md) |
 | Critical findings | Verification, responsible owner, due time and escalation; human acknowledgment with timestamp and read-back; delivery and release do not satisfy it | XCH-05 |
 | Duplicate prevention on recovery | Idempotency keys scoped to tenant/caller/command with a request digest; durable business uniqueness for external clinical actions | ARC-03, OPS-05 |
 
@@ -52,12 +52,12 @@ log instead of inventing contacts.
 3. `NOT YET IN PLACE:` no in-repository command injects a partner outage, stops a
    result feed or generates a live queue snapshot. The injects below are narrated
    by the facilitator and represented by the synthetic queue artifact in
-   `infra/s_g5_11/fixtures/`. Do not claim an observed alert or operator action
+   `infra/ops-queues/fixtures/`. Do not claim an observed alert or operator action
    from a fixture.
-4. The only evaluator commands are `bash infra/s_g5_11/check.sh` and
-   `python3 -I infra/s_g5_11/ops_queues.py <artifact.json>`; the recovery envelope
+4. The only evaluator commands are `bash infra/ops-queues/check.sh` and
+   `python3 -I infra/ops-queues/ops_queues.py <artifact.json>`; the recovery envelope
    can also be checked with
-   `python3 -I infra/s_g5_06/recovery_evidence.py <artifact.json>`.
+   `python3 -I infra/recovery/recovery_evidence.py <artifact.json>`.
 
 ## Timed script with injects
 
@@ -67,14 +67,14 @@ log instead of inventing contacts.
 |---:|---|---|---|
 | 0 | Facilitator: "The partner result feed has gone quiet; new orders are still arriving." | On-call owner declares the incident in the drill log and starts the clock | Incident, named owner and UTC time recorded |
 | 5 | No new synthetic result events are injected | Owner checks the declared signals `partner_delivery`, `queue_age`, `unmatched_reports`, `error_rates` and `saturation`. `NOT YET IN PLACE:` no in-repo clinical monitoring dashboard or alert feed; `scripts/monitor.sh` is a GitHub Actions swarm dashboard and is **not** used as evidence | Signal names and the owner who would receive each are recorded as declarations, not as observed alerts |
-| 10 | Synthetic orders accumulate unresolved work items | Owner maps them to the real queues `rejected_exchanges` and `unreconciled_reports` in the [queue catalog](../s_g5_11/queue-catalog.md). The synthetic snapshot is evaluated with `python3 -I infra/s_g5_11/ops_queues.py <artifact.json>` | Unknown queues, mismatched tags or unowned non-open items fail closed |
+| 10 | Synthetic orders accumulate unresolved work items | Owner maps them to the real queues `rejected_exchanges` and `unreconciled_reports` in the [queue catalog](../ops-queues/queue-catalog.md). The synthetic snapshot is evaluated with `python3 -I infra/ops-queues/ops_queues.py <artifact.json>` | Unknown queues, mismatched tags or unowned non-open items fail closed |
 | 15 | A synthetic **critical finding** is injected with no clinician acknowledgment | Site clinical coverage owner assigns a named owner and due time; if the named owner is unavailable, route to a staffed backup queue and record the escalation. Delivery or patient release is **not** accepted as acknowledgment (XCH-05) | `critical_acknowledgment_time` has a named owner; read-back and receipt recorded; no silent reassignment to an unstaffed queue |
 | 20 | Inject a coverage gap and an unassigned patient message | Unit supervisor records `missing_coverage` and `unassigned_patient_messages`; each item gets a named owner (`assign`) or an `escalate` with reason | No item left in a non-open state without a matching action and reason |
 | 25 | Inject a duplicate event and an out-of-order revision by immutable ID | Integration lead reconciles by immutable event ID inside the sender/type namespace, holds the out-of-order change by per-aggregate version (ARC-05) and confirms order and patient identifiers before any external link is re-created | One downstream effect and one clinical task for the intended revision; duplicate does not create a second order or result |
 | 30 | Inject a transient send failure | Owner proposes `retry`. Per the queue catalog, `retry` is permitted only on `rejected_exchanges` or `document_failures`; integration lead confirms partner status before retrying | Retry uses bounded backoff; failed attempts recorded; no blind retry into an unknown partner state |
-| 35 | Facilitator: "Partner delivery resumes." | Owner drains the queues with `assign`, `escalate`, `resolve` and permitted `retry`; every action carries reason, timezone-aware instant, actor and an `audit_id` that references an existing same-tenant audit event. Re-run `bash infra/s_g5_11/check.sh` | Evaluator passes; audit ids corroborate actor, verb, work item and instant |
+| 35 | Facilitator: "Partner delivery resumes." | Owner drains the queues with `assign`, `escalate`, `resolve` and permitted `retry`; every action carries reason, timezone-aware instant, actor and an `audit_id` that references an existing same-tenant audit event. Re-run `bash infra/ops-queues/check.sh` | Evaluator passes; audit ids corroborate actor, verb, work item and instant |
 | 45 | Facilitator asks whether writes need reopening after a data-restoring step | If any data was restored, switch to the [database restore drill](./database-restore-drill.md) reconciliation gate before writes resume; otherwise state that no restore was involved | Reconciliation-before-writes rule honoured or explicitly out of scope |
-| 50 | Observation window | Owner watches error rate, queue age and partner delivery; if the loss was data-bearing, evaluate the recovery envelope with `python3 -I infra/s_g5_06/recovery_evidence.py <artifact.json>` | Any breach is a failed step or corrective action, not suppressed |
+| 50 | Observation window | Owner watches error rate, queue age and partner delivery; if the loss was data-bearing, evaluate the recovery envelope with `python3 -I infra/recovery/recovery_evidence.py <artifact.json>` | Any breach is a failed step or corrective action, not suppressed |
 
 ## Questions the facilitator asks
 
@@ -97,12 +97,12 @@ log instead of inventing contacts.
 ## Evidence to capture
 
 - The synthetic queue snapshot (synthetic fixture or a rehearsal-labelled
-  artifact) and the exact output of `bash infra/s_g5_11/check.sh` and
-  `python3 -I infra/s_g5_11/ops_queues.py <artifact.json>`.
+  artifact) and the exact output of `bash infra/ops-queues/check.sh` and
+  `python3 -I infra/ops-queues/ops_queues.py <artifact.json>`.
 - A declaration table: all 13 signals with their named owner role, and the
   required OPS-05 runbook topics (`paper_manual_capture`, `patient_identification`,
   `critical_contacts`, `supervised_back_entry`) from
-  [operational runbooks](../s_g5_06/operational-runbooks.md).
+  [operational runbooks](../recovery/operational-runbooks.md).
 - The timeline with UTC times for declaration, detection, escalation, retry,
   drain and observation; the critical acknowledgment record with owner, due
   time, attempts and read-back; duplicate and out-of-order handling decisions.
@@ -141,9 +141,9 @@ patient record or a signed URL.
 
 | Command | Exit / evidence |
 |---|---|
-| `bash infra/s_g5_11/check.sh` | 0; ADM-02 unit tests and positive/negative fixture runs |
-| `python3 -I infra/s_g5_11/ops_queues.py <artifact.json>` | 0 pass / 1 failed checks / 2 unreadable input |
-| `python3 -I infra/s_g5_06/recovery_evidence.py <artifact.json>` | 0 pass / 1 failed checks / 2 unreadable input, when a restore is involved |
+| `bash infra/ops-queues/check.sh` | 0; ADM-02 unit tests and positive/negative fixture runs |
+| `python3 -I infra/ops-queues/ops_queues.py <artifact.json>` | 0 pass / 1 failed checks / 2 unreadable input |
+| `python3 -I infra/recovery/recovery_evidence.py <artifact.json>` | 0 pass / 1 failed checks / 2 unreadable input, when a restore is involved |
 | `bash db/check.sh` | 0; proves audit chain and next-request revocation semantics on synthetic PostgreSQL when the drill touches identity or audit data |
 | `python3 -I scripts/check-secrets.py` | 0; no credential- or PHI-shaped strings in captured files |
 
