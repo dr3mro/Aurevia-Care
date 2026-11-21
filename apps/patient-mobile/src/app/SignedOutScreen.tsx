@@ -25,7 +25,11 @@ export interface SignedOutScreenProps {
 export function SignedOutScreen({ locale, onSignIn }: SignedOutScreenProps): React.JSX.Element {
   return (
     <View testID="signed-out-screen" accessibilityRole="alert" style={styles.container}>
-      <Text testID="signed-out-title" accessibilityRole="header" style={styles.title}>
+      <Text
+        testID="signed-out-title"
+        accessibilityRole="header"
+        accessibilityLanguage={locale}
+        style={styles.title}>
         {appText(locale, 'signedOutTitle')}
       </Text>
       <Text testID="signed-out-body" accessibilityLanguage={locale}>
@@ -35,9 +39,10 @@ export function SignedOutScreen({ locale, onSignIn }: SignedOutScreenProps): Rea
         testID="sign-in-action"
         accessibilityRole="button"
         accessibilityLabel={appText(locale, 'signIn')}
+        accessibilityLanguage={locale}
         onPress={onSignIn}
         style={styles.control}>
-        <Text>{appText(locale, 'signIn')}</Text>
+        <Text accessibilityLanguage={locale}>{appText(locale, 'signIn')}</Text>
       </Pressable>
     </View>
   );

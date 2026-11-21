@@ -44,7 +44,7 @@ describe('loadAppointments', () => {
   }];
 
   it('maps a patient appointment to the existing display type', async () => {
-    const rows = await loadAppointments(fakeTransport(async () => payload), patientId, organizationId);
+    const rows = await loadAppointments(fakeTransport(async () => payload), patientId, organizationId, 'en');
     expect(rows).toHaveLength(1);
     expect(rows[0]!.key).toBe(`${organizationId}\u0000apt-1`);
     expect(rows[0]!.timeZone).toBe('Asia/Riyadh');
@@ -57,6 +57,7 @@ describe('loadAppointments', () => {
       fakeTransport(async () => [{ ...payload[0]!, status: 'BOOKED' }]),
       patientId,
       organizationId,
+      'en',
     );
     expect(rows[0]!.status).toBe('booked');
     expect(rows[0]!.confirmation).toEqual({ kind: 'pending', confirmedAt: null });
@@ -64,7 +65,7 @@ describe('loadAppointments', () => {
 
   it('marks a server-confirmed appointment as confirmed', async () => {
     const confirmed = [{ ...payload[0]!, confirmedAt: '2026-11-21T10:05:00Z' }];
-    const rows = await loadAppointments(fakeTransport(async () => confirmed), patientId, organizationId);
+    const rows = await loadAppointments(fakeTransport(async () => confirmed), patientId, organizationId, 'en');
     expect(rows[0]!.confirmation).toEqual({
       kind: 'confirmed',
       confirmedAt: '2026-11-21T10:05:00Z',
@@ -73,13 +74,13 @@ describe('loadAppointments', () => {
 
   it('rejects a payload that is not a list', async () => {
     await expect(
-      loadAppointments(fakeTransport(async () => ({ entries: [] })), patientId, organizationId),
+      loadAppointments(fakeTransport(async () => ({ entries: [] })), patientId, organizationId, 'en'),
     ).rejects.toThrow('MALFORMED_APPOINTMENTS');
   });
 
   it('rejects a row that is not an object', async () => {
     await expect(
-      loadAppointments(fakeTransport(async () => ['not-a-row']), patientId, organizationId),
+      loadAppointments(fakeTransport(async () => ['not-a-row']), patientId, organizationId, 'en'),
     ).rejects.toThrow('MALFORMED_APPOINTMENT');
   });
 
@@ -97,7 +98,7 @@ describe('loadAppointments', () => {
     ['blank confirmed instant', { ...payload[0]!, confirmedAt: '' }],
   ])('rejects %s', async (_name, row) => {
     await expect(
-      loadAppointments(fakeTransport(async () => [row]), patientId, organizationId),
+      loadAppointments(fakeTransport(async () => [row]), patientId, organizationId, 'en'),
     ).rejects.toThrow('MALFORMED_APPOINTMENT');
   });
 
@@ -106,9 +107,28 @@ describe('loadAppointments', () => {
       fakeTransport(async () => [{ ...payload[0]!, facilityTimeZone: 'Not/AZone' }]),
       patientId,
       organizationId,
+      'en',
     );
     expect(rows[0]!.localStart).toBe('2026-11-21T10:00:00Z');
   });
+
+  it.each(['en', 'ar'] as const)(
+    'formats the appointment date and time in the %s locale with Latin digits in the facility zone',
+    async (locale) => {
+      const rows = await loadAppointments(
+        fakeTransport(async () => payload),
+        patientId,
+        organizationId,
+        locale,
+      );
+      const rendered = rows[0]!.localStart;
+      // 10:00Z is 13:00 in Asia/Riyadh, and the civil day is 21 November.
+      expect(rendered).toContain('13:00');
+      expect(rendered).toMatch(locale === 'ar' ? /نوفمبر/ : /Nov/);
+      expect(rendered).toMatch(/21/);
+      expect(rendered).not.toMatch(/[\u0660-\u0669]/);
+    },
+  );
 });
 
 describe('loadReports', () => {

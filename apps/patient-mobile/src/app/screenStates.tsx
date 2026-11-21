@@ -15,6 +15,10 @@ import { appText, type Locale } from './messages';
 
 /** All labels a state view can show, already localized. */
 export interface ScreenMessages {
+  /** Active display locale; applied as `accessibilityLanguage` on every text run. */
+  readonly locale: Locale;
+  /** Label that introduces an opaque correlation identifier. */
+  readonly reference: string;
   /** Shown while a request is in flight. */
   readonly loading: string;
   /** Generic failure text, never a technical detail. */
@@ -32,10 +36,12 @@ export interface ScreenMessages {
 /** Build the state labels for one locale. */
 export function screenMessages(locale: Locale): ScreenMessages {
   return {
+    locale,
     loading: appText(locale, 'loading'),
     error: appText(locale, 'loadError'),
     offline: appText(locale, 'offline'),
     sessionExpired: appText(locale, 'sessionExpired'),
+    reference: appText(locale, 'referencePrefix'),
     retry: appText(locale, 'retry'),
     signIn: appText(locale, 'signIn'),
   };
@@ -107,30 +113,38 @@ export function ScreenStateView<T>({
           accessibilityRole="text"
           accessibilityLiveRegion="polite"
           style={styles.state}>
-          <Text>{messages.loading}</Text>
+          <Text accessibilityLanguage={messages.locale}>{messages.loading}</Text>
         </View>
       );
     case 'empty':
       return (
         <View testID="screen-empty" accessibilityRole="text" style={styles.state}>
-          <Text>{emptyMessage}</Text>
+          <Text accessibilityLanguage={messages.locale}>{emptyMessage}</Text>
         </View>
       );
     case 'error':
       return (
         <View testID="screen-error" accessibilityRole="alert" style={styles.state}>
-          <Text>{messages.error}</Text>
+          <Text accessibilityLanguage={messages.locale}>{messages.error}</Text>
           {state.error.correlationId ? (
-            <Text testID="screen-correlation">{`Reference: ${state.error.correlationId}`}</Text>
+            <View testID="screen-correlation" style={styles.reference}>
+              <Text accessibilityLanguage={messages.locale}>{messages.reference}</Text>
+              {/* An identifier is a Latin run in both directions; keep it in its
+                  own node so a screen reader does not read it in Arabic. */}
+              <Text testID="screen-correlation-id" accessibilityLanguage="en">
+                {state.error.correlationId}
+              </Text>
+            </View>
           ) : null}
           {onRetry ? (
             <Pressable
               testID="screen-retry"
               accessibilityRole="button"
               accessibilityLabel={messages.retry}
+              accessibilityLanguage={messages.locale}
               onPress={onRetry}
               style={styles.control}>
-              <Text>{messages.retry}</Text>
+              <Text accessibilityLanguage={messages.locale}>{messages.retry}</Text>
             </Pressable>
           ) : null}
         </View>
@@ -138,15 +152,16 @@ export function ScreenStateView<T>({
     case 'offline':
       return (
         <View testID="screen-offline" accessibilityRole="alert" style={styles.state}>
-          <Text>{messages.offline}</Text>
+          <Text accessibilityLanguage={messages.locale}>{messages.offline}</Text>
           {onRetry ? (
             <Pressable
               testID="screen-retry"
               accessibilityRole="button"
               accessibilityLabel={messages.retry}
+              accessibilityLanguage={messages.locale}
               onPress={onRetry}
               style={styles.control}>
-              <Text>{messages.retry}</Text>
+              <Text accessibilityLanguage={messages.locale}>{messages.retry}</Text>
             </Pressable>
           ) : null}
         </View>
@@ -154,7 +169,7 @@ export function ScreenStateView<T>({
     case 'session-expired':
       return (
         <View testID="screen-session-expired" accessibilityRole="alert" style={styles.state}>
-          <Text>{messages.sessionExpired}</Text>
+          <Text accessibilityLanguage={messages.locale}>{messages.sessionExpired}</Text>
         </View>
       );
     case 'ready':
@@ -165,4 +180,7 @@ export function ScreenStateView<T>({
 const styles = StyleSheet.create({
   state: { padding: 16, minHeight: 44 },
   control: { minHeight: 44, justifyContent: 'center' },
+  // `row` mirrors under RTL so the localized prefix stays at the reading start
+  // and the Latin identifier follows it in both directions.
+  reference: { flexDirection: 'row', flexWrap: 'wrap' },
 });
