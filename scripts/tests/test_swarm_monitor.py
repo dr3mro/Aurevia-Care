@@ -108,14 +108,14 @@ class SelectTests(unittest.TestCase):
         text = TODO + "\n- [ ] ISS-6 · Fix it\n  - attempts: 0\n  - scope: apps/api/x\n"
         chosen, _ = select("daily", Gh(issues=[aged(6, 3000, 1500)]), text)
         self.assertEqual(chosen["nudge"], [6])
-        used = text.replace("attempts: 0", "attempts: 3")
+        used = text.replace("attempts: 0", f"attempts: {swarm.MAX_ATTEMPTS}")
         chosen, _ = select("daily", Gh(issues=[aged(6, 3000, 1500)]), used)
         self.assertEqual(chosen["reset"], [(6, "ISS-6")])
         chosen, _ = select("hourly", Gh(issues=[aged(6, 90)]), used)
         self.assertEqual(chosen["reset"], [])
 
     def test_a_handoff_for_a_stuck_story_task_gets_its_attempts_back(self):
-        used = TODO.replace("  - scope: apps/api/staff", "  - attempts: 3\n  - scope: apps/api/staff")
+        used = TODO.replace("  - scope: apps/api/staff", f"  - attempts: {swarm.MAX_ATTEMPTS}\n  - scope: apps/api/staff")
         fake = Gh(issues=[aged(2, 3000, 1500, body="<!-- swarm-task:CW-001 --><!-- swarm-pr:none -->")])
         chosen, _ = select("daily", fake, used)
         self.assertEqual(chosen["reset"], [(2, "CW-001")])
@@ -273,7 +273,7 @@ class AssignTests(unittest.TestCase):
         self.assertTrue(self.fake.said("issue", "comment", "1", "swarm-requeue"))
 
     def test_a_reset_gives_the_attempts_back_and_starts_a_wave(self):
-        self.todo.write_text(TODO.replace("  - scope: apps/api/staff", "  - attempts: 3\n  - scope: apps/api/staff"))
+        self.todo.write_text(TODO.replace("  - scope: apps/api/staff", f"  - attempts: {swarm.MAX_ATTEMPTS}\n  - scope: apps/api/staff"))
         result = self.run_assign(triaged=[], reset=[(2, "CW-001")])
         self.assertEqual(result["reset"], [2])
         self.assertEqual(swarm.attempts_of(swarm.parse_tasks(self.todo.read_text())[0]), 0)

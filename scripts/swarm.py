@@ -24,9 +24,9 @@ MARK = "<!-- swarm-integrator -->"
 MAX_FIX = 3
 # One story per worker PR: a batch this large cannot be reviewed or verified
 # as a single bounded change, and it was the source of the G1 quality failures.
-MAX_PR_FILES = 15
+MAX_PR_FILES = 30
 # A task a swarm worker has taken this many times without finishing waits for a person.
-MAX_ATTEMPTS = 3
+MAX_ATTEMPTS = 5
 BODY_LIMIT = 8000
 # Default monthly runner-minute cap for all swarm-related workflows. The guard
 # estimates usage from finished run durations and refuses a wave near the cap.
@@ -48,8 +48,15 @@ LABELS = {
 # worker must pass. Per-module check.sh files (apps/<module>/check.sh, db/check.sh) are
 # the canonical test entry points that new modules are required to add, so they must
 # remain auto-mergeable. fnmatch's '*' crosses '/', so use the literal root path here.
+# Files that set what the gates accept. Nobody loosens a gate without a person: not an
+# ordinary story and not a repair (a repair is judged by a lighter gate, so it could
+# otherwise turn main green by relaxing the check that failed).
+GATE_CONFIG = ["apps/api/spotbugs-exclude.xml", "scripts/wiring-baseline.json", "CODING_STYLE.md",
+               "apps/staff-web/vite.config.ts", "apps/staff-web/eslint.config.ts",
+               "apps/patient-mobile/jest.config.ts", "apps/patient-mobile/eslint.config.mjs"]
 PROTECTED = [".github/*", ".opencode/*", "opencode.json", "scripts/*",
-             "AGENTS.md", "check.sh", "*/check.sh", "compose.yaml", "Dockerfile"]
+             "AGENTS.md", "check.sh", "*/check.sh", "compose.yaml", "Dockerfile",
+             "apps/api/pom.xml", *GATE_CONFIG]
 # Shared trackers are written only by the integrator, one merge at a time, so
 # parallel workers never conflict on them.
 TRACKERS = ["TODO.md", "MEMORY.md", "WORKSPACE.md", "BUGS.md", "PROJECT.md", "docs/swarm/*"]
@@ -1601,6 +1608,12 @@ def publish(task, directory):
             pr = str(task["number"])
             gh("pr", "comment", pr, "--body",
                f"Worker {task['slot']} pushed a fix (local checks: {checks}). The integrator will retest.")
+    elif commits > 0:
+        # The bundle step failed (it runs with `|| true`): the commits exist only in the
+        # worker's artifact and would otherwise be dropped without a trace.
+        report_issue(f"{task['id']}: worker made {commits} commit(s) but no bundle reached publish",
+                     f"Result: {result}. The `Pack the commits` step produced no result.bundle, so nothing "
+                     f"was pushed. Check the worker artifact and its log. {run_url()}")
     release(task, result, 1 if pr else 0, pr)
     note_worker_outcome(task, result, directory, pr)
     if task["kind"] == "story" and (result != "ok" or not pr):
@@ -2206,11 +2219,12 @@ def guard(pr, repair=False):
 
     Ordinary PRs never auto-merge workflow, agent or script changes. Watchdog
     repairs are the exception: they must be able to fix the pipeline itself,
-    and they still pass the fast gate before the integrator merges them.
+    and they still pass the fast gate before the integrator merges them. Even
+    a repair never auto-merges a change to GATE_CONFIG.
     """
     files = gh("pr", "diff", str(pr), "--name-only").split()
-    touched = protected_files(files)
-    if touched and not repair:
+    touched = [f for f in files if f in GATE_CONFIG] if repair else protected_files(files)
+    if touched:
         add_labels(pr, "needs-human")
         gh("pr", "comment", str(pr), "--body",
            f"{MARK}\nThis pull request changes workflow, agent or script files, which are never "

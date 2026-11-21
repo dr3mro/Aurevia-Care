@@ -13,6 +13,9 @@ on:
       opencode_version:
         description: OpenCode V2 CLI npm version to install (@opencode/cli)
         default: 2.3.2
+      opencode_integrity:
+        description: npm integrity (sha512-...) of that version; required when the version is changed
+        default: sha512-U/DD6X8kgnEFM3VYT7+QN/UJotW++qOxTJtPEUiNzKwu9tNHtAC1jOtup1gpk773j0AFNmMBbLNou4YkdvlRKA==
 permissions:
   contents: read
   packages: write
@@ -35,12 +38,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           OPENCODE_VERSION: ${{ inputs.opencode_version || '2.3.2' }}
+          OPENCODE_INTEGRITY: ${{ inputs.opencode_integrity || 'sha512-U/DD6X8kgnEFM3VYT7+QN/UJotW++qOxTJtPEUiNzKwu9tNHtAC1jOtup1gpk773j0AFNmMBbLNou4YkdvlRKA==' }}
         run: |
           image="ghcr.io/${GITHUB_REPOSITORY,,}-agent"
           cp apps/api/pom.xml .github/agent-image/pom.xml
           printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
           docker build --pull -f .github/agent-image/Dockerfile \
             --build-arg "OPENCODE_VERSION=$OPENCODE_VERSION" \
+            --build-arg "OPENCODE_INTEGRITY=$OPENCODE_INTEGRITY" \
             --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
             --label "org.opencontainers.image.revision=$GITHUB_SHA" \
             -t "$image:latest" .github/agent-image

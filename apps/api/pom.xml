@@ -29,7 +29,7 @@
     <spotbugs.version>4.10.5.0</spotbugs.version>
     <owasp.skip>true</owasp.skip>
     <spotbugs.skip>true</spotbugs.skip>
-    <pitest.threshold>0</pitest.threshold>
+    <pitest.threshold>65</pitest.threshold>
   </properties>
 
   <dependencies>

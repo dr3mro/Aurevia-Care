@@ -1,10 +1,15 @@
 # Prepared base image for OpenCode agent runs. Built once by agent-image.yml and
 # reused by every worker; nothing here is rebuilt per task. The warm Maven
 # repository is written in a single RUN layer so slot images stay config-only.
-FROM eclipse-temurin:21-jdk AS jdk
-FROM maven:3-eclipse-temurin-21 AS maven
-FROM node:22-bookworm-slim
+# eclipse-temurin:21-jdk (digest pinned; Dependabot bumps it)
+FROM eclipse-temurin:21-jdk@sha256:8ad118b146aa92da815b576441acd6b42b38236797ad0b6edc8c200b85bb0734 AS jdk
+# maven:3-eclipse-temurin-21 (digest pinned; Dependabot bumps it)
+FROM maven:3-eclipse-temurin-21@sha256:3e18d95a0a49d18aa5b075e5ee3c30a98078c382850467dcd4caa49bb7dc4038 AS maven
+# node:22-bookworm-slim (digest pinned; Dependabot bumps it)
+FROM node:22-bookworm-slim@sha256:e9f565d32859f0cbfb52125eafe8be39390f24dac302dc3cdf566e8ba3ab21ee
 ARG OPENCODE_VERSION=2.3.2
+# npm integrity (sha512, base64) of that exact version; change both together.
+ARG OPENCODE_INTEGRITY=sha512-U/DD6X8kgnEFM3VYT7+QN/UJotW++qOxTJtPEUiNzKwu9tNHtAC1jOtup1gpk773j0AFNmMBbLNou4YkdvlRKA==
 COPY --from=jdk /opt/java/openjdk /opt/java/openjdk
 COPY --from=maven /usr/share/maven /usr/share/maven
 ENV JAVA_HOME=/opt/java/openjdk \
@@ -28,7 +33,9 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends postgresql-17 \
  && (pg_dropcluster --stop 17 main || true) \
  && rm -rf /var/lib/apt/lists/* \
- && npm install -g "@opencode/cli@${OPENCODE_VERSION}" \
+ && cd /tmp && tarball="$(npm pack "@opencode/cli@${OPENCODE_VERSION}" --silent)" \
+ && node -e 'const c=require("crypto"),f=require("fs");const h="sha512-"+c.createHash("sha512").update(f.readFileSync(process.argv[1])).digest("base64");if(h!==process.argv[2]){console.error("OpenCode CLI integrity mismatch: "+h);process.exit(1)}' "$tarball" "${OPENCODE_INTEGRITY}" \
+ && npm install -g "/tmp/$tarball" && rm -f "/tmp/$tarball" && cd / \
  && npm cache clean --force \
  && opencode --version && java -version && mvn -v \
  && python3 -I -c 'import yaml'
