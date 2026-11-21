@@ -277,6 +277,104 @@ class DocumentArtifactControllerHttpIntegrationTest {
     }
 
     @Test
+    void nonCleanScanVerdictBlocksDownload() throws Exception {
+        JsonNode rejected = uploadNode("uploader", ORG_A);
+        String rejectedId = rejected.get("id").asString();
+        seedObject(rejected.get("objectKey").asString(), rejected.get("objectVersion").asInt(), 128);
+
+        ResponseEntity<String> scanned = call("POST", "/api/v1/documents/artifacts/" + rejectedId + "/scan",
+                "scanner", ORG_A, "1", "{\"verdict\":\"failed\",\"detail\":\"malware signature\"}");
+        assertEquals(HttpStatus.OK, scanned.getStatusCode(), scanned.getBody());
+        assertTrue(tree(scanned).get("state").asString().equalsIgnoreCase("failed"));
+
+        ResponseEntity<String> blocked = call("GET", "/api/v1/documents/artifacts/" + rejectedId + "/download",
+                "clinician", ORG_A, "2", null);
+        assertEquals(HttpStatus.CONFLICT, blocked.getStatusCode(), blocked.getBody());
+        assertEquals("NOT_COMPLETED", tree(blocked).get("code").asString());
+
+        JsonNode clean = uploadNode("uploader", ORG_A);
+        String cleanId = clean.get("id").asString();
+        seedObject(clean.get("objectKey").asString(), clean.get("objectVersion").asInt(), 128);
+        ResponseEntity<String> cleanScan = call("POST", "/api/v1/documents/artifacts/" + cleanId + "/scan",
+                "scanner", ORG_A, "1", "{\"verdict\":\"clean\",\"detail\":\"ok\"}");
+        assertEquals(HttpStatus.OK, cleanScan.getStatusCode(), cleanScan.getBody());
+        assertTrue(tree(cleanScan).get("state").asString().equalsIgnoreCase("clean"));
+
+        ResponseEntity<String> notCompleted = call("GET", "/api/v1/documents/artifacts/" + cleanId + "/download",
+                "clinician", ORG_A, "2", null);
+        assertEquals(HttpStatus.CONFLICT, notCompleted.getStatusCode(), notCompleted.getBody());
+        assertEquals("NOT_COMPLETED", tree(notCompleted).get("code").asString());
+    }
+
+    @Test
+    void pdfBindingIsImmutableAndReleaseRequiresTheExactRevision() {
+        String revision = """
+                {"organizationId":"%s","revisionId":"rev-gate","revisionVersion":1,
+                 "contentChecksum":"%s"}
+                """.formatted(ORG_A, CHECKSUM);
+
+        ResponseEntity<String> premature = call("POST", "/api/v1/documents/artifacts/releases",
+                "clinician", ORG_A, null,
+                "{\"revision\":" + revision + ",\"policyVersion\":\"policy-gate\",\"requirePdf\":true}");
+        assertEquals(HttpStatus.CONFLICT, premature.getStatusCode(), premature.getBody());
+        assertEquals("PDF_INCOMPLETE", tree(premature).get("code").asString());
+
+        ResponseEntity<String> requested = call("POST", "/api/v1/documents/artifacts/renders",
+                "clinician", ORG_A, null,
+                "{\"revision\":" + revision + ",\"templateId\":\"soap-en\",\"language\":\"en\"}");
+        assertEquals(HttpStatus.CREATED, requested.getStatusCode(), requested.getBody());
+        String jobId = tree(requested).get("jobId").asString();
+
+        ResponseEntity<String> picked = call("POST", "/api/v1/documents/artifacts/renders/" + jobId + "/pickup",
+                "renderer", ORG_A, "1", null);
+        assertEquals(HttpStatus.OK, picked.getStatusCode(), picked.getBody());
+
+        ResponseEntity<String> finished = call("POST", "/api/v1/documents/artifacts/renders/" + jobId + "/finish",
+                "renderer", ORG_A, "2",
+                "{\"objectKey\":\"pdf/" + ORG_A + "/rev-gate/v1\",\"objectVersion\":1,\"checksum\":\""
+                        + CHECKSUM + "\",\"sizeBytes\":128}");
+        assertEquals(HttpStatus.OK, finished.getStatusCode(), finished.getBody());
+
+        ResponseEntity<String> bound = call("POST", "/api/v1/documents/artifacts/bindings",
+                "reviewer", ORG_A, null, "{\"revision\":" + revision + ",\"jobId\":\"" + jobId + "\"}");
+        assertEquals(HttpStatus.CREATED, bound.getStatusCode(), bound.getBody());
+        assertEquals("rev-gate", tree(bound).get("revisionId").asString());
+        assertEquals(1, tree(bound).get("revisionVersion").asInt());
+
+        ResponseEntity<String> released = call("POST", "/api/v1/documents/artifacts/releases",
+                "clinician", ORG_A, null,
+                "{\"revision\":" + revision + ",\"policyVersion\":\"policy-gate\",\"requirePdf\":true}");
+        assertEquals(HttpStatus.CREATED, released.getStatusCode(), released.getBody());
+
+        String corrected = """
+                {"organizationId":"%s","revisionId":"rev-gate","revisionVersion":2,
+                 "contentChecksum":"%s"}
+                """.formatted(ORG_A, "b".repeat(64));
+        ResponseEntity<String> staleRelease = call("POST", "/api/v1/documents/artifacts/releases",
+                "clinician", ORG_A, null,
+                "{\"revision\":" + corrected + ",\"policyVersion\":\"policy-gate\",\"requirePdf\":true}");
+        assertEquals(HttpStatus.CONFLICT, staleRelease.getStatusCode(), staleRelease.getBody());
+        assertEquals("PDF_INCOMPLETE", tree(staleRelease).get("code").asString());
+
+        ResponseEntity<String> second = call("POST", "/api/v1/documents/artifacts/renders",
+                "clinician", ORG_A, null,
+                "{\"revision\":" + revision + ",\"templateId\":\"soap-ar\",\"language\":\"ar\"}");
+        assertEquals(HttpStatus.CREATED, second.getStatusCode(), second.getBody());
+        String secondJob = tree(second).get("jobId").asString();
+        assertEquals(HttpStatus.OK, call("POST", "/api/v1/documents/artifacts/renders/" + secondJob + "/pickup",
+                "renderer", ORG_A, "1", null).getStatusCode());
+        assertEquals(HttpStatus.OK, call("POST", "/api/v1/documents/artifacts/renders/" + secondJob + "/finish",
+                "renderer", ORG_A, "2",
+                "{\"objectKey\":\"pdf/" + ORG_A + "/rev-gate/v2\",\"objectVersion\":1,\"checksum\":\""
+                        + CHECKSUM + "\",\"sizeBytes\":128}").getStatusCode());
+        ResponseEntity<String> competing = call("POST", "/api/v1/documents/artifacts/bindings",
+                "reviewer", ORG_A, null,
+                "{\"revision\":" + revision + ",\"jobId\":\"" + secondJob + "\"}");
+        assertEquals(HttpStatus.CONFLICT, competing.getStatusCode(), competing.getBody());
+        assertEquals("PDF_ALREADY_BOUND", tree(competing).get("code").asString());
+    }
+
+    @Test
     void commandsAreTenantScopedAndFailClosed() {
         String id = upload("uploader", ORG_A);
 
