@@ -17,6 +17,14 @@ export interface AppointmentView {
   readonly confirmation: ConfirmationState;
   /** Recorded confirmation instant rendered in the facility zone, when confirmed. */
   readonly confirmedLocal: string | null;
+  /** Civil date label prepared by the authenticated loader, when supplied. */
+  readonly dateLabel?: string;
+  /** Local clock time prepared by the authenticated loader, when supplied. */
+  readonly timeLabel?: string;
+  /** Clinician or visit line, when the server projection includes it. */
+  readonly visitLine?: string;
+  /** Facility name and site line, when the server projection includes it. */
+  readonly facilityLine?: string;
 }
 
 /**

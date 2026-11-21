@@ -48,7 +48,7 @@ describe('ReleasedReportsScreen (PAT-02)', () => {
     expect(view.getByLabelText('correction')).toHaveTextContent('Corrected revision 1 — corrected glucose value');
     expect(view.getByLabelText('language')).toHaveTextContent('LTR');
     expect(view.getByLabelText('report-report-1').props.style.direction).toBe('ltr');
-    await fireEvent.press(view.getByLabelText('download-report-1'));
+    await fireEvent.press(view.getByTestId('download-report-1'));
     expect(calls[0]).toEqual(report);
   });
 
@@ -95,9 +95,77 @@ describe('screen to authorization integration (PAT-02)', () => {
         }}
       />,
     );
-    await fireEvent.press(view.getByLabelText('download-report-1'));
+    await fireEvent.press(view.getByTestId('download-report-1'));
     await pending;
     expect(calls[0]).toEqual(['report-1', 2]);
+  });
+});
+
+describe('ReleasedReportsScreen approved design (BUILD-71, PAT-02, UX-01)', () => {
+  const designed: ReleasedReport = {
+    ...report,
+    title: 'Lipid panel',
+    result: { label: 'HbA1c', value: '6.9 %', referenceRange: '4.0 to 5.6' },
+  };
+
+  it('shows the title, revision and correction pills, download and per-download check', async () => {
+    const calls: ReleasedReport[] = [];
+    const view = await render(
+      <ReleasedReportsScreen
+        reports={[designed]}
+        error={null}
+        onDownload={(selected) => calls.push(selected)}
+      />,
+    );
+    expect(view.getByTestId('released-reports-title')).toHaveTextContent('Reports');
+    expect(view.getByLabelText('report-title')).toHaveTextContent('Lipid panel');
+    expect(view.getByTestId('revision-report-1')).toHaveTextContent('Revision 2');
+    expect(view.getByTestId('corrected-report-1')).toHaveTextContent(/Corrected/);
+    expect(view.getByLabelText('correction')).toHaveTextContent(/Corrected revision 1/);
+    expect(view.getByTestId('download-report-1').props.accessibilityLabel).toBe('Download PDF');
+    expect(view.getByLabelText('download-check')).toBeTruthy();
+    expect(view.getByLabelText('result-value')).toHaveTextContent('6.9 % reference 4.0 to 5.6');
+    await fireEvent.press(view.getByTestId('download-report-1'));
+    expect(calls[0]).toEqual(designed);
+  });
+
+  it('shows a dashed withdrawal notice and no download for a withdrawn release', async () => {
+    const view = await render(
+      <ReleasedReportsScreen
+        reports={[designed]}
+        error={null}
+        onDownload={() => undefined}
+        locale="en"
+      />,
+    );
+    const withdrawn = { ...designed, releaseState: 'withdrawn' as const };
+    const updated = await render(
+      <ReleasedReportsScreen reports={[withdrawn]} error={null} onDownload={() => undefined} />,
+    );
+    expect(updated.getByTestId('withdrawn-report-1').props.style).toEqual(
+      expect.arrayContaining([expect.objectContaining({ borderStyle: 'dashed' })]),
+    );
+    expect(updated.getByLabelText('withdrawn-title')).toHaveTextContent('Report withdrawn');
+    expect(updated.queryByTestId('download-report-1')).toBeNull();
+    await view.unmount();
+    await updated.unmount();
+  });
+
+  it('renders Arabic RTL copy and a mirrored standalone tab bar', async () => {
+    const view = await render(
+      <ReleasedReportsScreen
+        reports={[{ ...designed, language: 'ar' }]}
+        error={null}
+        onDownload={() => undefined}
+        locale="ar"
+        showTabBar
+        activeTab="reports"
+      />,
+    );
+    expect(view.getByTestId('released-reports-title')).toHaveTextContent('التقارير');
+    expect(view.getByLabelText('report-report-1').props.style.direction).toBe('rtl');
+    expect(view.getByTestId('download-report-1').props.accessibilityLabel).toBe('تنزيل PDF');
+    expect(view.getByLabelText('التقارير tab')).toBeTruthy();
   });
 });
 
