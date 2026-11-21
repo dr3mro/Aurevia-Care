@@ -244,5 +244,36 @@ class GitMergeTests(unittest.TestCase):
         self.assertFalse(Path("tasks/00002000-B.md").exists())
 
 
+class CommandTests(Work):
+    """The command-line entry points read the task text through the same helpers."""
+
+    def test_plan_workers_reads_the_task_files_and_plans_nothing_when_nothing_is_ready(self):
+        taskstore.migrate()
+        with mock.patch.object(swarm, "gh_json", return_value=[]), \
+             mock.patch.object(swarm, "live_workers", return_value=[]), \
+             mock.patch.object(swarm, "load_slots", return_value=[{"slot": 1, "model": ""}]), \
+             mock.patch.object(swarm, "plan_workers", return_value=[]) as planned, \
+             mock.patch.object(swarm, "update_todo"), mock.patch.object(swarm, "note_claims"), \
+             mock.patch.object(swarm, "emit") as emitted, mock.patch("builtins.print"):
+            swarm.main(["plan-workers"])
+        self.assertIn("First", planned.call_args.args[2])
+        emitted.assert_any_call("count", 0)
+
+    def test_continue_reads_the_task_files(self):
+        taskstore.migrate()
+        with mock.patch.object(swarm, "gh_json", return_value=[]), \
+             mock.patch.object(swarm, "live_workers", return_value=[]), \
+             mock.patch.object(swarm, "continue_swarm", return_value=False) as decided, \
+             mock.patch("builtins.print") as shown:
+            swarm.main(["continue"])
+        self.assertIn("First", decided.call_args.args[0])
+        shown.assert_called_with("No further wave to start now.")
+
+    def test_integrate_batch_command(self):
+        with mock.patch.object(swarm, "integrate_batch") as integrate:
+            swarm.main(["integrate-batch", "--queue", "[3]"])
+        integrate.assert_called_once_with([3], "scripts/quick-check.sh")
+
+
 if __name__ == "__main__":
     unittest.main()

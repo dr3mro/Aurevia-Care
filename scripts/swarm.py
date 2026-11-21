@@ -2464,7 +2464,9 @@ def migrate_tasks(attempts=4):
     if os.environ.get("SWARM_TASK_FILES", "on").lower() in ("off", "0", "false", "no") \
             or store().active() or not Path("TODO.md").exists():
         return 0
-    for attempt in range(attempts):
+    attempt = 0
+    while True:
+        attempt += 1
         moved = store().migrate()
         git("add", "TODO.md", store().ROOT)
         git(*IDENTITY, "commit", "-qm", f"Move {moved} task(s) into one file each [skip ci]")
@@ -2473,14 +2475,13 @@ def migrate_tasks(attempts=4):
             print(f"Moved {moved} task(s) into {store().ROOT}/.")
             return moved
         except subprocess.CalledProcessError:
-            if attempt == attempts - 1:
+            if attempt >= attempts:
                 raise
             time.sleep(random.uniform(1, 4))
             authed_git("fetch", "origin", "main")
             git("reset", "-q", "--hard", "origin/main")
             if store().active():
                 return 0
-    return 0
 
 
 def integrate_batch(queue, gate="scripts/quick-check.sh"):
