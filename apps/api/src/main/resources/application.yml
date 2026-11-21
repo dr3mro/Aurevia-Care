@@ -10,5 +10,11 @@ spring:
       initialization-fail-timeout: -1
   flyway:
     enabled: false
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${SMARTCLINIC_OIDC_ISSUER_URI:}
+          audiences: ${SMARTCLINIC_OIDC_AUDIENCE:}
 server:
   port: ${SMARTCLINIC_SERVER_PORT:8081}
