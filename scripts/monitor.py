@@ -325,10 +325,10 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False, loading=frozenset()):
 
     live = sorted([r for r in runs if r.get("status") != "completed"], key=lambda r: r.get("createdAt") or "")
     done = [r for r in runs if r.get("status") == "completed"]
-    last20 = done[:20]
+    last20 = done  # every finished run in the list (newest 100)
     rate = sum(1 for r in last20 if state(r) == "success") / len(last20) if last20 else 0.0
     durs = sorted((ts(r["updatedAt"]) - ts(r.get("startedAt") or r["createdAt"])).total_seconds()
-                  for r in done[:30] if r.get("updatedAt"))
+                  for r in done if r.get("updatedAt"))
     median = durs[len(durs) // 2] if durs else 0
     runs_day = done  # every finished run the list returned (the newest 100), not a time window
     failed_day = [r for r in runs_day if state(r) in FAILED]
@@ -412,14 +412,14 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False, loading=frozenset()):
         return row + [(" " * gap, "")] + right if gap >= 2 else row
 
     iw_top = W - 6
-    hist = [("┃", "green" if state(r) == "success" else "red" if state(r) in FAILED else "gray") for r in done[:30][::-1]]
+    hist = [("┃", "green" if state(r) == "success" else "red" if state(r) in FAILED else "gray") for r in done[::-1]]
     pace = sum(1 for p in merged if ts(p.get("mergedAt")) and (now - ts(p["mergedAt"])).total_seconds() < 21600) / 6
     pending = n_open + len(taken)
     eta = span(pending / pace * 3600) if pace else "-"
     meters = [meter("runs", rate, "green", f"{rate * 100:.0f}% of last {len(last20)}",
                     [("ok ", "gray"), (f"{day_ok * 100:.0f}%", "b_green" if day_ok >= 0.8 else "b_red"),
                      (f"   last wave {age(wave['createdAt']) if wave else '-'}", "gray")],
-                    [("last 30  ", "gray")] + hist,
+                    [(f"last {len(done)}  ", "gray")] + hist,
                     [(f"   issues {len(issues)}", "magenta" if issues else "gray"),
                      (f"   PRs {len(prs)} ({sum(1 for p in prs if p.get('isDraft'))} draft)", "gray"),
                      (f"   median {span(median)}", "gray"),
