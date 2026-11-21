@@ -7,6 +7,17 @@ import {
   type FeatureRouteModule,
 } from './routes';
 
+/** The feature modules collected exactly as the application collects them. */
+const featureRouteModules = import.meta.glob<FeatureRouteModule>(
+  '../features/*/routes.ts',
+  { eager: true },
+);
+
+/** Patterns contributed by the self-registering feature modules. */
+function featurePatterns(): string[] {
+  return collectFeatureRoutes(featureRouteModules).map((candidate) => candidate.pattern);
+}
+
 /** Inert page used only to exercise route bookkeeping; never rendered here. */
 const Placeholder: ComponentType = () => null;
 
@@ -17,30 +28,20 @@ function route(pattern: string): AppRoute {
 
 describe('createRoutes', () => {
   it('resolves every existing path', () => {
-    expect(createRoutes(false).map((candidate) => candidate.pattern)).toEqual([
-      '/',
-      '/signed-out',
-      '/session-expired',
-      '/forbidden',
-      '/not-found',
-      '/schedule',
-      '/schedule/book',
-      '/results',
-      '/results/critical',
-      '/imaging/orders',
-      '/imaging/orders/:id',
-      '/patients',
-      '/patients/:id',
-      '/messages',
-      '/messages/:id',
-      '/patients/:id/chart',
-      '/patients/:id/notes/:noteId',
-      '/admin/facilities',
-      '/admin/staff',
-      '/admin/config',
-      '/admin/audit',
-      '*',
-    ]);
+    const patterns = createRoutes(false).map((candidate) => candidate.pattern);
+    // The app owns only the leading welcome page and the trailing catch-all;
+    // everything between them is contributed by a feature module. Deriving the
+    // middle from the router's own source keeps this true as features are added.
+    expect(patterns).toEqual(['/', ...featurePatterns(), '*']);
+    // The app's five fixed pages keep this order (UX-01, WEB-09). They are
+    // matched as an ordered subsequence, not by absolute index, because a
+    // feature module may sort ahead of the system module.
+    const fixedPages = ['/', '/signed-out', '/session-expired', '/forbidden', '/not-found'];
+    expect(patterns.filter((pattern) => fixedPages.includes(pattern))).toEqual(fixedPages);
+    // The catch-all is always last, after every feature and preview route.
+    expect(patterns.at(-1)).toBe('*');
+    // No route may shadow another one.
+    expect(new Set(patterns).size).toBe(patterns.length);
   });
 
   it('keeps the catch-all last', () => {

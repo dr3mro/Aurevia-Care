@@ -3,9 +3,21 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AppShell } from '../../src/app/AppShell';
 import type { Role } from '../../src/app/navigation';
 import { RouterProvider } from '../../src/app/router';
-import { createRoutes, routes } from '../../src/app/routes';
+import {
+  collectFeatureRoutes,
+  createRoutes,
+  routes,
+  type FeatureRouteModule,
+} from '../../src/app/routes';
 import { I18nProvider } from '../../src/i18n/I18nProvider';
 import { ThemeProvider } from '../../src/theme/ThemeProvider';
+
+/** The feature modules collected exactly as the application collects them. */
+const featureRouteModules = import.meta.glob<FeatureRouteModule>(
+  '../../src/features/*/routes.ts',
+  { eager: true },
+);
+const featurePatterns = collectFeatureRoutes(featureRouteModules).map((route) => route.pattern);
 
 const patterns = routes.map((route) => route.pattern);
 
@@ -127,55 +139,22 @@ describe('staff web application shell', () => {
 
 describe('route registry', () => {
   it('registers only welcome, the development preview and a catch-all', () => {
-    expect(createRoutes(false).map((route) => route.pattern)).toEqual([
-      '/',
-      '/signed-out',
-      '/session-expired',
-      '/forbidden',
-      '/not-found',
-      '/schedule',
-      '/schedule/book',
-      '/results',
-      '/results/critical',
-      '/imaging/orders',
-      '/imaging/orders/:id',
-      '/patients',
-      '/patients/:id',
-      '/messages',
-      '/messages/:id',
-      '/patients/:id/chart',
-      '/patients/:id/notes/:noteId',
-      '/admin/facilities',
-      '/admin/staff',
-      '/admin/config',
-      '/admin/audit',
-      '*',
-    ]);
-    expect(createRoutes(true).map((route) => route.pattern)).toEqual([
-      '/',
-      '/signed-out',
-      '/session-expired',
-      '/forbidden',
-      '/not-found',
-      '/schedule',
-      '/schedule/book',
-      '/results',
-      '/results/critical',
-      '/imaging/orders',
-      '/imaging/orders/:id',
-      '/patients',
-      '/patients/:id',
-      '/messages',
-      '/messages/:id',
-      '/patients/:id/chart',
-      '/patients/:id/notes/:noteId',
-      '/admin/facilities',
-      '/admin/staff',
-      '/admin/config',
-      '/admin/audit',
-      '/design-preview',
-      '*',
-    ]);
+    const withoutPreview = createRoutes(false).map((route) => route.pattern);
+    const withPreview = createRoutes(true).map((route) => route.pattern);
+    // Only the leading welcome page and trailing catch-all are app-owned; the
+    // rest come from self-registering feature modules, so adding one is safe.
+    expect(withoutPreview).toEqual(['/', ...featurePatterns, '*']);
+    expect(withPreview).toEqual(['/', ...featurePatterns, '/design-preview', '*']);
+    // The app's five fixed pages keep this order (UX-01, WEB-09). They are
+    // matched as an ordered subsequence, not by absolute index, because a
+    // feature module may sort ahead of the system module.
+    const fixedPages = ['/', '/signed-out', '/session-expired', '/forbidden', '/not-found'];
+    expect(withoutPreview.filter((routePattern) => fixedPages.includes(routePattern))).toEqual(
+      fixedPages,
+    );
+    // No route may shadow another one, with or without the preview page.
+    expect(new Set(withoutPreview).size).toBe(withoutPreview.length);
+    expect(new Set(withPreview).size).toBe(withPreview.length);
     const preview = routes.find((route) => route.pattern === '/design-preview');
     if (import.meta.env.DEV) {
       expect(preview).toBeDefined();
