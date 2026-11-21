@@ -25,7 +25,8 @@ const DOMAIN_FOLDERS = [
   'flows',
   'evidence', 
   'notifications',
-  'prescriptions', 
+  'prescriptions',
+  'tracker',
 ] as const;
 
 /** A story/task ID directory name such as `s_g3_02`. */
