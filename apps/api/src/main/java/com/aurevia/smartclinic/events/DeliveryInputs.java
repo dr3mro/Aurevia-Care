@@ -5,6 +5,7 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 
 import com.aurevia.smartclinic.api.ApiException;
+import com.aurevia.smartclinic.api.contract.Sha256Hex;
 import com.aurevia.smartclinic.events.DurableEventContract.AuditAction;
 import com.aurevia.smartclinic.events.DurableEventContract.DeliveryState;
 import com.aurevia.smartclinic.events.DurableEventContract.Outcome;
@@ -23,7 +24,6 @@ public final class DeliveryInputs {
 
     private static final Pattern UUID_PATTERN = Pattern.compile(
             "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
-    private static final Pattern DIGEST_PATTERN = Pattern.compile("[0-9a-f]{64}");
     private static final Pattern TOKEN_PATTERN = Pattern.compile("[A-Za-z0-9._:-]{1,128}");
     private static final int MAX_TEXT_LENGTH = 256;
 
@@ -65,18 +65,18 @@ public final class DeliveryInputs {
     }
 
     /**
-     * Validate a lowercase SHA-256 payload digest.
+     * Validate a SHA-256 payload digest, normalizing uppercase hex to lowercase.
      *
      * @param value caller value
-     * @return the validated digest
-     * @throws ApiException when the value is not 64 lowercase hex characters
+     * @return the validated digest in canonical lowercase hex
+     * @throws ApiException when the value is not 64 hexadecimal characters
      */
     public static String digest(String value) {
-        String normalized = value == null ? null : value.toLowerCase(Locale.ROOT);
-        if (normalized == null || !DIGEST_PATTERN.matcher(normalized).matches()) {
+        try {
+            return Sha256Hex.sha256Hex(value).value();
+        } catch (IllegalArgumentException exception) {
             throw new ApiException(422, "INVALID_DIGEST", "payloadDigest must be 64 hex characters");
         }
-        return normalized;
     }
 
     /**

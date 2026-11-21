@@ -205,6 +205,22 @@ public final class ServiceProfileContract {
         }
 
         /**
+         * Whether this profile enables the unit for patient messaging at one instant
+         * (MSG-06). An approved, effective profile alone is not enough: the unit is
+         * only enabled while it still names a queue owner and at least one named
+         * backup. This is a domain-level invariant that defends against a persisted
+         * profile whose staffing has been lost or only partially migrated; it does
+         * not rely on the store having enforced the same rule.
+         *
+         * @param at evaluation instant
+         * @return {@code true} only when the unit may be shown as enabled to patients
+         */
+        public boolean enablesUnitAt(Instant at) {
+            return effectiveAt(at) && queueOwner != null && !queueOwner.isBlank()
+                    && backupCoverage.stream().anyMatch(name -> !name.isBlank());
+        }
+
+        /**
          * Compute the response deadline for work opened at the given instant.
          *
          * @return the elapsed-time response deadline
