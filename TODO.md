@@ -214,8 +214,8 @@ Order of work for the whole production-readiness effort: (1) security and platfo
 
 ### Phase 4 — Wire the three existing screens to the real API
 
-- [-] READY-23 · Admin pages: /admin/facilities and /admin/staff on the real API
-  - agent: swarm-3
+- [x] READY-23 · Admin pages: /admin/facilities and /admin/staff on the real API
+  - pr: #263
   - attempts: 1
   - requirements: IAM-01, IAM-02
   - scope: apps/staff-web/src/features/admin, apps/staff-web/src/app/routes.tsx
@@ -515,9 +515,10 @@ Do these after part 2 where `depends` says so. Persistence tasks run one at a ti
 
 Each task below owns its own files, so the planner can run them side by side with the staff web screens.
 
-- [ ] READY-51 · Staff web: every feature registers its own routes
+- [-] READY-51 · Staff web: every feature registers its own routes
+  - agent: swarm-2
+  - attempts: 1
   - requirements: WEB-09
-  - attempts: 0
   - scope: apps/staff-web/src/app/routes.tsx, apps/staff-web/src/app/routes.test.tsx, apps/staff-web/src/features/admin/routes.ts, apps/staff-web/src/features/scheduling/routes.ts, apps/staff-web/src/features/chart/routes.ts
   - depends: READY-23
   - details:
@@ -527,9 +528,10 @@ Each task below owns its own files, so the planner can run them side by side wit
     3. In `routes.tsx` collect every `features/*/routes.ts` with `import.meta.glob(..., { eager: true })`, sort by path so the order is stable, and throw a clear error when two features register the same pattern.
     4. Tests in `app/routes.test.tsx`: all existing paths still resolve, the catch-all is last, a duplicate pattern fails, the preview flag still works.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
-- [ ] READY-52 · API: structured JSON request log with a correlation ID and a redaction test (WEB-06)
+- [-] READY-52 · API: structured JSON request log with a correlation ID and a redaction test (WEB-06)
+  - agent: swarm-3
+  - attempts: 1
   - requirements: WEB-06
-  - attempts: 0
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/observability, apps/api/src/test/java/com/aurevia/smartclinic/observability
   - depends:
   - details:
@@ -551,9 +553,10 @@ Each task below owns its own files, so the planner can run them side by side wit
     3. Content comes from the approved wording in `docs/` where it exists; otherwise write short neutral text and mark the legal sections `Pending approval` rather than inventing legal claims.
     4. Test in `apps/staff-web/tests/publicPages.test.ts` (vitest, read the files from disk): all six pages exist, each links to the privacy notice, accessibility statement and terms, none loads an external resource or contains a `<script>` tag, and none mentions patient, MRN or chart data.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
-- [ ] READY-54 · Recovery drill runbook and evidence template (OPS-04)
+- [-] READY-54 · Recovery drill runbook and evidence template (OPS-04)
+  - agent: swarm-4
+  - attempts: 1
   - requirements: OPS-04
-  - attempts: 0
   - scope: docs/operations/recovery
   - depends:
   - details:
