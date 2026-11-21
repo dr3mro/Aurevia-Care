@@ -116,7 +116,7 @@ for p in d:
   echo -e "${BOLD}${YELLOW}⚙️  Recent Workflow Runs${RST}"
   echo -e "${DIM}──────────────────────────────────────────────────────────────────────${RST}"
   local runs
-  runs=$(gh run list --limit 30 --json databaseId,workflowName,conclusion,status,headSha,createdAt,url 2>/dev/null)
+  runs=$(gh run list --limit 7 --json databaseId,workflowName,conclusion,status,headSha,createdAt,url 2>/dev/null)
   if [[ -z "$runs" || "$runs" == "[]" ]]; then
     echo -e "  ${DIM}(none)${RST}"
   else
