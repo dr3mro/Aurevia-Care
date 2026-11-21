@@ -140,6 +140,12 @@ class StoreTests(Base):
         self.assertIn("[ ] A-01", text)
         self.assertEqual(Path("TODO.md").read_text(), text)
 
+    def test_a_stale_marker_is_refreshed(self):
+        taskstore.migrate()
+        Path("tasks/.sharded").write_text("old\n")
+        self.assertEqual(taskstore.read(), TEXT)
+        self.assertEqual(Path("tasks/.sharded").read_text().strip(), taskstore.digest(TEXT))
+
     def test_a_missing_view_is_regenerated(self):
         taskstore.migrate()
         Path("TODO.md").unlink()

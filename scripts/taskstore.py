@@ -167,7 +167,7 @@ def read(root=ROOT, view=VIEW):
         if edited != text:
             write(edited, root)
             return sync_view(root, view)
-    if not path.exists() or path.read_text(encoding="utf-8") != text:
+    if digest(text) != marker or not path.exists() or path.read_text(encoding="utf-8") != text:
         sync_view(root, view)
     return text
 
