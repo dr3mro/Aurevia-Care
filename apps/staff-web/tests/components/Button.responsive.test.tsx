@@ -82,6 +82,9 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
   (breakpoint) => {
     it('resolves the breakpoint and keeps an unhidden native button in DOM order', () => {
       installMatchMedia(VIEWPORTS[breakpoint]);
+      // No case inherits dir/lang from an earlier case's RTL assertions.
+      expect(document.documentElement.dir).toBe('');
+      expect(document.documentElement.lang).toBe('');
       expect(renderHook(() => useBreakpoint()).result.current).toBe(breakpoint);
 
       renderButton(
