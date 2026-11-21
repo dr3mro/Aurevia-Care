@@ -1,5 +1,5 @@
-- [-] RESP-DECISION · Decision record: the staff web works on phones and tablets, not only 768 px and wider
-  - agent: swarm-3
+- [x] RESP-DECISION · Decision record: the staff web works on phones and tablets, not only 768 px and wider
+  - pr: #370
   - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: docs/decisions/0004-responsive-staff-web.md
