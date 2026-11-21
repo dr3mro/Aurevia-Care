@@ -4153,7 +4153,9 @@ Every sentence of the requirement tables, the role matrix, the gate evidence, th
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
-- [ ] SPEC-PRD-01-C02 · Spec PRD-01 clause 2 (evidence note): Ambulatory care only.
+- [-] SPEC-PRD-01-C02 · Spec PRD-01 clause 2 (evidence note): Ambulatory care only.
+  - agent: swarm-9
+  - attempts: 1
   - requirements: PRD-01
   - scope: docs/spec/clauses/product/ambulatory-care.md
   - details:
@@ -4164,7 +4166,9 @@ Every sentence of the requirement tables, the role matrix, the gate evidence, th
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
-- [ ] SPEC-PRD-02-C01 · Spec PRD-02 clause 1 (evidence note): Closed-loop orders, diagnostic results, specialty referrals and ordered…
+- [-] SPEC-PRD-02-C01 · Spec PRD-02 clause 1 (evidence note): Closed-loop orders, diagnostic results, specialty referrals and ordered…
+  - agent: swarm-10
+  - attempts: 1
   - requirements: PRD-02
   - scope: docs/spec/clauses/product/closed-loop-orders-diagnostic-results-specialty-referrals.md
   - details:
@@ -4175,7 +4179,9 @@ Every sentence of the requirement tables, the role matrix, the gate evidence, th
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
-- [ ] SPEC-PRD-02-C02 · Spec PRD-02 clause 2 (evidence note): Partner-specific interfaces require approval.
+- [-] SPEC-PRD-02-C02 · Spec PRD-02 clause 2 (evidence note): Partner-specific interfaces require approval.
+  - agent: swarm-1
+  - attempts: 1
   - requirements: PRD-02
   - scope: docs/spec/clauses/product/partner-specific-interfaces-require-approval.md
   - details:
@@ -4186,7 +4192,9 @@ Every sentence of the requirement tables, the role matrix, the gate evidence, th
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
-- [ ] SPEC-PRD-02-C03 · Spec PRD-02 clause 3 (evidence note): Manual workflows must clearly identify delivery and verification evidence.
+- [-] SPEC-PRD-02-C03 · Spec PRD-02 clause 3 (evidence note): Manual workflows must clearly identify delivery and verification evidence.
+  - agent: swarm-2
+  - attempts: 1
   - requirements: PRD-02
   - scope: docs/spec/clauses/product/manual-workflows-clearly-identify-delivery-verification-evidence.md
   - details:
@@ -4197,7 +4205,9 @@ Every sentence of the requirement tables, the role matrix, the gate evidence, th
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
-- [ ] SPEC-PRD-03-C01 · Spec PRD-03 clause 1 (evidence note): Verified adult patients can see appointments and released reports, obtain…
+- [-] SPEC-PRD-03-C01 · Spec PRD-03 clause 1 (evidence note): Verified adult patients can see appointments and released reports, obtain…
+  - agent: swarm-3
+  - attempts: 1
   - requirements: PRD-03
   - scope: docs/spec/clauses/product/verified-adult-patients-see-appointments-released-reports.md
   - details:
@@ -4208,7 +4218,9 @@ Every sentence of the requirement tables, the role matrix, the gate evidence, th
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
-- [ ] SPEC-PRD-03-C02 · Spec PRD-03 clause 2 (evidence note): Self-access only.
+- [-] SPEC-PRD-03-C02 · Spec PRD-03 clause 2 (evidence note): Self-access only.
+  - agent: swarm-4
+  - attempts: 1
   - requirements: PRD-03
   - scope: docs/spec/clauses/product/self-access.md
   - details:
@@ -4219,7 +4231,9 @@ Every sentence of the requirement tables, the role matrix, the gate evidence, th
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
-- [ ] SPEC-PRD-03-C03 · Spec PRD-03 clause 3 (evidence note): Staff handle proxy, dependent and other record requests through an approved…
+- [-] SPEC-PRD-03-C03 · Spec PRD-03 clause 3 (evidence note): Staff handle proxy, dependent and other record requests through an approved…
+  - agent: swarm-5
+  - attempts: 1
   - requirements: PRD-03
   - scope: docs/spec/clauses/product/staff-handle-proxy-dependent-other-record-requests.md
   - details:
@@ -4230,7 +4244,9 @@ Every sentence of the requirement tables, the role matrix, the gate evidence, th
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
-- [ ] SPEC-PRD-04-C01 · Spec PRD-04 clause 1 (evidence note): Track self-pay invoices, payments, refunds and receipts.
+- [-] SPEC-PRD-04-C01 · Spec PRD-04 clause 1 (evidence note): Track self-pay invoices, payments, refunds and receipts.
+  - agent: swarm-6
+  - attempts: 1
   - requirements: PRD-04
   - scope: docs/spec/clauses/product/track-self-pay-invoices-payments-refunds-receipts.md
   - details:
@@ -4241,7 +4257,9 @@ Every sentence of the requirement tables, the role matrix, the gate evidence, th
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
-- [ ] SPEC-PRD-04-C02 · Spec PRD-04 clause 2 (evidence note): No claims adjudication, payer integrations, card data storage or accounting…
+- [-] SPEC-PRD-04-C02 · Spec PRD-04 clause 2 (evidence note): No claims adjudication, payer integrations, card data storage or accounting…
+  - agent: swarm-7
+  - attempts: 1
   - requirements: PRD-04
   - scope: docs/spec/clauses/product/claims-adjudication-payer-integrations-card-data-storage.md
   - details:
@@ -4252,7 +4270,9 @@ Every sentence of the requirement tables, the role matrix, the gate evidence, th
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
-- [ ] SPEC-PRD-05-C01 · Spec PRD-05 clause 1 (evidence note): Support onboarding, export, monitoring, recoverability, and English and Arabic…
+- [-] SPEC-PRD-05-C01 · Spec PRD-05 clause 1 (evidence note): Support onboarding, export, monitoring, recoverability, and English and Arabic…
+  - agent: swarm-8
+  - attempts: 1
   - requirements: PRD-05
   - scope: docs/spec/clauses/product/support-onboarding-export-monitoring-recoverability-english-arabic.md
   - details:
