@@ -1,4 +1,6 @@
-- [ ] RESP-APP-SCREEN-STATES · Patient app: tablet, landscape and large-text layout for `screenStates` (app)
+- [-] RESP-APP-SCREEN-STATES · Patient app: tablet, landscape and large-text layout for `screenStates` (app)
+  - agent: swarm-5
+  - attempts: 1
   - requirements: PAT-01, PAT-02, UX-01
   - scope: apps/patient-mobile/src/app/screenStates.tsx, apps/patient-mobile/src/app/screenStates.tablet.test.tsx
   - depends: RESP-APP-LAYOUT-HOOK, RESP-APP-CONFIG
