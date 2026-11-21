@@ -11,8 +11,6 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import type { Locale } from './messages';
-
 /** One route in the local stack. */
 export interface StackRoute {
   /** Stable local key; use a business name, never a task or story identifier. */
@@ -31,8 +29,6 @@ export interface ScreenStackProps {
   readonly title: string;
   /** Localized accessibility label of the Back control. */
   readonly backLabel: string;
-  /** Active locale, applied as the text language of every label (UX-01). */
-  readonly locale: Locale;
   /** Key of the route shown at the bottom of the stack. */
   readonly rootKey: string;
   /** All routes, with the root route first. */
@@ -49,7 +45,6 @@ export function ScreenStack({
   testID,
   title,
   backLabel,
-  locale,
   rootKey,
   routes,
 }: ScreenStackProps): React.JSX.Element {
@@ -60,7 +55,7 @@ export function ScreenStack({
 
   return (
     <View testID={testID} style={styles.container}>
-      <Text accessibilityRole="header" accessibilityLanguage={locale} style={styles.heading}>
+      <Text accessibilityRole="header" style={styles.heading}>
         {title}
       </Text>
       {atRoot ? (
@@ -73,10 +68,9 @@ export function ScreenStack({
                 testID={`${testID}-open-${route.key}`}
                 accessibilityRole="button"
                 accessibilityLabel={route.label}
-                accessibilityLanguage={locale}
                 style={styles.control}
                 onPress={() => setStack(previous => [...previous, route.key])}>
-                <Text accessibilityLanguage={locale}>{route.label}</Text>
+                <Text>{route.label}</Text>
               </Pressable>
             ))}
         </View>
@@ -85,10 +79,9 @@ export function ScreenStack({
           testID={`${testID}-back`}
           accessibilityRole="button"
           accessibilityLabel={backLabel}
-          accessibilityLanguage={locale}
           style={styles.control}
           onPress={() => setStack(previous => previous.slice(0, -1))}>
-          <Text accessibilityLanguage={locale}>{backLabel}</Text>
+          <Text>{backLabel}</Text>
         </Pressable>
       )}
       {active.render()}

@@ -9,19 +9,16 @@ import { Text } from 'react-native';
 
 import { TransportError } from '../api/transport';
 
-import { appText } from './messages';
 import { screenMessages, screenStateForError, ScreenStateView } from './screenStates';
 import type { ScreenMessages } from './screenStates';
 
 const labels: ScreenMessages = {
-  locale: 'en',
   loading: 'Loading…',
   error: 'Something went wrong',
   offline: 'You appear to be offline',
   sessionExpired: 'Your session has expired',
   retry: 'Retry',
   signIn: 'Sign in',
-  reference: 'Reference:',
 };
 
 describe('screenMessages', () => {
@@ -33,12 +30,6 @@ describe('screenMessages', () => {
       expect(arabic[key]).toBeTruthy();
     }
     expect(arabic.loading).not.toBe(english.loading);
-  });
-
-  it.each(['en', 'ar'] as const)('carries the active locale and localized reference prefix in %s', (locale) => {
-    const messages = screenMessages(locale);
-    expect(messages.locale).toBe(locale);
-    expect(messages.reference).toBe(appText(locale, 'referencePrefix'));
   });
 });
 
