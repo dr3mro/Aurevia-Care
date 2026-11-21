@@ -559,8 +559,10 @@ class NotesTests(unittest.TestCase):
             edit()
             stored.append(message)
             return True
+        store = swarm.store_daily  # the repository's own archive must not decide where the test writes
         with mock.patch.object(swarm, "push_main", push), mock.patch.object(swarm, "retire_dailies", lambda d: None), \
                 mock.patch.object(swarm, "archive_day", lambda day, names, d: opened.append((day, names))), \
+                mock.patch.object(swarm, "store_daily", lambda day, text, d: store(day, text, d, self.dir / "archive")), \
                 mock.patch.object(swarm, "record_issue", lambda *a, **k: "9"), \
                 mock.patch.object(swarm, "open_rules_pr", lambda *a: ""):
             result = swarm.notes_publish(collected, reconciled, str(self.notes))

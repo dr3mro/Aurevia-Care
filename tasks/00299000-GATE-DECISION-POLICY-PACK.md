@@ -1,5 +1,5 @@
-- [-] GATE-DECISION-POLICY-PACK · Decision pack for a person to approve: Market policy pack, hosting region, jurisdiction and data handling map
-  - agent: swarm-6
+- [x] GATE-DECISION-POLICY-PACK · Decision pack for a person to approve: Market policy pack, hosting region, jurisdiction and data handling map
+  - pr: #373
   - attempts: 1
   - requirements: OPS-01, PRD-05
   - scope: docs/launch/policy-pack.md
