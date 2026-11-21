@@ -89,7 +89,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           SWARM_ISSUES: ${{ vars.SWARM_ISSUES }}
-        run: python3 -I scripts/swarm.py issue-context --task "$STORY_ID" || true
+        run: |
+          python3 -I scripts/swarm.py issue-context --task "$STORY_ID" || true
+          if [[ "$MODE" == fix && "$PR_NUMBER" =~ ^[1-9][0-9]*$ ]]; then
+            python3 -I scripts/swarm.py pr-context --pr "$PR_NUMBER" || true
+          fi
       # PostgreSQL ships in the agent image; the integration suites need it.
       - name: Start PostgreSQL for the worker checks
         # Tolerates an older image without PostgreSQL (the first waves after the
@@ -268,7 +272,7 @@ jobs:
       contents: write
       pull-requests: write
       issues: write
-      actions: read
+      actions: write
     steps:
       # Trusted copy of the scripts: the work job never had a token and cannot
       # alter what runs here.
