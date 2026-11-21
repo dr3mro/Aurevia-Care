@@ -1186,6 +1186,94 @@ def add_under(text, header, entries):
 
 AUDIT_HEADER = "## Audit findings"
 
+# A worker that finds work no task covers asks for it in its notes file: a fenced block named
+# task-requests holding a JSON list of {title, details, scope, depends}. Workers cannot edit the
+# task files, so the integrator checks each request like an audit finding and adds the valid ones
+# right after the worker's own task.
+REQUEST_HEADER = "## Tasks requested by agents"
+REQUEST_FENCE = re.compile(r"```task-requests[ \t]*\n(.*?)```", re.S)
+MAX_REQUESTS_PER_TASK = 3
+MAX_OPEN_REQUESTS = 30
+
+
+def task_requests(notes):
+    """The requested tasks in one notes file; unusable JSON gives none."""
+    found = REQUEST_FENCE.search(notes)
+    if not found:
+        return []
+    try:
+        items = json.loads(found.group(1))
+    except ValueError:
+        return []
+    return items if isinstance(items, list) else []
+
+
+def request_entries(items, text, pr, known=()):
+    """TODO entries for the valid requests. The JSON is untrusted: bounded lengths, safe scope
+    paths that are not protected files, depends on tasks that exist, no duplicate title, at most
+    MAX_REQUESTS_PER_TASK per task and MAX_OPEN_REQUESTS open at once."""
+    tasks = parse_tasks(text)
+    open_requests = [t for t in tasks if t["id"].startswith("FU-") and t["status"] != "done"]
+    room = min(MAX_REQUESTS_PER_TASK, MAX_OPEN_REQUESTS - len(open_requests))
+    seen = {_norm(t["task"]) for t in tasks}
+    existing = {t["id"] for t in tasks} | set(known)
+    entries, number = [], 0
+    for item in items:
+        if len(entries) >= room:
+            break
+        if not isinstance(item, dict):
+            continue
+        title, details, scope = item.get("title"), item.get("details"), item.get("scope")
+        depends = item.get("depends", [])
+        if not (isinstance(title, str) and 10 <= len(title.strip()) <= 160 and "\n" not in title):
+            continue
+        if not (isinstance(details, str) and details.strip()) or not scope_ok(scope):
+            continue
+        if not (isinstance(depends, list) and len(depends) <= 5
+                and all(isinstance(d, str) and d in existing for d in depends)):
+            continue
+        title, details = docs_safe(title), docs_safe(details)
+        if _norm(title) in seen:
+            continue
+        seen.add(_norm(title))
+        number += 1
+        while f"FU-{pr}-{number:02d}" in existing:
+            number += 1
+        body = "\n".join(f"    {line}" for line in details.strip()[:2000].splitlines() if line.strip())
+        needs = f"  - depends: {', '.join(depends)}\n" if depends else ""
+        entries.append(
+            f"- [ ] FU-{pr}-{number:02d} · {title.strip()}\n"
+            f"  - attempts: 0\n  - scope: {', '.join(scope)}\n{needs}  - details:\n{body}\n"
+            f"    Requested by the worker of pull request #{pr} because no task covered this work.\n"
+            "    Synthetic fixtures only; failing tests first; stay inside the declared scope;\n"
+            "    record results in your notes file (the path in your prompt).")
+    return entries
+
+
+def insert_after_task(text, task_id, entries):
+    """Put `entries` right after a task's own entry, so they run soon after it; under their own
+    section when the task is not in the text."""
+    lines = text.split("\n")
+    start = next((i for i, line in enumerate(lines) if (m := ENTRY.match(line)) and m.group(2) == task_id), None)
+    if start is None:
+        return add_under(text, REQUEST_HEADER, entries)
+    end = start + 1
+    while end < len(lines) and lines[end].startswith("  "):
+        end += 1
+    lines[end:end] = "\n".join(entries).split("\n")
+    return "\n".join(lines)
+
+
+def merged_requests(task_id, notes_dir=None):
+    """Requests from the notes files a task's worker left in the merged tree."""
+    notes_dir = notes_dir or NOTES_DIR
+    name = re.compile(re.escape(re.sub(r"[^A-Za-z0-9._-]", "-", task_id)) + r"(-fix)?-\d")
+    items = []
+    for path in sorted(Path(notes_dir).glob("*.md")):
+        if name.match(path.name):
+            items += task_requests(path.read_text(errors="replace"))
+    return items
+
 
 def _norm(text):
     return re.sub(r"[^a-z0-9]+", " ", text.lower()).strip()
@@ -2401,8 +2489,14 @@ def record_merge(pr, task_id, sha, gate="scripts/quick-check.sh"):
     evidence = (f"PR #{pr}; integrator ran {gate} on the merge result (tool evidence); "
                 f"Delivery re-verifies main after the push; notes in {notes}; "
                 "simulated review only")
-    todo_write("TODO.md", set_task_status(todo_read(), task_id, "done", pr=f"#{pr}", evidence=evidence))
-    return f"Merged to main by the integrator after {gate} passed on the merge result."
+    updated = set_task_status(todo_read(), task_id, "done", pr=f"#{pr}", evidence=evidence)
+    entries = request_entries(merged_requests(task_id), updated, pr, archived_done_ids())
+    if entries:
+        updated = insert_after_task(updated, task_id, entries)
+    todo_write("TODO.md", updated)
+    added = ", ".join(re.match(r"- \[ \] (\S+)", e).group(1) for e in entries)
+    return (f"Merged to main by the integrator after {gate} passed on the merge result."
+            + (f" Added the follow-up task(s) this worker asked for: {added}." if added else ""))
 
 
 def dispatch_delivery():

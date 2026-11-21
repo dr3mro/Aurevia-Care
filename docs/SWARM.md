@@ -98,3 +98,7 @@ Tasks live one per file in `tasks/<sequence>-<ID>.md`, so two writers only confl
 - **Conflicts.** A pull request that touches `TODO.md` or `tasks/` is not the source of truth: the integrator keeps main's version of those files and goes on merging.
 - **Waves.** `swarm.yml` starts on a push that changes `tasks/**`.
 - **Code.** `scripts/taskstore.py` (split, join, write, view, archive) and the `todo_read`, `todo_write`, `todo_paths` helpers in `scripts/swarm.py`. Without `tasks/.sharded` everything still works on a plain `TODO.md`.
+
+## Tasks requested by agents
+
+A worker cannot edit `tasks/`. If its work needs a task that does not exist, it adds a fenced block named `task-requests` to its notes file: a JSON list of `{"title", "details", "scope", "depends"}`. When the worker's pull request merges, the integrator checks each request like an audit finding (title length, safe `scope` paths that are not protected files, `depends` on existing tasks, no duplicate title) and adds the valid ones as `FU-<pull request>-<n>` right after the worker's own task, so they are picked up soon after it. At most 3 per task and 30 open at once; the merge comment lists what was added. Anything invalid is ignored without failing the merge.
