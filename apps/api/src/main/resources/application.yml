@@ -25,3 +25,9 @@ server:
   # Trust X-Forwarded-* from the TLS-terminating edge so isSecure() and the
   # WEB-02 HSTS header reflect the client's scheme, not the internal hop.
   forward-headers-strategy: framework
+logging:
+  structured:
+    # WEB-06: emit ECS-shaped JSON on stdout so the correlation id from MDC,
+    # route, status and latency are machine-readable for the log pipeline.
+    format:
+      console: ecs
