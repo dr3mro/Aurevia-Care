@@ -454,3 +454,4 @@ describe('createTransport — failure modes', () => {
     expect(logged).not.toContain(TOKEN);
   });
 });
+

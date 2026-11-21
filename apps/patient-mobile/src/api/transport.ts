@@ -26,8 +26,8 @@ export interface FieldError {
 /** Diagnostic metadata that is safe to carry alongside a typed failure. */
 export interface TransportErrorDetails {
   correlationId: string;
-  code: string | undefined;
-  fieldErrors: FieldError[] | undefined;
+  code?: string;
+  fieldErrors?: FieldError[];
 }
 
 /**
@@ -174,11 +174,12 @@ async function toTransportError(
   const responseCorrelationId =
     suppliedId !== null && SAFE_CORRELATION_ID.test(suppliedId) ? suppliedId : requestCorrelationId;
   const details = await readErrorDetails(response);
-  return new TransportError(kindForStatus(response.status), {
-    correlationId: responseCorrelationId,
-    code: details.code,
-    fieldErrors: details.fieldErrors,
-  });
+  const transportErrorDetails: TransportErrorDetails = { correlationId: responseCorrelationId };
+  if (details.code !== undefined) {
+    transportErrorDetails.code = details.code;
+  }
+  transportErrorDetails.fieldErrors = details.fieldErrors;
+  return new TransportError(kindForStatus(response.status), transportErrorDetails);
 }
 
 /** Fail closed on any origin that is not HTTPS, except development localhost. */
@@ -219,7 +220,7 @@ async function send<T>(
   try {
     const token = await config.getToken();
     if (typeof token !== 'string' || token.trim().length === 0) {
-      throw new TransportError('unauthenticated', { correlationId, code: undefined, fieldErrors: undefined });
+      throw new TransportError('unauthenticated', { correlationId });
     }
 
     const headers: Record<string, string> = {
@@ -257,9 +258,9 @@ async function send<T>(
       throw error;
     }
     if (controller?.signal.aborted === true) {
-      throw new TransportError('timeout', { correlationId, code: undefined, fieldErrors: undefined });
+      throw new TransportError('timeout', { correlationId });
     }
-    throw new TransportError('network', { correlationId, code: undefined, fieldErrors: undefined });
+    throw new TransportError('network', { correlationId });
   } finally {
     if (timer !== undefined) {
       clearTimeout(timer);
