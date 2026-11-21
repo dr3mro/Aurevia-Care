@@ -100,23 +100,35 @@ public class AppointmentService {
     }
 
     /**
-     * Create a weekly series. Every occurrence commits or none does.
+     * Create a recurrence series in one tenant-guarded transaction (CLN-01).
+     *
+     * <p>Occurrences are expanded from the facility-local clock time, so a
+     * daylight-saving change keeps the same local appointment time. Every
+     * occurrence is checked against the protected resources before any row is
+     * inserted; the whole series is rejected with the complete clash list when
+     * even one slot is taken. The template, series, occurrences, appointments
+     * and their history commit atomically.</p>
      *
      * @param request series command
      * @return the created appointments in occurrence order
-     * @throws ApiException on any invalid occurrence or slot conflict
+     * @throws ApiException       on invalid input or a denial
+     * @throws SeriesConflictException when any occurrence overlaps a protected resource
      */
     public List<Appointment> bookSeries(SeriesRequest request) {
         int repeatWeeks = request.repeatWeeks() == null ? 0 : request.repeatWeeks();
-        int occurrences = request.occurrences() == null ? 0 : request.occurrences();
         if (repeatWeeks < 1 || repeatWeeks > MAX_REPEAT_WEEKS) {
             throw new ApiException(422, "INVALID_REPEAT", "repeatWeeks must be 1-4");
         }
-        if (occurrences < 1 || occurrences > MAX_OCCURRENCES) {
+        String endDateRaw = request.endDate();
+        boolean byEndDate = endDateRaw != null && !endDateRaw.isBlank();
+        Integer occurrences = request.occurrences();
+        if (byEndDate) {
+            if (occurrences != null) {
+                throw new ApiException(422, "INVALID_OCCURRENCES", "supply occurrences or endDate, not both");
+            }
+        } else if (occurrences == null || occurrences < 1 || occurrences > MAX_OCCURRENCES) {
             throw new ApiException(422, "INVALID_OCCURRENCES", "occurrences must be 1-52");
         }
-        Instant first = SchedulingInputs.instant(request.startsAt());
-        String seriesId = SchedulingInputs.newId();
         AtomicReference<ApiException> failure = new AtomicReference<>();
         List<Appointment> created = transactions.execute(status -> {
             TenantContext context = TenantContext.current();
@@ -125,15 +137,56 @@ public class AppointmentService {
                 failure.set(denial);
                 return List.of();
             }
+            String facilityCode = SchedulingInputs.code(request.facilityCode(), "facilityCode");
+            FacilityInfo facility = scheduling.facility(facilityCode)
+                    .orElseThrow(() -> new ApiException(404, "NOT_FOUND", "facility not found"));
+            RecurrenceTemplate template = RecurrenceTemplate.of(repeatWeeks,
+                    byEndDate ? null : occurrences, endDateRaw,
+                    SchedulingInputs.instant(request.startsAt()), facility.timeZone());
+            List<Instant> starts = template.occurrenceInstants();
+            VisitTypeView visitType = scheduling.visitType(
+                    SchedulingInputs.code(request.visitType(), "visitType"))
+                    .orElseThrow(() -> new ApiException(422, "INVALID_VISIT_TYPE", "unknown visit type"));
+            ResourceView clinician = resolve(scheduling.resource(facility.id(), "clinician",
+                    SchedulingInputs.code(request.clinicianCode(), "clinicianCode")), "clinician");
+            String roomCode = request.roomCode() == null ? null
+                    : SchedulingInputs.code(request.roomCode(), "roomCode");
+            ResourceView room = roomCode == null ? null
+                    : resolve(scheduling.resource(facility.id(), "room", roomCode), "room");
+
+            List<SeriesClash> clashes = new ArrayList<>();
+            for (int index = 0; index < starts.size(); index++) {
+                Instant start = starts.get(index);
+                Instant end = start.plus(Duration.ofMinutes(visitType.durationMinutes()));
+                for (String conflict : appointments.findConflicts(clinician.id(),
+                        room == null ? null : room.id(), start, end)) {
+                    clashes.add(new SeriesClash(index + 1, conflict, start.toString()));
+                }
+            }
+            if (!clashes.isEmpty()) {
+                throw new SeriesConflictException(clashes);
+            }
+
+            String seriesId = SchedulingInputs.newId();
+            String templateId = SchedulingInputs.newId();
+            appointments.insertRecurrenceTemplate(templateId, repeatWeeks,
+                    byEndDate ? null : occurrences, byEndDate ? endDateRaw.trim() : null,
+                    template.localTime().toString(), template.timeZone().getId());
+            appointments.insertAppointmentSeries(seriesId, templateId,
+                    SchedulingInputs.uuid(request.patientId(), "patientId"), facility.id(),
+                    clinician.id(), room == null ? null : room.id(), visitType.code(), starts.get(0));
             List<Appointment> series = new ArrayList<>();
-            for (int index = 0; index < occurrences; index++) {
-                Instant start = first.plus(Duration.ofDays(7L * repeatWeeks * index));
+            for (int index = 0; index < starts.size(); index++) {
+                Instant start = starts.get(index);
                 series.add(createOne(context, new BookingRequest(request.facilityCode(),
                         request.patientId(), request.visitType(), request.clinicianCode(),
                         request.roomCode(), start.toString(), request.overrideReason()),
                         AppointmentState.BOOKED, seriesId));
+                appointments.insertSeriesOccurrence(SchedulingInputs.newId(), seriesId,
+                        series.get(index).id(), index + 1, start);
             }
-            return series;
+            audit.append(context, "SERIES_BOOK", "SERIES_BOOK", RESOURCE_TYPE, SCOPE, seriesId, "SUCCESS");
+            return List.copyOf(series);
         });
         if (failure.get() != null) {
             throw failure.get();
