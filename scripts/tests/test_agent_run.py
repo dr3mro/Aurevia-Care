@@ -341,6 +341,18 @@ class AgentRunTests(unittest.TestCase):
         self.assertTrue((self.repo / "other.txt").exists())
         self.assertEqual((self.repo / ".agent/checks").read_text(), "passed")
 
+    def test_a_start_sync_merges_main_before_the_first_commit(self):
+        self.push_to_main("other.txt", "from main\n")
+        self.run_cmd("fetch-main")
+        self.run_cmd("merge-main", FAKE_MODE="none", SYNC_ONLY="1")
+        self.assertEqual(self.outputs()["merge"], "merged")
+        self.assertTrue((self.repo / "other.txt").exists())
+
+    def test_the_story_prompt_tells_the_agent_to_keep_merging_main(self):
+        text = (ROOT / "scripts/agent-run.sh").read_text()
+        self.assertIn("Keep the branch current with the base branch", text)
+        self.assertIn("after each stage of the story and", text)
+
     def test_unknown_command_is_a_usage_error(self):
         self.assertEqual(self.run_cmd("bogus").returncode, 2)
 

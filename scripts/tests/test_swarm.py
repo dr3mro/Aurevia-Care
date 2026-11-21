@@ -727,13 +727,14 @@ class PlanTests(unittest.TestCase):
 
     def test_worker_has_three_hour_budget_in_segments_with_merge_slack(self):
         worker = (ROOT / ".github/workflows/swarm-worker.yml").read_text()
-        # 45+45+45+40 = 175 minutes of agent work, a main sync after each of the
-        # first three segments, then the final merge before publishing.
+        # 45+45+45+40 = 175 minutes of agent work, a main sync at the start of a fix worker and after
+        # each of the first three segments, then the final merge before publishing.
         for minutes in ("45m", "45m", "45m", "40m"):
             self.assertIn(f"AGENT_TIMEOUT: {minutes}", worker)
         for n in (1, 2, 3, 4):
             self.assertIn(f"SEGMENT: '{n}'", worker)
-        self.assertEqual(worker.count("SYNC_ONLY: '1'"), 3)
+        self.assertEqual(worker.count("SYNC_ONLY: '1'"), 4)
+        self.assertIn("Merge main into the branch (start", worker)
         self.assertIn("Fetch main (final)", worker)
         self.assertIn("timeout-minutes: 300", worker)
         self.assertIn("timeout-minutes: 35", worker)

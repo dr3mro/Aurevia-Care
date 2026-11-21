@@ -1,5 +1,4 @@
-- [-] RESP-BUTTON · Staff web: responsive `Button` component
-  - agent: swarm-4
+- [ ] RESP-BUTTON · Staff web: responsive `Button` component
   - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/components/Button.tsx, apps/staff-web/tests/components/Button.responsive.test.tsx

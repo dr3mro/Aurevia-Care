@@ -1,4 +1,5 @@
 import { useTheme } from '../theme/ThemeProvider';
+import { useBreakpoint, usePointerCoarse } from '../theme/useBreakpoint';
 
 /** Props for a labeled input with an optional accessible error message. */
 export interface FormFieldProps {
@@ -11,7 +12,17 @@ export interface FormFieldProps {
   placeholder?: string;
 }
 
-/** A labeled field that binds hint/error text through aria-describedby. */
+/**
+ * A labeled field that binds hint/error text through aria-describedby.
+ *
+ * Layout uses only the shared responsive classes: `stack` keeps the label
+ * above the control and gives every direct child wrapping room, `field` fills
+ * the inline space with 16px text and a logical focus ring, and `touch` keeps a
+ * 44px target for coarse pointers. Direction is never set here; the logical
+ * properties in those classes mirror under right-to-left. The breakpoint and
+ * pointer data attributes make the layout class observable in tests without
+ * changing the field's behavior or API.
+ */
 export function FormField({
   id,
   label,
@@ -22,20 +33,28 @@ export function FormField({
   placeholder,
 }: FormFieldProps) {
   const { tokens } = useTheme();
+  const breakpoint = useBreakpoint();
+  const coarsePointer = usePointerCoarse();
   return (
-    <div style={{ display: 'grid', gap: tokens.spacing.sm }}>
+    <div
+      className="stack"
+      data-breakpoint={breakpoint}
+      data-coarse-pointer={coarsePointer}
+      style={{ gap: tokens.spacing.sm }}
+    >
       <label htmlFor={id}>{label}</label>
       <input
         id={id}
         type={type}
         value={value}
         placeholder={placeholder}
+        className="field touch"
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${id}-error` : undefined}
         onChange={(event) => onChange(event.target.value)}
         style={{
-          minHeight: '32px',
-          padding: tokens.spacing.sm,
+          paddingBlock: tokens.spacing.sm,
+          paddingInline: tokens.spacing.sm,
           border: `1px solid ${tokens.border}`,
           background: tokens.background,
           color: tokens.foreground,

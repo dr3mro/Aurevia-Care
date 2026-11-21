@@ -397,6 +397,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/printing/handouts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Render a versioned patient handout for one exact signed or placed source revision */
+        post: operations["printHandout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/printing/handouts/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Download one immutable handout version after re-checking permission */
+        post: operations["downloadHandout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -779,6 +813,70 @@ export interface components {
             code?: string;
             message?: string;
             correlationId?: string;
+        };
+        /**
+         * @description Why a disclosure happened; recorded as the audit purpose, never the handout content.
+         * @enum {string}
+         */
+        PrintReason: "give_to_patient" | "referral" | "patient_request";
+        /**
+         * @description Stable kind of the patient handout.
+         * @enum {string}
+         */
+        HandoutKind: "PRESCRIPTION" | "LAB_ORDER" | "IMAGING_ORDER" | "CHART_SUMMARY" | "SIGNED_REPORT";
+        /** @description Exact committed source revision selected for a handout; the server validates its printable state and tenant. */
+        HandoutSource: {
+            /** Format: uuid */
+            organizationId: string;
+            kind: components["schemas"]["HandoutKind"];
+            sourceId: string;
+            revisionVersion: number;
+            contentChecksum: string;
+            state: string;
+            attested?: boolean;
+            printChannel?: string | null;
+            patientId?: string;
+            patientName?: string;
+            clinician?: string;
+            facility?: string;
+            /** Format: date-time */
+            issueTime?: string;
+            sourceSystem?: string;
+            contentLines?: string[];
+        };
+        PrintHandoutRequest: {
+            source: components["schemas"]["HandoutSource"];
+            /** @enum {string} */
+            language: "en" | "ar";
+            reason: components["schemas"]["PrintReason"];
+        };
+        DownloadHandoutRequest: {
+            source: components["schemas"]["HandoutSource"];
+            /** @enum {string} */
+            language: "en" | "ar";
+            reason: components["schemas"]["PrintReason"];
+            version: number;
+        };
+        /** @description Immutable rendering metadata; the PDF bytes are available only through the download path. */
+        Handout: {
+            /** Format: uuid */
+            organizationId?: string;
+            handoutId?: string;
+            kind?: components["schemas"]["HandoutKind"];
+            sourceId?: string;
+            sourceRevision?: number;
+            sourceChecksum?: string;
+            version?: number;
+            language?: string;
+            direction?: string;
+            pageCount?: number;
+            /** Format: int64 */
+            byteSize?: number;
+            sha256?: string;
+            provenance?: string;
+            /** Format: date-time */
+            producedAt?: string;
+            producedBy?: string;
         };
     };
     responses: {
@@ -1926,6 +2024,139 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    printHandout: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Reserved retry-correlation header for draft commands; durable deduplication applies to placement. */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKeyOptional"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PrintHandoutRequest"];
+            };
+        };
+        responses: {
+            /** @description Immutable handout metadata; the download path is returned in Location */
+            201: {
+                headers: {
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Handout"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            /** @description Source not found or inaccessible; existence is concealed */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Source is not in a printable signed or placed state, or has no approved channel */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Invalid reason, language or source selector */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    downloadHandout: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Reserved retry-correlation header for draft commands; durable deduplication applies to placement. */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKeyOptional"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DownloadHandoutRequest"];
+            };
+        };
+        responses: {
+            /** @description Deterministic PDF bytes of the requested immutable version */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            /** @description Source not found or inaccessible; existence is concealed */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The requested version is stale; reload and request the current version */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Invalid reason, language, source selector or version */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
             };
         };
     };
