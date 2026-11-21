@@ -127,9 +127,16 @@ describe('staff web application shell', () => {
 
 describe('route registry', () => {
   it('registers only welcome, the development preview and a catch-all', () => {
-    expect(createRoutes(false).map((route) => route.pattern)).toEqual(['/', '*']);
+    expect(createRoutes(false).map((route) => route.pattern)).toEqual([
+      '/',
+      '/schedule',
+      '/schedule/book',
+      '*',
+    ]);
     expect(createRoutes(true).map((route) => route.pattern)).toEqual([
       '/',
+      '/schedule',
+      '/schedule/book',
       '/design-preview',
       '*',
     ]);

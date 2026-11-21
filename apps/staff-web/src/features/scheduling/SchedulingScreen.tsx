@@ -2,48 +2,62 @@ import { useEffect, useState } from 'react';
 import { useI18n } from '../../i18n/I18nProvider';
 import { useTheme } from '../../theme/ThemeProvider';
 import { AppointmentWorklist } from './AppointmentWorklist';
+import type { BookingInput } from './BookingForm';
 import { BookingForm } from './BookingForm';
-import { appointmentsForTenant, applyCommand, replaceAppointment, selectWorklist } from './domain';
-import type { Appointment, BookingRequest, WorklistRange } from './domain';
-import { createSyntheticAppointment, schedulingAnchorCivilDate } from './fixtures';
+import { appointmentsForTenant, applyCommand, replaceAppointment } from './domain';
+import type { Appointment, WorklistRange } from './domain';
 import { schedulingText } from './messages';
 
-/** Props for the synthetic scheduling screen. */
+/** Props for the API-backed scheduling screen. */
 export interface SchedulingScreenProps {
-  /** All synthetic appointments; the active tenant is selected inside. */
+  /** Appointments loaded by the page for the active tenant and range. */
   appointments: readonly Appointment[];
   organizationId: string;
+  range: WorklistRange;
+  onRangeChange: (range: WorklistRange) => void;
+  /** Sent when a booked row is checked in; the page owns the API command. */
+  onCheckIn: (id: string) => void;
+  /** Sent with the validated booking draft; the page owns the API command. */
+  onBook: (request: BookingInput) => void;
 }
 
-/** Compose the tenant-scoped worklist and booking form with local commands. */
-export function SchedulingScreen({ appointments, organizationId }: SchedulingScreenProps) {
+/**
+ * Compose the tenant-scoped worklist and booking form. Data and durable
+ * commands belong to the page; only the range and the local assignment draft
+ * (no API endpoint exists for it) are held here.
+ */
+export function SchedulingScreen({
+  appointments,
+  organizationId,
+  range,
+  onRangeChange,
+  onCheckIn,
+  onBook,
+}: SchedulingScreenProps) {
   const { locale } = useI18n();
   const { tokens } = useTheme();
-  const [range, setRange] = useState<WorklistRange>('day');
   const [items, setItems] = useState<Appointment[]>(() => [
     ...appointmentsForTenant(appointments, organizationId),
   ]);
   const [announcement, setAnnouncement] = useState('');
 
-  // Switching the active organization starts a fresh tenant-local worklist;
-  // local identifiers from the previous tenant are never carried forward.
+  // A reload, range change or tenant switch supplies a fresh projection. Local
+  // identifiers from a previous tenant are never carried forward.
   useEffect(() => {
     setItems([...appointmentsForTenant(appointments, organizationId)]);
     setAnnouncement('');
-    setRange('day');
   }, [appointments, organizationId]);
 
-  const visible = selectWorklist(items, organizationId, range, schedulingAnchorCivilDate);
+  // The server already selected the instant window; re-filtering by civil date
+  // here would drop late-evening rows displayed in a different facility zone.
+  const visible = appointmentsForTenant(items, organizationId);
   const scoped = appointmentsForTenant(items, organizationId);
 
   function handleCheckIn(id: string) {
+    // Row actions exist only for visible ids, so the target is always present.
     const target = items.find((appointment) => appointment.id === id)!;
-    setItems((current) =>
-      replaceAppointment(current, organizationId, id, (appointment) =>
-        applyCommand(appointment, { kind: 'check-in' }),
-      ),
-    );
-    setAnnouncement(`${target.patientName.latinName}: ${schedulingText(locale, 'stateCheckedIn')}`);
+    setAnnouncement(`${target.patientName.latinName}: ${schedulingText(locale, 'commandSent')}`);
+    onCheckIn(id);
   }
 
   function handleAssign(id: string, assignee: string) {
@@ -56,10 +70,9 @@ export function SchedulingScreen({ appointments, organizationId }: SchedulingScr
     setAnnouncement(`${target.patientName.latinName}: ${assignee}`);
   }
 
-  function handleBook(request: BookingRequest) {
-    const created = createSyntheticAppointment(request);
-    setItems((current) => [...current, created]);
-    setAnnouncement(`${created.patientName.latinName}: ${created.resourceId}`);
+  function handleBook(request: BookingInput) {
+    setAnnouncement(`${request.patientId}: ${schedulingText(locale, 'commandSent')}`);
+    onBook(request);
   }
 
   return (
@@ -75,7 +88,7 @@ export function SchedulingScreen({ appointments, organizationId }: SchedulingScr
       <AppointmentWorklist
         appointments={visible}
         range={range}
-        onRangeChange={setRange}
+        onRangeChange={onRangeChange}
         onCheckIn={handleCheckIn}
         onAssign={handleAssign}
       />

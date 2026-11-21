@@ -23,6 +23,11 @@ const DesignPreview = lazy(() =>
 const NotFoundPage = lazy(() =>
   import('./NotFoundPage').then(({ NotFoundPage: Page }) => ({ default: Page })),
 );
+const SchedulingPage = lazy(() =>
+  import('../features/scheduling/SchedulingPage').then(({ SchedulingPage: Page }) => ({
+    default: Page,
+  })),
+);
 
 /**
  * Build the route table. The development preview is registered only when
@@ -30,7 +35,11 @@ const NotFoundPage = lazy(() =>
  * treats a wildcard as a pattern.
  */
 export function createRoutes(includeDesignPreview: boolean): AppRoute[] {
-  const candidates: AppRoute[] = [{ pattern: '/', component: WelcomePage }];
+  const candidates: AppRoute[] = [
+    { pattern: '/', component: WelcomePage },
+    { pattern: '/schedule', component: SchedulingPage },
+    { pattern: '/schedule/book', component: SchedulingPage },
+  ];
   if (includeDesignPreview) {
     candidates.push({ pattern: '/design-preview', component: DesignPreview });
   }

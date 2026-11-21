@@ -73,6 +73,15 @@ describe('BookingForm', () => {
         onBook={onBook}
       />,
     );
+    fireEvent.change(screen.getByLabelText(schedulingText('en', 'facilityCode')), {
+      target: { value: 'MAIN' },
+    });
+    fireEvent.change(screen.getByLabelText(schedulingText('en', 'patientId')), {
+      target: { value: 'synthetic-patient-001' },
+    });
+    fireEvent.change(screen.getByLabelText(schedulingText('en', 'visitType')), {
+      target: { value: 'follow-up' },
+    });
     fireEvent.change(screen.getByLabelText(schedulingText('en', 'resource')), {
       target: { value: 'room-9' },
     });
@@ -84,6 +93,9 @@ describe('BookingForm', () => {
       organizationId: alphaOrganizationId,
       resourceId: 'room-9',
       scheduledAt: '2026-03-09T07:00:00Z',
+      facilityCode: 'MAIN',
+      patientId: 'synthetic-patient-001',
+      visitType: 'follow-up',
     });
   });
 
@@ -96,6 +108,15 @@ describe('BookingForm', () => {
         onBook={onBook}
       />,
     );
+    fireEvent.change(screen.getByLabelText(schedulingText('en', 'facilityCode')), {
+      target: { value: 'MAIN' },
+    });
+    fireEvent.change(screen.getByLabelText(schedulingText('en', 'patientId')), {
+      target: { value: 'synthetic-patient-001' },
+    });
+    fireEvent.change(screen.getByLabelText(schedulingText('en', 'visitType')), {
+      target: { value: 'follow-up' },
+    });
     const status = screen.getByTestId('conflict-status');
     expect(status.textContent).toBe('');
     fireEvent.change(screen.getByLabelText(schedulingText('en', 'resource')), {
