@@ -1777,6 +1777,13 @@ class BudgetTests(unittest.TestCase):
 
 
 class TwoTierTests(unittest.TestCase):
+    def setUp(self):
+        # These tests build a throwaway repository with a TODO.md; moving it into task files
+        # is covered by TaskFileTests.
+        patcher = mock.patch.object(swarm, "migrate_tasks", return_value=0)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def test_run_gate_uses_a_token_free_environment(self):
         with mock.patch.dict(os.environ, {"GH_TOKEN": "secret", "GITHUB_TOKEN": "secret"}), \
              mock.patch.object(swarm.subprocess, "run") as run:
