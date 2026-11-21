@@ -40,8 +40,9 @@ Gate evidence: two tenants with identical local IDs remain isolated across API, 
 
 Current source state (2026-11-19T07:19Z, from `main` at `311d69a`): 7 Flyway migrations `V1__tenant_schema.sql` … `V7__patient_registration.sql`; 6 API controllers (facility, staff, configuration, catalog, patient, audit); 191 Java `@Test` methods (Surefire: 191 tests, 0 failures, 0 errors); 7 Python tooling test files / 122 tests, 0 failures. `scripts/check.sh`, `scripts/quick-check.sh`, `scripts/docs.sh` all exit 0 locally. CI on `311d69a`: Policy and tooling, Frontend standards, Java and database verification and Verify and smoke image (amd64) success; Developer reference still in progress. Gate is not yet complete — S-G0-04 remains blocked (see below).
 
-- [-] FIX-ROUTES-01 · Staff web: route tests must not hard-code the list of registered routes (HIGH PRIORITY: pull requests are failing on it)
-  - agent: swarm-1
+- [x] FIX-ROUTES-01 · Staff web: route tests must not hard-code the list of registered routes (HIGH PRIORITY: pull requests are failing on it)
+  - pr: #333
+  - evidence: PR #333; integrator ran scripts/repair-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/FIX-ROUTES-01.md; simulated review only
   - attempts: 1
   - requirements: UX-01, WEB-09
   - scope: apps/staff-web/src/app/routes.test.tsx, apps/staff-web/tests/app/AppShell.test.tsx
