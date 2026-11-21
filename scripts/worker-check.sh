@@ -1,14 +1,18 @@
 #!/usr/bin/env bash
 # Worker gate: the quick gate plus the PostgreSQL integration suites, the
-# database policy checks, and the frontend standards gate.
+# database policy checks, the frontend standards gate and SpotBugs.
 # Workers can run these because the agent image carries PostgreSQL (start-postgres)
-# and Node/npm toolchains. OWASP, SpotBugs and JaCoCo stay with the
+# and Node/npm toolchains. SpotBugs runs here; OWASP and JaCoCo stay with the
 # integrator, which alone holds the vulnerability-feed key.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 bash scripts/quick-check.sh
 bash scripts/frontend-check.sh
+
+# SpotBugs on its own (no tests, no OWASP): it needs no key and takes about a minute, and
+# it catches findings such as a constructor that throws before Delivery does.
+mvn -q -B -f apps/api/pom.xml -Pno-security -Dspotbugs.skip=false -DskipTests compile spotbugs:check
 
 export SMARTCLINIC_PG_ADMIN="${SMARTCLINIC_PG_ADMIN:-postgres}"
 if ! pg_isready -q -h 127.0.0.1 -p 5432; then
