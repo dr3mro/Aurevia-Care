@@ -1,4 +1,6 @@
-- [ ] RESP-SUPPORT · Staff web: phones and tablets count as supported widths
+- [-] RESP-SUPPORT · Staff web: phones and tablets count as supported widths
+  - agent: swarm-9
+  - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/system/browserSupport.ts, apps/staff-web/tests/features/system/browserSupport.test.ts
   - depends: RESP-DECISION
