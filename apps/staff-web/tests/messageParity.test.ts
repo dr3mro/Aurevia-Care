@@ -6,6 +6,7 @@ import { stateViewMessages } from '../src/components/stateViewMessages';
 import { adminKeys, adminText } from '../src/features/admin/messages';
 import { chartKeys, chartText } from '../src/features/chart/messages';
 import { duplicateMessages } from '../src/features/duplicates/messages';
+import { labKeys, labText } from '../src/features/labcollection/messages';
 import { entryKeys, entryText } from '../src/features/orderentry/entry/messages';
 import { patientMessages } from '../src/features/patients/messages';
 import { printMessageKeys, printText } from '../src/features/print/components/messages';
@@ -148,6 +149,7 @@ const BUNDLE_SOURCES: readonly string[] = [
   'features/duplicates/messages.ts',
   'features/orderentry/entry/messages.ts',
   'features/chart/messages.ts',
+  'features/labcollection/messages.ts',
   'features/scheduling/messages.ts',
   'app/navigation.ts',
   'app/shellText.ts',
@@ -176,6 +178,7 @@ const bundles: readonly MessageBundle[] = [
   fromRecord('system', systemMessages.en, systemMessages.ar),
   fromRecord('duplicates', duplicateMessages.en, duplicateMessages.ar),
   fromKeysAndText('chart', chartKeys, chartText),
+  fromKeysAndText('labcollection', labKeys, labText),
   fromKeysAndText('orderEntry', entryKeys, entryText),
   fromKeysAndText('scheduling', schedulingKeys, schedulingText),
   fromKeysAndText('print', printMessageKeys, printText),
