@@ -11,6 +11,7 @@ import com.aurevia.smartclinic.messaging.enrollment.EnrollmentContract.AccessEve
 import com.aurevia.smartclinic.messaging.enrollment.EnrollmentContract.AccessToken;
 import com.aurevia.smartclinic.messaging.enrollment.EnrollmentContract.GenericNotification;
 import com.aurevia.smartclinic.messaging.enrollment.EnrollmentContract.Invitation;
+import com.aurevia.smartclinic.messaging.enrollment.EnrollmentContract.InvitationState;
 import com.aurevia.smartclinic.messaging.enrollment.EnrollmentContract.PatientAccount;
 import com.aurevia.smartclinic.messaging.enrollment.EnrollmentContract.SupportCase;
 
@@ -58,6 +59,33 @@ public final class InMemoryPatientAccessStore implements PatientAccessStore {
     }
 
     @Override
+    public boolean consumeInvitation(String organizationId, String code) {
+        boolean[] consumed = { false };
+        invitations.computeIfPresent(key(organizationId, code), (unused, current) -> {
+            if (current.state() != InvitationState.PENDING) {
+                return current;
+            }
+            consumed[0] = true;
+            return new Invitation(current.code(), current.organizationId(), current.chartId(),
+                    current.factDigest(), current.expiresAt(), InvitationState.REDEEMED,
+                    current.failedAttempts(), current.issuedBy(), current.issuedAt());
+        });
+        return consumed[0];
+    }
+
+    @Override
+    public void recordInvitationFailure(String organizationId, String code, int failedAttempts) {
+        invitations.computeIfPresent(key(organizationId, code), (unused, current) -> {
+            if (current.state() != InvitationState.PENDING) {
+                return current;
+            }
+            return new Invitation(current.code(), current.organizationId(), current.chartId(),
+                    current.factDigest(), current.expiresAt(), current.state(), failedAttempts,
+                    current.issuedBy(), current.issuedAt());
+        });
+    }
+
+    @Override
     public Optional<PatientAccount> account(String organizationId, String accountId) {
         return Optional.ofNullable(accounts.get(key(organizationId, accountId)));
     }
@@ -82,6 +110,20 @@ public final class InMemoryPatientAccessStore implements PatientAccessStore {
     @Override
     public void putToken(String organizationId, AccessToken accessToken) {
         tokens.put(key(organizationId, accessToken.token()), accessToken);
+    }
+
+    @Override
+    public boolean consumeToken(String organizationId, String token) {
+        boolean[] consumed = { false };
+        tokens.computeIfPresent(key(organizationId, token), (unused, current) -> {
+            if (current.used()) {
+                return current;
+            }
+            consumed[0] = true;
+            return new AccessToken(current.token(), current.organizationId(), current.subject(),
+                    current.purpose(), current.expiresAt(), true);
+        });
+        return consumed[0];
     }
 
     @Override

@@ -48,6 +48,27 @@ public interface PatientAccessStore {
     void putInvitation(String organizationId, Invitation invitation);
 
     /**
+     * Atomically consume one pending, unexpired invitation. Exactly one caller
+     * may win even when two redemption requests race, so an account is created
+     * at most once per invitation (PAT-03, IAM-05).
+     *
+     * @param organizationId active organization
+     * @param code           opaque invitation code
+     * @return {@code true} only for the caller that consumed the invitation
+     */
+    boolean consumeInvitation(String organizationId, String code);
+
+    /**
+     * Persist a failed verification attempt on a pending invitation without
+     * changing its state or re-storing the presented code (IAM-05).
+     *
+     * @param organizationId active organization
+     * @param code           opaque invitation code
+     * @param failedAttempts new consecutive failure count
+     */
+    void recordInvitationFailure(String organizationId, String code, int failedAttempts);
+
+    /**
      * Read one account by identifier.
      *
      * @param organizationId active organization
@@ -89,6 +110,16 @@ public interface PatientAccessStore {
      * @param accessToken    token to store
      */
     void putToken(String organizationId, AccessToken accessToken);
+
+    /**
+     * Atomically mark a single-use token as used. The raw token is never
+     * re-stored, so a successful verification cannot leave a reusable copy.
+     *
+     * @param organizationId active organization
+     * @param token          opaque token value
+     * @return {@code true} when an unused token was marked used
+     */
+    boolean consumeToken(String organizationId, String token);
 
     /**
      * Read one support case by identifier.
