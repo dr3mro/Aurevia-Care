@@ -2,13 +2,21 @@ import type { ReactNode } from 'react';
 import type { TransportError } from '../api/transport';
 import { useI18n } from '../i18n/I18nProvider';
 import { useTheme } from '../theme/ThemeProvider';
+import { useBreakpoint } from '../theme/useBreakpoint';
 import { Button } from './Button';
 import { stateViewText } from './stateViewMessages';
 
 /** Stable inert action used when a state view is presented without callbacks. */
 const noop = (): void => undefined;
 
-/** Shared tokenized surface with the correct announcement semantics. */
+/**
+ * Shared tokenized surface with the correct announcement semantics.
+ *
+ * The `page` utility supplies the safe-area-aware logical padding and the
+ * centred reading measure; the inline styles only centre the state content
+ * (no dedicated state-panel class exists in `responsive.css`) and keep long
+ * English and Arabic labels wrappable without a horizontal scroll.
+ */
 function StatePanel({
   role,
   children,
@@ -17,19 +25,61 @@ function StatePanel({
   children: ReactNode;
 }) {
   const { tokens } = useTheme();
+  const breakpoint = useBreakpoint();
   return (
     <section
       role={role}
       aria-live={role === 'alert' ? 'assertive' : 'polite'}
+      className="page"
+      data-breakpoint={breakpoint}
       style={{
+        display: 'grid',
+        placeItems: 'center',
         background: tokens.background,
         color: tokens.foreground,
         border: `1px solid ${tokens.border}`,
-        padding: tokens.spacing.lg,
+        maxInlineSize: '44rem',
+        textAlign: 'start',
+        minInlineSize: 0,
+        overflowWrap: 'anywhere',
       }}
     >
-      {children}
+      <div
+        style={{
+          display: 'grid',
+          gap: tokens.spacing.lg,
+          inlineSize: '100%',
+          minInlineSize: 0,
+          textAlign: 'start',
+          overflowWrap: 'anywhere',
+        }}
+      >
+        {children}
+      </div>
     </section>
+  );
+}
+
+/**
+ * Wraps one state action in a logical touch target. The grid wrapper stretches
+ * its native button across the row on phones and up to the 44 px coarse-pointer
+ * floor via the shared `touch` class, without changing the button component.
+ */
+function StateAction({ children }: { children: ReactNode }) {
+  return (
+    <div className="touch" style={{ display: 'grid' }}>
+      {children}
+    </div>
+  );
+}
+
+/** Stacks state actions on phones and keeps them inline from the medium band up. */
+function StateActions({ children }: { children: ReactNode }) {
+  const compact = useBreakpoint() === 'compact';
+  return (
+    <div className={compact ? 'stack' : 'cluster'} style={{ inlineSize: '100%' }}>
+      {children}
+    </div>
   );
 }
 
@@ -72,7 +122,11 @@ export function ErrorState({ correlationId, onRetry = noop }: ErrorStateProps) {
           {correlationId ?? stateViewText(locale, 'correlationUnavailable')}
         </code>
       </p>
-      <Button onClick={onRetry}>{stateViewText(locale, 'retry')}</Button>
+      <StateActions>
+        <StateAction>
+          <Button onClick={onRetry}>{stateViewText(locale, 'retry')}</Button>
+        </StateAction>
+      </StateActions>
     </StatePanel>
   );
 }
@@ -106,11 +160,17 @@ export function ConflictState({
     <StatePanel role="alert">
       <h2>{stateViewText(locale, 'conflict')}</h2>
       <p>{stateViewText(locale, 'conflictDetail')}</p>
-      <div>
-        <Button onClick={onCompare}>{stateViewText(locale, 'compare')}</Button>{' '}
-        <Button onClick={onReload}>{stateViewText(locale, 'reload')}</Button>{' '}
-        <Button onClick={onCopy}>{stateViewText(locale, 'copyMyChanges')}</Button>
-      </div>
+      <StateActions>
+        <StateAction>
+          <Button onClick={onCompare}>{stateViewText(locale, 'compare')}</Button>
+        </StateAction>
+        <StateAction>
+          <Button onClick={onReload}>{stateViewText(locale, 'reload')}</Button>
+        </StateAction>
+        <StateAction>
+          <Button onClick={onCopy}>{stateViewText(locale, 'copyMyChanges')}</Button>
+        </StateAction>
+      </StateActions>
     </StatePanel>
   );
 }
@@ -127,7 +187,11 @@ export function SessionExpiredState({ onSignIn = noop }: SessionExpiredStateProp
     <StatePanel role="alert">
       <h2>{stateViewText(locale, 'sessionExpired')}</h2>
       <p>{stateViewText(locale, 'sessionExpiredDetail')}</p>
-      <Button onClick={onSignIn}>{stateViewText(locale, 'signIn')}</Button>
+      <StateActions>
+        <StateAction>
+          <Button onClick={onSignIn}>{stateViewText(locale, 'signIn')}</Button>
+        </StateAction>
+      </StateActions>
     </StatePanel>
   );
 }
