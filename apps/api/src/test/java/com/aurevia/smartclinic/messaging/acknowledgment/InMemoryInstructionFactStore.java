@@ -10,8 +10,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-import org.springframework.stereotype.Repository;
-
 import com.aurevia.smartclinic.messaging.acknowledgment.InstructionFacts.Acknowledgment;
 import com.aurevia.smartclinic.messaging.acknowledgment.InstructionFacts.AuditFact;
 import com.aurevia.smartclinic.messaging.acknowledgment.InstructionFacts.Dispatch;
@@ -31,8 +29,10 @@ import com.aurevia.smartclinic.messaging.acknowledgment.InstructionFacts.Publica
  * facts under forced tenant row-level security with unique constraints on first
  * view and acknowledgment per viewer and on idempotency keys. Every method takes the active
  * organization and never merges rows across tenants.</p>
+ *
+ * <p>Test-only: production uses
+ * {@link com.aurevia.smartclinic.messaging.acknowledgment.JdbcInstructionFactStore}.</p>
  */
-@Repository
 public class InMemoryInstructionFactStore implements InstructionFactStore {
 
     private final Map<String, String> roles = new ConcurrentHashMap<>();
