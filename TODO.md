@@ -190,8 +190,7 @@ Found while extending the specification (section 8.1 and docs/design/screens-and
     Do NOT turn on request or response body logging, and do NOT put the subject or organization into every log line (identifiers only where needed).
 
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` (API tasks) or `bash apps/staff-web/check.sh` (staff web tasks) must pass. Synthetic data only; write the failing test first; stay inside the declared scope; name folders and packages after what they hold, never a task ID; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
-- [-] READY-11 · Staff web OIDC login with a session cookie and CSRF protection (WEB-03)
-  - agent: swarm-1
+- [ ] READY-11 · Staff web OIDC login with a session cookie and CSRF protection (WEB-03)
   - attempts: 1
   - scope: apps/api/pom.xml, apps/api/src/main/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/web, apps/api/src/main/resources
   - depends: AUD-20261120-03, READY-05
@@ -232,8 +231,9 @@ Order of work for the whole production-readiness effort: (1) security and platfo
     4. Tests: each state, create success, validation error summary, deactivate confirmation, history view.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
-- [-] READY-24 · Admin pages: /admin/config and /admin/audit on the real API
-  - agent: swarm-2
+- [x] READY-24 · Admin pages: /admin/config and /admin/audit on the real API
+  - pr: #278
+  - evidence: PR #278; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/READY-24.md; simulated review only
   - attempts: 1
   - requirements: ADM-01, OPS-02
   - scope: apps/staff-web/src/features/admin
@@ -250,8 +250,9 @@ Order of work for the whole production-readiness effort: (1) security and platfo
 
 ### Phase 5 — New staff web screens (each follows docs/design/screen-recipe.md)
 
-- [-] READY-25 · Patients: /patients search and register, /patients/:id overview
-  - agent: swarm-3
+- [x] READY-25 · Patients: /patients search and register, /patients/:id overview
+  - pr: #277
+  - evidence: PR #277; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/READY-25.md; simulated review only
   - attempts: 1
   - requirements: PRD-01, IAM-03, IAM-04
   - scope: apps/staff-web/src/features/patients
@@ -355,8 +356,9 @@ Order of work for the whole production-readiness effort: (1) security and platfo
     4. Tests: each state per tab, an action needs a reason, oldest age is computed from server timestamps, a failed retry is not repeated.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
-- [-] READY-32 · System pages and browser-support check
-  - agent: swarm-10
+- [x] READY-32 · System pages and browser-support check
+  - pr: #276
+  - evidence: PR #276; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/READY-32.md; simulated review only
   - attempts: 1
   - requirements: WEB-03, WEB-07
   - scope: apps/staff-web/src/features/system, apps/staff-web/src/main.tsx, apps/staff-web/tests
@@ -1085,7 +1087,9 @@ OPS-07 and OPS-08 have no implementation yet. The spec asks for exports with a m
 
 The staff web has admin, chart and scheduling. READY-24 to READY-32 add admin, patients, orders, results, lab, messages, finance and operations. These tasks add the rest. Each exports its routes from `features/<name>/routes.ts`; BUILD-52 registers them in the router so the tasks can run in parallel. Follow `docs/design/screen-recipe.md`: every screen has loading, empty, error, forbidden, conflict and session-expired states.
 
-- [ ] BUILD-45 · Staff web: prescriptions (draft, search drug catalog, attest, route, status)
+- [-] BUILD-45 · Staff web: prescriptions (draft, search drug catalog, attest, route, status)
+  - agent: swarm-3
+  - attempts: 1
   - requirements: RX-01, RX-02, WEB-09
   - scope: apps/staff-web/src/features/prescriptions
   - details:
@@ -1094,7 +1098,9 @@ The staff web has admin, chart and scheduling. READY-24 to READY-32 add admin, p
     3. A stale version never loses typed work: show compare, reload or copy.
     4. Tests: allergy warning, ambiguous transmission shows a reconcile action, forbidden and conflict states, English and Arabic.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] BUILD-46 · Staff web: radiology orders, scheduling, study link and interpretation
+- [-] BUILD-46 · Staff web: radiology orders, scheduling, study link and interpretation
+  - agent: swarm-4
+  - attempts: 1
   - requirements: RAD-01, WEB-09
   - scope: apps/staff-web/src/features/radiology
   - details:
@@ -1103,7 +1109,9 @@ The staff web has admin, chart and scheduling. READY-24 to READY-32 add admin, p
     3. A wrong-patient link shows the mismatch and does not save.
     4. Tests: mismatch refusal, addendum reaches the referrer view, English and Arabic.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] BUILD-47 · Staff web: physical therapy episodes, outcome scales and signed progress
+- [-] BUILD-47 · Staff web: physical therapy episodes, outcome scales and signed progress
+  - agent: swarm-5
+  - attempts: 1
   - requirements: PT-01, WEB-09
   - scope: apps/staff-web/src/features/therapy
   - details:
@@ -1112,7 +1120,9 @@ The staff web has admin, chart and scheduling. READY-24 to READY-32 add admin, p
     3. Signed notes are read-only; changes go through an addendum.
     4. Tests: a signed note cannot be edited, discharge closes the referral, English and Arabic.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] BUILD-48 · Staff web: duplicate patient review worklist with dry run and second approval
+- [-] BUILD-48 · Staff web: duplicate patient review worklist with dry run and second approval
+  - agent: swarm-6
+  - attempts: 1
   - requirements: IAM-04, WEB-09
   - scope: apps/staff-web/src/features/duplicates
   - details:
@@ -1121,7 +1131,9 @@ The staff web has admin, chart and scheduling. READY-24 to READY-32 add admin, p
     3. A second authorized reviewer approves; the first reviewer cannot approve their own request.
     4. Tests: unresolved conflicts block approval, the same reviewer is refused, English and Arabic.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] BUILD-49 · Staff web: care unit service hours, coverage and response targets
+- [-] BUILD-49 · Staff web: care unit service hours, coverage and response targets
+  - agent: swarm-7
+  - attempts: 1
   - requirements: MSG-06, ADM-01
   - scope: apps/staff-web/src/features/units
   - details:
@@ -1130,7 +1142,9 @@ The staff web has admin, chart and scheduling. READY-24 to READY-32 add admin, p
     3. Show a unit with no backup coverage as an operational warning.
     4. Tests: a missing owner blocks enabling the unit, an effective date in the past is refused, English and Arabic.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] BUILD-50 · Staff web: templates, field dictionaries and release policies (admin)
+- [-] BUILD-50 · Staff web: templates, field dictionaries and release policies (admin)
+  - agent: swarm-8
+  - attempts: 1
   - requirements: ADM-01, CLN-04, XCH-06
   - scope: apps/staff-web/src/features/policies
   - details:
@@ -1164,7 +1178,9 @@ The staff web has admin, chart and scheduling. READY-24 to READY-32 add admin, p
 
 PAT-01 to PAT-03 and UX-01 for the iOS and Android app. BUILD-19 to BUILD-21 cover appointments, reports and enrollment.
 
-- [ ] BUILD-53 · Patient app: push registration, generic notification text and invalid token handling
+- [-] BUILD-53 · Patient app: push registration, generic notification text and invalid token handling
+  - agent: swarm-9
+  - attempts: 1
   - requirements: PAT-01
   - scope: apps/patient-mobile/src/features/notifications
   - details:
@@ -1173,7 +1189,9 @@ PAT-01 to PAT-03 and UX-01 for the iOS and Android app. BUILD-19 to BUILD-21 cov
     3. Log an invalid device token and stop using it. When a notification fails, the item is still in the inbox.
     4. Tests: the payload has no clinical text, an invalid token is dropped, sign-out unregisters.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] BUILD-54 · Patient app: OS-backed credential storage and no persistent clinical cache
+- [-] BUILD-54 · Patient app: OS-backed credential storage and no persistent clinical cache
+  - agent: swarm-10
+  - attempts: 1
   - requirements: PAT-02
   - scope: apps/patient-mobile/src/api
   - details:
