@@ -34,9 +34,11 @@ import jakarta.servlet.http.HttpServletRequest;
  * from verified claims. The staff web cookie session is a separate
  * {@code @Order(1)} chain that matches only non-bearer requests, so CSRF is
  * skipped only for requests that carry a bearer header, which browsers never
- * attach by themselves (WEB-02, WEB-03). Both production chains permit only the
+ * attach by themselves (WEB-02, WEB-03). Both production chains permit the
  * exact {@code GET /health/live} and {@code GET /health/ready} probes without a
- * token; all other routes require authentication (WEB-05). The bearer chain
+ * token, plus {@code GET /health/metrics} which is gated by source address in
+ * {@link com.aurevia.smartclinic.web.MetricsController}; all other routes require
+ * authentication (WEB-05, WEB-06). The bearer chain
  * additionally fails startup without an audience and rejects tokens that do not
  * carry the configured audience, while keeping the issuer and timestamp checks
  * (WEB-03, WEB-05).</p>
@@ -107,8 +109,8 @@ public class SecurityConfiguration {
         return http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .csrf(csrf -> csrf.ignoringRequestMatchers(SecurityConfiguration::isBearerRequest))
                 .authorizeHttpRequests(authorize -> authorize
-                        // WEB-05: probes are the only unauthenticated routes; never a /health/** wildcard.
-                        .requestMatchers(HttpMethod.GET, "/health/live", "/health/ready").permitAll()
+                        // WEB-05/WEB-06: exact unauthenticated routes only; never a /health/** wildcard.
+                        .requestMatchers(HttpMethod.GET, "/health/live", "/health/ready", "/health/metrics").permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.decoder(
                         withClaimValidation(jwtDecoder, issuerUri, audience))))

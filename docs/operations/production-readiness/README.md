@@ -20,6 +20,10 @@ Status: draft, owners to complete
 | WEB-12 | Dependency, image and secret scan results on every change with critical findings blocking merges and remediation within 7 days (high within 30), CI actions pinned by commit SHA and base images by digest, and an independent penetration-test report before pilot and after major changes with every finding tracked to closure. | Security reviewer | unassigned | not started |  |
 | WEB-13 | Evidence that status/maintenance and support pages are hosted separately with no patient data and carry the privacy notice, accessibility statement, terms and support contact, and that authenticated web apps are marked noindex with crawling disallowed in robots.txt. | CI | unassigned | not started |  |
 
+## Request metrics endpoint (WEB-06)
+
+`GET /health/metrics` publishes per-route `smartclinic_http_requests_total{method,route,status}` and `smartclinic_http_request_seconds_sum{method,route,status}` in Prometheus text format. It requires no login but is answered only from loopback or a network in the comma-separated CIDR list `SMARTCLINIC_METRICS_ALLOW` (loopback by default); any other source receives a bare 404. Route labels are the matched Spring route pattern, never a raw path that could carry an id. Alerting on these series must cover the OPS-03 targets — 99.9% monthly core availability and p95 ≤ 500 ms for routine API reads and ≤ 900 ms for routine commands — together with the OPS-05 error-rate, saturation and queue-age signals, error-budget burn and failed external uptime probes from outside the network; logs and metrics are retained for the period the approved policy pack sets.
+
 ## Needs a person
 
 - WAF and TLS setup
