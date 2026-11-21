@@ -750,8 +750,8 @@ def tui(stdscr):
             data = {k: (v if v is not None else blank(k)) for k, v in st["data"].items()}
             busy, at = st["busy"], st["at"]
             loading = frozenset(k for k in st["data"] if k not in st["loaded"]) - {"repo", "runs_more"}
-            if st["loaded"]:
-                st["ready"] = True  # the first section is in: draw the dashboard from now on
+            if len(st["loaded"]) * 4 >= len(st["data"]) * 3:
+                st["ready"] = True  # three quarters of the sections are in: draw the dashboard from now on
             ready = st.get("ready", False)
         now = time.time()
         if at and at != checked_at and "runs" in st["loaded"]:  # new data: look for runs that failed since the last look
@@ -781,7 +781,7 @@ def tui(stdscr):
             continue
         last = sig
         stdscr.erase()
-        if not ready:  # plain black screen until the first section has loaded
+        if not ready:  # plain black screen until 75% of the sections have loaded
             stdscr.addstr(0, 1, "Loading...")
             stdscr.refresh()
             continue
