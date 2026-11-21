@@ -1,7 +1,7 @@
 package com.aurevia.smartclinic.web;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.aurevia.smartclinic.api.ApiErrorHandler;
 import com.aurevia.smartclinic.api.ApiException;
 import com.aurevia.smartclinic.observability.CorrelationIdFilter;
+import com.aurevia.smartclinic.observability.RequestLogCapture;
 import com.aurevia.smartclinic.tenant.TenantContext;
 
 /**
@@ -93,8 +94,7 @@ class LogRedactionTest {
         String all = output.getAll();
         assertFalse(all.contains(BODY_MARKER), all);
         assertFalse(all.contains(TOKEN_MARKER), all);
-        assertTrue(output.getOut().lines()
-                        .anyMatch(line -> line.contains("\"correlationId\":\"" + CORRELATION + "\"")),
-                "a log line must carry the correlation id: " + all);
+        assertEquals(CORRELATION, RequestLogCapture.requestLog(output).get("correlationId").asString(),
+                "the request log line must carry the correlation id: " + all);
     }
 }
