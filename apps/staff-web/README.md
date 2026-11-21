@@ -47,6 +47,29 @@ emit no runnable code, and their freshness is enforced by the drift check.
 Every hand-written source file is therefore required to be fully covered; an
 unimported source file fails the gate.
 
+## End-to-end and accessibility checks (WEB-10)
+
+The Playwright suite in `e2e/` verifies the home page title and skip-link tab
+order, an axe scan of the development-only `/design-preview` route in English
+and Arabic, the RTL document direction after a language toggle, and the absence
+of horizontal scrolling at 768 px. It uses synthetic fixtures only.
+
+A Chromium browser binary must be installed once per machine:
+
+```sh
+npx playwright install chromium
+npm run e2e
+```
+
+With the default `E2E_BASE_URL` (`http://127.0.0.1:5173`), `npm run e2e` starts
+the Vite dev server itself. To test another deployment, set `E2E_BASE_URL`; the
+caller then owns that server and no local one is started. Any external target
+must still be a dev build exposing `/design-preview`. The suite is not in
+`check.sh` because the worker image has no browser binaries; a person must add
+a CI job that installs Chromium and runs it. The unit scripts deliberately pass
+`--exclude 'e2e/**'` so Vitest collects only the jsdom unit tests and leaves the
+Playwright specs to their own runner.
+
 ## Design notes
 
 - Tokens live in `src/theme/tokens.ts` and are resolved by `ThemeProvider`,

@@ -1,6 +1,6 @@
 ---
 description: "Identify the next bounded repository context and authoritative evidence."
-mode: "subagent"
+mode: subagent
 ---
 
 Load the `smartclinic-context-optimizer` skill. Read only the relevant scope. Apply AGENTS.md and return the prescribed evidence or a blocker to the primary agent. Remain read-only.
