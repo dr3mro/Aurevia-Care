@@ -13,6 +13,8 @@ import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import com.aurevia.smartclinic.catalog.MedicationCatalogItem;
+import com.aurevia.smartclinic.catalog.MedicationCatalogVersion;
 import com.aurevia.smartclinic.prescription.PrescriptionContract.AllergyAssessment;
 import com.aurevia.smartclinic.prescription.PrescriptionContract.AllergyEntry;
 import com.aurevia.smartclinic.prescription.PrescriptionContract.AllergyStatus;
@@ -41,8 +43,20 @@ public class PrescriptionRepository {
               FROM public.prescription_draft
             """;
 
+    private static final String CATALOG_SELECT = """
+            SELECT entry_key, version, generic_name, trade_name, formulation,
+                   strength_value, strength_unit, substance_ids, substance_groups, group_versions,
+                   approved, effective_from, effective_to,
+                   coalesce(approval_provenance, 'unapproved') AS approval_provenance,
+                   route
+              FROM public.drug_catalog_entry
+             ORDER BY entry_key, version
+            """;
+
     private static final RowMapper<Draft> DRAFT_MAPPER = PrescriptionRepository::mapDraft;
     private static final RowMapper<DrugEntry> CATALOG_MAPPER = PrescriptionRepository::mapDrugEntry;
+    private static final RowMapper<MedicationCatalogItem> MEDICATION_ITEM_MAPPER =
+            PrescriptionRepository::mapMedicationItem;
 
     private final NamedParameterJdbcTemplate jdbc;
 
@@ -149,19 +163,21 @@ public class PrescriptionRepository {
      * @param quantityUnit     quantity unit as entered
      * @param refills          supported refill count, or {@code null}
      * @param instructions     clinician instructions
+     * @param catalogVersion   published catalog version to bind on first selection
      * @return number of updated rows; zero means the version moved
      */
     public int selectMedication(String id, int expectedVersion, String entryKey, int entryVersion,
                                 String drugGenericName, String doseValue, String doseUnit,
                                 String route, String frequency, String quantity, String quantityUnit,
-                                Integer refills, String instructions) {
+                                Integer refills, String instructions, int catalogVersion) {
         return jdbc.update("""
                 UPDATE public.prescription_draft
                    SET selected_entry_key = :entryKey, selected_entry_version = :entryVersion,
                        drug_generic_name = :drugGenericName, dose_value = :doseValue,
                        dose_unit = :doseUnit, route = :route, frequency = :frequency,
                        quantity = :quantity, quantity_unit = :quantityUnit, refills = :refills,
-                       instructions = :instructions, version = version + 1
+                       instructions = :instructions, version = version + 1,
+                       catalog_version = coalesce(catalog_version, :catalogVersion)
                  WHERE id = CAST(:id AS uuid) AND version = :expectedVersion
                 """, new MapSqlParameterSource().addValue("id", id)
                 .addValue("expectedVersion", expectedVersion).addValue("entryKey", entryKey)
@@ -170,7 +186,7 @@ public class PrescriptionRepository {
                 .addValue("route", route).addValue("frequency", frequency)
                 .addValue("quantity", quantity).addValue("quantityUnit", quantityUnit)
                 .addValue("refills", refills, java.sql.Types.INTEGER)
-                .addValue("instructions", instructions));
+                .addValue("instructions", instructions).addValue("catalogVersion", catalogVersion));
     }
 
     /**
@@ -217,14 +233,51 @@ public class PrescriptionRepository {
      * @return all catalog rows, including unapproved and superseded versions
      */
     public List<DrugEntry> loadCatalog() {
-        return jdbc.query("""
-                SELECT entry_key, version, generic_name, trade_name, formulation,
-                       strength_value, strength_unit, substance_ids, substance_groups, group_versions,
-                       approved, effective_from, effective_to,
-                       coalesce(approval_provenance, 'unapproved') AS approval_provenance
-                  FROM public.drug_catalog_entry
-                 ORDER BY entry_key, version
-                """, CATALOG_MAPPER);
+        return jdbc.query(CATALOG_SELECT, CATALOG_MAPPER);
+    }
+
+    /**
+     * Load every stored version of the tenant's medication catalog with its approved route.
+     *
+     * @return all catalog items, including unapproved and superseded versions
+     */
+    public List<MedicationCatalogItem> loadMedicationCatalog() {
+        return jdbc.query(CATALOG_SELECT, MEDICATION_ITEM_MAPPER);
+    }
+
+    /**
+     * Read the newest published market-approved catalog version.
+     *
+     * <p>Tenants whose catalog predates version publication read the documented
+     * baseline (version 1); the registry is authoritative once a version exists.</p>
+     *
+     * @return the current catalog version, never {@code null}
+     */
+    public MedicationCatalogVersion currentCatalogVersion() {
+        List<MedicationCatalogVersion> versions = jdbc.query("""
+                SELECT version, market, published_at, provenance
+                  FROM public.medication_catalog_version
+                 ORDER BY version DESC LIMIT 1
+                """, (resultSet, rowNumber) -> new MedicationCatalogVersion(
+                resultSet.getInt("version"), resultSet.getString("market"),
+                instant(resultSet, "published_at"), resultSet.getString("provenance")));
+        return versions.stream().findFirst().orElse(MedicationCatalogVersion.BASELINE);
+    }
+
+    /**
+     * Read the catalog version a draft was built from.
+     *
+     * @param draftId draft identifier
+     * @return the stored version, or {@code null} for a draft with no medication selected
+     */
+    public Integer catalogVersion(String draftId) {
+        // A draft with no medication selected legitimately stores NULL here.
+        // queryForObject returns that null directly; the service has already
+        // confirmed the row exists, so there is no empty-result path to fold.
+        return jdbc.queryForObject("""
+                SELECT catalog_version FROM public.prescription_draft
+                 WHERE id = CAST(:id AS uuid)
+                """, Map.of("id", draftId), Integer.class);
     }
 
     /**
@@ -271,6 +324,10 @@ public class PrescriptionRepository {
                 resultSet.getString("strength_unit"), ingredients,
                 resultSet.getBoolean("approved"), instant(resultSet, "effective_from"),
                 instant(resultSet, "effective_to"), resultSet.getString("approval_provenance"));
+    }
+
+    private static MedicationCatalogItem mapMedicationItem(ResultSet resultSet, int rowNumber) throws SQLException {
+        return new MedicationCatalogItem(mapDrugEntry(resultSet, rowNumber), resultSet.getString("route"));
     }
 
     private static List<Ingredient> ingredients(ResultSet resultSet) throws SQLException {

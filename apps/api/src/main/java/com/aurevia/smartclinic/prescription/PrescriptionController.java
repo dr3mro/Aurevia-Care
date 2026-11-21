@@ -17,6 +17,7 @@ import com.aurevia.smartclinic.prescription.PrescriptionContract.AllergyCheckReq
 import com.aurevia.smartclinic.prescription.PrescriptionContract.CreateDraftRequest;
 import com.aurevia.smartclinic.prescription.PrescriptionContract.Draft;
 import com.aurevia.smartclinic.prescription.PrescriptionContract.DraftView;
+import com.aurevia.smartclinic.prescription.DraftCatalogVersion;
 import com.aurevia.smartclinic.prescription.PrescriptionContract.SelectMedicationRequest;
 
 /**
@@ -63,6 +64,17 @@ public class PrescriptionController {
     @GetMapping("/{id}")
     public DraftView get(@PathVariable String id) {
         return service.get(id);
+    }
+
+    /**
+     * Read the catalog version this draft was built from.
+     *
+     * @param id draft identifier
+     * @return the immutable draft-to-catalog binding
+     */
+    @GetMapping("/{id}/catalog-version")
+    public DraftCatalogVersion catalogVersion(@PathVariable String id) {
+        return service.catalogVersion(id);
     }
 
     /**
