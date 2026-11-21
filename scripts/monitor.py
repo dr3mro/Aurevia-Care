@@ -581,7 +581,7 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False, loading=frozenset()):
     labels = lambda x: ",".join(l["name"] for l in x.get("labels", []) if l["name"] in ("needs-human", "needs-fix"))
     left = [dict(title="In Progress", total=len(live), col="yellow", border="yellow" if live else "gray", prio=0,
                  items=flat(live, True)),
-            dict(title=f"Recent Runs (last {RUN_LIMIT} runs)", total=len(runs), col="cyan", border="gray", prio=2,
+            dict(title=f"Recent Runs (last {RUN_LIMIT} runs)", total=len(done), col="cyan", border="gray", prio=2,
                  items=[run_row(r, r.get("status") != "completed") for r in runs[:RECENT]]),
             dict(title=f"Failed (last {RUN_LIMIT} runs)", total=len(failed_day), col="red", border="red" if failed_day else "gray", prio=1,
                  items=[row for r in failed_day for row in failed_rows(r)])]
