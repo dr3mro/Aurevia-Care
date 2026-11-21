@@ -15,6 +15,8 @@ export interface AppointmentView {
   readonly localStart: string;
   readonly status: AppointmentStatus;
   readonly confirmation: ConfirmationState;
+  /** Recorded confirmation instant rendered in the facility zone, when confirmed. */
+  readonly confirmedLocal: string | null;
 }
 
 /**
@@ -27,7 +29,8 @@ export interface AppointmentView {
  * @param organizationId active organization used to scope the row key
  * @param formatter injected time-zone formatter
  * @param confirmation derived confirmation affordance
- * @returns an immutable display row
+ * @returns an immutable display row; when the visit is confirmed, the recorded
+ *   instant is rendered in the same facility zone as the appointment start
  */
 export function appointmentView(
   appointment: Appointment,
@@ -42,6 +45,10 @@ export function appointmentView(
     localStart: formatter.format(appointment.startsAt, appointment.facilityTimeZone),
     status: appointment.status,
     confirmation,
+    confirmedLocal:
+      confirmation.kind === 'confirmed'
+        ? formatter.format(confirmation.confirmedAt, appointment.facilityTimeZone)
+        : null,
   };
 }
 

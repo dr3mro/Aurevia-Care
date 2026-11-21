@@ -70,6 +70,23 @@ describe('confirm', () => {
     });
   });
 
+  it('cannot confirm twice: replaying after the timestamp is recorded keeps the first time', () => {
+    const first = confirm(deriveConfirmation(booked, true), true, '2026-11-19T10:00:00Z');
+    expect(first).toEqual({ kind: 'confirmed', confirmedAt: '2026-11-19T10:00:00Z' });
+    if (first.kind !== 'confirmed') {
+      throw new Error('expected the first confirmation to be recorded');
+    }
+    // The server writes the recorded instant back onto the projection. A second
+    // confirm from that reloaded state must not move it.
+    const reloaded = deriveConfirmation({ ...booked, confirmedAt: first.confirmedAt }, true);
+    expect(reloaded).toEqual({ kind: 'confirmed', confirmedAt: first.confirmedAt });
+    const second = confirm(reloaded, true, '2026-11-19T11:30:00Z');
+    expect(second).toEqual({ kind: 'idempotent', confirmedAt: first.confirmedAt });
+    if (second.kind === 'idempotent') {
+      expect(second.confirmedAt).toBe('2026-11-19T10:00:00Z');
+    }
+  });
+
   it('refuses an ineligible appointment', () => {
     expect(confirm({ kind: 'unavailable', confirmedAt: null }, true, 'now')).toEqual({
       kind: 'error',

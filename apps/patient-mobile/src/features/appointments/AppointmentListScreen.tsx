@@ -56,7 +56,7 @@ export function AppointmentListScreen({
               </Pressable>
             ) : null}
             {row.confirmation.kind === 'confirmed' ? (
-              <Text testID={`confirmed-${row.id}`}>Confirmed</Text>
+              <Text testID={`confirmed-${row.id}`}>{`Confirmed at ${row.confirmedLocal}`}</Text>
             ) : null}
             <Pressable testID={`details-${row.id}`} onPress={() => onOpenDetails(row.id)}>
               <Text>View details</Text>
