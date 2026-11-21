@@ -1,7 +1,8 @@
 package com.aurevia.smartclinic.catalog.dictionary;
 
 import java.util.Locale;
-import java.util.regex.Pattern;
+
+import com.aurevia.smartclinic.api.contract.CatalogCode;
 
 /**
  * One diagnosis or procedure catalogue entry (CLN-03).
@@ -15,8 +16,6 @@ import java.util.regex.Pattern;
 public record DiagnosisCode(String code, LocalizedText originalText, String mappedCode,
                             LocalizedText mappedText) {
 
-    private static final Pattern CODE = Pattern.compile("[A-Za-z0-9][A-Za-z0-9_.:-]{1,63}");
-
     /**
      * Validate the code and the mapping pair.
      *
@@ -24,9 +23,7 @@ public record DiagnosisCode(String code, LocalizedText originalText, String mapp
      *                                  or only one mapping component is supplied
      */
     public DiagnosisCode {
-        if (code == null || !CODE.matcher(code).matches()) {
-            throw new IllegalArgumentException("invalid diagnosis or procedure code");
-        }
+        CatalogCode.code(code);
         if (originalText == null) {
             throw new IllegalArgumentException("original text is required");
         }
