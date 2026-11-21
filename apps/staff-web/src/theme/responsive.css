@@ -1,0 +1,266 @@
+/* Responsive base stylesheet for the staff web (WEB-07, UX-01).
+   Presentation only: a breakpoint changes layout and density, never the data,
+   the available actions or what the server authorizes. Every side-aware
+   declaration is a CSS logical property, so one rule set mirrors under RTL.
+
+   Token names follow the v1 token contract. Each var() fallback is the
+   contract value, so the rules render before the generated token stylesheet
+   is wired in. Layout-only constants use --layout-*; the platform safe-area
+   mapping uses --safe-*. */
+
+:root {
+  /* env() names are physical by definition. Map them once into logical names;
+     utilities below use only the mapped variables. */
+  --safe-block-start: env(safe-area-inset-top);
+  --safe-block-end: env(safe-area-inset-bottom);
+  --safe-inline-start: env(safe-area-inset-left);
+  --safe-inline-end: env(safe-area-inset-right);
+
+  --layout-reading-max: 1200px;
+  --layout-drawer-inline-size: min(320px, 80vw);
+  --layout-rail-inline-size: 3rem;
+  --layout-full-rail-inline-size: 16rem;
+}
+
+:root[dir='rtl'] {
+  --safe-inline-start: env(safe-area-inset-right);
+  --safe-inline-end: env(safe-area-inset-left);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Flex and grid children must be allowed to shrink: a long clinical value
+   wraps instead of forcing a viewport-wide scroll (UX-01, WCAG 1.4.10). */
+.app-shell > *,
+.cluster > *,
+.stack > *,
+.grid-2 > *,
+.card-list > * {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sc-space-4, 16px);
+  max-inline-size: var(--layout-reading-max, 1200px);
+  margin-inline: auto;
+  padding-block-start: max(var(--sc-space-4, 16px), var(--safe-block-start, 0px));
+  padding-block-end: max(var(--sc-space-4, 16px), var(--safe-block-end, 0px));
+  padding-inline-start: max(var(--sc-space-4, 16px), var(--safe-inline-start, 0px));
+  padding-inline-end: max(var(--sc-space-4, 16px), var(--safe-inline-end, 0px));
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sc-space-4, 16px);
+}
+
+.cluster {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sc-space-2, 8px);
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sc-space-4, 16px);
+}
+
+.table-region {
+  overflow: auto;
+  border-block-end: var(--sc-border-width-thin, 1px) solid var(--sc-color-border-default, #6b7280);
+  scroll-padding-inline-start: var(--sc-space-2, 8px);
+}
+
+.table-region:focus-visible {
+  outline: var(--sc-border-width-focus, 2px) solid var(--sc-color-focus-ring, #0b5cab);
+  outline-offset: var(--sc-border-width-focus, 2px);
+}
+
+.card-list {
+  display: grid;
+  gap: var(--sc-space-4, 16px);
+}
+
+.card-list > * {
+  padding-block: var(--sc-space-4, 16px);
+  padding-inline: var(--sc-space-4, 16px);
+  border: var(--sc-border-width-thin, 1px) solid var(--sc-color-border-subtle, #c3cbd8);
+  border-radius: var(--sc-radius-md, 8px);
+}
+
+.only-compact {
+  display: block;
+}
+
+.hide-compact {
+  display: none;
+}
+
+.touch {
+  min-block-size: var(--sc-size-target-min, 24px);
+  min-inline-size: var(--sc-size-target-min, 24px);
+}
+
+.field {
+  inline-size: 100%;
+  /* iOS zooms the viewport when a focused input's font-size is under 16px. */
+  font-size: 16px;
+  padding-block: var(--sc-space-2, 8px);
+  padding-inline: var(--sc-space-2, 8px);
+}
+
+.field:focus-visible {
+  scroll-margin-block-end: var(--sc-space-8, 32px);
+  outline: var(--sc-border-width-focus, 2px) solid var(--sc-color-focus-ring, #0b5cab);
+  outline-offset: var(--sc-border-width-focus, 2px);
+}
+
+.sheet {
+  position: fixed;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  max-inline-size: none;
+  max-block-size: none;
+  overflow: auto;
+  margin: 0;
+  border-radius: 0;
+  padding-block-start: max(var(--sc-space-4, 16px), var(--safe-block-start, 0px));
+  padding-block-end: max(var(--sc-space-4, 16px), var(--safe-block-end, 0px));
+  padding-inline-start: max(var(--sc-space-4, 16px), var(--safe-inline-start, 0px));
+  padding-inline-end: max(var(--sc-space-4, 16px), var(--safe-inline-end, 0px));
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sc-space-4, 16px);
+  padding-block-start: max(var(--sc-space-2, 8px), var(--safe-block-start, 0px));
+  padding-block-end: max(var(--sc-space-2, 8px), var(--safe-block-end, 0px));
+  padding-inline-start: max(var(--sc-space-4, 16px), var(--safe-inline-start, 0px));
+  padding-inline-end: max(var(--sc-space-4, 16px), var(--safe-inline-end, 0px));
+}
+
+/* Compact: off-canvas drawer at the inline-start edge, moved with a logical
+   inset so right-to-left needs no second rule set. */
+.app-shell__nav {
+  position: fixed;
+  inset-block: 0;
+  inset-inline-start: 0;
+  inline-size: var(--layout-drawer-inline-size, min(320px, 80vw));
+  overflow: auto;
+  transition: inset-inline-start var(--sc-motion-duration-base, 180ms)
+    var(--sc-motion-easing-standard, cubic-bezier(0.2, 0, 0.2, 1));
+}
+
+.app-shell__nav[hidden] {
+  inset-inline-start: -100%;
+}
+
+.app-shell__label {
+  display: inline;
+}
+
+:focus-visible {
+  outline: var(--sc-border-width-focus, 2px) solid var(--sc-color-focus-ring, #0b5cab);
+  outline-offset: var(--sc-border-width-focus, 2px);
+}
+
+.skip-link {
+  position: absolute;
+  inset-inline-start: -9999px;
+  inset-block-start: 8px;
+  z-index: 10;
+  padding-block: var(--sc-space-2, 8px);
+  padding-inline: var(--sc-space-2, 8px);
+  background: var(--sc-color-surface-default, #ffffff);
+  color: var(--sc-color-text-primary, #152033);
+}
+
+.skip-link:focus {
+  inset-inline-start: var(--sc-space-2, 8px);
+}
+
+@media (min-width: 768px) {
+  .page {
+    padding-inline-start: max(var(--sc-space-8, 32px), var(--safe-inline-start, 0px));
+    padding-inline-end: max(var(--sc-space-8, 32px), var(--safe-inline-end, 0px));
+  }
+
+  .grid-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .only-compact {
+    display: none;
+  }
+
+  .hide-compact {
+    display: block;
+  }
+
+  /* Medium: icon rail; labels appear only at the expanded breakpoint. */
+  .app-shell {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .app-shell__nav {
+    position: static;
+    inline-size: var(--layout-rail-inline-size, 3rem);
+    max-inline-size: var(--layout-rail-inline-size, 3rem);
+    overflow: visible;
+    transition: none;
+  }
+
+  .app-shell__label {
+    display: none;
+  }
+
+  .sheet {
+    inset-block: 0;
+    inset-inline: 0;
+    margin: auto;
+    inline-size: min(40rem, 100%);
+    block-size: auto;
+    max-block-size: calc(100% - var(--sc-space-8, 32px));
+    border-radius: var(--sc-radius-md, 8px);
+  }
+}
+
+@media (min-width: 1280px) {
+  /* Expanded: full labelled rail; content keeps its maximum reading width. */
+  .app-shell__nav {
+    inline-size: var(--layout-full-rail-inline-size, 16rem);
+    max-inline-size: var(--layout-full-rail-inline-size, 16rem);
+  }
+
+  .app-shell__label {
+    display: inline;
+  }
+}
+
+@media (pointer: coarse) {
+  /* 24px is the general web floor; coarse pointers supersede it with 44px. */
+  .touch {
+    min-block-size: var(--sc-size-target-comfortable, 44px);
+    min-inline-size: var(--sc-size-target-comfortable, 44px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell__nav,
+  .sheet {
+    transition-duration: 0ms;
+    animation-duration: 0ms;
+  }
+}

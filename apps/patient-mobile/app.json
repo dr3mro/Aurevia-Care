@@ -3,10 +3,11 @@
     "name": "Aurevia Care",
     "slug": "aurevia-care",
     "version": "0.1.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "supportsTablet": false,
+      "supportsTablet": true,
+      "requireFullScreen": false,
       "bundleIdentifier": "com.example.aureviacare"
     },
     "android": {
