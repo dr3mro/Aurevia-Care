@@ -97,7 +97,8 @@ exercise; none is partner evidence, a credential record or an approval.
 - The [recovery drill evidence template](../../docs/operations/recovery/drill-evidence.md)
   and [operational runbooks](../../docs/operations/recovery/operational-runbooks.md)
   define how a timed drill is recorded and which signals, owners and downtime
-  topics must be covered; both are empty templates, not completed drills.
+  topics must be covered; the drill-evidence file is an empty template and the
+  runbook document is a declared envelope, neither a completed drill.
 - The [tenant isolation decision](../../docs/decisions/0001-g0-tenant-isolation.md)
   and [migration change-safety decision](../../docs/decisions/0002-ops06-migration-change-safety.md)
   record the isolation and change discipline that any partner adapter must keep.
@@ -109,10 +110,11 @@ exercise; none is partner evidence, a credential record or an approval.
 
 Task IDs below refer to `TODO.md` and are recorded as open, taken or done at the
 time of writing; a task is not evidence that its artifact exists at a site.
-`NO TASK` means no tracked task supplies that artifact. The clause note
-directory `docs/spec/clauses` does not exist at the time of writing, so there
-were no clause notes to read; the authoritative specification sections above
-were used instead.
+`NO TASK` means no tracked task supplies that artifact. A PRD-02 partner-interface
+clause note is tracked as `SPEC-PRD-02-C02` on the delivery line; it was not
+present in this worker's branch when the pack was prepared, so the authoritative
+specification sections above were used instead. Re-check the states below against
+`TODO.md` before the approval meeting: they are a snapshot, not evidence.
 
 | Artifact a person needs | Laboratory | PACS / imaging | Pharmacy |
 |---|---|---|---|
@@ -124,8 +126,9 @@ were used instead.
 | Human acceptance | `S-G5-04` (open) is the decision this pack prepares; no approval is recorded here | `S-G5-04` (open) | `S-G5-04` (open) |
 
 Related operator documentation still pending: `START-04` (taken) covers key
-rotation and incident runbooks, and `SPEC-PRD-02-C02` (open) is the clause note
-for "partner-specific interfaces require approval".
+rotation and incident runbooks. `SPEC-PRD-02-C02` (taken) is the clause note for
+"partner-specific interfaces require approval"; it records the governance
+boundary, not an approval or a site artifact.
 
 ## Questions for the owner
 
