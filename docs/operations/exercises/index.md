@@ -16,7 +16,7 @@ sheet is used for live acceptance.
 
 | Sheet | Goal | Primary requirements | Targets checked |
 |---|---|---|---|
-| [Database restore drill](./database-restore-drill.md) | Restore database, objects and IdP dependencies into a clean environment and reconcile before reopening writes | OPS-04, OPS-07 | RPO ≤ 15 min; RTO ≤ 4 h; four data classes; three restore classes; reconciliation gate; cadence |
+| [Database restore drill](./database-restore-drill.md) | Restore database, objects and IdP dependencies into a clean environment and reconcile before reopening writes | OPS-04, OPS-07 | RPO ≤ 15 min; RTO ≤ 4 h; four data classes; three restore classes; reconciliation gate; cadence; OPS-07 export/retention verification |
 | [Partner outage drill](./partner-outage-drill.md) | Results stop arriving and orders pile up: detect, contain and drain without duplicates or a lost critical result | OPS-05, OPS-03, ARC-05, ADM-02 | 13 monitoring signals; named owners; human critical acknowledgment; p95 read ≤ 500 ms / command ≤ 900 ms |
 | [Lost-credential drill](./lost-credential-drill.md) | A staff credential or secret is lost: revoke, rotate, prove nothing broke, keep secrets out of evidence | OPS-02, WEB-03, WEB-12, IAM-02 | Next-request revocation; append-only audit chain; no secret in repo or image; separation of duties |
 
@@ -50,6 +50,8 @@ these, or marks a step `NOT YET IN PLACE:`.
 | `bash db/check.sh` | Applies every Flyway migration to an ephemeral synthetic PostgreSQL database; asserts forced RLS, role separation, tenant isolation, append-only staff history, an intact audit hash chain and versioned config | [db/check.sh](../../../db/check.sh) |
 | `bash infra/s_g5_06/check.sh` | Recovery-evidence evaluator unit tests plus conforming and violating fixture runs | [recovery evidence](../s_g5_06/recovery-evidence.md) |
 | `python3 -I infra/s_g5_06/recovery_evidence.py <artifact.json>` | Evaluates an OPS-04/OPS-05 evidence artifact; exit 0 pass, 1 failed checks, 2 unreadable input | [recovery targets](../s_g5_06/recovery-targets.md) |
+| `bash infra/s_g5_08/check.sh` | OPS-07 tenant export/retention evaluator unit tests plus fixed positive and negative fixtures (a fixture gate, not an artifact evaluator) | [export manifest](../s_g5_08/export-manifest.md) |
+| `python3 -I infra/s_g5_08/tenant_lifecycle_evidence.py <artifact.json>` | Evaluates a drill-supplied OPS-07 export/retention artifact; exit 0 pass, 1 failed checks, 2 unreadable input | [tenant_lifecycle_evidence.py](../../../infra/s_g5_08/tenant_lifecycle_evidence.py) |
 | `bash infra/s_g5_11/check.sh` | ADM-02 operational-queues evaluator gate with positive and negative fixtures | [queue catalog](../s_g5_11/queue-catalog.md) |
 | `python3 -I infra/s_g5_11/ops_queues.py <artifact.json>` | Evaluates a synthetic or operator-attested queue snapshot | [ops_queues.py](../../../infra/s_g5_11/ops_queues.py) |
 | `python3 -I scripts/check-secrets.py` | Fails on credential- or PHI-shaped strings in repository files | [check-secrets.py](../../../scripts/check-secrets.py) |

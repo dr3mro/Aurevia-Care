@@ -44,7 +44,7 @@ From [OPS-04](../../../SMARTCLINIC_V1_SPEC.md) and the enforced
 | Restore classes | `database`, `objects`, `idp_dependencies`, `clean_environment = true` | Evidence envelope and drill log |
 | Reconciliation | `hashes`, `source_versions`, `in_flight_deliveries`, `audit_coverage`, `completed_before_writes_reopened` — all `true` | Reconciliation gate completed while the environment is still read-only |
 | Cadence | `before_pilot` and `quarterly_cadence` both `true` | Dated drill records; a single artifact cannot prove a recurring schedule |
-| OPS-07 export and retention | Tenant export manifest with schema version, checksums, authorized documents, provenance and audit history; retention respects legal holds and tracks deletion of active data and approved backup expiration | [export manifest](../s_g5_08/export-manifest.md); `bash infra/s_g5_08/check.sh` on synthetic fixtures |
+| OPS-07 export and retention | Tenant export manifest with schema version, checksums, authorized documents, provenance and audit history; retention respects legal holds and tracks deletion of active data and approved backup expiration | [export manifest](../s_g5_08/export-manifest.md); `bash infra/s_g5_08/check.sh` fixture gate and `python3 -I infra/s_g5_08/tenant_lifecycle_evidence.py <artifact.json>` for the drill's own envelope |
 
 ## Preconditions and synthetic setup
 
@@ -73,7 +73,7 @@ From [OPS-04](../../../SMARTCLINIC_V1_SPEC.md) and the enforced
 | 30 | D3 | A synthetic object checksum in the drill log is deliberately altered | `NOT YET IN PLACE:` no in-repo object-store restore or checksum recomputation command. The owner describes the expected recompute-and-compare and records the mismatch and the `hold for review` decision | Mismatch held, not silently replaced (R1) |
 | 40 | D4 | "Sign-in must work without copying any production credential" | `NOT YET IN PLACE:` no in-repo IdP or secret-manager admin command. In the disposable stack the owner may use `curl -fsS http://127.0.0.1:8080/health.txt` for bootstrap health and `GET /health/live`, `GET /health/ready` for the real API's liveness/readiness | Readiness returns no exception text; no credential appears in any log or link |
 | 55 | R1 | Reconcile hashes before any write | Owner records the R1 result. The evaluator's `reconciliation.hashes` gate is exercised with `bash infra/s_g5_06/check.sh` on synthetic fixtures | All reconciliation checks `true`; gate signed before writes |
-| 60 | R1 (OPS-07) | "A restored tenant export must still be verifiable" | Owner checks that a synthetic export artifact has a manifest with schema version, record checksums, provenance, authorized documents and audit history, and that retention legal holds and approved backup expiration entries are tracked. The real envelope is evaluated with `bash infra/s_g5_08/check.sh` | Evaluator passes on synthetic fixtures; no record checksum, authorization or audit-history breach |
+| 60 | R1 (OPS-07) | "A restored tenant export must still be verifiable" | Owner checks that a synthetic export artifact has a manifest with schema version, record checksums, provenance, authorized documents and audit history, and that retention legal holds and approved backup expiration entries are tracked. Evaluate the drill's own envelope with `python3 -I infra/s_g5_08/tenant_lifecycle_evidence.py <artifact.json>`; `bash infra/s_g5_08/check.sh` is the fixture gate, not an artifact evaluator | Exit 0 on the drill artifact; no record checksum, authorization or audit-history breach |
 | 65 | R2 | "A source system ID and its clinical effective time must survive unchanged" | Owner records that IDs were not renumbered and effective times not rewritten; check exercised by the synthetic fixture evaluator | `source_versions` true |
 | 75 | R3 | Inject a duplicate and an out-of-order delivery event by immutable ID | Owner reconciles the synthetic outbox/dead-letter snapshot by immutable event ID in sender/type namespace and enforces per-aggregate version (ARC-05). Integration lead confirms order and patient identifiers before relinking | `in_flight_deliveries` true; one downstream effect and one clinical task per revision |
 | 85 | R4 | Break a synthetic audit-chain segment in the drill log | Owner verifies the per-tenant append-only chain; the same property is proved on real synthetic PostgreSQL by `bash db/check.sh` | `audit_coverage` true; a broken segment would block the gate |
@@ -139,7 +139,8 @@ The drill passes only when all of the following are observed:
 - no patient data, credential, real domain or PHI in any field, link, URL or log;
 - a synthetic OPS-07 export artifact still verifies after the simulated restore:
   manifest, checksums, provenance, authorized documents, audit history, legal
-  holds and backup-expiration entries intact (`bash infra/s_g5_08/check.sh`);
+  holds and backup-expiration entries intact
+  (`python3 -I infra/s_g5_08/tenant_lifecycle_evidence.py <artifact.json>` exits 0);
 - the synthetic envelope evaluates with exit 0 and is labelled as a rehearsal,
   never final evidence.
 
@@ -153,7 +154,8 @@ the human G5 acceptance gate.
 |---|---|
 | `bash db/check.sh` | 0 and the canonical success line; proves migrations, RLS, isolation, append-only history and audit chain on synthetic PostgreSQL |
 | `bash infra/s_g5_06/check.sh` | 0; evaluator unit tests plus conforming and violating fixtures |
-| `bash infra/s_g5_08/check.sh` | 0; OPS-07 tenant export, retention, legal-hold, backup-expiration and disputed-access fixture checks |
+| `python3 -I infra/s_g5_08/tenant_lifecycle_evidence.py <artifact.json>` | 0 pass / 1 failed checks / 2 unreadable input; evaluates the drill's own OPS-07 export/retention artifact |
+| `bash infra/s_g5_08/check.sh` | 0; fixture gate — OPS-07 tenant export, retention, legal-hold, backup-expiration and disputed-access fixture checks |
 | `python3 -I infra/s_g5_06/recovery_evidence.py <artifact.json>` | 0 pass / 1 failed checks / 2 unreadable input |
 | `curl -fsS http://127.0.0.1:8080/health.txt` | Healthy response on the disposable bootstrap stack |
 | `python3 -I infra/s_g5_06/tests/coverage_gate.py` | 0; evaluator is fully covered (tool result, not a drill result) |
