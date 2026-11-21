@@ -463,6 +463,15 @@ class IsolationAcrossSurfacesTest {
         assertEquals(422, get("/api/v1/orders", "clinician-a", null).getStatusCode().value());
         assertEquals(422, get("/api/v1/delivery/dead-letters", "worker-a", null).getStatusCode().value());
 
+        // The fail-closed rule applies to writes too, not only reads. A state-changing
+        // request without a subject or without an explicit organization must be refused
+        // before any tenant-scoped SQL runs.
+        String newFacility = "{\"code\":\"NO-CONTEXT\",\"name\":\"No context\"}";
+        assertEquals(HttpStatus.UNAUTHORIZED,
+                post("/api/v1/facilities", newFacility, null, ORG_A).getStatusCode());
+        assertEquals(422,
+                post("/api/v1/facilities", newFacility, "admin-a", null).getStatusCode().value());
+
         // A valid subject asserting a foreign organization has no active membership.
         assertEquals(HttpStatus.FORBIDDEN,
                 get("/api/v1/facilities/MAIN", "admin-a", ORG_B).getStatusCode());

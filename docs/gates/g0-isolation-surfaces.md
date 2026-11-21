@@ -27,9 +27,10 @@ Both tenants reuse exactly the same local identifiers:
 
 Each surface test reads or processes the peer tenant's record id and asserts concealment (404,
 empty result or a response containing only the caller's organization). A missing subject must
-answer 401 and a missing `X-Active-Organization` must answer 422 on every existing surface; a
-direct `FacilityService.get` call with no bound `TenantContext` must throw
-`IllegalStateException` before SQL. No real patient data, credential or token is used.
+answer 401 and a missing `X-Active-Organization` must answer 422 on every existing surface, on
+writes as well as reads (`POST /api/v1/facilities` with no subject or no organization); a direct
+`FacilityService.get` call with no bound `TenantContext` must throw `IllegalStateException`
+before SQL. No real patient data, credential or token is used.
 
 ## Surface inventory
 
