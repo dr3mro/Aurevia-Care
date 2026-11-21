@@ -3,7 +3,8 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { formatInstant } from '../../i18n/format';
 import { I18nProvider } from '../../i18n/I18nProvider';
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import type { Locale } from '../../i18n/messages';
@@ -245,6 +246,126 @@ describe('AuditEventList', () => {
     wrap(<AuditEventList events={syntheticAuditEvents} organizationId={alphaOrganizationId} />, 'ar');
     expect(document.documentElement.dir).toBe('rtl');
     expect(screen.getByText(adminText('ar', 'chainVerified'))).toBeTruthy();
+  });
+});
+
+describe('ConfigEditor real-API adaptations', () => {
+  const baseProps = {
+    entries: syntheticConfigurations,
+    organizationId: alphaOrganizationId,
+    configKey: adminConfigurationKey,
+    anchorCivilDate: adminAnchorCivilDate,
+    onPropose: vi.fn(),
+  };
+
+  it('offers an approve trigger only when the owner supplies one', () => {
+    const onApprove = vi.fn();
+    wrap(<ConfigEditor {...baseProps} onApprove={onApprove} />);
+    const pendingRow = screen.getAllByRole('row').find((row) => within(row).queryByText(adminText('en', 'pending')));
+    fireEvent.click(within(pendingRow!).getByRole('button', { name: adminText('en', 'approve') }));
+    expect(onApprove).toHaveBeenCalledWith(3);
+  });
+
+  it('keeps the typed draft when a propose command reports failure', () => {
+    wrap(<ConfigEditor {...baseProps} onPropose={() => false} />);
+    fireEvent.change(screen.getByLabelText(adminText('en', 'proposedValue')), {
+      target: { value: 'Synthetic retained value' },
+    });
+    fireEvent.change(screen.getByLabelText(adminText('en', 'effectiveFrom')), {
+      target: { value: '2026-07-01' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: adminText('en', 'propose') }));
+    expect((screen.getByLabelText(adminText('en', 'proposedValue')) as HTMLInputElement).value).toBe(
+      'Synthetic retained value',
+    );
+  });
+
+  it('keeps the typed draft when an asynchronous propose command resolves to false', async () => {
+    wrap(<ConfigEditor {...baseProps} onPropose={() => Promise.resolve(false)} />);
+    fireEvent.change(screen.getByLabelText(adminText('en', 'proposedValue')), {
+      target: { value: 'Synthetic retained draft' },
+    });
+    fireEvent.change(screen.getByLabelText(adminText('en', 'effectiveFrom')), {
+      target: { value: '2026-07-01' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: adminText('en', 'propose') }));
+    await waitFor(() =>
+      expect((screen.getByLabelText(adminText('en', 'proposedValue')) as HTMLInputElement).value).toBe(
+        'Synthetic retained draft',
+      ),
+    );
+  });
+
+  it('labels a version with no effective instant as not applicable', () => {
+    wrap(
+      <ConfigEditor
+        {...baseProps}
+        entries={[
+          {
+            organizationId: alphaOrganizationId,
+            key: adminConfigurationKey,
+            facilityCode: 'MAIN',
+            version: 1,
+            value: 'Synthetic immediate value',
+            effectiveFrom: '',
+            approved: true,
+          },
+        ]}
+      />,
+    );
+    expect(screen.getByText(adminText('en', 'notApplicable'))).toBeTruthy();
+    expect(screen.queryByRole('time')).toBeNull();
+  });
+});
+
+describe('AuditEventList real-API adaptations', () => {
+  const events = [
+    {
+      organizationId: alphaOrganizationId,
+      sequence: 1,
+      actor: 'Synthetic actor',
+      purpose: 'Synthetic purpose',
+      scope: 'Synthetic scope',
+      correlationId: 'synthetic-corr',
+      action: 'CONFIG_CREATE',
+      resourceId: 'synthetic-config',
+      outcome: 'SUCCESS' as const,
+      occurredAt: '2026-03-08T06:30:00Z',
+      previousHash: '',
+      hash: '',
+    },
+    {
+      organizationId: alphaOrganizationId,
+      sequence: 2,
+      actor: 'Synthetic actor',
+      purpose: 'Synthetic purpose',
+      scope: 'Synthetic scope',
+      correlationId: 'synthetic-corr-2',
+      action: 'CONFIG_APPROVE',
+      resourceId: 'synthetic-config',
+      outcome: 'NOT_FOUND' as const,
+      occurredAt: '',
+      previousHash: '',
+      hash: '',
+    },
+  ];
+
+  it('omits a fabricated chain verdict and renders the facility zone', () => {
+    wrap(<AuditEventList events={events} organizationId={alphaOrganizationId} showChain={false} timeZone="America/New_York" />);
+    expect(screen.queryByTestId('chain-badge')).toBeNull();
+    expect(screen.getByText(formatInstant('2026-03-08T06:30:00Z', 'America/New_York', 'en'))).toBeTruthy();
+    expect(screen.getByText(adminText('en', 'unknown'))).toBeTruthy();
+  });
+
+  it('reveals the UTC instant on focus and names the other outcomes', () => {
+    wrap(<AuditEventList events={events} organizationId={alphaOrganizationId} showChain={false} />);
+    const time = screen.getByText(formatInstant('2026-03-08T06:30:00Z', 'UTC', 'en'));
+    fireEvent.focus(time);
+    expect(screen.getByText(`UTC: ${formatInstant('2026-03-08T06:30:00Z', 'UTC', 'en')}`)).toBeTruthy();
+    expect(time.getAttribute('aria-describedby')).toBe('audit-utc-1');
+    expect(screen.getByText(adminText('en', 'outcomeNotFound'))).toBeTruthy();
+    fireEvent.blur(time);
+    expect(screen.queryByText(`UTC: ${formatInstant('2026-03-08T06:30:00Z', 'UTC', 'en')}`)).toBeNull();
   });
 });
 

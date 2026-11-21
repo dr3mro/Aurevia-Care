@@ -6,7 +6,7 @@ AUTOSTART = int(sys.argv[4]) if len(sys.argv) > 4 else 0  # minutes between auto
 LIVE = ("queued", "in_progress", "waiting", "pending", "requested")
 FAILED = ("failure", "timed_out")
 FIELDS = "databaseId,workflowName,displayTitle,conclusion,status,headSha,headBranch,event,createdAt,startedAt,updatedAt,url"
-TEXT = ("repo", "todo", "archive", "total", "commits")  # plain-text results; everything else is JSON
+TEXT = ("repo", "todo", "archive", "total")  # plain-text results; everything else is JSON
 CALLS = {
     "repo": ["repo", "view", "--json", "nameWithOwner", "-q", ".nameWithOwner"],
     "issues": ["issue", "list", "--state", "open", "--limit", "300", "--json", "number,title,labels,createdAt"],
@@ -63,6 +63,7 @@ def fetch(emit=None):
     """Load every section in parallel. Each section is handed to `emit(part)` the moment it is ready, so a
     screen can fill in piece by piece; the merged result is also returned (a section that failed is None)."""
     since = (datetime.now(timezone.utc) - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%SZ")
+<<<<<<< HEAD
     calls = {k: [a.replace("{since}", since) for a in v] for k, v in CALLS.items()}
     # One line per commit ("sha parent"), newest first; --paginate so a busy day is not capped at one page of 100.
     calls["commits"] = ["api", f"repos/{{owner}}/{{repo}}/commits?since={since}&per_page=100", "--paginate", "-q",
@@ -131,6 +132,31 @@ def fetch(emit=None):
         t.join()
     log_timing(timings, time.monotonic() - began)
     return out
+=======
+    calls = dict(CALLS, commits=["api", f"repos/{{owner}}/{{repo}}/commits?since={since}&per_page=100", "-q",
+                                 "[.[] | {sha: .sha, parent: (.parents[0].sha // \"\")}]"])
+    data = collect({k: spawn(a) for k, a in calls.items()}, TEXT)
+    if data.get("repo"):
+        data["repo"] = data["repo"].strip()
+    # Second wave: job detail for the runs that are live or recently failed.
+    runs = data.get("runs") or []
+    now = datetime.now(timezone.utc)
+    want = [r["databaseId"] for r in runs if r.get("status") != "completed"][:6]
+    want += [r["databaseId"] for r in runs if r.get("status") == "completed" and state(r) in FAILED
+             and r.get("updatedAt") and (now - ts(r["updatedAt"])).total_seconds() < 86400][:6]
+    jobs = collect({i: spawn(["run", "view", str(i), "--json", "jobs"]) for i in want})
+    data["jobs"] = {i: (j or {}).get("jobs", []) for i, j in jobs.items() if isinstance(j, dict) or j is None}
+    # Third step: what those commits changed, as one compare between the day's first parent and the latest commit.
+    commits = data.pop("commits", None) or []
+    if commits and commits[-1].get("parent"):
+        total = spawn(["api", f"repos/{{owner}}/{{repo}}/compare/{commits[-1]['parent']}...{commits[0]['sha']}", "-q",
+                       "{files: (.files | length), add: ([.files[].additions] | add // 0), del: ([.files[].deletions] | add // 0)}"])
+        got = collect({"x": total})["x"]
+        data["churn"] = dict(got, commits=len(commits)) if isinstance(got, dict) else None
+    else:
+        data["churn"] = {"commits": len(commits), "files": 0, "add": 0, "del": 0} if data.get("runs") is not None else None
+    return data
+>>>>>>> origin/main
 
 
 def blank(k):
