@@ -1,5 +1,5 @@
-- [-] RESP-DESIGN · Design guide: responsive layout patterns for the staff web
-  - agent: swarm-8
+- [x] RESP-DESIGN · Design guide: responsive layout patterns for the staff web
+  - pr: #521
   - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: docs/design/responsive-layout.md

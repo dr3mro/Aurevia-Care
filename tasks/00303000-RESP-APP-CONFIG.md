@@ -1,4 +1,6 @@
-- [ ] RESP-APP-CONFIG · Patient app: enable tablets and rotation in the Expo configuration
+- [-] RESP-APP-CONFIG · Patient app: enable tablets and rotation in the Expo configuration
+  - agent: swarm-6
+  - attempts: 1
   - requirements: PAT-01, PAT-02, UX-01
   - scope: apps/patient-mobile/app.json
   - depends: RESP-APP-DECISION

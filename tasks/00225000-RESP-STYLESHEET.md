@@ -1,4 +1,6 @@
-- [ ] RESP-STYLESHEET · Staff web: responsive base stylesheet with layout utility classes (new file)
+- [-] RESP-STYLESHEET · Staff web: responsive base stylesheet with layout utility classes (new file)
+  - agent: swarm-4
+  - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/theme/responsive.css, apps/staff-web/tests/theme/responsiveStylesheet.test.ts
   - depends: RESP-DESIGN
