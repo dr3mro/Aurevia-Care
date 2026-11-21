@@ -589,7 +589,9 @@ Each task below owns its own files, so the planner can run them side by side wit
 
 New tasks for IAM-02, which the API covers only in part (IAM-05 and IAM-06 already exist in the `patient.identity` and `authz.access` packages). Narrow scopes let them run in parallel.
 
-- [ ] BUILD-01 · Staff invitations: single-use expiring invitation, accept and revoke
+- [-] BUILD-01 · Staff invitations: single-use expiring invitation, accept and revoke
+  - agent: swarm-6
+  - attempts: 1
   - requirements: IAM-02
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/staff, apps/api/src/test/java/com/aurevia/smartclinic/staff, db/migrations/V70__build_01.sql
   - reserved: V70
@@ -599,7 +601,9 @@ New tasks for IAM-02, which the API covers only in part (IAM-05 and IAM-06 alrea
     3. Endpoints: create, list pending, revoke and accept. Accept creates the membership and role assignments and records who granted each role and the effective date.
     4. Tests: expired, reused, revoked and wrong-tenant tokens are rejected; acceptance is atomic.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] BUILD-02 · Role history: immutable membership and role assignment history
+- [-] BUILD-02 · Role history: immutable membership and role assignment history
+  - agent: swarm-7
+  - attempts: 1
   - requirements: IAM-02
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/authz, apps/api/src/test/java/com/aurevia/smartclinic/authz, db/migrations/V71__build_02.sql
   - reserved: V71
@@ -615,7 +619,9 @@ New tasks for IAM-02, which the API covers only in part (IAM-05 and IAM-06 alrea
 
 Gaps in the clinical record, documents and result handling (CLN-06, CLN-07, XCH-04, XCH-07).
 
-- [ ] BUILD-05 · Follow-up suggestion by visit type interval with an explained override
+- [-] BUILD-05 · Follow-up suggestion by visit type interval with an explained override
+  - agent: swarm-8
+  - attempts: 1
   - requirements: CLN-06
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/clinical, apps/api/src/test/java/com/aurevia/smartclinic/clinical, apps/api/src/main/java/com/aurevia/smartclinic/scheduling, apps/api/src/test/java/com/aurevia/smartclinic/scheduling, db/migrations/V74__build_05.sql
   - reserved: V74
@@ -625,7 +631,9 @@ Gaps in the clinical record, documents and result handling (CLN-06, CLN-07, XCH-
     3. An authorized user may override with a reason; the override keeps provenance. Only an explicit confirmation creates a booking.
     4. Tests: interval math across a daylight-saving change, no booking without confirmation, override recorded.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] BUILD-06 · Documents: checksum, retained original bytes and void with reason
+- [-] BUILD-06 · Documents: checksum, retained original bytes and void with reason
+  - agent: swarm-9
+  - attempts: 1
   - requirements: CLN-07
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/documents, apps/api/src/test/java/com/aurevia/smartclinic/documents, db/migrations/V75__build_06.sql
   - reserved: V75
@@ -636,7 +644,9 @@ Gaps in the clinical record, documents and result handling (CLN-06, CLN-07, XCH-
     4. Voiding an association to a chart, order or result needs a reason and keeps the history.
     5. Tests: tampered bytes are detected, void keeps the original, another tenant cannot read it.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] BUILD-07 · Result trending only for comparable units
+- [-] BUILD-07 · Result trending only for comparable units
+  - agent: swarm-10
+  - attempts: 1
   - requirements: XCH-07
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/lab, apps/api/src/test/java/com/aurevia/smartclinic/lab, apps/api/src/main/java/com/aurevia/smartclinic/exchange, apps/api/src/test/java/com/aurevia/smartclinic/exchange
   - details:
@@ -659,7 +669,9 @@ Gaps in the clinical record, documents and result handling (CLN-06, CLN-07, XCH-
 
 Specialty workflows from the specification (RX-01, RX-02, RAD-01, PT-01, FIN-01).
 
-- [ ] BUILD-09 · Versioned drug catalog search with market approval
+- [-] BUILD-09 · Versioned drug catalog search with market approval
+  - agent: swarm-1
+  - attempts: 1
   - requirements: RX-01
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/prescription, apps/api/src/test/java/com/aurevia/smartclinic/prescription, apps/api/src/main/java/com/aurevia/smartclinic/catalog, apps/api/src/test/java/com/aurevia/smartclinic/catalog, db/migrations/V76__build_09.sql
   - reserved: V76
@@ -678,7 +690,9 @@ Specialty workflows from the specification (RX-01, RX-02, RAD-01, PT-01, FIN-01)
     3. Produce a printable prescription only where site policy allows it, with the prescriber attestation.
     4. Tests: no print without entitlement; the channel is recorded exactly as used.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] BUILD-11 · Radiology: verify patient and accession before linking a study
+- [-] BUILD-11 · Radiology: verify patient and accession before linking a study
+  - agent: swarm-2
+  - attempts: 1
   - requirements: RAD-01
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/radiology, apps/api/src/test/java/com/aurevia/smartclinic/radiology
   - details:
@@ -687,7 +701,9 @@ Specialty workflows from the specification (RX-01, RX-02, RAD-01, PT-01, FIN-01)
     3. Record modality, urgency and clinical question at intake.
     4. Tests: a mismatch never links; a re-link after review keeps the history.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] BUILD-12 · Physical therapy: episode, outcome scales with units and signed progress
+- [-] BUILD-12 · Physical therapy: episode, outcome scales with units and signed progress
+  - agent: swarm-3
+  - attempts: 1
   - requirements: PT-01
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/therapy, apps/api/src/test/java/com/aurevia/smartclinic/therapy, db/migrations/V77__build_12.sql
   - reserved: V77
@@ -697,7 +713,9 @@ Specialty workflows from the specification (RX-01, RX-02, RAD-01, PT-01, FIN-01)
     3. Outcome scales are versioned and store units; progress notes and discharge need a signature.
     4. Tests: an unsigned discharge is refused; a new scale version never rewrites old scores.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] BUILD-13 · Finance: immutable payment, refund and credit ledger with fixed precision
+- [-] BUILD-13 · Finance: immutable payment, refund and credit ledger with fixed precision
+  - agent: swarm-4
+  - attempts: 1
   - requirements: FIN-01
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/finance, apps/api/src/test/java/com/aurevia/smartclinic/finance
   - details:
@@ -752,7 +770,9 @@ Messaging (MSG-05 to MSG-07) and operational queues (ADM-02).
 
 Staff web and patient app work (UX-01, PAT-01 to PAT-03) and recovery evidence (OPS-04).
 
-- [ ] BUILD-18 · Arabic and RTL: staff web layout and mixed-script text
+- [-] BUILD-18 · Arabic and RTL: staff web layout and mixed-script text
+  - agent: swarm-5
+  - attempts: 1
   - requirements: UX-01
   - scope: apps/staff-web/src/i18n, apps/staff-web/src/theme
   - details:
