@@ -8,8 +8,8 @@ of apps/api/src/main instead:
   inmemory-in-main         an InMemory* class in production source (belongs in src/test)
   store-without-durable    a *Store interface with no Jdbc* implementation
   controller-builds        a controller that does `new ...Service/Store(...)` itself
-  fb-suppression           a file that adds @SuppressFBWarnings (use the central
-                           spotbugs-exclude.xml or fix the code)
+  fb-suppression           a file that adds @SuppressFBWarnings (fix the code; the central
+                           exclude file is human-reviewed)
   requirement-id-name      a Java class or SQL table named after a requirement ID
                            (Xch03Service, xch03_order, G3EvidenceService)
 
@@ -103,7 +103,7 @@ ADVICE = {
     "inmemory-in-main": "production code must not hold data in memory; add a Jdbc store and a migration, keep fakes in src/test",
     "store-without-durable": "add a Jdbc implementation with a migration (RLS + FORCE RLS) and an integration test",
     "controller-builds": "inject the service with Spring instead of constructing it in the controller",
-    "fb-suppression": "do not add @SuppressFBWarnings; configure apps/api/spotbugs-exclude.xml or fix the code",
+    "fb-suppression": "do not add @SuppressFBWarnings; fix the code (the exclude file is human-reviewed)",
     "requirement-id-name": "name it after the business concept, not the requirement ID",
 }
 

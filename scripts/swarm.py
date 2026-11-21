@@ -24,9 +24,9 @@ MARK = "<!-- swarm-integrator -->"
 MAX_FIX = 3
 # One story per worker PR: a batch this large cannot be reviewed or verified
 # as a single bounded change, and it was the source of the G1 quality failures.
-MAX_PR_FILES = 15
+MAX_PR_FILES = 30
 # A task a swarm worker has taken this many times without finishing waits for a person.
-MAX_ATTEMPTS = 3
+MAX_ATTEMPTS = 5
 BODY_LIMIT = 8000
 # Default monthly runner-minute cap for all swarm-related workflows. The guard
 # estimates usage from finished run durations and refuses a wave near the cap.
@@ -49,7 +49,11 @@ LABELS = {
 # the canonical test entry points that new modules are required to add, so they must
 # remain auto-mergeable. fnmatch's '*' crosses '/', so use the literal root path here.
 PROTECTED = [".github/*", ".opencode/*", "opencode.json", "scripts/*",
-             "AGENTS.md", "check.sh", "*/check.sh", "compose.yaml", "Dockerfile"]
+             "AGENTS.md", "CODING_STYLE.md", "check.sh", "*/check.sh", "compose.yaml", "Dockerfile",
+             # Files that set what the gates accept: an agent must not loosen its own gate.
+             "apps/api/pom.xml", "apps/api/spotbugs-exclude.xml", "apps/staff-web/vite.config.ts",
+             "apps/staff-web/eslint.config.ts", "apps/patient-mobile/jest.config.ts",
+             "apps/patient-mobile/eslint.config.mjs"]
 # Shared trackers are written only by the integrator, one merge at a time, so
 # parallel workers never conflict on them.
 TRACKERS = ["TODO.md", "MEMORY.md", "WORKSPACE.md", "BUGS.md", "PROJECT.md", "docs/swarm/*"]
