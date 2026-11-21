@@ -21,6 +21,8 @@ describe('createRoutes', () => {
       '/',
       '/schedule',
       '/schedule/book',
+      '/messages',
+      '/messages/:id',
       '/patients/:id/chart',
       '/patients/:id/notes/:noteId',
       '/admin/facilities',
