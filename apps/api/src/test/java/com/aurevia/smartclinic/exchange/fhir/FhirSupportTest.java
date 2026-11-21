@@ -63,6 +63,33 @@ class FhirSupportTest {
     }
 
     @Test
+    void identifierValueReadsTheMatchingSystemRegardlessOfPosition() throws Exception {
+        JsonNode node = tree("{\"identifier\":["
+                + "{\"system\":\"urn:other\",\"value\":\"wrong\"},"
+                + "{\"system\":\"" + FhirSupport.STUDY_UID_IDENTIFIER_SYSTEM
+                + "\",\"value\":\"1.2.3\"}]}");
+        assertEquals("1.2.3", FhirSupport.identifierValue(node,
+                FhirSupport.STUDY_UID_IDENTIFIER_SYSTEM, "INVALID_RESOURCE"));
+    }
+
+    @Test
+    void identifierValueRejectsUnknownSystem() throws Exception {
+        JsonNode node = tree("{\"identifier\":[{\"system\":\"urn:other\",\"value\":\"wrong\"}]}");
+        ApiException failure = assertThrows(ApiException.class, () -> FhirSupport.identifierValue(node,
+                FhirSupport.STUDY_UID_IDENTIFIER_SYSTEM, "INVALID_RESOURCE"));
+        assertEquals(422, failure.status());
+        assertEquals("INVALID_RESOURCE", failure.code());
+    }
+
+    @Test
+    void identifierValueRejectsBlankMatchingValue() throws Exception {
+        JsonNode node = tree("{\"identifier\":[{\"system\":\""
+                + FhirSupport.STUDY_UID_IDENTIFIER_SYSTEM + "\",\"value\":\"  \"}]}");
+        assertThrows(ApiException.class, () -> FhirSupport.identifierValue(node,
+                FhirSupport.STUDY_UID_IDENTIFIER_SYSTEM, "INVALID_RESOURCE"));
+    }
+
+    @Test
     void referenceAndMetaBuildersCarryProfileAndType() {
         ObjectNode reference = FhirSupport.reference("Patient", "pt-1");
         assertEquals("Patient/pt-1", reference.path("reference").asString());
