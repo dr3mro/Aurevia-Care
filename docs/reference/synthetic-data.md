@@ -50,9 +50,10 @@ invented. The conventions in use are:
   exercise conversion and DST behaviour.
 
 `scripts/check-secrets.py` defines what must never appear: private keys, AWS access
-keys, GitHub/Slack tokens, JWTs, password/secret/key assignments, US
-social-security-number-shaped strings and hard-coded NVD credentials. A line that
-genuinely needs a lookalike value carries the inline marker `synthetic-ok`, which
+keys, GitHub/Slack tokens, JWTs, password/secret/API-key assignments, US
+social-security-number-shaped strings, hard-coded NVD credentials and NVD keys
+embedded in notes. A line that genuinely needs a lookalike value carries the
+inline marker `synthetic-ok`, which
 suppresses that one line. Nothing in this catalogue uses that escape hatch.
 
 ## Tenants and organizations
@@ -175,10 +176,12 @@ suppresses that one line. Nothing in this catalogue uses that escape hatch.
 
 The same conventions govern the evidence fixtures under
 `infra/s_g5_*/fixtures/` (files named `synthetic_*_evidence.json` for the pilot,
-recovery, build, lifecycle, UX and operations-queue rehearsals) and the onboarding
-manifest `infra/s_g5_09/fixtures/synthetic_onboarding_manifest.json`. The latter
-uses `SYN-`-prefixed source IDs, `M-`-prefixed MRNs, the name pair `Syn` /
-`Patient`, a fixed checksum and a `legacy-synthetic-emr` historical signature;
+recovery, lifecycle, UX and operations-queue rehearsals, plus
+`synthetic_evidence.json` for the build rehearsal) and the onboarding manifest
+`infra/s_g5_09/fixtures/synthetic_onboarding_manifest.json`. The latter uses
+`SYN-`-prefixed source IDs, `M-`-prefixed MRNs, an obviously invented given/family
+placeholder pair (a short token derived from the word "synthetic" and the word
+"patient"), a fixed checksum and a `legacy-synthetic-emr` historical signature;
 checksums and signatures are fixed placeholder values, never real attestation data.
 
 ## Reserved identifiers and never-use rules
