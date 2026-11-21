@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0",
+  "requirement": "OPS-03",
+  "profile": {
+    "organizations": 20,
+    "patient_charts": 100000,
+    "concurrent_staff": 200,
+    "requests_per_second": 50,
+    "duration_minutes": 30
+  },
+  "latency_targets_ms": {
+    "read": 500,
+    "command": 900
+  },
+  "workload_mix": {
+    "read": 0.7,
+    "command": 0.3,
+    "note": "Declared design assumption, revised after observation as OPS-03 requires."
+  },
+  "ramp": {
+    "warm_up_minutes": 5,
+    "measured_window_minutes": 30,
+    "warm_up_excluded_from_latency": true
+  },
+  "measurement_scope": {
+    "excluded": ["document_transfer", "document_rendering", "external_calls"],
+    "note": "This generator measures end-to-end synthetic latency; authorized server-side collection remains a separate gate."
+  },
+  "synthetic_data": {
+    "seed": 20261119,
+    "synthetic_only": true
+  }
+}
