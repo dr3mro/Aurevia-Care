@@ -35,7 +35,7 @@ the gap and use the approved out-of-band channel instead of inventing a contact.
    last action, next action and the correlation IDs that identify it. Mark a
    Sev 1 or Sev 2 item as blocked if no receiving owner was found.
 3. **Open alerts.** Walk the 13 declared signals in
-   [operational monitoring and runbooks](../s_g5_06/operational-runbooks.md):
+   [operational monitoring and runbooks](../recovery/operational-runbooks.md):
    `error_rates`, `saturation`, `queue_age`, `partner_delivery`,
    `unmatched_reports`, `critical_acknowledgment_time`, `missing_coverage`,
    `unassigned_patient_messages`, `response_breaches`,
@@ -93,4 +93,4 @@ is labelled as a rehearsal, never as a real rota handover.
 
 [Runbook index](index.md) · [Incident response](incident-response.md) ·
 [Bad deploy](bad-deploy.md) ·
-[Operational monitoring and runbooks](../s_g5_06/operational-runbooks.md)
+[Operational monitoring and runbooks](../recovery/operational-runbooks.md)

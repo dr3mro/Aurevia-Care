@@ -19,7 +19,7 @@ Use this runbook when any of the following is observed or credibly reported:
   availability; server-side p95 ≤ 500 ms for routine reads and ≤ 900 ms for
   routine commands, excluding document transfer, rendering and external calls).
   The enforced targets and the ~43.2-minute monthly error budget are in
-  [capacity targets](../s_g5_05/capacity-targets.md).
+  [capacity targets](../capacity/capacity-targets.md).
 - A security signal: suspected credential exposure, an unexpected dependency
   or secret-scan finding, or a failed external uptime probe.
 
@@ -53,7 +53,7 @@ a person; record that the escalation channel is missing.
 
 The signal names the on-call role: the 13 declared monitoring signals and their
 primary owners are in
-[operational monitoring and runbooks](../s_g5_06/operational-runbooks.md).
+[operational monitoring and runbooks](../recovery/operational-runbooks.md).
 
 `NOT YET IN PLACE:` a pager, alert manager, notification sender or external
 uptime probe. These signals are declarations in an evidence evaluator, not live
@@ -107,10 +107,10 @@ telemetry; a passing evaluation is not proof an alert fired.
     A real `POST /api/v1/messaging-governance/legal-holds` endpoint exists, but
     no approved policy pack is bound to it in this repository and no named hold
     authority is configured here; it is not an approved hold system for incident
-    use. The [s_g5_08 README](../s_g5_08/README.md) states that legal-hold
-    authority belongs to qualified site, privacy and clinical owners, not to a
-    tool or flag, and the hold rules are documented in
-    [retention and offboarding](../s_g5_08/retention-and-offboarding.md).
+    use. The [tenant lifecycle README](../tenant-lifecycle/README.md) states that
+    legal-hold authority belongs to qualified site, privacy and clinical owners,
+    not to a tool or flag, and the hold rules are documented in
+    [retention and offboarding](../tenant-lifecycle/retention-and-offboarding.md).
 11. **Hand over if the shift ends.** Use
     [on-call handover](on-call-handover.md); do not leave an open Sev 1 or Sev 2
     without a named receiving owner.

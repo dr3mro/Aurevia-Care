@@ -59,9 +59,9 @@ for the rows that still need an owner and real evidence.
   OWASP dependency analysis and SpotBugs inside `mvn verify`, and the append-only
   audit hash chain verified by `db/check.sh`
   ([V3 migration](../../../db/migrations/V3__audit_chain.sql)).
-- **Targets and declared signals:** [capacity targets](../s_g5_05/capacity-targets.md)
+- **Targets and declared signals:** [capacity targets](../capacity/capacity-targets.md)
   for OPS-03 and the 13 declared monitoring signals in
-  [operational monitoring and runbooks](../s_g5_06/operational-runbooks.md).
+  [operational monitoring and runbooks](../recovery/operational-runbooks.md).
 
 `NOT YET IN PLACE:` a log pipeline or dashboard, any configured alert or pager,
 an external uptime probe, a secret manager or rotation tool, production

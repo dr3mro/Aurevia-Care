@@ -56,7 +56,7 @@ it.
    the matched handler pattern
    ([RequestLogFormatter](../../../apps/api/src/main/java/com/aurevia/smartclinic/observability/RequestLogFormatter.java)).
    Compare the affected route class with the OPS-03 targets in
-   [capacity targets](../s_g5_05/capacity-targets.md).
+   [capacity targets](../capacity/capacity-targets.md).
 4. **Check the gate that should have caught it.** Delivery runs policy, script,
    frontend, Java/DB, docs and per-architecture smoke jobs and requires them on
    the exact SHA (`Delivery gate`). A failed or skipped gate means the artifact
@@ -89,7 +89,7 @@ age metrics and alerting on error-budget burn; none is implemented here.
    [decision 0002](../../decisions/0002-ops06-migration-change-safety.md) and
    `scripts/check-migrations.py`. If a contract step already ran, do not blindly
    roll back the schema; use roll-forward below or the
-   [restore procedure](../s_g5_06/restore-procedure.md) under authorization.
+   [restore procedure](../recovery/restore-procedure.md) under authorization.
 5. **Verify the rollback.** Repeat the probes and log checks in "How to tell":
    `GET /health/live` and `GET /health/ready` UP, error rate and p95 back within
    OPS-03, protected sign-in and the affected clinical flow working with
@@ -130,7 +130,7 @@ or when the old artifact is no longer promotable.
 - Say what is affected and what users should do (for example, use the approved
   paper/manual capture process and expect supervised back-entry), without
   exposing patient data. The four downtime topics are in
-  [operational monitoring and runbooks](../s_g5_06/operational-runbooks.md).
+  [operational monitoring and runbooks](../recovery/operational-runbooks.md).
 - Record each message, its UTC time, the channel and who approved it.
 - `NOT YET IN PLACE:` a hosted status/maintenance page and support page (WEB-13);
   the launch checklist row is open. Use the approved out-of-band channel and
