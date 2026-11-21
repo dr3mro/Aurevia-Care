@@ -6,10 +6,21 @@
  * client. The authenticated session and API client replace them in a later,
  * separately approved task; no token, endpoint or patient payload lives here.
  */
+import { loadToken } from '../api/tokenStore';
+import { createTransport } from '../api/transport';
+import type { FetchImpl, Transport } from '../api/transport';
+import { appointmentView } from '../features/appointments/appointments';
+import { deriveConfirmation } from '../features/appointments/confirmation';
 import type { AppointmentView } from '../features/appointments/appointments';
-import type { DeviceToken, GenericNotice } from '../features/appointments/types';
+import type {
+  Appointment,
+  AppointmentStatus,
+  DeviceToken,
+  GenericNotice,
+  ZoneFormatter,
+} from '../features/appointments/types';
 import type { CareUnitRef, PendingAttachment } from '../features/attachments/domain';
-import type { Conversation } from '../features/conversations/domain';
+import type { Conversation, ConversationState } from '../features/conversations/domain';
 import type {
   EnrollmentStrings,
   LockoutStrings,
@@ -17,27 +28,225 @@ import type {
   SupportStrings,
 } from '../features/enrollment/screens';
 import type { DeliveryFacts, InstructionView } from '../features/acknowledgments/types';
+import { parseReleasedReport } from '../features/reports/reportClient';
 import type { ReleasedReport } from '../features/reports/types';
 
 import type { Locale } from './messages';
 
-/** Empty synthetic appointment projection. */
-export function placeholderAppointments(): readonly AppointmentView[] {
-  return [];
+/**
+ * Placeholder origin for the synthetic build. A real deployment supplies its
+ * own HTTPS origin through configuration; no credential or patient data lives
+ * in this value.
+ */
+export const PATIENT_API_BASE_URL = 'https://api.synthetic.example';
+
+/** Appointment statuses the scheduling domain can return to a patient. */
+const APPOINTMENT_STATUSES: readonly AppointmentStatus[] = [
+  'booked',
+  'checked_in',
+  'in_progress',
+  'completed',
+  'cancelled',
+  'no_show',
+];
+
+/** Conversation lifecycle states the messaging domain can return. */
+const CONVERSATION_STATES: readonly ConversationState[] = [
+  'awaiting_staff',
+  'awaiting_patient',
+  'resolved',
+  'closed',
+];
+
+/** Narrow an untrusted JSON value to a plain object. */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** Narrow an untrusted JSON value to a non-empty string. */
+function isText(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+/** Narrow an untrusted JSON value to a non-negative integer. */
+function isCount(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0;
+}
+
+/** Narrow a string to one of the known appointment statuses. */
+function isAppointmentStatus(value: unknown): value is AppointmentStatus {
+  return typeof value === 'string' && (APPOINTMENT_STATUSES as readonly string[]).includes(value);
+}
+
+/** Narrow a string to one of the known conversation states. */
+function isConversationState(value: unknown): value is ConversationState {
+  return typeof value === 'string' && (CONVERSATION_STATES as readonly string[]).includes(value);
+}
+
+/**
+ * Format an instant in the facility's IANA zone. An unknown zone is a server
+ * data error; showing the UTC instant is safer than inventing a local time.
+ */
+function facilityZoneFormatter(): ZoneFormatter {
+  return {
+    format(instant: string, timeZone: string): string {
+      try {
+        return new Intl.DateTimeFormat('en-GB', {
+          timeZone,
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+        }).format(new Date(instant));
+      } catch {
+        return instant;
+      }
+    },
+  };
+}
+
+/**
+ * Create the READY-47 transport for patient screens.
+ *
+ * The credential is read from OS storage on every request; the caller supplies
+ * the HTTPS origin, locale and fetch implementation so tests stay synthetic.
+ */
+export function createPatientTransport(
+  baseUrl: string,
+  language: Locale,
+  fetchImpl: FetchImpl,
+): Transport {
+  return createTransport({ baseUrl, getToken: loadToken, fetchImpl, language });
+}
+
+/** Validate one patient appointment projection from the server. */
+function parseAppointment(value: unknown): Appointment {
+  if (!isRecord(value)) {
+    throw new Error('MALFORMED_APPOINTMENT');
+  }
+  const { id, patientId, facilityCode, facilityTimeZone, startsAt, status, confirmationEnabled, confirmedAt } = value;
+  if (
+    !isText(id)
+    || !isText(patientId)
+    || !isText(facilityCode)
+    || !isText(facilityTimeZone)
+    || !isText(startsAt)
+    || !isAppointmentStatus(status)
+    || typeof confirmationEnabled !== 'boolean'
+    || !(confirmedAt === null || isText(confirmedAt))
+  ) {
+    throw new Error('MALFORMED_APPOINTMENT');
+  }
+  return {
+    id,
+    patientId,
+    facilityCode,
+    facilityTimeZone,
+    startsAt,
+    status,
+    confirmationEnabled,
+    confirmedAt,
+  };
+}
+
+/**
+ * Load the verified patient's appointments from their own endpoint.
+ *
+ * `GET /api/v1/appointments` is a staff route; patient data comes only from
+ * `/api/v1/patient/appointments`, scoped by the linked patient identifier.
+ */
+export async function loadAppointments(
+  transport: Transport,
+  patientId: string,
+  organizationId: string,
+): Promise<readonly AppointmentView[]> {
+  const body = await transport.get<unknown>(
+    `/api/v1/patient/appointments?patientId=${encodeURIComponent(patientId)}`,
+  );
+  if (!Array.isArray(body)) {
+    throw new Error('MALFORMED_APPOINTMENTS');
+  }
+  const formatter = facilityZoneFormatter();
+  return body.map((value) => {
+    const appointment = parseAppointment(value);
+    const confirmation = deriveConfirmation(appointment, appointment.confirmationEnabled);
+    return appointmentView(appointment, organizationId, formatter, confirmation);
+  });
+}
+
+/** Load the revisions currently released to the authenticated patient. */
+export async function loadReports(transport: Transport): Promise<readonly ReleasedReport[]> {
+  const body = await transport.get<unknown>('/api/v1/patient/reports');
+  if (!Array.isArray(body)) {
+    throw new Error('MALFORMED_REPORTS');
+  }
+  return body.map(parseReleasedReport);
+}
+
+/** Patient inbox projection and the server-authored unread counts. */
+export interface ConversationInboxData {
+  /** Conversations prepared for the existing inbox component. */
+  readonly conversations: readonly Conversation[];
+  /** Authoritative unread count per conversation identifier. */
+  readonly unreadByConversation: Readonly<Record<string, number>>;
+}
+
+/** Validate and map one server inbox entry without inventing message content. */
+function parseInboxEntry(entry: unknown, organizationId: string): {
+  conversation: Conversation;
+  unreadCount: number;
+} {
+  if (!isRecord(entry) || !isRecord(entry.conversation)) {
+    throw new Error('MALFORMED_CONVERSATIONS');
+  }
+  const source = entry.conversation;
+  if (
+    !isText(source.id)
+    || !isText(source.unitKey)
+    || !isConversationState(source.state)
+    || !isCount(source.patientReadSequence)
+    || !isCount(entry.unreadCount)
+  ) {
+    throw new Error('MALFORMED_CONVERSATIONS');
+  }
+  return {
+    conversation: {
+      id: source.id,
+      organizationId,
+      unitId: source.unitKey,
+      unitName: source.unitKey,
+      topic: isText(source.topic) ? source.topic : '',
+      state: source.state,
+      // A closed thread is read-only; connection revocation is checked by the
+      // server before a reply is accepted (MSG-02, MSG-07).
+      messagingPermitted: source.state !== 'closed',
+      messages: [],
+      lastReadSequence: source.patientReadSequence,
+    },
+    unreadCount: entry.unreadCount,
+  };
+}
+
+/** Load the patient's conversation inbox from its own endpoint. */
+export async function loadConversations(
+  transport: Transport,
+  organizationId: string,
+): Promise<ConversationInboxData> {
+  const body = await transport.get<unknown>('/api/v1/conversations/inbox');
+  if (!isRecord(body) || !Array.isArray(body.entries)) {
+    throw new Error('MALFORMED_CONVERSATIONS');
+  }
+  const conversations: Conversation[] = [];
+  const unreadByConversation: Record<string, number> = {};
+  for (const entry of body.entries) {
+    const parsed = parseInboxEntry(entry, organizationId);
+    conversations.push(parsed.conversation);
+    unreadByConversation[parsed.conversation.id] = parsed.unreadCount;
+  }
+  return { conversations, unreadByConversation };
 }
 
 /** Empty synthetic device list. */
 export function placeholderDevices(): readonly DeviceToken[] {
-  return [];
-}
-
-/** Empty synthetic released-report projection. */
-export function placeholderReports(): readonly ReleasedReport[] {
-  return [];
-}
-
-/** Empty synthetic conversation projection. */
-export function placeholderConversations(): readonly Conversation[] {
   return [];
 }
 
