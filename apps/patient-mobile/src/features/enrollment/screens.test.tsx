@@ -77,25 +77,23 @@ describe('EnrollmentScreen', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
-  it.each([
-    ['expired', 'This code has expired'],
-    ['reused', 'This code has already been used'],
-    ['locked', 'This account is locked'],
-    ['error', 'Check the code and try again'],
-  ])('shows the %s state without echoing the code', async (status, message) => {
-    await render(
-      <EnrollmentScreen
-        status={status as 'expired'}
-        code="abcd1234"
-        onCodeChange={spy<[string]>()}
-        onSubmit={spy<[string]>()}
-        strings={enrollmentStrings}
-        isRTL
-      />,
-    );
-    expect(screen.getByText(message)).toBeTruthy();
-    expect(screen.queryByText('abcd1234')).toBeNull();
-  });
+  it.each(['expired', 'reused', 'locked', 'error'] as const)(
+    'shows only the generic failure for %s without echoing the code',
+    async (status) => {
+      await render(
+        <EnrollmentScreen
+          status={status}
+          code="abcd1234"
+          onCodeChange={spy<[string]>()}
+          onSubmit={spy<[string]>()}
+          strings={enrollmentStrings}
+          isRTL
+        />,
+      );
+      expect(screen.getByText('Check the code and try again')).toBeTruthy();
+      expect(screen.queryByText('abcd1234')).toBeNull();
+    },
+  );
 
   it('disables submit for a malformed code', async () => {
     await render(
@@ -166,26 +164,24 @@ describe('RecoveryScreen', () => {
     expect(screen.getByRole('button', { name: 'Restore access' }).props.accessibilityState).toEqual({ disabled: true });
   });
 
-  it.each([
-    ['expired', 'Recovery code expired'],
-    ['reused', 'Recovery code used'],
-    ['locked', 'Account locked'],
-    ['error', 'Verification failed'],
-  ])('shows the %s recovery state', async (status, message) => {
-    await render(
-      <RecoveryScreen
-        status={status as 'expired'}
-        code="ABCD1234"
-        verification="facts"
-        onCodeChange={spy<[string]>()}
-        onVerificationChange={spy<[string]>()}
-        onSubmit={spy<[string, string]>()}
-        strings={recoveryStrings}
-        isRTL
-      />,
-    );
-    expect(screen.getByText(message)).toBeTruthy();
-  });
+  it.each(['expired', 'reused', 'locked', 'error'] as const)(
+    'shows only the generic failure for the %s recovery state',
+    async (status) => {
+      await render(
+        <RecoveryScreen
+          status={status}
+          code="ABCD1234"
+          verification="facts"
+          onCodeChange={spy<[string]>()}
+          onVerificationChange={spy<[string]>()}
+          onSubmit={spy<[string, string]>()}
+          strings={recoveryStrings}
+          isRTL
+        />,
+      );
+      expect(screen.getByText('Verification failed')).toBeTruthy();
+    },
+  );
 });
 
 describe('LockoutScreen', () => {

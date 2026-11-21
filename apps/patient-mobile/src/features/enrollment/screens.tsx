@@ -10,6 +10,7 @@ import {
   formatLockoutCountdown,
   buildSubmissionNotice,
   getRowDirection,
+  isFailedStatus,
   getTextAlign,
   normalizeInvitationCode,
   validateInvitationCode,
@@ -50,16 +51,10 @@ export function EnrollmentScreen({
   isRTL,
 }: EnrollmentScreenProps): React.JSX.Element {
   const valid = validateInvitationCode(normalizeInvitationCode(code)).valid;
-  const message =
-    status === 'expired'
-      ? strings.expired
-      : status === 'reused'
-        ? strings.reused
-        : status === 'locked'
-          ? strings.locked
-          : status === 'error'
-            ? strings.invalid
-            : null;
+  // All failures render the same generic line so the screen cannot reveal a
+  // code's state. The status-specific strings remain part of the shared label
+  // contract but are intentionally not rendered by this pre-auth screen.
+  const failed = isFailedStatus(status);
   return (
     <View style={styles.screen}>
       <Text accessibilityRole="header" style={{ textAlign: getTextAlign(isRTL) }}>
@@ -74,11 +69,14 @@ export function EnrollmentScreen({
         onChangeText={onCodeChange}
         style={{ textAlign: getTextAlign(isRTL) }}
       />
-      {message === null ? null : (
-        <Text accessibilityRole="alert" accessibilityLiveRegion="polite">
-          {message}
+      {failed ? (
+        <Text
+          accessibilityRole="alert"
+          accessibilityLiveRegion="polite"
+          style={{ textAlign: getTextAlign(isRTL) }}>
+          {strings.invalid}
         </Text>
-      )}
+      ) : null}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={strings.submit}
@@ -127,16 +125,8 @@ export function RecoveryScreen({
   isRTL,
 }: RecoveryScreenProps): React.JSX.Element {
   const ready = validateInvitationCode(normalizeInvitationCode(code)).valid && verification.trim().length > 0;
-  const message =
-    status === 'expired'
-      ? strings.expired
-      : status === 'reused'
-        ? strings.reused
-        : status === 'locked'
-          ? strings.locked
-          : status === 'error'
-            ? strings.invalid
-            : null;
+  // A recovery failure is indistinguishable from any other failure (PAT-03).
+  const failed = isFailedStatus(status);
   return (
     <View style={styles.screen}>
       <TextInput
@@ -153,11 +143,14 @@ export function RecoveryScreen({
         secureTextEntry
         style={{ textAlign: getTextAlign(isRTL) }}
       />
-      {message === null ? null : (
-        <Text accessibilityRole="alert" accessibilityLiveRegion="polite">
-          {message}
+      {failed ? (
+        <Text
+          accessibilityRole="alert"
+          accessibilityLiveRegion="polite"
+          style={{ textAlign: getTextAlign(isRTL) }}>
+          {strings.invalid}
         </Text>
-      )}
+      ) : null}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={strings.submit}
