@@ -4283,7 +4283,9 @@ Every sentence of the requirement tables, the role matrix, the gate evidence, th
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
-- [ ] SPEC-PRD-05-C02 · Spec PRD-05 clause 2 (evidence note): One market per production deployment, with a market-specific policy pack.
+- [-] SPEC-PRD-05-C02 · Spec PRD-05 clause 2 (evidence note): One market per production deployment, with a market-specific policy pack.
+  - agent: swarm-9
+  - attempts: 1
   - requirements: PRD-05
   - scope: docs/spec/clauses/product/market-production-deployment-market-specific-policy-pack.md
   - details:
@@ -4294,7 +4296,9 @@ Every sentence of the requirement tables, the role matrix, the gate evidence, th
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
-- [ ] SPEC-PRD-06-C01 · Spec PRD-06 clause 1 (evidence note): Clinical users decide and attest to diagnosis, treatment and release.
+- [-] SPEC-PRD-06-C01 · Spec PRD-06 clause 1 (evidence note): Clinical users decide and attest to diagnosis, treatment and release.
+  - agent: swarm-10
+  - attempts: 1
   - requirements: PRD-06
   - scope: docs/spec/clauses/product/clinical-users-decide-attest-diagnosis-treatment-release.md
   - details:
