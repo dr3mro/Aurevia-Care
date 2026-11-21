@@ -609,7 +609,7 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False, loading=frozenset()):
                   items=[cells(iw, (">", "yellow", 1), (t["agent"] or "-", "magenta", 9), (t["id"], "b_cyan", idw), (t["title"], "", None))
                          for t in taken]),
              dict(title="Next Up", total=len(queue), col="blue", border="gray", prio=1,
-                  items=[cells(iw, ("-", "gray", 1), (t["id"], "b_cyan", qw), (t["title"], "", None)) for t in queue[:12]]),
+                  items=[cells(iw, ("-", "gray", 1), (t["id"], "b_cyan", qw), (t["title"], "", None)) for t in queue]),
              dict(title="Merged PRs 24h", total=len(merged_day), col="green", border="gray", prio=3,
                   items=[merged_row(p) for p in merged_day]),
              dict(title="Open PRs", total=len(prs), col="blue", border="gray", prio=0,
