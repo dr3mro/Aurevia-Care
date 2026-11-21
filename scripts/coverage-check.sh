@@ -19,8 +19,10 @@ if grep -q '^apps/patient-mobile/' <<<"$changed"; then
   bash apps/patient-mobile/check.sh || status=1
 fi
 if grep -q '^apps/staff-web/' <<<"$changed"; then
-  printf 'coverage check: staff-web (Vitest thresholds)\n'
-  (cd apps/staff-web && npm run -s test:coverage) || status=1
+  # Typecheck before coverage: Delivery Frontend standards fails on TS errors even
+  # when Vitest is green (the same trap that bit patient-mobile READY-48).
+  printf 'coverage check: staff-web (typecheck + Vitest thresholds)\n'
+  (cd apps/staff-web && npm run -s typecheck && npm run -s test:coverage) || status=1
 fi
 [[ $status -eq 0 ]] && printf 'coverage check: passed\n'
 exit $status

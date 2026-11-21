@@ -1,6 +1,6 @@
 import { jest } from '@jest/globals';
 
-import { TransportError, createTransport } from './transport';
+import { TransportError, asTransportError, createTransport } from './transport';
 import type { FetchImpl, HttpResponse, TokenProvider, TransportConfig } from './transport';
 
 /** Synthetic values only: no real credential, patient data or endpoint. */
@@ -452,6 +452,31 @@ describe('createTransport — failure modes', () => {
       .join('\n');
     expect(logged).not.toContain('SENSITIVE_BODY_TEXT');
     expect(logged).not.toContain(TOKEN);
+  });
+});
+
+describe('TransportError construction seatbelt', () => {
+  it('accepts empty details and still exposes an opaque correlation id', () => {
+    const error = new TransportError('network', {});
+    expect(error.kind).toBe('network');
+    expect(error.correlationId).toBe(UUID);
+  });
+
+  it('asTransportError returns the same instance for a TransportError', () => {
+    const original = new TransportError('forbidden', { correlationId: 'corr-keep' });
+    expect(asTransportError(original)).toBe(original);
+  });
+
+  it('asTransportError wraps an unknown throw as network by default', () => {
+    const wrapped = asTransportError(new Error('boom'));
+    expect(wrapped).toBeInstanceOf(TransportError);
+    expect(wrapped.kind).toBe('network');
+    expect(wrapped.correlationId).toBe(UUID);
+    expect(wrapped.message).not.toContain('boom');
+  });
+
+  it('asTransportError uses the requested fallback kind', () => {
+    expect(asTransportError('x', 'timeout').kind).toBe('timeout');
   });
 });
 
