@@ -25,7 +25,7 @@ export interface FieldError {
 
 /** Diagnostic metadata that is safe to carry alongside a typed failure. */
 export interface TransportErrorDetails {
-  correlationId?: string;
+  correlationId: string;
   code?: string;
   fieldErrors?: FieldError[];
 }
@@ -174,11 +174,12 @@ async function toTransportError(
   const responseCorrelationId =
     suppliedId !== null && SAFE_CORRELATION_ID.test(suppliedId) ? suppliedId : requestCorrelationId;
   const details = await readErrorDetails(response);
-  return new TransportError(kindForStatus(response.status), {
-    correlationId: responseCorrelationId,
-    code: details.code,
-    fieldErrors: details.fieldErrors,
-  });
+  const transportErrorDetails: TransportErrorDetails = { correlationId: responseCorrelationId };
+  if (details.code !== undefined) {
+    transportErrorDetails.code = details.code;
+  }
+  transportErrorDetails.fieldErrors = details.fieldErrors;
+  return new TransportError(kindForStatus(response.status), transportErrorDetails);
 }
 
 /** Fail closed on any origin that is not HTTPS, except development localhost. */
@@ -237,12 +238,15 @@ async function send<T>(
     const url = `${config.baseUrl.replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}`;
     controller = new AbortController();
     timer = setTimeout(() => controller?.abort(), TIMEOUT_MS);
-    const response = await config.fetchImpl(url, {
+    const requestInit: RequestInit = {
       method,
       headers,
-      body: serialized,
       signal: controller.signal,
-    });
+    };
+    if (serialized !== undefined) {
+      requestInit.body = serialized;
+    }
+    const response = await config.fetchImpl(url, requestInit);
     if (!response.ok) {
       throw await toTransportError(response, correlationId);
     }
