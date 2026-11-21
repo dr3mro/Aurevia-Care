@@ -86,12 +86,22 @@ class FacilityListServiceTest {
     @Test
     void invalidCursorsAreRejectedBeforeAnyQuery() {
         for (String cursor : List.of("plain", "alpha:beta:gamma", ":id", "ALPHA:",
-                "lower:aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "ALPHA:not-a-uuid")) {
+                "lower:aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "ALPHA:not-a-uuid",
+                "رمز:" + ID_A, "A".repeat(33) + ":" + ID_A)) {
             ApiException exception = failure(cursor, null);
             assertEquals(422, exception.status());
             assertEquals("INVALID_CURSOR", exception.code());
         }
         verify(repository, never()).query(any(), any(), anyInt());
+    }
+
+    @Test
+    void acceptsMaxLengthCodeCursor() {
+        String code = "A".repeat(32);
+        when(repository.query(code, ID_A, 51)).thenReturn(List.of());
+        FacilityPage page = service.list(code + ":" + ID_A, null);
+        assertTrue(page.items().isEmpty());
+        verify(repository).query(code, ID_A, 51);
     }
 
     @Test

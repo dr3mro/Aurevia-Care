@@ -64,6 +64,19 @@ class FacilityServiceTest {
     void rejectsLowercaseCode() {
         assertEquals(422, assertThrows(ApiException.class,
                 () -> service.create("main", "Name")).status());
+        assertEquals("INVALID_CODE", assertThrows(ApiException.class,
+                () -> service.create("main", "Name")).code());
+    }
+
+    @Test
+    void acceptsMaxLengthCodeAndRejectsOverlongAndArabicCodes() {
+        authorize();
+        when(repository.insert(any())).thenReturn(1);
+        assertEquals("A".repeat(32), service.create("A".repeat(32), "Name").code());
+        assertEquals(422, assertThrows(ApiException.class,
+                () -> service.create("A".repeat(33), "Name")).status());
+        assertEquals(422, assertThrows(ApiException.class,
+                () -> service.create("رمز", "Name")).status());
     }
 
     @Test

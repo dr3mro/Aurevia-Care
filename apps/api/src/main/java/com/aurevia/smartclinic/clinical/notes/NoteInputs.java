@@ -7,6 +7,7 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 
 import com.aurevia.smartclinic.api.ApiException;
+import com.aurevia.smartclinic.api.contract.FacilityCode;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -23,7 +24,6 @@ public final class NoteInputs {
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final Pattern UUID_PATTERN = Pattern.compile(
             "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
-    private static final Pattern CODE = Pattern.compile("[A-Z0-9_-]{2,32}");
     private static final int MAX_RECIPIENTS = 2000;
     private static final int MAX_REASON = 200;
 
@@ -88,11 +88,12 @@ public final class NoteInputs {
      * @throws ApiException when the code is malformed
      */
     public static String code(String value, String field) {
-        if (value == null || !CODE.matcher(value).matches()) {
+        try {
+            return FacilityCode.facilityCode(value).value();
+        } catch (IllegalArgumentException invalid) {
             throw new ApiException(422, "INVALID_" + field.toUpperCase(Locale.ROOT),
-                    field + " must be 2-32 uppercase letters, digits, - or _");
+                    FacilityCode.INVALID_MESSAGE);
         }
-        return value;
     }
 
     /**

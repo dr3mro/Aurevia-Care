@@ -156,9 +156,16 @@ class ClinicalNoteServiceTest {
         assertEquals("Title", NoteInputs.text("  Title  ", "title", 200));
         assertEquals(422, assertThrows(ApiException.class,
                 () -> NoteInputs.code("soap", "templateCode")).status());
+        assertEquals("INVALID_TEMPLATECODE", assertThrows(ApiException.class,
+                () -> NoteInputs.code("soap", "templateCode")).code());
         assertEquals(422, assertThrows(ApiException.class,
                 () -> NoteInputs.code(null, "templateCode")).status());
         assertEquals("SOAP", NoteInputs.code("SOAP", "templateCode"));
+        assertEquals("A".repeat(32), NoteInputs.code("A".repeat(32), "templateCode"));
+        assertEquals(422, assertThrows(ApiException.class,
+                () -> NoteInputs.code("A".repeat(33), "templateCode")).status());
+        assertEquals(422, assertThrows(ApiException.class,
+                () -> NoteInputs.code("رمز", "templateCode")).status());
         assertEquals("en", NoteInputs.language("en"));
         assertEquals("ar", NoteInputs.language("ar"));
         assertEquals(422, assertThrows(ApiException.class,
