@@ -6,10 +6,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 import org.springframework.stereotype.Service;
 
+import com.aurevia.smartclinic.api.contract.Sha256Hex;
 import com.aurevia.smartclinic.tenant.importing.DryRunReport.Counts;
 import com.aurevia.smartclinic.tenant.importing.DryRunReport.MissingAttachment;
 
@@ -34,7 +34,6 @@ public class OnboardingImportService {
     private static final List<String> REQUIRED_TARGETS =
             List.of("mrn", "mrnIssuer", "givenName", "familyName", "birthDate");
     private static final Set<String> ATTACHMENT_TYPES = Set.of("pdf", "jpeg", "png");
-    private static final Pattern SHA256 = Pattern.compile("[0-9a-f]{64}");
 
     private final ImportDigests digests;
 
@@ -240,7 +239,14 @@ public class OnboardingImportService {
     }
 
     private static boolean isSha256(String value) {
-        return value != null && SHA256.matcher(value).matches();
+        // The shared rule accepts either case; only the verdict is used here because
+        // OPS-08 preserves the caller's original checksum text as provenance evidence.
+        try {
+            Sha256Hex.sha256Hex(value);
+            return true;
+        } catch (IllegalArgumentException exception) {
+            return false;
+        }
     }
 
     private String identityKey(Map<String, String> fields, List<String> identityTargets,
