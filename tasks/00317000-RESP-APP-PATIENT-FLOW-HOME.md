@@ -1,4 +1,6 @@
-- [ ] RESP-APP-PATIENT-FLOW-HOME · Patient app: tablet, landscape and large-text layout for `PatientFlowHome` (flows)
+- [-] RESP-APP-PATIENT-FLOW-HOME · Patient app: tablet, landscape and large-text layout for `PatientFlowHome` (flows)
+  - agent: swarm-9
+  - attempts: 1
   - requirements: PAT-01, PAT-02, UX-01
   - scope: apps/patient-mobile/src/features/flows/PatientFlowHome.tsx, apps/patient-mobile/src/features/flows/PatientFlowHome.tablet.test.tsx
   - depends: RESP-APP-LAYOUT-HOOK, RESP-APP-CONFIG
