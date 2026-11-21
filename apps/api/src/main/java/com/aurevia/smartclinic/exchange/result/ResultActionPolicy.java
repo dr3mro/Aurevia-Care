@@ -28,13 +28,16 @@ public class ResultActionPolicy {
     public static final String REVIEW_ACK = "XCH04_REVIEW_ACK";
     /** Review the reconciliation queue. */
     public static final String RECONCILIATION_READ = "XCH04_RECONCILIATION_READ";
+    /** Resolve a reconciliation entry by matching, rejecting or reassigning it. */
+    public static final String RECONCILIATION_RESOLVE = "XCH04_RECONCILIATION_RESOLVE";
 
     private static final Map<String, Set<String>> ALLOWED = Map.of(
             ORDER_REGISTER, Set.of("tenant_admin"),
             RESULT_IMPORT, Set.of("lab_verifier"),
             RESULT_READ, Set.of("lab_verifier", "clinician"),
             REVIEW_ACK, Set.of("lab_verifier", "clinician"),
-            RECONCILIATION_READ, Set.of("lab_verifier", "tenant_admin", "privacy_auditor"));
+            RECONCILIATION_READ, Set.of("lab_verifier", "tenant_admin", "privacy_auditor"),
+            RECONCILIATION_RESOLVE, Set.of("lab_verifier", "tenant_admin"));
 
     /**
      * Decide whether an active role may perform an action.

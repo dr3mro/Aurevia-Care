@@ -94,6 +94,7 @@ class JdbcPatientAccessStoreIntegrationTest {
      * {@code CREATE DATABASE ... OWNER smartclinic_migrate} statement with no role to
      * own it.</p>
      */
+
     @BeforeAll
     static void prepare() throws Exception {
         try (Connection root = DriverManager.getConnection(
