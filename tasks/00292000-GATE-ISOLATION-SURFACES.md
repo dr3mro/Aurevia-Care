@@ -1,5 +1,5 @@
-- [-] GATE-ISOLATION-SURFACES · G0 isolation across API, search, files, workers and exports: two tenants with identical local IDs (test and gap note)
-  - agent: swarm-5
+- [x] GATE-ISOLATION-SURFACES · G0 isolation across API, search, files, workers and exports: two tenants with identical local IDs (test and gap note)
+  - pr: #377
   - attempts: 1
   - requirements: ARC-02, IAM-01
   - scope: apps/api/src/test/java/com/aurevia/smartclinic/tenancy/clauses/IsolationAcrossSurfacesTest.java, docs/gates/g0-isolation-surfaces.md
