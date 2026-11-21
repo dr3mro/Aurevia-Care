@@ -3118,7 +3118,9 @@ The open remainder of `OPS-WORKFLOW-AUDIT` and `OPS-WORKER-QUALITY`. Script chan
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
-- [ ] WQUALITY-05 · Swarm quality: validate the runtime OpenCode profile separately from the generated config (check and tests)
+- [-] WQUALITY-05 · Swarm quality: validate the runtime OpenCode profile separately from the generated config (check and tests)
+  - agent: swarm-4
+  - attempts: 1
   - requirements: OPS-06
   - scope: scripts/gen-opencode.py, scripts/tests/test_opencode_profile.py
   - details:
@@ -3167,7 +3169,9 @@ On 2026-11-21 the scripts measured 70% overall: `swarm.py` 88%, `monitor.py` and
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
-- [ ] COVPY-CHECK-MIGRATIONS · Script tests: reach 100% line and branch coverage of `scripts/check-migrations.py`
+- [-] COVPY-CHECK-MIGRATIONS · Script tests: reach 100% line and branch coverage of `scripts/check-migrations.py`
+  - agent: swarm-5
+  - attempts: 1
   - requirements: OPS-06
   - scope: scripts/tests/test_check_migrations_coverage.py
   - details:
@@ -3178,7 +3182,9 @@ On 2026-11-21 the scripts measured 70% overall: `swarm.py` 88%, `monitor.py` and
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
-- [ ] COVPY-CHECK-NAMES · Script tests: reach 100% line and branch coverage of `scripts/check-names.py`
+- [-] COVPY-CHECK-NAMES · Script tests: reach 100% line and branch coverage of `scripts/check-names.py`
+  - agent: swarm-6
+  - attempts: 1
   - requirements: OPS-06
   - scope: scripts/tests/test_check_names_coverage.py
   - details:
@@ -3201,7 +3207,9 @@ On 2026-11-21 the scripts measured 70% overall: `swarm.py` 88%, `monitor.py` and
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
-- [ ] COVPY-CHECK-SECRETS · Script tests: reach 100% line and branch coverage of `scripts/check-secrets.py`
+- [-] COVPY-CHECK-SECRETS · Script tests: reach 100% line and branch coverage of `scripts/check-secrets.py`
+  - agent: swarm-7
+  - attempts: 1
   - requirements: OPS-06
   - scope: scripts/tests/test_check_secrets_coverage.py
   - details:
@@ -3212,7 +3220,9 @@ On 2026-11-21 the scripts measured 70% overall: `swarm.py` 88%, `monitor.py` and
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
-- [ ] COVPY-CHECK-WIRING · Script tests: reach 100% line and branch coverage of `scripts/check-wiring.py`
+- [-] COVPY-CHECK-WIRING · Script tests: reach 100% line and branch coverage of `scripts/check-wiring.py`
+  - agent: swarm-8
+  - attempts: 1
   - requirements: OPS-06
   - scope: scripts/tests/test_check_wiring_coverage.py
   - details:
@@ -3235,7 +3245,9 @@ On 2026-11-21 the scripts measured 70% overall: `swarm.py` 88%, `monitor.py` and
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
-- [ ] COVPY-PROJECT-NAME · Script tests: reach 100% line and branch coverage of `scripts/project-name.py`
+- [-] COVPY-PROJECT-NAME · Script tests: reach 100% line and branch coverage of `scripts/project-name.py`
+  - agent: swarm-9
+  - attempts: 1
   - requirements: OPS-06
   - scope: scripts/tests/test_project_name_coverage.py
   - details:
@@ -3258,7 +3270,9 @@ On 2026-11-21 the scripts measured 70% overall: `swarm.py` 88%, `monitor.py` and
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
-- [ ] COVPY-MONITOR-FETCH · Script tests: monitor tool coverage, fetch part (to 100% together with the other three parts)
+- [-] COVPY-MONITOR-FETCH · Script tests: monitor tool coverage, fetch part (to 100% together with the other three parts)
+  - agent: swarm-10
+  - attempts: 1
   - requirements: OPS-06
   - scope: scripts/tests/test_monitor_fetch_coverage.py
   - details:
