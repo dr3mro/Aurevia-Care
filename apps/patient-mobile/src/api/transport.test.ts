@@ -456,10 +456,16 @@ describe('createTransport — failure modes', () => {
 });
 
 describe('TransportError construction seatbelt', () => {
-  it('accepts empty details and still exposes an opaque correlation id', () => {
+  it('accepts empty details and leaves the correlation id unset', () => {
     const error = new TransportError('network', {});
     expect(error.kind).toBe('network');
-    expect(error.correlationId).toBe(UUID);
+    expect(error.correlationId).toBeUndefined();
+  });
+
+  it('accepts omitted details', () => {
+    const error = new TransportError('server');
+    expect(error.kind).toBe('server');
+    expect(error.correlationId).toBeUndefined();
   });
 
   it('asTransportError returns the same instance for a TransportError', () => {
@@ -471,7 +477,7 @@ describe('TransportError construction seatbelt', () => {
     const wrapped = asTransportError(new Error('boom'));
     expect(wrapped).toBeInstanceOf(TransportError);
     expect(wrapped.kind).toBe('network');
-    expect(wrapped.correlationId).toBe(UUID);
+    expect(wrapped.correlationId).toBeUndefined();
     expect(wrapped.message).not.toContain('boom');
   });
 

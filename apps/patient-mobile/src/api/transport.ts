@@ -49,9 +49,8 @@ export function newCorrelationId(): string {
  * through it.
  *
  * Callers that already have a request correlation id must pass it. When details
- * omit ``correlationId`` (tests, wrapping an unexpected throw), a fresh opaque
- * id is generated so TypeScript and the UI never see an empty details object as
- * a hard failure.
+ * omit ``correlationId`` (tests, wrapping an unexpected throw), the error leaves
+ * it undefined rather than inventing a server request reference.
  */
 export class TransportError extends Error {
   readonly kind: TransportErrorKind;
@@ -63,7 +62,7 @@ export class TransportError extends Error {
     super(`Request failed: ${kind}`);
     this.name = 'TransportError';
     this.kind = kind;
-    this.correlationId = details.correlationId ?? newCorrelationId();
+    this.correlationId = details.correlationId;
     this.code = details.code;
     this.fieldErrors = details.fieldErrors ?? [];
   }
