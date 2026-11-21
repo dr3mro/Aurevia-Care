@@ -45,7 +45,8 @@ export function ChartPrintPreview({ locale, model }: ChartPrintPreviewProps) {
         </p>
         {model.provenance !== undefined ? (
           <p>
-            <b>{chartPrintText(locale, 'provenance')}:</b> <span>{model.provenance}</span>
+            <b>{chartPrintText(locale, 'provenance')}:</b>{' '}
+            <MixedScriptText text={model.provenance} lang={locale} />
           </p>
         ) : null}
         {model.printable ? null : (
@@ -78,7 +79,10 @@ export function ChartPrintPreview({ locale, model }: ChartPrintPreviewProps) {
       <ul aria-label={chartPrintText(locale, 'included')}>
         {model.included.map((item) => (
           <li key={item.section}>
-            {chartPrintText(locale, chartSectionMessageKey[item.section])}: {item.count}
+            <MixedScriptText
+              text={`${chartPrintText(locale, chartSectionMessageKey[item.section])}: ${item.count}`}
+              lang={locale}
+            />
           </li>
         ))}
       </ul>

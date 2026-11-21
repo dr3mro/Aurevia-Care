@@ -11,6 +11,8 @@ export const DEFAULT_TO = '2026-12-31';
 
 /** Props for the scope and section chooser used before a chart summary prints. */
 export interface ChartSectionPickerProps {
+  /** Instance-unique prefix so two previews on one page never share a control id. */
+  controlId: string;
   scope: ChartPrintScope;
   sections: readonly ChartPrintSection[];
   visits: readonly ChartPrintVisit[];
@@ -25,6 +27,7 @@ export interface ChartSectionPickerProps {
  * labels come from the bilingual feature dictionary.
  */
 export function ChartSectionPicker({
+  controlId,
   scope,
   sections,
   visits,
@@ -40,7 +43,7 @@ export function ChartSectionPicker({
         <label>
           <input
             type="radio"
-            name="chart-print-scope"
+            name={`${controlId}-scope`}
             value="visit"
             checked={scope.kind === 'visit'}
             onChange={() =>
@@ -52,7 +55,7 @@ export function ChartSectionPicker({
         <label>
           <input
             type="radio"
-            name="chart-print-scope"
+            name={`${controlId}-scope`}
             value="range"
             checked={scope.kind === 'range'}
             onChange={() => onScopeChange({ kind: 'range', from: DEFAULT_FROM, to: DEFAULT_TO })}
@@ -65,9 +68,9 @@ export function ChartSectionPicker({
           <p>{chartPrintText(locale, 'noVisit')}</p>
         ) : (
           <div style={{ display: 'grid', gap: tokens.spacing.sm }}>
-            <label htmlFor="chart-print-visit">{chartPrintText(locale, 'visitId')}</label>
+            <label htmlFor={`${controlId}-visit`}>{chartPrintText(locale, 'visitId')}</label>
             <select
-              id="chart-print-visit"
+              id={`${controlId}-visit`}
               value={scope.visitId}
               onChange={(event) =>
                 onScopeChange({ kind: 'visit', visitId: event.target.value })
@@ -83,18 +86,18 @@ export function ChartSectionPicker({
         )
       ) : (
         <div style={{ display: 'grid', gap: tokens.spacing.sm }}>
-          <label htmlFor="chart-print-from">{chartPrintText(locale, 'from')}</label>
+          <label htmlFor={`${controlId}-from`}>{chartPrintText(locale, 'from')}</label>
           <input
-            id="chart-print-from"
+            id={`${controlId}-from`}
             type="date"
             value={scope.from}
             onChange={(event) =>
               onScopeChange({ kind: 'range', from: event.target.value, to: scope.to })
             }
           />
-          <label htmlFor="chart-print-to">{chartPrintText(locale, 'to')}</label>
+          <label htmlFor={`${controlId}-to`}>{chartPrintText(locale, 'to')}</label>
           <input
-            id="chart-print-to"
+            id={`${controlId}-to`}
             type="date"
             value={scope.to}
             onChange={(event) =>

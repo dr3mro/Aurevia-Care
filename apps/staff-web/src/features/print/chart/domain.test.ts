@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildChartPrintPreview,
   buildSignedReportPreview,
+  canPrintPreview,
   chartPrintSections,
   noteInScope,
 } from './domain';
@@ -151,6 +152,22 @@ describe('chart summary print preview', () => {
     });
     expect(preview.included).toEqual([{ section: 'results', count: 1 }]);
     expect(preview.leftOut).toEqual([]);
+  });
+});
+
+describe('print permission on a preview', () => {
+  it('allows a chart summary and a signed report, but never a draft report', () => {
+    const chart = buildChartPrintPreview({
+      patientName: syntheticChartPatient,
+      scope: visitScope,
+      sections: chartPrintSections,
+      counts: syntheticCounts,
+      notes: syntheticNotes,
+      results: syntheticResults,
+    });
+    expect(canPrintPreview(chart)).toBe(true);
+    expect(canPrintPreview(buildSignedReportPreview(syntheticSignedReport))).toBe(true);
+    expect(canPrintPreview(buildSignedReportPreview(syntheticDraftReport))).toBe(false);
   });
 });
 

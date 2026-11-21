@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { Button } from '../../../components/Button';
 import type { PersonName } from '../../../i18n/format';
 import type { Locale } from '../../../i18n/messages';
@@ -10,6 +10,7 @@ import { ChartSectionPicker, DEFAULT_FROM, DEFAULT_TO } from './ChartSectionPick
 import {
   buildChartPrintPreview,
   buildSignedReportPreview,
+  canPrintPreview,
   chartPrintSections,
 } from './domain';
 import type {
@@ -76,8 +77,10 @@ const printReasons: readonly PrintReason[] = [
  */
 export function PrintChartButton({ locale, target, onPrint }: PrintChartButtonProps) {
   const { tokens } = useTheme();
-  const panelId = useId();
+  const controlId = useId();
+  const panelId = `${controlId}-panel`;
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const errorRef = useRef<HTMLParagraphElement>(null);
   const [open, setOpen] = useState(false);
   const [scope, setScope] = useState<ChartPrintScope>(() =>
     target.kind === 'chart'
@@ -87,6 +90,12 @@ export function PrintChartButton({ locale, target, onPrint }: PrintChartButtonPr
   const [sections, setSections] = useState<readonly ChartPrintSection[]>(chartPrintSections);
   const [reason, setReason] = useState<PrintReason | null>(null);
   const [showReasonError, setShowReasonError] = useState(false);
+
+  useEffect(() => {
+    if (showReasonError) {
+      errorRef.current!.focus();
+    }
+  }, [showReasonError]);
 
   const preview: ChartPrintPreviewModel =
     target.kind === 'chart'
@@ -150,6 +159,7 @@ export function PrintChartButton({ locale, target, onPrint }: PrintChartButtonPr
         >
           {target.kind === 'chart' ? (
             <ChartSectionPicker
+              controlId={controlId}
               scope={scope}
               sections={sections}
               visits={target.visits}
@@ -165,7 +175,7 @@ export function PrintChartButton({ locale, target, onPrint }: PrintChartButtonPr
               <label key={option}>
                 <input
                   type="radio"
-                  name="chart-print-reason"
+                  name={`${controlId}-reason`}
                   value={option}
                   checked={reason === option}
                   onChange={() => {
@@ -178,12 +188,14 @@ export function PrintChartButton({ locale, target, onPrint }: PrintChartButtonPr
             ))}
           </fieldset>
           {showReasonError ? (
-            <p role="alert" tabIndex={-1} style={{ color: tokens.foreground }}>
+            <p ref={errorRef} role="alert" tabIndex={-1} style={{ color: tokens.foreground }}>
               {printText(locale, 'reasonRequired')}
             </p>
           ) : null}
           <div style={{ display: 'flex', gap: tokens.spacing.sm }}>
-            <Button onClick={print}>{chartPrintText(locale, 'print')}</Button>
+            {canPrintPreview(preview) ? (
+              <Button onClick={print}>{chartPrintText(locale, 'print')}</Button>
+            ) : null}
             <Button variant="secondary" onClick={closePanel}>
               {chartPrintText(locale, 'close')}
             </Button>

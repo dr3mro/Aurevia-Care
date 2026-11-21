@@ -26,6 +26,7 @@ function renderPicker(
     <ThemeProvider>
       <I18nProvider initialLocale={locale}>
         <ChartSectionPicker
+          controlId="test-picker"
           scope={scope}
           sections={sections}
           visits={visits}

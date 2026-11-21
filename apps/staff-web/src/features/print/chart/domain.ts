@@ -171,6 +171,11 @@ export function buildChartPrintPreview(input: ChartPrintInput): ChartPrintPrevie
   };
 }
 
+/** Whether the preview may be handed to the print command at all. */
+export function canPrintPreview(preview: ChartPrintPreview): boolean {
+  return preview.kind === 'chart' || preview.printable;
+}
+
 /** Build a report preview; an unsigned draft is never printable. */
 export function buildSignedReportPreview(report: SignedReport): SignedReportPreviewModel {
   if (report.state === 'signed') {

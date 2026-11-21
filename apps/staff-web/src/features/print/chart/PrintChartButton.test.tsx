@@ -99,6 +99,7 @@ describe('PrintChartButton', () => {
     fireEvent.click(screen.getByRole('button', { name: chartPrintText('en', 'print') }));
     expect(onPrint).not.toHaveBeenCalled();
     expect(screen.getByRole('alert').textContent).toBe(printText('en', 'reasonRequired'));
+    expect(document.activeElement).toBe(screen.getByRole('alert'));
     fireEvent.click(screen.getByRole('radio', { name: printText('en', 'reasonGiveToPatient') }));
     fireEvent.click(screen.getByRole('button', { name: chartPrintText('en', 'print') }));
     expect(onPrint).toHaveBeenCalledTimes(1);
@@ -127,19 +128,48 @@ describe('PrintChartButton', () => {
     expect(model.printable).toBe(true);
   });
 
-  it('shows an unsigned draft report as left out instead of printing it', () => {
+  it('shows an unsigned draft report as left out and offers no Print action', () => {
     const target: PrintChartTarget = { kind: 'report', report: syntheticDraftReport };
-    renderButton(target);
+    const { onPrint } = renderButton(target);
     fireEvent.click(trigger('en', target));
     expect(screen.getByText(chartPrintText('en', 'notPrintable'))).toBeTruthy();
     const leftOut = screen.getAllByRole('list', { name: chartPrintText('en', 'leftOut') })[0]!;
     expect(leftOut.textContent).toContain(chartPrintText('en', 'reasonUnsigned'));
+    fireEvent.click(screen.getByRole('radio', { name: printText('en', 'reasonReferral') }));
+    expect(screen.queryByRole('button', { name: chartPrintText('en', 'print') })).toBeNull();
+    expect(onPrint).not.toHaveBeenCalled();
   });
 
   it('names the missing visit state when a chart has no visits', () => {
     renderButton(chartTarget, 'en', []);
     fireEvent.click(trigger('en', chartTarget));
     expect(screen.getByText(chartPrintText('en', 'noVisit'))).toBeTruthy();
+  });
+
+  it('keeps two instances on one page independent of each other', () => {
+    const onPrint = vi.fn<(model: PreviewModel, reason: PrintReason) => void>();
+    render(
+      <ThemeProvider>
+        <I18nProvider initialLocale="en">
+          <PrintChartButton locale="en" target={chartTarget} onPrint={onPrint} />
+          <PrintChartButton locale="en" target={chartTarget} onPrint={onPrint} />
+        </I18nProvider>
+      </ThemeProvider>,
+    );
+    const buttons = screen.getAllByRole('button', { name: chartPrintText('en', 'chartPrint') });
+    expect(buttons).toHaveLength(2);
+    fireEvent.click(buttons[0]!);
+    fireEvent.click(buttons[1]!);
+    const selectors = screen.getAllByLabelText(chartPrintText('en', 'visitId')) as HTMLSelectElement[];
+    expect(selectors).toHaveLength(2);
+    expect(selectors[0]!.id).not.toBe(selectors[1]!.id);
+    const firstReason = screen.getAllByRole('radio', { name: printText('en', 'reasonGiveToPatient') })[0]!;
+    const secondReason = screen.getAllByRole('radio', { name: printText('en', 'reasonReferral') })[1]!;
+    fireEvent.click(firstReason);
+    fireEvent.click(secondReason);
+    expect((firstReason as HTMLInputElement).checked).toBe(true);
+    expect((secondReason as HTMLInputElement).checked).toBe(true);
+    expect((screen.getAllByRole('radio', { name: printText('en', 'reasonGiveToPatient') })[1] as HTMLInputElement).checked).toBe(false);
   });
 
   it('renders the button, the omissions and the reason in Arabic', () => {
