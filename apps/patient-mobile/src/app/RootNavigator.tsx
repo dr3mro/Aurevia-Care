@@ -131,6 +131,7 @@ function MessagesTab({ locale, ...pageProps }: PatientPageProps) {
       testID="stack-messages"
       title={appText(locale, 'tabMessages')}
       backLabel={appText(locale, 'back')}
+      locale={locale}
       rootKey="conversations"
       routes={routes}
     />
@@ -218,6 +219,7 @@ function AccountTab({ locale }: PatientPageProps) {
       testID="stack-account"
       title={appText(locale, 'tabAccount')}
       backLabel={appText(locale, 'back')}
+      locale={locale}
       rootKey="menu"
       routes={routes}
     />
