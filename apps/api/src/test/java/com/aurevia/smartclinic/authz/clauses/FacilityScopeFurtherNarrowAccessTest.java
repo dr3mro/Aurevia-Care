@@ -1,6 +1,7 @@
 package com.aurevia.smartclinic.authz.clauses;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -10,7 +11,6 @@ import java.sql.Statement;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -33,17 +33,14 @@ import org.springframework.web.client.RestClient;
  * the rule refuses what it must refuse: the same user, whose role still permits
  * {@code WORKLIST_READ}, cannot read a different facility of the same organization.</p>
  *
- * <p>This class is disabled because the clause is not built. A facility is recorded on
- * an invitation and on an emergency grant, but {@code accept_staff_invitation} does not
- * carry the facility onto the membership and no authorization decision consults it
- * ({@code CheckInService.authorize}, {@code ActionPolicy}, {@code WorklistPolicy} and
- * {@code EmergencyAccessService.active} all check membership and role only). When the
- * facility scope is implemented, the negative test currently answers HTTP 200 instead
- * of HTTP 403; enable the class to prove the narrowing.</p>
+ * <p>Facility scope is persisted on the membership by the invitation acceptance
+ * migration and consulted by the worklist authorization decision. A member without an
+ * assigned facility keeps the previous organization-wide behaviour: facility scope may
+ * further narrow access, it does not create a new prerequisite for legacy memberships.
+ * The negative test proves that a member assigned to one facility is refused a sibling
+ * facility of the same organization.</p>
  */
 @Tag("integration")
-@Disabled("GAP: facility scope is recorded on invitations and emergency grants but is not "
-        + "persisted on membership or consulted by any authorization decision")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/smartclinic_facility_scope_it")
 @ActiveProfiles("synthetic-auth")
@@ -55,6 +52,7 @@ class FacilityScopeFurtherNarrowAccessTest {
             "SMARTCLINIC_PG_ADMIN", System.getProperty("user.name"));
 
     private static String mainFacilityId;
+    private static String northFacilityId;
 
     private RestClient rest;
 
@@ -95,6 +93,7 @@ class FacilityScopeFurtherNarrowAccessTest {
             statement.execute("INSERT INTO public.facility (organization_id, code, name) VALUES "
                     + "('" + ORG_A + "', 'MAIN', 'Main'), ('" + ORG_A + "', 'NORTH', 'North')");
             mainFacilityId = scalar(statement, "SELECT id::text FROM public.facility WHERE code = 'MAIN'");
+            northFacilityId = scalar(statement, "SELECT id::text FROM public.facility WHERE code = 'NORTH'");
         }
     }
 
@@ -117,9 +116,53 @@ class FacilityScopeFurtherNarrowAccessTest {
         assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode(), response.getBody());
     }
 
+    @Test
+    void facilityScopeDeniesIntakeToAnotherFacilityOfTheSameOrganization() {
+        createFacilityScopedReception("scope-reception-intake", mainFacilityId);
+        String body = "{\"facilityCode\":\"NORTH\",\"patientId\":"
+                + "\"55555555-5555-5555-5555-555555555555\",\"reason\":\"walk-in\"}";
+        ResponseEntity<String> response = request(HttpMethod.POST, "/api/v1/clinic/worklist/intake",
+                body, "scope-reception-intake");
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode(), response.getBody());
+    }
+
+    @Test
+    void tenantAdminKeepsOrganizationWideAccessDespiteAnAssignedFacility() {
+        createFacilityScopedStaff("scope-admin", northFacilityId, "\"tenant_admin\"");
+        ResponseEntity<String> response = worklist("scope-admin", "MAIN");
+        assertEquals(HttpStatus.OK, response.getStatusCode(), response.getBody());
+    }
+
+    @Test
+    void acceptancePersistsTheInvitationFacilityOnTheMembership() throws Exception {
+        createFacilityScopedReception("scope-reception-persist", mainFacilityId);
+        try (Connection connection = DriverManager.getConnection(URL, "smartclinic_migrate", "");
+             Statement statement = connection.createStatement()) {
+            statement.execute("SET app.current_org = '" + ORG_A + "'");
+            try (ResultSet result = statement.executeQuery("""
+                     SELECT f.code
+                       FROM public.membership_facility mf
+                       JOIN public.membership m
+                         ON m.organization_id = mf.organization_id AND m.id = mf.membership_id
+                       JOIN public.user_identity u
+                         ON u.organization_id = m.organization_id AND u.id = m.user_id
+                       JOIN public.facility f
+                         ON f.organization_id = mf.organization_id AND f.id = mf.facility_id
+                      WHERE u.subject = 'scope-reception-persist'
+                     """)) {
+                assertTrue(result.next(), "acceptance must persist the invitation facility");
+                assertEquals("MAIN", result.getString(1));
+            }
+        }
+    }
+
     private void createFacilityScopedReception(String subject, String facilityId) {
+        createFacilityScopedStaff(subject, facilityId, "\"reception\"");
+    }
+
+    private void createFacilityScopedStaff(String subject, String facilityId, String roles) {
         String invitation = "{\"subject\":\"" + subject + "\",\"displayName\":\"" + subject
-                + "\",\"facilityId\":\"" + facilityId + "\",\"roles\":[\"reception\"],"
+                + "\",\"facilityId\":\"" + facilityId + "\",\"roles\":[" + roles + "],"
                 + "\"ttlSeconds\":3600}";
         ResponseEntity<String> created = request(HttpMethod.POST, "/api/v1/staff-invitations",
                 invitation, "admin-a");
