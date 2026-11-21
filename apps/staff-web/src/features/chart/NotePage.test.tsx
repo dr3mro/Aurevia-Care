@@ -291,6 +291,42 @@ describe('NotePage clinical commands', () => {
     expect(within(dialog).getByRole('button', { name: chartText('en', 'sign') })).toBeTruthy();
   });
 
+  it('keeps the confirmation actions keyboard reachable', async () => {
+    const dialog = await openSignDialog();
+    const confirm = within(dialog).getByRole('button', { name: chartText('en', 'sign') });
+    expect(confirm.tagName).toBe('BUTTON');
+    confirm.focus();
+    expect(document.activeElement).toBe(confirm);
+    // No document-level Tab trap may steal focus back to Cancel.
+    fireEvent.keyDown(document, { key: 'Tab' });
+    expect(document.activeElement).toBe(confirm);
+    fireEvent.click(confirm);
+    await waitFor(() => expect(screen.getByTestId('note-status').textContent).toContain(chartText('en', 'signedNotice')));
+  });
+
+  it('warns about unsaved edits and refuses to sign them silently', async () => {
+    await loadedEditor();
+    fireEvent.change(screen.getByRole('textbox', { name: chartText('en', 'subjective') }), {
+      target: { value: 'unsaved text' },
+    });
+    expect(screen.getByTestId('unsaved-changes').textContent).toContain(chartText('en', 'unsavedChanges'));
+    fireEvent.click(screen.getByRole('checkbox', { name: chartText('en', 'attestation') }));
+    fireEvent.click(screen.getByRole('button', { name: chartText('en', 'sign') }));
+    expect(screen.queryByRole('dialog', { name: chartText('en', 'signConfirmTitle') })).toBeNull();
+    expect(screen.getByTestId('note-status').textContent).toContain(chartText('en', 'saveBeforeSign'));
+    expect(sendMock.mock.calls.some(([request]) => (request as RequestDescriptor).url.endsWith('/sign'))).toBe(false);
+  });
+
+  it('closes the sign confirmation and exposes conflict recovery after a stale sign', async () => {
+    await openSignDialog();
+    sendMock.mockRejectedValueOnce(transportFailure('conflict'));
+    const dialog = screen.getByRole('dialog', { name: chartText('en', 'signConfirmTitle') });
+    fireEvent.click(within(dialog).getByRole('button', { name: chartText('en', 'sign') }));
+    expect(await screen.findByRole('heading', { name: stateViewText('en', 'conflict') })).toBeTruthy();
+    expect(screen.queryByRole('dialog', { name: chartText('en', 'signConfirmTitle') })).toBeNull();
+    expect(screen.getByRole('button', { name: stateViewText('en', 'copyMyChanges') })).toBeTruthy();
+  });
+
   it('signs the draft and shows the attestation returned by the API', async () => {
     resolveByRequest(noteView(), revision({ state: 'signed', attestation: 'signed by dr-1' }));
     render(element(<NotePage />));
@@ -379,7 +415,7 @@ describe('NotePage clinical commands', () => {
     expect(post.body).toEqual({ reason: 'wrong patient', affectedRecipients: '["reception-1"]' });
   });
 
-  it('shows an error when the entered-in-error command fails', async () => {
+  it('shows an error when the entered-in-error command fails and closes its confirmation', async () => {
     await loadedEditor(noteView(revision({ state: 'signed' })));
     fireEvent.click(screen.getByRole('button', { name: chartText('en', 'markEnteredInError') }));
     const dialog = await screen.findByRole('dialog', { name: chartText('en', 'markEnteredInError') });
@@ -389,6 +425,7 @@ describe('NotePage clinical commands', () => {
     sendMock.mockRejectedValueOnce(transportFailure('server'));
     fireEvent.click(within(dialog).getByRole('button', { name: chartText('en', 'markEnteredInError') }));
     expect(await screen.findByRole('heading', { name: stateViewText('en', 'error') })).toBeTruthy();
+    expect(screen.queryByRole('dialog', { name: chartText('en', 'markEnteredInError') })).toBeNull();
   });
 });
 

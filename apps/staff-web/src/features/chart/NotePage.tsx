@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import { useActiveOrganization } from '../../api/activeOrganization';
 import { TransportError } from '../../api/transport';
 import type { TransportErrorKind } from '../../api/transport';
@@ -6,7 +7,6 @@ import { useApi } from '../../api/useApi';
 import { useRoute } from '../../app/router';
 import { Button } from '../../components/Button';
 import { ConflictState, LoadingState, StateView } from '../../components/StateViews';
-import { Dialog } from '../../components/Dialog';
 import { MixedScriptText } from '../../components/MixedScriptText';
 import { displayLocalName } from '../../i18n/format';
 import { useI18n } from '../../i18n/I18nProvider';
@@ -45,6 +45,49 @@ function toTransportError(failure: unknown): TransportError {
 /** A stale version is either a 409 conflict or a missing/stale If-Match. */
 function isConflict(kind: TransportErrorKind): boolean {
   return kind === 'conflict' || kind === 'precondition-required';
+}
+
+/**
+ * Labelled confirmation surface with native focus order. The shared modal
+ * placeholder traps every Tab on its close button, which makes a required
+ * confirmation action unreachable by keyboard; clinical confirmations render
+ * in flow instead, with the safe Cancel action focused first but every control
+ * still Tab-reachable (WEB-09, accessibility patterns 3.3.4).
+ */
+function ConfirmationDialog({
+  title,
+  closeLabel,
+  onClose,
+  children,
+}: {
+  title: string;
+  closeLabel: string;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  const { tokens } = useTheme();
+  const closeRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    closeRef.current!.focus();
+  }, []);
+  return (
+    <section
+      role="dialog"
+      aria-labelledby="note-confirmation-title"
+      style={{
+        display: 'grid',
+        gap: tokens.spacing.md,
+        border: `2px solid ${tokens.border}`,
+        padding: tokens.spacing.lg,
+      }}
+    >
+      <h2 id="note-confirmation-title">{title}</h2>
+      <div>{children}</div>
+      <Button buttonRef={closeRef} variant="secondary" onClick={onClose}>
+        {closeLabel}
+      </Button>
+    </section>
+  );
 }
 
 /**
@@ -160,6 +203,9 @@ export function NotePage() {
       setStatus(chartText(locale, 'signedNotice'));
       result.reload();
     } catch (failure: unknown) {
+      // Close the confirmation so the conflict/error recovery is the active
+      // surface; leaving an aria-modal dialog open would bury its actions.
+      setConfirm(undefined);
       recordFailure(failure);
     }
   }
@@ -190,6 +236,7 @@ export function NotePage() {
       setStatus(chartText(locale, 'enterErrorNotice'));
       result.reload();
     } catch (failure: unknown) {
+      setConfirm(undefined);
       recordFailure(failure);
     }
   }
@@ -241,6 +288,11 @@ export function NotePage() {
           {status}
         </p>
       ) : null}
+      {dirty ? (
+        <p role="status" data-testid="unsaved-changes">
+          {chartText(locale, 'unsavedChanges')}
+        </p>
+      ) : null}
       {signedAttestation !== null ? (
         <p data-testid="signer-attestation">
           <b>{chartText(locale, 'signerAttestation')}:</b> {signedAttestation}
@@ -274,7 +326,15 @@ export function NotePage() {
         history={history}
         locale={locale}
         onContentChange={handleContentChange}
-        onSign={() => setConfirm('sign')}
+        onSign={() => {
+          // The sign command carries no edited content: signing while dirty
+          // would silently certify the last saved revision, not what is shown.
+          if (dirty) {
+            setStatus(chartText(locale, 'saveBeforeSign'));
+            return;
+          }
+          setConfirm('sign');
+        }}
         onAmend={() => void handleAmend()}
         onMarkEnteredInError={() => setConfirm('entered-error')}
       />
@@ -282,44 +342,46 @@ export function NotePage() {
         {chartText(locale, 'saveDraft')}
       </Button>
 
-      <Dialog
-        open={confirm === 'sign'}
-        title={chartText(locale, 'signConfirmTitle')}
-        closeLabel={chartText(locale, 'cancel')}
-        onClose={() => setConfirm(undefined)}
-      >
-        <p>
-          <MixedScriptText text={source!.title} lang={locale} /> ·{' '}
-          {chartText(locale, 'revision')} {draft.version}
-        </p>
-        <p>{chartText(locale, 'signEffect')}</p>
-        <p>
-          <b>{chartText(locale, 'signerAttestation')}:</b> {chartText(locale, 'attestation')}
-        </p>
-        <Button onClick={() => void handleSign()}>{chartText(locale, 'sign')}</Button>
-      </Dialog>
+      {confirm === 'sign' ? (
+        <ConfirmationDialog
+          title={chartText(locale, 'signConfirmTitle')}
+          closeLabel={chartText(locale, 'cancel')}
+          onClose={() => setConfirm(undefined)}
+        >
+          <p>
+            <MixedScriptText text={source!.title} lang={locale} /> ·{' '}
+            {chartText(locale, 'revision')} {draft.version}
+          </p>
+          <p>{chartText(locale, 'signEffect')}</p>
+          <p>
+            <b>{chartText(locale, 'signerAttestation')}:</b> {chartText(locale, 'attestation')}
+          </p>
+          <Button onClick={() => void handleSign()}>{chartText(locale, 'sign')}</Button>
+        </ConfirmationDialog>
+      ) : null}
 
-      <Dialog
-        open={confirm === 'entered-error'}
-        title={chartText(locale, 'markEnteredInError')}
-        closeLabel={chartText(locale, 'cancel')}
-        onClose={() => setConfirm(undefined)}
-      >
-        <p>
-          <MixedScriptText text={source!.title} lang={locale} /> ·{' '}
-          {chartText(locale, 'revision')} {draft.version}
-        </p>
-        <p>{chartText(locale, 'enterErrorEffect')}</p>
-        <label htmlFor="chart-enter-error-reason">{chartText(locale, 'enterErrorReason')}</label>
-        <input
-          id="chart-enter-error-reason"
-          value={reason}
-          onChange={(event) => setReason(event.target.value)}
-        />
-        <Button disabled={reason.trim().length === 0} onClick={() => void handleEnteredInError()}>
-          {chartText(locale, 'markEnteredInError')}
-        </Button>
-      </Dialog>
+      {confirm === 'entered-error' ? (
+        <ConfirmationDialog
+          title={chartText(locale, 'markEnteredInError')}
+          closeLabel={chartText(locale, 'cancel')}
+          onClose={() => setConfirm(undefined)}
+        >
+          <p>
+            <MixedScriptText text={source!.title} lang={locale} /> ·{' '}
+            {chartText(locale, 'revision')} {draft.version}
+          </p>
+          <p>{chartText(locale, 'enterErrorEffect')}</p>
+          <label htmlFor="chart-enter-error-reason">{chartText(locale, 'enterErrorReason')}</label>
+          <input
+            id="chart-enter-error-reason"
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+          />
+          <Button disabled={reason.trim().length === 0} onClick={() => void handleEnteredInError()}>
+            {chartText(locale, 'markEnteredInError')}
+          </Button>
+        </ConfirmationDialog>
+      ) : null}
     </div>
   );
 }

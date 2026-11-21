@@ -100,6 +100,7 @@ export const chartKeys = [
   'yourContent',
   'copiedNotice',
   'unsavedChanges',
+  'saveBeforeSign',
   'loadMore',
 ] as const;
 
@@ -203,6 +204,7 @@ const chartMessages: Record<Locale, Record<ChartMessageKey, string>> = {
     yourContent: 'Your changes',
     copiedNotice: 'Your changes were copied.',
     unsavedChanges: 'This note has unsaved changes.',
+    saveBeforeSign: 'Save your changes before signing. Unsaved text is not signed.',
     loadMore: 'Load more entries',
   },
   ar: {
@@ -300,6 +302,7 @@ const chartMessages: Record<Locale, Record<ChartMessageKey, string>> = {
     yourContent: 'تغييراتك',
     copiedNotice: 'تم نسخ تغييراتك.',
     unsavedChanges: 'هذه الملاحظة تحتوي على تغييرات غير محفوظة.',
+    saveBeforeSign: 'احفظ تغييراتك قبل التوقيع. النص غير المحفوظ لا يُوقّع.',
     loadMore: 'تحميل المزيد من المدخلات',
   },
 };
