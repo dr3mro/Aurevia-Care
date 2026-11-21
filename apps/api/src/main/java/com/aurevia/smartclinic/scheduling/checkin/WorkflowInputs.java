@@ -10,6 +10,7 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 
 import com.aurevia.smartclinic.api.ApiException;
+import com.aurevia.smartclinic.api.contract.FacilityCode;
 
 /**
  * Pure, total input guards for the CLN-02 commands.
@@ -24,7 +25,6 @@ public final class WorkflowInputs {
 
     private static final Pattern UUID_PATTERN = Pattern.compile(
             "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
-    private static final Pattern CODE = Pattern.compile("[A-Z0-9_-]{2,32}");
     /** Issuer-scoped or independently verifier-backed identifier categories. */
     private static final Set<String> STRONG = Set.of("MRN", "GOV_ID", "PATIENT_ACCOUNT");
     /** All categories that may appear as evidence, including weak confirmers. */
@@ -61,11 +61,12 @@ public final class WorkflowInputs {
      * @throws ApiException when the value is not a bounded upper-case code
      */
     public static String code(String value, String field) {
-        if (value == null || !CODE.matcher(value).matches()) {
+        try {
+            return FacilityCode.facilityCode(value).value();
+        } catch (IllegalArgumentException invalid) {
             throw new ApiException(422, "INVALID_" + field.toUpperCase(Locale.ROOT),
-                    field + " must be 2-32 uppercase letters, digits, - or _");
+                    FacilityCode.INVALID_MESSAGE);
         }
-        return value;
     }
 
     /**
