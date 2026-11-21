@@ -48,7 +48,7 @@ notes_file=".agent/pr-notes/${notes_name}-${notes_stamp}.md"
 # Story text is not carried through the workflow matrix (GitHub drops a matrix that
 # might contain a secret); the worker reads its task from TODO.md in the checkout. TODO.md is
 # not stored in git: it is built from tasks/ here.
-[[ -f scripts/taskstore.py ]] && python3 -I scripts/taskstore.py view || true
+if [[ -f scripts/taskstore.py ]]; then python3 -I scripts/taskstore.py view || true; fi
 if [[ "${MODE:-story}" != fix && -n "${STORY_ID:-}" && -f TODO.md && -f scripts/swarm.py ]]; then
   if [[ -z "${STORY_TITLE:-}" ]]; then
     STORY_TITLE=$(python3 -I scripts/swarm.py task-field --id "$STORY_ID" --field title || true)
