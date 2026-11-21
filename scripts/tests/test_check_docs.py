@@ -44,6 +44,10 @@ class RepositoryTests(unittest.TestCase):
         errors = docs.check(self.make_repo("IAM-01 [self](NOTE.md#top) [a](#x)"))
         self.assertEqual(errors, [])
 
+    def test_link_to_the_local_task_view_is_not_broken(self):
+        errors = docs.check(self.make_repo("IAM-01 [tasks](TODO.md) [up](../../TODO.md#x)"))
+        self.assertEqual(errors, [])
+
 
 if __name__ == "__main__":
     unittest.main()
