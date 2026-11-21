@@ -23,7 +23,35 @@ public interface RadCommands {
     record IntakeCommand(String organizationId, String subject, Set<String> roles, String orderId,
                          String patientId, String encounterId, String orderCode, Urgency urgency,
                          String clinicalQuestion, String sourceActor, String destination,
-                         String responsibleClinician, String workQueue, String referrer) {
+                         String responsibleClinician, String workQueue, String referrer,
+                         Modality modality) {
+
+        /**
+         * Receive an order without a pre-selected modality; scheduling records it later.
+         *
+         * @param organizationId       active tenant
+         * @param subject              authenticated actor
+         * @param roles                active roles
+         * @param orderId              tenant-local order identifier
+         * @param patientId            matched patient identifier
+         * @param encounterId          source encounter
+         * @param orderCode            local order code
+         * @param urgency              clinical urgency
+         * @param clinicalQuestion     question for the reader
+         * @param sourceActor           ordering actor
+         * @param destination          receiving destination
+         * @param responsibleClinician named owner when urgency requires one
+         * @param workQueue            responsible work queue
+         * @param referrer             referring subject
+         */
+        public IntakeCommand(String organizationId, String subject, Set<String> roles, String orderId,
+                             String patientId, String encounterId, String orderCode, Urgency urgency,
+                             String clinicalQuestion, String sourceActor, String destination,
+                             String responsibleClinician, String workQueue, String referrer) {
+            this(organizationId, subject, roles, orderId, patientId, encounterId, orderCode, urgency,
+                    clinicalQuestion, sourceActor, destination, responsibleClinician, workQueue,
+                    referrer, null);
+        }
 
         /**
          * Copy the caller's role set so the command cannot be changed after submission.
@@ -105,6 +133,31 @@ public interface RadCommands {
          * Copy the caller's role set so the command cannot be changed after submission.
          */
         public AssociateStudyCommand {
+            roles = Set.copyOf(roles);
+        }
+
+        /**
+         * Return the immutable role set.
+         *
+         * @return active roles
+         */
+        @Override
+        public Set<String> roles() {
+            return Set.copyOf(roles);
+        }
+    }
+
+    /**
+     * Command that resolves a study-link review after a patient or accession mismatch.
+     *
+     */
+    record StudyReviewCommand(String organizationId, String subject, Set<String> roles,
+                              String orderId, String studyInstanceUid, String resolution) {
+
+        /**
+         * Copy the caller's role set so the command cannot be changed after submission.
+         */
+        public StudyReviewCommand {
             roles = Set.copyOf(roles);
         }
 
