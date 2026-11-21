@@ -368,6 +368,18 @@ class AgentRunTests(unittest.TestCase):
         self.run_cmd("merge-main", FAKE_MODE="none", SYNC_ONLY="1")
         self.assertEqual((self.repo / ".agent/bundle-base").read_text(), tip)
 
+    def test_a_sync_between_segments_never_becomes_the_bundle_base(self):
+        # By then the base is recorded and HEAD holds the worker's own, unpublished commits.
+        self.run_cmd("implement", FAKE_MODE="commit")
+        self.push_to_main("other.txt", "from main\n")
+        self.run_cmd("fetch-main")
+        self.run_cmd("merge-main", FAKE_MODE="none", SYNC_ONLY="1")
+        self.assertFalse((self.repo / ".agent/bundle-base").exists())
+        self.assertEqual(self.run_cmd("bundle").returncode, 0)
+        verify = subprocess.run(["git", "bundle", "verify", ".agent/result.bundle"], cwd=self.repo,
+                                capture_output=True, text=True)
+        self.assertEqual(verify.returncode, 0, verify.stderr)
+
     def test_the_story_prompt_tells_the_agent_to_keep_merging_main(self):
         text = (ROOT / "scripts/agent-run.sh").read_text()
         self.assertIn("Keep the branch current with the base branch", text)

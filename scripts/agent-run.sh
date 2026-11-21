@@ -499,10 +499,13 @@ cmd_merge_main() {
     finish_merge skipped; return 0
   fi
   pre=$(git rev-parse HEAD)
-  # The merge at the start of a fix run happens before the base is recorded. Remember the branch
-  # tip as it exists on the remote: the result bundle must be built on it, because the publish job
-  # has no copy of a merge commit that only this worker made.
-  if [[ -n "${SYNC_ONLY:-}" && ! -s "$out/bundle-base" ]]; then printf '%s' "$pre" > "$out/bundle-base"; fi
+  # The merge at the start of a fix run happens before `implement` records the base, so base-sha is
+  # still missing. Remember the branch tip as it exists on the remote: the result bundle must be
+  # built on it, because the publish job has no copy of a merge commit that only this worker made.
+  # Later syncs (between segments) must not record anything: their HEAD holds local-only commits.
+  if [[ -n "${SYNC_ONLY:-}" && ! -s "$out/base-sha" && ! -s "$out/bundle-base" ]]; then
+    printf '%s' "$pre" > "$out/bundle-base"
+  fi
   if git merge-base --is-ancestor "$base" HEAD; then
     finish_merge current; return 0
   fi
