@@ -48,12 +48,15 @@ LABELS = {
 # worker must pass. Per-module check.sh files (apps/<module>/check.sh, db/check.sh) are
 # the canonical test entry points that new modules are required to add, so they must
 # remain auto-mergeable. fnmatch's '*' crosses '/', so use the literal root path here.
+# Files that set what the gates accept. Nobody loosens a gate without a person: not an
+# ordinary story and not a repair (a repair is judged by a lighter gate, so it could
+# otherwise turn main green by relaxing the check that failed).
+GATE_CONFIG = ["apps/api/spotbugs-exclude.xml", "scripts/wiring-baseline.json", "CODING_STYLE.md",
+               "apps/staff-web/vite.config.ts", "apps/staff-web/eslint.config.ts",
+               "apps/patient-mobile/jest.config.ts", "apps/patient-mobile/eslint.config.mjs"]
 PROTECTED = [".github/*", ".opencode/*", "opencode.json", "scripts/*",
-             "AGENTS.md", "CODING_STYLE.md", "check.sh", "*/check.sh", "compose.yaml", "Dockerfile",
-             # Files that set what the gates accept: an agent must not loosen its own gate.
-             "apps/api/pom.xml", "apps/api/spotbugs-exclude.xml", "apps/staff-web/vite.config.ts",
-             "apps/staff-web/eslint.config.ts", "apps/patient-mobile/jest.config.ts",
-             "apps/patient-mobile/eslint.config.mjs"]
+             "AGENTS.md", "check.sh", "*/check.sh", "compose.yaml", "Dockerfile",
+             "apps/api/pom.xml", *GATE_CONFIG]
 # Shared trackers are written only by the integrator, one merge at a time, so
 # parallel workers never conflict on them.
 TRACKERS = ["TODO.md", "MEMORY.md", "WORKSPACE.md", "BUGS.md", "PROJECT.md", "docs/swarm/*"]
@@ -2216,11 +2219,12 @@ def guard(pr, repair=False):
 
     Ordinary PRs never auto-merge workflow, agent or script changes. Watchdog
     repairs are the exception: they must be able to fix the pipeline itself,
-    and they still pass the fast gate before the integrator merges them.
+    and they still pass the fast gate before the integrator merges them. Even
+    a repair never auto-merges a change to GATE_CONFIG.
     """
     files = gh("pr", "diff", str(pr), "--name-only").split()
-    touched = protected_files(files)
-    if touched and not repair:
+    touched = [f for f in files if f in GATE_CONFIG] if repair else protected_files(files)
+    if touched:
         add_labels(pr, "needs-human")
         gh("pr", "comment", str(pr), "--body",
            f"{MARK}\nThis pull request changes workflow, agent or script files, which are never "
