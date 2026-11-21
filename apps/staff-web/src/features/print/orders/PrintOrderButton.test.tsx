@@ -149,15 +149,52 @@ describe('print order preview commands', () => {
     expect(onPrint.mock.calls[0]?.[1]).toBe('referral');
   });
 
+  it('associates the reason error with its control and focuses that control', () => {
+    renderButton([labOrder]);
+    fireEvent.click(screen.getByRole('button', { name: 'Print for patient' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Print' }));
+    const alert = screen.getByRole('alert');
+    const reasons = screen.getByRole('group', { name: 'Why are you printing?' });
+    expect(alert.id.length).toBeGreaterThan(0);
+    expect(reasons.getAttribute('aria-describedby')).toBe(alert.id);
+    expect(document.activeElement).toBe(screen.getByLabelText('Give to patient'));
+    fireEvent.click(screen.getByLabelText('Give to patient'));
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(reasons.hasAttribute('aria-describedby')).toBe(false);
+  });
+
   it('prints in the chosen handout language', () => {
     const { onPrint } = renderButton([labOrder]);
     fireEvent.click(screen.getByRole('button', { name: 'Print for patient' }));
     fireEvent.change(screen.getByLabelText('Handout language'), { target: { value: 'ar' } });
     expect(screen.getByText('طلب المريض')).toBeTruthy();
     expect(screen.getByText('التحضير')).toBeTruthy();
+    const sheet = document.querySelector('[data-order-requisition="true"]');
+    expect(sheet?.getAttribute('dir')).toBe('rtl');
+    expect(sheet?.getAttribute('lang')).toBe('ar');
     fireEvent.click(screen.getByLabelText('Give to patient'));
     fireEvent.click(screen.getByRole('button', { name: 'Print' }));
     expect(onPrint.mock.calls[0]?.[2]).toBe('ar');
+  });
+
+  it('renders an English handout left-to-right even inside an Arabic interface', () => {
+    renderButton([labOrder], 'ar');
+    fireEvent.click(screen.getByRole('button', { name: 'طباعة للمريض' }));
+    fireEvent.change(screen.getByLabelText('لغة المطبوع'), { target: { value: 'en' } });
+    const sheet = document.querySelector('[data-order-requisition="true"]');
+    expect(sheet?.getAttribute('dir')).toBe('ltr');
+    expect(sheet?.getAttribute('lang')).toBe('en');
+    expect(screen.getByText('Preparation')).toBeTruthy();
+  });
+
+  it('reseeds the handout language from the interface locale on each opening', () => {
+    renderButton([labOrder], 'ar');
+    fireEvent.click(screen.getByRole('button', { name: 'طباعة للمريض' }));
+    fireEvent.change(screen.getByLabelText('لغة المطبوع'), { target: { value: 'en' } });
+    expect(document.querySelector('[data-order-requisition="true"]')?.getAttribute('dir')).toBe('ltr');
+    fireEvent.click(screen.getByRole('button', { name: 'إغلاق' }));
+    fireEvent.click(screen.getByRole('button', { name: 'طباعة للمريض' }));
+    expect(document.querySelector('[data-order-requisition="true"]')?.getAttribute('dir')).toBe('rtl');
   });
 
   it('closes on the explicit action and on Escape, restoring focus to the opener', () => {
@@ -177,10 +214,37 @@ describe('print order preview commands', () => {
     expect(view.onPrint).not.toHaveBeenCalled();
   });
 
+  it('keeps Tab and Shift+Tab inside the modal dialog', () => {
+    renderButton([labOrder]);
+    fireEvent.click(screen.getByRole('button', { name: 'Print for patient' }));
+    const language = screen.getByLabelText('Handout language');
+    const firstReason = screen.getByLabelText('Give to patient');
+    const printButton = screen.getByRole('button', { name: 'Print' });
+    const closeButton = screen.getByRole('button', { name: 'Close' });
+    const outsideView = render(<button type="button">outside</button>);
+    const outside = outsideView.getByRole('button', { name: 'outside' });
+
+    // Initial focus is the safe Close action, which is the last control.
+    expect(document.activeElement).toBe(closeButton);
+    fireEvent.keyDown(document, { key: 'Tab' });
+    expect(document.activeElement).toBe(language);
+    fireEvent.keyDown(document, { key: 'Tab' });
+    expect(document.activeElement).toBe(firstReason);
+    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(language);
+    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(closeButton);
+    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(printButton);
+    outside.focus();
+    fireEvent.keyDown(document, { key: 'Tab' });
+    expect(document.activeElement).toBe(language);
+  });
+
   it('injects the shared A4 print stylesheet while the preview is open', () => {
     renderButton([labOrder]);
     fireEvent.click(screen.getByRole('button', { name: 'Print for patient' }));
-    const style = document.querySelector('style#smartclinic-print-preview-styles');
+    const style = document.querySelector('style[data-order-print-styles="true"]');
     expect(style).toBeTruthy();
   });
 });

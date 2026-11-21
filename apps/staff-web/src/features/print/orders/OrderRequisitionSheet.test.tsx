@@ -49,6 +49,9 @@ describe('order requisition sheet', () => {
     expect(screen.getByText('Fast for eight hours before collection.')).toBeTruthy();
     expect(screen.getByText('Laboratory, level two')).toBeTruthy();
     expect(screen.getByText('LAB-GLU')).toBeTruthy();
+    const sheet = document.querySelector('[data-order-requisition="true"]');
+    expect(sheet?.getAttribute('dir')).toBe('ltr');
+    expect(sheet?.getAttribute('lang')).toBe('en');
   });
 
   it('shows every required field of an imaging study in Arabic with the local test name', () => {
@@ -59,6 +62,9 @@ describe('order requisition sheet', () => {
     expect(screen.getByText('طفري')).toBeTruthy();
     expect(screen.getByText('Nothing by mouth for six hours.')).toBeTruthy();
     expect(screen.getByText('Imaging suite, ground floor')).toBeTruthy();
+    const sheet = document.querySelector('[data-order-requisition="true"]');
+    expect(sheet?.getAttribute('dir')).toBe('rtl');
+    expect(sheet?.getAttribute('lang')).toBe('ar');
   });
 
   it('prefers the local test name when the sheet is in Arabic', () => {

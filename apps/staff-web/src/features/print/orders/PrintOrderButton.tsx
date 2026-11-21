@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { Button } from '../../../components/Button';
 import { useI18n } from '../../../i18n/I18nProvider';
 import type { HandoutLanguage, PrintReason } from '../components/messages';
 import { printReasonKey, printText } from '../components/messages';
-import { printStyleId, printStylesheet } from '../styles/printStyles';
+import { printStylesheet } from '../styles/printStyles';
 import { buildSheets, printableOrders } from './domain';
 import { orderPrintText } from './labels';
 import { OrderRequisitionSheet } from './OrderRequisitionSheet';
@@ -17,6 +17,9 @@ const reasonOptions: readonly PrintReason[] = ['give-to-patient', 'referral', 'p
 
 /** Stable order of the clinician's sheet-layout choices. */
 const layoutOptions: readonly SheetLayout[] = ['combined', 'separate'];
+
+/** Native controls only; sheets and static text are not tab stops. */
+const focusableSelector = 'button:not([disabled]), select:not([disabled]), input:not([disabled])';
 
 /** Props for the lab and imaging order print button. */
 export interface PrintOrderButtonProps {
@@ -37,11 +40,16 @@ export interface PrintOrderButtonProps {
  */
 export function PrintOrderButton({ orders, onPrint }: PrintOrderButtonProps) {
   const { locale } = useI18n();
+  const instanceId = useId();
+  const selectId = `order-print-language-${instanceId}`;
+  const reasonErrorId = `order-print-reason-error-${instanceId}`;
   const [open, setOpen] = useState(false);
   const [layout, setLayout] = useState<SheetLayout>('combined');
   const [language, setLanguage] = useState<HandoutLanguage>(locale);
   const [reason, setReason] = useState<PrintReason | null>(null);
   const [reasonMissing, setReasonMissing] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const reasonRef = useRef<HTMLInputElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const printable = printableOrders(orders);
   const hasDrafts = printable.length !== orders.length;
@@ -56,6 +64,20 @@ export function PrintOrderButton({ orders, onPrint }: PrintOrderButtonProps) {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         close();
+        return;
+      }
+      if (event.key !== 'Tab') {
+        return;
+      }
+      // The dialog declares aria-modal, so Tab must not reach the controls
+      // behind it. Wrap focus among this dialog's own controls.
+      const items = Array.from(dialogRef.current!.querySelectorAll<HTMLElement>(focusableSelector));
+      const index = items.indexOf(document.activeElement as HTMLElement);
+      event.preventDefault();
+      if (event.shiftKey) {
+        items[index <= 0 ? items.length - 1 : index - 1]!.focus();
+      } else {
+        items[index < 0 || index === items.length - 1 ? 0 : index + 1]!.focus();
       }
     };
     document.addEventListener('keydown', onKeyDown);
@@ -68,6 +90,7 @@ export function PrintOrderButton({ orders, onPrint }: PrintOrderButtonProps) {
   const print = () => {
     if (reason === null) {
       setReasonMissing(true);
+      reasonRef.current!.focus();
       return;
     }
     setReasonMissing(false);
@@ -88,15 +111,25 @@ export function PrintOrderButton({ orders, onPrint }: PrintOrderButtonProps) {
 
   return (
     <>
-      <Button onClick={() => setOpen(true)}>{orderPrintText(locale, 'printButton')}</Button>
+      <Button
+        onClick={() => {
+          // A fresh opening takes the current interface locale as its default;
+          // any later handout-language choice stays independent of the shell.
+          setLanguage(locale);
+          setOpen(true);
+        }}
+      >
+        {orderPrintText(locale, 'printButton')}
+      </Button>
       {open ? (
         <div
+          ref={dialogRef}
           role="dialog"
           aria-modal="true"
           aria-label={orderPrintText(locale, 'title')}
           data-order-print-preview="true"
         >
-          <style id={printStyleId}>{printStylesheet}</style>
+          <style data-order-print-styles="true">{printStylesheet}</style>
           {hasDrafts ? (
             <p role="status">{orderPrintText(locale, 'draftExcluded')}</p>
           ) : null}
@@ -120,9 +153,9 @@ export function PrintOrderButton({ orders, onPrint }: PrintOrderButtonProps) {
           <p data-sheet-count>
             {orderPrintText(locale, 'sheetCount')}: {sheets.length}
           </p>
-          <label htmlFor="order-print-language">{printText(locale, 'language')}</label>
+          <label htmlFor={selectId}>{printText(locale, 'language')}</label>
           <select
-            id="order-print-language"
+            id={selectId}
             data-print-controls
             value={language}
             onChange={(event) => setLanguage(event.target.value as HandoutLanguage)}
@@ -130,11 +163,12 @@ export function PrintOrderButton({ orders, onPrint }: PrintOrderButtonProps) {
             <option value="en">{printText(locale, 'languageEn')}</option>
             <option value="ar">{printText(locale, 'languageAr')}</option>
           </select>
-          <fieldset data-print-controls>
+          <fieldset data-print-controls aria-describedby={reasonMissing ? reasonErrorId : undefined}>
             <legend>{printText(locale, 'reason')}</legend>
-            {reasonOptions.map((option) => (
+            {reasonOptions.map((option, index) => (
               <label key={option}>
                 <input
+                  ref={index === 0 ? reasonRef : undefined}
                   type="radio"
                   name="order-print-reason"
                   value={option}
@@ -148,7 +182,11 @@ export function PrintOrderButton({ orders, onPrint }: PrintOrderButtonProps) {
               </label>
             ))}
           </fieldset>
-          {reasonMissing ? <p role="alert">{orderPrintText(locale, 'reasonMissing')}</p> : null}
+          {reasonMissing ? (
+            <p id={reasonErrorId} role="alert">
+              {orderPrintText(locale, 'reasonMissing')}
+            </p>
+          ) : null}
           {sheets.map((sheet) => (
             <OrderRequisitionSheet key={sheetKey(sheet)} orders={sheet} language={language} />
           ))}

@@ -21,10 +21,14 @@ export interface OrderRequisitionSheetProps {
  */
 export function OrderRequisitionSheet({ orders, language }: OrderRequisitionSheetProps) {
   const { tokens } = useTheme();
+  // A handout is its own document: direction follows the chosen sheet language,
+  // which may differ from the surrounding UI locale.
   return (
     <section
       data-order-requisition="true"
       data-print-handout="true"
+      dir={language === 'ar' ? 'rtl' : 'ltr'}
+      lang={language}
       style={{
         background: tokens.background,
         color: tokens.foreground,
