@@ -12,20 +12,20 @@ import * as path from 'node:path';
 
 /** Owner-approved old-to-new mapping for AUD-20261119-04, ordered by story number. */
 const DOMAIN_FOLDERS = [
-  'appointments', 
-  'reports', 
-  'enrollment', 
+  'appointments',
+  'reports',
+  'enrollment',
   'units',
   'conversations',
-  'attachments', 
-  'instructions', 
-  'acknowledgments', 
-  'service-profiles', 
-  'governance', 
+  'attachments',
+  'instructions',
+  'acknowledgments',
+  'service-profiles',
+  'governance',
   'flows',
-  'evidence', 
+  'evidence',
   'notifications',
-  'prescriptions', 
+  'prescriptions',
   // TRACK-02 added this business-domain folder after the AUD-20261119-04 mapping.
   'tracker',
 ] as const;
