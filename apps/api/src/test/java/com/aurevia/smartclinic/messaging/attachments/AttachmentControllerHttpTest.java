@@ -63,7 +63,7 @@ class AttachmentControllerHttpTest {
         TransactionTemplate transactions = mock(TransactionTemplate.class);
         when(transactions.execute(any())).thenAnswer(invocation ->
                 ((TransactionCallback<?>) invocation.getArgument(0)).doInTransaction(null));
-        controller = new AttachmentController(store, staff, transactions, clock);
+        controller = new AttachmentController(new AttachmentService(store, clock), store, staff, transactions);
         MockEnvironment environment = new MockEnvironment();
         environment.setActiveProfiles("synthetic-auth");
         mvc = MockMvcBuilders.standaloneSetup(controller)

@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.net.URI;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.time.Clock;
 import java.util.HexFormat;
 import java.util.Locale;
 import java.util.Set;
@@ -53,36 +52,25 @@ public final class AttachmentController {
     private static final int MAGIC_BYTES = 4;
 
     private final AttachmentService service;
-    private final InMemoryAttachmentStore store;
+    private final AttachmentStore store;
     private final StaffRepository staff;
     private final TransactionTemplate transactions;
 
     /**
-     * Create the route with the synthetic in-memory quarantine store.
+     * Create the route over the injected domain service and tenant-scoped store.
      *
-     * @param clock        shared application clock
+     * @param service      attachment domain service
+     * @param store        tenant-scoped attachment store
      * @param staff        fresh membership and role source
      * @param transactions tenant-guarded transaction template
      */
     @Autowired
-    public AttachmentController(Clock clock, StaffRepository staff, TransactionTemplate transactions) {
-        this(new InMemoryAttachmentStore(), staff, transactions, clock);
-    }
-
-    /**
-     * Create the route over a supplied store, used by HTTP tests with seeded grants.
-     *
-     * @param store        tenant-scoped attachment store
-     * @param staff        fresh membership and role source
-     * @param transactions tenant-guarded transaction template
-     * @param clock        application clock
-     */
-    AttachmentController(InMemoryAttachmentStore store, StaffRepository staff,
-                         TransactionTemplate transactions, Clock clock) {
+    public AttachmentController(AttachmentService service, AttachmentStore store,
+                                 StaffRepository staff, TransactionTemplate transactions) {
+        this.service = service;
         this.store = store;
         this.staff = staff;
         this.transactions = transactions;
-        this.service = new AttachmentService(store, clock);
     }
 
     /**

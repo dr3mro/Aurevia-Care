@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 
+import org.springframework.stereotype.Service;
+
 import com.aurevia.smartclinic.api.ApiException;
 import com.aurevia.smartclinic.messaging.attachments.AttachmentContract.Actor;
 import com.aurevia.smartclinic.messaging.attachments.AttachmentContract.Attachment;
@@ -38,6 +40,7 @@ import com.aurevia.smartclinic.messaging.attachments.AttachmentContract.View;
  * bytes, file names or URLs ever enter a fact or this service's output beyond
  * the private object handle.</p>
  */
+@Service
 public final class AttachmentService {
 
     private final AttachmentStore store;
