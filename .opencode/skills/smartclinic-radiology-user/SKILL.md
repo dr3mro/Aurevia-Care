@@ -1,6 +1,6 @@
 ---
 name: smartclinic-radiology-user
-description: "Exercise radiology intake and reporting as a simulated user."
+description: "Exercises radiology intake and reporting as a simulated user. Use when a slice affects imaging orders, intake or reports and needs a synthetic walkthrough."
 ---
 
 # Radiology User

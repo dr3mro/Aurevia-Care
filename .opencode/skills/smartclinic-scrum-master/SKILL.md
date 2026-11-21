@@ -1,6 +1,6 @@
 ---
 name: "smartclinic-scrum-master"
-description: "Run a WIP-limited delivery loop and track the definition of done."
+description: "Runs a WIP-limited delivery loop and tracks the definition of done. Use when work is piling up, stories are blocked, or the loop needs a checkpoint."
 ---
 
 # Scrum Master

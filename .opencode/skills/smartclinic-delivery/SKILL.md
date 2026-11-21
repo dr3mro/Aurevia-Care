@@ -1,6 +1,6 @@
 ---
 name: smartclinic-delivery
-description: Execute the persistent SmartClinic story, TDD, UAT, CI and release loop while maintaining restartable checkpoints.
+description: "Runs the persistent SmartClinic story, TDD, UAT, CI and release loop with restartable checkpoints. Use when working any story or swarm task, from claiming it to the notes file and the pull request."
 ---
 
 # Delivery loop
@@ -25,3 +25,34 @@ description: Execute the persistent SmartClinic story, TDD, UAT, CI and release 
 8. Repeat for the next highest-priority eligible story. Continue while eligible work and authorization remain. On exhausted backlog, unmet prerequisites or human policy decisions, save the checkpoint and resume on new feedback or the next session. Feature complete means the specified V1 gates pass and the Product Owner accepts the evidence. Subsequent verified feedback reopens the backlog.
 
 Classify each story using docs/WORKFLOW.md. Run targeted checks during implementation. At acceptance, require the applicable code, reference, and CI gates. Include an entry-point-to-test trace in the checkpoint.
+
+## Definition of done
+
+A standing bar for every story, separate from its acceptance scenarios. A story is done only when its acceptance scenarios are met and every item below is met or listed as not done with a reason.
+
+- **Proven by tests.** The red failure was seen first; every new line and branch has a named test; 100% coverage is shown with the command for each touched area.
+- **Reachable and durable.** A request reaches it: migration with RLS and FORCE RLS, a `Jdbc*` store, an injected service behind a thin controller, an HTTP level integration test and the OpenAPI entry. Data survives a restart.
+- **Typed and linted.** Frontends pass their `check.sh` including `tsc --noEmit`; no `any` or `@ts-ignore` added.
+- **Secure.** Dependency and static analysis ran with the tool, version, command and finding count recorded; no PHI or secrets in code, logs, tests or notes.
+- **Documented and commented.** Every new or changed public type, function, script and migration has a doc comment (purpose, inputs, outputs, errors, invariant) and the non-obvious code has a comment that explains why; no commented-out code. Public contracts changed in `contracts/openapi.yaml`, `scripts/docs.sh` and `scripts/check-docs.py` pass, and the notes file follows the AGENTS.md hand-off headings.
+- **Contained.** Only files in the task scope changed; no tracker, workflow, script or `.opencode` file was edited by a worker.
+
+## Common rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| Tests pass, I can stop. | Done means the definition of done below, including reachability and 100% coverage evidence. |
+| I will record the notes at the end. | Write `## Why this is not finished` the moment you know you will stop early. |
+| I will update TODO.md myself. | Swarm workers never edit trackers; the notes file is the hand-off. |
+
+## Red flags
+
+- A claim of done with no command output in the notes.
+- A tracker, workflow, script or `.opencode` file edited by a worker.
+- Work outside the task scope.
+
+## Verification
+
+- [ ] Every item of the definition of done is met or listed as not done with a reason.
+- [ ] The notes file follows the AGENTS.md hand-off headings.
+- [ ] Only scoped changes are committed.

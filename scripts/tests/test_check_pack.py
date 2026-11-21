@@ -174,6 +174,40 @@ class PackTests(unittest.TestCase):
         self.assertTrue(any("frontmatter needs matching name" in e for e in errors), errors)
 
 
+    def edit_skill(self, name, change):
+        tmp = copy_pack()
+        self.addCleanup(shutil.rmtree, tmp)
+        path = tmp / f".opencode/skills/{name}/SKILL.md"
+        path.write_text(change(path.read_text()))
+        return pack.check(tmp)
+
+    def test_skill_description_without_use_when_is_reported(self):
+        errors = self.edit_skill("smartclinic-debugger", lambda t: t.replace("Use when", "Needed if", 1))
+        self.assertTrue(any("must say when to use it" in e for e in errors), errors)
+
+    def test_skill_description_over_the_limit_is_reported(self):
+        errors = self.edit_skill("smartclinic-debugger", lambda t: t.replace(
+            "Use when", "x" * pack.SKILL_DESCRIPTION_LIMIT + " Use when", 1))
+        self.assertTrue(any("over 1024 characters" in e for e in errors), errors)
+
+    def test_process_skill_without_each_section_is_reported(self):
+        for heading in pack.PROCESS_SECTIONS:
+            with self.subTest(heading=heading):
+                errors = self.edit_skill("smartclinic-test-engineer",
+                                         lambda t: t.replace(f"## {heading}", "### " + heading))
+                self.assertTrue(any(f'missing the section "## {heading}"' in e for e in errors), errors)
+
+    def test_simulated_user_skills_need_no_process_sections(self):
+        errors = self.edit_skill("smartclinic-patient-user",
+                                 lambda t: t.split("##")[0].rstrip() + "\n")
+        self.assertEqual(errors, [])
+        self.assertIn("smartclinic-patient-user", pack.NO_PROCESS_SECTIONS)
+
+    def test_every_skill_is_either_exempt_or_has_the_sections(self):
+        skills = {p.parent.name for p in (ROOT / ".opencode/skills").glob("*/SKILL.md")}
+        self.assertLessEqual(pack.NO_PROCESS_SECTIONS, skills)
+
+
 class GeneratorTests(unittest.TestCase):
     def test_force_push_is_denied_and_env_files_unreadable(self):
         config = gen.build(["smartclinic-orchestrator", "smartclinic-qa-reviewer"])

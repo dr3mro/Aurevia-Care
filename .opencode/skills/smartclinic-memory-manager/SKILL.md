@@ -1,6 +1,6 @@
 ---
 name: "smartclinic-memory-manager"
-description: "Reconcile the project trackers against the specification and observed work."
+description: "Reconciles the project trackers against the specification and observed work. Use when trackers drift from the code, after a batch of merges, or when notes must be folded into durable memory."
 ---
 
 # Memory Manager

@@ -1,6 +1,6 @@
 ---
 name: smartclinic-product-owner
-description: "Own backlog ordering and story acceptance against the approved specification."
+description: "Owns backlog order and accepts stories against the approved specification. Use when ranking tasks, deciding scope, or accepting a finished story."
 ---
 
 # Product Owner

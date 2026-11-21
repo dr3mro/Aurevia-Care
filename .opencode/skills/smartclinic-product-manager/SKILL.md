@@ -1,6 +1,6 @@
 ---
 name: "smartclinic-product-manager"
-description: "Define the smallest valuable SmartClinic story and measurable acceptance criteria."
+description: "Defines the smallest valuable SmartClinic story with measurable acceptance criteria. Use when feedback, a defect or an idea must become a story."
 ---
 
 # Product Manager
