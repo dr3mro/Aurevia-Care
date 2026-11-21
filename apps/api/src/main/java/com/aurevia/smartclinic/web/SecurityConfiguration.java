@@ -7,6 +7,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplicat
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -23,9 +24,10 @@ import jakarta.servlet.http.HttpServletRequest;
  * reading synthetic headers exactly as before. In every other profile the
  * filter chain is a stateless OIDC resource server: a valid JWT bearer token is
  * required and {@link com.aurevia.smartclinic.web.TenantContextInterceptor} binds the active organization
- * from verified claims. The staff web cookie session is a separate later
- * chain, so CSRF is skipped only for requests that carry a bearer header,
- * which browsers never attach by themselves (WEB-02, WEB-03).</p>
+ * from verified claims. The staff web cookie session is a separate
+ * {@code @Order(1)} chain that matches only non-bearer requests, so CSRF is
+ * skipped only for requests that carry a bearer header, which browsers never
+ * attach by themselves (WEB-02, WEB-03).</p>
  */
 @Configuration
 @EnableWebSecurity
@@ -72,6 +74,7 @@ public class SecurityConfiguration {
      * @throws IllegalStateException when no OIDC issuer is configured
      */
     @Bean
+    @Order(2)
     @Profile("!synthetic-auth")
     SecurityFilterChain oidcSecurityFilterChain(HttpSecurity http) throws Exception {
         if (issuerUri.isBlank()) {
