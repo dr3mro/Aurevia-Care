@@ -20,11 +20,6 @@ JAVA_PACKAGE = re.compile(r"^\s*package\s+([\w.]+)\s*;", re.MULTILINE)
 SKIP = {".git", "node_modules", ".agent", "target", "__pycache__"}
 SKIP_PREFIXES = ("docs/archive/", "docs/swarm/")
 LEGACY = {
-    "infra/s_g5_05", "infra/s_g5_06", "infra/s_g5_07", "infra/s_g5_08",
-    "infra/s_g5_09", "infra/s_g5_10", "infra/s_g5_11",
-    "docs/operations/s_g5_05", "docs/operations/s_g5_06", "docs/operations/s_g5_07",
-    "docs/operations/s_g5_08", "docs/operations/s_g5_09", "docs/operations/s_g5_10",
-    "docs/operations/s_g5_11",
     "contracts/x_01", "contracts/x_02", "contracts/x_03",
     "apps/api/src/main/java/com/aurevia/smartclinic/api/x_01",
     "apps/api/src/main/java/com/aurevia/smartclinic/api/x_02",

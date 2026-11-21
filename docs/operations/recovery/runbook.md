@@ -110,7 +110,7 @@ fails even if the checks later passed.
 Recompute stored object and report digests and compare them with the recorded
 values. A mismatch blocks the gate; hold the affected object for review rather
 than silently replacing it. This reuses the checksum and provenance discipline
-of the tenant export manifest (`docs/operations/s_g5_08/export-manifest.md`).
+of the tenant export manifest (`docs/operations/tenant-lifecycle/export-manifest.md`).
 
 ### R2 — Source versions
 
@@ -118,7 +118,7 @@ Confirm source system identifiers, versions and clinical effective times
 survived the restore unchanged. Do not renumber source IDs or rewrite effective
 times. Preserve historical signature evidence without creating a new
 attestation, as required for approved onboarding data
-(`docs/operations/s_g5_09/onboarding-manifest.md`).
+(`docs/operations/onboarding/onboarding-manifest.md`).
 
 ### R3 — In-flight deliveries
 
@@ -210,6 +210,6 @@ in the evidence template.
 - Deployment handoff: [DEPLOYMENT.md](../../../infra/DEPLOYMENT.md).
 - The existing engineering handoff for recovery targets, the fail-closed
   evidence evaluator and the monitoring envelope lives in
-  `docs/operations/s_g5_06/` (targets, restore procedure, operational runbooks
+  `docs/operations/recovery/` (targets, restore procedure, operational runbooks
   and evidence documents). This runbook is the drill procedure that drives the
   empty template in `docs/operations/recovery/drill-evidence.md`.
