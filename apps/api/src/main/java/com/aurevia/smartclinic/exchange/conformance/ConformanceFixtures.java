@@ -32,6 +32,7 @@ public final class ConformanceFixtures {
             Map.entry("order-dead", Set.of("ACC-1001")),
             Map.entry("order-unmatched", Set.of("ACC-1001")),
             Map.entry("order-stale", Set.of("ACC-1001")),
+            Map.entry("order-replay", Set.of("ACC-1001")),
             Map.entry("order-release", Set.of("ACC-1001")),
             Map.entry("order-recovered", Set.of("ACC-1001")),
             Map.entry("order-wrong", Set.of("ACC-1001")),
@@ -249,6 +250,25 @@ public final class ConformanceFixtures {
                         "ACC-1001", "7.1 mg/dL"),
                 PartnerEvent.of("s2", EventKind.RESULT, "order-stale", 4L,
                         "ACC-1001", "7.0 mg/dL"));
+    }
+
+    /**
+     * ARC-05 and XCH-04: an event that dead-lettered during a partial outage is
+     * replayed with an authorized reason and keeps its immutable event identity.
+     *
+     * @return replay-with-reason fixture
+     */
+    public static ConformanceFixture replayWithReason() {
+        Supplier<ConformanceLedger> ledger = () -> {
+            AtomicInteger calls = new AtomicInteger();
+            Predicate<PartnerEvent> recoversAfterOutage = event -> calls.incrementAndGet() > 3;
+            return new ConformanceLedger(BINDINGS, recoversAfterOutage, 3);
+        };
+        PartnerEvent event = PartnerEvent.of("rep-1", EventKind.RESULT, "order-replay", 1L,
+                "ACC-1001", "7.1 mg/dL");
+        return fixture("F14", "ARC-05, XCH-04",
+                "authorized replay with a reason keeps the event id after an outage",
+                ledger, List.of(Disposition.DEAD_LETTER, Disposition.APPLIED), event, event);
     }
 
     /**
