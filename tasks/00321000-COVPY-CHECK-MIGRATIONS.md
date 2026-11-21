@@ -1,5 +1,5 @@
-- [-] COVPY-CHECK-MIGRATIONS · Script tests: reach 100% line and branch coverage of `scripts/check-migrations.py`
-  - agent: swarm-5
+- [x] COVPY-CHECK-MIGRATIONS · Script tests: reach 100% line and branch coverage of `scripts/check-migrations.py`
+  - pr: #386
   - attempts: 1
   - requirements: OPS-06
   - scope: scripts/tests/test_check_migrations_coverage.py

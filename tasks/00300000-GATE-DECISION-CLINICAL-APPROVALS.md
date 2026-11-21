@@ -1,5 +1,5 @@
-- [-] GATE-DECISION-CLINICAL-APPROVALS · Decision pack for a person to approve: Clinical templates, code sets, interpreting privileges and result escalation approvals
-  - agent: swarm-7
+- [x] GATE-DECISION-CLINICAL-APPROVALS · Decision pack for a person to approve: Clinical templates, code sets, interpreting privileges and result escalation approvals
+  - pr: #371
   - attempts: 1
   - requirements: ADM-01, CLN-04
   - scope: docs/launch/clinical-approvals.md

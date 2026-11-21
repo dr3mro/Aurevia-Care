@@ -1,5 +1,5 @@
-- [-] COVPY-CHECK-WIRING · Script tests: reach 100% line and branch coverage of `scripts/check-wiring.py`
-  - agent: swarm-8
+- [x] COVPY-CHECK-WIRING · Script tests: reach 100% line and branch coverage of `scripts/check-wiring.py`
+  - pr: #389
   - attempts: 1
   - requirements: OPS-06
   - scope: scripts/tests/test_check_wiring_coverage.py
