@@ -161,8 +161,8 @@ Found while extending the specification (section 8.1 and docs/design/screens-and
     Do NOT add a library dependency, do NOT key by IP address, do NOT log the key.
 
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` (API tasks) or `bash apps/staff-web/check.sh` (staff web tasks) must pass. Synthetic data only; write the failing test first; stay inside the declared scope; name folders and packages after what they hold, never a task ID; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
-- [-] READY-04 · Request size limits and an exact-origin CORS allowlist (WEB-04)
-  - agent: swarm-2
+- [x] READY-04 · Request size limits and an exact-origin CORS allowlist (WEB-04)
+  - pr: #271
   - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/web, apps/api/src/main/resources
   - depends: READY-03
@@ -175,8 +175,9 @@ Found while extending the specification (section 8.1 and docs/design/screens-and
     Do NOT use a wildcard in any form, and do NOT change the interceptor.
 
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` (API tasks) or `bash apps/staff-web/check.sh` (staff web tasks) must pass. Synthetic data only; write the failing test first; stay inside the declared scope; name folders and packages after what they hold, never a task ID; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
-- [ ] READY-05 · Structured JSON logs with correlation ID and a redaction test (WEB-06)
-  - attempts: 0
+- [-] READY-05 · Structured JSON logs with correlation ID and a redaction test (WEB-06)
+  - agent: swarm-1
+  - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/web, apps/api/src/main/resources
   - depends: READY-04
   - details:
