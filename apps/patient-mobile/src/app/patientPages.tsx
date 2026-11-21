@@ -60,8 +60,8 @@ export function AppointmentListPage({
 }: PatientPageProps): React.JSX.Element {
   const messages = useMemo(() => screenMessages(locale), [locale]);
   const load = useCallback(
-    () => loadAppointments(transport, patientId, organizationId, locale),
-    [transport, patientId, organizationId, locale],
+    () => loadAppointments(transport, patientId, organizationId),
+    [transport, patientId, organizationId],
   );
   return (
     <PatientResource
@@ -73,7 +73,7 @@ export function AppointmentListPage({
       {(appointments) => (
         <AppointmentListScreen
           appointments={appointments}
-          notice={placeholderNotice(locale)}
+          notice={placeholderNotice()}
           patientId={patientId}
           devices={placeholderDevices()}
           onConfirm={placeholderAction}

@@ -20,7 +20,6 @@ async function renderStack() {
       testID="stack"
       title="Stack title"
       backLabel="Back"
-      locale="en"
       rootKey="root"
       routes={routes}
     />,

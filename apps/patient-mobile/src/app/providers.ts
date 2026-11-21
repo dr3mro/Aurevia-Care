@@ -31,7 +31,7 @@ import type { DeliveryFacts, InstructionView } from '../features/acknowledgments
 import { parseReleasedReport } from '../features/reports/reportClient';
 import type { ReleasedReport } from '../features/reports/types';
 
-import { appText, type Locale } from './messages';
+import type { Locale } from './messages';
 
 /**
  * Placeholder origin for the synthetic build. A real deployment supplies its
@@ -98,27 +98,18 @@ function isConversationState(value: unknown): value is ConversationState {
 }
 
 /**
- * Format an instant in the facility's IANA zone for the active locale.
- *
- * The civil day is shown with the time so an appointment is not reduced to a
- * bare clock value. `numberingSystem: 'latn'` is pinned in both locales: an
- * `ar` locale otherwise renders Arabic-Indic digits beside Latin identifiers,
- * which is a mixed-numeral defect (docs/design/rtl-and-localization.md §3).
- * `hour12` is deliberately omitted so Intl follows each locale's 12/24-hour
- * convention (§5); a site policy may override it later. An unknown zone is a
- * server data error; showing the UTC instant is safer than inventing a time.
+ * Format an instant in the facility's IANA zone. An unknown zone is a server
+ * data error; showing the UTC instant is safer than inventing a local time.
  */
-function facilityZoneFormatter(locale: Locale): ZoneFormatter {
+function facilityZoneFormatter(): ZoneFormatter {
   return {
     format(instant: string, timeZone: string): string {
       try {
-        return new Intl.DateTimeFormat(locale, {
+        return new Intl.DateTimeFormat('en-GB', {
           timeZone,
-          day: '2-digit',
-          month: 'short',
           hour: '2-digit',
           minute: '2-digit',
-          numberingSystem: 'latn',
+          hour12: false,
         }).format(new Date(instant));
       } catch {
         return instant;
@@ -176,13 +167,11 @@ function parseAppointment(value: unknown): Appointment {
  *
  * `GET /api/v1/appointments` is a staff route; patient data comes only from
  * `/api/v1/patient/appointments`, scoped by the linked patient identifier.
- * The active locale selects the language of the facility-zone date and time.
  */
 export async function loadAppointments(
   transport: Transport,
   patientId: string,
   organizationId: string,
-  locale: Locale,
 ): Promise<readonly AppointmentView[]> {
   const body = await transport.get<unknown>(
     `/api/v1/patient/appointments?patientId=${encodeURIComponent(patientId)}`,
@@ -190,7 +179,7 @@ export async function loadAppointments(
   if (!Array.isArray(body)) {
     throw new Error('MALFORMED_APPOINTMENTS');
   }
-  const formatter = facilityZoneFormatter(locale);
+  const formatter = facilityZoneFormatter();
   return body.map((value) => {
     const appointment = parseAppointment(value);
     const confirmation = deriveConfirmation(appointment, appointment.confirmationEnabled);
@@ -290,11 +279,11 @@ export function placeholderInstructions(): readonly InstructionView[] {
   return [];
 }
 
-/** Generic localized notice with no clinical detail; never interpolates patient data. */
-export function placeholderNotice(locale: Locale): GenericNotice {
+/** Generic notice with no clinical detail; never interpolates patient data. */
+export function placeholderNotice(): GenericNotice {
   return {
-    title: appText(locale, 'noticeTitle'),
-    body: appText(locale, 'noticeBody'),
+    title: 'Appointment update',
+    body: 'You have a new update. Open the app for details.',
   };
 }
 

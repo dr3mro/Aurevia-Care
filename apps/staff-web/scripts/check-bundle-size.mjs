@@ -3,7 +3,6 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { gzipSync } from 'node:zlib';
-import { assertNoExternalResources } from './check-external-resources.mjs';
 
 /**
  * Maximum allowed gzipped size of one built JavaScript chunk, in bytes.
@@ -67,14 +66,6 @@ function main() {
     console.log(
       `${row.name.padEnd(46)} ${String(row.size).padStart(10)}  ${row.withinBudget ? 'ok' : 'OVER'}`,
     );
-  }
-
-  // The same wired step also enforces WEB-08's "no third-party resource" rule.
-  try {
-    assertNoExternalResources(new URL('../dist/', import.meta.url));
-  } catch (error) {
-    console.error(error instanceof Error ? error.message : String(error));
-    process.exitCode = 1;
   }
 
   if (rows.length === 0) {

@@ -415,6 +415,7 @@ Do these after part 2 where `depends` says so. Persistence tasks run one at a ti
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT change files outside `scope`, add patient data to logs, or edit any existing migration.
 - [x] READY-38 · Persist messaging governance in PostgreSQL (V62) instead of memory
   - pr: #287
+  - evidence: PR #287; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/READY-38.md; simulated review only
   - attempts: 1
   - requirements: ARC-01, ARC-02, OPS-02
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/messaging/governance, apps/api/src/test/java/com/aurevia/smartclinic/messaging/governance, db/migrations/V62__messaging_governance.sql, apps/api/src/test/java/com/aurevia/smartclinic/it
@@ -608,6 +609,7 @@ New tasks for IAM-02, which the API covers only in part (IAM-05 and IAM-06 alrea
 
 - [x] BUILD-01 · Staff invitations: single-use expiring invitation, accept and revoke
   - pr: #305
+  - evidence: PR #305; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/BUILD-01.md; simulated review only
   - attempts: 1
   - requirements: IAM-02
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/staff, apps/api/src/test/java/com/aurevia/smartclinic/staff, db/migrations/V70__build_01.sql
@@ -620,6 +622,7 @@ New tasks for IAM-02, which the API covers only in part (IAM-05 and IAM-06 alrea
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 - [x] BUILD-02 · Role history: immutable membership and role assignment history
   - pr: #293
+  - evidence: PR #293; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/BUILD-02.md; simulated review only
   - attempts: 1
   - requirements: IAM-02
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/authz, apps/api/src/test/java/com/aurevia/smartclinic/authz, db/migrations/V71__build_02.sql
@@ -638,6 +641,7 @@ Gaps in the clinical record, documents and result handling (CLN-06, CLN-07, XCH-
 
 - [x] BUILD-05 · Follow-up suggestion by visit type interval with an explained override
   - pr: #301
+  - evidence: PR #301; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/BUILD-05.md; simulated review only
   - attempts: 1
   - requirements: CLN-06
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/clinical, apps/api/src/test/java/com/aurevia/smartclinic/clinical, apps/api/src/main/java/com/aurevia/smartclinic/scheduling, apps/api/src/test/java/com/aurevia/smartclinic/scheduling, db/migrations/V74__build_05.sql
@@ -650,6 +654,7 @@ Gaps in the clinical record, documents and result handling (CLN-06, CLN-07, XCH-
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 - [x] BUILD-06 · Documents: checksum, retained original bytes and void with reason
   - pr: #303
+  - evidence: PR #303; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/BUILD-06.md; simulated review only
   - attempts: 1
   - requirements: CLN-07
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/documents, apps/api/src/test/java/com/aurevia/smartclinic/documents, db/migrations/V75__build_06.sql
@@ -663,6 +668,7 @@ Gaps in the clinical record, documents and result handling (CLN-06, CLN-07, XCH-
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 - [x] BUILD-07 · Result trending only for comparable units
   - pr: #290
+  - evidence: PR #290; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/BUILD-07.md; simulated review only
   - attempts: 1
   - requirements: XCH-07
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/lab, apps/api/src/test/java/com/aurevia/smartclinic/lab, apps/api/src/main/java/com/aurevia/smartclinic/exchange, apps/api/src/test/java/com/aurevia/smartclinic/exchange
@@ -690,6 +696,7 @@ Specialty workflows from the specification (RX-01, RX-02, RAD-01, PT-01, FIN-01)
 
 - [x] BUILD-09 · Versioned drug catalog search with market approval
   - pr: #304
+  - evidence: PR #304; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/BUILD-09.md; simulated review only
   - attempts: 1
   - requirements: RX-01
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/prescription, apps/api/src/test/java/com/aurevia/smartclinic/prescription, apps/api/src/main/java/com/aurevia/smartclinic/catalog, apps/api/src/test/java/com/aurevia/smartclinic/catalog, db/migrations/V76__build_09.sql
@@ -713,6 +720,7 @@ Specialty workflows from the specification (RX-01, RX-02, RAD-01, PT-01, FIN-01)
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 - [x] BUILD-11 · Radiology: verify patient and accession before linking a study
   - pr: #302
+  - evidence: PR #302; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/BUILD-11.md; simulated review only
   - attempts: 1
   - requirements: RAD-01
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/radiology, apps/api/src/test/java/com/aurevia/smartclinic/radiology
@@ -724,6 +732,7 @@ Specialty workflows from the specification (RX-01, RX-02, RAD-01, PT-01, FIN-01)
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 - [x] BUILD-12 · Physical therapy: episode, outcome scales with units and signed progress
   - pr: #291
+  - evidence: PR #291; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/BUILD-12.md; simulated review only
   - attempts: 1
   - requirements: PT-01
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/therapy, apps/api/src/test/java/com/aurevia/smartclinic/therapy, db/migrations/V77__build_12.sql
@@ -736,6 +745,7 @@ Specialty workflows from the specification (RX-01, RX-02, RAD-01, PT-01, FIN-01)
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 - [x] BUILD-13 · Finance: immutable payment, refund and credit ledger with fixed precision
   - pr: #295
+  - evidence: PR #295; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/BUILD-13.md; simulated review only
   - attempts: 1
   - requirements: FIN-01
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/finance, apps/api/src/test/java/com/aurevia/smartclinic/finance
@@ -795,6 +805,7 @@ Staff web and patient app work (UX-01, PAT-01 to PAT-03) and recovery evidence (
 
 - [x] BUILD-18 · Arabic and RTL: staff web layout and mixed-script text
   - pr: #288
+  - evidence: PR #288; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/BUILD-18.md; simulated review only
   - attempts: 1
   - requirements: UX-01
   - scope: apps/staff-web/src/i18n, apps/staff-web/src/theme
@@ -806,6 +817,7 @@ Staff web and patient app work (UX-01, PAT-01 to PAT-03) and recovery evidence (
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 - [x] BUILD-19 · Patient app: appointments with the facility time zone and confirmation
   - pr: #292
+  - evidence: PR #292; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/BUILD-19.md; simulated review only
   - attempts: 1
   - requirements: PAT-01
   - scope: apps/patient-mobile/src/features/appointments
@@ -817,6 +829,7 @@ Staff web and patient app work (UX-01, PAT-01 to PAT-03) and recovery evidence (
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 - [x] BUILD-20 · Patient app: released reports with revision and per-download authorization
   - pr: #296
+  - evidence: PR #296; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/BUILD-20.md; simulated review only
   - attempts: 1
   - requirements: PAT-02
   - scope: apps/patient-mobile/src/features/reports
@@ -828,6 +841,7 @@ Staff web and patient app work (UX-01, PAT-01 to PAT-03) and recovery evidence (
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 - [x] BUILD-21 · Patient app: enrollment, recovery and account lockout screens
   - pr: #298
+  - evidence: PR #298; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/BUILD-21.md; simulated review only
   - attempts: 1
   - requirements: PAT-03
   - scope: apps/patient-mobile/src/features/enrollment
@@ -880,6 +894,7 @@ ADR 0003 (`docs/decisions/0003-persistence-of-in-memory-stores.md`) lists the ad
 
 - [x] BUILD-25 · Persist the delivery outbox, dead letter and replay store with JDBC
   - pr: #294
+  - evidence: PR #294; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/BUILD-25.md; simulated review only
   - attempts: 1
   - requirements: ARC-05, ARC-02
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/events, apps/api/src/test/java/com/aurevia/smartclinic/events
@@ -914,6 +929,7 @@ ADR 0003 (`docs/decisions/0003-persistence-of-in-memory-stores.md`) lists the ad
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 - [x] BUILD-28 · Persist message attachments and quarantine with JDBC
   - pr: #307
+  - evidence: PR #307; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/BUILD-28.md; simulated review only
   - attempts: 1
   - requirements: MSG-03, ARC-06, ARC-07
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/messaging/attachments, apps/api/src/test/java/com/aurevia/smartclinic/messaging/attachments, db/migrations/V82__attachment_store.sql
@@ -926,6 +942,7 @@ ADR 0003 (`docs/decisions/0003-persistence-of-in-memory-stores.md`) lists the ad
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 - [x] BUILD-29 · Persist patient accounts, enrollment and recovery with JDBC
   - pr: #300
+  - evidence: PR #300; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/BUILD-29.md; simulated review only
   - attempts: 1
   - requirements: PAT-03, IAM-05, ARC-02
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/messaging/enrollment, apps/api/src/test/java/com/aurevia/smartclinic/messaging/enrollment, db/migrations/V83__patient_access_store.sql
@@ -938,6 +955,7 @@ ADR 0003 (`docs/decisions/0003-persistence-of-in-memory-stores.md`) lists the ad
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 - [x] BUILD-30 · Persist released reports and release history with JDBC
   - pr: #306
+  - evidence: PR #306; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/BUILD-30.md; simulated review only
   - attempts: 1
   - requirements: XCH-06, PAT-02
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/messaging/reports, apps/api/src/test/java/com/aurevia/smartclinic/messaging/reports, db/migrations/V84__report_release_store.sql
@@ -1091,6 +1109,7 @@ OPS-07 and OPS-08 have no implementation yet. The spec asks for exports with a m
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 - [x] BUILD-43 · Onboarding import: versioned manifest, mapping and dry run
   - pr: #299
+  - evidence: PR #299; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/BUILD-43.md; simulated review only
   - attempts: 1
   - requirements: OPS-08
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/tenant/importing, apps/api/src/test/java/com/aurevia/smartclinic/tenant/importing, db/migrations/V90__onboarding_import.sql
@@ -1153,6 +1172,7 @@ The staff web has admin, chart and scheduling. READY-24 to READY-32 add admin, p
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 - [x] BUILD-48 · Staff web: duplicate patient review worklist with dry run and second approval
   - pr: #309
+  - evidence: PR #309; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/BUILD-48.md; simulated review only
   - attempts: 1
   - requirements: IAM-04, WEB-09
   - scope: apps/staff-web/src/features/duplicates
@@ -1211,6 +1231,7 @@ PAT-01 to PAT-03 and UX-01 for the iOS and Android app. BUILD-19 to BUILD-21 cov
 
 - [x] BUILD-53 · Patient app: push registration, generic notification text and invalid token handling
   - pr: #308
+  - evidence: PR #308; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/BUILD-53.md; simulated review only
   - attempts: 1
   - requirements: PAT-01
   - scope: apps/patient-mobile/src/features/notifications
@@ -1222,6 +1243,7 @@ PAT-01 to PAT-03 and UX-01 for the iOS and Android app. BUILD-19 to BUILD-21 cov
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 - [x] BUILD-54 · Patient app: OS-backed credential storage and no persistent clinical cache
   - pr: #310
+  - evidence: PR #310; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/BUILD-54.md; simulated review only
   - attempts: 1
   - requirements: PAT-02
   - scope: apps/patient-mobile/src/api
