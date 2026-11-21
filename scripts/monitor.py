@@ -1,10 +1,10 @@
 import curses, json, re, shutil, subprocess, sys, threading, time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 INTERVAL, RECENT, ONCE = int(sys.argv[1]), int(sys.argv[2]), sys.argv[3] == "1"
 FAILED = ("failure", "timed_out")
 FIELDS = "databaseId,workflowName,displayTitle,conclusion,status,headSha,headBranch,event,createdAt,startedAt,updatedAt,url"
-TEXT = ("repo", "todo", "archive")  # plain-text results; everything else is JSON
+TEXT = ("repo", "todo", "archive", "total")  # plain-text results; everything else is JSON
 CALLS = {
     "repo": ["repo", "view", "--json", "nameWithOwner", "-q", ".nameWithOwner"],
     "issues": ["issue", "list", "--state", "open", "--limit", "40", "--json", "number,title,labels,createdAt"],
@@ -12,6 +12,8 @@ CALLS = {
     "merged": ["pr", "list", "--state", "merged", "--limit", "50", "--json", "number,title,mergedAt"],
     "closed": ["pr", "list", "--state", "closed", "--limit", "30", "--json", "number,title,closedAt,mergedAt"],
     "runs": ["run", "list", "--limit", "100", "--json", FIELDS],
+    "total": ["api", "graphql", "-F", "o={owner}", "-F", "n={repo}", "-q", ".data.repository.defaultBranchRef.target.history.totalCount",
+              "-f", "query=query($o:String!,$n:String!){repository(owner:$o,name:$n){defaultBranchRef{target{... on Commit{history{totalCount}}}}}}"],
     "todo": ["api", "repos/{owner}/{repo}/contents/TODO.md", "-H", "Accept: application/vnd.github.raw"],
     "archive": ["api", "repos/{owner}/{repo}/contents/docs/archive/TODO-DONE.md", "-H", "Accept: application/vnd.github.raw"],
 }
@@ -35,7 +37,10 @@ def collect(procs, text_keys=()):
 
 
 def fetch():
-    data = collect({k: spawn(a) for k, a in CALLS.items()}, TEXT)
+    since = (datetime.now(timezone.utc) - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    calls = dict(CALLS, commits=["api", f"repos/{{owner}}/{{repo}}/commits?since={since}&per_page=100", "-q",
+                                 "[.[] | {sha: .sha, parent: (.parents[0].sha // \"\")}]"])
+    data = collect({k: spawn(a) for k, a in calls.items()}, TEXT)
     if data.get("repo"):
         data["repo"] = data["repo"].strip()
     # Second wave: job detail for the runs that are live or recently failed.
@@ -46,11 +51,20 @@ def fetch():
              and r.get("updatedAt") and (now - ts(r["updatedAt"])).total_seconds() < 86400][:6]
     jobs = collect({i: spawn(["run", "view", str(i), "--json", "jobs"]) for i in want})
     data["jobs"] = {i: (j or {}).get("jobs", []) for i, j in jobs.items() if isinstance(j, dict) or j is None}
+    # Third step: what those commits changed, as one compare between the day's first parent and the latest commit.
+    commits = data.pop("commits", None) or []
+    if commits and commits[-1].get("parent"):
+        total = spawn(["api", f"repos/{{owner}}/{{repo}}/compare/{commits[-1]['parent']}...{commits[0]['sha']}", "-q",
+                       "{files: (.files | length), add: ([.files[].additions] | add // 0), del: ([.files[].deletions] | add // 0)}"])
+        got = collect({"x": total})["x"]
+        data["churn"] = dict(got, commits=len(commits)) if isinstance(got, dict) else None
+    else:
+        data["churn"] = {"commits": len(commits), "files": 0, "add": 0, "del": 0} if data.get("runs") is not None else None
     return data
 
 
 def blank(k):
-    return "" if k in TEXT else {} if k == "jobs" else []
+    return "" if k in TEXT else {} if k in ("jobs", "churn") else []
 
 
 def ts(v):
@@ -250,6 +264,7 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False):
     msym, mcol = SYM.get(mstate, ("•", "gray"))
     wave = next((r for r in runs if r.get("workflowName") == "Agent swarm"), None)
     jobs = data.get("jobs") or {}
+    churn = data.get("churn") or {}
     todo = parse_tasks(data.get("todo"))
     n_done = sum(1 for t in todo if t["status"] == "done") + len(re.findall(r"^- \[x\] ", data.get("archive") or "", re.M))
     n_open = sum(1 for t in todo if t["status"] == "todo")
@@ -267,17 +282,30 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False):
              ("MERGED 24h", str(len(merged_day)), "b_green" if merged_day else "gray", "pull requests"),
              ("FAILED 24h", str(len(failed_day)), "b_red" if failed_day else "b_green", f"of {len(runs_day)} runs"),
              ("CLOSED 24h", str(len(closed_day)), "b_yellow" if closed_day else "gray", "not merged"),
+             ("COMMITS", (data.get("total") or "").strip() or "-", "b_blue" if data.get("total") else "gray", "all time"),
+             ("COMMITS LAST 24H", str(churn.get("commits", "-")), "b_blue" if churn else "gray",
+              f"+{churn.get('add', 0)} -{churn.get('del', 0)} {churn.get('files', 0)}f" if churn else "no data"),
              ("MEDIAN RUN", span(median), "b_cyan", f"{len(durs)} runs"),
              ("NEEDS HUMAN", str(hot), "b_red" if hot else "b_green", "issues, PRs")]
-    if (H is None or H >= 24) and W >= 121:
-        spare = W - 2 - len(cards) * 17  # share leftover width out so the cards reach the right edge
+    def base(c):  # a card is at least 16 wide and grows when its label, value or caption needs more
+        sub = c[3] if isinstance(c[3], str) else "".join(t for t, _ in c[3])
+        return max(16, len(c[0]) + 5, len(sub) + 3, len(c[1]) + 3)
+
+    for extra in ("CLOSED 24h", "MEDIAN RUN"):  # too narrow for every card: drop the least useful ones first
+        if W - 2 < sum(base(c) + 1 for c in cards):
+            cards = [c for c in cards if c[0] != extra]
+    if (H is None or H >= 24) and W - 2 >= sum(base(c) + 1 for c in cards):
+        spare = W - 2 - sum(base(c) + 1 for c in cards)  # share leftover width out so the cards reach the right edge
         rows = [[], [], [], []]
         for n, (label, value, style, sub) in enumerate(cards):
-            w = 16 + spare // len(cards) + (1 if n < spare % len(cards) else 0)
+            w = base(cards[n]) + spare // len(cards) + (1 if n < spare % len(cards) else 0)
             inner = w - 2
             rows[0] += [("╭" + f"─ {label} ".ljust(inner, "─") + "╮ ", "line")]
             rows[1] += [("│", "line"), ((" " + value).ljust(inner)[:inner], style), ("│ ", "line")]
-            rows[2] += [("│", "line"), ((" " + sub).ljust(inner)[:inner], "dim"), ("│ ", "line")]
+            segs = sub if isinstance(sub, list) else [(sub, "dim")]
+            segs = [(" ", "")] + segs
+            used = sum(len(t) for t, _ in segs)
+            rows[2] += [("│", "line")] + clipline(segs, inner)[0] + [(" " * max(inner - used, 0), ""), ("│ ", "line")]
             rows[3] += [("╰" + "─" * inner + "╯ ", "line")]
         top += [[(" ", "")] + r for r in rows]
     else:
@@ -555,7 +583,7 @@ def tui(stdscr):
         attr[name] = pair[name]
         attr["b_" + name] = pair[name] | curses.A_BOLD
 
-    st = {"data": {k: blank(k) for k in [*CALLS, "jobs"]}, "busy": False, "at": 0.0}
+    st = {"data": {k: blank(k) for k in [*CALLS, "jobs", "churn"]}, "busy": False, "at": 0.0}
     lock = threading.Lock()
 
     def refresh():
