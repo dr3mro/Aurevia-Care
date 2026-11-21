@@ -31,7 +31,7 @@ import type { DeliveryFacts, InstructionView } from '../features/acknowledgments
 import { parseReleasedReport } from '../features/reports/reportClient';
 import type { ReleasedReport } from '../features/reports/types';
 
-import type { Locale } from './messages';
+import { appText, type Locale } from './messages';
 
 /**
  * Placeholder origin for the synthetic build. A real deployment supplies its
@@ -104,8 +104,9 @@ function isConversationState(value: unknown): value is ConversationState {
  * bare clock value. `numberingSystem: 'latn'` is pinned in both locales: an
  * `ar` locale otherwise renders Arabic-Indic digits beside Latin identifiers,
  * which is a mixed-numeral defect (docs/design/rtl-and-localization.md §3).
- * An unknown zone is a server data error; showing the UTC instant is safer than
- * inventing a local time.
+ * `hour12` is deliberately omitted so Intl follows each locale's 12/24-hour
+ * convention (§5); a site policy may override it later. An unknown zone is a
+ * server data error; showing the UTC instant is safer than inventing a time.
  */
 function facilityZoneFormatter(locale: Locale): ZoneFormatter {
   return {
@@ -117,7 +118,6 @@ function facilityZoneFormatter(locale: Locale): ZoneFormatter {
           month: 'short',
           hour: '2-digit',
           minute: '2-digit',
-          hour12: false,
           numberingSystem: 'latn',
         }).format(new Date(instant));
       } catch {
@@ -290,11 +290,11 @@ export function placeholderInstructions(): readonly InstructionView[] {
   return [];
 }
 
-/** Generic notice with no clinical detail; never interpolates patient data. */
-export function placeholderNotice(): GenericNotice {
+/** Generic localized notice with no clinical detail; never interpolates patient data. */
+export function placeholderNotice(locale: Locale): GenericNotice {
   return {
-    title: 'Appointment update',
-    body: 'You have a new update. Open the app for details.',
+    title: appText(locale, 'noticeTitle'),
+    body: appText(locale, 'noticeBody'),
   };
 }
 

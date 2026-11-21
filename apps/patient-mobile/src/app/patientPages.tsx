@@ -73,7 +73,7 @@ export function AppointmentListPage({
       {(appointments) => (
         <AppointmentListScreen
           appointments={appointments}
-          notice={placeholderNotice()}
+          notice={placeholderNotice(locale)}
           patientId={patientId}
           devices={placeholderDevices()}
           onConfirm={placeholderAction}

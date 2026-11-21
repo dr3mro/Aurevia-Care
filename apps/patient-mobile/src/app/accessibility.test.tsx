@@ -9,7 +9,7 @@
  * 10). All values below are synthetic.
  */
 import { jest } from '@jest/globals';
-import { render } from '@testing-library/react-native';
+import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { Text } from 'react-native';
 
 import { TransportError } from '../api/transport';
@@ -23,22 +23,24 @@ import { TAB_DEFINITIONS } from './tabs';
 
 const locales: readonly Locale[] = ['en', 'ar'];
 
+// Fixture labels come from the real bundle so a regression that hardcodes
+// English in a route label or rendered run fails the Arabic case.
 const routesFor = (locale: Locale): readonly StackRoute[] => [
   {
     key: 'root',
-    label: 'Root menu',
+    label: appText(locale, 'accountEnrollment'),
     render: () => (
       <Text accessibilityLanguage={locale} testID="root-run">
-        Root
+        {appText(locale, 'accountRecovery')}
       </Text>
     ),
   },
   {
     key: 'next',
-    label: 'Next screen',
+    label: appText(locale, 'accountSupport'),
     render: () => (
       <Text accessibilityLanguage={locale} testID="next-run">
-        Next
+        {appText(locale, 'accountLockout')}
       </Text>
     ),
   },
@@ -124,6 +126,29 @@ describe.each(locales)('patient shell accessibility in %s', (locale) => {
     expectLocalizedRuns(renderedNodes(view));
   });
 
+  it('labels the pushed Back control and tags every run on the pushed screen', async () => {
+    const view = await render(
+      <ScreenStack
+        testID="stack"
+        title={appText(locale, 'appTitle')}
+        backLabel={appText(locale, 'back')}
+        locale={locale}
+        rootKey="root"
+        routes={routesFor(locale)}
+      />,
+    );
+    await fireEvent.press(view.getByTestId('stack-open-next'));
+    await waitFor(() => expect(view.getByTestId('next-run')).toBeTruthy());
+
+    expect(view.getByTestId('next-run')).toHaveTextContent(appText(locale, 'accountLockout'));
+    const back = view.getByTestId('stack-back');
+    expect(back.props.accessibilityRole).toBe('button');
+    expect(back.props.accessibilityLabel).toBe(appText(locale, 'back'));
+    expect(back.props.accessibilityLanguage).toBe(locale);
+    expectLabelledControls(renderedNodes(view), locale);
+    expectLocalizedRuns(renderedNodes(view));
+  });
+
   it('labels every SignedOutScreen control and tags every text run', async () => {
     const view = await render(<SignedOutScreen locale={locale} onSignIn={jest.fn()} />);
     expectLabelledControls(renderedNodes(view), locale);
@@ -159,6 +184,8 @@ it.each(locales)('keeps the correlation identifier in its own Latin run in %s', 
   const identifier = view.getByTestId('screen-correlation-id');
   expect(identifier).toHaveTextContent('corr-7');
   expect(identifier.props.accessibilityLanguage).toBe('en');
+  // Native long-press copy works without adding a clipboard dependency.
+  expect(identifier.props.selectable).toBe(true);
   expect(view.getByTestId('screen-correlation')).toBeTruthy();
   expect(view.getByText(appText(locale, 'referencePrefix'))).toBeTruthy();
 });

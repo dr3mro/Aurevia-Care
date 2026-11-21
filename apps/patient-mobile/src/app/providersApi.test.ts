@@ -122,8 +122,10 @@ describe('loadAppointments', () => {
         locale,
       );
       const rendered = rows[0]!.localStart;
-      // 10:00Z is 13:00 in Asia/Riyadh, and the civil day is 21 November.
-      expect(rendered).toContain('13:00');
+      // 10:00Z is 13:00 (01:00 PM) in Asia/Riyadh; the civil day is 21 Nov.
+      // With no `hour12` override Intl follows the locale convention (en "PM", ar "م").
+      expect(rendered).toContain('01:00');
+      expect(rendered).toMatch(locale === 'ar' ? /م$/ : /PM$/);
       expect(rendered).toMatch(locale === 'ar' ? /نوفمبر/ : /Nov/);
       expect(rendered).toMatch(/21/);
       expect(rendered).not.toMatch(/[\u0660-\u0669]/);

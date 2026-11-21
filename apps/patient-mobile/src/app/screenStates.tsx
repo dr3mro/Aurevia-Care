@@ -6,7 +6,7 @@
  * opaque correlation id; no transport body, token or patient field is rendered
  * or logged here.
  */
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { ReactNode } from 'react';
 
 import { TransportError } from '../api/transport';
@@ -131,7 +131,11 @@ export function ScreenStateView<T>({
               <Text accessibilityLanguage={messages.locale}>{messages.reference}</Text>
               {/* An identifier is a Latin run in both directions; keep it in its
                   own node so a screen reader does not read it in Arabic. */}
-              <Text testID="screen-correlation-id" accessibilityLanguage="en">
+              <Text
+                testID="screen-correlation-id"
+                accessibilityLanguage="en"
+                selectable
+                style={styles.identifier}>
                 {state.error.correlationId}
               </Text>
             </View>
@@ -181,6 +185,12 @@ const styles = StyleSheet.create({
   state: { padding: 16, minHeight: 44 },
   control: { minHeight: 44, justifyContent: 'center' },
   // `row` mirrors under RTL so the localized prefix stays at the reading start
-  // and the Latin identifier follows it in both directions.
-  reference: { flexDirection: 'row', flexWrap: 'wrap' },
+  // and the Latin identifier follows it in both directions. The identifier is
+  // never wrapped: a broken hyphen could change what the patient reads back.
+  reference: { flexDirection: 'row' },
+  // Native mono projection from the token contract; `default` keeps the type
+  // total so no branch is introduced here.
+  identifier: {
+    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
+  },
 });
