@@ -818,7 +818,7 @@ def tui(stdscr):
             continue
         last = sig
         stdscr.erase()
-        if not ready:  # plain black screen until 75% of the sections have loaded
+        if not at:  # nothing has arrived yet: plain black screen until the first section loads
             stdscr.addstr(0, 1, "Loading...")
             stdscr.refresh()
             continue
