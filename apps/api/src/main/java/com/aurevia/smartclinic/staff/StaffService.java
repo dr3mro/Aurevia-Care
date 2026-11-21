@@ -32,7 +32,8 @@ public class StaffService {
     private static final int DEFAULT_LIMIT = 50;
     private static final int MAX_LIMIT = 200;
     private static final int MAX_DISPLAY_NAME = 200;
-    private static final List<String> ROLES = List.of("tenant_admin", "reception", "privacy_auditor");
+    /** Canonical bounded G0 role keys shared with the staff invitation flow. */
+    static final List<String> ROLES = List.of("tenant_admin", "reception", "privacy_auditor");
 
     private final StaffRepository repository;
     private final ActionPolicy policy;
