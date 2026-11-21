@@ -606,7 +606,7 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False, loading=frozenset()):
                   items=[cells(iw, ("o", "red" if any(l["name"] == "needs-human" for l in i.get("labels", [])) else "magenta", 1),
                                (f"#{i['number']}", "", 5), (i["title"], "", None), (age(i["createdAt"]), "dim", 10, "r"))
                          for i in issues])]
-    for panel, keys in ((left[0], {"runs"}), (left[1], {"runs"}), (left[2], {"runs"}), (right[0], {"todo", "archive"}),
+    for panel, keys in ((left[0], {"runs", "jobs"}), (left[1], {"runs"}), (left[2], {"runs", "jobs"}), (right[0], {"todo", "archive"}),
                         (right[1], {"todo"}), (right[2], {"merged"}), (right[3], {"prs"}), (right[4], {"issues"})):
         if keys & loading:
             panel["loading"] = True
@@ -774,6 +774,10 @@ def tui(stdscr):
             continue
         last = sig
         stdscr.erase()
+        if not at:  # nothing has arrived yet: plain black screen until the first section loads
+            stdscr.addstr(0, 1, "Loading...")
+            stdscr.refresh()
+            continue
         ids = alarm["ids"] if alarm else frozenset()
         top, left, right, cw = compose(data, max(W, 80), H, ids, busy, loading)
 
