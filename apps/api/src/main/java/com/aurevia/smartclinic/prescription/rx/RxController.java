@@ -71,6 +71,17 @@ public class RxController {
     }
 
     /**
+     * Produce the printable local prescription with the prescriber attestation.
+     *
+     * @param id prescription identifier
+     * @return the immutable print-ready prescription
+     */
+    @GetMapping("/{id}/printable")
+    public PrintablePrescription printable(@PathVariable String id) {
+        return service.printable(id);
+    }
+
+    /**
      * Record prescriber attestation.
      *
      * @param id      prescription identifier
