@@ -1835,6 +1835,32 @@ class TwoTierTests(unittest.TestCase):
                   and c[2] == "delivery.yml"]
         self.assertEqual(len(pushes), 1)
 
+    def test_integrate_batch_leaves_a_moved_branch_open(self):
+        self.repo = Path(tempfile.mkdtemp())
+        (self.repo / "TODO.md").write_text("# TODO\n")
+        self.addCleanup(shutil.rmtree, self.repo)
+        original = Path.cwd()
+        os.chdir(self.repo)
+        self.addCleanup(os.chdir, original)
+        fake = FakeGh(pr_view={"headRefOid": "abc", "body": "Task: CW-001"})
+        order = iter([("abc", "CW-001", []), ("abc", "CW-002", [])])
+
+        def record(pr, task_id, sha, gate):
+            if pr == 2:
+                raise swarm.BranchMoved("moved")
+            return "merged comment"
+        with mock.patch.object(swarm, "gh", fake), \
+             mock.patch.object(swarm, "guard", return_value=[]), \
+             mock.patch.object(swarm, "merge_local", side_effect=lambda *a, **k: next(order)), \
+             mock.patch.object(swarm, "record_merge", side_effect=record), \
+             mock.patch.object(swarm, "run_gate", return_value=(True, "ok")), \
+             mock.patch.object(swarm, "close_merged_issues"), \
+             mock.patch.object(swarm, "git"), mock.patch.object(swarm, "authed_git"):
+            swarm.integrate_batch([1, 2], "scripts/quick-check.sh")
+        comments = [c for c in fake.calls if c[:2] == ("pr", "comment")]
+        self.assertEqual({c[2] for c in comments}, {"1", "2"})
+        self.assertTrue(any(c[2] == "2" and "stays open" in c[4] for c in comments))
+
     def test_integrate_batch_retries_when_main_advanced(self):
         self.repo = Path(tempfile.mkdtemp())
         (self.repo / "TODO.md").write_text("# TODO\n")

@@ -2475,11 +2475,31 @@ def merge_local(pr):
     return git("rev-parse", f"pr-{pr}").strip(), task_id_of(info["headRefName"]), []
 
 
+class BranchMoved(SystemExit):
+    """The pull request branch changed after its merge was tested."""
+
+
+def record_merges(merged, gates):
+    """Record every tested merge. A branch that moved after its test (a worker pushed, someone
+    updated the branch) used to fail the whole batch after up to an hour of gating. Now its tested
+    commit stays in the merge, nothing is recorded for it, the pull request stays open, and the
+    next run integrates the newer commits. Returns `(recorded, comments, moved)`."""
+    recorded, comments, moved = [], [], []
+    for item in merged:
+        pr, task_id, sha = item
+        try:
+            comments.append(record_merge(pr, task_id, sha, gates[pr][0]))
+            recorded.append(item)
+        except BranchMoved:
+            moved.append(item)
+    return recorded, comments, moved
+
+
 def record_merge(pr, task_id, sha, gate="scripts/quick-check.sh"):
     """Record one already-gated merge in the shared trackers. No commit or push."""
     info = gh_json("pr", "view", str(pr), "--json", "headRefOid,body")
     if info["headRefOid"] != sha:
-        raise SystemExit("the branch changed after it was tested; it will be retested")
+        raise BranchMoved("the branch changed after it was tested; it will be retested")
     tasks = {t["id"]: t for t in parse_tasks(todo_read())}
     title = tasks.get(task_id, {}).get("task", task_id)
     Path("docs/swarm").mkdir(parents=True, exist_ok=True)
@@ -2622,7 +2642,7 @@ def integrate_batch(queue, gate="scripts/quick-check.sh"):
     if not merged:
         emit("merged", 0)
         return 0
-    comments = [record_merge(pr, task_id, sha, gates[pr][0]) for pr, task_id, sha in merged]
+    merged, comments, moved = record_merges(merged, gates)
     files = todo_paths() + [f"docs/swarm/{t}.md" for _, t, _ in merged]
     git("add", *files)
     try:
@@ -2650,8 +2670,9 @@ def integrate_batch(queue, gate="scripts/quick-check.sh"):
             authed_git("fetch", "origin", "main")
             git("reset", "--soft", "origin/main")
             restore_trackers()
-            for pr, task_id, sha in merged:
-                record_merge(pr, task_id, sha, gates[pr][0])
+            merged, comments, newly_moved = record_merges(merged, gates)
+            moved += newly_moved
+            files = todo_paths() + [f"docs/swarm/{t}.md" for _, t, _ in merged]
             git("add", *files)
             git(*IDENTITY, "commit", "-qm", "Integrate swarm PRs (reconciled)",
                 "--allow-empty", check=False)
@@ -2668,6 +2689,10 @@ def integrate_batch(queue, gate="scripts/quick-check.sh"):
                 return 0
     for (pr, _, _), comment in zip(merged, comments):
         gh("pr", "comment", str(pr), "--body", comment)
+    for pr, _, sha in moved:
+        gh("pr", "comment", str(pr), "--body",
+           f"{MARK}\nThe branch changed after its merge was tested. The tested commit {sha[:12]} is in main; "
+           "this pull request stays open and its newer commits are integrated by the next run.", check=False)
     close_merged_issues([(pr, task_id) for pr, task_id, _ in merged])
     dispatch_delivery()
     emit("merged", len(merged))

@@ -95,11 +95,11 @@ def classify(args):
         return "jobs"
     if args[:1] == ["api"]:
         if "graphql" in text:
+            if "TODO-DONE.md" in text:
+                return "archive"
+            if 'HEAD:tasks"' in text:
+                return "todo"
             return "total"
-        if "TODO-DONE.md" in text:
-            return "archive"
-        if "/contents/TODO.md" in text:
-            return "todo"
         if "/compare/" in text:
             return "compare"
         if "/commits?" in text:
