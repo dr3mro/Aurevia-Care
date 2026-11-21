@@ -782,10 +782,15 @@ def tui(stdscr):
                     alarm = {"ids": ids, "text": text, "next": now}
             seen = set(failed_now) | (seen or set())
             if AUTOSTART and swarm_idle(data) and now - started_at >= AUTOSTART * 60:
-                err = start_swarm()
                 started_at = now
-                started_note = (f"swarm start failed: {err}" if err else
-                                f"swarm was idle, started a wave at {datetime.now().strftime('%H:%M')}")
+                started_note = "swarm was idle, starting a wave..."
+
+                def launch():  # gh can take seconds: never run it on the UI thread
+                    nonlocal started_note
+                    err = start_swarm()
+                    started_note = (f"swarm start failed: {err}" if err else
+                                    f"swarm was idle, started a wave at {datetime.now().strftime('%H:%M')}")
+                threading.Thread(target=launch, daemon=True).start()
         if alarm and now >= alarm["next"]:
             beep()
             alarm["next"] = now + 5
