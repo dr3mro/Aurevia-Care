@@ -1752,9 +1752,13 @@ class TwoTierTests(unittest.TestCase):
              mock.patch.object(swarm, "guard", return_value=[]), \
              mock.patch.object(swarm, "merge_local", return_value=("abc", "CW-001", [])), \
              mock.patch.object(swarm, "run_gate", return_value=(True, "ok")), \
-             mock.patch.object(swarm, "git"), mock.patch.object(swarm, "authed_git"):
+             mock.patch.object(swarm, "git") as gitmock, mock.patch.object(swarm, "authed_git"):
             count = swarm.integrate_batch([1, 2], "scripts/quick-check.sh")
         self.assertEqual(count, 2)
+        # `-m` must come right before its message: "-qm --allow-empty <msg>" made git read the
+        # message as a pathspec and failed every integration.
+        commit = next(c.args for c in gitmock.call_args_list if "commit" in c.args and "Integrate 2 swarm pull request(s)" in c.args)
+        self.assertEqual(commit[commit.index("-m") + 1], "Integrate 2 swarm pull request(s)")
         pushes = [c for c in fake.calls if c[:2] == ("workflow", "run")
                   and c[2] == "delivery.yml"]
         self.assertEqual(len(pushes), 1)
@@ -1799,6 +1803,44 @@ class TwoTierTests(unittest.TestCase):
         self.assertGreaterEqual(gate.call_count, 2)
         self.assertTrue(any(c.args[:3] == ("reset", "--soft", "origin/main")
                             for c in gitmock.call_args_list))
+
+    def test_integrate_batch_sends_prs_back_when_the_regate_fails(self):
+        self.repo = Path(tempfile.mkdtemp())
+        (self.repo / "TODO.md").write_text("# TODO\n")
+        self.addCleanup(shutil.rmtree, self.repo)
+        original = Path.cwd()
+        os.chdir(self.repo)
+        self.addCleanup(os.chdir, original)
+
+        class Gh(FakeGh):
+            def __call__(self, *args, check=True):
+                if args[:2] == ("pr", "view") and "--jq" not in args:
+                    self.calls.append(args)
+                    return json.dumps({"headRefOid": "abc", "body": "Task: CW-001"})
+                if args[:2] == ("pr", "diff"):
+                    self.calls.append(args); return "apps/api/A.java\n"
+                if args[:2] == ("pr", "list"):
+                    self.calls.append(args); return json.dumps([])
+                return super().__call__(*args, check=check)
+
+        def authed(*args, check=True):
+            if args[:2] == ("push", "origin"):
+                raise subprocess.CalledProcessError(1, args, "", "fetch first")
+            return ""
+
+        results = iter([(True, "ok"), (False, "FAIL tests/app/AppShell.test.tsx")])
+        with mock.patch.object(swarm, "gh", Gh()), \
+             mock.patch.object(swarm, "guard", return_value=[]), \
+             mock.patch.object(swarm, "merge_local", return_value=("abc", "CW-001", [])), \
+             mock.patch.object(swarm, "run_gate", side_effect=lambda *a, **k: next(results)), \
+             mock.patch.object(swarm, "git"), \
+             mock.patch.object(swarm, "fail") as failed, \
+             mock.patch.object(swarm, "authed_git", side_effect=authed):
+            count = swarm.integrate_batch([1], "scripts/quick-check.sh")
+        self.assertEqual(count, 0)
+        failed.assert_called_once()
+        self.assertEqual(failed.call_args.args[0], 1)
+        self.assertIn("AppShell", failed.call_args.args[2])
 
     def test_integrate_batch_restores_trackers_on_retry(self):
         self.repo = Path(tempfile.mkdtemp())

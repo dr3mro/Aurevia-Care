@@ -214,8 +214,8 @@ Order of work for the whole production-readiness effort: (1) security and platfo
 
 ### Phase 4 — Wire the three existing screens to the real API
 
-- [-] READY-23 · Admin pages: /admin/facilities and /admin/staff on the real API
-  - agent: swarm-3
+- [x] READY-23 · Admin pages: /admin/facilities and /admin/staff on the real API
+  - pr: #263
   - attempts: 1
   - requirements: IAM-01, IAM-02
   - scope: apps/staff-web/src/features/admin, apps/staff-web/src/app/routes.tsx
@@ -231,9 +231,10 @@ Order of work for the whole production-readiness effort: (1) security and platfo
 - [ ] READY-24 · Admin pages: /admin/config and /admin/audit on the real API
   - requirements: ADM-01, OPS-02
   - attempts: 0
-  - scope: apps/staff-web/src/features/admin, apps/staff-web/src/app/routes.tsx
-  - depends: READY-19, READY-20
+  - scope: apps/staff-web/src/features/admin
+  - depends: READY-19, READY-20, READY-51
   - details:
+    Route registration (READY-51): add this feature's routes to `features/<name>/routes.ts` as `export const routes: AppRoute[]`; the app collects every feature's routes. Do not edit `app/routes.tsx` or `app/navigation.ts`.
     Follow `docs/design/screen-recipe.md`. Reuse the existing `ConfigEditor.tsx` and `AuditEventList.tsx`.
     1. Read `web/ConfigurationController.java`, `web/CatalogController.java`, `web/AuditController.java`. Endpoints: `GET /api/v1/configuration/{key}`, `GET /api/v1/configuration/{key}/history`, `POST /api/v1/configuration`, `POST /api/v1/configuration/{key}/versions/{version}/approve`, `GET /api/v1/catalogs/{family}`, `POST /api/v1/catalogs/{family}/entries`, `GET /api/v1/audit-events?cursor&limit&action&outcome&resourceType&from&to`.
     2. Create `ConfigPage.tsx` (lookup by key, show versions and approval state, define and approve) and `AuditPage.tsx` (filters in a form, cursor paging with Load more, a clear "no events" empty state). Audit times show the facility time zone with the UTC instant on hover or focus.
@@ -247,9 +248,10 @@ Order of work for the whole production-readiness effort: (1) security and platfo
 - [ ] READY-25 · Patients: /patients search and register, /patients/:id overview
   - requirements: PRD-01, IAM-03, IAM-04
   - attempts: 0
-  - scope: apps/staff-web/src/features/patients, apps/staff-web/src/app/routes.tsx, apps/staff-web/src/app/navigation.ts
-  - depends: READY-19, READY-20
+  - scope: apps/staff-web/src/features/patients
+  - depends: READY-19, READY-20, READY-51
   - details:
+    Route registration (READY-51): add this feature's routes to `features/<name>/routes.ts` as `export const routes: AppRoute[]`; the app collects every feature's routes. Do not edit `app/routes.tsx` or `app/navigation.ts`.
     Read `web/PatientController.java`, `patient/PatientView.java`, `patient/Patient.java`. Endpoints: `GET /api/v1/patients?name=`, `POST /api/v1/patients` (answers 201 once AUD-20261120-01 is merged), `GET /api/v1/patients/{id}`, `GET /api/v1/duplicate-reviews`.
     1. Build `PatientsPage` (`/patients`): a search form (name), a results table (name through `MixedScriptText`, MRN, issuer, date of birth) and a Register button opening a form with display name, MRN, issuer, date of birth or an unknown-date reason, language. The register form posts and shows the server's validation errors in an error summary.
     2. Build `PatientOverviewPage` (`/patients/:id`): shows identity, likely-duplicate warnings from `PatientView`, and links to `/patients/:id/chart`.
@@ -260,9 +262,10 @@ Order of work for the whole production-readiness effort: (1) security and platfo
 - [ ] READY-26 · Orders: /orders list and /orders/:id detail with accept, reject, clarify
   - requirements: XCH-01, XCH-02, XCH-03
   - attempts: 0
-  - scope: apps/staff-web/src/features/orders, apps/staff-web/src/app/routes.tsx
-  - depends: READY-19, READY-20, READY-16
+  - scope: apps/staff-web/src/features/orders
+  - depends: READY-19, READY-20, READY-16, READY-51
   - details:
+    Route registration (READY-51): add this feature's routes to `features/<name>/routes.ts` as `export const routes: AppRoute[]`; the app collects every feature's routes. Do not edit `app/routes.tsx` or `app/navigation.ts`.
     Needs the order list endpoint (READY-16). Read `exchange/order/OrderController.java`, `OrderView.java`, and the controller for `/api/v1/xch03/orders` (find it with `grep -rn xch03 apps/api/src/main`).
     Endpoints: `GET /api/v1/orders?status&cursor&limit`, `GET /api/v1/orders/{id}`, `GET /api/v1/xch03/orders/{id}/history`, `POST /api/v1/xch03/orders/{id}/accept`, `.../reject`, `.../clarify` (each needs `If-Match` and `Idempotency-Key`).
     1. `OrdersPage`: table with status filter, cursor paging, row link to detail.
@@ -273,9 +276,10 @@ Order of work for the whole production-readiness effort: (1) security and platfo
 - [ ] READY-27 · Results: /results inbox and /results/critical queue
   - requirements: XCH-04, XCH-05
   - attempts: 0
-  - scope: apps/staff-web/src/features/results, apps/staff-web/src/app/routes.tsx
-  - depends: READY-19, READY-20
+  - scope: apps/staff-web/src/features/results
+  - depends: READY-19, READY-20, READY-51
   - details:
+    Route registration (READY-51): add this feature's routes to `features/<name>/routes.ts` as `export const routes: AppRoute[]`; the app collects every feature's routes. Do not edit `app/routes.tsx` or `app/navigation.ts`.
     Read the controllers under `exchange/result` and for `/api/v1/critical-results` (`grep -rn "critical-results\|xch04" apps/api/src/main`) and their view records.
     Endpoints: `GET /api/v1/xch04/reconciliations`, `GET /api/v1/xch04/results/{id}`, `POST /api/v1/xch04/results/{id}/acknowledge`, `GET /api/v1/critical-results/report`, `GET /api/v1/critical-results/{id}`, `POST /api/v1/critical-results/{id}/acknowledge`, `.../assign`, `.../escalate`, `.../read-back`.
     1. `ResultsInboxPage` (`/results`): unmatched and final reports needing review, cursor paging if the API offers it, acknowledge action.
@@ -286,9 +290,10 @@ Order of work for the whole production-readiness effort: (1) security and platfo
 - [ ] READY-28 · Lab: /lab/accessions list and accession actions
   - requirements: LAB-01, LAB-02
   - attempts: 0
-  - scope: apps/staff-web/src/features/lab, apps/staff-web/src/app/routes.tsx
-  - depends: READY-19, READY-20, READY-17
+  - scope: apps/staff-web/src/features/lab
+  - depends: READY-19, READY-20, READY-17, READY-51
   - details:
+    Route registration (READY-51): add this feature's routes to `features/<name>/routes.ts` as `export const routes: AppRoute[]`; the app collects every feature's routes. Do not edit `app/routes.tsx` or `app/navigation.ts`.
     Needs READY-17. Read `lab/accession/LabAccessionController.java`, `AccessionView.java`, `AccessionState.java`.
     Endpoints: `GET /api/v1/lab/accessions?state&cursor&limit`, `GET /api/v1/lab/accessions/{id}`, `POST /api/v1/lab/accessions`, `.../collect`, `.../receive`, `.../reject`, `.../recollect`.
     1. `AccessionsPage`: table with state filter and paging, button to accession a requisition (form: requisition id, specimen type, site; the issuer-scoped accession id is shown after creation).
@@ -299,9 +304,10 @@ Order of work for the whole production-readiness effort: (1) security and platfo
 - [ ] READY-29 · Messages: /messages unit inbox and conversation view
   - requirements: MSG-02, MSG-03
   - attempts: 0
-  - scope: apps/staff-web/src/features/messages, apps/staff-web/src/app/routes.tsx
-  - depends: READY-19, READY-20
+  - scope: apps/staff-web/src/features/messages
+  - depends: READY-19, READY-20, READY-51
   - details:
+    Route registration (READY-51): add this feature's routes to `features/<name>/routes.ts` as `export const routes: AppRoute[]`; the app collects every feature's routes. Do not edit `app/routes.tsx` or `app/navigation.ts`.
     Read `messaging/conversations/ConversationController.java` and its views. Endpoints: `GET /api/v1/conversations/inbox`, `GET /api/v1/conversations/work-queue`, `GET /api/v1/conversations/{id}`, `POST /api/v1/conversations/{id}/reply`, `.../assign`, `.../close`, `.../read`, `.../transfer`, `.../resolve`.
     1. `MessagesPage`: two tabs, Inbox and Work queue, unread count per conversation, SLA breach marked with text and colour.
     2. `ConversationPage` (`/messages/:id`): message list in server order (sender role and time), reply box (no draft in browser storage), assign, transfer and close with confirmation. Opening a conversation calls `read` once.
@@ -312,9 +318,10 @@ Order of work for the whole production-readiness effort: (1) security and platfo
 - [ ] READY-30 · Finance: /finance invoices with issue, payment, refund and void
   - requirements: FIN-01, PRD-04
   - attempts: 0
-  - scope: apps/staff-web/src/features/finance, apps/staff-web/src/app/routes.tsx
-  - depends: READY-19, READY-20, READY-18
+  - scope: apps/staff-web/src/features/finance
+  - depends: READY-19, READY-20, READY-18, READY-51
   - details:
+    Route registration (READY-51): add this feature's routes to `features/<name>/routes.ts` as `export const routes: AppRoute[]`; the app collects every feature's routes. Do not edit `app/routes.tsx` or `app/navigation.ts`.
     Needs READY-18. Read `finance/FinanceController.java`, `FinanceContract.java`. Endpoints: `GET /api/v1/finance/invoices`, `GET /api/v1/finance/invoices/{id}`, `POST /api/v1/finance/invoices`, `.../issue`, `.../payments`, `.../refunds`, `.../credits`, `.../void`, `GET /api/v1/finance/reconciliation`.
     1. Money is integer minor units plus one currency per invoice. Create `src/features/finance/money.ts` with `formatMoney(minor, currency, locale)` using `Intl.NumberFormat` and a parser that rejects more decimals than the currency allows. Never use floating point arithmetic on amounts: parse the typed text into an integer.
     2. `InvoicesPage` (list, status filter, paging) and `InvoiceDetailPage` (`/finance/:id`): lines, balance, payments, refunds. Refund and void require a reason and (per the API) an independent approver id.
@@ -325,9 +332,10 @@ Order of work for the whole production-readiness effort: (1) security and platfo
 - [ ] READY-31 · Operations: /operations/queues for the operational queues
   - requirements: ADM-02, OPS-05
   - attempts: 0
-  - scope: apps/staff-web/src/features/operations, apps/staff-web/src/app/routes.tsx
-  - depends: READY-19, READY-20
+  - scope: apps/staff-web/src/features/operations
+  - depends: READY-19, READY-20, READY-51
   - details:
+    Route registration (READY-51): add this feature's routes to `features/<name>/routes.ts` as `export const routes: AppRoute[]`; the app collects every feature's routes. Do not edit `app/routes.tsx` or `app/navigation.ts`.
     Spec rule ADM-02 (operational queues). Read the controllers for `/api/v1/exchange/work-items`, `/api/v1/delivery/dead-letters`, `/api/v1/instructions/overdue-follow-ups`, `/api/v1/duplicate-reviews`, `/api/v1/clinic/worklist`.
     1. `QueuesPage`: a tab per queue (work items, dead letters, overdue instruction follow-ups, duplicate reviews, clinic worklist), each with count, oldest age, table and cursor paging if the API offers it.
     2. Row actions that exist in the API (assign, retry, escalate, review). Every action asks for a reason and is sent once; a failed action shows the error state and does not repeat automatically.
@@ -338,13 +346,14 @@ Order of work for the whole production-readiness effort: (1) security and platfo
 - [ ] READY-32 · System pages and browser-support check
   - requirements: WEB-03, WEB-07
   - attempts: 0
-  - scope: apps/staff-web/src/features/system, apps/staff-web/src/app, apps/staff-web/tests
-  - depends: READY-19
+  - scope: apps/staff-web/src/features/system, apps/staff-web/src/main.tsx, apps/staff-web/tests
+  - depends: READY-19, READY-51
   - details:
+    Route registration (READY-51): add this feature's routes to `features/<name>/routes.ts` as `export const routes: AppRoute[]`; the app collects every feature's routes. Do not edit `app/routes.tsx` or `app/navigation.ts`.
     Spec rules WEB-03 and WEB-07: fixed pages with no patient data, and unsupported browsers see a plain message.
     1. Create pages for `/signed-out`, `/session-expired`, `/forbidden`, `/not-found` and `/unsupported-browser`, using the state views and messages in English and Arabic. Each has one primary action (sign in, go home).
     2. Create `src/features/system/browserSupport.ts` with a pure function `isSupportedBrowser(userAgent, width)` that returns false for Internet Explorer, for a viewport narrower than 768, and for a Chrome, Edge, Firefox or Safari version more than two major versions older than the constants at the top of the file (set them to 2 below the versions in `docs/operations/production-readiness/README.md` if listed, otherwise Chrome 130, Edge 130, Firefox 130, Safari 17).
-    3. In `main.tsx` render the unsupported page instead of the app when the check fails. Register the other pages in `routes.tsx`.
+    3. In `main.tsx` render the unsupported page instead of the app when the check fails. Register the other pages in `features/system/routes.ts`.
     4. Tests: a table of user agent strings (supported and not) for `isSupportedBrowser`; each page renders in English and Arabic; the app does not render data on the unsupported page.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
@@ -501,6 +510,62 @@ Do these after part 2 where `depends` says so. Persistence tasks run one at a ti
     3. Run `python3 -I scripts/check-docs.py`.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT change files outside `scope`, add patient data to logs, or edit any existing migration.
+
+## Production readiness, part 4: independent work from the specification (narrow scopes, run in parallel)
+
+Each task below owns its own files, so the planner can run them side by side with the staff web screens.
+
+- [-] READY-51 · Staff web: every feature registers its own routes
+  - agent: swarm-2
+  - attempts: 1
+  - requirements: WEB-09
+  - scope: apps/staff-web/src/app/routes.tsx, apps/staff-web/src/app/routes.test.tsx, apps/staff-web/src/features/admin/routes.ts, apps/staff-web/src/features/scheduling/routes.ts, apps/staff-web/src/features/chart/routes.ts
+  - depends: READY-23
+  - details:
+    Today every new screen edits `app/routes.tsx`, so screens that touch the same file cannot run at the same time. Make routes self-registering.
+    1. Read `app/routes.tsx` and `app/router.tsx`. Keep `createRoutes(includeDesignPreview)` and the `AppRoute` type with the same behavior (exact paths, the `'*'` catch-all last, the development preview only when requested).
+    2. Move the existing admin, scheduling and chart routes into `features/<name>/routes.ts`, each exporting `routes: AppRoute[]` with lazily loaded pages.
+    3. In `routes.tsx` collect every `features/*/routes.ts` with `import.meta.glob(..., { eager: true })`, sort by path so the order is stable, and throw a clear error when two features register the same pattern.
+    4. Tests in `app/routes.test.tsx`: all existing paths still resolve, the catch-all is last, a duplicate pattern fails, the preview flag still works.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
+- [-] READY-52 · API: structured JSON request log with a correlation ID and a redaction test (WEB-06)
+  - agent: swarm-3
+  - attempts: 1
+  - requirements: WEB-06
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/observability, apps/api/src/test/java/com/aurevia/smartclinic/observability
+  - depends:
+  - details:
+    Spec WEB-06: structured JSON logs with correlation ID, route, status and latency; never request bodies, tokens or patient fields; prove redaction with a test.
+    1. Read `SmartClinicApiApplication.java` and `web/SecurityHeadersFilter.java` to see how servlet filters are registered. Do not edit files in `web/`.
+    2. Add a servlet filter bean in the new `observability` package: take `X-Correlation-Id` from the request when it is a valid UUID, otherwise create one; put it in the SLF4J MDC and echo it in the response header; after the request log one JSON line with `correlationId`, `method`, `route` (the matched pattern, not the raw path), `status` and `latencyMs`.
+    3. The line must never contain the query string, request or response bodies, headers or any user value. Build the JSON in a small helper class with a fixed field list so nothing else can be added.
+    4. Tests: id taken from a valid header and generated otherwise, header echoed, JSON has exactly the fixed fields, a request with a patient name in the query and a bearer token in the body leaves neither in the log line.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
+- [ ] READY-53 · Public status, maintenance and support pages without patient data (WEB-13)
+  - requirements: WEB-13
+  - attempts: 0
+  - scope: apps/public-pages, apps/staff-web/tests/publicPages.test.ts
+  - depends: READY-32
+  - details:
+    Spec WEB-13: V1 has no marketing site. Host separately, without patient data, a status and maintenance page and a support page with the privacy notice, accessibility statement, terms and support contact. Plain static HTML and CSS only.
+    1. Create `apps/public-pages/` with `status.html`, `maintenance.html`, `support.html`, `privacy.html`, `accessibility.html`, `terms.html`, one shared `styles.css` and a `README.md` saying how the files are hosted. Use placeholders such as `support@example.invalid` for contacts and never a real domain.
+    2. Every page sets `lang` and `dir`, has one `h1`, skip link, readable contrast and works at 320 px. No JavaScript, no third-party fonts, scripts or trackers.
+    3. Content comes from the approved wording in `docs/` where it exists; otherwise write short neutral text and mark the legal sections `Pending approval` rather than inventing legal claims.
+    4. Test in `apps/staff-web/tests/publicPages.test.ts` (vitest, read the files from disk): all six pages exist, each links to the privacy notice, accessibility statement and terms, none loads an external resource or contains a `<script>` tag, and none mentions patient, MRN or chart data.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
+- [-] READY-54 · Recovery drill runbook and evidence template (OPS-04)
+  - agent: swarm-4
+  - attempts: 1
+  - requirements: OPS-04
+  - scope: docs/operations/recovery
+  - depends:
+  - details:
+    Spec OPS-04: RPO 15 minutes, RTO 4 hours for chart, order data, documents and their links; restore into a clean environment and reconcile before writes reopen.
+    1. Read `SMARTCLINIC_V1_SPEC.md` OPS-04, `docs/operations/production-readiness/README.md`, `infra/DEPLOYMENT.md` and the tenant export and import notes in `docs/`.
+    2. Write `docs/operations/recovery/runbook.md`: restore order (database, objects, identity provider settings), the reconciliation checks before writes reopen (hashes, source versions, in-flight deliveries, audit coverage), who may approve reopening, and what is checked at the RTO mark.
+    3. Write `docs/operations/recovery/drill-evidence.md`: an empty template with one row per step (planned time, actual time, result, evidence link, approver) and the measured RPO and RTO fields. Do not invent results.
+    4. Run `python3 -I scripts/check-docs.py`.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
 
 ## Done (finished tasks, kept for history, checkmarks preserved)
 
