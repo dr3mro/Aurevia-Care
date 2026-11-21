@@ -71,6 +71,23 @@ public interface TemplateStore {
     TemplateVersion addVersion(String organizationId, TemplateKind kind, List<FieldDefinition> fields);
 
     /**
+     * Persist a saved note revision with its field-meaning snapshot.
+     *
+     * @param organizationId active organization
+     * @param revision       saved note and the meanings captured with it
+     */
+    void saveNoteRevision(String organizationId, SavedNoteRevision revision);
+
+    /**
+     * Read one saved note revision with the field meanings it was saved with.
+     *
+     * @param organizationId active organization
+     * @param noteId         tenant-local note identifier
+     * @return the saved revision when visible in this tenant
+     */
+    Optional<SavedNoteRevision> noteRevision(String organizationId, String noteId);
+
+    /**
      * Read the tenant's append-only audit trail.
      *
      * @param organizationId active organization
