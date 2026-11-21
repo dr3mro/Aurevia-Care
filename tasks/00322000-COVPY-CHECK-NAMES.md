@@ -1,5 +1,5 @@
-- [-] COVPY-CHECK-NAMES · Script tests: reach 100% line and branch coverage of `scripts/check-names.py`
-  - agent: swarm-6
+- [x] COVPY-CHECK-NAMES · Script tests: reach 100% line and branch coverage of `scripts/check-names.py`
+  - pr: #391
   - attempts: 1
   - requirements: OPS-06
   - scope: scripts/tests/test_check_names_coverage.py
