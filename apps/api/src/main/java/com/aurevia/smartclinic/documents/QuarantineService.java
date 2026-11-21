@@ -3,6 +3,8 @@ package com.aurevia.smartclinic.documents;
 import java.time.Clock;
 import java.util.List;
 
+import org.springframework.stereotype.Service;
+
 import com.aurevia.smartclinic.documents.DocumentActions.Action;
 import com.aurevia.smartclinic.documents.DocumentContract.Actor;
 import com.aurevia.smartclinic.documents.DocumentContract.Artifact;
@@ -30,6 +32,7 @@ import com.aurevia.smartclinic.documents.DocumentContract.View;
  * completion and a verified object version, and is then returned as a metadata
  * handle with no bytes, original name or URL.</p>
  */
+@Service
 public final class QuarantineService {
 
     private final DocumentStore store;

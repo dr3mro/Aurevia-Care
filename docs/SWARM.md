@@ -1,6 +1,6 @@
 # Agent swarm
 
-Up to 10 OpenCode workers run in parallel on GitHub-hosted runners. An orchestrator splits tasks from [TODO.md](../TODO.md), each worker commits to its own branch, and an integrator merges only what passes the required gate. A failed run on `main` becomes a repair task in `TODO.md`, planned before everything else. One scheduler (`swarm.yml`) plans, works, integrates and starts the next wave inside a single run; waves may overlap up to 20 workers. Everything is event driven, so nothing runs while there is no work.
+Up to 10 OpenCode workers run in parallel on GitHub-hosted runners. An orchestrator splits tasks from the [task files](../tasks/), each worker commits to its own branch, and an integrator merges only what passes the full check. A failed run on `main` becomes a repair task in `TODO.md`, planned before everything else. One scheduler (`swarm.yml`) plans, works, integrates and starts the next wave inside a single run; waves may overlap up to 20 workers. Everything is event driven, so nothing runs while there is no work.
 
 ## Flow
 

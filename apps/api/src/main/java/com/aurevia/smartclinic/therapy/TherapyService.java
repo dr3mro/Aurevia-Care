@@ -7,6 +7,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import org.springframework.stereotype.Service;
+
 import com.aurevia.smartclinic.api.ApiException;
 import com.aurevia.smartclinic.clinical.notes.NoteChecksum;
 import com.aurevia.smartclinic.therapy.TherapyContract.AckRequest;
@@ -44,7 +46,8 @@ import com.aurevia.smartclinic.therapy.TherapyContract.TherapyAuditEvent;
  * with a clinical command is checked against the episode's owning patient, and
  * signed notes are immutable.</p>
  */
-public final class TherapyService {
+@Service
+public class TherapyService {
 
     /** Physical-therapy clinician who may author, sign and discharge. */
     public static final String PT_CLINICIAN = "pt_clinician";

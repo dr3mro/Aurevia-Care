@@ -1,5 +1,5 @@
-- [-] COVPY-PROJECT-NAME · Script tests: reach 100% line and branch coverage of `scripts/project-name.py`
-  - agent: swarm-9
+- [x] COVPY-PROJECT-NAME · Script tests: reach 100% line and branch coverage of `scripts/project-name.py`
+  - pr: #392
   - attempts: 1
   - requirements: OPS-06
   - scope: scripts/tests/test_project_name_coverage.py

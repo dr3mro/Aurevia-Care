@@ -139,15 +139,18 @@ class FakeGh:
         return proc
 
 
-def run_fetch(gh, emit=None, timing_path=None):
+def run_fetch(gh, emit=None, timing_path=None, full=True, keep_cache=False):
     """Call monitor.fetch with synchronous threads, a faked gh and a scratch timing log."""
+    if not keep_cache:
+        monitor.CACHE["jobs"].clear()
+        monitor.CACHE["slow_at"] = 0.0
     tmp = tempfile.mkdtemp()
     log_path = timing_path or os.path.join(tmp, "timing.log")
     fake_threading = types.SimpleNamespace(Thread=SyncThread, Lock=threading.Lock)
     with mock.patch.object(monitor, "threading", fake_threading), \
             mock.patch.object(monitor, "spawn", gh.spawn), \
             mock.patch.object(monitor, "TIMING_LOG", log_path):
-        return monitor.fetch(emit), log_path
+        return monitor.fetch(emit, full=full), log_path
 
 
 class CommandTableAndSpawnTests(unittest.TestCase):
@@ -310,6 +313,37 @@ class FetchTests(unittest.TestCase):
         out, _ = run_fetch(gh)
         self.assertEqual(out["jobs"], {})
         self.assertFalse(any(c[:2] == ["run", "view"] for c in gh.seen))
+
+    def test_a_quick_refresh_skips_the_slow_sections(self):
+        run_fetch(FakeGh(self.payload, self.raw))  # a full load starts the slow clock
+        gh = FakeGh(self.payload, self.raw)
+        out, _ = run_fetch(gh, full=False, keep_cache=True)
+        asked = {classify(c) for c in gh.seen}
+        for key in ("total", "archive", "closed", "merged", "commits", "runs_more"):
+            self.assertNotIn(key, asked)
+            self.assertNotIn(key, out)
+        for key in ("issues", "open", "todo", "runs"):
+            self.assertIn(key, asked)
+
+    def test_the_slow_sections_come_back_after_their_interval(self):
+        run_fetch(FakeGh(self.payload, self.raw))
+        with mock.patch.object(monitor, "SLOW_EVERY", 0):
+            gh = FakeGh(self.payload, self.raw)
+            run_fetch(gh, full=False, keep_cache=True)
+        self.assertIn("merged", {classify(c) for c in gh.seen})
+
+    def test_jobs_of_finished_runs_are_looked_up_once(self):
+        runs = [{"databaseId": 21, "status": "completed", "conclusion": "failure", "workflowName": "Delivery",
+                 "createdAt": stamp(30), "updatedAt": stamp(20)}]
+        payload = dict(self.payload, runs=runs, runs_more=runs)
+        raw = {"21": json.dumps({"jobs": [{"name": "Build", "conclusion": "failure", "steps": []}]})}
+        first = FakeGh(payload, raw)
+        out, _ = run_fetch(first)
+        self.assertEqual(sum(c[:2] == ["run", "view"] for c in first.seen), 1)
+        second = FakeGh(payload, raw)
+        again, _ = run_fetch(second, keep_cache=True)
+        self.assertFalse(any(c[:2] == ["run", "view"] for c in second.seen))
+        self.assertEqual(again["jobs"], out["jobs"])
 
     def test_fetch_keeps_previous_values_and_drops_unavailable_sections(self):
         gh = FakeGh(self.payload, self.raw, fail={"repo", "runs", "commits", "runs_more"})

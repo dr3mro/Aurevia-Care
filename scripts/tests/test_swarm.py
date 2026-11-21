@@ -22,6 +22,12 @@ def labels(*names):
     return [{"name": n} for n in names]
 
 
+
+def repo_tasks():
+    """The committed tasks as one text. TODO.md is not in git; they live one per file in tasks/."""
+    return swarm.store().joined()
+
+
 class FakeGh:
     """Record gh calls and answer the listing queries from canned data."""
 
@@ -669,7 +675,7 @@ class PlanTests(unittest.TestCase):
         self.assertIn('"commit", "-qm", f"{message} [skip ci]"', source)
 
     def test_open_spec_tasks_are_dispatchable(self):
-        tasks = swarm.parse_tasks((ROOT / "TODO.md").read_text())
+        tasks = swarm.parse_tasks(repo_tasks())
         dispatchable = [t for t in tasks
                         if t["status"] in ("todo", "taken") and t["scope"] and t["details"]
                         and swarm.attempts_of(t) < swarm.MAX_ATTEMPTS]
@@ -833,7 +839,7 @@ class PlanTests(unittest.TestCase):
         self.assertEqual((config["model"], config["autoupdate"], config["share"]),
                          (slots[1]["model"], False, "disabled"))
         self.assertNotIn("key", json.dumps(config).lower())
-        tasks = swarm.parse_tasks((ROOT / "TODO.md").read_text())
+        tasks = swarm.parse_tasks(repo_tasks())
         ids = [t["id"] for t in tasks]
         self.assertEqual(len(ids), len(set(ids)))
         for task in tasks:
@@ -1518,7 +1524,7 @@ class GitTests(unittest.TestCase):
             "check_names", ROOT / "scripts" / "check-names.py")
         names = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(names)
-        for task in swarm.parse_tasks((ROOT / "TODO.md").read_text()):
+        for task in swarm.parse_tasks(repo_tasks()):
             if task["status"] == "done":
                 continue
             for path in task["scope"]:
