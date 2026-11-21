@@ -1,10 +1,34 @@
 """Load the hyphen-named tooling scripts as modules for testing."""
 import importlib.util
+import os
 import shutil
 import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+
+# The suite runs inside swarm workers and CI jobs whose environment already carries
+# the task being worked (BRANCH, STORY_*, SWARM, MODE...) and GitHub context and
+# tokens. The tests build their own environment, so none of that may leak in:
+# a worker inheriting BRANCH or BRANCH_PREFIX failed about half of test_agent_run.
+_AMBIENT_EXACT = {
+    "BASE_BRANCH", "BRANCH", "BRANCH_PREFIX", "CHECK_SCRIPT", "CONFLICTED", "EVENT_NAME",
+    "FIX_COMMENT", "ISSUE_NUMBER", "MERGE_ATTEMPTS", "MODE", "MODEL", "PR_NUMBER",
+    "REQUIRE_POSTGRES", "REVIEWERS", "SCHEDULE", "SEGMENT", "SEGMENTS", "SYNC_ONLY",
+    "AGENT_TIMEOUT", "AUDIT_FOCUS", "SMARTCLINIC_PG_ADMIN", "NVD_API_KEY",
+}
+_AMBIENT_PREFIXES = ("GITHUB_", "GH_", "RUNNER_", "SWARM", "PUSH_", "OPENCODE", "STORY_",
+                     "GIT_")
+
+
+def scrub_ambient_environment():
+    """Drop worker, CI and git context variables from this process's environment."""
+    for name in list(os.environ):
+        if name in _AMBIENT_EXACT or name.startswith(_AMBIENT_PREFIXES):
+            del os.environ[name]
+
+
+scrub_ambient_environment()
 
 
 def load(name):

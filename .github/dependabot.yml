@@ -1,7 +1,10 @@
 version: 2
 updates:
   - package-ecosystem: github-actions
-    directory: /
+    directories:
+      - /
+      - /.github/actions/java-verify
+      - /.github/actions/resolve-version
     schedule:
       interval: weekly
   - package-ecosystem: docker
