@@ -7,14 +7,18 @@
 #
 # Usage: aurevia <command> [options]
 #
-# Container
-#   build [tag]        Build the application image (default tag smartclinic:test).
-#   up                 Start the application with Docker Compose.
-#   down               Stop and remove the application container.
-#   restart            Restart the application container.
-#   status             Show the container state, image and port.
+# Container (one image: staff web on 3000, API on 8080, PostgreSQL inside)
+#   build [tag]        Build the image from Dockerfile.app (default aurevia-app:latest).
+#   run [tag]          Create and start the container (pulls the image if it is missing).
+#   stop               Stop the container. With persistence the database is saved first.
+#   restart            Stop and start again.
+#   delete             Remove the container (asks first). Saved databases are kept.
+#   status             State, image, ports and health.
 #   logs [N]           Show the last N log lines (default 100) and follow them.
-#   shell              Open a shell inside the running container.
+#   shell              Open a shell inside the container.
+#   psql               Open psql on the in-container database.
+#   dump [file]        Write a SQL dump of the running database (default aurevia-<date>.sql).
+#   restore <file>     Use a dump as the saved database, then restart so it is loaded.
 #
 # Quality gates
 #   check [quick|worker|full]
@@ -39,14 +43,22 @@
 #
 # Options
 #   --repo DIR         Repository checkout to work on (default: auto-detected).
-#   --image NAME       Image name for `up` and `build` (default smartclinic:test).
+#   --name NAME        Container name (default aurevia).
+#   --image NAME       Image for `run` and `build` (default ghcr.io/dr3mro/aurevia-care-app:latest;
+#                      `build` tags aurevia-app:latest and `run` prefers it when it exists).
+#   --web-port N       Host port for the staff web (default 3000).
+#   --api-port N       Host port for the API (default 8080).
+#   -p, --persist      Save the database on stop and restore it on start (default off:
+#                      the database is in memory and starts empty).
+#   --no-persist       Turn persistence off for this run.
 #   -n, --dry-run      Print the commands instead of running them.
 #   -y, --yes          Do not ask before destructive actions.
 #   -h, --help         Show this text.
 #
 # Environment
 #   AUREVIA_REPO       Same as --repo.
-#   AUREVIA_IMAGE      Same as --image.
+#   AUREVIA_IMAGE, AUREVIA_NAME, AUREVIA_WEB_PORT, AUREVIA_API_PORT, AUREVIA_PERSIST   Same as the options.
+#   AUREVIA_DATA_DIR   Where saved databases live (default ~/.local/share/aurevia/dumps).
 #   NO_COLOR           Turn colours off.
 
 set -eo pipefail
@@ -60,7 +72,14 @@ while [[ -L "$SELF" ]]; do
 done
 HOME_DIR=$(cd "$(dirname "$SELF")" && pwd)
 
-IMAGE=${AUREVIA_IMAGE:-smartclinic:test}
+IMAGE=${AUREVIA_IMAGE:-}
+NAME=${AUREVIA_NAME:-aurevia}
+WEB_PORT=${AUREVIA_WEB_PORT:-3000}
+API_PORT=${AUREVIA_API_PORT:-8080}
+PERSIST=${AUREVIA_PERSIST:-0}
+DATA_DIR=${AUREVIA_DATA_DIR:-$HOME/.local/share/aurevia/dumps}
+REMOTE_IMAGE=ghcr.io/dr3mro/aurevia-care-app:latest
+LOCAL_IMAGE=aurevia-app:latest
 REPO=${AUREVIA_REPO:-}
 DRY=0
 YES=0
@@ -109,52 +128,96 @@ need_repo() {
 
 need() { command -v "$1" >/dev/null 2>&1 || die "$1 is required but not installed"; }
 
-compose() {
-  need docker
-  SMARTCLINIC_IMAGE=$IMAGE run docker compose -f "$ROOT/compose.yaml" "$@"
+image_ref() {
+  [[ -n "$IMAGE" ]] && { printf '%s\n' "$IMAGE"; return; }
+  if docker image inspect "$LOCAL_IMAGE" >/dev/null 2>&1; then printf '%s\n' "$LOCAL_IMAGE"; else printf '%s\n' "$REMOTE_IMAGE"; fi
 }
 
-# ---- commands -------------------------------------------------------------
+exists()  { docker container inspect "$NAME" >/dev/null 2>&1; }
+running() { [[ "$(docker container inspect -f '{{.State.Running}}' "$NAME" 2>/dev/null)" == true ]]; }
+
 cmd_build() {
   need_repo; need docker
-  local tag=${1:-$IMAGE}
-  step "building $tag"
-  run docker build -t "$tag" "$ROOT"
+  local tag=${1:-$LOCAL_IMAGE}
+  [[ -f "$ROOT/Dockerfile.app" ]] || die "Dockerfile.app not found in $ROOT"
+  step "building $tag (staff web, API and PostgreSQL in one image)"
+  run docker build -f "$ROOT/Dockerfile.app" -t "$tag" \
+    --build-arg "VERSION=$(git -C "$ROOT" describe --always --dirty 2>/dev/null || echo dev)" \
+    --build-arg "REVISION=$(git -C "$ROOT" rev-parse HEAD 2>/dev/null || echo unknown)" "$ROOT"
   ok "built $tag"
 }
 
-cmd_up() {
-  need_repo
-  step "starting $IMAGE"
-  compose up -d
-  ok "up: http://127.0.0.1:8080 (image $IMAGE)"
+cmd_run() {
+  need docker
+  [[ -n "${1:-}" ]] && IMAGE=$1
+  if exists; then
+    if running; then ok "already running: web http://127.0.0.1:$WEB_PORT"; return 0; fi
+    step "starting the existing container $NAME"
+    run docker start "$NAME" >/dev/null
+  else
+    local image data
+    image=$(image_ref)
+    docker image inspect "$image" >/dev/null 2>&1 || { step "pulling $image"; run docker pull "$image"; }
+    data=$DATA_DIR/$NAME
+    mkdir -p "$data"; chmod 777 "$data"
+    step "creating $NAME from $image (persistence $([[ $PERSIST == 1 ]] && echo on || echo off))"
+    run docker run -d --name "$NAME" --stop-timeout 60 \
+      -p "127.0.0.1:$WEB_PORT:3000" -p "127.0.0.1:$API_PORT:8080" \
+      --tmpfs /pgdata:rw,size=1g,uid=70,gid=70,mode=0700 \
+      -v "$data:/dumps" -e "AUREVIA_PERSIST=$PERSIST" "$image" >/dev/null
+  fi
+  ok "started: web http://127.0.0.1:$WEB_PORT · API http://127.0.0.1:$API_PORT"
 }
 
-cmd_down() {
-  need_repo
-  confirm "Stop and remove the Aurevia Care container?" || die "cancelled"
-  compose down
+cmd_stop() {
+  need docker
+  exists || die "container $NAME does not exist"
+  step "stopping $NAME (a persistent database is saved first)"
+  run docker stop "$NAME" >/dev/null
   ok "stopped"
 }
 
-cmd_restart() { need_repo; compose restart; ok "restarted"; }
+cmd_restart() { cmd_stop; cmd_run; }
+
+cmd_delete() {
+  need docker
+  exists || die "container $NAME does not exist"
+  confirm "Remove the container $NAME? (saved databases in $DATA_DIR/$NAME are kept)" || die "cancelled"
+  run docker rm -f "$NAME" >/dev/null
+  ok "removed"
+}
 
 cmd_status() {
-  need_repo; need docker
-  docker compose -f "$ROOT/compose.yaml" ps
+  need docker
+  exists || { echo "$NAME: not created (aurevia run)"; return 0; }
+  docker container inspect -f '{{.Name}}: {{.State.Status}} · image {{.Config.Image}} · health {{if .State.Health}}{{.State.Health.Status}}{{else}}n/a{{end}}' "$NAME"
+  docker port "$NAME" 2>/dev/null || true
+  [[ -f "$DATA_DIR/$NAME/persist.sql" ]] && echo "saved database: $DATA_DIR/$NAME/persist.sql"
+  return 0
 }
 
-cmd_logs() {
-  need_repo
-  compose logs --tail "${1:-100}" -f
+cmd_logs()  { need docker; exists || die "container $NAME does not exist"; run docker logs --tail "${1:-100}" -f "$NAME"; }
+cmd_shell() { need docker; running || die "$NAME is not running (aurevia run)"; run docker exec -it "$NAME" sh; }
+cmd_psql()  { need docker; running || die "$NAME is not running (aurevia run)"; run docker exec -it "$NAME" psql -h 127.0.0.1 -U postgres -d smartclinic; }
+
+cmd_dump() {
+  need docker; running || die "$NAME is not running (aurevia run)"
+  local out=${1:-aurevia-$(date +%Y%m%d-%H%M%S).sql}
+  run docker exec "$NAME" pg_dump -h 127.0.0.1 -U postgres smartclinic > "$out"
+  ok "wrote $out"
 }
 
-cmd_shell() {
-  need_repo; need docker
-  local id
-  id=$(docker compose -f "$ROOT/compose.yaml" ps -q app)
-  [[ -n "$id" ]] || die "the application is not running (aurevia up)"
-  run docker exec -it "$id" sh
+cmd_restore() {
+  need docker
+  local file=${1:-}
+  [[ -n "$file" && -f "$file" ]] || die "usage: $PROG restore <dump.sql>"
+  confirm "Replace the saved database with $file and restart?" || die "cancelled"
+  mkdir -p "$DATA_DIR/$NAME"; chmod 777 "$DATA_DIR/$NAME"
+  [[ -f "$DATA_DIR/$NAME/persist.sql" ]] && cp "$DATA_DIR/$NAME/persist.sql" "$DATA_DIR/$NAME/persist.sql.prev"
+  cp "$file" "$DATA_DIR/$NAME/persist.sql"
+  PERSIST=1
+  if exists; then running && cmd_stop; run docker rm -f "$NAME" >/dev/null; fi
+  cmd_run
 }
 
 cmd_check() {
@@ -213,7 +276,7 @@ cmd_version() {
 }
 
 cmd_completion() {
-  local words="build up down restart status logs shell check test monitor todo doctor version completion install uninstall help"
+  local words="build run stop restart delete status logs shell psql dump restore check test monitor todo doctor version completion install uninstall help"
   case ${1:-bash} in
     bash) printf 'complete -W "%s" aurevia\n' "$words" ;;
     zsh)  printf 'autoload -Uz compinit && compinit\ncompdef "_arguments '"'"'1:command:(%s)'"'"'" aurevia\n' "$words" ;;
@@ -230,6 +293,11 @@ while [[ $# -gt 0 ]]; do
   case $1 in
     --repo)   REPO=${2:?--repo needs a directory}; shift 2 ;;
     --image)  IMAGE=${2:?--image needs a name}; shift 2 ;;
+    --name)   NAME=${2:?--name needs a value}; shift 2 ;;
+    --web-port) WEB_PORT=${2:?--web-port needs a number}; shift 2 ;;
+    --api-port) API_PORT=${2:?--api-port needs a number}; shift 2 ;;
+    -p|--persist) PERSIST=1; shift ;;
+    --no-persist) PERSIST=0; shift ;;
     -n|--dry-run) DRY=1; shift ;;
     -y|--yes) YES=1; shift ;;
     -h|--help) help_text; exit 0 ;;
@@ -241,7 +309,7 @@ set -- "${ARGS[@]}"
 [[ $# -gt 0 ]] || { help_text; exit 0; }
 command=$1; shift
 case $command in
-  build|up|down|restart|status|logs|shell|check|test|monitor|todo|doctor|version|completion|install|uninstall)
+  build|run|stop|restart|delete|status|logs|shell|psql|dump|restore|check|test|monitor|todo|doctor|version|completion|install|uninstall)
     "cmd_$command" "$@" ;;
   help) help_text ;;
   *) die "unknown command '$command' (see: $PROG help)" ;;
