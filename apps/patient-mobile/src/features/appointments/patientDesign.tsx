@@ -381,7 +381,7 @@ export interface ScreenFrameProps {
   /** Tab highlighted in the standalone frame. */
   readonly activeTab?: TabId;
   /** Optional tab handler; the mounted app uses the native navigator instead. */
-  readonly onTab?: (tab: TabId) => void;
+  readonly onTab?: ((tab: TabId) => void) | undefined;
   /** Optional label on the frame root for screen readers. */
   readonly rootLabel?: string;
   /** Explicit layout direction; defaults to the direction implied by the locale. */
@@ -423,7 +423,7 @@ export function ScreenFrame({
 interface BottomTabBarProps {
   readonly locale: Locale;
   readonly activeTab: TabId;
-  readonly onTab?: (tab: TabId) => void;
+  readonly onTab?: ((tab: TabId) => void) | undefined;
 }
 
 /** Four icon-and-label tabs in the contract order, mirrored by the locale. */
