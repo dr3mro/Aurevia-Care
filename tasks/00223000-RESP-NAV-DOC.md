@@ -1,5 +1,5 @@
-- [-] RESP-NAV-DOC · Docs: update the supported widths in the screen and navigation map
-  - agent: swarm-9
+- [x] RESP-NAV-DOC · Docs: update the supported widths in the screen and navigation map
+  - pr: #512
   - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: docs/design/screens-and-navigation.md
