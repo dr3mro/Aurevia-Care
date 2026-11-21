@@ -1,5 +1,5 @@
-- [-] RESP-MANIFEST · Staff web: web app manifest so the portal can be added to a home screen (no service worker)
-  - agent: swarm-10
+- [x] RESP-MANIFEST · Staff web: web app manifest so the portal can be added to a home screen (no service worker)
+  - pr: #535
   - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/public/manifest.webmanifest, apps/staff-web/tests/theme/manifest.test.ts
