@@ -84,9 +84,9 @@ class JdbcPatientAccessStoreIntegrationTest {
     @Autowired
     JdbcPatientAccessStore jdbcStore;
 
-    /** Create roles once; the database itself is prepared for the suite. */
+    /** Create roles and a fresh database, apply all migrations and seed two tenants. */
     @BeforeAll
-    static void roles() throws Exception {
+    static void prepare() throws Exception {
         try (Connection root = DriverManager.getConnection(
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
@@ -95,15 +95,6 @@ class JdbcPatientAccessStoreIntegrationTest {
                     + "CREATE ROLE smartclinic_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
                     + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='smartclinic_app') THEN "
                     + "CREATE ROLE smartclinic_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-        }
-    }
-
-    /** Create a fresh database, apply all migrations and seed two tenants. */
-    @BeforeAll
-    static void prepare() throws Exception {
-        try (Connection root = DriverManager.getConnection(
-                "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
-             Statement statement = root.createStatement()) {
             statement.execute("DROP DATABASE IF EXISTS smartclinic_patient_access_it WITH (FORCE)");
             statement.execute("CREATE DATABASE smartclinic_patient_access_it OWNER smartclinic_migrate");
         }
