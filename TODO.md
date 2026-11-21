@@ -128,6 +128,127 @@ Each task adds new files in its own folder, depends on nothing and does not touc
     5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
+## Start now, part 2: more independent tasks (new files only, no dependencies)
+
+Same rules as the first group. The documentation tasks do not edit the shared index; START-18 links them all at the end.
+
+- [ ] START-08 · API: OpenAPI pagination rules as a unit test
+  - requirements: OPS-05, WEB-09
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/contract/OpenApiPaginationRulesTest.java
+  - details:
+    1. Find the contract file the staff web client is generated from (`npm run gen:api:check` in `apps/staff-web` names it; it is under `contracts/`). Read it and the list endpoints in the API controllers.
+    2. Write a plain JUnit test that parses the contract with SnakeYAML (already on the test classpath through Spring Boot; if it is not, stop and say so). For every GET operation that returns a list, assert that it uses the same cursor and limit parameter names as the other list endpoints, that the limit has a maximum, and that the response carries the same next-cursor field.
+    3. Put an operation that breaks a rule on a short allow list inside the test with `// TODO` and list it in your notes. Do not edit the contract or any controller.
+    4. Tests: a small invalid contract held as a string fails each rule once, and the real contract passes.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+- [ ] START-09 · API: OpenAPI error response rules as a unit test
+  - requirements: WEB-04, UX-01
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/contract/OpenApiErrorRulesTest.java
+  - details:
+    1. Find the contract file the staff web client is generated from (`npm run gen:api:check` in `apps/staff-web` names it; it is under `contracts/`). Read how the API reports errors in `apps/api/src/main/java/com/aurevia/smartclinic/web`.
+    2. Write a plain JUnit test that parses the contract with SnakeYAML (already on the test classpath; if not, stop and say so). Assert that every 4xx and 5xx response uses one shared error schema, that the schema has a stable machine code and a correlation id, and that no error example contains a name, an e-mail address, a patient identifier or a stack trace.
+    3. Put an operation that breaks a rule on a short allow list inside the test with `// TODO` and list it in your notes. Do not edit the contract or any controller.
+    4. Tests: a small invalid contract held as a string fails each rule once, and the real contract passes.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+- [ ] START-10 · Docs: bilingual glossary of clinical and product terms
+  - requirements: UX-01, UX-04, PRD-01
+  - scope: docs/reference/glossary.md
+  - details:
+    1. Read `SMARTCLINIC_V1_SPEC.md`, every `messages.ts` in `apps/staff-web/src` and `apps/patient-mobile/src`, and the domain names in `apps/api/src/main/java`.
+    2. Write `docs/reference/glossary.md`: a table of terms with the English term, the Arabic term the interface uses (copied from the message files, never invented), a one-line plain meaning, and the code name where one exists (for example the Java class or table).
+    3. Where the English and Arabic interfaces use two different words for one idea, or two ideas share one word, list it under `## Inconsistencies` with the file names. Do not fix any message file.
+    4. Do not edit `docs/reference/index.md`: START-18 links every new page, so two tasks never edit the same index line.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+- [ ] START-11 · Docs: Arabic interface style guide
+  - requirements: UX-01, UX-04
+  - scope: docs/design/arabic-style-guide.md
+  - details:
+    1. Read `docs/design` (the right-to-left and accessibility documents), the Arabic strings in every `messages.ts` under `apps/staff-web/src` and `apps/patient-mobile/src`, and `docs/design/approved/README.md`.
+    2. Write `docs/design/arabic-style-guide.md`: tone and form of address, how numbers, dates, times and units are shown (and which numerals the product uses today), how mixed Arabic and Latin text such as drug names and codes is written, punctuation and quotation rules, how buttons, errors and confirmations are worded, and what must never be translated (codes, identifiers, drug names).
+    3. Take every rule from what the message files and design documents already do, and cite the file. Where the product is inconsistent, write `INCONSISTENT:` and the files, and do not choose a side.
+    4. Do not edit `docs/reference/index.md`: START-18 links every new page, so two tasks never edit the same index line.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+- [ ] START-12 · Docs: service level objectives and alert thresholds
+  - requirements: OPS-03, OPS-05
+  - scope: docs/operations/slo.md
+  - details:
+    1. Read the OPS requirements in `SMARTCLINIC_V1_SPEC.md`, `docs/operations/production-readiness`, and the metrics and health code in `apps/api/src/main/java/com/aurevia/smartclinic/observability`.
+    2. Write `docs/operations/slo.md`: one table of objectives (availability, API read and command latency, recovery point and time, critical-result acknowledgment time, partner delivery age, queue age), each with the exact target from the specification, how it is measured, the metric or log that measures it today, and the alert threshold and who is called.
+    3. Where the code does not measure something yet, write `NOT MEASURED YET:` with a suggested task title. Do not invent a metric name that is not in the code.
+    4. Do not edit `docs/reference/index.md`: START-18 links every new page, so two tasks never edit the same index line.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+- [ ] START-13 · Docs: partner integration guide for the exchange API
+  - requirements: XCH-01, XCH-05, WEB-04
+  - scope: docs/reference/partner-api-guide.md
+  - details:
+    1. Read the exchange, results and orders parts of the contract under `contracts/`, the code in `apps/api/src/main/java/com/aurevia/smartclinic/exchange`, and `docs/reference/maintainer.md`.
+    2. Write `docs/reference/partner-api-guide.md` for a laboratory or imaging partner: how a request is authenticated, how a tenant is chosen, the order and result lifecycle with every state and what moves it, idempotency and retry rules, how errors look, what a partner may rely on and what it must not, and one worked example with invented values.
+    3. Use only behaviour that exists in the contract and code; mark anything planned `PLANNED:` with the task id from TODO.md. Never put a real endpoint host, key or patient value in an example.
+    4. Do not edit `docs/reference/index.md`: START-18 links every new page, so two tasks never edit the same index line.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+- [ ] START-14 · Docs: catalogue of the synthetic test data
+  - requirements: OPS-06, ARC-02
+  - scope: docs/reference/synthetic-data.md
+  - details:
+    1. Read the test fixtures and seed data in `apps/api/src/test`, `apps/staff-web/tests` and `apps/patient-mobile`, and `scripts/check-secrets.py` for what must never appear.
+    2. Write `docs/reference/synthetic-data.md`: the invented tenants, facilities, staff, patients and orders the tests use, which identifiers are reserved for tests, the naming rules that make fake data obvious, and how to add a new fixture safely.
+    3. List only data that exists; for each item name the file. Do not copy a value that looks like a real person, phone number, e-mail address or identifier: describe the pattern instead.
+    4. Do not edit `docs/reference/index.md`: START-18 links every new page, so two tasks never edit the same index line.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+- [ ] START-15 · Docs: personal data inventory (what is stored, where, how long)
+  - requirements: OPS-01, ARC-03, PAT-05
+  - scope: docs/security/data-inventory.md
+  - details:
+    1. Read the migrations in `db/migrations`, the retention and export code in `apps/api/src/main/java/com/aurevia/smartclinic/tenant`, and the privacy and retention requirements in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/security/data-inventory.md`: for each table that holds personal or clinical data, the kind of data in plain words, the people who can read it (role names from the code), whether it is append-only, whether it is covered by tenant export and by retention, and the audit events that record access.
+    3. State at the top the newest migration version covered. Where retention or export is not implemented for a table, write `NOT YET:` and a suggested task title. This is an engineering inventory for a privacy officer to review, not legal advice; say so at the top.
+    4. Do not edit `docs/reference/index.md`: START-18 links every new page, so two tasks never edit the same index line.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+- [ ] START-16 · Docs: restore and failure drill scripts for the operations team
+  - requirements: OPS-04, OPS-07
+  - scope: docs/operations/exercises
+  - details:
+    1. Read `docs/operations/recovery/runbook.md`, `docs/operations/recovery/drill-evidence.md` and `docs/operations/production-readiness/launch-checklist.md`.
+    2. Write three exercise sheets under `docs/operations/exercises/` plus an `index.md`: a database restore drill, a partner outage drill (results stop arriving, orders pile up) and a lost-credential drill. Each sheet has the goal, who takes part, a timed script with injects, the questions the facilitator asks, the evidence to capture, and the pass criteria taken from the recovery targets in the specification.
+    3. Use only tools and commands the repository really has; where a step needs something that does not exist, write `NOT YET IN PLACE:` and the gap. Do not run any drill.
+    4. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+- [ ] START-17 · Docs: testing guide (every check, what it proves, how to run it)
+  - requirements: OPS-06, WEB-09
+  - scope: docs/reference/testing-guide.md
+  - details:
+    1. Read `scripts/check.sh`, `scripts/worker-check.sh`, `scripts/quick-check.sh`, `apps/api/check.sh`, `apps/staff-web/check.sh`, `apps/patient-mobile/check.sh` and the files they call.
+    2. Write `docs/reference/testing-guide.md`: a table with every check (name, command, what it proves, how long it takes, what a failure usually means and the first thing to try), then a short section on which checks run where: on a developer machine, in a worker, in the pull request run and in the integrator.
+    3. Take every fact from the scripts and cite the script name. Do not change any script.
+    4. Do not edit `docs/reference/index.md`: START-18 links every new page, so two tasks never edit the same index line.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+- [ ] START-18 · Docs: link every new guide, runbook and reference page from the documentation index
+  - requirements: PRD-01
+  - scope: docs/reference/index.md
+  - depends: START-04, START-05, START-06, START-07, START-10, START-11, START-12, START-13, START-14, START-15, START-16, START-17
+  - details:
+    1. Read `docs/reference/index.md` and list which of these pages exist now: `docs/operations/runbooks/index.md`, `docs/guides/index.md`, `docs/reference/data-dictionary.md`, `docs/security/README.md`, `docs/reference/glossary.md`, `docs/design/arabic-style-guide.md`, `docs/operations/slo.md`, `docs/reference/partner-api-guide.md`, `docs/reference/synthetic-data.md`, `docs/security/data-inventory.md`, `docs/operations/exercises/index.md`, `docs/reference/testing-guide.md`.
+    2. Add one line for each page that exists and is not already linked, with a one-line description, in the section where it fits. Do not add a link to a page that does not exist.
+    3. Run `python3 -I scripts/check-docs.py` and paste the result.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
 - [ ] S-G0-04 · Isolation across search, files, workers and exports plus concurrent-connection and transaction tests (ARC-02). Concurrent-connection test slice merged by swarm as CW-003; other surfaces remain.
   - blocker 2026-11-19T07:12Z: the search, files, workers and exports surfaces do not exist in `apps/api` yet (only patient normalized-name search), so their isolation cannot be tested. Needs Product Owner/Architect decomposition into stories that first create each surface. Do not claim as a single implementation story.
 
