@@ -10,6 +10,8 @@ import java.util.Locale;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
+import org.springframework.stereotype.Service;
+
 import com.aurevia.smartclinic.api.ApiException;
 import com.aurevia.smartclinic.audit.AuditAppender;
 import com.aurevia.smartclinic.authz.ActionPolicy;
@@ -24,10 +26,14 @@ import com.aurevia.smartclinic.tenant.TenantContext;
  * suggested date. Only {@code confirm} calls the booking port, exactly once, and it records
  * the returned booking identifier on a new immutable version of the suggestion.</p>
  *
- * <p>This slice is deliberately unwired: adapters for the ports, a V16 migration and a web
- * controller belong to a follow-up story so component scanning stays intact.</p>
+ * <p>The ports are supplied in production by {@link com.aurevia.smartclinic.scheduling.followup.FollowUpConfiguration},
+ * {@link com.aurevia.smartclinic.scheduling.followup.FollowUpAuthorizationGuard} and
+ * {@link com.aurevia.smartclinic.scheduling.followup.FollowUpBookingService}, and by fakes in
+ * unit tests. Persistence and audit commit through the {@code FollowUpCommandService}
+ * transaction boundary; {@code FollowUpController} binds HTTP inputs to these methods.</p>
  */
-public final class FollowUpService {
+@Service
+public class FollowUpService {
 
     /** Business purpose recorded on follow-up audit events. */
     public static final String PURPOSE = "FOLLOW_UP";
