@@ -309,8 +309,8 @@ class OnboardingImportServiceTest {
 
     @Test
     void missingDigestAlgorithmFailsClosed() {
-        OnboardingImportService failing = new OnboardingImportService(
-                () -> { throw new java.security.NoSuchAlgorithmException("missing"); });
+        OnboardingImportService failing = new OnboardingImportService(new ImportDigests(
+                () -> { throw new java.security.NoSuchAlgorithmException("missing"); }));
         ImportManifest input = manifest(List.of(record("r1", fields("MRN-1"))));
 
         org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class,

@@ -13,12 +13,12 @@ Every authenticated page uses one shell.
 | Region | Content | Rules |
 |---|---|---|
 | Header | Product name, organization switcher, facility selector, language toggle (English or Arabic), user menu with sessions and sign out | Always visible. The active organization is always shown. Switching organization reloads data and clears any cached patient data. |
-| Navigation | Left rail, grouped as in section 2 | Items the signed-in role cannot use are not rendered. The rail collapses to icons at widths from 768 to 1279 px. In right-to-left mode the rail is on the right. |
+| Navigation | Left rail, grouped as in section 2 | Items the signed-in role cannot use are not rendered. Navigation is an off-canvas drawer on phones (320-767 px), an icon rail on tablets (768-1279 px) and a full labelled rail on desktop (1280 px and above). In right-to-left mode the rail is on the right and the drawer opens from the right. |
 | Page header | Breadcrumb, page title, primary action | One primary action per page. |
 | Content | The screen | Maximum reading width 1200 px for forms and notes; tables use the full width. |
 | Banner area | Session expiring, offline, read-only (stale version), maintenance | Above the content, announced to screen readers, never covers the header. |
 
-Supported widths follow WEB-07: full layout at 1280 px and above, compact rail from 768 to 1279 px. Below 768 px the staff web shows a plain "use a larger screen" notice and no data.
+Supported widths follow WEB-07 and the responsive-staff-web decision: the staff web is fully usable from 320 px upward, with three layout breakpoints — compact (phones, 320-767 px, off-canvas drawer), medium (tablets, 768-1279 px, icon rail) and expanded (desktop, 1280 px and above, full labelled rail). Width alone no longer triggers the unsupported-browser notice; an unsupported browser still sees the plain message with no data.
 
 ## 2. Staff web screen map
 

@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -27,7 +28,9 @@ import jakarta.servlet.http.HttpServletRequest;
  * from verified claims. The staff web cookie session is a separate
  * {@code @Order(1)} chain that matches only non-bearer requests, so CSRF is
  * skipped only for requests that carry a bearer header, which browsers never
- * attach by themselves (WEB-02, WEB-03).</p>
+ * attach by themselves (WEB-02, WEB-03). Both production chains permit only the
+ * exact {@code GET /health/live} and {@code GET /health/ready} probes without a
+ * token; all other routes require authentication (WEB-05).</p>
  */
 @Configuration
 @EnableWebSecurity
@@ -82,7 +85,10 @@ public class SecurityConfiguration {
         }
         return http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .csrf(csrf -> csrf.ignoringRequestMatchers(SecurityConfiguration::isBearerRequest))
-                .authorizeHttpRequests(authorize -> authorize.anyRequest().authenticated())
+                .authorizeHttpRequests(authorize -> authorize
+                        // WEB-05: probes are the only unauthenticated routes; never a /health/** wildcard.
+                        .requestMatchers(HttpMethod.GET, "/health/live", "/health/ready").permitAll()
+                        .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(withDefaults()))
                 .build();
     }
