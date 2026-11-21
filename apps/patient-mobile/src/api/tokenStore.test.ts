@@ -1,28 +1,67 @@
 import { jest } from '@jest/globals';
 
-jest.mock('expo-secure-store', () => ({
-  setItemAsync: jest.fn(),
-  getItemAsync: jest.fn(),
-  deleteItemAsync: jest.fn(),
-}));
+import { clearToken, loadToken, saveToken } from './tokenStore';
 
-import * as SecureStore from 'expo-secure-store';
-import { saveToken, loadToken, clearToken } from './tokenStore';
+/** The native adapter is replaced with a synthetic, in-memory SecureStore. */
+jest.mock('expo-secure-store', () => {
+  const store = new Map<string, string>();
+  return {
+    __store: store,
+    setItemAsync: jest.fn(async (key: string, value: string) => {
+      store.set(key, value);
+    }),
+    getItemAsync: jest.fn(async (key: string) => store.get(key) ?? null),
+    deleteItemAsync: jest.fn(async (key: string) => {
+      store.delete(key);
+    }),
+  };
+});
 
-describe('tokenStore', () => {
-  it('saves token with requireAuthentication false', async () => {
-    await saveToken('abc');
-    expect(SecureStore.setItemAsync).toHaveBeenCalledWith('session', 'abc', { requireAuthentication: false });
+interface SecureStoreMock {
+  __store: Map<string, string>;
+  setItemAsync: jest.Mock<(key: string, value: string, options?: unknown) => Promise<void>>;
+  getItemAsync: jest.Mock<(key: string) => Promise<string | null>>;
+  deleteItemAsync: jest.Mock<(key: string) => Promise<void>>;
+}
+
+const secureStore = jest.requireMock('expo-secure-store') as unknown as SecureStoreMock;
+const TOKEN = 'synthetic-session-token';
+
+beforeEach(() => {
+  secureStore.__store.clear();
+  secureStore.setItemAsync.mockClear();
+  secureStore.getItemAsync.mockClear();
+  secureStore.deleteItemAsync.mockClear();
+});
+
+describe('tokenStore (PAT-02, ARC-03)', () => {
+  it('saves the token under the session key without requiring authentication', async () => {
+    await saveToken(TOKEN);
+
+    expect(secureStore.setItemAsync).toHaveBeenCalledWith('session', TOKEN, {
+      requireAuthentication: false,
+    });
+    expect(secureStore.__store.get('session')).toBe(TOKEN);
   });
 
-  it('loads token', async () => {
-    (SecureStore.getItemAsync as unknown as jest.Mock).mockResolvedValue('abc' as never);
-    await expect(loadToken()).resolves.toBe('abc');
-    expect(SecureStore.getItemAsync).toHaveBeenCalledWith('session', { requireAuthentication: false });
+  it('loads the token from the session key', async () => {
+    await saveToken(TOKEN);
+
+    await expect(loadToken()).resolves.toBe(TOKEN);
+    expect(secureStore.getItemAsync).toHaveBeenCalledWith('session');
   });
 
-  it('clears token', async () => {
+  it('returns null when no token has been stored', async () => {
+    await expect(loadToken()).resolves.toBeNull();
+  });
+
+  it('removes the token from the session key', async () => {
+    await saveToken(TOKEN);
+    await expect(loadToken()).resolves.toBe(TOKEN);
+
     await clearToken();
-    expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith('session', { requireAuthentication: false });
+
+    expect(secureStore.deleteItemAsync).toHaveBeenCalledWith('session');
+    await expect(loadToken()).resolves.toBeNull();
   });
 });
