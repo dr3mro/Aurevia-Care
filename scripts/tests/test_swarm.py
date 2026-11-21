@@ -396,6 +396,12 @@ class BudgetGateCliTests(unittest.TestCase):
 
 
 class PlanTests(unittest.TestCase):
+    def setUp(self):
+        # The real archive holds the project's finished tasks; fixtures must not depend on it.
+        patch = mock.patch.object(swarm, "archived_done_ids", return_value=set())
+        patch.start()
+        self.addCleanup(patch.stop)
+
     def plan(self, prs=(), workers=10, slots=SLOTS):
         return swarm.plan_workers(workers, slots, TASKS, list(prs))
 
