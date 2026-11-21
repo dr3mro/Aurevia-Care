@@ -1,6 +1,7 @@
 import { MixedScriptText } from '../../components/MixedScriptText';
 import { formatInstant } from '../../i18n/format';
 import { useI18n } from '../../i18n/I18nProvider';
+import type { Locale } from '../../i18n/messages';
 import { useTheme } from '../../theme/ThemeProvider';
 import { AdminTableRegion } from './AdminTableRegion';
 import type { StaffHistoryEvent } from './domain';
@@ -20,10 +21,17 @@ export interface StaffHistoryViewProps {
   events: readonly StaffHistoryEvent[];
   organizationId: string;
   subject: string;
+  /** Language of free-text deactivation reasons; fixtures stay English by default. */
+  reasonLang?: Locale;
 }
 
 /** Show grantor, effective date and deactivation as immutable events. */
-export function StaffHistoryView({ events, organizationId, subject }: StaffHistoryViewProps) {
+export function StaffHistoryView({
+  events,
+  organizationId,
+  subject,
+  reasonLang = 'en',
+}: StaffHistoryViewProps) {
   const { locale } = useI18n();
   const { tokens } = useTheme();
   const text = (key: Parameters<typeof adminText>[1]) => adminText(locale, key);
@@ -109,7 +117,7 @@ export function StaffHistoryView({ events, organizationId, subject }: StaffHisto
                   <td>
                     <MixedScriptText
                       text={event.kind === 'deactivated' ? event.reason : text('notApplicable')}
-                      lang={event.kind === 'deactivated' ? 'en' : locale}
+                      lang={event.kind === 'deactivated' ? reasonLang : locale}
                     />
                   </td>
                 </tr>
