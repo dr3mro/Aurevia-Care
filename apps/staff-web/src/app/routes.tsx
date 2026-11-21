@@ -1,10 +1,15 @@
 import { lazy } from 'react';
 import type { ComponentType } from 'react';
-// env.d.ts is owned by another module. Augment only the one build-time flag
-// this module reads, so strict TypeScript accepts it without a global d.ts.
+// env.d.ts is owned by another module. Augment only the build-time surface this
+// module reads, so strict TypeScript accepts glob without a global d.ts edit.
 declare global {
   interface ImportMeta {
     readonly env: { readonly DEV: boolean };
+    /** Vite's eager glob: every matching module, keyed by its path. */
+    readonly glob: <Module>(
+      pattern: string,
+      options: { eager: true },
+    ) => Record<string, Module>;
   }
 }
 
@@ -12,6 +17,11 @@ declare global {
 export interface AppRoute {
   pattern: string;
   component: ComponentType;
+}
+
+/** The contract every feature route module exports. */
+export interface FeatureRouteModule {
+  routes: AppRoute[];
 }
 
 const WelcomePage = lazy(() =>
@@ -23,40 +33,55 @@ const DesignPreview = lazy(() =>
 const NotFoundPage = lazy(() =>
   import('./NotFoundPage').then(({ NotFoundPage: Page }) => ({ default: Page })),
 );
-const SchedulingPage = lazy(() =>
-  import('../features/scheduling/SchedulingPage').then(({ SchedulingPage: Page }) => ({
-    default: Page,
-  })),
-);
-const ChartPage = lazy(() =>
-  import('../features/chart/ChartPage').then(({ ChartPage: Page }) => ({ default: Page })),
-);
-const NotePage = lazy(() =>
-  import('../features/chart/NotePage').then(({ NotePage: Page }) => ({ default: Page })),
-);
-const FacilitiesPage = lazy(() =>
-  import('../features/admin/FacilitiesPage').then(({ FacilitiesPage: Page }) => ({
-    default: Page,
-  })),
-);
-const StaffPage = lazy(() =>
-  import('../features/admin/StaffPage').then(({ StaffPage: Page }) => ({ default: Page })),
+
+const featureRouteModules = import.meta.glob<FeatureRouteModule>(
+  '../features/*/routes.ts',
+  { eager: true },
 );
 
+/** Patterns the app owns; a feature must never claim one of them. */
+const RESERVED_PATTERNS = new Set(['/', '/design-preview', '*']);
+
 /**
- * Build the route table. The development preview is registered only when
- * requested; a `'*'` sentinel is the catch-all because the pure matcher never
- * treats a wildcard as a pattern.
+ * Merge the routes declared by every feature module into one list.
+ *
+ * Module keys are sorted (descending, so the established scheduling → chart →
+ * admin navigation order is preserved) to make registration independent of the
+ * order in which the bundler enumerates the glob. Each module keeps the order
+ * in which it declared its own routes. A pattern claimed more than once, or one
+ * the app reserves (welcome, preview, catch-all), is a programming error: fail
+ * loudly instead of letting one screen shadow another.
+ */
+export function collectFeatureRoutes(
+  modules: Record<string, FeatureRouteModule>,
+): AppRoute[] {
+  const collected: AppRoute[] = [];
+  const claimed = new Set<string>();
+  const paths = Object.keys(modules).sort().reverse();
+  for (const path of paths) {
+    for (const route of modules[path]!.routes) {
+      if (RESERVED_PATTERNS.has(route.pattern)) {
+        throw new Error(`Feature route pattern '${route.pattern}' is reserved by the app`);
+      }
+      if (claimed.has(route.pattern)) {
+        throw new Error(`Duplicate route pattern '${route.pattern}'`);
+      }
+      claimed.add(route.pattern);
+      collected.push(route);
+    }
+  }
+  return collected;
+}
+
+/**
+ * Build the route table. Feature routes self-register; the app contributes the
+ * welcome page, the development preview (only when requested) and the `'*'`
+ * catch-all, which stays last because the pure matcher never matches a wildcard.
  */
 export function createRoutes(includeDesignPreview: boolean): AppRoute[] {
   const candidates: AppRoute[] = [
     { pattern: '/', component: WelcomePage },
-    { pattern: '/schedule', component: SchedulingPage },
-    { pattern: '/schedule/book', component: SchedulingPage },
-    { pattern: '/patients/:id/chart', component: ChartPage },
-    { pattern: '/patients/:id/notes/:noteId', component: NotePage },
-    { pattern: '/admin/facilities', component: FacilitiesPage },
-    { pattern: '/admin/staff', component: StaffPage },
+    ...collectFeatureRoutes(featureRouteModules),
   ];
   if (includeDesignPreview) {
     candidates.push({ pattern: '/design-preview', component: DesignPreview });
