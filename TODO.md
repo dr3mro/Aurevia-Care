@@ -2068,7 +2068,9 @@ The specification covers patient and care-unit messaging only (MSG-01 to MSG-07)
 
 A physician can print a prescription, a lab or imaging order, a chart summary or a signed report for the patient. Only signed or placed items print; every print and reprint is audited. PRINT-01 to PRINT-03 are the API; PRINT-04 to PRINT-09 are the staff web; PRINT-10 to PRINT-12 are tests, the patient app and docs.
 
-- [ ] PRINT-01 · API: render a prescription, lab order, imaging order, chart summary or report as a patient handout PDF
+- [-] PRINT-01 · API: render a prescription, lab order, imaging order, chart summary or report as a patient handout PDF
+  - agent: swarm-8
+  - attempts: 1
   - requirements: CLN-07, RX-02, LAB-01, RAD-01, ARC-06
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/printing, apps/api/src/test/java/com/aurevia/smartclinic/printing
   - details:
@@ -2102,7 +2104,9 @@ A physician can print a prescription, a lab or imaging order, a chart summary or
     4. Tests: drafts excluded, withheld results excluded, section choices are recorded, Arabic layout, range filter.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
-- [ ] PRINT-04 · Staff web: shared print preview dialog, print styles and A4 layout
+- [-] PRINT-04 · Staff web: shared print preview dialog, print styles and A4 layout
+  - agent: swarm-9
+  - attempts: 1
   - requirements: WEB-09, CLN-07
   - scope: apps/staff-web/src/features/print/components, apps/staff-web/src/features/print/styles
   - details:
@@ -2187,7 +2191,9 @@ A physician can print a prescription, a lab or imaging order, a chart summary or
     4. Tests: replaced version is marked, withheld handouts are absent, sign-out clears them, Arabic and right-to-left.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
-- [ ] PRINT-12 · Docs: printing guide, print permission matrix and user acceptance scenario
+- [-] PRINT-12 · Docs: printing guide, print permission matrix and user acceptance scenario
+  - agent: swarm-10
+  - attempts: 1
   - requirements: CLN-07, RX-02, LAB-01
   - scope: docs/operations/printing
   - details:
