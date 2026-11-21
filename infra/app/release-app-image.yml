@@ -1,0 +1,88 @@
+name: Release app image
+# Builds the single Aurevia Care image (Dockerfile.app: staff web on 3000, API on 8080,
+# PostgreSQL inside), smoke-tests it on native amd64 and arm64 runners, and publishes
+# ghcr.io/<owner>/aurevia-care-app:<version> and :latest from a version tag.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build and smoke-test (${{ matrix.arch }})
+    timeout-minutes: 40
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - {arch: amd64, runner: ubuntu-24.04}
+          - {arch: arm64, runner: ubuntu-24.04-arm}
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/resolve-version
+        id: version
+      - name: Build the image
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+        run: docker build -f Dockerfile.app --build-arg "VERSION=$VERSION" --build-arg "REVISION=$GITHUB_SHA" -t aurevia-app:test .
+      - name: Smoke-test the image
+        run: |
+          set -euo pipefail
+          cid=$(docker run -d --tmpfs /pgdata:rw,size=512m,uid=70,gid=70,mode=0700 -p 127.0.0.1:3000:3000 -p 127.0.0.1:8080:8080 aurevia-app:test)
+          trap 'docker logs "$cid" | tail -80; docker rm -f "$cid" >/dev/null' EXIT
+          for ((i = 0; i < 90; i++)); do
+            web=$(curl -s -o /dev/null -w '%{http_code}' --max-time 2 http://127.0.0.1:3000/ || true)
+            api=$(curl -s -o /dev/null -w '%{http_code}' --max-time 2 http://127.0.0.1:8080/ || true)
+            [[ "$web" == 200 && "$api" != 000 ]] && break
+            sleep 2
+          done
+          [[ "$web" == 200 && "$api" != 000 ]] || { echo "web=$web api=$api"; exit 1; }
+          docker exec "$cid" psql -h 127.0.0.1 -U postgres -d smartclinic -Atqc 'SELECT count(*) FROM aurevia_migrations' | grep -Eq '^[1-9]'
+      - name: Push the per-architecture image
+        if: github.ref_type == 'tag'
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY,,}-app"
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker tag aurevia-app:test "$image:$VERSION-${{ matrix.arch }}"
+          docker push "$image:$VERSION-${{ matrix.arch }}"
+
+  publish:
+    name: Publish the multi-architecture image
+    if: github.ref_type == 'tag'
+    needs: build
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/resolve-version
+        id: version
+      - name: Create the manifest
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY,,}-app"
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          tags=(--tag "$image:$VERSION")
+          [[ "$VERSION" == *-* ]] || tags+=(--tag "$image:latest")
+          docker buildx imagetools create "${tags[@]}" "$image:$VERSION-amd64" "$image:$VERSION-arm64"
+          docker buildx imagetools inspect "$image:$VERSION"
