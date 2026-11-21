@@ -12,3 +12,5 @@ Run `scripts/docs.sh` locally before pushing: Doxygen fails CI on an unresolvabl
 Return scoped findings, proposed edits, and executable checks to the orchestrator. Report which checks were actually observed.
 
 Keep SpotBugs strict and central: exclusions live in `apps/api/spotbugs-exclude.xml` with a comment per entry; reject per-file `@SuppressFBWarnings`. Treat `scripts/check-wiring.py` as part of the gate, and consider mutation testing (PIT) for identity, authorization, release and prescribing packages once the build can run it.
+
+Always compile before invoking SpotBugs: a bare `mvn ... spotbugs:check` is vacuously green when no class files exist. Use `mvn -f apps/api/pom.xml -DskipTests -Djacoco.skip=true -Dspotbugs.skip=false compile spotbugs:check` so a finding cannot be missed during a fix or repair pass.
