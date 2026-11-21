@@ -793,7 +793,7 @@ def tui(stdscr):
                     text = f"{fresh[0].get('workflowName', '')} {fresh[0].get('headBranch') or ''}".strip()
                     text += f" (+{len(fresh) - 1} more)" if len(fresh) > 1 else ""
                     ids = (alarm["ids"] if alarm else set()) | {r["databaseId"] for r in fresh}
-                    alarm = {"ids": ids, "text": text, "next": now}
+                    alarm = {"ids": ids, "text": text, "next": now, "gap": 5}
             seen = set(failed_now) | (seen or set())
             if AUTOSTART and swarm_idle(data) and now - started_at >= AUTOSTART * 60:
                 started_at = now
@@ -807,7 +807,10 @@ def tui(stdscr):
                 threading.Thread(target=launch, daemon=True).start()
         if alarm and now >= alarm["next"]:
             beep()
-            alarm["next"] = now + 5
+            # The wait doubles after every beep (5s, 10s, 20s ... 160s); once the next wait would pass
+            # 200 seconds the beeping stops, while the red flicker stays until a key is pressed.
+            alarm["next"] = now + alarm["gap"] if alarm["gap"] <= 200 else float("inf")
+            alarm["gap"] *= 2
         H, W = stdscr.getmaxyx()
         phase = int(now * 3) % 2 if alarm else 0
         sig = (H, W, at, busy, phase, bool(alarm), int(now), started_note, len(loading), ready)
@@ -844,7 +847,7 @@ def tui(stdscr):
             if i < len(right):
                 put(y, cw + 1, right[i], min(cw, W - cw - 2))
         if alarm:
-            msg = f" !! NEW FAILED RUN: {alarm['text']}  -  press ANY KEY to silence the alarm (beeps every 5s) "
+            msg = f" !! NEW FAILED RUN: {alarm['text']}  -  press ANY KEY to silence the alarm "
             a = pair["red"] | curses.A_BOLD | (curses.A_REVERSE if phase else 0)
             stdscr.addstr(H - 1, 0, msg.ljust(W - 1)[: W - 1], a)
         else:

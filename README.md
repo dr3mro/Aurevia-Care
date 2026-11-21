@@ -61,7 +61,7 @@ Options: `--runtime`, `--memory`, `--cpus`, `--name`, `--image`, `--web-port`, `
 - **Recent Runs and Failed 24h:** every run with its trigger, commit and duration; a failed run also names the job and step that failed.
 - **Right column:** open PRs and issues, tasks taken by the swarm, the next tasks in line and the PRs merged in the last 24 hours.
 
-Keys: `q` quits and `r` refreshes now. A new failed run rings the terminal bell until you press any key. Other options: `aurevia monitor --once` prints one snapshot, `--interval SECONDS` changes the refresh time and `--recent N` changes how many runs are listed.
+Keys: `q` quits and `r` refreshes now. A new failed run rings the terminal bell at growing intervals (5, 10, 20, 40, 80, 160 seconds, then it stops); its rows flicker until you press any key. Other options: `aurevia monitor --once` prints one snapshot, `--interval SECONDS` changes the refresh time and `--recent N` changes how many runs are listed.
 
 The monitor also keeps the swarm running: when no Agent swarm run is queued or in progress and TODO.md still has open tasks, it dispatches a wave (`gh workflow run swarm.yml`), at most once every 10 minutes. `--autostart-wait MINUTES` changes that gap and `--no-autostart` turns it off. `--once` never starts a wave.
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # monitor — modern two-column terminal dashboard for the swarm: rounded cards that always fill one
-# screen, no scrolling. A new failed run raises an alarm: it beeps every 5 seconds and its rows
+# screen, no scrolling. A new failed run raises an alarm: it beeps after 5, 10, 20, 40, 80 and 160 seconds (then stops) and its rows
 # flicker until you press any key.
 # Left: in-progress runs, recent runs, failures (24h). Right: merged PRs (24h), open PRs, issues.
 # Data is fetched in parallel by a background thread; the screen keeps the last good data
