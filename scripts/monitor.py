@@ -124,7 +124,11 @@ def fetch(emit=None):
         have.update({i: (j or {}).get("jobs", []) for i, j in jobs.items() if isinstance(j, dict) or j is None})
         put({"jobs": have})
 
-    threads = [threading.Thread(target=load, args=(k, a), daemon=True) for k, a in calls.items()]
+    # Start order follows the measured cost, cheapest first (timing log: issues, repo, prs, total, archive,
+    # todo, closed, merged, commits, then the runs and their job lookups), so the quick boxes appear first.
+    order = ["issues", "repo", "prs", "total", "archive", "todo", "closed", "merged", "commits", "runs", "runs_more"]
+    threads = [threading.Thread(target=load, args=(k, calls[k]), daemon=True)
+               for k in sorted(calls, key=lambda k: order.index(k) if k in order else len(order))]
     for t in threads:
         t.start()
     for t in threads:
@@ -746,8 +750,8 @@ def tui(stdscr):
             data = {k: (v if v is not None else blank(k)) for k, v in st["data"].items()}
             busy, at = st["busy"], st["at"]
             loading = frozenset(k for k in st["data"] if k not in st["loaded"]) - {"repo", "runs_more"}
-            if {"runs", "jobs"} <= st["loaded"]:
-                st["ready"] = True  # In Progress (runs and their job detail) is in: draw the dashboard from now on
+            if st["loaded"]:
+                st["ready"] = True  # the first section is in: draw the dashboard from now on
             ready = st.get("ready", False)
         now = time.time()
         if at and at != checked_at and "runs" in st["loaded"]:  # new data: look for runs that failed since the last look
@@ -777,7 +781,7 @@ def tui(stdscr):
             continue
         last = sig
         stdscr.erase()
-        if not ready:  # plain black screen until the In Progress box can be drawn
+        if not ready:  # plain black screen until the first section has loaded
             stdscr.addstr(0, 1, "Loading...")
             stdscr.refresh()
             continue
