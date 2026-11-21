@@ -12,7 +12,7 @@ set -u
 
 INTERVAL=30
 ONCE=0
-RECENT=50
+RECENT=100
 AUTOSTART=10
 while [[ $# -gt 0 ]]; do
   case "$1" in

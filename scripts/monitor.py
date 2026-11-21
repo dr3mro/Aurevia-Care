@@ -7,14 +7,15 @@ LIVE = ("queued", "in_progress", "waiting", "pending", "requested")
 FAILED = ("failure", "timed_out")
 FIELDS = "databaseId,workflowName,displayTitle,conclusion,status,headSha,headBranch,event,createdAt,startedAt,updatedAt,url"
 TEXT = ("repo", "todo", "archive", "total", "commits")  # plain-text results; everything else is JSON
+RUN_LIMIT = 100  # how many of the newest runs the monitor fetches and reports on
+
 CALLS = {
     "repo": ["repo", "view", "--json", "nameWithOwner", "-q", ".nameWithOwner"],
-    "issues": ["issue", "list", "--state", "open", "--limit", "300", "--json", "number,title,labels,createdAt"],
-    "prs": ["pr", "list", "--state", "open", "--limit", "300", "--json", "number,title,isDraft,labels,headRefName,createdAt"],
-    "merged": ["pr", "list", "--state", "merged", "--limit", "300", "--search", "merged:>={since}", "--json", "number,title,mergedAt"],
-    "closed": ["pr", "list", "--state", "closed", "--limit", "300", "--search", "closed:>={since}", "--json", "number,title,closedAt,mergedAt"],
-    "runs": ["run", "list", "--limit", "100", "--json", FIELDS],  # first page: shows quickly
-    "runs_more": ["run", "list", "--limit", "300", "--json", FIELDS],  # three pages, merged in when it arrives
+    "issues": ["issue", "list", "--state", "open", "--limit", "100", "--json", "number,title,labels,createdAt"],
+    "prs": ["pr", "list", "--state", "open", "--limit", "100", "--json", "number,title,isDraft,labels,headRefName,createdAt"],
+    "merged": ["pr", "list", "--state", "merged", "--limit", "100", "--search", "merged:>={since}", "--json", "number,title,mergedAt"],
+    "closed": ["pr", "list", "--state", "closed", "--limit", "100", "--search", "closed:>={since}", "--json", "number,title,closedAt,mergedAt"],
+    "runs": ["run", "list", "--limit", str(RUN_LIMIT), "--json", FIELDS],
     "total": ["api", "graphql", "-F", "o={owner}", "-F", "n={repo}", "-q", ".data.repository.defaultBranchRef.target.history.totalCount",
               "-f", "query=query($o:String!,$n:String!){repository(owner:$o,name:$n){defaultBranchRef{target{... on Commit{history{totalCount}}}}}}"],
     "todo": ["api", "repos/{owner}/{repo}/contents/TODO.md", "-H", "Accept: application/vnd.github.raw"],
@@ -64,8 +65,8 @@ def fetch(emit=None):
     screen can fill in piece by piece; the merged result is also returned (a section that failed is None)."""
     since = (datetime.now(timezone.utc) - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%SZ")
     calls = {k: [a.replace("{since}", since) for a in v] for k, v in CALLS.items()}
-    # One line per commit ("sha parent"), newest first; --paginate so a busy day is not capped at one page of 100.
-    calls["commits"] = ["api", f"repos/{{owner}}/{{repo}}/commits?since={since}&per_page=100", "--paginate", "-q",
+    # One line per commit ("sha parent"), newest first: a single page of up to 100 commits.
+    calls["commits"] = ["api", f"repos/{{owner}}/{{repo}}/commits?since={since}&per_page=100", "-q",
                         ".[] | \"\\(.sha) \\(.parents[0].sha // \"\")\""]
     out, guard, timings, began, claimed = {}, threading.Lock(), [], time.monotonic(), set()
 
@@ -98,7 +99,7 @@ def fetch(emit=None):
                 timed("compare", t1, "what the day's commits changed")
                 churn = dict(got, commits=len(commits)) if isinstance(got, dict) else None
             return put({"churn": churn})
-        if k in ("runs", "runs_more"):  # the quick first page shows at once; the full list merges in when it lands
+        if k in ("runs",):  # the quick first page shows at once; the full list merges in when it lands
             with guard:
                 merged = merge_runs(val, out.get("runs") or [])
             put({"runs": merged})
@@ -126,7 +127,7 @@ def fetch(emit=None):
 
     # Start order follows the measured cost, cheapest first (timing log: issues, repo, prs, total, archive,
     # todo, closed, merged, commits, then the runs and their job lookups), so the quick boxes appear first.
-    order = ["issues", "repo", "prs", "total", "archive", "todo", "closed", "merged", "commits", "runs", "runs_more"]
+    order = ["issues", "repo", "prs", "total", "archive", "todo", "closed", "merged", "commits", "runs"]
     threads = [threading.Thread(target=load, args=(k, calls[k]), daemon=True)
                for k in sorted(calls, key=lambda k: order.index(k) if k in order else len(order))]
     for t in threads:
@@ -326,20 +327,25 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False, loading=frozenset()):
 
     live = sorted([r for r in runs if r.get("status") != "completed"], key=lambda r: r.get("createdAt") or "")
     done = [r for r in runs if r.get("status") == "completed"]
-    last20 = done[:20]
-    rate = sum(1 for r in last20 if state(r) == "success") / len(last20) if last20 else 0.0
+    jobs = data.get("jobs") or {}
+
+    def bad(r):  # failed, or still running with a job that already failed; a run in progress counts as good otherwise
+        return state(r) in FAILED or (r.get("status") != "completed"
+                                      and any(j.get("conclusion") in FAILED for j in jobs.get(r.get("databaseId")) or []))
+
+    last20 = runs  # every run in the list (newest 100), finished or still running
+    rate = sum(1 for r in last20 if not bad(r)) / len(last20) if last20 else 0.0
     durs = sorted((ts(r["updatedAt"]) - ts(r.get("startedAt") or r["createdAt"])).total_seconds()
-                  for r in done[:30] if r.get("updatedAt"))
+                  for r in done if r.get("updatedAt"))
     median = durs[len(durs) // 2] if durs else 0
-    runs_day = [r for r in done if day(r.get("updatedAt"))]
-    failed_day = [r for r in runs_day if state(r) in FAILED]
+    runs_day = runs  # every run the list returned (the newest 100), not a time window
+    failed_day = [r for r in runs_day if bad(r)]
     merged_day = [p for p in merged if day(p.get("mergedAt"))]
     closed_day = [p for p in closed if not p.get("mergedAt") and day(p.get("closedAt"))]
     main = next((r for r in done if r.get("workflowName") == "Delivery" and r.get("headBranch") == "main"), None)
     mstate = state(main) if main else "unknown"
     msym, mcol = SYM.get(mstate, ("•", "gray"))
     wave = next((r for r in runs if r.get("workflowName") == "Agent swarm"), None)
-    jobs = data.get("jobs") or {}
     churn = data.get("churn") or {}
     todo = parse_tasks(data.get("todo"))
     n_done = sum(1 for t in todo if t["status"] == "done") + len(re.findall(r"^- \[x\] ", data.get("archive") or "", re.M))
@@ -349,21 +355,23 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False, loading=frozenset()):
     hot = sum(1 for x in issues + prs for l in x.get("labels", []) if l["name"] == "needs-human")
     day_ok = (len(runs_day) - len(failed_day)) / len(runs_day) if runs_day else 1.0
 
+    cap = lambda n: f"{n}+" if n >= 100 else str(n)  # a list that hit its 100-item page may hold more
+
     # ---- top: title bar, stat cards, progress lines
     stamp = datetime.now().strftime("%a %b %d  %H:%M:%S") + ("  *" if busy else "   ")
     title = f" {data['repo'] or 'repo'}  ·  swarm monitor"
     top = [[(title + " " * max(W - 2 - len(title) - len(stamp) - 1, 1) + stamp + " ", "bar")]]
     cards = [("MAIN", f"{msym} {mstate}", "b_" + mcol, age(main["updatedAt"]) if main else "-"),
              ("RUNNING", str(len(live)), "b_yellow" if live else "gray", "active runs"),
-             ("MERGED 24h", str(len(merged_day)), "b_green" if merged_day else "gray", "pull requests"),
-             ("FAILED 24h", str(len(failed_day)), "b_red" if failed_day else "b_green", f"of {len(runs_day)} runs"),
-             ("CLOSED 24h", str(len(closed_day)), "b_yellow" if closed_day else "gray", "not merged"),
+             ("MERGED 24h", cap(len(merged_day)), "b_green" if merged_day else "gray", "pull requests"),
+             ("FAILED", str(len(failed_day)), "b_red" if failed_day else "b_green", f"of last {RUN_LIMIT} runs"),
+             ("CLOSED 24h", cap(len(closed_day)), "b_yellow" if closed_day else "gray", "not merged"),
              ("COMMITS", (data.get("total") or "").strip() or "-", "b_blue" if data.get("total") else "gray", "all time"),
-             ("COMMITS LAST 24H", str(churn.get("commits", "-")), "b_blue" if churn else "gray",
+             ("COMMITS LAST 24H", cap(churn["commits"]) if churn else "-", "b_blue" if churn else "gray",
               f"+{churn.get('add', 0)} -{churn.get('del', 0)} {churn.get('files', 0)}f" if churn else "no data"),
              ("MEDIAN RUN", span(median), "b_cyan", f"{len(durs)} runs"),
              ("NEEDS HUMAN", str(hot), "b_red" if hot else "b_green", "issues, PRs")]
-    waits = {"MAIN": {"runs"}, "RUNNING": {"runs"}, "MERGED 24h": {"merged"}, "FAILED 24h": {"runs"}, "CLOSED 24h": {"closed"},
+    waits = {"MAIN": {"runs"}, "RUNNING": {"runs"}, "MERGED 24h": {"merged"}, "FAILED": {"runs"}, "CLOSED 24h": {"closed"},
              "COMMITS": {"total"}, "COMMITS LAST 24H": {"churn"}, "MEDIAN RUN": {"runs"}, "NEEDS HUMAN": {"issues", "prs"}}
     cards = [(c[0], "…", "gray", "loading") if waits.get(c[0], set()) & loading else c for c in cards]
 
@@ -411,18 +419,24 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False, loading=frozenset()):
         return row + [(" " * gap, "")] + right if gap >= 2 else row
 
     iw_top = W - 6
-    hist = [("┃", "green" if state(r) == "success" else "red" if state(r) in FAILED else "gray") for r in done[:30][::-1]]
+    shown = runs[:max(min(len(runs), iw_top - 90), 0)]  # as many marks as the line has room for (the newest ones)
+    # One colour per outcome: succeeded green, failed red, timed out magenta, stopped (cancelled) yellow,
+    # skipped dim grey, running cyan (red once a job has failed), queued or waiting blue.
+    hue = {"success": "green", "failure": "red", "timed_out": "magenta", "cancelled": "yellow", "skipped": "gray",
+           "in_progress": "cyan", "queued": "blue", "waiting": "blue", "pending": "blue", "requested": "blue",
+           "action_required": "magenta", "neutral": "gray", "stale": "gray", "startup_failure": "red"}
+    hist = [("┃", "red" if bad(r) else hue.get(state(r), "gray")) for r in shown[::-1]]
     pace = sum(1 for p in merged if ts(p.get("mergedAt")) and (now - ts(p["mergedAt"])).total_seconds() < 21600) / 6
     pending = n_open + len(taken)
     eta = span(pending / pace * 3600) if pace else "-"
     meters = [meter("runs", rate, "green", f"{rate * 100:.0f}% of last {len(last20)}",
-                    [("24h ok ", "gray"), (f"{day_ok * 100:.0f}%", "b_green" if day_ok >= 0.8 else "b_red"),
+                    [("ok ", "gray"), (f"{day_ok * 100:.0f}%", "b_green" if day_ok >= 0.8 else "b_red"),
                      (f"   last wave {age(wave['createdAt']) if wave else '-'}", "gray")],
-                    [("last 30  ", "gray")] + hist,
+                    [(f"last {len(shown)}  ", "gray")] + hist,
                     [(f"   issues {len(issues)}", "magenta" if issues else "gray"),
                      (f"   PRs {len(prs)} ({sum(1 for p in prs if p.get('isDraft'))} draft)", "gray"),
                      (f"   median {span(median)}", "gray"),
-                     (f"   {len(failed_day)} failed / {len(runs_day)} runs 24h", "red" if failed_day else "gray")])]
+                     (f"   {len(failed_day)} failed / last {len(runs_day)} runs", "red" if failed_day else "gray")])]
     load = {}
     for t in taken:
         load[t["agent"] or "-"] = load.get(t["agent"] or "-", 0) + 1
@@ -458,7 +472,7 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False, loading=frozenset()):
         return [r.get("workflowName", ""), mid(r.get("headBranch") or "", 24), trigger_of(r),
                 (r.get("headSha") or "")[:7], took, (age(r["updatedAt"]) if end else "")]
 
-    wide_w = [max([len(natural(r)[i]) for r in done[:RECENT] + live] or [1]) for i in range(6)]
+    wide_w = [max([len(natural(r)[i]) for r in runs[:RECENT] + live] or [1]) for i in range(6)]
     spare = max(iw - 2 - sum(wide_w), 5)
     gaps = [spare // 5 + (1 if i < spare % 5 else 0) for i in range(5)]  # near-equal gaps between the six columns
 
@@ -572,9 +586,9 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False, loading=frozenset()):
     labels = lambda x: ",".join(l["name"] for l in x.get("labels", []) if l["name"] in ("needs-human", "needs-fix"))
     left = [dict(title="In Progress", total=len(live), col="yellow", border="yellow" if live else "gray", prio=0,
                  items=flat(live, True)),
-            dict(title="Recent Runs", total=len(done), col="cyan", border="gray", prio=2,
-                 items=[run_row(r, False) for r in done[:RECENT]]),
-            dict(title="Failed 24h", total=len(failed_day), col="red", border="red" if failed_day else "gray", prio=1,
+            dict(title=f"Recent Runs (last {RUN_LIMIT} runs)", total=len(done), col="cyan", border="gray", prio=2,
+                 items=[run_row(r, r.get("status") != "completed") for r in runs[:RECENT]]),
+            dict(title=f"Failed (last {RUN_LIMIT} runs)", total=len(failed_day), col="red", border="red" if failed_day else "gray", prio=1,
                  items=[row for r in failed_day for row in failed_rows(r)])]
     prefix = re.compile(r"^([A-Z]+-(?:\d{8}-)?\d+)(:)(.*)$")
 
@@ -600,7 +614,7 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False, loading=frozenset()):
                   items=[cells(iw, (">", "yellow", 1), (t["agent"] or "-", "magenta", 9), (t["id"], "b_cyan", idw), (t["title"], "", None))
                          for t in taken]),
              dict(title="Next Up", total=len(queue), col="blue", border="gray", prio=1,
-                  items=[cells(iw, ("-", "gray", 1), (t["id"], "b_cyan", qw), (t["title"], "", None)) for t in queue[:12]]),
+                  items=[cells(iw, ("-", "gray", 1), (t["id"], "b_cyan", qw), (t["title"], "", None)) for t in queue]),
              dict(title="Merged PRs 24h", total=len(merged_day), col="green", border="gray", prio=3,
                   items=[merged_row(p) for p in merged_day]),
              dict(title="Open PRs", total=len(prs), col="blue", border="gray", prio=0,
@@ -710,15 +724,30 @@ def tui(stdscr):
     st = {"data": {k: blank(k) for k in [*CALLS, "jobs", "churn"]}, "busy": False, "at": 0.0, "loaded": set()}
     lock = threading.Lock()
 
-    def part(got):  # a section arrived: show it now
+    def apply(got):
+        for k, v in got.items():
+            if v is not None:
+                st["data"][k] = v
+                st["loaded"].add(k)
+        st["at"] = time.time()
+
+    def part(got):  # first load: a section arrived, show it now
         with lock:
-            for k, v in got.items():
-                if v is not None:
-                    st["data"][k] = v
-                    st["loaded"].add(k)
-            st["at"] = time.time()
+            apply(got)
 
     def refresh():
+        if st.get("ready"):
+            # Later refreshes keep the screen as it is and swap in the new data only when all of it has arrived.
+            buf, hold = {}, threading.Lock()
+
+            def stash(got):
+                with hold:
+                    buf.update({k: v for k, v in got.items() if v is not None})
+            fetch(stash)
+            with lock:
+                apply(buf)
+                st["busy"] = False
+            return
         fetch(part)
         with lock:
             st["busy"] = False
@@ -749,7 +778,7 @@ def tui(stdscr):
         with lock:
             data = {k: (v if v is not None else blank(k)) for k, v in st["data"].items()}
             busy, at = st["busy"], st["at"]
-            loading = frozenset(k for k in st["data"] if k not in st["loaded"]) - {"repo", "runs_more"}
+            loading = frozenset(k for k in st["data"] if k not in st["loaded"]) - {"repo"}
             if len(st["loaded"]) * 4 >= len(st["data"]) * 3:
                 st["ready"] = True  # three quarters of the sections are in: draw the dashboard from now on
             ready = st.get("ready", False)
@@ -767,16 +796,21 @@ def tui(stdscr):
                     alarm = {"ids": ids, "text": text, "next": now}
             seen = set(failed_now) | (seen or set())
             if AUTOSTART and swarm_idle(data) and now - started_at >= AUTOSTART * 60:
-                err = start_swarm()
                 started_at = now
-                started_note = (f"swarm start failed: {err}" if err else
-                                f"swarm was idle, started a wave at {datetime.now().strftime('%H:%M')}")
+                started_note = "swarm was idle, starting a wave..."
+
+                def launch():  # gh can take seconds: never run it on the UI thread
+                    nonlocal started_note
+                    err = start_swarm()
+                    started_note = (f"swarm start failed: {err}" if err else
+                                    f"swarm was idle, started a wave at {datetime.now().strftime('%H:%M')}")
+                threading.Thread(target=launch, daemon=True).start()
         if alarm and now >= alarm["next"]:
             beep()
             alarm["next"] = now + 5
         H, W = stdscr.getmaxyx()
         phase = int(now * 3) % 2 if alarm else 0
-        sig = (H, W, at, busy, phase, bool(alarm), int(now // 5), started_note, len(loading), ready)
+        sig = (H, W, at, busy, phase, bool(alarm), int(now), started_note, len(loading), ready)
         if sig == last:
             continue
         last = sig
