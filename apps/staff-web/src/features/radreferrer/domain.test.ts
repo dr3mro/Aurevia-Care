@@ -44,7 +44,9 @@ describe('reportSections', () => {
       report.impression,
       report.followUp,
     ]);
-    expect(syntheticSignedReport.version).toBe(1);
+    // Synthetic fixture stays internally consistent: the current report
+    // revision is the one the open addendum receipt refers to.
+    expect(syntheticSignedReport.version).toBe(openAddendum.version);
   });
 });
 

@@ -14,8 +14,8 @@ export interface AddendumBannerProps {
   orderId: string;
   /** Interface language for the banner text and action. */
   locale: Locale;
-  /** Requested acknowledgment of one exact addendum revision. */
-  onAcknowledge: (version: number) => void;
+  /** Requested acknowledgment of one exact, tenant- and order-scoped receipt. */
+  onAcknowledge: (addendum: AddendumAcknowledgment) => void;
 }
 
 /**
@@ -36,30 +36,44 @@ export function AddendumBanner({
   if (open.length === 0) {
     return null;
   }
+  // Split each translated sentence around its named placeholder so the order-
+  // local version digit is an isolated LTR run under an RTL interface.
+  const [bodyLead, bodyTail] = radreferrerText(locale, 'addendumBody').split('{version}');
+  const [actionLead, actionTail] = radreferrerText(locale, 'acknowledgeVersion').split('{version}');
   return (
     <div
       data-testid="addendum-banner"
-      role="status"
+      role="group"
       aria-label={radreferrerText(locale, 'addendumHeading')}
       style={{ color: tokens.foreground, borderColor: tokens.accent }}
     >
-      {open.map((addendum) => (
-        <section
-          key={`${addendum.organizationId}:${addendum.orderId}:${addendum.version}`}
-          data-version={addendum.version}
-        >
-          <strong>{radreferrerText(locale, 'addendumHeading')}</strong>
-          <p>
-            {radreferrerText(locale, 'addendumBody').replace(
-              '{version}',
-              String(addendum.version),
-            )}
-          </p>
-          <button type="button" onClick={() => onAcknowledge(addendum.version)}>
-            {radreferrerText(locale, 'acknowledge')}
-          </button>
-        </section>
-      ))}
+      {open.map((addendum) => {
+        const headingId = `addendum-heading-${addendum.version}`;
+        return (
+          <section key={`${addendum.organizationId}:${addendum.orderId}:${addendum.version}`}
+            data-version={addendum.version}
+            aria-labelledby={headingId}
+          >
+            {/* Only the notification text is a live region; the control that
+                acts on it stays outside, so a screen reader can reach it. */}
+            <div role="status">
+              <h3 id={headingId}>{radreferrerText(locale, 'addendumHeading')}</h3>
+              <p>
+                {bodyLead}
+                <bdi dir="ltr">{addendum.version}</bdi>
+                {bodyTail}
+              </p>
+            </div>
+            <button
+              type="button"
+              aria-label={`${actionLead}${addendum.version}${actionTail!}`}
+              onClick={() => onAcknowledge(addendum)}
+            >
+              {radreferrerText(locale, 'acknowledge')}
+            </button>
+          </section>
+        );
+      })}
     </div>
   );
 }

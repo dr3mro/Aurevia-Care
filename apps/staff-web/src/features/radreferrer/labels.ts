@@ -19,6 +19,7 @@ export const radreferrerKeys = [
   'addendumHeading',
   'addendumBody',
   'acknowledge',
+  'acknowledgeVersion',
 ] as const;
 
 /** One referrer-view label key. */
@@ -40,6 +41,7 @@ const radreferrerMessages: Record<Locale, Record<RadreferrerMessageKey, string>>
     addendumHeading: 'Unacknowledged addendum',
     addendumBody: 'Addendum version {version} is waiting for your acknowledgment.',
     acknowledge: 'Acknowledge',
+    acknowledgeVersion: 'Acknowledge version {version}',
   },
   ar: {
     radreferrer: 'تقرير الأشعة',
@@ -55,6 +57,7 @@ const radreferrerMessages: Record<Locale, Record<RadreferrerMessageKey, string>>
     addendumHeading: 'ملحق لم يُقرّ استلامه',
     addendumBody: 'الملحق بالإصدار {version} بانتظار إقرار استلامك.',
     acknowledge: 'إقرار الاستلام',
+    acknowledgeVersion: 'إقرار استلام الإصدار {version}',
   },
 };
 

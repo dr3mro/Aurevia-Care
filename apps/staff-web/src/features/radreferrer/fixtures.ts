@@ -13,7 +13,8 @@ export const syntheticSignedReport: SignedReport = {
   organizationId: alphaOrganizationId,
   orderId: syntheticOrderId,
   patientId: 'synthetic-patient-004',
-  version: 1,
+  // The current revision after two addenda; matches the open receipt below.
+  version: 3,
   signer: 'synthetic.radiologist',
   signedAt: '2026-03-09T12:00:00Z',
   technique: 'PA and lateral chest radiograph at full inspiration.',
@@ -24,32 +25,33 @@ export const syntheticSignedReport: SignedReport = {
 };
 
 /**
- * Synthetic receipts: one open for this report, one acknowledged, one from a
- * different tenant and one from a different order. Only the first is shown.
+ * Synthetic receipts for a version-3 report: the current v3 addendum is open,
+ * the earlier v2 addendum is acknowledged, and two look-alike receipts belong
+ * to another tenant and another order. Only the first is shown.
  */
 export const syntheticAddenda: readonly AddendumAcknowledgment[] = [
   {
     organizationId: alphaOrganizationId,
     orderId: syntheticOrderId,
-    version: 2,
+    version: 3,
     state: 'open',
-    notifiedAt: '2026-03-09T12:30:00Z',
+    notifiedAt: '2026-03-09T13:00:00Z',
     acknowledgedAt: null,
     acknowledgedBy: null,
   },
   {
     organizationId: alphaOrganizationId,
     orderId: syntheticOrderId,
-    version: 3,
+    version: 2,
     state: 'acknowledged',
-    notifiedAt: '2026-03-09T13:00:00Z',
-    acknowledgedAt: '2026-03-09T13:15:00Z',
+    notifiedAt: '2026-03-09T12:30:00Z',
+    acknowledgedAt: '2026-03-09T12:45:00Z',
     acknowledgedBy: 'synthetic.referrer',
   },
   {
     organizationId: betaOrganizationId,
     orderId: syntheticOrderId,
-    version: 4,
+    version: 3,
     state: 'open',
     notifiedAt: '2026-03-09T14:00:00Z',
     acknowledgedAt: null,
@@ -58,7 +60,7 @@ export const syntheticAddenda: readonly AddendumAcknowledgment[] = [
   {
     organizationId: alphaOrganizationId,
     orderId: 'rad-other',
-    version: 5,
+    version: 3,
     state: 'open',
     notifiedAt: '2026-03-09T15:00:00Z',
     acknowledgedAt: null,

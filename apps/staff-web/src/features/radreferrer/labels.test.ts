@@ -22,7 +22,9 @@ describe('radreferrer messages', () => {
   });
 
   it('keeps the version placeholder in both language bundles', () => {
-    expect(radreferrerText('en', 'addendumBody')).toContain('{version}');
-    expect(radreferrerText('ar', 'addendumBody')).toContain('{version}');
+    for (const key of ['addendumBody', 'acknowledgeVersion'] as const) {
+      expect(radreferrerText('en', key)).toContain('{version}');
+      expect(radreferrerText('ar', key)).toContain('{version}');
+    }
   });
 });
