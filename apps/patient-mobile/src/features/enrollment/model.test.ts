@@ -6,6 +6,7 @@ import {
   formatLockoutCountdown,
   getRowDirection,
   getTextAlign,
+  isFailedStatus,
   isLocked,
   mapInvitationError,
   normalizeInvitationCode,
@@ -27,16 +28,27 @@ describe('PAT-03 invitation helpers', () => {
     expect(validateInvitationCode('ABCD1234')).toEqual({ valid: true });
   });
 
+  it.each(['EXPIRED', 'REUSED', 'REVOKED', 'NETWORK', 'SOMETHING_ELSE', ''])(
+    'maps %s to one generic failure without patient data',
+    (code) => {
+      const failure = mapInvitationError(code);
+      expect(failure).toEqual({ messageKey: 'enrollment.invalid', retryable: true });
+      expect(JSON.stringify(failure)).not.toContain('ABCD1234');
+    },
+  );
+});
+
+describe('PAT-03 failure-state helper', () => {
   it.each([
-    ['EXPIRED', 'enrollment.expired', false],
-    ['REUSED', 'enrollment.reused', false],
-    ['REVOKED', 'enrollment.revoked', false],
-    ['NETWORK', 'common.network', true],
-    ['SOMETHING_ELSE', 'enrollment.invalid', true],
-  ])('maps %s to a generic message without patient data', (code, messageKey, retryable) => {
-    const failure = mapInvitationError(code as string);
-    expect(failure).toEqual({ messageKey, retryable });
-    expect(JSON.stringify(failure)).not.toContain('ABCD1234');
+    ['idle', false],
+    ['submitting', false],
+    ['success', false],
+    ['expired', true],
+    ['reused', true],
+    ['locked', true],
+    ['error', true],
+  ] as const)('treats %s as failure=%s', (status, expected) => {
+    expect(isFailedStatus(status)).toBe(expected);
   });
 });
 

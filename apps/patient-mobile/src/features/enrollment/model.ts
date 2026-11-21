@@ -74,20 +74,14 @@ export function validateInvitationCode(code: string): CodeValidation {
   return { valid: true };
 }
 
-/** Map a server error code to a generic message key without echoing any input. */
-export function mapInvitationError(code: string): InvitationFailure {
-  switch (code) {
-    case 'EXPIRED':
-      return { messageKey: 'enrollment.expired', retryable: false };
-    case 'REUSED':
-      return { messageKey: 'enrollment.reused', retryable: false };
-    case 'REVOKED':
-      return { messageKey: 'enrollment.revoked', retryable: false };
-    case 'NETWORK':
-      return { messageKey: 'common.network', retryable: true };
-    default:
-      return { messageKey: 'enrollment.invalid', retryable: true };
-  }
+/**
+ * Map any server error code to one generic failure. The code is deliberately
+ * not interpreted: a distinct message per reason would disclose whether a
+ * code or account exists and what state it is in (PAT-03, no enumeration).
+ * The server keeps the detailed reason for its own audit and support flow.
+ */
+export function mapInvitationError(_code: string): InvitationFailure {
+  return { messageKey: 'enrollment.invalid', retryable: true };
 }
 
 /** Format a remaining lockout window as zero-padded MM:SS. */
@@ -101,6 +95,14 @@ export function formatLockoutCountdown(totalSeconds: number): string {
 /** Whether a lockout countdown still blocks access. */
 export function isLocked(remainingSeconds: number): boolean {
   return remainingSeconds > 0;
+}
+
+/**
+ * Whether a status is a terminal failure. Only the fact of failure may reach
+ * the screen: the precise reason stays server-side (PAT-03, no enumeration).
+ */
+export function isFailedStatus(status: EnrollmentStatus): boolean {
+  return status !== 'idle' && status !== 'submitting' && status !== 'success';
 }
 
 /** The three supported purposes, in stable display order. */
