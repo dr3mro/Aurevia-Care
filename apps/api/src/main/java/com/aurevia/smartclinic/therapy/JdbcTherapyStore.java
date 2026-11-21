@@ -212,6 +212,7 @@ public class JdbcTherapyStore implements TherapyStore {
                                     .addValue("code", baseline.code()).addValue("value", baseline.value())
                                     .addValue("unit", baseline.unit()).addValue("observedAt", baseline.observedAt()));
                 }
+                int goalOrdinal = 0;
                 for (Goal goal : evaluation.goals()) {
                     jdbc.update("""
                             INSERT INTO public.therapy_goal
@@ -220,7 +221,7 @@ public class JdbcTherapyStore implements TherapyStore {
                                     :description, :target, :targetDate)
                             ON CONFLICT (organization_id, episode_id, ordinal) DO NOTHING
                             """, episodeParams(episode.organizationId(), episode.id())
-                                    .addValue("ordinal", goal.description().hashCode())
+                                    .addValue("ordinal", ++goalOrdinal)
                                     .addValue("description", goal.description()).addValue("target", goal.target())
                                     .addValue("targetDate", goal.targetDate()));
                 }

@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -18,6 +19,7 @@ import java.sql.ResultSet;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -214,6 +216,31 @@ class JdbcTherapyStoreTest {
                 .filter(p -> "clinician-a".equals(p.getValue("signedBy"))).findFirst().orElseThrow();
         assertEquals("checksum-1", sign.getValue("checksum"));
         assertEquals("I attest", sign.getValue("attestation"));
+    }
+
+    @Test
+    void goalsKeepTheirClinicalOrderAndDuplicateDescriptionsDoNotCollide() {
+        Goal first = new Goal("walk without pain", "independent", "2026-12-20");
+        Goal second = new Goal("climb stairs", "assisted", "2026-12-27");
+        Goal third = new Goal("walk without pain", "community", "2027-01-10");
+        Evaluation evaluation = new Evaluation(EPISODE, PATIENT, List.of(), List.of(),
+                List.of(first, second, third), 3, 6, "clinician-a", NOW, 1);
+        store.save(new TherapyAggregate(episode(EpisodeState.IN_TREATMENT), evaluation,
+                List.of(), List.of(), List.of(), null, null));
+
+        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<SqlParameterSource> params = ArgumentCaptor.forClass(SqlParameterSource.class);
+        verify(jdbc, atLeastOnce()).update(sql.capture(), params.capture());
+        List<Integer> ordinals = new ArrayList<>();
+        List<String> descriptions = new ArrayList<>();
+        for (int i = 0; i < sql.getAllValues().size(); i++) {
+            if (sql.getAllValues().get(i).contains("INTO public.therapy_goal")) {
+                ordinals.add((Integer) params.getAllValues().get(i).getValue("ordinal"));
+                descriptions.add((String) params.getAllValues().get(i).getValue("description"));
+            }
+        }
+        assertEquals(List.of(1, 2, 3), ordinals);
+        assertEquals(List.of("walk without pain", "climb stairs", "walk without pain"), descriptions);
     }
 
     @Test

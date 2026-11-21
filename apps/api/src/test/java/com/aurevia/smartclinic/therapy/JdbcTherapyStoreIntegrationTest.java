@@ -248,6 +248,26 @@ class JdbcTherapyStoreIntegrationTest {
     }
 
     @Test
+    void goalsPersistInClinicalOrderIncludingDuplicateDescriptions() {
+        Episode accepted = as(ORG_A, () -> service.acceptReferral(clinician(ORG_A),
+                new ReferralRequest("referral-goals", PATIENT, "referring-org", "referrer-a",
+                        "2026-11-20T09:00:00Z", "knee pain")));
+        int version = accepted.version();
+        as(ORG_A, () -> {
+            service.recordEvaluation(clinician(ORG_A), accepted.id(), new EvaluationRequest(
+                    List.of("knee pain"), List.of(),
+                    List.of(new Goal("walk without pain", "independent", "2026-12-20"),
+                            new Goal("climb stairs", "assisted", "2026-12-27"),
+                            new Goal("walk without pain", "community", "2027-01-10")),
+                    3, 6), version);
+            return null;
+        });
+        TherapyAggregate stored = as(ORG_A, () -> store.find(ORG_A, accepted.id()).orElseThrow());
+        assertEquals(List.of("walk without pain", "climb stairs", "walk without pain"),
+                stored.evaluation().goals().stream().map(Goal::description).toList());
+    }
+
+    @Test
     void tenantIsolationHoldsForScalesAndAudit() {
         assertEquals(1, as(ORG_A, () -> store.allocateScaleVersion(ORG_A, "KOOS")));
         assertEquals(2, as(ORG_A, () -> store.allocateScaleVersion(ORG_A, "KOOS")));
