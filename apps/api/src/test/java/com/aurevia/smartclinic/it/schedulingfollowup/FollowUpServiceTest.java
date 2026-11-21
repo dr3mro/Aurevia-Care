@@ -225,6 +225,10 @@ class FollowUpServiceTest {
                 VISIT, ENCOUNTER.toString())).code());
         assertEquals("INVALID_FACILITY_CODE", failure(422, () -> service.suggest(PATIENT, "C",
                 VISIT, ENCOUNTER.toString())).code());
+        assertEquals("INVALID_FACILITY_CODE", failure(422, () -> service.suggest(PATIENT, "رمز",
+                VISIT, ENCOUNTER.toString())).code());
+        assertEquals("INVALID_FACILITY_CODE", failure(422, () -> service.suggest(PATIENT, "A".repeat(33),
+                VISIT, ENCOUNTER.toString())).code());
         assertEquals("INVALID_VISIT_TYPE", failure(422, () -> service.suggest(PATIENT, FACILITY,
                 null, ENCOUNTER.toString())).code());
         assertEquals("INVALID_VISIT_TYPE", failure(422, () -> service.suggest(PATIENT, FACILITY,
@@ -234,6 +238,18 @@ class FollowUpServiceTest {
         assertEquals("INVALID_ENCOUNTER_AT", failure(422, () -> service.suggest(PATIENT, FACILITY,
                 VISIT, "yesterday")).code());
         verify(booking, never()).book(any());
+    }
+
+    @Test
+    void suggestAcceptsMaxLengthFacilityCode() {
+        String maxFacility = "A".repeat(32);
+        authorized("reception");
+        when(config.facilityZone(maxFacility)).thenReturn(ZoneId.of("UTC"));
+        when(config.applicablePriorFollowUp(PATIENT, VISIT, ENCOUNTER)).thenReturn(Optional.empty());
+        when(config.setting(FollowUpRule.configKey(VISIT))).thenReturn(Optional.empty());
+        ApiException error = failure(422, () -> service.suggest(PATIENT, maxFacility, VISIT,
+                ENCOUNTER.toString()));
+        assertEquals("NO_FOLLOW_UP_RULE", error.code());
     }
 
     @Test

@@ -33,9 +33,15 @@ class WorkflowInputsTest {
     @Test
     void codeAcceptsOnlyBoundedUppercaseCodes() {
         assertEquals("MAIN", WorkflowInputs.code("MAIN", "facilityCode"));
+        assertEquals("R51_A-9", WorkflowInputs.code("R51_A-9", "facilityCode"));
+        assertEquals("A".repeat(32), WorkflowInputs.code("A".repeat(32), "facilityCode"));
         assertEquals(422, reject(() -> WorkflowInputs.code(null, "facilityCode")).status());
         assertEquals(422, reject(() -> WorkflowInputs.code("m", "facilityCode")).status());
         assertEquals(422, reject(() -> WorkflowInputs.code("lower", "facilityCode")).status());
+        assertEquals("INVALID_FACILITYCODE",
+                reject(() -> WorkflowInputs.code("lower", "facilityCode")).code());
+        assertEquals(422, reject(() -> WorkflowInputs.code("A".repeat(33), "facilityCode")).status());
+        assertEquals(422, reject(() -> WorkflowInputs.code("رمز", "facilityCode")).status());
     }
 
     @Test

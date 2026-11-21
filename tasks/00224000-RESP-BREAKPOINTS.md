@@ -1,5 +1,5 @@
-- [-] RESP-BREAKPOINTS · Staff web: breakpoint tokens and a `useBreakpoint` hook (new files)
-  - agent: swarm-10
+- [x] RESP-BREAKPOINTS · Staff web: breakpoint tokens and a `useBreakpoint` hook (new files)
+  - pr: #515
   - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/theme/breakpoints.ts, apps/staff-web/src/theme/useBreakpoint.ts, apps/staff-web/tests/theme/breakpoints.test.ts

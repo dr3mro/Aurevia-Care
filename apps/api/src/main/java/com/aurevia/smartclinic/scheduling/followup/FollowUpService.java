@@ -13,6 +13,7 @@ import java.util.regex.Pattern;
 import org.springframework.stereotype.Service;
 
 import com.aurevia.smartclinic.api.ApiException;
+import com.aurevia.smartclinic.api.contract.FacilityCode;
 import com.aurevia.smartclinic.audit.AuditAppender;
 import com.aurevia.smartclinic.authz.ActionPolicy;
 import com.aurevia.smartclinic.tenant.TenantContext;
@@ -45,7 +46,6 @@ public class FollowUpService {
     private static final int MAX_REASON = 200;
     private static final Pattern UUID_PATTERN = Pattern.compile(
             "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
-    private static final Pattern CODE_PATTERN = Pattern.compile("[A-Z0-9_-]{2,32}");
 
     private final FollowUpConfig config;
     private final FollowUpStore store;
@@ -333,11 +333,11 @@ public class FollowUpService {
     }
 
     private static String code(String value, String field) {
-        if (value == null || !CODE_PATTERN.matcher(value).matches()) {
-            throw new ApiException(422, "INVALID_" + field,
-                    field + " must be 2-32 uppercase letters, digits, - or _");
+        try {
+            return FacilityCode.facilityCode(value).value();
+        } catch (IllegalArgumentException invalid) {
+            throw new ApiException(422, "INVALID_" + field, FacilityCode.INVALID_MESSAGE);
         }
-        return value;
     }
 
     private static Instant instant(String value, String field) {

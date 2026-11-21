@@ -34,9 +34,15 @@ class SchedulingInputsTest {
     @Test
     void acceptsAndRejectsTenantLocalCodes() {
         assertEquals("MAIN", SchedulingInputs.code("MAIN", "facilityCode"));
+        assertEquals("R51_A-9", SchedulingInputs.code("R51_A-9", "facilityCode"));
+        assertEquals("A".repeat(32), SchedulingInputs.code("A".repeat(32), "facilityCode"));
         assertEquals(422, failure(() -> SchedulingInputs.code("main", "facilityCode")).status());
+        assertEquals("INVALID_FACILITYCODE",
+                failure(() -> SchedulingInputs.code("main", "facilityCode")).code());
         assertEquals(422, failure(() -> SchedulingInputs.code("M", "facilityCode")).status());
         assertEquals(422, failure(() -> SchedulingInputs.code(null, "facilityCode")).status());
+        assertEquals(422, failure(() -> SchedulingInputs.code("A".repeat(33), "facilityCode")).status());
+        assertEquals(422, failure(() -> SchedulingInputs.code("رمز", "facilityCode")).status());
     }
 
     @Test
