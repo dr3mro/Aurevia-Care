@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { Locale } from '../../../i18n/messages';
 import { I18nProvider } from '../../../i18n/I18nProvider';
 import { ThemeProvider } from '../../../theme/ThemeProvider';
@@ -206,6 +206,57 @@ describe('OrdersTab', () => {
     expect(
       screen.queryByRole('button', { name: `${trackingText('en', 'amend')}: ${deliveredOrder.id}` }),
     ).toBeNull();
+  });
+
+  it('sends only one command when confirm is clicked twice while a request is pending', async () => {
+    let finish: (() => void) | undefined;
+    const onCancel = vi.fn(() => new Promise<void>((resolve) => { finish = resolve; }));
+    renderTab({ orders: [deliveredOrder], onCancel });
+    fireEvent.click(
+      within(row(deliveredOrder)).getByRole('button', {
+        name: `${trackingText('en', 'cancel')}: ${deliveredOrder.id}`,
+      }),
+    );
+    fireEvent.change(reasonField(), { target: { value: 'Collector rejected specimen' } });
+    fireEvent.click(confirmAction('en', 'cancel'));
+    fireEvent.click(confirmAction('en', 'cancel'));
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect((confirmAction('en', 'cancel') as HTMLButtonElement).disabled).toBe(true);
+    await act(async () => { finish?.(); });
+    expect(screen.getByTestId('tracking-status').textContent).toContain(
+      trackingText('en', 'cancelledNotice'),
+    );
+  });
+
+  it('discards a command result that arrives after a tenant switch', async () => {
+    let finish: (() => void) | undefined;
+    const onCancel = vi.fn(() => new Promise<void>((resolve) => { finish = resolve; }));
+    const viewFor = (organizationId: string, orders: readonly TrackedOrder[]) => (
+      <ThemeProvider>
+        <I18nProvider initialLocale="en">
+          <OrdersTab
+            organizationId={organizationId}
+            orders={orders}
+            role="clinician"
+            onCancel={onCancel}
+            onAmend={vi.fn(async () => undefined)}
+            onOpenResult={vi.fn()}
+          />
+        </I18nProvider>
+      </ThemeProvider>
+    );
+    const { rerender } = render(viewFor(alphaOrganizationId, [deliveredOrder]));
+    fireEvent.click(
+      within(row(deliveredOrder)).getByRole('button', {
+        name: `${trackingText('en', 'cancel')}: ${deliveredOrder.id}`,
+      }),
+    );
+    fireEvent.change(reasonField(), { target: { value: 'Collector rejected specimen' } });
+    fireEvent.click(confirmAction('en', 'cancel'));
+    rerender(viewFor(betaOrganizationId, []));
+    await act(async () => { finish?.(); });
+    expect(screen.getByTestId('tracking-status').textContent).toBe('');
+    expect(screen.queryByTestId('tracking-error')).toBeNull();
   });
 
   it('reports a failed send without claiming the action succeeded', async () => {

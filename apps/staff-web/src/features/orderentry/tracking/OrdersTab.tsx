@@ -1,4 +1,4 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useRef, useState } from 'react';
 import type { Locale } from '../../../i18n/messages';
 import { Button } from '../../../components/Button';
 import { FormField } from '../../../components/FormField';
@@ -42,6 +42,7 @@ interface TabState {
   actionKind: ActionKind;
   reason: string;
   reasonError: boolean;
+  pending: boolean;
   announcement: string;
   error: string;
 }
@@ -54,6 +55,7 @@ function initialState(organizationId: string): TabState {
     actionKind: 'cancel',
     reason: '',
     reasonError: false,
+    pending: false,
     announcement: '',
     error: '',
   };
@@ -74,6 +76,7 @@ interface ReasonFormProps {
   kind: ActionKind;
   reason: string;
   reasonError: boolean;
+  pending: boolean;
   locale: Locale;
   onReasonChange: (value: string) => void;
   onConfirm: () => void;
@@ -86,6 +89,7 @@ function ReasonForm({
   kind,
   reason,
   reasonError,
+  pending,
   locale,
   onReasonChange,
   onConfirm,
@@ -107,10 +111,10 @@ function ReasonForm({
         {...(reasonError ? { error: text('reasonRequired') } : {})}
       />
       <div style={{ display: 'flex', gap: tokens.spacing.sm }}>
-        <Button type="button" onClick={onConfirm}>
+        <Button type="button" onClick={onConfirm} disabled={pending}>
           {text(kind)}
         </Button>
-        <Button type="button" variant="secondary" onClick={onDiscard}>
+        <Button type="button" variant="secondary" onClick={onDiscard} disabled={pending}>
           {text('discard')}
         </Button>
       </div>
@@ -155,6 +159,11 @@ export function OrdersTab(props: OrdersTabProps) {
   const [state, setState] = useState<TabState>(() => initialState(props.organizationId));
   const { organizationId, orders, role, onCancel, onAmend, onOpenResult } = props;
 
+  // The ref mirrors the active tenant synchronously, so a reply arriving after
+  // a switch can be discarded before it paints the new tenant's status area.
+  const organizationRef = useRef(organizationId);
+  organizationRef.current = organizationId;
+
   // Reset every field synchronously during render, so a tenant switch can never
   // show the previous tenant's typed reason beside the new tenant's orders.
   if (state.organizationId !== organizationId) {
@@ -165,6 +174,14 @@ export function OrdersTab(props: OrdersTabProps) {
   const mayAct = canOrder(role);
   const activeOrder = state.actionOrder;
   const text = (key: TrackingMessageKey): string => trackingText(locale, key);
+
+  /** Commit a settled command only if the tenant that sent it is still active. */
+  function settle(submittingOrganization: string, update: (current: TabState) => TabState): void {
+    if (organizationRef.current !== submittingOrganization) {
+      return;
+    }
+    setState(update);
+  }
 
   function startAction(order: TrackedOrder, kind: ActionKind): void {
     setState((current) => ({
@@ -197,6 +214,10 @@ export function OrdersTab(props: OrdersTabProps) {
       return;
     }
     const trimmed = reason.trim();
+    const submittingOrganization = organizationId;
+    // The confirm button is disabled while pending, so React flushes its state
+    // before a second click can invoke this handler again.
+    setState((current) => ({ ...current, pending: true }));
     void (async () => {
       try {
         if (kind === 'cancel') {
@@ -205,31 +226,34 @@ export function OrdersTab(props: OrdersTabProps) {
             cancelOutcome(order) === 'cancel-requested'
               ? 'cancelRequestSentNotice'
               : 'cancelledNotice';
-          setState((current) => ({
+          settle(submittingOrganization, (current) => ({
             ...current,
             actionOrder: null,
             reason: '',
             reasonError: false,
+            pending: false,
             error: '',
             announcement: trackingText(locale, key),
           }));
         } else {
           await onAmend(order, trimmed);
-          setState((current) => ({
+          settle(submittingOrganization, (current) => ({
             ...current,
             actionOrder: null,
             reason: '',
             reasonError: false,
+            pending: false,
             error: '',
             announcement: trackingText(locale, 'amendNotice'),
           }));
         }
       } catch {
-        setState((current) => ({
+        settle(submittingOrganization, (current) => ({
           ...current,
           actionOrder: null,
           reason: '',
           reasonError: false,
+          pending: false,
           error: trackingText(locale, 'sendError'),
           announcement: '',
         }));
@@ -288,12 +312,17 @@ export function OrdersTab(props: OrdersTabProps) {
                           lang={locale}
                         />
                         {' · '}
-                        <bdi dir="ltr">
-                          {order.delivery.partnerReference ?? text('notDelivered')}
-                        </bdi>
+                        {order.delivery.partnerReference === null ? (
+                          text('notDelivered')
+                        ) : (
+                          <>
+                            {text('partnerReference')}: <bdi dir="ltr">{order.delivery.partnerReference}</bdi>
+                          </>
+                        )}
                         {order.delivery.deliveredAt !== null ? (
                           <>
                             {' · '}
+                            {text('delivered')}:{' '}
                             <time dateTime={order.delivery.deliveredAt}>
                               {formatInstant(
                                 order.delivery.deliveredAt,
@@ -319,6 +348,7 @@ export function OrdersTab(props: OrdersTabProps) {
                         type="button"
                         aria-label={`${text('cancel')}: ${order.id}`}
                         style={controlStyle}
+                        disabled={state.pending}
                         onClick={() => startAction(order, 'cancel')}
                       >
                         {text('cancel')}
@@ -329,6 +359,7 @@ export function OrdersTab(props: OrdersTabProps) {
                         type="button"
                         aria-label={`${text('amend')}: ${order.id}`}
                         style={controlStyle}
+                        disabled={state.pending}
                         onClick={() => startAction(order, 'amend')}
                       >
                         {text('amend')}
@@ -344,6 +375,7 @@ export function OrdersTab(props: OrdersTabProps) {
                         kind={state.actionKind}
                         reason={state.reason}
                         reasonError={state.reasonError}
+                        pending={state.pending}
                         locale={locale}
                         onReasonChange={updateReason}
                         onConfirm={() => submitAction(activeOrder, state.actionKind, state.reason)}
