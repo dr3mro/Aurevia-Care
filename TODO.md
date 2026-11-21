@@ -379,8 +379,9 @@ Do these after part 2 where `depends` says so. Persistence tasks run one at a ti
 
 ### Phase A — Durable state (nothing may stay in memory at launch; see docs/decisions/0003)
 
-- [-] READY-37 · Persist flow policies in PostgreSQL (V61) instead of memory
-  - agent: swarm-1
+- [x] READY-37 · Persist flow policies in PostgreSQL (V61) instead of memory
+  - pr: #275
+  - evidence: PR #275; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/READY-37.md; simulated review only
   - attempts: 2
   - requirements: ARC-01, ARC-02, OPS-02
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/messaging/flows, apps/api/src/test/java/com/aurevia/smartclinic/messaging/flows, db/migrations/V61__flow_policies.sql, apps/api/src/test/java/com/aurevia/smartclinic/it
@@ -397,9 +398,10 @@ Do these after part 2 where `depends` says so. Persistence tasks run one at a ti
     If the interface cannot be implemented with a clean table design, STOP and write exactly which method and why into `.agent/pr-notes/<task-id>.md`; make no code changes.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT change files outside `scope`, add patient data to logs, or edit any existing migration.
-- [ ] READY-38 · Persist messaging governance in PostgreSQL (V62) instead of memory
+- [-] READY-38 · Persist messaging governance in PostgreSQL (V62) instead of memory
+  - agent: swarm-9
+  - attempts: 1
   - requirements: ARC-01, ARC-02, OPS-02
-  - attempts: 0
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/messaging/governance, apps/api/src/test/java/com/aurevia/smartclinic/messaging/governance, db/migrations/V62__messaging_governance.sql, apps/api/src/test/java/com/aurevia/smartclinic/it
   - depends: READY-37
   - reserved: V62
