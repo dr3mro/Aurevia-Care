@@ -1,10 +1,10 @@
 package com.aurevia.smartclinic.exchange.response;
 
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.ExchangeOrder;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.Revision;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.RetainedCopy;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.ExchangeEvent;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.Notification;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.ExchangeOrder;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.Revision;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.RetainedCopy;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.ExchangeEvent;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.Notification;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -28,7 +28,7 @@ import org.springframework.stereotype.Repository;
  * update guard, so a resource id from another tenant is concealed as not found.</p>
  */
 @Repository
-public class Xch03Repository {
+public class ExchangeResponseRepository {
 
     private static final String SELECT_ORDER = """
             SELECT id::text AS id, version, order_code, state, revision, content_checksum,
@@ -37,11 +37,11 @@ public class Xch03Repository {
               FROM public.xch03_order
             """;
 
-    private static final RowMapper<ExchangeOrder> ORDER_MAPPER = Xch03Repository::mapOrder;
-    private static final RowMapper<ExchangeEvent> EVENT_MAPPER = Xch03Repository::mapEvent;
-    private static final RowMapper<Revision> REVISION_MAPPER = Xch03Repository::mapRevision;
-    private static final RowMapper<RetainedCopy> COPY_MAPPER = Xch03Repository::mapCopy;
-    private static final RowMapper<Notification> NOTIFICATION_MAPPER = Xch03Repository::mapNotification;
+    private static final RowMapper<ExchangeOrder> ORDER_MAPPER = ExchangeResponseRepository::mapOrder;
+    private static final RowMapper<ExchangeEvent> EVENT_MAPPER = ExchangeResponseRepository::mapEvent;
+    private static final RowMapper<Revision> REVISION_MAPPER = ExchangeResponseRepository::mapRevision;
+    private static final RowMapper<RetainedCopy> COPY_MAPPER = ExchangeResponseRepository::mapCopy;
+    private static final RowMapper<Notification> NOTIFICATION_MAPPER = ExchangeResponseRepository::mapNotification;
 
     private final NamedParameterJdbcTemplate jdbc;
 
@@ -50,7 +50,7 @@ public class Xch03Repository {
      *
      * @param jdbc shared named-parameter JDBC template
      */
-    public Xch03Repository(NamedParameterJdbcTemplate jdbc) {
+    public ExchangeResponseRepository(NamedParameterJdbcTemplate jdbc) {
         this.jdbc = jdbc;
     }
 

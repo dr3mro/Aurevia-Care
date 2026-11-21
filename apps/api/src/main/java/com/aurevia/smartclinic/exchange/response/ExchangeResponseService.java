@@ -1,9 +1,9 @@
 package com.aurevia.smartclinic.exchange.response;
 
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.ExchangeOrder;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.Revision;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.ExchangeEvent;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.OrderView;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.ExchangeOrder;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.Revision;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.ExchangeEvent;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.OrderView;
 
 import java.time.Clock;
 import java.util.Locale;
@@ -30,7 +30,7 @@ import com.aurevia.smartclinic.tenant.TenantContext;
  * move this state machine; only an explicit authorized command can.</p>
  */
 @Service
-public class Xch03Service {
+public class ExchangeResponseService {
 
     private static final String SCOPE = "XCH03";
     private static final String RESOURCE_TYPE = "EXCHANGE_ORDER";
@@ -39,8 +39,8 @@ public class Xch03Service {
     private static final Set<String> ACCEPT_DECISIONS = Set.of("accept", "reject");
     private static final Set<String> CANCEL_DECISIONS = Set.of("confirm", "decline");
 
-    private final Xch03Repository repository;
-    private final Xch03ActionPolicy policy;
+    private final ExchangeResponseRepository repository;
+    private final ExchangeResponseActionPolicy policy;
     private final TransactionTemplate transactions;
     private final AuditAppender audit;
 
@@ -52,7 +52,7 @@ public class Xch03Service {
      * @param transactions tenant-guarded transaction template
      * @param audit        transactional audit appender
      */
-    public Xch03Service(Xch03Repository repository, Xch03ActionPolicy policy,
+    public ExchangeResponseService(ExchangeResponseRepository repository, ExchangeResponseActionPolicy policy,
                         TransactionTemplate transactions, AuditAppender audit) {
         this.repository = repository;
         this.policy = policy;
@@ -70,15 +70,15 @@ public class Xch03Service {
      * @return the accepted order
      * @throws ApiException on invalid input, denial, concealment, staleness or illegal transition
      */
-    public ExchangeOrder accept(String id, int version, Xch03Commands.AcceptRequest request) {
-        String patient = Xch03Inputs.uuid(request.localPatientId(), "localPatientId");
-        String assignee = Xch03Inputs.text(request.assignee(), "assignee", MAX_ASSIGNEE, false);
-        String purpose = Xch03Inputs.code(request.permittedPurpose(), "permittedPurpose");
-        String retention = Xch03Inputs.retentionPolicy(request.retentionPolicy());
-        return run(id, version, Xch03ActionPolicy.EXCHANGE_ACCEPT, "accept", current -> {
+    public ExchangeOrder accept(String id, int version, ExchangeResponseCommands.AcceptRequest request) {
+        String patient = ExchangeResponseInputs.uuid(request.localPatientId(), "localPatientId");
+        String assignee = ExchangeResponseInputs.text(request.assignee(), "assignee", MAX_ASSIGNEE, false);
+        String purpose = ExchangeResponseInputs.code(request.permittedPurpose(), "permittedPurpose");
+        String retention = ExchangeResponseInputs.retentionPolicy(request.retentionPolicy());
+        return run(id, version, ExchangeResponseActionPolicy.EXCHANGE_ACCEPT, "accept", current -> {
             requireState(current, ExchangeState.REQUESTED);
             TenantContext context = TenantContext.current();
-            repository.insertRetained(context.organizationId(), Xch03Inputs.newId(), current.id(),
+            repository.insertRetained(context.organizationId(), ExchangeResponseInputs.newId(), current.id(),
                     current.revision(), current.contentChecksum(), purpose, retention,
                     "LEGAL_HOLD".equals(retention), context.subject());
             return new Decision(ExchangeState.ACCEPTED, patient, assignee, null, null, purpose,
@@ -95,9 +95,9 @@ public class Xch03Service {
      * @return the rejected order
      * @throws ApiException on the same boundaries as {@code accept}
      */
-    public ExchangeOrder reject(String id, int version, Xch03Commands.ReasonRequest request) {
-        String reason = Xch03Inputs.text(request.reason(), "reason", MAX_REASON, true);
-        return run(id, version, Xch03ActionPolicy.EXCHANGE_REJECT, "reject", current -> {
+    public ExchangeOrder reject(String id, int version, ExchangeResponseCommands.ReasonRequest request) {
+        String reason = ExchangeResponseInputs.text(request.reason(), "reason", MAX_REASON, true);
+        return run(id, version, ExchangeResponseActionPolicy.EXCHANGE_REJECT, "reject", current -> {
             requireState(current, ExchangeState.REQUESTED);
             return new Decision(ExchangeState.REJECTED, current.localPatientId(), current.assignee(),
                     reason, current.question(), current.permittedPurpose(), current.retentionPolicy(),
@@ -114,9 +114,9 @@ public class Xch03Service {
      * @return the order awaiting clarification
      * @throws ApiException on the same boundaries as {@code accept}
      */
-    public ExchangeOrder clarify(String id, int version, Xch03Commands.ClarifyRequest request) {
-        String question = Xch03Inputs.text(request.question(), "question", MAX_REASON, true);
-        return run(id, version, Xch03ActionPolicy.EXCHANGE_CLARIFY, "clarify", current -> {
+    public ExchangeOrder clarify(String id, int version, ExchangeResponseCommands.ClarifyRequest request) {
+        String question = ExchangeResponseInputs.text(request.question(), "question", MAX_REASON, true);
+        return run(id, version, ExchangeResponseActionPolicy.EXCHANGE_CLARIFY, "clarify", current -> {
             requireState(current, ExchangeState.REQUESTED);
             return new Decision(ExchangeState.CLARIFICATION_REQUESTED, current.localPatientId(),
                     current.assignee(), question, question, current.permittedPurpose(),
@@ -137,16 +137,16 @@ public class Xch03Service {
      * @return the order with a change awaiting a recipient response
      * @throws ApiException on the same boundaries as {@code accept}
      */
-    public ExchangeOrder proposeChange(String id, int version, Xch03Commands.ProposeChangeRequest request) {
-        String summary = Xch03Inputs.text(request.changeSummary(), "changeSummary", MAX_REASON, true);
-        String checksum = Xch03Inputs.checksum(request.contentChecksum());
-        return run(id, version, Xch03ActionPolicy.EXCHANGE_PROPOSE_CHANGE, "propose_change", current -> {
+    public ExchangeOrder proposeChange(String id, int version, ExchangeResponseCommands.ProposeChangeRequest request) {
+        String summary = ExchangeResponseInputs.text(request.changeSummary(), "changeSummary", MAX_REASON, true);
+        String checksum = ExchangeResponseInputs.checksum(request.contentChecksum());
+        return run(id, version, ExchangeResponseActionPolicy.EXCHANGE_PROPOSE_CHANGE, "propose_change", current -> {
             // XCH-03 scopes changes to *after* acceptance: only an accepted order has
             // a verified patient, permitted purpose and retained recipient copy.
             requireState(current, ExchangeState.ACCEPTED);
             int next = current.revision() + 1;
             TenantContext context = TenantContext.current();
-            repository.insertRevision(context.organizationId(), Xch03Inputs.newId(), current.id(),
+            repository.insertRevision(context.organizationId(), ExchangeResponseInputs.newId(), current.id(),
                     next, current.revision(), checksum, summary, context.subject());
             return new Decision(ExchangeState.CHANGE_PENDING, current.localPatientId(), current.assignee(),
                     null, current.question(), current.permittedPurpose(), current.retentionPolicy(),
@@ -167,12 +167,12 @@ public class Xch03Service {
      * @throws ApiException on the same boundaries as {@code accept}
      */
     public ExchangeOrder changeResponse(String id, int version,
-                                        Xch03Commands.ChangeResponseRequest request) {
+                                        ExchangeResponseCommands.ChangeResponseRequest request) {
         String decision = decision(request.decision(), ACCEPT_DECISIONS);
         String reason = "reject".equals(decision)
-                ? Xch03Inputs.text(request.reason(), "reason", MAX_REASON, true) : null;
+                ? ExchangeResponseInputs.text(request.reason(), "reason", MAX_REASON, true) : null;
         String eventAction = "reject".equals(decision) ? "change_reject" : "change_accept";
-        return run(id, version, Xch03ActionPolicy.EXCHANGE_RESPOND, eventAction, current -> {
+        return run(id, version, ExchangeResponseActionPolicy.EXCHANGE_RESPOND, eventAction, current -> {
             requireState(current, ExchangeState.CHANGE_PENDING);
             if ("reject".equals(decision)) {
                 return new Decision(ExchangeState.REJECTED, current.localPatientId(), current.assignee(),
@@ -188,7 +188,7 @@ public class Xch03Service {
             TenantContext context = TenantContext.current();
             Revision revision = repository.currentRevision(current.id(), next)
                     .orElseThrow(() -> new ApiException(404, "NOT_FOUND", "released revision not found"));
-            repository.insertRetained(context.organizationId(), Xch03Inputs.newId(), current.id(),
+            repository.insertRetained(context.organizationId(), ExchangeResponseInputs.newId(), current.id(),
                     next, revision.contentChecksum(), purpose, retention,
                     "LEGAL_HOLD".equals(retention), context.subject());
             return new Decision(ExchangeState.ACCEPTED, current.localPatientId(), current.assignee(),
@@ -205,9 +205,9 @@ public class Xch03Service {
      * @return the order with a cancellation awaiting a recipient response
      * @throws ApiException on the same boundaries as {@code accept}
      */
-    public ExchangeOrder requestCancellation(String id, int version, Xch03Commands.ReasonRequest request) {
-        String reason = Xch03Inputs.text(request.reason(), "reason", MAX_REASON, true);
-        return run(id, version, Xch03ActionPolicy.EXCHANGE_REQUEST_CANCEL, "request_cancellation", current -> {
+    public ExchangeOrder requestCancellation(String id, int version, ExchangeResponseCommands.ReasonRequest request) {
+        String reason = ExchangeResponseInputs.text(request.reason(), "reason", MAX_REASON, true);
+        return run(id, version, ExchangeResponseActionPolicy.EXCHANGE_REQUEST_CANCEL, "request_cancellation", current -> {
             requireState(current, ExchangeState.ACCEPTED);
             return new Decision(ExchangeState.CANCELLATION_PENDING, current.localPatientId(),
                     current.assignee(), reason, current.question(), current.permittedPurpose(),
@@ -225,12 +225,12 @@ public class Xch03Service {
      * @throws ApiException on the same boundaries as {@code accept}
      */
     public ExchangeOrder cancellationResponse(String id, int version,
-                                              Xch03Commands.CancellationResponseRequest request) {
+                                              ExchangeResponseCommands.CancellationResponseRequest request) {
         String decision = decision(request.decision(), CANCEL_DECISIONS);
         String reason = "decline".equals(decision)
-                ? Xch03Inputs.text(request.reason(), "reason", MAX_REASON, true) : null;
+                ? ExchangeResponseInputs.text(request.reason(), "reason", MAX_REASON, true) : null;
         String eventAction = "confirm".equals(decision) ? "cancellation_confirm" : "cancellation_decline";
-        return run(id, version, Xch03ActionPolicy.EXCHANGE_RESPOND, eventAction, current -> {
+        return run(id, version, ExchangeResponseActionPolicy.EXCHANGE_RESPOND, eventAction, current -> {
             requireState(current, ExchangeState.CANCELLATION_PENDING);
             ExchangeState target = "confirm".equals(decision)
                     ? ExchangeState.CANCELLED : ExchangeState.ACCEPTED;
@@ -250,18 +250,18 @@ public class Xch03Service {
      * @return the revoked order
      * @throws ApiException on the same boundaries as {@code accept}
      */
-    public ExchangeOrder revoke(String id, int version, Xch03Commands.RevokeRequest request) {
-        String reason = Xch03Inputs.text(request.reason(), "reason", MAX_REASON, true);
-        String retention = Xch03Inputs.retentionPolicy(request.retentionPolicy());
-        String target = Xch03Inputs.text(request.target(), "target", MAX_ASSIGNEE, true);
-        String channel = Xch03Inputs.text(request.channel(), "channel", 32, true);
-        String eventId = Xch03Inputs.text(request.eventId(), "eventId", 64, true);
-        return run(id, version, Xch03ActionPolicy.EXCHANGE_REVOKE, "revoke", current -> {
+    public ExchangeOrder revoke(String id, int version, ExchangeResponseCommands.RevokeRequest request) {
+        String reason = ExchangeResponseInputs.text(request.reason(), "reason", MAX_REASON, true);
+        String retention = ExchangeResponseInputs.retentionPolicy(request.retentionPolicy());
+        String target = ExchangeResponseInputs.text(request.target(), "target", MAX_ASSIGNEE, true);
+        String channel = ExchangeResponseInputs.text(request.channel(), "channel", 32, true);
+        String eventId = ExchangeResponseInputs.text(request.eventId(), "eventId", 64, true);
+        return run(id, version, ExchangeResponseActionPolicy.EXCHANGE_REVOKE, "revoke", current -> {
             if (current.state().isTerminal()) {
                 throw invalidTransition();
             }
             TenantContext context = TenantContext.current();
-            repository.insertNotification(context.organizationId(), Xch03Inputs.newId(), current.id(),
+            repository.insertNotification(context.organizationId(), ExchangeResponseInputs.newId(), current.id(),
                     eventId, target, channel, "NOTIFIED", context.subject());
             return new Decision(ExchangeState.REVOKED, current.localPatientId(), current.assignee(),
                     reason, current.question(), current.permittedPurpose(), retention, current.revision());
@@ -278,11 +278,11 @@ public class Xch03Service {
      *                      when concealed, or on denial and staleness
      */
     public Revision retrieve(String id) {
-        Xch03Inputs.uuid(id, "id");
+        ExchangeResponseInputs.uuid(id, "id");
         AtomicReference<ApiException> denial = new AtomicReference<>();
         Revision result = transactions.execute(status -> {
             TenantContext context = TenantContext.current();
-            ApiException refused = authorize(context, Xch03ActionPolicy.EXCHANGE_RETRIEVE, id);
+            ApiException refused = authorize(context, ExchangeResponseActionPolicy.EXCHANGE_RETRIEVE, id);
             if (refused != null) {
                 denial.set(refused);
                 return null;
@@ -290,14 +290,14 @@ public class Xch03Service {
             ExchangeOrder current = repository.findForUpdate(id)
                     .orElseThrow(() -> new ApiException(404, "NOT_FOUND", "order not found"));
             if (current.state() == ExchangeState.REVOKED) {
-                audit.append(context, Xch03ActionPolicy.EXCHANGE_RETRIEVE,
-                        Xch03ActionPolicy.EXCHANGE_RETRIEVE, RESOURCE_TYPE, SCOPE, id, "DENIED");
+                audit.append(context, ExchangeResponseActionPolicy.EXCHANGE_RETRIEVE,
+                        ExchangeResponseActionPolicy.EXCHANGE_RETRIEVE, RESOURCE_TYPE, SCOPE, id, "DENIED");
                 throw new ApiException(410, "RETRIEVAL_REVOKED", "the release has been revoked");
             }
             Revision revision = repository.currentRevision(id, current.revision())
                     .orElseThrow(() -> new ApiException(404, "NOT_FOUND", "released revision not found"));
-            audit.append(context, Xch03ActionPolicy.EXCHANGE_RETRIEVE,
-                    Xch03ActionPolicy.EXCHANGE_RETRIEVE, RESOURCE_TYPE, SCOPE, id, "SUCCESS");
+            audit.append(context, ExchangeResponseActionPolicy.EXCHANGE_RETRIEVE,
+                    ExchangeResponseActionPolicy.EXCHANGE_RETRIEVE, RESOURCE_TYPE, SCOPE, id, "SUCCESS");
             return revision;
         });
         if (denial.get() != null) {
@@ -314,18 +314,18 @@ public class Xch03Service {
      * @throws ApiException on invalid id, denial or concealment
      */
     public OrderView get(String id) {
-        Xch03Inputs.uuid(id, "id");
+        ExchangeResponseInputs.uuid(id, "id");
         AtomicReference<ApiException> denial = new AtomicReference<>();
         OrderView result = transactions.execute(status -> {
             TenantContext context = TenantContext.current();
-            ApiException refused = authorize(context, Xch03ActionPolicy.EXCHANGE_READ, id);
+            ApiException refused = authorize(context, ExchangeResponseActionPolicy.EXCHANGE_READ, id);
             if (refused != null) {
                 denial.set(refused);
                 return null;
             }
             ExchangeOrder order = repository.find(id)
                     .orElseThrow(() -> new ApiException(404, "NOT_FOUND", "order not found"));
-            audit.append(context, Xch03ActionPolicy.EXCHANGE_READ, Xch03ActionPolicy.EXCHANGE_READ,
+            audit.append(context, ExchangeResponseActionPolicy.EXCHANGE_READ, ExchangeResponseActionPolicy.EXCHANGE_READ,
                     RESOURCE_TYPE, SCOPE, id, "SUCCESS");
             return new OrderView(order, repository.history(id), repository.revisions(id),
                     repository.retained(id), repository.notifications(id));
@@ -349,7 +349,7 @@ public class Xch03Service {
 
     private ExchangeOrder run(String id, int version, String action, String eventAction,
                               Function<ExchangeOrder, Decision> decision) {
-        Xch03Inputs.uuid(id, "id");
+        ExchangeResponseInputs.uuid(id, "id");
         AtomicReference<ApiException> denial = new AtomicReference<>();
         ExchangeOrder result = transactions.execute(status -> {
             TenantContext context = TenantContext.current();
@@ -371,7 +371,7 @@ public class Xch03Service {
                 if (updated == 0) {
                     throw stale();
                 }
-                repository.appendEvent(context.organizationId(), Xch03Inputs.newId(), id, version + 1,
+                repository.appendEvent(context.organizationId(), ExchangeResponseInputs.newId(), id, version + 1,
                         eventAction, current.state().wire(), next.state().wire(),
                         next.reason(), context.subject());
                 audit.append(context, action, action, RESOURCE_TYPE, SCOPE, id, "SUCCESS");
@@ -418,7 +418,7 @@ public class Xch03Service {
     }
 
     private static String decision(String value, Set<String> allowed) {
-        String normalized = Xch03Inputs.text(value, "decision", 16, true).toLowerCase(Locale.ROOT);
+        String normalized = ExchangeResponseInputs.text(value, "decision", 16, true).toLowerCase(Locale.ROOT);
         if (!allowed.contains(normalized)) {
             throw new ApiException(422, "INVALID_DECISION", "decision is not allowed for this command");
         }

@@ -2,10 +2,10 @@ package com.aurevia.smartclinic.it.exchangetask;
 
 import com.aurevia.smartclinic.api.ApiException;
 import com.aurevia.smartclinic.exchange.response.ExchangeState;
-import com.aurevia.smartclinic.exchange.response.Xch03ActionPolicy;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.Notification;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.RetainedCopy;
-import com.aurevia.smartclinic.exchange.response.Xch03Inputs;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseActionPolicy;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.Notification;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.RetainedCopy;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseInputs;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -17,71 +17,71 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Trust-boundary validation branches for XCH-03 inputs. */
-class Xch03InputsTest {
+class ExchangeResponseInputsTest {
 
     @Test
     void validatesIdentifiers() {
         String valid = UUID.randomUUID().toString();
-        assertEquals(valid, Xch03Inputs.uuid(valid, "id"));
+        assertEquals(valid, ExchangeResponseInputs.uuid(valid, "id"));
         assertEquals(422, assertThrows(ApiException.class,
-                () -> Xch03Inputs.uuid(null, "id")).status());
+                () -> ExchangeResponseInputs.uuid(null, "id")).status());
         assertEquals(422, assertThrows(ApiException.class,
-                () -> Xch03Inputs.uuid("not-a-uuid", "id")).status());
+                () -> ExchangeResponseInputs.uuid("not-a-uuid", "id")).status());
     }
 
     @Test
     void validatesBoundedTextAndOptionalBlanks() {
-        assertEquals("trimmed", Xch03Inputs.text("  trimmed  ", "field", 16, true));
+        assertEquals("trimmed", ExchangeResponseInputs.text("  trimmed  ", "field", 16, true));
         assertEquals(422, assertThrows(ApiException.class,
-                () -> Xch03Inputs.text("   ", "reason", 16, true)).status());
+                () -> ExchangeResponseInputs.text("   ", "reason", 16, true)).status());
         assertEquals(422, assertThrows(ApiException.class,
-                () -> Xch03Inputs.text("x".repeat(17), "field", 16, true)).status());
-        assertNull(Xch03Inputs.text("   ", "assignee", 16, false));
-        assertNull(Xch03Inputs.text(null, "assignee", 16, false));
+                () -> ExchangeResponseInputs.text("x".repeat(17), "field", 16, true)).status());
+        assertNull(ExchangeResponseInputs.text("   ", "assignee", 16, false));
+        assertNull(ExchangeResponseInputs.text(null, "assignee", 16, false));
     }
 
     @Test
     void validatesCodesAndChecksums() {
-        assertEquals("RESULT_REVIEW", Xch03Inputs.code("RESULT_REVIEW", "purpose"));
+        assertEquals("RESULT_REVIEW", ExchangeResponseInputs.code("RESULT_REVIEW", "purpose"));
         assertEquals(422, assertThrows(ApiException.class,
-                () -> Xch03Inputs.code("RESULT REVIEW!", "purpose")).status());
+                () -> ExchangeResponseInputs.code("RESULT REVIEW!", "purpose")).status());
         assertEquals(422, assertThrows(ApiException.class,
-                () -> Xch03Inputs.code("  ", "purpose")).status());
-        assertEquals("a".repeat(64), Xch03Inputs.checksum("a".repeat(64)));
+                () -> ExchangeResponseInputs.code("  ", "purpose")).status());
+        assertEquals("a".repeat(64), ExchangeResponseInputs.checksum("a".repeat(64)));
         assertEquals(422, assertThrows(ApiException.class,
-                () -> Xch03Inputs.checksum("a".repeat(63))).status());
+                () -> ExchangeResponseInputs.checksum("a".repeat(63))).status());
         assertEquals(422, assertThrows(ApiException.class,
-                () -> Xch03Inputs.checksum("z".repeat(64))).status());
+                () -> ExchangeResponseInputs.checksum("z".repeat(64))).status());
     }
 
     @Test
     void validatesTheApprovedRetentionPolicies() {
-        for (String policy : Xch03Inputs.RETENTION_POLICIES) {
-            assertEquals(policy, Xch03Inputs.retentionPolicy(policy));
+        for (String policy : ExchangeResponseInputs.RETENTION_POLICIES) {
+            assertEquals(policy, ExchangeResponseInputs.retentionPolicy(policy));
         }
         assertEquals(422, assertThrows(ApiException.class,
-                () -> Xch03Inputs.retentionPolicy("FOREVER")).status());
+                () -> ExchangeResponseInputs.retentionPolicy("FOREVER")).status());
     }
 
     @Test
     void generatesFreshIdentifiers() {
-        String id = Xch03Inputs.newId();
-        assertEquals(id, Xch03Inputs.uuid(id, "id"));
+        String id = ExchangeResponseInputs.newId();
+        assertEquals(id, ExchangeResponseInputs.uuid(id, "id"));
     }
 }
 
 /** Role-to-action matrix for the XCH-03 slice; every branch fails closed. */
-class Xch03ActionPolicyTest {
+class ExchangeResponseActionPolicyTest {
 
-    private final Xch03ActionPolicy policy = new Xch03ActionPolicy();
+    private final ExchangeResponseActionPolicy policy = new ExchangeResponseActionPolicy();
 
     private static final List<String> RECIPIENT_ACTIONS = List.of(
-            Xch03ActionPolicy.EXCHANGE_ACCEPT, Xch03ActionPolicy.EXCHANGE_REJECT,
-            Xch03ActionPolicy.EXCHANGE_CLARIFY, Xch03ActionPolicy.EXCHANGE_RESPOND);
+            ExchangeResponseActionPolicy.EXCHANGE_ACCEPT, ExchangeResponseActionPolicy.EXCHANGE_REJECT,
+            ExchangeResponseActionPolicy.EXCHANGE_CLARIFY, ExchangeResponseActionPolicy.EXCHANGE_RESPOND);
     private static final List<String> SENDER_ACTIONS = List.of(
-            Xch03ActionPolicy.EXCHANGE_PROPOSE_CHANGE, Xch03ActionPolicy.EXCHANGE_REQUEST_CANCEL);
+            ExchangeResponseActionPolicy.EXCHANGE_PROPOSE_CHANGE, ExchangeResponseActionPolicy.EXCHANGE_REQUEST_CANCEL);
     private static final List<String> READ_ACTIONS = List.of(
-            Xch03ActionPolicy.EXCHANGE_READ, Xch03ActionPolicy.EXCHANGE_RETRIEVE);
+            ExchangeResponseActionPolicy.EXCHANGE_READ, ExchangeResponseActionPolicy.EXCHANGE_RETRIEVE);
 
     @Test
     void recipientRolesMayRespondButCannotRevokeOrProposeChanges() {
@@ -93,7 +93,7 @@ class Xch03ActionPolicyTest {
             for (String action : SENDER_ACTIONS) {
                 assertFalse(policy.allows(action, role), role + " should not allow " + action);
             }
-            assertFalse(policy.allows(Xch03ActionPolicy.EXCHANGE_REVOKE, role));
+            assertFalse(policy.allows(ExchangeResponseActionPolicy.EXCHANGE_REVOKE, role));
         }
         for (String action : RECIPIENT_ACTIONS) {
             assertTrue(policy.allows(action, "clinician"));
@@ -112,9 +112,9 @@ class Xch03ActionPolicyTest {
         for (String action : RECIPIENT_ACTIONS) {
             assertFalse(policy.allows(action, "reception"));
         }
-        assertTrue(policy.allows(Xch03ActionPolicy.EXCHANGE_REVOKE, "clinician"));
-        assertTrue(policy.allows(Xch03ActionPolicy.EXCHANGE_REVOKE, "tenant_admin"));
-        assertFalse(policy.allows(Xch03ActionPolicy.EXCHANGE_REVOKE, "reception"));
+        assertTrue(policy.allows(ExchangeResponseActionPolicy.EXCHANGE_REVOKE, "clinician"));
+        assertTrue(policy.allows(ExchangeResponseActionPolicy.EXCHANGE_REVOKE, "tenant_admin"));
+        assertFalse(policy.allows(ExchangeResponseActionPolicy.EXCHANGE_REVOKE, "reception"));
     }
 
     @Test
@@ -132,8 +132,8 @@ class Xch03ActionPolicyTest {
 
     @Test
     void unknownRolesAndUnlistedActionsFailClosed() {
-        for (String action : List.of(Xch03ActionPolicy.EXCHANGE_ACCEPT,
-                Xch03ActionPolicy.EXCHANGE_REVOKE, "EXCHANGE_PURGE")) {
+        for (String action : List.of(ExchangeResponseActionPolicy.EXCHANGE_ACCEPT,
+                ExchangeResponseActionPolicy.EXCHANGE_REVOKE, "EXCHANGE_PURGE")) {
             assertFalse(policy.allows(action, "unknown-role"));
         }
         assertFalse(policy.allows("EXCHANGE_PURGE", "clinician"));
@@ -166,7 +166,7 @@ class ExchangeStateTest {
 }
 
 /** Immutable ledger records expose their values without exposing mutable state. */
-class Xch03RecordsTest {
+class ExchangeResponseRecordsTest {
 
     private static final Instant TIME = Instant.parse("2026-11-19T12:00:00Z");
 

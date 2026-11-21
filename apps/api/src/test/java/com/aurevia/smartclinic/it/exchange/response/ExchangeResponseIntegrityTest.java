@@ -26,11 +26,11 @@ import org.springframework.transaction.support.TransactionTemplate;
 import com.aurevia.smartclinic.api.ApiException;
 import com.aurevia.smartclinic.audit.AuditAppender;
 import com.aurevia.smartclinic.exchange.response.ExchangeState;
-import com.aurevia.smartclinic.exchange.response.Xch03ActionPolicy;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.AcceptRequest;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.ExchangeOrder;
-import com.aurevia.smartclinic.exchange.response.Xch03Repository;
-import com.aurevia.smartclinic.exchange.response.Xch03Service;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseActionPolicy;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.AcceptRequest;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.ExchangeOrder;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseRepository;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseService;
 import com.aurevia.smartclinic.tenant.TenantContext;
 
 /**
@@ -40,7 +40,7 @@ import com.aurevia.smartclinic.tenant.TenantContext;
  * tenant-scoped foreign key. A syntactically valid but unresolved identifier must be
  * concealed as not found, never surfaced as an unhandled 500. All fixtures are synthetic.</p>
  */
-class Xch03IntegrityTest {
+class ExchangeResponseIntegrityTest {
 
     private static final String ORG = "11111111-1111-1111-1111-111111111111";
     private static final String ACTOR = "lab-verifier-a";
@@ -48,15 +48,15 @@ class Xch03IntegrityTest {
     private static final String PATIENT = "cccccccc-cccc-cccc-cccc-cccccccccccc";
     private static final String CHECKSUM = "a".repeat(64);
 
-    private Xch03Repository repository;
-    private Xch03Service service;
+    private ExchangeResponseRepository repository;
+    private ExchangeResponseService service;
 
     @BeforeEach
     void setUp() {
-        repository = mock(Xch03Repository.class);
+        repository = mock(ExchangeResponseRepository.class);
         AuditAppender audit = mock(AuditAppender.class);
         TransactionTemplate transactions = mock(TransactionTemplate.class);
-        service = new Xch03Service(repository, new Xch03ActionPolicy(), transactions, audit);
+        service = new ExchangeResponseService(repository, new ExchangeResponseActionPolicy(), transactions, audit);
         doAnswer(invocation -> {
             TransactionCallback<?> callback = invocation.getArgument(0);
             return callback.doInTransaction(mock(TransactionStatus.class));

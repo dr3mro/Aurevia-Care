@@ -9,17 +9,17 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.aurevia.smartclinic.api.IfMatch;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.ExchangeEvent;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.ExchangeOrder;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.OrderView;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.Revision;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.AcceptRequest;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.CancellationResponseRequest;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.ChangeResponseRequest;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.ClarifyRequest;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.ProposeChangeRequest;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.ReasonRequest;
-import com.aurevia.smartclinic.exchange.response.Xch03Commands.RevokeRequest;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.ExchangeEvent;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.ExchangeOrder;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.OrderView;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.Revision;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.AcceptRequest;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.CancellationResponseRequest;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.ChangeResponseRequest;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.ClarifyRequest;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.ProposeChangeRequest;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.ReasonRequest;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseCommands.RevokeRequest;
 
 /**
  * Thin HTTP adapter for XCH-03 order responses (ARC-03, ARC-04).
@@ -27,20 +27,20 @@ import com.aurevia.smartclinic.exchange.response.Xch03Commands.RevokeRequest;
  * <p>Every irreversible command requires an {@code If-Match} version, parsed here
  * into a machine-readable failure before the domain service compares it.
  * Authorization, state transitions, retained copies, notifications and audit
- * all live in {@link com.aurevia.smartclinic.exchange.response.Xch03Service}.</p>
+ * all live in {@link com.aurevia.smartclinic.exchange.response.ExchangeResponseService}.</p>
  */
 @RestController
 @RequestMapping("/api/v1/xch03/orders")
-public class Xch03Controller {
+public class ExchangeResponseController {
 
-    private final Xch03Service service;
+    private final ExchangeResponseService service;
 
     /**
      * Create the controller.
      *
      * @param service XCH-03 domain service
      */
-    public Xch03Controller(Xch03Service service) {
+    public ExchangeResponseController(ExchangeResponseService service) {
         this.service = service;
     }
 

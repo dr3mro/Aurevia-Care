@@ -43,7 +43,7 @@ import tools.jackson.databind.ObjectMapper;
         properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/smartclinic_xch03_it")
 @ActiveProfiles("synthetic-auth")
 @Timeout(240)
-class Xch03ExchangeTest {
+class ExchangeResponseExchangeTest {
 
     static final String ORG_A = "11111111-1111-1111-1111-111111111111";
     static final String ORG_B = "22222222-2222-2222-2222-222222222222";
