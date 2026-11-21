@@ -98,7 +98,7 @@ step() { printf '%s▸%s %s\n' "$C_DIM" "$C_OFF" "$*"; }
 help_text() { sed -n '2,/^$/p' "$SELF" | sed 's/^# \{0,1\}//;/^!/d'; }
 
 run() {
-  if [[ $DRY -eq 1 ]]; then printf '%s+ %s%s\n' "$C_DIM" "$*" "$C_OFF"; else "$@"; fi
+  if [[ $DRY -eq 1 ]]; then printf '%s+ %s%s\n' "$C_DIM" "$*" "$C_OFF" >&2; else "$@"; fi
 }
 
 confirm() {
