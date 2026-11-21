@@ -85,6 +85,7 @@ GET /api/v1/pharmacy/inbox
 GET /api/v1/pharmacy/inbox/{}
 GET /api/v1/pharmacy/status/{}
 GET /api/v1/pharmacy/status/{}/events
+GET /api/v1/pharmacy/substitutions/{}
 GET /api/v1/prescription-drafts/{}
 GET /api/v1/prescription-drafts/{}/catalog-version
 GET /api/v1/prescriptions/{}
@@ -104,6 +105,9 @@ GET /api/v1/specialty/attestations
 GET /api/v1/specialty/attestations/{}
 GET /api/v1/specialty/permissions
 GET /api/v1/staff-invitations/pending
+GET /api/v1/staff/mail/folders/{}
+GET /api/v1/staff/mail/messages/{}
+GET /api/v1/staff/mail/threads
 GET /api/v1/therapy/episodes/{}
 GET /api/v1/trends/{}
 GET /api/v1/xch03/orders/{}
@@ -113,6 +117,7 @@ GET /api/v1/xch04/reconciliations
 GET /api/v1/xch04/reconciliations/{}/resolution
 GET /api/v1/xch04/results/{}
 GET /health/live
+GET /health/metrics
 GET /health/ready
 POST /api/v1/access/emergency
 POST /api/v1/access/emergency/{}/review
@@ -273,6 +278,9 @@ POST /api/v1/pharmacy/status/{}/accept
 POST /api/v1/pharmacy/status/{}/clarification
 POST /api/v1/pharmacy/status/{}/dispensing-evidence
 POST /api/v1/pharmacy/status/{}/reject
+POST /api/v1/pharmacy/substitutions/{}/approve
+POST /api/v1/pharmacy/substitutions/{}/decline
+POST /api/v1/pharmacy/substitutions/{}/proposals
 POST /api/v1/prescription-drafts
 POST /api/v1/prescription-drafts/{}/allergy-check
 POST /api/v1/prescription-drafts/{}/select-medication
@@ -304,6 +312,13 @@ POST /api/v1/specialty/attestations
 POST /api/v1/staff-invitations
 POST /api/v1/staff-invitations/accept
 POST /api/v1/staff-invitations/{}/revoke
+POST /api/v1/staff/mail/drafts
+POST /api/v1/staff/mail/drafts/{}/send
+POST /api/v1/staff/mail/messages/{}/flag
+POST /api/v1/staff/mail/messages/{}/forward
+POST /api/v1/staff/mail/messages/{}/move
+POST /api/v1/staff/mail/messages/{}/reply
+POST /api/v1/staff/mail/messages/{}/reply-all
 POST /api/v1/tenant/imports/commit
 POST /api/v1/tenant/imports/dry-run
 POST /api/v1/tenant/imports/reverse
@@ -324,3 +339,4 @@ POST /api/v1/xch04/reconciliations/{}/resolve
 POST /api/v1/xch04/results
 POST /api/v1/xch04/results/{}/acknowledge
 PUT /api/v1/clinical-notes/{}
+PUT /api/v1/staff/mail/drafts/{}
