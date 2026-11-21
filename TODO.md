@@ -57,7 +57,9 @@ Current source state (2026-11-19T07:19Z, from `main` at `311d69a`): 7 Flyway mig
 
 Each task adds new files in its own folder, depends on nothing and does not touch a file another open task owns, so the swarm can run all of them at once while the pull request queue drains.
 
-- [ ] START-01 · Staff web: English and Arabic message parity test across every feature
+- [-] START-01 · Staff web: English and Arabic message parity test across every feature
+  - agent: swarm-3
+  - attempts: 1
   - requirements: UX-01
   - scope: apps/staff-web/tests/messageParity.test.ts
   - details:
@@ -67,7 +69,9 @@ Each task adds new files in its own folder, depends on nothing and does not touc
     4. Tests: a deliberately broken sample bundle written inside the test (missing Arabic key, missing placeholder) makes the check fail, and the real bundles pass.
     5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] START-02 · Patient app: English and Arabic message parity test
+- [-] START-02 · Patient app: English and Arabic message parity test
+  - agent: swarm-4
+  - attempts: 1
   - requirements: UX-01, PAT-01
   - scope: apps/patient-mobile/src/app/messageParity.test.ts
   - details:
@@ -77,7 +81,9 @@ Each task adds new files in its own folder, depends on nothing and does not touc
     4. Tests: a broken sample bundle written inside the test fails the check, and the real bundles pass.
     5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] START-03 · API: OpenAPI contract rules as a unit test
+- [-] START-03 · API: OpenAPI contract rules as a unit test
+  - agent: swarm-5
+  - attempts: 1
   - requirements: OPS-05, IAM-01, WEB-04
   - scope: apps/api/src/test/java/com/aurevia/smartclinic/contract/OpenApiContractRulesTest.java
   - details:
@@ -87,7 +93,9 @@ Each task adds new files in its own folder, depends on nothing and does not touc
     4. Tests: a small invalid contract held as a string in the test fails each rule once, and the real contract passes. If the real contract breaks a rule, put the operation on the allow list with `// TODO` and list it in your notes; do not edit the contract.
     5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] START-04 · Docs: operator runbooks for incident response, key rotation, on-call handover and a bad deploy
+- [-] START-04 · Docs: operator runbooks for incident response, key rotation, on-call handover and a bad deploy
+  - agent: swarm-6
+  - attempts: 1
   - requirements: OPS-01, OPS-03, OPS-04, OPS-07
   - scope: docs/operations/runbooks
   - details:
@@ -97,7 +105,9 @@ Each task adds new files in its own folder, depends on nothing and does not touc
     4. Do not edit any shared index: START-18 links this page. Run `python3 -I scripts/check-docs.py` and paste the result.
     5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] START-05 · Docs: one task guide per role (reception, clinician, laboratory, radiology, finance, administrator, patient)
+- [-] START-05 · Docs: one task guide per role (reception, clinician, laboratory, radiology, finance, administrator, patient)
+  - agent: swarm-7
+  - attempts: 1
   - requirements: PRD-01, UX-01
   - scope: docs/guides
   - details:
@@ -107,7 +117,9 @@ Each task adds new files in its own folder, depends on nothing and does not touc
     4. Do not edit `docs/reference/index.md`: START-18 links this page. Run `python3 -I scripts/check-docs.py` and paste the result.
     5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] START-06 · Docs: data dictionary built from the migrations
+- [-] START-06 · Docs: data dictionary built from the migrations
+  - agent: swarm-8
+  - attempts: 1
   - requirements: ARC-01, ARC-02, OPS-06
   - scope: docs/reference/data-dictionary.md
   - details:
@@ -117,7 +129,9 @@ Each task adds new files in its own folder, depends on nothing and does not touc
     4. Do not edit `docs/reference/index.md`: START-18 links this page. Run `python3 -I scripts/check-docs.py` and paste the result.
     5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] START-07 · Docs: threat model for the staff web, the patient app and the API
+- [-] START-07 · Docs: threat model for the staff web, the patient app and the API
+  - agent: swarm-9
+  - attempts: 1
   - requirements: IAM-01, ARC-02, OPS-02, WEB-04
   - scope: docs/security/threat-model.md, docs/security/README.md
   - details:
@@ -132,7 +146,9 @@ Each task adds new files in its own folder, depends on nothing and does not touc
 
 Same rules as the first group. The documentation tasks do not edit the shared index; START-18 links them all at the end.
 
-- [ ] START-08 · API: OpenAPI pagination rules as a unit test
+- [-] START-08 · API: OpenAPI pagination rules as a unit test
+  - agent: swarm-10
+  - attempts: 1
   - requirements: OPS-05, WEB-09
   - scope: apps/api/src/test/java/com/aurevia/smartclinic/contract/OpenApiPaginationRulesTest.java
   - details:
@@ -142,7 +158,9 @@ Same rules as the first group. The documentation tasks do not edit the shared in
     4. Tests: a small invalid contract held as a string fails each rule once, and the real contract passes.
     5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] START-09 · API: OpenAPI error response rules as a unit test
+- [-] START-09 · API: OpenAPI error response rules as a unit test
+  - agent: swarm-1
+  - attempts: 1
   - requirements: WEB-04, UX-01
   - scope: apps/api/src/test/java/com/aurevia/smartclinic/contract/OpenApiErrorRulesTest.java
   - details:
