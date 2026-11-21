@@ -73,8 +73,9 @@ class ChartRecordIntegrationTest {
         }
         Flyway.configure()
                 .dataSource(URL, "smartclinic_migrate", "")
-                .locations("filesystem:../../db/migrations",
-                        "filesystem:src/test/java/com/aurevia/smartclinic/it/chart/record/migrations")
+                // Only the production migrations are applied: chart_entry must be
+                // created by the same schema that production Flyway runs.
+                .locations("filesystem:../../db/migrations")
                 .load().migrate();
         try (Connection connection = DriverManager.getConnection(URL, "smartclinic_migrate", "");
              Statement statement = connection.createStatement()) {
@@ -433,6 +434,36 @@ class ChartRecordIntegrationTest {
         assertEquals(HttpStatus.NOT_FOUND,
                 request(HttpMethod.GET, "/api/v1/chart/patients/" + PATIENT + "/entries",
                         null, "clinician-a", ORG_A, "legacy-list").getStatusCode());
+    }
+
+    @Test
+    void productionMigrationsCreateForcedRlsChartEntry() throws Exception {
+        // A real row in ORG_A keeps the cross-tenant assertion from passing
+        // vacuously on an empty table.
+        ResponseEntity<String> created = record("PROBLEM", "chart-ddl-probe", null, null,
+                "", "clinician-a", ORG_A, "chart-ddl-probe");
+        assertEquals(HttpStatus.CREATED, created.getStatusCode(), created.getBody());
+
+        try (Connection connection = DriverManager.getConnection(URL, "smartclinic_migrate", "");
+             Statement statement = connection.createStatement()) {
+            try (ResultSet result = statement.executeQuery(
+                    "SELECT relrowsecurity, relforcerowsecurity FROM pg_class "
+                            + "WHERE oid = 'public.chart_entry'::regclass")) {
+                assertTrue(result.next(), "chart_entry must be created by the production migrations");
+                assertTrue(result.getBoolean("relrowsecurity"), "chart_entry must enable row level security");
+                assertTrue(result.getBoolean("relforcerowsecurity"), "chart_entry must force row level security");
+            }
+        }
+        try (Connection connection = DriverManager.getConnection(URL, "smartclinic_app", "");
+             Statement statement = connection.createStatement()) {
+            statement.execute("SET app.current_org = '" + ORG_B + "'");
+            statement.execute("SET app.actor = 'clinician-b'");
+            try (ResultSet result = statement.executeQuery(
+                    "SELECT count(*) FROM public.chart_entry WHERE original_text = 'chart-ddl-probe'")) {
+                assertTrue(result.next());
+                assertEquals(0, result.getInt(1), "forced RLS must conceal a cross-tenant read");
+            }
+        }
     }
 
     @Test
