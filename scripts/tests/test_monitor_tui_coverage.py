@@ -416,7 +416,7 @@ class AlarmTests(TuiCase):
             (lambda: self.arrive(self.payload()), -1),
             (None, ord("m")),  # muted before any failure
             fail(1),
-            (None, -1),  # any key silences the alarm
+            (None, ord("x")),  # any key silences the alarm
             (None, ord("M")),  # unmuted again
             fail(2),
             (None, ord("q")),
