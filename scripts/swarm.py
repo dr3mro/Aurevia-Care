@@ -15,6 +15,7 @@ import math
 import os
 import random
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -59,12 +60,44 @@ PROTECTED = [".github/*", ".opencode/*", "opencode.json", "scripts/*",
              "apps/api/pom.xml", *GATE_CONFIG]
 # Shared trackers are written only by the integrator, one merge at a time, so
 # parallel workers never conflict on them.
-TRACKERS = ["TODO.md", "MEMORY.md", "WORKSPACE.md", "BUGS.md", "PROJECT.md", "docs/swarm/*"]
+TRACKERS = ["TODO.md", "tasks/*", "MEMORY.md", "WORKSPACE.md", "BUGS.md", "PROJECT.md", "docs/swarm/*"]
 # TODO.md marks: [ ] open, [-] taken by an agent, [x] done.
 BOXES = {"todo": " ", "taken": "-", "done": "x"}
 STATUS = {box: name for name, box in BOXES.items()}
 ENTRY = re.compile(r"^- \[([ x-])\] (\S+) · (.*)$")
 FIELD = re.compile(r"^  - ([a-z]+):[ \t]*(.*)$")
+
+
+# Tasks live in tasks/<sequence>-<ID>.md once scripts/taskstore.py has moved them (the integrator
+# does that by itself on its first run). TODO.md is then a generated view. Until then, and in
+# every test that works in a temporary folder, TODO.md is read and written directly.
+_store = None
+
+
+def store():
+    global _store
+    if _store is None:
+        _store = _checker("taskstore")
+    return _store
+
+
+def todo_read(path="TODO.md"):
+    """The task text: from the task files when they are in use, otherwise from the file."""
+    if path == "TODO.md" and store().active():
+        return store().read()
+    return Path(path).read_text()
+
+
+def todo_write(path, text):
+    if path == "TODO.md" and store().active():
+        store().save(text)
+    else:
+        Path(path).write_text(text)
+
+
+def todo_paths(path="TODO.md"):
+    """What to `git add` after a task edit."""
+    return ["TODO.md", store().ROOT] if path == "TODO.md" and store().active() else [path]
 
 
 def is_issue_call(args):
@@ -433,7 +466,7 @@ def stall_status():
     now = datetime.datetime.now(datetime.timezone.utc)
     started = [datetime.datetime.fromisoformat(r["createdAt"].replace("Z", "+00:00")) for r in runs]
     idle = int((now - max(started)).total_seconds() // 60) if started else 10 ** 6
-    text = Path("TODO.md").read_text()
+    text = todo_read()
     prs = gh_json("pr", "list", "--state", "open", "--label", "swarm", "--limit", "100",
                   "--json", "number,title,headRefName,isCrossRepository,labels,comments") or []
     ready = plan_workers(5, [{"slot": n, "model": ""} for n in range(1, 6)], text, prs)
@@ -449,7 +482,7 @@ def stall_status():
 def sync_issues():
     """Close issues whose pull request is merged or closed, or whose task is done."""
     closed = []
-    todo = Path("TODO.md").read_text() if Path("TODO.md").exists() else ""
+    todo = todo_read() if Path("TODO.md").exists() else ""
     done = {t["id"] for t in parse_tasks(todo) if t["status"] == "done"}
     issues = trusted_issues()
     # One list call for every pull request state instead of one view call per issue: this
@@ -778,7 +811,7 @@ def monitor_assign(directory, prs=(), nudge=(), exhausted=(), todo="TODO.md", tr
             finding = json.loads(path.read_text())
         except (OSError, ValueError):
             finding = None
-        entry = triage_entry(number, finding, Path(todo).read_text())
+        entry = triage_entry(number, finding, todo_read(todo))
         if entry:
             entries.append((number, entry))
             ids.append((number, finding["scope"]))
@@ -1076,9 +1109,10 @@ ARCHIVE = "docs/archive/TODO-DONE.md"
 def archived_done_ids(path=ARCHIVE):
     """Ids and aliases of tasks moved out of TODO.md by archive_done; they still satisfy `depends`."""
     file = Path(path)
-    if not file.exists():
-        return set()
-    return {name for t in parse_tasks(file.read_text()) if t["status"] == "done"
+    text = file.read_text() if file.exists() else ""
+    if path == ARCHIVE:
+        text += "\n" + store().archived()
+    return {name for t in parse_tasks(text) if t["status"] == "done"
             for name in (t["id"], *t["aliases"])}
 
 
@@ -1110,9 +1144,14 @@ def archive_done(text):
 
 def archive_todo(todo="TODO.md", archive=ARCHIVE):
     """Move done entries from TODO.md to the archive file. Returns how many moved."""
-    remaining, moved = archive_done(Path(todo).read_text())
+    remaining, moved = archive_done(todo_read(todo))
     if not moved:
         return 0
+    if todo == "TODO.md" and store().active():
+        # One file per finished task under tasks/done; they still satisfy `depends`.
+        store().archive(moved)
+        todo_write(todo, re.sub(r"\n{3,}", "\n\n", remaining))
+        return len(moved)
     target = Path(archive)
     target.parent.mkdir(parents=True, exist_ok=True)
     head = target.read_text() if target.exists() else (
@@ -1256,7 +1295,7 @@ def add_audit_tasks(findings_path, path="TODO.md", today=None):
 def task_field(task_id, field, path="TODO.md"):
     """Title or full task text of one TODO.md entry; empty when it is not there."""
     try:
-        tasks = parse_tasks(Path(path).read_text())
+        tasks = parse_tasks(todo_read(path))
     except OSError:
         return ""
     task = next((t for t in tasks if t["id"] == task_id), None)
@@ -1353,12 +1392,12 @@ def release_claim(task_id, reason):
 def update_todo(edit, message, path="TODO.md", attempts=8):
     """Apply `edit(text)` to TODO.md on main and push. Reapplied on fresh main if the push races."""
     for attempt in range(attempts):
-        text = Path(path).read_text()
+        text = todo_read(path)
         new = edit(text)
         if new == text:
             return False
-        Path(path).write_text(new)
-        git("add", path)
+        todo_write(path, new)
+        git("add", *todo_paths(path))
         # [skip ci] keeps this TODO.md-only commit from triggering another
         # swarm.yml push event (which would spawn a wave for every claim).
         git(*IDENTITY, "commit", "-qm", f"{message} [skip ci]")
@@ -2062,7 +2101,7 @@ def add_latest_repair_task(path="TODO.md"):
     nothing piles up in the Actions list. A run that already has its FIX- entry
     (open or done) is not queued again, and a swarm run that failed only in
     workers is routine and skipped, exactly as in add_repair_task."""
-    text = Path(path).read_text()
+    text = todo_read(path)
     for run_id in failing_runs_on_main():
         if f"FIX-{run_id}" in text:
             continue
@@ -2311,6 +2350,17 @@ IDENTITY = ["-c", "user.name=" + (os.environ.get("SWARM_GIT_NAME") or "swarm-int
             "-c", "user.email=" + (os.environ.get("SWARM_GIT_EMAIL") or "swarm@users.noreply.github.com")]
 
 
+def is_tracker(name):
+    return any(fnmatch.fnmatch(name, pattern) for pattern in TRACKERS)
+
+
+def restore_trackers():
+    """Take the trackers from fresh main: the files, the view and the notes."""
+    if Path(store().ROOT).exists():
+        shutil.rmtree(store().ROOT)
+    git("checkout", "origin/main", "--", "TODO.md", store().ROOT, "docs/swarm", check=False)
+
+
 def merge_local(pr):
     """Merge the pull request into the checked-out main with a merge commit.
 
@@ -2322,6 +2372,14 @@ def merge_local(pr):
                           capture_output=True, text=True)
     if done.returncode:
         files = git("diff", "--name-only", "--diff-filter=U", check=False).split()
+        if files and all(is_tracker(name) for name in files):
+            # The trackers belong to the integrator: a pull request that touched them is not
+            # the source of truth, so main's version stands and the merge goes on.
+            for name in files:
+                git("checkout", "--ours", "--", name)
+                git("add", name)
+            git(*IDENTITY, "commit", "-q", "--no-edit")
+            return git("rev-parse", f"pr-{pr}").strip(), task_id_of(info["headRefName"]), []
         git("merge", "--abort", check=False)
         return None, task_id_of(info["headRefName"]), files
     return git("rev-parse", f"pr-{pr}").strip(), task_id_of(info["headRefName"]), []
@@ -2332,8 +2390,7 @@ def record_merge(pr, task_id, sha, gate="scripts/quick-check.sh"):
     info = gh_json("pr", "view", str(pr), "--json", "headRefOid,body")
     if info["headRefOid"] != sha:
         raise SystemExit("the branch changed after it was tested; it will be retested")
-    todo = Path("TODO.md")
-    tasks = {t["id"]: t for t in parse_tasks(todo.read_text())}
+    tasks = {t["id"]: t for t in parse_tasks(todo_read())}
     title = tasks.get(task_id, {}).get("task", task_id)
     Path("docs/swarm").mkdir(parents=True, exist_ok=True)
     notes = Path(f"docs/swarm/{task_id}.md")
@@ -2342,7 +2399,7 @@ def record_merge(pr, task_id, sha, gate="scripts/quick-check.sh"):
     evidence = (f"PR #{pr}; integrator ran {gate} on the merge result (tool evidence); "
                 f"Delivery re-verifies main after the push; notes in {notes}; "
                 "simulated review only")
-    todo.write_text(set_task_status(todo.read_text(), task_id, "done", pr=f"#{pr}", evidence=evidence))
+    todo_write("TODO.md", set_task_status(todo_read(), task_id, "done", pr=f"#{pr}", evidence=evidence))
     return f"Merged to main by the integrator after {gate} passed on the merge result."
 
 
@@ -2373,7 +2430,7 @@ def gate_for(pr, default_gate):
     if not (title.startswith(REPAIR_PREFIXES) or "autofix" in label_names(info)):
         return default_gate, {}
     story = task_id_of_title(title)
-    task = next((t for t in parse_tasks(Path("TODO.md").read_text()) if t["id"] == story), None)
+    task = next((t for t in parse_tasks(todo_read()) if t["id"] == story), None)
     body = f"{task['task']}\n{task['details']}" if task else ""
     return REPAIR_GATE, {"STORY_ID": story, "STORY_BODY": body}
 
@@ -2396,6 +2453,34 @@ def run_gate(gate, extra_env=None):
     return done.returncode == 0, log
 
 
+def migrate_tasks(attempts=4):
+    """Move TODO.md into one file per task, once, in one commit pushed to main.
+
+    The integrator is the only job that merges, so this cannot race a merge. A plan job may
+    push a claim meanwhile: then the move is redone on fresh main, which is safe because
+    the move is exact and repeatable. Returns how many tasks moved."""
+    if os.environ.get("SWARM_TASK_FILES", "on").lower() in ("off", "0", "false", "no") \
+            or store().active() or not Path("TODO.md").exists():
+        return 0
+    for attempt in range(attempts):
+        moved = store().migrate()
+        git("add", "TODO.md", store().ROOT)
+        git(*IDENTITY, "commit", "-qm", f"Move {moved} task(s) into one file each [skip ci]")
+        try:
+            authed_git("push", "origin", "HEAD:main")
+            print(f"Moved {moved} task(s) into {store().ROOT}/.")
+            return moved
+        except subprocess.CalledProcessError:
+            if attempt == attempts - 1:
+                raise
+            time.sleep(random.uniform(1, 4))
+            authed_git("fetch", "origin", "main")
+            git("reset", "-q", "--hard", "origin/main")
+            if store().active():
+                return 0
+    return 0
+
+
 def integrate_batch(queue, gate="scripts/quick-check.sh"):
     """Merge every ready PR in one job, gate each, then push main once.
 
@@ -2403,6 +2488,7 @@ def integrate_batch(queue, gate="scripts/quick-check.sh"):
     back to the workers and its merge is rolled back before the next PR, so a
     bad PR never blocks the others. Returns the number of merged PRs."""
     merged, conflicted, gates = [], [], {}
+    migrate_tasks()
     for pr in queue:
         blocked = guard(pr, is_repair(pr))
         if blocked:
@@ -2439,7 +2525,7 @@ def integrate_batch(queue, gate="scripts/quick-check.sh"):
         emit("merged", 0)
         return 0
     comments = [record_merge(pr, task_id, sha, gates[pr][0]) for pr, task_id, sha in merged]
-    files = ["TODO.md"] + [f"docs/swarm/{t}.md" for _, t, _ in merged]
+    files = todo_paths() + [f"docs/swarm/{t}.md" for _, t, _ in merged]
     git("add", *files)
     try:
         git(*IDENTITY, "commit", "-q", "--allow-empty", "-m", f"Integrate {len(merged)} swarm pull request(s)")
@@ -2465,7 +2551,7 @@ def integrate_batch(queue, gate="scripts/quick-check.sh"):
                 raise
             authed_git("fetch", "origin", "main")
             git("reset", "--soft", "origin/main")
-            git("checkout", "origin/main", "--", "TODO.md", "docs/swarm", check=False)
+            restore_trackers()
             for pr, task_id, sha in merged:
                 record_merge(pr, task_id, sha, gates[pr][0])
             git("add", *files)
@@ -2544,7 +2630,7 @@ def resolve_publish(directory):
 def finalize(pr, task_id, sha):
     """Record the merge in the shared trackers and publish main. Trusted step."""
     comment = record_merge(pr, task_id, sha)
-    git("add", "TODO.md", f"docs/swarm/{task_id}.md")
+    git("add", *todo_paths(), f"docs/swarm/{task_id}.md")
     git(*IDENTITY, "commit", "-qm", f"Record {task_id} as merged (PR #{pr})")
     authed_git("push", "origin", "HEAD:main")
     gh("pr", "comment", str(pr), "--body", comment)
@@ -2569,6 +2655,7 @@ def main(argv=None):
     for name in ("ensure-labels", "plan-integration", "slot-matrix"):
         sub.add_parser(name)
     sub.add_parser("archive-todo")
+    sub.add_parser("migrate-tasks")
     p = sub.add_parser("images-ready")
     p.add_argument("--slots", default=".github/swarm/slots.json")
     p = sub.add_parser("budget-gate")
@@ -2659,7 +2746,7 @@ def main(argv=None):
         everything = gh_json("pr", "list", "--state", "all", "--label", "swarm", "--limit", "200",
                              "--json", "number,headRefName,state,labels") or []
         live = live_workers()
-        text = reclaim(Path(a.file).read_text(), everything, live)
+        text = reclaim(todo_read(a.file), everything, live)
         busy = len(live)
         room = max(0, MAX_ACTIVE_WORKERS - busy)
         print(f"{busy} worker(s) already running; room for {room} of {MAX_ACTIVE_WORKERS}.")
@@ -2706,7 +2793,7 @@ def main(argv=None):
         # wave is seen as finished and the loop carries on.
         everything = gh_json("pr", "list", "--state", "all", "--label", "swarm", "--limit", "200",
                              "--json", "number,headRefName,state,labels") or []
-        text = reclaim(Path(a.file).read_text(), everything, live_workers())
+        text = reclaim(todo_read(a.file), everything, live_workers())
         go = continue_swarm(text, prs)
         if go and waiting_waves():
             go = False
@@ -2723,7 +2810,7 @@ def main(argv=None):
                 and not daily_slot_ok(os.environ.get("SCHEDULE", "")):
             emit("act", "false")
             return
-        chosen = monitor_select(a.mode, Path(a.file).read_text(), Path(a.out) / "triage-in")
+        chosen = monitor_select(a.mode, todo_read(a.file), Path(a.out) / "triage-in")
         Path(a.out).mkdir(parents=True, exist_ok=True)
         (Path(a.out) / "selection.json").write_text(json.dumps(chosen))
         emit("act", "true" if any(chosen.values()) else "false")
@@ -2772,6 +2859,8 @@ def main(argv=None):
         emit("start", "true" if allowed else "false")
         # A wave never starts more workers than the remaining budget can pay for.
         emit("workers", affordable_workers(used, a.cap))
+    elif a.cmd == "migrate-tasks":
+        print(f"moved {migrate_tasks()} task(s)")
     elif a.cmd == "integrate-batch":
         integrate_batch(json.loads(a.queue), a.gate)
     elif a.cmd == "resolve-publish":

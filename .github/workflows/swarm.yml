@@ -78,6 +78,7 @@ jobs:
             scripts
             .github/swarm
             TODO.md
+            tasks
             docs/archive/TODO-DONE.md
       - id: image
         run: echo "prefix=ghcr.io/${GITHUB_REPOSITORY,,}-agent" >> "$GITHUB_OUTPUT"
@@ -196,6 +197,7 @@ jobs:
           sparse-checkout: |
             scripts
             TODO.md
+            tasks
             docs/archive/TODO-DONE.md
       - env:
           GH_TOKEN: ${{ github.token }}
