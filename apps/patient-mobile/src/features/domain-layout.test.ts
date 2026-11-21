@@ -25,6 +25,7 @@ const DOMAIN_FOLDERS = [
   'flows', // s_g3_11 - PAT-01..03 / MSG-01..07 / UX-01
   'evidence', // s_g3_12 - G3
   'notifications', // PAT-01, MSG-05 - push notification domain
+  'prescriptions', // RX-02, PAT-02 - prescription status domain
 ] as const;
 
 /** A story/task ID directory name such as `s_g3_02`. */
