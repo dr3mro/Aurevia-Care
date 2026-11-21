@@ -18,3 +18,6 @@ spring:
           audiences: ${SMARTCLINIC_OIDC_AUDIENCE:}
 server:
   port: ${SMARTCLINIC_SERVER_PORT:8081}
+  # Trust X-Forwarded-* from the TLS-terminating edge so isSecure() and the
+  # WEB-02 HSTS header reflect the client's scheme, not the internal hop.
+  forward-headers-strategy: framework
