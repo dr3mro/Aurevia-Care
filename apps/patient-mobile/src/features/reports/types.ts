@@ -10,6 +10,15 @@
 export type ReportLanguage = 'en' | 'ar';
 
 /**
+ * Lifecycle of a released document revision at download time (PAT-02).
+ *
+ * A withdrawn release has ended future patient access: even a previously issued revision must no
+ * longer produce a document reference. The server asserts this on every authorization because it
+ * can change between listing the report and the patient tapping download.
+ */
+export type ReleaseState = 'current' | 'withdrawn';
+
+/**
  * One released revision as shown in the patient inbox.
  *
  * Correction context is part of the projection so a patient can tell a corrected revision from the
@@ -37,6 +46,10 @@ export interface DownloadAuthorization {
   readonly documentId: string;
   readonly checksum: string;
   readonly language: ReportLanguage;
+  /** Patient the document is linked to; must equal the authenticated patient. */
+  readonly patientId: string;
+  /** Whether the release is still current; a withdrawn release grants no access. */
+  readonly releaseState: ReleaseState;
 }
 
 /** Minimal typed transport; the production adapter supplies the authenticated HTTP client. */
