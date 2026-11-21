@@ -8,7 +8,9 @@ hash-reconciliation check of the runbook; it is a check, not an approval, and it
 never reopens writes.
 
 All bundled inputs are synthetic. The drill never contacts a real database in
-tests or in the canonical gate.
+tests or in the canonical gate. Every report states its `Kind`: a fixture-driven
+run is labelled `synthetic_rehearsal` and carries an explicit "NOT a conducted
+drill" line, so a rehearsal can never be attached as evidence of a real restore.
 
 ## Rehearsal (fixtures only, no database)
 
@@ -25,7 +27,8 @@ python3 -I restore_drill.py \
 ```
 
 `--now` pins the UTC instant used in the report filename and header, making the
-output deterministic for tests. Without it the current UTC time is used.
+output deterministic for tests. Without it the current UTC time is used. A
+rehearsal must not be combined with `--catalog` or any conducted-only option.
 
 ## Conducted drill (authorized operator only)
 
@@ -35,23 +38,35 @@ python3 -I restore_drill.py \
   --catalog fixtures/backups \
   --scratch-dsn <isolated-scratch-dsn> \
   --probe-sql <schema-specific-probe.sql> \
+  --confirm-scratch \
   --report-dir /tmp/opencode/recovery-reports
 ```
 
 The catalog contains one JSON manifest per backup with `label`, `created_at`
-(ISO-8601 UTC) and `artifact`. By default the newest manifest is restored;
-`--backup <label>` selects a named one. The restore drops and recreates the
-scratch database, then runs `pg_restore` and a `psql` probe. Adapt the probe SQL
-to the pinned schema so it emits `relation|row_count|N` and
+(ISO-8601 with an explicit UTC offset or `Z`) and `artifact`. Backups are
+ordered by the parsed instant, not by wall-clock text, so an offset cannot make
+an older backup look newer. By default the newest manifest is restored;
+`--backup <label>` selects a named one.
+
+`--confirm-scratch` is mandatory: without it the tool exits 2 before running
+any command. It is an operator acknowledgement that the DSN names an isolated,
+unused scratch database (runbook step D1), not a protection against a wrong
+target — only the operator can verify that. On confirmation the tool drops and
+recreates the scratch database, runs `pg_restore`, and probes with `psql`.
+Adapt the probe SQL to the pinned schema so it emits `relation|row_count|N` and
 `relation|checksum|hex` rows; see
 [`fixtures/synthetic_probe.sql`](fixtures/synthetic_probe.sql). The probe must
 never print patient data, credentials or payload bytes. Credentials come from
-the operator's environment, never from this repository or a report.
+the operator's environment, never from this repository, a report or a log: the
+DSN is never persisted, and a failed command is reported by name and exit
+status only.
 
 The report lists every expected relation and metric with expected/actual values
-and a PASS/FAIL verdict. Exit codes: `0` all checks matched, `1` at least one
-row-count or checksum mismatch, `2` unreadable input or invalid invocation. A
-mismatch holds the affected data for review; it does not silently replace it.
+and a PASS/FAIL verdict. Reports are created exclusively, so a repeat with the
+same pinned timestamp cannot overwrite earlier evidence. Exit codes: `0` all
+checks matched, `1` at least one row-count or checksum mismatch, `2` unreadable
+input, failed command or invalid invocation. A mismatch holds the affected data
+for review; it does not silently replace it.
 
 ## Checks
 

@@ -4,9 +4,10 @@ database, compare row counts and checksums, and write a dated report.
 
 The reconciliation core is database-independent. A rehearsal supplies both
 snapshots as JSON fixtures (``--source-snapshot`` / ``--restored-snapshot``) so
-the drill never contacts a real database. A conducted drill supplies a backup
-catalog, a scratch DSN and a probe SQL file; the restore and the snapshot probe
-run through an injectable :class:`CommandRunner`.
+the drill never contacts a real database and every report is labelled as a
+synthetic rehearsal. A conducted drill supplies a backup catalog, a scratch DSN
+and a probe SQL file plus ``--confirm-scratch``; the restore and the snapshot
+probe run through an injectable :class:`CommandRunner`.
 
 The script compares only the relations recorded in the source snapshot. It is a
 reconciliation check, not an approval: the drill report never reopens writes.
@@ -15,7 +16,7 @@ authorized G5 gate described in ``docs/operations/recovery/runbook.md``.
 
 Usage: ``python3 -I infra/recovery/restore_drill.py --help``
 Exit codes: 0 = every check matched, 1 = a row count or checksum mismatch,
-2 = unreadable input or an invalid invocation.
+2 = unreadable input, failed command or an invalid invocation.
 """
 import argparse
 import json
@@ -24,6 +25,9 @@ import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+
+SYNTHETIC_REHEARSAL = "synthetic_rehearsal"
+CONDUCTED_DRILL = "conducted_drill"
 
 
 class DrillError(Exception):
@@ -71,9 +75,18 @@ class SubprocessRunner:
     """
 
     def run(self, argv):
-        """Execute ``argv``, failing the drill when the command fails."""
-        return subprocess.run(argv, check=True, capture_output=True,
-                              text=True).stdout
+        """Execute ``argv``, failing the drill when the command fails.
+
+        The error message names only the command and its status. The argument
+        vector can contain a credential-bearing DSN and is never echoed.
+        """
+        try:
+            return subprocess.run(argv, check=True, capture_output=True,
+                                  text=True).stdout
+        except subprocess.CalledProcessError as error:
+            raise DrillError(
+                f"command {Path(argv[0]).name} failed with exit status "
+                f"{error.returncode}") from error
 
 
 def _read_json(path):
@@ -87,14 +100,15 @@ def _read_json(path):
 def load_snapshot(path):
     """Load a snapshot fixture of row counts and checksums from ``path``.
 
-    Keys and values are normalised to strings so synthetic fixtures with
-    numeric JSON keys are compared consistently. Malformed input fails closed.
+    Values are normalised so synthetic fixtures with numeric values are
+    compared consistently. Malformed containers and uncoercible values fail
+    closed rather than surfacing a raw ``AttributeError`` or ``TypeError``.
     """
     data = _read_json(path)
     try:
         counts = {str(key): int(value) for key, value in data["row_counts"].items()}
         checksums = {str(key): str(value) for key, value in data["checksums"].items()}
-    except (KeyError, TypeError, ValueError) as error:
+    except (KeyError, TypeError, ValueError, AttributeError) as error:
         raise DrillError(f"invalid snapshot in {path}: {error}") from error
     return Snapshot(counts, checksums)
 
@@ -105,16 +119,33 @@ def load_backup(path):
     try:
         return Backup(str(data["label"]), str(data["created_at"]),
                       str(data["artifact"]))
-    except KeyError as error:
+    except (KeyError, TypeError, AttributeError) as error:
         raise DrillError(f"invalid backup manifest {path}: {error}") from error
+
+
+def parse_instant(text):
+    """Parse an ISO-8601 instant and normalise it to UTC.
+
+    A trailing ``Z`` denotes UTC; a naive timestamp is rejected so a report
+    can never label local wall time as UTC.
+    """
+    try:
+        if text.endswith("Z"):
+            text = text[:-1] + "+00:00"
+        value = datetime.fromisoformat(text)
+        if value.tzinfo is None:
+            raise ValueError("timestamp must include a timezone")
+        return value.astimezone(timezone.utc)
+    except (ValueError, TypeError, AttributeError) as error:
+        raise DrillError(f"invalid timestamp {text!r}") from error
 
 
 def latest_backup(catalog_dir, label=None):
     """Return the newest backup manifest in ``catalog_dir``.
 
-    ``created_at`` is an ISO-8601 UTC string, so lexical order is chronological;
-    ties break by label so the choice is deterministic. An optional ``label``
-    selects a named backup instead of the newest one.
+    Timestamps are parsed as instants before ordering, so an ISO offset cannot
+    make an older backup look newer. Equal instants break by label, making the
+    choice deterministic. An optional ``label`` selects a named backup.
     """
     manifests = sorted(Path(catalog_dir).glob("*.json"))
     if not manifests:
@@ -124,7 +155,8 @@ def latest_backup(catalog_dir, label=None):
         backups = [backup for backup in backups if backup.label == label]
     if not backups:
         raise DrillError(f"no backup with label {label!r} in {catalog_dir}")
-    return max(backups, key=lambda backup: (backup.created_at, backup.label))
+    return max(backups, key=lambda backup: (parse_instant(backup.created_at),
+                                            backup.label))
 
 
 def restore(backup, scratch_dsn, runner):
@@ -132,7 +164,8 @@ def restore(backup, scratch_dsn, runner):
 
     The scratch database is dropped first so a rehearsal cannot silently layer
     a restore on top of surviving state. Commands run through ``runner``; tests
-    inject a fake so no real database is touched.
+    inject a fake so no real database is touched. :func:`main` requires an
+    explicit confirmation before this function is ever called.
     """
     runner.run(["dropdb", "--if-exists", "--force", scratch_dsn])
     runner.run(["createdb", scratch_dsn])
@@ -200,18 +233,23 @@ def compare(source, restored):
     return tuple(rows)
 
 
-def render_report(source_label, restored_label, generated_at, comparisons):
-    """Render a dated Markdown checksum report for the reconciliation rows."""
+def render_report(source_label, restored_label, generated_at, comparisons, mode):
+    """Render a dated, explicitly labelled Markdown checksum report."""
     failures = sum(1 for row in comparisons if not row.ok)
     verdict = "PASS" if failures == 0 else "FAIL"
     lines = [
         "# Backup restore drill - checksum report",
         "",
         f"Generated (UTC): {generated_at.strftime('%Y-%m-%dT%H:%M:%SZ')}",
+        f"Kind: {mode}",
         f"Source snapshot: {source_label}",
         f"Restored snapshot: {restored_label}",
         f"Verdict: {verdict}",
         f"Mismatches: {failures} of {len(comparisons)} checks",
+    ]
+    if mode == SYNTHETIC_REHEARSAL:
+        lines.append("NOT a conducted drill - synthetic rehearsal; not final evidence")
+    lines += [
         "",
         "| Relation | Check | Expected | Actual | Result |",
         "|---|---|---|---|---|",
@@ -224,22 +262,22 @@ def render_report(source_label, restored_label, generated_at, comparisons):
 
 
 def write_report(report_dir, generated_at, source_label, restored_label,
-                 comparisons):
-    """Write the dated report into ``report_dir`` and return its path."""
+                 comparisons, mode):
+    """Create a new dated report and return its path.
+
+    Creation is exclusive: a second drill with the same pinned timestamp can
+    never overwrite an earlier report and destroy reconciliation evidence.
+    """
     report_dir.mkdir(parents=True, exist_ok=True)
     name = "restore-drill-" + generated_at.strftime("%Y%m%dT%H%M%SZ") + ".md"
     path = report_dir / name
-    path.write_text(render_report(source_label, restored_label, generated_at,
-                                  comparisons), encoding="utf-8")
-    return path
-
-
-def parse_instant(text):
-    """Parse an ISO-8601 instant, accepting a trailing ``Z`` for UTC."""
     try:
-        return datetime.fromisoformat(text.replace("Z", "+00:00"))
-    except ValueError as error:
-        raise DrillError(f"invalid timestamp {text!r}") from error
+        with path.open("x", encoding="utf-8") as handle:
+            handle.write(render_report(source_label, restored_label, generated_at,
+                                       comparisons, mode))
+    except FileExistsError as error:
+        raise DrillError(f"report already exists: {path}") from error
+    return path
 
 
 def build_parser():
@@ -251,13 +289,16 @@ def build_parser():
                         help="JSON snapshot recorded at the source/backup")
     parser.add_argument("--report-dir", required=True,
                         help="directory for the dated reconciliation report")
-    parser.add_argument("--restored-snapshot",
-                        help="JSON snapshot of the restored database (rehearsal)")
-    parser.add_argument("--catalog",
-                        help="directory of backup manifests (conducted drill)")
+    drill_mode = parser.add_mutually_exclusive_group(required=True)
+    drill_mode.add_argument("--restored-snapshot",
+                            help="JSON snapshot of the restored database (rehearsal)")
+    drill_mode.add_argument("--catalog",
+                            help="directory of backup manifests (conducted drill)")
     parser.add_argument("--scratch-dsn", help="scratch database connection name")
     parser.add_argument("--backup", help="explicit backup label instead of latest")
     parser.add_argument("--probe-sql", help="SQL file emitting relation|metric|value")
+    parser.add_argument("--confirm-scratch", action="store_true",
+                        help="confirm the conducted drill may drop the scratch database")
     parser.add_argument("--now", help="pinned UTC instant for a deterministic report")
     return parser
 
@@ -268,25 +309,35 @@ def main(argv=None):
     try:
         source = load_snapshot(Path(args.source_snapshot))
         if args.restored_snapshot is not None:
+            if (args.scratch_dsn or args.probe_sql or args.backup
+                    or args.confirm_scratch):
+                raise DrillError(
+                    "--catalog-only options cannot be used with --restored-snapshot")
             restored = load_snapshot(Path(args.restored_snapshot))
             restored_label = args.restored_snapshot
+            mode = SYNTHETIC_REHEARSAL
         else:
-            if not args.catalog:
-                raise DrillError("provide --restored-snapshot or --catalog")
             if not args.scratch_dsn:
                 raise DrillError("--scratch-dsn is required with --catalog")
             if not args.probe_sql:
                 raise DrillError("--probe-sql is required with --catalog")
+            if not args.confirm_scratch:
+                raise DrillError(
+                    "conducted drill requires --confirm-scratch before dropping "
+                    "the scratch database")
             runner = SubprocessRunner()
             backup = latest_backup(Path(args.catalog), args.backup)
             restore(backup, args.scratch_dsn, runner)
             restored = capture_snapshot(args.probe_sql, args.scratch_dsn, runner)
-            restored_label = backup.label + "@" + args.scratch_dsn
+            # A DSN may carry credentials, so the report names only the backup.
+            restored_label = "restored@" + backup.label
+            mode = CONDUCTED_DRILL
         comparisons = compare(source, restored)
         generated_at = (parse_instant(args.now) if args.now
                         else datetime.now(timezone.utc))
         report_path = write_report(Path(args.report_dir), generated_at,
-                                   args.source_snapshot, restored_label, comparisons)
+                                   args.source_snapshot, restored_label,
+                                   comparisons, mode)
     except (DrillError, OSError, ValueError) as error:
         print(f"restore drill: error: {error}", file=sys.stderr)
         return 2

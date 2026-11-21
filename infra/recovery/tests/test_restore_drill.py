@@ -3,10 +3,11 @@
 Every test is synthetic and runs against fixtures and injected fakes only: no
 PostgreSQL instance, backup artifact or credential is ever contacted. The tests
 enumerate each branch and failure path of ``restore_drill`` so its behaviour is
-fully specified before the implementation exists.
+fully specified without a real database.
 """
 import importlib.util
 import json
+import subprocess
 import tempfile
 import unittest
 from datetime import datetime, timezone
@@ -79,10 +80,10 @@ class SnapshotLoadingTests(unittest.TestCase):
             self.assertEqual(snapshot.row_counts["core_chart"], 120)
             self.assertEqual(snapshot.checksums["documents"], "c" * 64)
 
-    def test_load_snapshot_coerces_keys_and_values_to_strings(self):
+    def test_load_snapshot_normalizes_values(self):
         with tempfile.TemporaryDirectory() as directory:
             path = write_json(directory, "source.json", {
-                "row_counts": {7: "3"},
+                "row_counts": {"7": "3"},
                 "checksums": {"rel": 12345},
             })
             snapshot = drill.load_snapshot(path)
@@ -111,10 +112,25 @@ class SnapshotLoadingTests(unittest.TestCase):
             with self.assertRaises(drill.DrillError):
                 drill.load_snapshot(path)
 
+    def test_load_snapshot_wrong_container_type_fails_closed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            payload = source_payload()
+            payload["row_counts"] = ["not", "a", "mapping"]
+            path = write_json(directory, "bad.json", payload)
+            with self.assertRaises(drill.DrillError):
+                drill.load_snapshot(path)
+
     def test_load_snapshot_malformed_json_fails_closed(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "bad.json"
             path.write_text("{not json", encoding="utf-8")
+            with self.assertRaises(drill.DrillError):
+                drill.load_snapshot(path)
+
+    def test_load_snapshot_invalid_utf8_fails_closed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "bad.json"
+            path.write_bytes(b"\xff\xfe\x00not-utf8")
             with self.assertRaises(drill.DrillError):
                 drill.load_snapshot(path)
 
@@ -143,12 +159,33 @@ class BackupCatalogTests(unittest.TestCase):
             with self.assertRaises(drill.DrillError):
                 drill.load_backup(path)
 
+    def test_load_backup_non_object_manifest_fails_closed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = write_json(directory, "b.json", ["nightly"])
+            with self.assertRaises(drill.DrillError):
+                drill.load_backup(path)
+
     def test_latest_backup_picks_newest_creation_time(self):
         with tempfile.TemporaryDirectory() as directory:
             write_json(directory, "a.json", self.manifest("old", "2026-11-20T02:00:00Z"))
             write_json(directory, "b.json", self.manifest("new", "2026-11-21T02:00:00Z"))
             write_json(directory, "c.json", self.manifest("mid", "2026-11-20T20:00:00Z"))
             self.assertEqual(drill.latest_backup(directory).label, "new")
+
+    def test_latest_backup_orders_by_instant_not_offset_wall_time(self):
+        with tempfile.TemporaryDirectory() as directory:
+            # 04:00+02:00 is 02:00Z, older than 02:30Z despite sorting later.
+            write_json(directory, "a.json",
+                       self.manifest("offset", "2026-11-21T04:00:00+02:00"))
+            write_json(directory, "b.json",
+                       self.manifest("zulu", "2026-11-21T02:30:00Z"))
+            self.assertEqual(drill.latest_backup(directory).label, "zulu")
+
+    def test_latest_backup_rejects_malformed_timestamp(self):
+        with tempfile.TemporaryDirectory() as directory:
+            write_json(directory, "a.json", self.manifest("bad", "yesterday"))
+            with self.assertRaises(drill.DrillError):
+                drill.latest_backup(directory)
 
     def test_latest_backup_filters_by_explicit_label(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -193,6 +230,17 @@ class RestoreCommandTests(unittest.TestCase):
         self.assertEqual(output, "relation|row_count|1\n")
         run.assert_called_once_with(["psql", "dsn", "-f", "probe.sql"],
                                     check=True, capture_output=True, text=True)
+
+    def test_subprocess_runner_sanitizes_command_failure(self):
+        failure = subprocess.CalledProcessError(
+            1, ["pg_restore", "scratch://ZZ-DSN-MARKER@host/db"], "boom")
+        with mock.patch.object(drill.subprocess, "run", side_effect=failure):
+            with self.assertRaises(drill.DrillError) as raised:
+                drill.SubprocessRunner().run(
+                    ["pg_restore", "scratch://ZZ-DSN-MARKER@host/db"])
+        self.assertIn("pg_restore", str(raised.exception))
+        self.assertIn("exit status 1", str(raised.exception))
+        self.assertNotIn("ZZ-DSN-MARKER", str(raised.exception))
 
 
 class ProbeTests(unittest.TestCase):
@@ -298,8 +346,9 @@ class ReportTests(unittest.TestCase):
 
     def test_render_report_pass_contains_dated_header_and_verdict(self):
         text = drill.render_report("source.json", "scratch@nightly", NOW,
-                                   self.comparisons(ok=True))
+                                   self.comparisons(), drill.CONDUCTED_DRILL)
         self.assertIn("2026-11-21T08:30:00Z", text)
+        self.assertIn("Kind: conducted_drill", text)
         self.assertIn("Verdict: PASS", text)
         self.assertIn("Mismatches: 0 of 2 checks", text)
         self.assertIn("core_chart", text)
@@ -307,23 +356,54 @@ class ReportTests(unittest.TestCase):
 
     def test_render_report_fail_lists_mismatch(self):
         text = drill.render_report("source.json", "scratch@nightly", NOW,
-                                   self.comparisons(ok=False))
+                                   self.comparisons(ok=False), drill.CONDUCTED_DRILL)
         self.assertIn("Verdict: FAIL", text)
         self.assertIn("Mismatches: 1 of 2 checks", text)
         self.assertIn("999", text)
         self.assertIn("| FAIL |", text)
 
+    def test_render_report_rehearsal_is_explicitly_labelled(self):
+        text = drill.render_report("source.json", "restored.json", NOW,
+                                   self.comparisons(), drill.SYNTHETIC_REHEARSAL)
+        self.assertIn("Kind: synthetic_rehearsal", text)
+        self.assertIn("NOT a conducted drill", text)
+        self.assertIn("not final evidence", text)
+
+    def test_render_report_conducted_has_no_rehearsal_marker(self):
+        text = drill.render_report("source.json", "restored@nightly", NOW,
+                                   self.comparisons(), drill.CONDUCTED_DRILL)
+        self.assertNotIn("NOT a conducted drill", text)
+
     def test_write_report_uses_dated_filename_and_creates_directory(self):
         with tempfile.TemporaryDirectory() as directory:
             report_dir = Path(directory) / "reports"
             path = drill.write_report(report_dir, NOW, "source.json",
-                                      "scratch@nightly", self.comparisons())
+                                      "restored@nightly", self.comparisons(),
+                                      drill.CONDUCTED_DRILL)
             self.assertEqual(path.name, "restore-drill-20261121T083000Z.md")
             self.assertTrue(path.exists())
             self.assertIn("Verdict: PASS", path.read_text(encoding="utf-8"))
 
+    def test_write_report_refuses_to_overwrite_existing_report(self):
+        with tempfile.TemporaryDirectory() as directory:
+            report_dir = Path(directory)
+            drill.write_report(report_dir, NOW, "source.json", "restored@nightly",
+                               self.comparisons(), drill.CONDUCTED_DRILL)
+            with self.assertRaises(drill.DrillError):
+                drill.write_report(report_dir, NOW, "source.json", "restored@nightly",
+                                   self.comparisons(), drill.CONDUCTED_DRILL)
+
     def test_parse_instant_accepts_zulu_timestamp(self):
         self.assertEqual(drill.parse_instant("2026-11-21T08:30:00Z"), NOW)
+
+    def test_parse_instant_normalizes_offset_to_utc(self):
+        parsed = drill.parse_instant("2026-11-21T10:30:00+02:00")
+        self.assertEqual(parsed, NOW)
+        self.assertEqual(parsed.tzinfo, timezone.utc)
+
+    def test_parse_instant_rejects_naive_timestamp(self):
+        with self.assertRaises(drill.DrillError):
+            drill.parse_instant("2026-11-21T08:30:00")
 
     def test_parse_instant_rejects_bad_timestamp(self):
         with self.assertRaises(drill.DrillError):
@@ -331,9 +411,6 @@ class ReportTests(unittest.TestCase):
 
 
 class MainTests(unittest.TestCase):
-    def run_main(self, argv):
-        return drill.main(argv)
-
     def rehearsal_args(self, source, restored, report_dir, now="2026-11-21T08:30:00Z"):
         args = ["--source-snapshot", str(source), "--restored-snapshot", str(restored),
                 "--report-dir", str(report_dir)]
@@ -341,16 +418,34 @@ class MainTests(unittest.TestCase):
             args += ["--now", now]
         return args
 
-    def test_rehearsal_matching_fixtures_exits_zero_and_writes_report(self):
+    def conducted_argv(self, source, catalog, scratch, probe, reports):
+        return ["--source-snapshot", str(source), "--catalog", str(catalog),
+                "--scratch-dsn", scratch, "--probe-sql", str(probe),
+                "--confirm-scratch", "--report-dir", str(reports),
+                "--now", "2026-11-21T08:30:00Z"]
+
+    def build_catalog(self, directory):
+        catalog = Path(directory) / "catalog"
+        catalog.mkdir()
+        write_json(catalog, "b.json", {
+            "label": "nightly", "created_at": "2026-11-21T02:00:00Z",
+            "artifact": "synthetic://nightly.dump"})
+        probe = Path(directory) / "probe.sql"
+        probe.write_text("-- synthetic probe\n", encoding="utf-8")
+        return catalog, probe
+
+    def test_rehearsal_matching_fixtures_exits_zero_and_writes_labelled_report(self):
         with tempfile.TemporaryDirectory() as directory:
             source = write_json(directory, "source.json", source_payload())
             restored = write_json(directory, "restored.json", source_payload())
             reports = Path(directory) / "reports"
-            code = self.run_main(self.rehearsal_args(source, restored, reports))
+            code = drill.main(self.rehearsal_args(source, restored, reports))
             self.assertEqual(code, 0)
             report = reports / "restore-drill-20261121T083000Z.md"
-            self.assertTrue(report.exists())
-            self.assertIn("Verdict: PASS", report.read_text(encoding="utf-8"))
+            text = report.read_text(encoding="utf-8")
+            self.assertIn("Verdict: PASS", text)
+            self.assertIn("Kind: synthetic_rehearsal", text)
+            self.assertIn("NOT a conducted drill", text)
 
     def test_rehearsal_mismatching_fixtures_exits_nonzero(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -359,7 +454,7 @@ class MainTests(unittest.TestCase):
             bad["checksums"]["documents"] = "f" * 64
             restored = write_json(directory, "restored.json", bad)
             reports = Path(directory) / "reports"
-            code = self.run_main(self.rehearsal_args(source, restored, reports))
+            code = drill.main(self.rehearsal_args(source, restored, reports))
             self.assertEqual(code, 1)
             report = reports / "restore-drill-20261121T083000Z.md"
             self.assertIn("Verdict: FAIL", report.read_text(encoding="utf-8"))
@@ -369,84 +464,109 @@ class MainTests(unittest.TestCase):
             source = write_json(directory, "source.json", source_payload())
             restored = write_json(directory, "restored.json", source_payload())
             reports = Path(directory) / "reports"
-            code = self.run_main(self.rehearsal_args(source, restored, reports, now=None))
+            code = drill.main(self.rehearsal_args(source, restored, reports, now=None))
             self.assertEqual(code, 0)
             self.assertEqual(len(list(reports.glob("restore-drill-*.md"))), 1)
 
     def test_conducted_mode_restores_latest_and_exits_zero(self):
         with tempfile.TemporaryDirectory() as directory:
             source = write_json(directory, "source.json", source_payload())
-            catalog = Path(directory) / "catalog"
-            catalog.mkdir()
-            write_json(catalog, "b.json", {
-                "label": "nightly", "created_at": "2026-11-21T02:00:00Z",
-                "artifact": "synthetic://nightly.dump"})
-            probe = Path(directory) / "probe.sql"
-            probe.write_text("-- synthetic probe\n", encoding="utf-8")
+            catalog, probe = self.build_catalog(directory)
             reports = Path(directory) / "reports"
-            probe_output = probe_output_for(source_payload())
-            runner = RecordingRunner([probe_output, probe_output])
-            argv = ["--source-snapshot", str(source), "--catalog", str(catalog),
-                    "--scratch-dsn", "scratch_drill", "--probe-sql", str(probe),
-                    "--report-dir", str(reports), "--now", "2026-11-21T08:30:00Z"]
+            runner = RecordingRunner([probe_output_for(source_payload())])
+            argv = self.conducted_argv(source, catalog, "scratch_drill", probe, reports)
             with mock.patch.object(drill, "SubprocessRunner", return_value=runner):
-                code = self.run_main(argv)
+                code = drill.main(argv)
             self.assertEqual(code, 0)
             self.assertEqual(runner.calls[0],
                              ["dropdb", "--if-exists", "--force", "scratch_drill"])
             self.assertEqual(runner.calls[1], ["createdb", "scratch_drill"])
             self.assertEqual(runner.calls[2][0], "pg_restore")
-            self.assertTrue((reports / "restore-drill-20261121T083000Z.md").exists())
+            text = (reports / "restore-drill-20261121T083000Z.md").read_text(
+                encoding="utf-8")
+            self.assertIn("Kind: conducted_drill", text)
+            self.assertNotIn("NOT a conducted drill", text)
 
     def test_conducted_mode_probe_mismatch_exits_nonzero(self):
         with tempfile.TemporaryDirectory() as directory:
             source = write_json(directory, "source.json", source_payload())
-            catalog = Path(directory) / "catalog"
-            catalog.mkdir()
-            write_json(catalog, "b.json", {
-                "label": "nightly", "created_at": "2026-11-21T02:00:00Z",
-                "artifact": "synthetic://nightly.dump"})
-            probe = Path(directory) / "probe.sql"
-            probe.write_text("-- synthetic probe\n", encoding="utf-8")
+            catalog, probe = self.build_catalog(directory)
             reports = Path(directory) / "reports"
             bad = source_payload()
             bad["row_counts"]["order_data"] = 999
-            probe_output = probe_output_for(bad)
-            runner = RecordingRunner([probe_output, probe_output])
-            argv = ["--source-snapshot", str(source), "--catalog", str(catalog),
-                    "--scratch-dsn", "scratch_drill", "--probe-sql", str(probe),
-                    "--report-dir", str(reports), "--now", "2026-11-21T08:30:00Z"]
+            runner = RecordingRunner([probe_output_for(bad)])
+            argv = self.conducted_argv(source, catalog, "scratch_drill", probe, reports)
             with mock.patch.object(drill, "SubprocessRunner", return_value=runner):
-                code = self.run_main(argv)
+                code = drill.main(argv)
             self.assertEqual(code, 1)
 
-    def test_missing_snapshot_and_catalog_exits_error(self):
+    def test_conducted_mode_requires_explicit_scratch_confirmation(self):
         with tempfile.TemporaryDirectory() as directory:
             source = write_json(directory, "source.json", source_payload())
-            code = self.run_main(["--source-snapshot", str(source),
-                                  "--report-dir", str(Path(directory) / "reports")])
+            catalog, probe = self.build_catalog(directory)
+            reports = Path(directory) / "reports"
+            argv = self.conducted_argv(source, catalog, "scratch_drill", probe, reports)
+            argv.remove("--confirm-scratch")
+            runner = RecordingRunner([])
+            with mock.patch.object(drill, "SubprocessRunner", return_value=runner):
+                code = drill.main(argv)
             self.assertEqual(code, 2)
+            self.assertEqual(runner.calls, [])
+
+    def test_rehearsal_rejects_conducted_only_options(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = write_json(directory, "source.json", source_payload())
+            restored = write_json(directory, "restored.json", source_payload())
+            argv = self.rehearsal_args(source, restored, Path(directory) / "reports")
+            argv += ["--scratch-dsn", "scratch_drill"]
+            self.assertEqual(drill.main(argv), 2)
+
+    def test_both_drill_modes_are_rejected_by_parser(self):
+        with self.assertRaises(SystemExit) as raised:
+            drill.main(["--source-snapshot", "source.json", "--report-dir", "reports",
+                        "--restored-snapshot", "restored.json", "--catalog", "cat"])
+        self.assertEqual(raised.exception.code, 2)
+
+    def test_missing_drill_mode_is_rejected_by_parser(self):
+        with self.assertRaises(SystemExit) as raised:
+            drill.main(["--source-snapshot", "source.json", "--report-dir", "reports"])
+        self.assertEqual(raised.exception.code, 2)
 
     def test_catalog_without_scratch_dsn_exits_error(self):
         with tempfile.TemporaryDirectory() as directory:
             source = write_json(directory, "source.json", source_payload())
-            code = self.run_main(["--source-snapshot", str(source), "--catalog", "cat",
-                                  "--report-dir", str(Path(directory) / "reports")])
+            code = drill.main(["--source-snapshot", str(source), "--catalog", "cat",
+                               "--report-dir", str(Path(directory) / "reports")])
             self.assertEqual(code, 2)
 
     def test_catalog_without_probe_sql_exits_error(self):
         with tempfile.TemporaryDirectory() as directory:
             source = write_json(directory, "source.json", source_payload())
-            code = self.run_main(["--source-snapshot", str(source), "--catalog", "cat",
-                                  "--scratch-dsn", "scratch_drill",
-                                  "--report-dir", str(Path(directory) / "reports")])
+            code = drill.main(["--source-snapshot", str(source), "--catalog", "cat",
+                               "--scratch-dsn", "scratch_drill",
+                               "--report-dir", str(Path(directory) / "reports")])
             self.assertEqual(code, 2)
 
     def test_unreadable_source_snapshot_exits_error(self):
-        code = self.run_main(["--source-snapshot", "/no/such/source.json",
-                              "--restored-snapshot", "/no/such/restored.json",
-                              "--report-dir", "reports"])
+        code = drill.main(["--source-snapshot", "/no/such/source.json",
+                           "--restored-snapshot", "/no/such/restored.json",
+                           "--report-dir", "reports"])
         self.assertEqual(code, 2)
+
+    def test_command_failure_exits_error_without_leaking_dsn(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = write_json(directory, "source.json", source_payload())
+            catalog, probe = self.build_catalog(directory)
+            reports = Path(directory) / "reports"
+            argv = self.conducted_argv(source, catalog,
+                                       "scratch://ZZ-DSN-MARKER@host/db", probe, reports)
+            failure = subprocess.CalledProcessError(
+                1, ["pg_restore", "scratch://ZZ-DSN-MARKER@host/db"], "boom")
+            with mock.patch.object(drill.subprocess, "run", side_effect=failure), \
+                    mock.patch("sys.stderr") as stderr:
+                code = drill.main(argv)
+            self.assertEqual(code, 2)
+            self.assertNotIn("ZZ-DSN-MARKER", stderr.getvalue())
 
     def test_missing_required_argument_exits_usage_error(self):
         with self.assertRaises(SystemExit) as raised:

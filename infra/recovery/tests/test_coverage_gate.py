@@ -100,6 +100,14 @@ class CoverageGateDecisionTest(unittest.TestCase):
             self.assertEqual(cg.main(), 2)
 
 
+class MeasureCoverageTest(unittest.TestCase):
+    def test_raises_when_traced_suite_fails(self):
+        failed = mock.Mock(returncode=1, stderr="suite failed", stdout="")
+        with mock.patch.object(cg, "run_traced_suite", return_value=failed):
+            with self.assertRaises(RuntimeError):
+                cg.measure_coverage()
+
+
 class TraceIntegrationTest(unittest.TestCase):
     def _trace_probe(self, directory):
         root = Path(directory)
