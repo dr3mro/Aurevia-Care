@@ -65,6 +65,18 @@ export interface Conversation {
   readonly messages: readonly Message[];
   /** Highest sequence the patient has viewed. */
   readonly lastReadSequence: number;
+  /** MSG-06 service hours and reply target published by the unit. */
+  readonly serviceNotice?: {
+    readonly serviceHours: string;
+    readonly responseTarget: string;
+  };
+  /** Latest patient-visible instruction and its acknowledgment state (MSG-05). */
+  readonly instruction?: {
+    readonly id: string;
+    readonly title: string;
+    readonly revision: number;
+    readonly acknowledgedRevision: number | null;
+  };
 }
 
 /** Minimal input required to append a patient reply. */

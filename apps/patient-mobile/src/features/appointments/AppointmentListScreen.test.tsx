@@ -155,3 +155,85 @@ describe('AppointmentListScreen', () => {
     expect(revoke.calls).toEqual(['dev-1']);
   });
 });
+
+describe('AppointmentListScreen approved design (BUILD-71, PAT-01, UX-01)', () => {
+  const designed: AppointmentView = {
+    ...pending,
+    dateLabel: 'Thu, Nov 26',
+    timeLabel: '2:30 PM',
+    visitLine: 'Follow-up with Dr. Noor Karim',
+    facilityLine: 'Harbor Family Clinic, Brooklyn site',
+  };
+
+  it('shows the designed date, visit and facility lines with labelled controls in English', async () => {
+    const view = await render(
+      <AppointmentListScreen
+        appointments={[designed]}
+        notice={notice}
+        patientId="patient-1"
+        devices={[activeDevice]}
+        onConfirm={recorder().fn}
+        onOpenDetails={recorder().fn}
+        onRevokeDevice={recorder().fn}
+      />,
+    );
+    expect(view.getByTestId('appointment-list-title')).toHaveTextContent('Appointments');
+    expect(view.getByTestId('time-apt-1')).toHaveTextContent('Thu, Nov 26 2:30 PM (Asia/Riyadh)');
+    expect(view.getByLabelText('visit-apt-1')).toHaveTextContent('Follow-up with Dr. Noor Karim');
+    expect(view.getByLabelText('facility-apt-1')).toHaveTextContent(/Harbor Family Clinic, Brooklyn site/);
+    expect(view.getByTestId('status-pill-apt-1')).toHaveTextContent(/Please confirm/);
+    expect(view.getByLabelText('Confirm appointment').props.accessibilityState).toEqual({ disabled: false });
+    expect(view.getByLabelText('View details')).toBeTruthy();
+    expect(view.getByLabelText('Revoke device')).toBeTruthy();
+  });
+
+  it('renders a completed visit with a neutral, worded status pill', async () => {
+    const completed: AppointmentView = {
+      ...pending,
+      status: 'completed',
+      confirmation: { kind: 'unavailable', confirmedAt: null },
+    };
+    const view = await render(
+      <AppointmentListScreen
+        appointments={[completed]}
+        notice={notice}
+        patientId="patient-1"
+        devices={[]}
+        onConfirm={recorder().fn}
+        onOpenDetails={recorder().fn}
+        onRevokeDevice={recorder().fn}
+      />,
+    );
+    expect(view.getByTestId('status-pill-apt-1')).toHaveTextContent(/Completed/);
+    expect(view.queryByLabelText('Confirm appointment')).toBeNull();
+  });
+
+  it('renders Arabic RTL copy, mirrored tab bar and Arabic control labels', async () => {
+    const tabs = recorder();
+    const view = await render(
+      <AppointmentListScreen
+        appointments={[designed]}
+        notice={notice}
+        patientId="patient-1"
+        devices={[]}
+        onConfirm={recorder().fn}
+        onOpenDetails={recorder().fn}
+        onRevokeDevice={recorder().fn}
+        locale="ar"
+        showTabBar
+        activeTab="appointments"
+        onTab={tabs.fn}
+      />,
+    );
+    expect(view.getByTestId('appointment-list').props.style).toEqual(
+      expect.arrayContaining([expect.objectContaining({ direction: 'rtl' })]),
+    );
+    expect(view.getByTestId('appointment-list-title')).toHaveTextContent('المواعيد');
+    expect(view.getByTestId('status-pill-apt-1')).toHaveTextContent(/يرجى التأكيد/);
+    expect(view.getByLabelText('تأكيد الموعد')).toBeTruthy();
+    expect(view.getByLabelText('المواعيد tab')).toHaveTextContent(/المواعيد/);
+    const onTab = view.getByTestId('tab-button-reports');
+    await fireEvent.press(onTab);
+    expect(tabs.calls).toEqual(['reports']);
+  });
+});
