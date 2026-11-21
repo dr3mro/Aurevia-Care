@@ -6,6 +6,7 @@ import { stateViewMessages } from '../src/components/stateViewMessages';
 import { adminKeys, adminText } from '../src/features/admin/messages';
 import { chartKeys, chartText } from '../src/features/chart/messages';
 import { duplicateMessages } from '../src/features/duplicates/messages';
+import { labKeys, labText } from '../src/features/labcollection/messages';
 import { patientMessages } from '../src/features/patients/messages';
 import { printMessageKeys, printText } from '../src/features/print/components/messages';
 import { schedulingKeys, schedulingText } from '../src/features/scheduling/messages';
@@ -146,6 +147,7 @@ const BUNDLE_SOURCES: readonly string[] = [
   'features/system/messages.ts',
   'features/duplicates/messages.ts',
   'features/chart/messages.ts',
+  'features/labcollection/messages.ts',
   'features/scheduling/messages.ts',
   'app/navigation.ts',
   'app/shellText.ts',
@@ -174,6 +176,7 @@ const bundles: readonly MessageBundle[] = [
   fromRecord('system', systemMessages.en, systemMessages.ar),
   fromRecord('duplicates', duplicateMessages.en, duplicateMessages.ar),
   fromKeysAndText('chart', chartKeys, chartText),
+  fromKeysAndText('labcollection', labKeys, labText),
   fromKeysAndText('scheduling', schedulingKeys, schedulingText),
   fromKeysAndText('print', printMessageKeys, printText),
   fromRecord('navigation', navigationLabels.en, navigationLabels.ar),
