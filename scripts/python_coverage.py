@@ -72,7 +72,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("report", help="coverage JSON report")
     parser.add_argument("--base", default="origin/main")
-    parser.add_argument("--full", action="store_true", help="require 100% for every script")
+    parser.add_argument("--full", action="store_true", help="require 100%% for every script")
     args = parser.parse_args(argv)
     with open(args.report, encoding="utf-8") as handle:
         report = json.load(handle)

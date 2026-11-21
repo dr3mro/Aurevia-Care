@@ -1,6 +1,7 @@
 import { formatCivilDate } from '../../i18n/format';
 import type { Locale } from '../../i18n/messages';
 import type { ApprovalBlocker } from './domain';
+import { fillMessagePlaceholders } from './messagePlaceholders';
 
 /**
  * English and Arabic labels for duplicate review. The feature owns a small
@@ -192,7 +193,7 @@ export function duplicatesMessage(
   key: DuplicatesMessageKey,
   values: Readonly<Record<string, string>> = {},
 ): string {
-  return duplicatesText(locale, key).replace(/\{(\w+)\}/g, (whole, name: string) => values[name] ?? whole);
+  return fillMessagePlaceholders(duplicatesText(locale, key), values);
 }
 
 /** Map a dependency kind to its localized label; unknown kinds stay generic. */

@@ -2,17 +2,54 @@ package com.aurevia.smartclinic.catalog.dictionary;
 
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.aurevia.smartclinic.configuration.ConfigurationService;
+
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
+
 /**
  * Versioned clinical field dictionaries (CLN-03, CLN-04).
  *
- * <p>A thin domain service over the shared version store. It exposes the
+ * <p>A thin domain service over the version persistence port. It exposes the
  * dictionary-specific entry type while reusing the common define, approve,
  * effective-fold and history rules. Governance approval is recorded as named
- * data; tenant and role enforcement belong to layers outside this slice.</p>
+ * data; tenant and role enforcement belong to the surrounding HTTP, policy and
+ * database layers.</p>
+ *
+ * <p>The no-argument constructor builds a deterministic in-memory kernel for
+ * unit-level domain tests. The injected constructor is the production bean and
+ * stores versions durably in tenant configuration entries.</p>
  */
+@Service
 public final class ClinicalDictionaryService {
 
-    private final VersionStore<DictionaryField> versions = new VersionStore<>(DictionaryField::code);
+    private final VersionPersistence<DictionaryField> versions;
+
+    /**
+     * Build the deterministic in-memory kernel used by unit tests.
+     */
+    public ClinicalDictionaryService() {
+        this(new VersionStore<>(DictionaryField::code));
+    }
+
+    /**
+     * Build the durable production service.
+     *
+     * @param configurations configuration domain service for durable drafts and approvals
+     * @param json           shared JSON mapper
+     */
+    @Autowired
+    public ClinicalDictionaryService(ConfigurationService configurations, ObjectMapper json) {
+        this(new DurableVersionStore<>(configurations, json, "cln_dictionary",
+                DictionaryField::code, new TypeReference<StoredVersion<DictionaryField>>() { }));
+    }
+
+    private ClinicalDictionaryService(VersionPersistence<DictionaryField> versions) {
+        this.versions = versions;
+    }
 
     /**
      * Define a new draft dictionary version.

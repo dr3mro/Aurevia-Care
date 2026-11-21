@@ -1,6 +1,7 @@
-- [ ] FIX-CHART-DDL-01 · Move the chart_entry schema into db/migrations so production Flyway creates it (CLN-03)
+- [-] FIX-CHART-DDL-01 · Move the chart_entry schema into db/migrations so production Flyway creates it (CLN-03)
+  - agent: swarm-3
+  - attempts: 1
   - requirements: CLN-03, ARC-04
-  - attempts: 0
   - scope: db/migrations, apps/api/src/test/java/com/aurevia/smartclinic/it/chart/record/migrations
   - details:
     Problem: `CREATE TABLE public.chart_entry` exists only in the test-scoped `apps/api/src/test/java/com/aurevia/smartclinic/it/chart/record/migrations/V13__longitudinal_chart.sql`. `db/migrations/` has no chart_entry definition, so `chart.record` passes against the test migration while production Flyway cannot create the table. Notes AUD-20261120-15 and AUD-20261120-15-190310 say the integrator was meant to sequence V13 into `db/migrations` (see `.agent/pr-notes/S-G1-03.md`) and never did.

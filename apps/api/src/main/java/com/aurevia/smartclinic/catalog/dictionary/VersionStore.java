@@ -19,7 +19,7 @@ import java.util.regex.Pattern;
  *
  * @param <T> entry value type
  */
-final class VersionStore<T> {
+final class VersionStore<T> implements VersionPersistence<T> {
 
     private static final Pattern KEY = Pattern.compile("[a-z][a-z0-9_]{1,31}");
 
@@ -44,23 +44,10 @@ final class VersionStore<T> {
      * @return the allocated version number
      * @throws IllegalArgumentException on invalid input, a null entry or duplicate entry codes
      */
-    int define(String key, List<T> entries, String author) {
+    @Override
+    public int define(String key, List<T> entries, String author) {
         requireKey(key);
-        if (author == null || author.isBlank()) {
-            throw new IllegalArgumentException("author is required");
-        }
-        if (entries == null || entries.isEmpty()) {
-            throw new IllegalArgumentException("entries are required");
-        }
-        Set<String> seen = new HashSet<>();
-        for (T entry : entries) {
-            if (entry == null) {
-                throw new IllegalArgumentException("entry must not be null");
-            }
-            if (!seen.add(identity.apply(entry))) {
-                throw new IllegalArgumentException("duplicate entry code");
-            }
-        }
+        requireEntries(entries, author, identity);
         List<CatalogVersion<T>> list = versions.computeIfAbsent(key, k -> new ArrayList<>());
         int version = list.size() + 1;
         list.add(new CatalogVersion<>(version, entries, author, null));
@@ -77,11 +64,10 @@ final class VersionStore<T> {
      * @throws IllegalArgumentException on invalid input or a reused author
      * @throws IllegalStateException    when the version is already approved
      */
-    CatalogVersion<T> approve(String key, int version, Approval approval) {
+    @Override
+    public CatalogVersion<T> approve(String key, int version, Approval approval) {
         requireKey(key);
-        if (approval == null) {
-            throw new IllegalArgumentException("approval is required");
-        }
+        requireApproval(approval);
         List<CatalogVersion<T>> list = versions.get(key);
         if (version < 1 || list == null || version > list.size()) {
             throw new IllegalArgumentException("unknown version");
@@ -104,7 +90,8 @@ final class VersionStore<T> {
      * @param key catalogue or dictionary key
      * @return the effective version, or {@code null}
      */
-    CatalogVersion<T> effective(String key) {
+    @Override
+    public CatalogVersion<T> effective(String key) {
         requireKey(key);
         List<CatalogVersion<T>> list = versions.get(key);
         if (list == null) {
@@ -124,15 +111,58 @@ final class VersionStore<T> {
      * @param key catalogue or dictionary key
      * @return all versions, oldest first
      */
-    List<CatalogVersion<T>> history(String key) {
+    @Override
+    public List<CatalogVersion<T>> history(String key) {
         requireKey(key);
         List<CatalogVersion<T>> list = versions.get(key);
         return list == null ? List.of() : List.copyOf(list);
     }
 
-    private static void requireKey(String key) {
+    /**
+     * Validate a bounded catalogue key shared by both persistence implementations.
+     *
+     * @param key key supplied by a caller
+     */
+    static void requireKey(String key) {
         if (key == null || !KEY.matcher(key).matches()) {
             throw new IllegalArgumentException("invalid catalogue key");
+        }
+    }
+
+    /**
+     * Validate a draft's actor, entries and unique codes before a version is allocated.
+     *
+     * @param entries version entries
+     * @param author  defining actor
+     * @param identity extracts the unique code of an entry
+     * @param <E>      entry value type
+     */
+    static <E> void requireEntries(List<E> entries, String author, Function<E, String> identity) {
+        if (author == null || author.isBlank()) {
+            throw new IllegalArgumentException("author is required");
+        }
+        if (entries == null || entries.isEmpty()) {
+            throw new IllegalArgumentException("entries are required");
+        }
+        Set<String> seen = new HashSet<>();
+        for (E entry : entries) {
+            if (entry == null) {
+                throw new IllegalArgumentException("entry must not be null");
+            }
+            if (!seen.add(identity.apply(entry))) {
+                throw new IllegalArgumentException("duplicate entry code");
+            }
+        }
+    }
+
+    /**
+     * Require a named approval before a version can become effective.
+     *
+     * @param approval approval supplied by a caller
+     */
+    static void requireApproval(Approval approval) {
+        if (approval == null) {
+            throw new IllegalArgumentException("approval is required");
         }
     }
 }
