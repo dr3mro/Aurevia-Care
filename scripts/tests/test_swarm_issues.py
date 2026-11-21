@@ -189,6 +189,11 @@ class StuckTests(unittest.TestCase):
     def test_a_real_failure_is_marked_needs_human(self):
         self.assertIn("needs-human", self.stuck(False))
 
+    def test_gate_configuration_files_are_never_auto_merged(self):
+        gates = ["apps/api/pom.xml", "apps/api/spotbugs-exclude.xml", "CODING_STYLE.md", "apps/staff-web/vite.config.ts",
+                 "apps/patient-mobile/jest.config.ts"]
+        self.assertEqual(swarm.protected_files(gates + ["apps/api/src/main/java/A.java"]), gates)
+
     def test_guard_opens_an_issue_for_protected_files_and_for_too_many_files(self):
         for diff, cause in (("scripts/x.sh\n", "protected files changed"),
                             ("\n".join(f"a/{i}.txt" for i in range(swarm.MAX_PR_FILES + 1)), "too many files")):
