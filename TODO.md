@@ -339,8 +339,8 @@ Found while extending the specification (section 8.1 and docs/design/screens-and
     Do NOT register the new routes in the interceptor, do not add Spring Actuator, do not return build or version data.
 
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` (API tasks) or `bash apps/staff-web/check.sh` (staff web tasks) must pass. Synthetic data only; write the failing test first; stay inside the declared scope; name folders and packages after what they hold, never a task ID; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
-- [-] READY-02 · Security headers on every API response (WEB-02)
-  - agent: swarm-1
+- [x] READY-02 · Security headers on every API response (WEB-02)
+  - pr: #261
   - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/web, apps/api/src/main/resources
   - depends: READY-01
@@ -352,8 +352,9 @@ Found while extending the specification (section 8.1 and docs/design/screens-and
     Do NOT weaken the policy to make a test pass, and do NOT add `unsafe-inline` or `unsafe-eval` anywhere.
 
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` (API tasks) or `bash apps/staff-web/check.sh` (staff web tasks) must pass. Synthetic data only; write the failing test first; stay inside the declared scope; name folders and packages after what they hold, never a task ID; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
-- [ ] READY-03 · Per-subject rate limiting with 429 and Retry-After (WEB-04)
-  - attempts: 0
+- [-] READY-03 · Per-subject rate limiting with 429 and Retry-After (WEB-04)
+  - agent: swarm-2
+  - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/web, apps/api/src/main/resources
   - depends: READY-02
   - details:
@@ -649,8 +650,8 @@ Order of work for the whole production-readiness effort: (1) security and platfo
     Do NOT change the backend and do NOT remove the fixtures (tests still use them).
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
-- [-] READY-22 · Chart page: /patients/:id/chart and the note editor on the real API
-  - agent: swarm-2
+- [x] READY-22 · Chart page: /patients/:id/chart and the note editor on the real API
+  - pr: #260
   - attempts: 1
   - requirements: CLN-03, CLN-05
   - scope: apps/staff-web/src/features/chart, apps/staff-web/src/app/routes.tsx
@@ -666,9 +667,10 @@ Order of work for the whole production-readiness effort: (1) security and platfo
     Do NOT store a note draft in browser storage.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
-- [ ] READY-23 · Admin pages: /admin/facilities and /admin/staff on the real API
+- [-] READY-23 · Admin pages: /admin/facilities and /admin/staff on the real API
+  - agent: swarm-3
+  - attempts: 1
   - requirements: IAM-01, IAM-02
-  - attempts: 0
   - scope: apps/staff-web/src/features/admin, apps/staff-web/src/app/routes.tsx
   - depends: READY-19, READY-20, READY-14, READY-15
   - details:
@@ -1007,8 +1009,8 @@ Do these after part 2 where `depends` says so. Persistence tasks run one at a ti
     5. Run `bash scripts/worker-check.sh`.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT change files outside `scope`, add patient data to logs, or edit any existing migration.
-- [-] READY-45 · Automated accessibility and end-to-end test harness for the staff web (WEB-10)
-  - agent: swarm-4
+- [x] READY-45 · Automated accessibility and end-to-end test harness for the staff web (WEB-10)
+  - pr: #256
   - attempts: 1
   - requirements: WEB-10, UX-01
   - scope: apps/staff-web/e2e, apps/staff-web/package.json, package.json, package-lock.json, apps/staff-web/README.md
