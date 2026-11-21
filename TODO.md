@@ -781,7 +781,9 @@ Staff web and patient app work (UX-01, PAT-01 to PAT-03) and recovery evidence (
     3. Mixed Arabic and Latin clinical text must render in the right order; show names in the local script.
     4. Tests: the layout flips, dates and numbers keep their form, a missing key falls back to English.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] BUILD-19 · Patient app: appointments with the facility time zone and confirmation
+- [-] BUILD-19 · Patient app: appointments with the facility time zone and confirmation
+  - agent: swarm-2
+  - attempts: 1
   - requirements: PAT-01
   - scope: apps/patient-mobile/src/features/appointments
   - details:
@@ -790,7 +792,9 @@ Staff web and patient app work (UX-01, PAT-01 to PAT-03) and recovery evidence (
     3. Notification text stays generic; details load after sign-in.
     4. Tests: a daylight-saving boundary; a confirmed appointment cannot be confirmed twice.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] BUILD-20 · Patient app: released reports with revision and per-download authorization
+- [-] BUILD-20 · Patient app: released reports with revision and per-download authorization
+  - agent: swarm-3
+  - attempts: 1
   - requirements: PAT-02
   - scope: apps/patient-mobile/src/features/reports
   - details:
@@ -799,7 +803,9 @@ Staff web and patient app work (UX-01, PAT-01 to PAT-03) and recovery evidence (
     3. Every download checks the linked patient and the current release; a withdrawn release stops access.
     4. Tests: withdrawn release, wrong patient, corrected report shows its context.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] BUILD-21 · Patient app: enrollment, recovery and account lockout screens
+- [-] BUILD-21 · Patient app: enrollment, recovery and account lockout screens
+  - agent: swarm-4
+  - attempts: 1
   - requirements: PAT-03
   - scope: apps/patient-mobile/src/features/enrollment
   - details:
@@ -808,7 +814,9 @@ Staff web and patient app work (UX-01, PAT-01 to PAT-03) and recovery evidence (
     3. Sensitive account changes ask for sign-in again.
     4. Tests: no screen reveals whether a record exists.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] BUILD-22 · Backup and restore drill script with a checksum report
+- [-] BUILD-22 · Backup and restore drill script with a checksum report
+  - agent: swarm-5
+  - attempts: 1
   - requirements: OPS-04
   - scope: infra/recovery
   - depends: READY-54
@@ -847,7 +855,9 @@ The contract `contracts/openapi.yaml` is the authoritative description of the AP
 
 ADR 0003 (`docs/decisions/0003-persistence-of-in-memory-stores.md`) lists the adapters that still keep data in memory. Each task replaces one store with a PostgreSQL adapter, keeps the tenant (organization ID) in every key and in every query, and keeps the existing port unchanged. READY-37 to READY-42 cover the other stores. Production wiring must pick the JDBC adapter; the in-memory adapter stays for unit tests only.
 
-- [ ] BUILD-25 · Persist the delivery outbox, dead letter and replay store with JDBC
+- [-] BUILD-25 · Persist the delivery outbox, dead letter and replay store with JDBC
+  - agent: swarm-6
+  - attempts: 1
   - requirements: ARC-05, ARC-02
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/events, apps/api/src/test/java/com/aurevia/smartclinic/events
   - details:
@@ -877,7 +887,9 @@ ADR 0003 (`docs/decisions/0003-persistence-of-in-memory-stores.md`) lists the ad
     3. Make the services Spring beans that use the JDBC store.
     4. Tests: voiding an association keeps its history, a checksum mismatch is rejected, a quarantined file is never returned, tenant isolation.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] BUILD-28 · Persist message attachments and quarantine with JDBC
+- [-] BUILD-28 · Persist message attachments and quarantine with JDBC
+  - agent: swarm-7
+  - attempts: 1
   - requirements: MSG-03, ARC-06, ARC-07
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/messaging/attachments, apps/api/src/test/java/com/aurevia/smartclinic/messaging/attachments, db/migrations/V82__attachment_store.sql
   - reserved: V82
@@ -887,7 +899,9 @@ ADR 0003 (`docs/decisions/0003-persistence-of-in-memory-stores.md`) lists the ad
     3. Make `AttachmentService` a Spring bean that uses the JDBC store.
     4. Tests: wrong-conversation reuse is refused, an unscanned file is not downloadable, the other unit cannot see the file, tenant isolation.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] BUILD-29 · Persist patient accounts, enrollment and recovery with JDBC
+- [-] BUILD-29 · Persist patient accounts, enrollment and recovery with JDBC
+  - agent: swarm-8
+  - attempts: 1
   - requirements: PAT-03, IAM-05, ARC-02
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/messaging/enrollment, apps/api/src/test/java/com/aurevia/smartclinic/messaging/enrollment, db/migrations/V83__patient_access_store.sql
   - reserved: V83
@@ -897,7 +911,9 @@ ADR 0003 (`docs/decisions/0003-persistence-of-in-memory-stores.md`) lists the ad
     3. Make `PatientAccessService` a Spring bean that uses the JDBC store.
     4. Tests: a reused or expired invitation fails, the lockout survives a restart, no response reveals whether a record exists, tenant isolation.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] BUILD-30 · Persist released reports and release history with JDBC
+- [-] BUILD-30 · Persist released reports and release history with JDBC
+  - agent: swarm-9
+  - attempts: 1
   - requirements: XCH-06, PAT-02
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/messaging/reports, apps/api/src/test/java/com/aurevia/smartclinic/messaging/reports, db/migrations/V84__report_release_store.sql
   - reserved: V84
@@ -1042,7 +1058,9 @@ OPS-07 and OPS-08 have no implementation yet. The spec asks for exports with a m
     3. Add an offboarding command that exports first, then marks the tenant for deletion after a review period.
     4. Tests: a legal hold blocks deletion, a released hold lets the next run delete, offboarding without an export is refused.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] BUILD-43 · Onboarding import: versioned manifest, mapping and dry run
+- [-] BUILD-43 · Onboarding import: versioned manifest, mapping and dry run
+  - agent: swarm-10
+  - attempts: 1
   - requirements: OPS-08
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/tenant/importing, apps/api/src/test/java/com/aurevia/smartclinic/tenant/importing, db/migrations/V90__onboarding_import.sql
   - reserved: V90
