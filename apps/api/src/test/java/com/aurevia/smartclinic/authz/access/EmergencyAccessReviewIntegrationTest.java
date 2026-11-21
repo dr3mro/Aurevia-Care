@@ -243,6 +243,9 @@ class EmergencyAccessReviewIntegrationTest {
         }
         assertEquals(HttpStatus.NOT_FOUND,
                 review(id, "{\"note\":\"checked\"}", "auditor-b", ORG_B).getStatusCode());
+        // The denied cross-tenant command must not have closed or altered the
+        // owner organization's review row; only an in-org reviewer may close it.
+        assertReview(ORG_A, id, "open", null, null);
     }
 
     @Test
