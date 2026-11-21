@@ -22,6 +22,7 @@ case "$FAKE_MODE" in
   markers) git add feature.txt; git commit -qm bad --no-edit; echo done ;;
   stubborn) echo nothing ;;
   slow) sleep 5 ;;
+  report) mkdir -p .agent; printf 'Root cause found: yes\\n## Fix plan\\n1. fix it\\n' > .agent/debug-report.md; echo done ;;
 esac
 """
 FAKE_GH = """#!/usr/bin/env bash
@@ -352,6 +353,41 @@ class AgentRunTests(unittest.TestCase):
         text = (ROOT / "scripts/agent-run.sh").read_text()
         self.assertIn("Keep the branch current with the base branch", text)
         self.assertIn("after each stage of the story and", text)
+
+    def debug(self, mode="report", **env):
+        self.run_cmd("implement", FAKE_MODE="commit")
+        self.run_cmd("fetch-main")
+        return self.run_cmd("debug", FAKE_MODE=mode, PR_NUMBER="9", PROMPT_LOG=str(self.tmp / "prompt.log"), **env)
+
+    def test_the_debugger_merges_main_runs_the_agent_and_reports_the_file(self):
+        self.push_to_main("other.txt", "from main\n")
+        self.assertEqual(self.debug().returncode, 0)
+        out = self.outputs()
+        self.assertEqual((out["result"], out["merge"], out["report"]), ("ok", "clean", "yes"))
+        self.assertTrue((self.repo / "other.txt").exists())
+        self.assertIn("Root cause found: yes", (self.repo / ".agent/debug-report.md").read_text())
+        prompt = (self.tmp / "prompt.log").read_text()
+        self.assertIn("You are the debugger", prompt)
+        self.assertIn("pull request #9", prompt)
+        self.assertIn('merge state is "clean"', prompt)
+        self.assertIn("Run all the tests", prompt)
+        self.assertEqual((self.repo / "opencode.json").read_text(), '{"real": true}')
+
+    def test_the_debugger_survives_a_conflict_with_main_and_a_missing_report(self):
+        self.push_to_main("feature.txt", "main version\n")
+        self.assertEqual(self.debug("none").returncode, 0)
+        out = self.outputs()
+        self.assertEqual((out["result"], out["merge"], out["report"]), ("ok", "conflict", "no"))
+        self.assertFalse((self.repo / ".git/MERGE_HEAD").exists())
+        self.assertEqual((self.repo / "feature.txt").read_text(), "work\n")
+        self.assertIn('merge state is "conflict"', (self.tmp / "prompt.log").read_text())
+
+    def test_the_debugger_without_a_fetched_main_still_runs(self):
+        self.run_cmd("implement", FAKE_MODE="commit")
+        self.git("update-ref", "-d", "refs/remotes/origin/main")
+        self.assertEqual(self.run_cmd("debug", FAKE_MODE="rate").returncode, 0)
+        out = self.outputs()
+        self.assertEqual((out["result"], out["merge"], out["report"]), ("rate_limited", "none", "no"))
 
     def test_unknown_command_is_a_usage_error(self):
         self.assertEqual(self.run_cmd("bogus").returncode, 2)

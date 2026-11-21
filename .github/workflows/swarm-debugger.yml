@@ -1,0 +1,149 @@
+name: Swarm debugger
+# The last stop before a person. A pull request lands here (label needs-debug) when its
+# fix attempts are used up or a fix worker crashed. A read-only agent works on the whole
+# project: it runs every test, compares the failures with main, finds the root cause and
+# writes a report. A trusted job then sends the report to one more fix worker (labels
+# debugged and needs-fix). If that fix fails too, or the debugger finds no cause, the pull
+# request gets needs-human. The agent step never holds a GitHub token.
+on:
+  workflow_dispatch:
+  # Safety net: a dispatch refused for lack of a token must not leave a pull request waiting.
+  schedule:
+    - cron: '47 * * * *'
+permissions:
+  contents: read
+# One debugger run at a time: every run takes the oldest waiting pull request, and a run
+# that finds none ends in the select job.
+concurrency:
+  group: swarm-debugger
+  cancel-in-progress: false
+env:
+  SWARM_GIT_NAME: ${{ vars.SWARM_GIT_NAME }}
+  SWARM_GIT_EMAIL: ${{ vars.SWARM_GIT_EMAIL }}
+
+jobs:
+  select:
+    name: Pick the pull request
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      pr: ${{ steps.pick.outputs.pr }}
+      branch: ${{ steps.pick.outputs.branch }}
+      task: ${{ steps.pick.outputs.task }}
+      count: ${{ steps.pick.outputs.count }}
+      image: ${{ steps.image.outputs.image }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          sparse-checkout: scripts
+      - id: pick
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 -I scripts/swarm.py debug-select
+      # Slot 3's image and account: the debugger never competes with worker slot 1 or the audit.
+      - id: image
+        run: echo "image=ghcr.io/${GITHUB_REPOSITORY,,}-agent-3:latest" >> "$GITHUB_OUTPUT"
+  debug:
+    name: Find the cause
+    needs: select
+    if: needs.select.outputs.count != '0' && needs.select.outputs.pr != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    container:
+      image: ${{ needs.select.outputs.image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    permissions:
+      contents: read
+      packages: read
+      issues: read
+      pull-requests: read
+    defaults:
+      run:
+        shell: bash
+    env:
+      MODEL: opencode-go/hy4-flash-free
+      SWARM: '1'
+      MODE: fix
+      PR_NUMBER: ${{ needs.select.outputs.pr }}
+      BRANCH: ${{ needs.select.outputs.branch }}
+      STORY_ID: ${{ needs.select.outputs.task }}
+      BASE_BRANCH: ${{ github.event.repository.default_branch }}
+      SMARTCLINIC_PG_ADMIN: postgres
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ needs.select.outputs.branch }}
+          # Full history: the debugger bisects the branch and compares it with main.
+          fetch-depth: 0
+          persist-credentials: false
+      # The read-only token is used before the agent runs: fetch main, then write what the
+      # integrator and earlier workers said about this pull request and task to files.
+      - name: Fetch main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/agent-run.sh fetch-main || true
+      - name: Collect the failure context
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SWARM_ISSUES: ${{ vars.SWARM_ISSUES }}
+        run: |
+          mkdir -p .agent
+          python3 -I scripts/swarm.py pr-context --pr "$PR_NUMBER" --out .agent/debug-context.md || true
+          python3 -I scripts/swarm.py issue-context --task "$STORY_ID" || true
+      - name: Start PostgreSQL for the integration tests
+        run: |
+          if command -v start-postgres >/dev/null; then
+            start-postgres
+          else
+            echo "start-postgres missing - older agent image" >&2
+          fi
+      - id: debug
+        name: Debug the pull request (no GitHub token in this step)
+        env:
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY_3 || secrets.OPENCODE_API_KEY }}
+          AGENT_TIMEOUT: 130m
+        run: scripts/agent-run.sh debug
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always()
+        with:
+          name: debug-report
+          path: |
+            .agent/debug-report.md
+            .agent/result
+          if-no-files-found: ignore
+          retention-days: 7
+  publish:
+    name: Send the report on
+    needs: [select, debug]
+    if: always() && needs.select.outputs.count != '0' && needs.select.outputs.pr != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      actions: write
+    steps:
+      # Trusted copy of the scripts from the default branch: the debug job never had a
+      # token and cannot alter what runs here.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        continue-on-error: true
+        with:
+          name: debug-report
+          path: results/debug
+      - name: Report to the pull request
+        env:
+          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
+          GH_ISSUES_TOKEN: ${{ github.token }}
+          PR: ${{ needs.select.outputs.pr }}
+        run: python3 -I scripts/swarm.py debug-publish --pr "$PR" --dir results/debug
