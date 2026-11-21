@@ -168,9 +168,9 @@ class ControlledImportServiceTest {
 
     @Test
     void digestFailureFailsClosed() {
-        ControlledImportService failing = new ControlledImportService(() -> {
+        ControlledImportService failing = new ControlledImportService(new ImportDigests(() -> {
             throw new NoSuchAlgorithmException("missing");
-        });
+        }));
         ImportManifest manifest = manifestWithBatches(List.of(record("r1", "M1")),
                 spec(1, List.of("r1")));
 
