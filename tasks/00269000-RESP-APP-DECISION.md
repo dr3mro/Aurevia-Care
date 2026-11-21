@@ -1,5 +1,5 @@
-- [-] RESP-APP-DECISION · Decision record: the patient app supports tablets and landscape
-  - agent: swarm-4
+- [x] RESP-APP-DECISION · Decision record: the patient app supports tablets and landscape
+  - pr: #362
   - attempts: 1
   - requirements: PAT-01, PAT-02, UX-01
   - scope: docs/decisions/0005-patient-app-tablets.md

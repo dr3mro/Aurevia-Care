@@ -1,5 +1,5 @@
-- [-] COVPY-CHECK-SECRETS · Script tests: reach 100% line and branch coverage of `scripts/check-secrets.py`
-  - agent: swarm-7
+- [x] COVPY-CHECK-SECRETS · Script tests: reach 100% line and branch coverage of `scripts/check-secrets.py`
+  - pr: #388
   - attempts: 1
   - requirements: OPS-06
   - scope: scripts/tests/test_check_secrets_coverage.py
