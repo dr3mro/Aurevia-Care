@@ -59,6 +59,8 @@ class BrowserSessionHttpTest {
     private static final String ORG = "11111111-1111-1111-1111-111111111111";
     private static final String SUBJECT = "user-123";
     private static final String ISSUER_PROPERTY = "spring.security.oauth2.resourceserver.jwt.issuer-uri";
+    private static final String AUDIENCE_PROPERTY = "spring.security.oauth2.resourceserver.jwt.audiences";
+    private static final String AUDIENCE = "synthetic-api";
     private static final Instant NOW = Instant.parse("2026-11-21T12:00:00Z");
 
     /** Minimal protected endpoint reached only when every gate passes. */
@@ -89,6 +91,7 @@ class BrowserSessionHttpTest {
                     .header("alg", "none")
                     .subject(SUBJECT)
                     .issuer(ISSUER)
+                    .audience(List.of(AUDIENCE))
                     .claim("orgs", List.of(ORG))
                     .build();
         }
@@ -203,6 +206,7 @@ class BrowserSessionHttpTest {
                         StaffWebLoginConfiguration.class, Stubs.class)
                 .withPropertyValues(
                         ISSUER_PROPERTY + "=" + ISSUER,
+                        AUDIENCE_PROPERTY + "=" + AUDIENCE,
                         "smartclinic.oidc.client-id=synthetic-client",
                         "smartclinic.oidc.client-secret=synthetic-secret");
     }

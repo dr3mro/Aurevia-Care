@@ -98,6 +98,25 @@ public class WorklistRepository {
     }
 
     /**
+     * Ask the database whether a facility is outside the caller's assigned scope.
+     *
+     * <p>The fold is re-read inside the guarded transaction, so a scope change is
+     * visible on the next request. The database answer is {@code false} for a member
+     * with no recorded assignment and for the organization-wide oversight roles,
+     * and {@code true} only when the member has assignments but not this facility.</p>
+     *
+     * @param subject      authenticated subject in the active organization
+     * @param facilityCode tenant-local facility code being accessed
+     * @return {@code true} when this facility must be refused to the subject
+     */
+    public boolean outsideAssignedFacilities(String subject, String facilityCode) {
+        Boolean outside = jdbc.queryForObject(
+                "SELECT public.is_facility_out_of_scope(:subject, :facilityCode)",
+                Map.of("subject", subject, "facilityCode", facilityCode), Boolean.class);
+        return Boolean.TRUE.equals(outside);
+    }
+
+    /**
      * Check that a patient is visible in the active organization.
      *
      * @param patientId patient identifier
