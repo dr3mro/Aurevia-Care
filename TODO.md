@@ -190,8 +190,9 @@ Found while extending the specification (section 8.1 and docs/design/screens-and
     Do NOT turn on request or response body logging, and do NOT put the subject or organization into every log line (identifiers only where needed).
 
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` (API tasks) or `bash apps/staff-web/check.sh` (staff web tasks) must pass. Synthetic data only; write the failing test first; stay inside the declared scope; name folders and packages after what they hold, never a task ID; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
-- [ ] READY-11 · Staff web OIDC login with a session cookie and CSRF protection (WEB-03)
-  - attempts: 1
+- [-] READY-11 · Staff web OIDC login with a session cookie and CSRF protection (WEB-03)
+  - agent: swarm-1
+  - attempts: 2
   - scope: apps/api/pom.xml, apps/api/src/main/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/web, apps/api/src/main/resources
   - depends: AUD-20261120-03, READY-05
   - details:
@@ -266,8 +267,7 @@ Order of work for the whole production-readiness effort: (1) security and platfo
     4. Tests: each state, short search rejected, register success and validation error, duplicate warning shown, Arabic name rendering.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
-- [-] READY-26 · Orders: /orders list and /orders/:id detail with accept, reject, clarify
-  - agent: swarm-4
+- [ ] READY-26 · Orders: /orders list and /orders/:id detail with accept, reject, clarify
   - attempts: 1
   - requirements: XCH-01, XCH-02, XCH-03
   - scope: apps/staff-web/src/features/orders
@@ -281,8 +281,8 @@ Order of work for the whole production-readiness effort: (1) security and platfo
     3. Tests: each state, accept success, reject needs a reason, conflict keeps the typed reason, idempotency key is reused when the same action is retried and new for a new action.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
-- [-] READY-27 · Results: /results inbox and /results/critical queue
-  - agent: swarm-5
+- [x] READY-27 · Results: /results inbox and /results/critical queue
+  - pr: #286
   - attempts: 1
   - requirements: XCH-04, XCH-05
   - scope: apps/staff-web/src/features/results
@@ -296,8 +296,7 @@ Order of work for the whole production-readiness effort: (1) security and platfo
     3. Tests: each state, countdown uses a fake timer, overdue marking has text, escalate needs a reason, acknowledge conflict.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
-- [-] READY-28 · Lab: /lab/accessions list and accession actions
-  - agent: swarm-6
+- [ ] READY-28 · Lab: /lab/accessions list and accession actions
   - attempts: 1
   - requirements: LAB-01, LAB-02
   - scope: apps/staff-web/src/features/lab
@@ -311,8 +310,8 @@ Order of work for the whole production-readiness effort: (1) security and platfo
     3. Tests: each state, only valid actions offered per state, reject needs a reason, recollect links the new specimen.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
-- [-] READY-29 · Messages: /messages unit inbox and conversation view
-  - agent: swarm-7
+- [x] READY-29 · Messages: /messages unit inbox and conversation view
+  - pr: #280
   - attempts: 1
   - requirements: MSG-02, MSG-03
   - scope: apps/staff-web/src/features/messages
@@ -326,8 +325,7 @@ Order of work for the whole production-readiness effort: (1) security and platfo
     4. Tests: each state, reply success and conflict, assign, unread count updates after read, title contains no patient data.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
-- [-] READY-30 · Finance: /finance invoices with issue, payment, refund and void
-  - agent: swarm-8
+- [ ] READY-30 · Finance: /finance invoices with issue, payment, refund and void
   - attempts: 1
   - requirements: FIN-01, PRD-04
   - scope: apps/staff-web/src/features/finance
@@ -341,8 +339,7 @@ Order of work for the whole production-readiness effort: (1) security and platfo
     4. Tests: money formatting in English and Arabic, parser rejects bad input, each state, payment retry reuses the key, refund needs a reason.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
-- [-] READY-31 · Operations: /operations/queues for the operational queues
-  - agent: swarm-9
+- [ ] READY-31 · Operations: /operations/queues for the operational queues
   - attempts: 1
   - requirements: ADM-02, OPS-05
   - scope: apps/staff-web/src/features/operations
@@ -400,8 +397,8 @@ Do these after part 2 where `depends` says so. Persistence tasks run one at a ti
     If the interface cannot be implemented with a clean table design, STOP and write exactly which method and why into `.agent/pr-notes/<task-id>.md`; make no code changes.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT change files outside `scope`, add patient data to logs, or edit any existing migration.
-- [-] READY-38 · Persist messaging governance in PostgreSQL (V62) instead of memory
-  - agent: swarm-9
+- [x] READY-38 · Persist messaging governance in PostgreSQL (V62) instead of memory
+  - pr: #287
   - attempts: 1
   - requirements: ARC-01, ARC-02, OPS-02
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/messaging/governance, apps/api/src/test/java/com/aurevia/smartclinic/messaging/governance, db/migrations/V62__messaging_governance.sql, apps/api/src/test/java/com/aurevia/smartclinic/it
@@ -418,9 +415,10 @@ Do these after part 2 where `depends` says so. Persistence tasks run one at a ti
     If the interface cannot be implemented with a clean table design, STOP and write exactly which method and why into `.agent/pr-notes/<task-id>.md`; make no code changes.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT change files outside `scope`, add patient data to logs, or edit any existing migration.
-- [ ] READY-39 · Persist instruction facts in PostgreSQL (V63) instead of memory
+- [-] READY-39 · Persist instruction facts in PostgreSQL (V63) instead of memory
+  - agent: swarm-2
+  - attempts: 1
   - requirements: ARC-01, ARC-02, OPS-02
-  - attempts: 0
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/messaging/acknowledgment, apps/api/src/test/java/com/aurevia/smartclinic/messaging/acknowledgment, db/migrations/V63__instruction_facts.sql, apps/api/src/test/java/com/aurevia/smartclinic/it
   - depends: READY-38
   - reserved: V63
@@ -560,9 +558,10 @@ Each task below owns its own files, so the planner can run them side by side wit
     3. The line must never contain the query string, request or response bodies, headers or any user value. Build the JSON in a small helper class with a fixed field list so nothing else can be added.
     4. Tests: id taken from a valid header and generated otherwise, header echoed, JSON has exactly the fixed fields, a request with a patient name in the query and a bearer token in the body leaves neither in the log line.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
-- [ ] READY-53 · Public status, maintenance and support pages without patient data (WEB-13)
+- [-] READY-53 · Public status, maintenance and support pages without patient data (WEB-13)
+  - agent: swarm-3
+  - attempts: 1
   - requirements: WEB-13
-  - attempts: 0
   - scope: apps/public-pages, apps/staff-web/tests/publicPages.test.ts
   - depends: READY-32
   - details:
@@ -591,8 +590,8 @@ Each task below owns its own files, so the planner can run them side by side wit
 
 New tasks for IAM-02, which the API covers only in part (IAM-05 and IAM-06 already exist in the `patient.identity` and `authz.access` packages). Narrow scopes let them run in parallel.
 
-- [-] BUILD-01 · Staff invitations: single-use expiring invitation, accept and revoke
-  - agent: swarm-6
+- [x] BUILD-01 · Staff invitations: single-use expiring invitation, accept and revoke
+  - pr: #305
   - attempts: 1
   - requirements: IAM-02
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/staff, apps/api/src/test/java/com/aurevia/smartclinic/staff, db/migrations/V70__build_01.sql
@@ -603,8 +602,8 @@ New tasks for IAM-02, which the API covers only in part (IAM-05 and IAM-06 alrea
     3. Endpoints: create, list pending, revoke and accept. Accept creates the membership and role assignments and records who granted each role and the effective date.
     4. Tests: expired, reused, revoked and wrong-tenant tokens are rejected; acceptance is atomic.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [-] BUILD-02 · Role history: immutable membership and role assignment history
-  - agent: swarm-7
+- [x] BUILD-02 · Role history: immutable membership and role assignment history
+  - pr: #293
   - attempts: 1
   - requirements: IAM-02
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/authz, apps/api/src/test/java/com/aurevia/smartclinic/authz, db/migrations/V71__build_02.sql
@@ -621,8 +620,8 @@ New tasks for IAM-02, which the API covers only in part (IAM-05 and IAM-06 alrea
 
 Gaps in the clinical record, documents and result handling (CLN-06, CLN-07, XCH-04, XCH-07).
 
-- [-] BUILD-05 · Follow-up suggestion by visit type interval with an explained override
-  - agent: swarm-8
+- [x] BUILD-05 · Follow-up suggestion by visit type interval with an explained override
+  - pr: #301
   - attempts: 1
   - requirements: CLN-06
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/clinical, apps/api/src/test/java/com/aurevia/smartclinic/clinical, apps/api/src/main/java/com/aurevia/smartclinic/scheduling, apps/api/src/test/java/com/aurevia/smartclinic/scheduling, db/migrations/V74__build_05.sql
@@ -633,8 +632,8 @@ Gaps in the clinical record, documents and result handling (CLN-06, CLN-07, XCH-
     3. An authorized user may override with a reason; the override keeps provenance. Only an explicit confirmation creates a booking.
     4. Tests: interval math across a daylight-saving change, no booking without confirmation, override recorded.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [-] BUILD-06 · Documents: checksum, retained original bytes and void with reason
-  - agent: swarm-9
+- [x] BUILD-06 · Documents: checksum, retained original bytes and void with reason
+  - pr: #303
   - attempts: 1
   - requirements: CLN-07
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/documents, apps/api/src/test/java/com/aurevia/smartclinic/documents, db/migrations/V75__build_06.sql
@@ -646,8 +645,8 @@ Gaps in the clinical record, documents and result handling (CLN-06, CLN-07, XCH-
     4. Voiding an association to a chart, order or result needs a reason and keeps the history.
     5. Tests: tampered bytes are detected, void keeps the original, another tenant cannot read it.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [-] BUILD-07 · Result trending only for comparable units
-  - agent: swarm-10
+- [x] BUILD-07 · Result trending only for comparable units
+  - pr: #290
   - attempts: 1
   - requirements: XCH-07
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/lab, apps/api/src/test/java/com/aurevia/smartclinic/lab, apps/api/src/main/java/com/aurevia/smartclinic/exchange, apps/api/src/test/java/com/aurevia/smartclinic/exchange
@@ -657,7 +656,9 @@ Gaps in the clinical record, documents and result handling (CLN-06, CLN-07, XCH-
     3. Keep qualifiers such as less-than and greater-than as qualifiers, never as exact numbers; show source unit, reference range and time.
     4. Tests: mixed units are excluded with a reason; qualified values are never plotted as exact.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] BUILD-08 · Unmatched result reconciliation queue with owner assignment
+- [-] BUILD-08 · Unmatched result reconciliation queue with owner assignment
+  - agent: swarm-4
+  - attempts: 1
   - requirements: XCH-04
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/exchange, apps/api/src/test/java/com/aurevia/smartclinic/exchange
   - details:
@@ -671,8 +672,8 @@ Gaps in the clinical record, documents and result handling (CLN-06, CLN-07, XCH-
 
 Specialty workflows from the specification (RX-01, RX-02, RAD-01, PT-01, FIN-01).
 
-- [-] BUILD-09 · Versioned drug catalog search with market approval
-  - agent: swarm-1
+- [x] BUILD-09 · Versioned drug catalog search with market approval
+  - pr: #304
   - attempts: 1
   - requirements: RX-01
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/prescription, apps/api/src/test/java/com/aurevia/smartclinic/prescription, apps/api/src/main/java/com/aurevia/smartclinic/catalog, apps/api/src/test/java/com/aurevia/smartclinic/catalog, db/migrations/V76__build_09.sql
@@ -683,7 +684,9 @@ Specialty workflows from the specification (RX-01, RX-02, RAD-01, PT-01, FIN-01)
     3. A prescription draft stores the catalog version it was built from.
     4. Tests: an unapproved or retired item cannot be added to a new draft; an old draft keeps its version.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] BUILD-10 · Prescription channel evidence and a printable local prescription
+- [-] BUILD-10 · Prescription channel evidence and a printable local prescription
+  - agent: swarm-5
+  - attempts: 1
   - requirements: RX-02
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/prescription, apps/api/src/test/java/com/aurevia/smartclinic/prescription
   - details:
@@ -692,8 +695,8 @@ Specialty workflows from the specification (RX-01, RX-02, RAD-01, PT-01, FIN-01)
     3. Produce a printable prescription only where site policy allows it, with the prescriber attestation.
     4. Tests: no print without entitlement; the channel is recorded exactly as used.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [-] BUILD-11 · Radiology: verify patient and accession before linking a study
-  - agent: swarm-2
+- [x] BUILD-11 · Radiology: verify patient and accession before linking a study
+  - pr: #302
   - attempts: 1
   - requirements: RAD-01
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/radiology, apps/api/src/test/java/com/aurevia/smartclinic/radiology
@@ -703,8 +706,8 @@ Specialty workflows from the specification (RX-01, RX-02, RAD-01, PT-01, FIN-01)
     3. Record modality, urgency and clinical question at intake.
     4. Tests: a mismatch never links; a re-link after review keeps the history.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [-] BUILD-12 · Physical therapy: episode, outcome scales with units and signed progress
-  - agent: swarm-3
+- [x] BUILD-12 · Physical therapy: episode, outcome scales with units and signed progress
+  - pr: #291
   - attempts: 1
   - requirements: PT-01
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/therapy, apps/api/src/test/java/com/aurevia/smartclinic/therapy, db/migrations/V77__build_12.sql
@@ -715,8 +718,8 @@ Specialty workflows from the specification (RX-01, RX-02, RAD-01, PT-01, FIN-01)
     3. Outcome scales are versioned and store units; progress notes and discharge need a signature.
     4. Tests: an unsigned discharge is refused; a new scale version never rewrites old scores.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [-] BUILD-13 · Finance: immutable payment, refund and credit ledger with fixed precision
-  - agent: swarm-4
+- [x] BUILD-13 · Finance: immutable payment, refund and credit ledger with fixed precision
+  - pr: #295
   - attempts: 1
   - requirements: FIN-01
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/finance, apps/api/src/test/java/com/aurevia/smartclinic/finance
@@ -759,7 +762,9 @@ Messaging (MSG-05 to MSG-07) and operational queues (ADM-02).
     3. Apply a retention period; a legal hold blocks deletion; an export keeps provenance.
     4. Tests: held conversations survive the retention job; exports carry provenance.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] BUILD-17 · Operational queues: unsigned encounters and missing coverage
+- [-] BUILD-17 · Operational queues: unsigned encounters and missing coverage
+  - agent: swarm-6
+  - attempts: 1
   - requirements: ADM-02
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/clinical, apps/api/src/test/java/com/aurevia/smartclinic/clinical, apps/api/src/main/java/com/aurevia/smartclinic/config, apps/api/src/test/java/com/aurevia/smartclinic/config
   - details:
@@ -772,8 +777,8 @@ Messaging (MSG-05 to MSG-07) and operational queues (ADM-02).
 
 Staff web and patient app work (UX-01, PAT-01 to PAT-03) and recovery evidence (OPS-04).
 
-- [-] BUILD-18 · Arabic and RTL: staff web layout and mixed-script text
-  - agent: swarm-5
+- [x] BUILD-18 · Arabic and RTL: staff web layout and mixed-script text
+  - pr: #288
   - attempts: 1
   - requirements: UX-01
   - scope: apps/staff-web/src/i18n, apps/staff-web/src/theme
@@ -783,8 +788,8 @@ Staff web and patient app work (UX-01, PAT-01 to PAT-03) and recovery evidence (
     3. Mixed Arabic and Latin clinical text must render in the right order; show names in the local script.
     4. Tests: the layout flips, dates and numbers keep their form, a missing key falls back to English.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [-] BUILD-19 · Patient app: appointments with the facility time zone and confirmation
-  - agent: swarm-2
+- [x] BUILD-19 · Patient app: appointments with the facility time zone and confirmation
+  - pr: #292
   - attempts: 1
   - requirements: PAT-01
   - scope: apps/patient-mobile/src/features/appointments
@@ -794,8 +799,8 @@ Staff web and patient app work (UX-01, PAT-01 to PAT-03) and recovery evidence (
     3. Notification text stays generic; details load after sign-in.
     4. Tests: a daylight-saving boundary; a confirmed appointment cannot be confirmed twice.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [-] BUILD-20 · Patient app: released reports with revision and per-download authorization
-  - agent: swarm-3
+- [x] BUILD-20 · Patient app: released reports with revision and per-download authorization
+  - pr: #296
   - attempts: 1
   - requirements: PAT-02
   - scope: apps/patient-mobile/src/features/reports
@@ -805,8 +810,8 @@ Staff web and patient app work (UX-01, PAT-01 to PAT-03) and recovery evidence (
     3. Every download checks the linked patient and the current release; a withdrawn release stops access.
     4. Tests: withdrawn release, wrong patient, corrected report shows its context.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [-] BUILD-21 · Patient app: enrollment, recovery and account lockout screens
-  - agent: swarm-4
+- [x] BUILD-21 · Patient app: enrollment, recovery and account lockout screens
+  - pr: #298
   - attempts: 1
   - requirements: PAT-03
   - scope: apps/patient-mobile/src/features/enrollment
@@ -816,8 +821,8 @@ Staff web and patient app work (UX-01, PAT-01 to PAT-03) and recovery evidence (
     3. Sensitive account changes ask for sign-in again.
     4. Tests: no screen reveals whether a record exists.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [-] BUILD-22 · Backup and restore drill script with a checksum report
-  - agent: swarm-5
+- [x] BUILD-22 · Backup and restore drill script with a checksum report
+  - pr: #297
   - attempts: 1
   - requirements: OPS-04
   - scope: infra/recovery
@@ -857,8 +862,8 @@ The contract `contracts/openapi.yaml` is the authoritative description of the AP
 
 ADR 0003 (`docs/decisions/0003-persistence-of-in-memory-stores.md`) lists the adapters that still keep data in memory. Each task replaces one store with a PostgreSQL adapter, keeps the tenant (organization ID) in every key and in every query, and keeps the existing port unchanged. READY-37 to READY-42 cover the other stores. Production wiring must pick the JDBC adapter; the in-memory adapter stays for unit tests only.
 
-- [-] BUILD-25 · Persist the delivery outbox, dead letter and replay store with JDBC
-  - agent: swarm-6
+- [x] BUILD-25 · Persist the delivery outbox, dead letter and replay store with JDBC
+  - pr: #294
   - attempts: 1
   - requirements: ARC-05, ARC-02
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/events, apps/api/src/test/java/com/aurevia/smartclinic/events
@@ -878,7 +883,9 @@ ADR 0003 (`docs/decisions/0003-persistence-of-in-memory-stores.md`) lists the ad
     3. Make `TemplateService` a Spring bean that uses the JDBC store in production.
     4. Tests: a template version is immutable once published, an old note still shows its original field meanings after the dictionary changes, tenant isolation.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] BUILD-27 · Persist document associations, quarantine state and versions with JDBC
+- [-] BUILD-27 · Persist document associations, quarantine state and versions with JDBC
+  - agent: swarm-7
+  - attempts: 1
   - requirements: ARC-06, CLN-07
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/documents, apps/api/src/test/java/com/aurevia/smartclinic/documents, db/migrations/V81__document_store.sql
   - depends: BUILD-06
@@ -889,8 +896,8 @@ ADR 0003 (`docs/decisions/0003-persistence-of-in-memory-stores.md`) lists the ad
     3. Make the services Spring beans that use the JDBC store.
     4. Tests: voiding an association keeps its history, a checksum mismatch is rejected, a quarantined file is never returned, tenant isolation.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [-] BUILD-28 · Persist message attachments and quarantine with JDBC
-  - agent: swarm-7
+- [x] BUILD-28 · Persist message attachments and quarantine with JDBC
+  - pr: #307
   - attempts: 1
   - requirements: MSG-03, ARC-06, ARC-07
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/messaging/attachments, apps/api/src/test/java/com/aurevia/smartclinic/messaging/attachments, db/migrations/V82__attachment_store.sql
@@ -901,8 +908,8 @@ ADR 0003 (`docs/decisions/0003-persistence-of-in-memory-stores.md`) lists the ad
     3. Make `AttachmentService` a Spring bean that uses the JDBC store.
     4. Tests: wrong-conversation reuse is refused, an unscanned file is not downloadable, the other unit cannot see the file, tenant isolation.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [-] BUILD-29 · Persist patient accounts, enrollment and recovery with JDBC
-  - agent: swarm-8
+- [x] BUILD-29 · Persist patient accounts, enrollment and recovery with JDBC
+  - pr: #300
   - attempts: 1
   - requirements: PAT-03, IAM-05, ARC-02
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/messaging/enrollment, apps/api/src/test/java/com/aurevia/smartclinic/messaging/enrollment, db/migrations/V83__patient_access_store.sql
@@ -913,8 +920,8 @@ ADR 0003 (`docs/decisions/0003-persistence-of-in-memory-stores.md`) lists the ad
     3. Make `PatientAccessService` a Spring bean that uses the JDBC store.
     4. Tests: a reused or expired invitation fails, the lockout survives a restart, no response reveals whether a record exists, tenant isolation.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [-] BUILD-30 · Persist released reports and release history with JDBC
-  - agent: swarm-9
+- [x] BUILD-30 · Persist released reports and release history with JDBC
+  - pr: #306
   - attempts: 1
   - requirements: XCH-06, PAT-02
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/messaging/reports, apps/api/src/test/java/com/aurevia/smartclinic/messaging/reports, db/migrations/V84__report_release_store.sql
@@ -925,7 +932,9 @@ ADR 0003 (`docs/decisions/0003-persistence-of-in-memory-stores.md`) lists the ad
     3. A withdrawn or corrected release updates current access and keeps its history.
     4. Tests: a withdrawn release stops the next download, history rows are append-only, tenant isolation.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] BUILD-31 · Persist therapy episodes, outcome scales and signed notes with JDBC
+- [-] BUILD-31 · Persist therapy episodes, outcome scales and signed notes with JDBC
+  - agent: swarm-8
+  - attempts: 1
   - requirements: PT-01, ARC-02
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/therapy, apps/api/src/test/java/com/aurevia/smartclinic/therapy, db/migrations/V85__therapy_store.sql
   - depends: BUILD-12
@@ -941,7 +950,9 @@ ADR 0003 (`docs/decisions/0003-persistence-of-in-memory-stores.md`) lists the ad
 
 Requirements that no task covered: recurrence templates (CLN-01), the full set of note templates (CLN-04) and emergency-access evidence (IAM-06).
 
-- [ ] BUILD-32 · Scheduling: recurrence templates and series booking
+- [-] BUILD-32 · Scheduling: recurrence templates and series booking
+  - agent: swarm-9
+  - attempts: 1
   - requirements: CLN-01
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/scheduling, apps/api/src/test/java/com/aurevia/smartclinic/scheduling, db/migrations/V86__recurrence_templates.sql
   - reserved: V86
@@ -962,7 +973,9 @@ Requirements that no task covered: recurrence templates (CLN-01), the full set o
     3. Every field takes free text with a language. Requiredness and dictionaries are configuration for clinical governance, not constants.
     4. Tests: each template validates a full and a partial note, a historical version keeps its field meanings, a required field blocks signing.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] BUILD-34 · Emergency and support access: time limit, alert, review and closure
+- [-] BUILD-34 · Emergency and support access: time limit, alert, review and closure
+  - agent: swarm-10
+  - attempts: 1
   - requirements: IAM-06
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/authz/access, apps/api/src/test/java/com/aurevia/smartclinic/authz/access, db/migrations/V88__access_review.sql
   - reserved: V88
@@ -1060,8 +1073,8 @@ OPS-07 and OPS-08 have no implementation yet. The spec asks for exports with a m
     3. Add an offboarding command that exports first, then marks the tenant for deletion after a review period.
     4. Tests: a legal hold blocks deletion, a released hold lets the next run delete, offboarding without an export is refused.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [-] BUILD-43 · Onboarding import: versioned manifest, mapping and dry run
-  - agent: swarm-10
+- [x] BUILD-43 · Onboarding import: versioned manifest, mapping and dry run
+  - pr: #299
   - attempts: 1
   - requirements: OPS-08
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/tenant/importing, apps/api/src/test/java/com/aurevia/smartclinic/tenant/importing, db/migrations/V90__onboarding_import.sql
@@ -1087,8 +1100,8 @@ OPS-07 and OPS-08 have no implementation yet. The spec asks for exports with a m
 
 The staff web has admin, chart and scheduling. READY-24 to READY-32 add admin, patients, orders, results, lab, messages, finance and operations. These tasks add the rest. Each exports its routes from `features/<name>/routes.ts`; BUILD-52 registers them in the router so the tasks can run in parallel. Follow `docs/design/screen-recipe.md`: every screen has loading, empty, error, forbidden, conflict and session-expired states.
 
-- [-] BUILD-45 · Staff web: prescriptions (draft, search drug catalog, attest, route, status)
-  - agent: swarm-3
+- [x] BUILD-45 · Staff web: prescriptions (draft, search drug catalog, attest, route, status)
+  - pr: #315
   - attempts: 1
   - requirements: RX-01, RX-02, WEB-09
   - scope: apps/staff-web/src/features/prescriptions
@@ -1109,8 +1122,8 @@ The staff web has admin, chart and scheduling. READY-24 to READY-32 add admin, p
     3. A wrong-patient link shows the mismatch and does not save.
     4. Tests: mismatch refusal, addendum reaches the referrer view, English and Arabic.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [-] BUILD-47 · Staff web: physical therapy episodes, outcome scales and signed progress
-  - agent: swarm-5
+- [x] BUILD-47 · Staff web: physical therapy episodes, outcome scales and signed progress
+  - pr: #312
   - attempts: 1
   - requirements: PT-01, WEB-09
   - scope: apps/staff-web/src/features/therapy
@@ -1120,8 +1133,8 @@ The staff web has admin, chart and scheduling. READY-24 to READY-32 add admin, p
     3. Signed notes are read-only; changes go through an addendum.
     4. Tests: a signed note cannot be edited, discharge closes the referral, English and Arabic.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [-] BUILD-48 · Staff web: duplicate patient review worklist with dry run and second approval
-  - agent: swarm-6
+- [x] BUILD-48 · Staff web: duplicate patient review worklist with dry run and second approval
+  - pr: #309
   - attempts: 1
   - requirements: IAM-04, WEB-09
   - scope: apps/staff-web/src/features/duplicates
@@ -1131,8 +1144,8 @@ The staff web has admin, chart and scheduling. READY-24 to READY-32 add admin, p
     3. A second authorized reviewer approves; the first reviewer cannot approve their own request.
     4. Tests: unresolved conflicts block approval, the same reviewer is refused, English and Arabic.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [-] BUILD-49 · Staff web: care unit service hours, coverage and response targets
-  - agent: swarm-7
+- [x] BUILD-49 · Staff web: care unit service hours, coverage and response targets
+  - pr: #313
   - attempts: 1
   - requirements: MSG-06, ADM-01
   - scope: apps/staff-web/src/features/units
@@ -1142,8 +1155,8 @@ The staff web has admin, chart and scheduling. READY-24 to READY-32 add admin, p
     3. Show a unit with no backup coverage as an operational warning.
     4. Tests: a missing owner blocks enabling the unit, an effective date in the past is refused, English and Arabic.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [-] BUILD-50 · Staff web: templates, field dictionaries and release policies (admin)
-  - agent: swarm-8
+- [x] BUILD-50 · Staff web: templates, field dictionaries and release policies (admin)
+  - pr: #314
   - attempts: 1
   - requirements: ADM-01, CLN-04, XCH-06
   - scope: apps/staff-web/src/features/policies
@@ -1178,8 +1191,8 @@ The staff web has admin, chart and scheduling. READY-24 to READY-32 add admin, p
 
 PAT-01 to PAT-03 and UX-01 for the iOS and Android app. BUILD-19 to BUILD-21 cover appointments, reports and enrollment.
 
-- [-] BUILD-53 · Patient app: push registration, generic notification text and invalid token handling
-  - agent: swarm-9
+- [x] BUILD-53 · Patient app: push registration, generic notification text and invalid token handling
+  - pr: #308
   - attempts: 1
   - requirements: PAT-01
   - scope: apps/patient-mobile/src/features/notifications
@@ -1189,8 +1202,8 @@ PAT-01 to PAT-03 and UX-01 for the iOS and Android app. BUILD-19 to BUILD-21 cov
     3. Log an invalid device token and stop using it. When a notification fails, the item is still in the inbox.
     4. Tests: the payload has no clinical text, an invalid token is dropped, sign-out unregisters.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [-] BUILD-54 · Patient app: OS-backed credential storage and no persistent clinical cache
-  - agent: swarm-10
+- [x] BUILD-54 · Patient app: OS-backed credential storage and no persistent clinical cache
+  - pr: #310
   - attempts: 1
   - requirements: PAT-02
   - scope: apps/patient-mobile/src/api
@@ -1200,8 +1213,8 @@ PAT-01 to PAT-03 and UX-01 for the iOS and Android app. BUILD-19 to BUILD-21 cov
     3. Ask for sign-in again before a sensitive account change.
     4. Tests: nothing clinical reaches persistent storage, sign-out clears memory, idle timeout signs out.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [-] BUILD-55 · Patient app: Arabic, RTL and accessibility pass on every screen
-  - agent: swarm-3
+- [x] BUILD-55 · Patient app: Arabic, RTL and accessibility pass on every screen
+  - pr: #323
   - attempts: 1
   - requirements: UX-01
   - scope: apps/patient-mobile/src/app
@@ -1216,8 +1229,8 @@ PAT-01 to PAT-03 and UX-01 for the iOS and Android app. BUILD-19 to BUILD-21 cov
 
 OPS-03, OPS-06, WEB-08 and WEB-10.
 
-- [-] BUILD-56 · Staff web: route chunk budget, self-hosted fonts and no third-party scripts
-  - agent: swarm-4
+- [x] BUILD-56 · Staff web: route chunk budget, self-hosted fonts and no third-party scripts
+  - pr: #320
   - attempts: 1
   - requirements: WEB-08
   - scope: apps/staff-web/scripts, apps/staff-web/vite.config.ts, apps/staff-web/public
@@ -1227,8 +1240,8 @@ OPS-03, OPS-06, WEB-08 and WEB-10.
     3. Add a check that no third-party script, font or tracker URL appears in the build output.
     4. Tests: a fixture bundle over the limit fails, a bundle with an external URL fails.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [-] BUILD-57 · Load test profile and report for the pilot size
-  - agent: swarm-5
+- [x] BUILD-57 · Load test profile and report for the pilot size
+  - pr: #321
   - attempts: 1
   - requirements: OPS-03
   - scope: infra/loadtest
@@ -1238,8 +1251,8 @@ OPS-03, OPS-06, WEB-08 and WEB-10.
     3. It reports p95 for reads and commands separately and exits non-zero when reads are over 500 ms or commands over 900 ms.
     4. Tests run a short profile against a local fake server; never point the script at a real environment by default.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [-] BUILD-58 · Infrastructure as code for ECS, RDS and private S3 (staging and production)
-  - agent: swarm-6
+- [x] BUILD-58 · Infrastructure as code for ECS, RDS and private S3 (staging and production)
+  - pr: #322
   - attempts: 1
   - requirements: OPS-06, OPS-02
   - scope: infra/cloud
@@ -1403,8 +1416,8 @@ The screen designs were reviewed against the specification. Each task makes one 
 
 Screens the earlier parts did not cover. Each exports its routes from `features/<name>/routes.ts`; BUILD-76 registers them.
 
-- [-] BUILD-72 · Staff web: scheduling administration (resources, availability, visit types, booking rules)
-  - agent: swarm-7
+- [x] BUILD-72 · Staff web: scheduling administration (resources, availability, visit types, booking rules)
+  - pr: #317
   - attempts: 1
   - requirements: CLN-01, ADM-01, WEB-09
   - scope: apps/staff-web/src/features/availability
@@ -1415,8 +1428,8 @@ Screens the earlier parts did not cover. Each exports its routes from `features/
     4. Tests: a change with an effective date in the past is refused, affected bookings are listed, forbidden state for non-admin roles, English and Arabic.
     5. If the API you need is missing from `contracts/openapi.yaml`, do not invent it: write what is missing under `## Why this is not finished` in your notes and stop.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [-] BUILD-73 · Staff web: referral partner directory and coverage rosters
-  - agent: swarm-8
+- [x] BUILD-73 · Staff web: referral partner directory and coverage rosters
+  - pr: #318
   - attempts: 1
   - requirements: ADM-01, XCH-05, MSG-06
   - scope: apps/staff-web/src/features/coverage
@@ -1438,8 +1451,8 @@ Screens the earlier parts did not cover. Each exports its routes from `features/
     4. Tests: a quarantined file cannot be opened, rotation does not change the stored file, a void asks for a reason and keeps the history, English and Arabic.
     5. If the API you need is missing from `contracts/openapi.yaml`, do not invent it: write what is missing under `## Why this is not finished` in your notes and stop.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [-] BUILD-75 · Staff web: care-team action tasks (owner, due date, status)
-  - agent: swarm-9
+- [x] BUILD-75 · Staff web: care-team action tasks (owner, due date, status)
+  - pr: #319
   - attempts: 1
   - requirements: CLN-06, ADM-02, WEB-09
   - scope: apps/staff-web/src/features/caretasks
