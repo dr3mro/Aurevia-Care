@@ -982,15 +982,25 @@ def images_ready_command(slots=None):
 
 
 def failure_report(directory):
-    """Why a worker's local check failed: the end of its check log, ready for the PR body.
+    """Why a worker's local check failed: prefer TypeScript/frontend lines, else the log tail.
 
     The log is output of the repository's own scripts. It is clipped and its code fences
-    are neutralised so it cannot break out of the block it is shown in."""
-    log = read(Path(directory) / "check.log", "")
-    if not log:
+    are neutralised so it cannot break out of the block it is shown in. Fix workers must
+    see ``error TS…`` lines when those caused the failure, not unrelated unittest noise."""
+    root = Path(directory)
+    parts = [read(root / name, "") for name in (
+        "check.log", "frontend-typecheck.log", "coverage.log")]
+    log = "\n".join(p for p in parts if p)
+    if not log.strip():
         return "**Why:** no check log was kept, see the worker run.\n\n"
-    tail = "\n".join(log.splitlines()[-60:])[-3000:].replace("```", "'''")
-    return f"**Why it failed** (end of the local check log):\n\n```text\n{tail}\n```\n\n"
+    preferred = [line for line in log.splitlines()
+                 if re.search(r"error TS|frontend (typecheck|standards)|typecheck|"
+                              r"FAIL |eslint|Coverage|still failing after two repair",
+                              line, re.I)]
+    chosen = preferred[-40:] if preferred else log.splitlines()[-60:]
+    tail = "\n".join(chosen)[-3000:].replace("```", "'''")
+    label = "TypeScript/frontend and gate lines" if preferred else "end of the local check log"
+    return f"**Why it failed** ({label}):\n\n```text\n{tail}\n```\n\n"
 
 
 def clip(text):
@@ -1336,6 +1346,22 @@ def task_id_of(branch):
     return match.group(1) if match else ""
 
 
+def frontend_gate_rule(scope):
+    """Mandatory typecheck command for a frontend scope, or empty when not applicable."""
+    paths = " ".join(scope or [])
+    rules = []
+    if "apps/patient-mobile" in paths:
+        rules.append("apps/patient-mobile → run `bash apps/patient-mobile/check.sh` "
+                     "(typecheck + lint + Jest 100%); Jest alone is not done")
+    if "apps/staff-web" in paths:
+        rules.append("apps/staff-web → run `bash apps/staff-web/check.sh` "
+                     "(includes typecheck); Vitest alone is not done")
+    if not rules:
+        return ""
+    return ("Frontend gate: " + "; ".join(rules) +
+            ". Paste typecheck final lines under Test evidence. Fix every `error TS…` before stopping.")
+
+
 def task_text(task):
     fields = [("Task", task["task"]),
               ("Time budget", "Finish this task within 175 minutes; do not start another task. "
@@ -1350,7 +1376,8 @@ def task_text(task):
               ("Coverage rule", "Delivery requires 100% line, branch, method and class coverage. Test every "
                                 "branch and failure path you add, delete code that cannot run, and never "
                                 "lower a threshold, add an exclusion or skip a test (see AGENTS.md, "
-                                "Coverage rules).")]
+                                "Coverage rules)."),
+              ("Frontend rule", frontend_gate_rule(task.get("scope")))]
     head = "\n".join(f"{k}: {v}" for k, v in fields if v and v != "-")
     return clip(f"{head}\n\n{task['details']}")
 
@@ -1840,12 +1867,16 @@ def main_is_red(workflow="delivery.yml"):
 
 def plan_integration(red=False):
     """Pull requests ready to integrate, oldest first. While main is red only
-    repair pull requests (FIX-, DLV-) may merge, so ordinary work is not blamed for it."""
+    repair pull requests (FIX-, DLV-) may merge, so ordinary work is not blamed for it.
+
+    Drafts are excluded explicitly: a worker that failed local checks (including
+    typecheck) opens a draft, and that work must not merge until a fix pass undrafts it."""
     prs = gh_json("pr", "list", "--state", "open", "--label", "swarm", "--limit", "50",
-                  "--json", "number,title,labels,isCrossRepository")
+                  "--json", "number,title,labels,isCrossRepository,isDraft")
     blocked = {"needs-fix", "needs-human"}
     return [p["number"] for p in sorted(prs, key=lambda p: p["number"])
-            if not p["isCrossRepository"] and not blocked & label_names(p)
+            if not p["isCrossRepository"] and not p.get("isDraft")
+            and not blocked & label_names(p)
             and (not red or p.get("title", "").startswith(REPAIR_PREFIXES))]
 
 

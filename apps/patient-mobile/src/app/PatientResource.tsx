@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 
-import { TransportError } from '../api/transport';
+import { asTransportError } from '../api/transport';
 
 import { ScreenStateView, screenStateForError } from './screenStates';
 import type { ResourceState, ScreenMessages } from './screenStates';
@@ -58,8 +58,7 @@ export function PatientResource<T>({
         if (!active) {
           return;
         }
-        const failure =
-          error instanceof TransportError ? error : new TransportError('network', {});
+        const failure = asTransportError(error, 'network');
         if (failure.kind === 'unauthenticated') {
           onSessionExpired();
         }

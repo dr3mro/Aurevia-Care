@@ -110,7 +110,7 @@ run_agent() {
 
 tracker_rules() {
   if [[ "${SWARM:-0}" == 1 ]]; then
-    printf '%s' "You are one of several parallel workers. Follow AGENTS.md, CODING_STYLE.md and the specification, and use the .opencode specialists as AGENTS.md directs. Stay inside the task scope and use only the reserved migration version. Name Java packages and classes by business domain, never by story or task ID, and reuse existing domain types instead of duplicating them. Delivery requires 100% coverage: write a test for every branch and failure path you add, delete code that cannot run, never lower a coverage threshold, add an exclusion or skip a test, and list each new branch with its test in your notes (AGENTS.md, Coverage rules). Do not call the task complete until you have run the coverage command for every area you touched, confirmed 100% on every file you changed, and written the command and result in your notes; if you cannot reach 100%, say so in your notes instead of finishing. Do not edit TODO.md, MEMORY.md, WORKSPACE.md, BUGS.md, PROJECT.md or docs/swarm: the orchestrator already marked your task [-] in TODO.md and the integrator marks it [x] after the merge. Write the requirement IDs, acceptance mapping, exact commands run and results, defects found and decisions to ${notes_file}, using the headings in AGENTS.md (Swarm hand-off), including Findings and Lessons for workers (create the pr-notes folder if missing; the file is named after your story and is yours alone, so parallel workers never touch the same file). It is committed with your work and becomes the pull request description. Run the fast unit tests. The integrator runs the database and integration tests. If a decision or evidence is missing, stop and say so in ${notes_file}. If you cannot finish or a check still fails, add a section \"Why this is not finished\" to ${notes_file} with what failed (the command and the error), the most likely cause, what you already tried, and the exact next step, so the next worker or a person can continue without rediscovering it."
+    printf '%s' "You are one of several parallel workers. Follow AGENTS.md, CODING_STYLE.md and the specification, and use the .opencode specialists as AGENTS.md directs. Stay inside the task scope and use only the reserved migration version. Name Java packages and classes by business domain, never by story or task ID, and reuse existing domain types instead of duplicating them. Delivery requires 100% coverage: write a test for every branch and failure path you add, delete code that cannot run, never lower a coverage threshold, add an exclusion or skip a test, and list each new branch with its test in your notes (AGENTS.md, Coverage rules). Do not call the task complete until you have run the coverage command for every area you touched, confirmed 100% on every file you changed, and written the command and result in your notes; if you cannot reach 100%, say so in your notes instead of finishing. Frontend definition of done (mandatory): Jest or Vitest green alone is NOT done. For apps/patient-mobile run \`bash apps/patient-mobile/check.sh\` (typecheck, lint, Jest with 100% coverage) and paste the typecheck final lines into ${notes_file} under Test evidence. For apps/staff-web run \`bash apps/staff-web/check.sh\` (includes typecheck). A TypeScript error (error TS…) means the task is unfinished — fix every error before you stop. Do not edit TODO.md, MEMORY.md, WORKSPACE.md, BUGS.md, PROJECT.md or docs/swarm: the orchestrator already marked your task [-] in TODO.md and the integrator marks it [x] after the merge. Write the requirement IDs, acceptance mapping, exact commands run and results, defects found and decisions to ${notes_file}, using the headings in AGENTS.md (Swarm hand-off), including Findings and Lessons for workers (create the pr-notes folder if missing; the file is named after your story and is yours alone, so parallel workers never touch the same file). It is committed with your work and becomes the pull request description. The worker then re-runs typecheck and coverage gates; failures are sent back to you. The integrator runs the database and full integration tests. If a decision or evidence is missing, stop and say so in ${notes_file}. If you cannot finish or a check still fails, add a section \"Why this is not finished\" to ${notes_file} with what failed (the command and the error), the most likely cause, what you already tried, and the exact next step, so the next worker or a person can continue without rediscovering it."
   else
     printf '%s' "Update TODO.md and MEMORY.md. Mark your task [-] with your agent name before you start and [x] with evidence when every gate passes. If a decision or evidence is missing, put the task back to [ ] and write the question under it in TODO.md."
   fi
@@ -198,8 +198,21 @@ cmd_implement() {
   activate_ci_config
   result=$(run_agent smartclinic-orchestrator "$(story_prompt)" "$out/implement.log")
   restore_config
-  # Coverage gate before anything is committed: Delivery fails on one missed line
-  # or branch. On a miss the agent gets the report up to twice and must add the tests.
+  # Keep any uncommitted agent work so the repair gates and the worker check see it.
+  # (Previously this commit ran after coverage, so type errors in the last edit could
+  # skip the repair loop and only fail later in Delivery.)
+  commit_agent_work() {
+    [[ -f "$notes_file" ]] && cp "$notes_file" "$out/publish-notes.md"
+    git rm -q --cached --ignore-unmatch -- .agent/pr-notes.md
+    if [[ -n "$(git status --porcelain --untracked-files=all)" ]]; then
+      git add -A
+      git commit -qm "Agent changes for ${STORY_ID}"
+    fi
+  }
+  commit_agent_work
+
+  # Coverage gate: Delivery fails on one missed line or branch. On a miss the
+  # agent gets the report up to twice and must add the tests.
   if [[ "$result" != rate_limited && "$result" != timeout ]]; then
     attempt=0
     until bash scripts/coverage-check.sh "$(cat "$out/base-sha")" > "$out/coverage.log" 2>&1; do
@@ -212,19 +225,29 @@ cmd_implement() {
       run_agent smartclinic-orchestrator "The coverage check failed, so this task is not complete (repair attempt ${attempt} of 2). Delivery requires 100% coverage. Read the failure below, add deterministic tests for every uncovered line and branch (or delete code that cannot run), never lower a threshold or add an exclusion, update ${notes_file} with the branch-to-test list, then stop. Failure output (tail):
 $(tail -n 60 "$out/coverage.log")" "$out/coverage-fix-${attempt}.log" > /dev/null
       restore_config
+      commit_agent_work
     done
   fi
-  # The publish job reads the notes from .agent/publish-notes.md in the artifact. That name
-  # is ignored and never the shared .agent/pr-notes.md, which no run may write or commit.
-  [[ -f "$notes_file" ]] && cp "$notes_file" "$out/publish-notes.md"
-  # The shared notes file was retired because every run overwrote it and PRs conflicted.
-  # If an old copy is still tracked, drop it from this branch instead of editing it.
-  git rm -q --cached --ignore-unmatch -- .agent/pr-notes.md
-  # Keep any uncommitted agent work so it is checked and published.
-  if [[ -n "$(git status --porcelain --untracked-files=all)" ]]; then
-    git add -A
-    git commit -qm "Agent changes for ${STORY_ID}"
+
+  # Frontend typecheck/lint gate: Delivery Frontend standards fails on one TS
+  # error. Jest green alone is not enough. Re-prompt up to twice with the TS tail.
+  if [[ "$result" != rate_limited && "$result" != timeout ]]; then
+    : > "$out/frontend-typecheck.log"
+    attempt=0
+    until bash scripts/frontend-typecheck-check.sh "$(cat "$out/base-sha")" > "$out/frontend-typecheck.log" 2>&1; do
+      attempt=$((attempt + 1))
+      if [[ "$attempt" -gt 2 ]]; then
+        printf '%s\n' "frontend typecheck still failing after two repair attempts" >> "$out/frontend-typecheck.log"
+        break
+      fi
+      activate_ci_config
+      run_agent smartclinic-orchestrator "The frontend typecheck/lint gate failed, so this task is not complete (repair attempt ${attempt} of 2). Jest or Vitest passing is not enough. Fix every TypeScript error (error TS…) and lint failure in the apps you changed. For patient-mobile run bash apps/patient-mobile/check.sh; for staff-web run bash apps/staff-web/check.sh. Paste the typecheck final lines into ${notes_file} under Test evidence, then stop. Failure output (prefer error TS lines):
+$( { grep -E 'error TS|FAIL |eslint' "$out/frontend-typecheck.log" || true; tail -n 40 "$out/frontend-typecheck.log"; } | tail -n 60 )" "$out/frontend-typecheck-fix-${attempt}.log" > /dev/null
+      restore_config
+      commit_agent_work
+    done
   fi
+
   local commits checks=skipped
   commits=$(git rev-list --count "$(cat "$out/base-sha")..HEAD")
   # A rate limit or timeout ends this worker now: do not spend runner minutes on
@@ -237,9 +260,12 @@ $(tail -n 60 "$out/coverage.log")" "$out/coverage-fix-${attempt}.log" > /dev/nul
     # pull request and on main, so the agent never pays for the expensive checks.
     gate=${CHECK_SCRIPT:-scripts/check.sh}
     if bash "$gate" > "$out/check.log" 2>&1; then checks=passed; else checks=failed; fi
-    # A coverage miss that survived the repair attempt keeps the pull request a draft.
+    # A coverage or typecheck miss that survived repair keeps the pull request a draft.
     if grep -q 'still failing after two repair' "$out/coverage.log" 2>/dev/null; then
       checks=failed; cat "$out/coverage.log" >> "$out/check.log"
+    fi
+    if grep -q 'still failing after two repair' "$out/frontend-typecheck.log" 2>/dev/null; then
+      checks=failed; cat "$out/frontend-typecheck.log" >> "$out/check.log"
     fi
   fi
   printf '%s' "$result" > "$out/result"

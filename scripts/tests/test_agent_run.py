@@ -44,11 +44,15 @@ class AgentRunTests(unittest.TestCase):
         (self.repo / "scripts/check.sh").write_text("#!/usr/bin/env bash\nexit ${CHECK_EXIT:-0}\n")
         (self.repo / "scripts/coverage-check.sh").write_text(
             "#!/usr/bin/env bash\necho x >> \"${COVERAGE_LOG:-/dev/null}\"\nexit ${COVERAGE_EXIT:-0}\n")
+        (self.repo / "scripts/frontend-typecheck-check.sh").write_text(
+            "#!/usr/bin/env bash\necho t >> \"${FRONTEND_TYPECHECK_LOG:-/dev/null}\"\n"
+            "exit ${FRONTEND_TYPECHECK_EXIT:-0}\n")
         (self.repo / ".github/pull_request_template.md").write_text("## Summary\n")
         (self.repo / ".github/opencode.ci.json").write_text('{"ci": true}')
         (self.repo / "opencode.json").write_text('{"real": true}')
         (self.repo / ".gitignore").write_text("/.agent/\n")
-        for name in ("agent-run.sh", "check.sh", "coverage-check.sh"):
+        for name in ("agent-run.sh", "check.sh", "coverage-check.sh",
+                     "frontend-typecheck-check.sh"):
             (self.repo / "scripts" / name).chmod(0o755)
         self.git("add", "-A")
         self.git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "init")
@@ -229,6 +233,20 @@ class AgentRunTests(unittest.TestCase):
         self.run_cmd("implement", FAKE_MODE="commit", COVERAGE_EXIT="1", COVERAGE_LOG=str(log))
         self.assertEqual(self.outputs()["checks"], "failed")
         self.assertEqual(len(log.read_text().split()), 3)
+
+    def test_a_frontend_typecheck_miss_gets_two_repairs_then_opens_a_draft(self):
+        log = self.repo.parent / "frontend-typecheck.log"
+        self.run_cmd("implement", FAKE_MODE="commit", FRONTEND_TYPECHECK_EXIT="1",
+                     FRONTEND_TYPECHECK_LOG=str(log))
+        self.assertEqual(self.outputs()["checks"], "failed")
+        # Initial failure + two repair re-runs = three invocations.
+        self.assertEqual(len(log.read_text().split()), 3)
+        prompt_log = self.tmp / "prompts.log"
+        # The repair prompt must name typecheck, not only coverage.
+        self.run_cmd("implement", FAKE_MODE="commit", FRONTEND_TYPECHECK_EXIT="1",
+                     FRONTEND_TYPECHECK_LOG=str(self.repo.parent / "ft2.log"),
+                     PROMPT_LOG=str(prompt_log))
+        self.assertIn("frontend typecheck", prompt_log.read_text().lower())
 
     def test_uncommitted_work_is_committed(self):
         self.run_cmd("implement", FAKE_MODE="dirty")
