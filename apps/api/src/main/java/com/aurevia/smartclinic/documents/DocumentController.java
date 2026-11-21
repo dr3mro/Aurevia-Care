@@ -27,8 +27,9 @@ import com.aurevia.smartclinic.api.IfMatch;
  *
  * <p>The commands exposed here are {@code POST /api/v1/documents/associations}
  * to attach an original, {@code GET /api/v1/documents/associations/{id}} for its
- * history, {@code POST /api/v1/documents/associations/{id}/void} for a reasoned
- * void guarded by {@code If-Match}, {@code POST /api/v1/documents/rendered} for
+ * history, {@code GET /api/v1/documents/associations/{id}/content} for a
+ * checksum-verified original download, {@code POST /api/v1/documents/associations/{id}/void}
+ * for a reasoned void guarded by {@code If-Match}, {@code POST /api/v1/documents/rendered} for
  * a versioned PDF and {@code GET /api/v1/documents/rendered/{id}[/content]} for
  * its metadata or immutable bytes. Tenant and author are never bound from the
  * request. Authorization, checksums, history and audit live in
@@ -71,6 +72,18 @@ public class DocumentController {
     @GetMapping("/associations/{id}")
     public DocumentAssocView association(@PathVariable String id) {
         return service.association(id);
+    }
+
+    /**
+     * Download the retained original bytes after checksum re-verification.
+     *
+     * @param id opaque association identifier
+     * @return the verified original bytes
+     */
+    @GetMapping(value = "/associations/{id}/content", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
+    public ResponseEntity<byte[]> associationContent(@PathVariable String id) {
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .body(service.associationContent(id));
     }
 
     /**

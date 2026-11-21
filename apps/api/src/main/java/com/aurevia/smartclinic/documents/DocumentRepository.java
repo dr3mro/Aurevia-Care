@@ -3,6 +3,7 @@ package com.aurevia.smartclinic.documents;
 import com.aurevia.smartclinic.documents.DocumentModel.DocumentAssoc;
 import com.aurevia.smartclinic.documents.DocumentModel.AssociationEvent;
 import com.aurevia.smartclinic.documents.DocumentModel.RenderedDocument;
+import com.aurevia.smartclinic.documents.DocumentModel.VerifiedContent;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -320,6 +321,30 @@ public class DocumentRepository {
         return jdbc.query("""
                 SELECT content FROM public.rendered_document WHERE id = CAST(:id AS uuid)
                 """, Map.of("id", id), (resultSet, rowNumber) -> resultSet.getBytes("content"))
+                .stream().findFirst();
+    }
+
+    /**
+     * Read an original's retained bytes after the database re-verifies them.
+     *
+     * <p>V75's {@code document_association_verified_content} recomputes the
+     * SHA-256 from the bytes actually stored for the association and returns an
+     * {@code intact} flag beside those bytes. A tampered original stays in the
+     * result but is flagged, so the service can audit the failure and answer 409
+     * without aborting the caller's transaction. Forced RLS bounds the read to
+     * the active tenant, so a foreign identifier yields no row.</p>
+     *
+     * @param id opaque association identifier
+     * @return the retained bytes with their verification flag, or empty when the
+     *         association is not visible in the active tenant
+     */
+    public Optional<VerifiedContent> verifiedAssociationContent(String id) {
+        return jdbc.query("""
+                SELECT content, intact
+                  FROM public.document_association_verified_content(CAST(:id AS uuid))
+                """, Map.of("id", id),
+                (resultSet, rowNumber) -> new VerifiedContent(
+                        resultSet.getBytes("content"), resultSet.getBoolean("intact")))
                 .stream().findFirst();
     }
 

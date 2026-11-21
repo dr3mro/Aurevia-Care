@@ -1,6 +1,7 @@
 package com.aurevia.smartclinic.documents;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -34,6 +35,33 @@ public record DocumentAssoc(String id, int version, String subjectType, String s
  */
 public record AssociationEvent(String id, String associationId, String action, String reason,
                                    String actor, String occurredAt) {
+    }
+
+    /**
+    /**
+     * Retained original bytes and whether the database re-verified their digest (CLN-07).
+     *
+     * <p>{@code intact} is false when the bytes held in storage no longer match
+     * the SHA-256 captured on upload; those bytes must never be served as the
+     * verified original. The byte array is defensively copied so a caller cannot
+     * mutate the value after the database returned it.</p>
+     *
+  * @return this record
+  */
+public record VerifiedContent(byte[] content, boolean intact) {
+
+        /**
+         * Freeze the retained bytes on construction.
+         *
+         */
+        public VerifiedContent {
+            content = Arrays.copyOf(content, content.length);
+        }
+
+        @Override
+        public byte[] content() {
+            return Arrays.copyOf(content, content.length);
+        }
     }
 
     /**
