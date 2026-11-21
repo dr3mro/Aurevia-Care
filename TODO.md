@@ -202,8 +202,9 @@ Cadence and limits:
     Done when: `ClaimsTenantResolverTest` has at least 7 tests (happy path, missing sub, blank sub, missing orgs, malformed org list, org not in token, malformed header) and passes.
 
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` must pass for the classes you touched. Synthetic data only; write the failing test first; stay inside the declared scope; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
-- [ ] AUD-20261120-03 · Production authentication, part 2: validate OIDC bearer tokens and bind the tenant context
-  - attempts: 0
+- [-] AUD-20261120-03 · Production authentication, part 2: validate OIDC bearer tokens and bind the tenant context
+  - agent: swarm-1
+  - attempts: 1
   - scope: apps/api/pom.xml, apps/api/src/main/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/web, apps/api/src/main/resources
   - depends: AUD-20261120-02
   - details:
@@ -402,8 +403,8 @@ Found while extending the specification (section 8.1 and docs/design/screens-and
     Do NOT store tokens or any response data in `localStorage` or `sessionStorage`, and do NOT add a dependency.
 
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` (API tasks) or `bash apps/staff-web/check.sh` (staff web tasks) must pass. Synthetic data only; write the failing test first; stay inside the declared scope; name folders and packages after what they hold, never a task ID; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
-- [-] READY-07 · Staff web state views and a global error boundary (WEB-09)
-  - agent: swarm-5
+- [x] READY-07 · Staff web state views and a global error boundary (WEB-09)
+  - pr: #230
   - attempts: 1
   - scope: apps/staff-web/src/components, apps/staff-web/src/app, apps/staff-web/src/features, apps/staff-web/src/main.tsx, apps/staff-web/package.json, apps/staff-web/package-lock.json
   - depends: READY-06
@@ -596,9 +597,10 @@ Order of work for the whole production-readiness effort: (1) security and platfo
 
 ### Phase 3 — Staff web foundation (router, data loading)
 
-- [ ] READY-19 · Staff web router and application shell with role-based navigation
+- [-] READY-19 · Staff web router and application shell with role-based navigation
+  - agent: swarm-2
+  - attempts: 1
   - requirements: UX-01, WEB-07, WEB-09
-  - attempts: 0
   - scope: apps/staff-web/src/app, apps/staff-web/src/App.tsx, apps/staff-web/tests/app
   - depends: READY-10, READY-07
   - details:
@@ -611,9 +613,10 @@ Order of work for the whole production-readiness effort: (1) security and platfo
     Do NOT add react-router or any other router package, and do NOT delete the demo content (move it).
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
-- [ ] READY-20 · Staff web data-loading hook and page wrapper (no cross-organization data)
+- [-] READY-20 · Staff web data-loading hook and page wrapper (no cross-organization data)
+  - agent: swarm-3
+  - attempts: 1
   - requirements: UX-01, WEB-09
-  - attempts: 0
   - scope: apps/staff-web/src/api, apps/staff-web/src/components, apps/staff-web/tests/api
   - depends: READY-06, READY-07
   - details:
@@ -834,9 +837,10 @@ Do these after part 2 where `depends` says so. Persistence tasks run one at a ti
 
 ### Phase A — Durable state (nothing may stay in memory at launch; see docs/decisions/0003)
 
-- [ ] READY-35 · Persist service profiles in PostgreSQL (V59) instead of memory
+- [-] READY-35 · Persist service profiles in PostgreSQL (V59) instead of memory
+  - agent: swarm-4
+  - attempts: 1
   - requirements: ARC-01, ARC-02, OPS-02
-  - attempts: 0
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/messaging/service, apps/api/src/test/java/com/aurevia/smartclinic/messaging/service, db/migrations/V59__service_profiles.sql, apps/api/src/test/java/com/aurevia/smartclinic/it
   - depends: AUD-20261120-06
   - reserved: V59
@@ -1028,8 +1032,8 @@ Do these after part 2 where `depends` says so. Persistence tasks run one at a ti
 
 ### Phase C — Patient app connection to the API
 
-- [-] READY-47 · Patient app API transport and secure token storage (no login screen yet)
-  - agent: swarm-7
+- [x] READY-47 · Patient app API transport and secure token storage (no login screen yet)
+  - pr: #235
   - attempts: 1
   - requirements: PAT-01, ARC-03
   - scope: apps/patient-mobile/src/api, apps/patient-mobile/tests/api
@@ -1043,9 +1047,10 @@ Do these after part 2 where `depends` says so. Persistence tasks run one at a ti
     Do NOT build login in this task; PKCE needs the identity provider details from a person (see launch checklist).
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT change files outside `scope`, add patient data to logs, or edit any existing migration.
-- [ ] READY-48 · Patient app screens read their data from the API through the transport
+- [-] READY-48 · Patient app screens read their data from the API through the transport
+  - agent: swarm-5
+  - attempts: 1
   - requirements: PAT-01, PAT-02, PAT-03
-  - attempts: 0
   - scope: apps/patient-mobile/src/features, apps/patient-mobile/src/app, apps/patient-mobile/tests
   - depends: READY-34, READY-47
   - details:
