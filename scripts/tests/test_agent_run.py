@@ -241,6 +241,9 @@ class AgentRunTests(unittest.TestCase):
         self.assertEqual(self.outputs()["checks"], "failed")
         # Initial failure + two repair re-runs = three invocations.
         self.assertEqual(len(log.read_text().split()), 3)
+        # Reset to main so the second run actually changes files and triggers the gate.
+        self.git("checkout", "-q", "main")
+        self.git("branch", "-D", "opencode/issue-5-9")
         prompt_log = self.tmp / "prompts.log"
         # The repair prompt must name typecheck, not only coverage.
         self.run_cmd("implement", FAKE_MODE="commit", FRONTEND_TYPECHECK_EXIT="1",
