@@ -7,7 +7,7 @@ import java.util.regex.Pattern;
  * One parsed HL7 v2 segment with its fields and repetitions.
  *
  * <p>Field 1 is the three-character segment identifier. Each subsequent field
- * holds one or more repetitions, already decoded by {@link Hl7Escape}; splitting
+ * holds one or more repetitions, already decoded by {@link com.aurevia.smartclinic.exchange.hl7.Hl7Escape}; splitting
  * on the repetition separator happens before decoding so an escaped {@code \R\}
  * remains literal data rather than becoming a spurious repetition (XCH-01,
  * XCH-04).</p>

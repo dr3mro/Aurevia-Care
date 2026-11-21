@@ -11,7 +11,7 @@ import java.util.regex.Pattern;
  * <p>The first non-blank segment declares the delimiters; every segment is then
  * split on the field separator, each field on the repetition separator, and each
  * repetition is decoded. No library and no I/O is involved, so every failure is
- * a deterministic {@link Hl7ParseException} that maps to a negative
+ * a deterministic {@link com.aurevia.smartclinic.exchange.hl7.Hl7ParseException} that maps to a negative
  * acknowledgment.</p>
  */
 public final class Hl7Parser {

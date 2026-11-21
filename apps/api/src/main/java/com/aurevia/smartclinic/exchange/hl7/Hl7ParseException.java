@@ -3,7 +3,7 @@ package com.aurevia.smartclinic.exchange.hl7;
 /**
  * Signals an HL7 v2 message that cannot be safely mapped to an internal command.
  *
- * <p>The machine-readable {@link #reason()} is carried into the MSA/ERR portion
+ * <p>The machine-readable {@link com.aurevia.smartclinic.exchange.hl7.Hl7ParseException#reason()} is carried into the MSA/ERR portion
  * of the negative acknowledgment so a partner receives a stable error code
  * rather than a free-text diagnosis (XCH-01, XCH-04).</p>
  */
