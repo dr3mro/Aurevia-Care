@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.MDC;
 import org.springframework.mock.env.MockEnvironment;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -33,6 +34,7 @@ class TenantContextInterceptorTest {
     @AfterEach
     void tearDown() {
         TenantContext.clear();
+        MDC.remove("correlationId");
     }
 
     private MockHttpServletRequest request(String subject, String organization, String correlation) {
@@ -57,6 +59,15 @@ class TenantContextInterceptorTest {
         assertNotNull(TenantContext.current().correlationId());
         interceptor.afterCompletion(null, response, new Object(), null);
         assertNull(TenantContext.current());
+    }
+
+    @Test
+    void publishesAndClearsCorrelationIdInMdc() throws Exception {
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        interceptor.preHandle(request("admin", ORG, "corr-mdc"), response, new Object());
+        assertEquals("corr-mdc", MDC.get("correlationId"));
+        interceptor.afterCompletion(null, response, new Object(), null);
+        assertNull(MDC.get("correlationId"));
     }
 
     @Test

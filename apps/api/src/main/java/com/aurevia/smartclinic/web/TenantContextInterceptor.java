@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
@@ -82,6 +83,11 @@ public class TenantContextInterceptor implements HandlerInterceptor, WebMvcConfi
             throw new ApiException(422, "INVALID_CORRELATION_ID", "correlation id has invalid characters");
         }
         response.setHeader("X-Correlation-Id", correlation);
+        // WEB-06: publish the validated correlation id so the structured console
+        // formatter can stamp it on log lines emitted while this request runs.
+        // The observability filter clears MDC in its own finally block on every
+        // path; afterCompletion clears it on the normal completion path too.
+        MDC.put("correlationId", correlation);
 
         if (!environment.acceptsProfiles(Profiles.of("synthetic-auth"))) {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -138,6 +144,7 @@ public class TenantContextInterceptor implements HandlerInterceptor, WebMvcConfi
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response,
                                 Object handler, Exception exception) {
         TenantContext.clear();
+        MDC.remove("correlationId");
     }
 
     /**

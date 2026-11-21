@@ -8,7 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -27,9 +26,7 @@ import org.springframework.web.servlet.HandlerMapping;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
-import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
 
 /**
  * WEB-06 servlet-boundary tests for the correlation id and request log filter.
@@ -46,7 +43,6 @@ class CorrelationIdFilterTest {
     private static final String HEADER = "X-Correlation-Id";
     private static final String MDC_KEY = "correlationId";
 
-    private final ObjectMapper mapper = new ObjectMapper();
     private final Clock clock = Clock.fixed(Instant.parse("2026-11-21T00:00:00Z"), ZoneOffset.UTC);
 
     @AfterEach
@@ -66,7 +62,7 @@ class CorrelationIdFilterTest {
 
         assertEquals(VALID_ID, response.getHeader(HEADER));
         assertEquals(VALID_ID, seenInChain[0]);
-        assertEquals(VALID_ID, loggedLine(output).get("correlationId").asString());
+        assertEquals(VALID_ID, RequestLogCapture.requestLog(output).get("correlationId").asString());
     }
 
     @Test
@@ -82,7 +78,7 @@ class CorrelationIdFilterTest {
         assertNotNull(generated);
         assertDoesNotThrow(() -> UUID.fromString(generated));
         assertEquals(generated, seenInChain[0]);
-        assertEquals(generated, loggedLine(output).get("correlationId").asString());
+        assertEquals(generated, RequestLogCapture.requestLog(output).get("correlationId").asString());
     }
 
     @Test
@@ -97,7 +93,7 @@ class CorrelationIdFilterTest {
         assertNotNull(generated);
         assertDoesNotThrow(() -> UUID.fromString(generated));
         assertNotEquals("not-a-uuid", generated);
-        assertEquals(generated, loggedLine(output).get("correlationId").asString());
+        assertEquals(generated, RequestLogCapture.requestLog(output).get("correlationId").asString());
     }
 
     @Test
@@ -109,14 +105,14 @@ class CorrelationIdFilterTest {
 
         new CorrelationIdFilter(clock).doFilter(request, response, chain);
 
-        JsonNode line = loggedLine(output);
+        JsonNode line = RequestLogCapture.requestLog(output);
         assertEquals("POST", line.get("method").asString());
         assertEquals("/api/v1/patients/{id}", line.get("route").asString());
         assertEquals(201, line.get("status").asInt());
         assertEquals(0, line.get("latencyMs").asLong());
         assertEquals(5, line.size());
         assertEquals(1, output.getOut().lines()
-                .filter(candidate -> candidate.contains("\"correlationId\""))
+                .filter(candidate -> candidate.contains("CorrelationIdFilter"))
                 .count());
     }
 
@@ -126,7 +122,7 @@ class CorrelationIdFilterTest {
 
         new CorrelationIdFilter(clock).doFilter(request, new MockHttpServletResponse(), (req, res) -> { });
 
-        assertEquals("UNMATCHED", loggedLine(output).get("route").asString());
+        assertEquals("UNMATCHED", RequestLogCapture.requestLog(output).get("route").asString());
     }
 
     @Test
@@ -173,25 +169,7 @@ class CorrelationIdFilterTest {
 
         assertEquals("synthetic downstream failure", thrown.getMessage());
         assertNull(MDC.get(MDC_KEY));
-        assertEquals(VALID_ID, loggedLine(output).get("correlationId").asString());
-        assertEquals(500, loggedLine(output).get("status").asInt());
-    }
-
-    /**
-     * Extract the single structured JSON line emitted by the filter from the captured console.
-     *
-     * @param output captured stdout/stderr for the current test
-     * @return the parsed request-log line
-     * @throws JacksonException when the captured line is not valid JSON
-     */
-    private JsonNode loggedLine(CapturedOutput output) throws JacksonException {
-        String line = output.getOut().lines()
-                .filter(candidate -> candidate.contains("\"correlationId\""))
-                .findFirst()
-                .orElseThrow(() -> new AssertionError("no request log line captured: " + output.getAll()));
-        int start = line.indexOf('{');
-        int end = line.lastIndexOf('}');
-        assertTrue(start >= 0 && end > start, line);
-        return mapper.readTree(line.substring(start, end + 1));
+        assertEquals(VALID_ID, RequestLogCapture.requestLog(output).get("correlationId").asString());
+        assertEquals(500, RequestLogCapture.requestLog(output).get("status").asInt());
     }
 }
