@@ -5,14 +5,16 @@ separate runtime profile that unattended swarm workers actually load.
 """
 import io
 import json
+import runpy
 import shutil
+import sys
 import tempfile
 import unittest
 from contextlib import redirect_stderr
 from pathlib import Path
 from unittest.mock import patch
 
-from helpers import ROOT, load
+from helpers import ROOT, copy_pack, load
 
 gen = load("gen-opencode")
 
@@ -142,6 +144,40 @@ class RuntimeProfileTests(unittest.TestCase):
                 status = gen.main(["--check-runtime"])
         self.assertEqual(status, 1)
         self.assertIn("smartclinic-editor", err.getvalue())
+
+    def test_generate_mode_writes_both_configs(self):
+        """Cover the existing generation path in the file this change modifies."""
+        tmp = copy_pack()
+        self.addCleanup(shutil.rmtree, tmp)
+        for name in ("opencode.json", ".github/opencode.ci.json"):
+            (tmp / name).unlink()
+        with patch.object(gen, "ROOT", tmp):
+            self.assertEqual(gen.main([]), 0)
+        self.assertEqual((tmp / "opencode.json").read_text(), gen.render(tmp, False))
+        self.assertEqual((tmp / ".github/opencode.ci.json").read_text(),
+                         gen.render(tmp, True))
+
+    def test_check_mode_reports_stale_and_missing_config(self):
+        """Cover both failure sides of the existing --check drift guard."""
+        tmp = copy_pack()
+        self.addCleanup(shutil.rmtree, tmp)
+        (tmp / "opencode.json").write_text("stale\n")
+        err = io.StringIO()
+        with patch.object(gen, "ROOT", tmp), redirect_stderr(err):
+            self.assertEqual(gen.main(["--check"]), 1)
+        self.assertIn("opencode.json is out of date", err.getvalue())
+        (tmp / "opencode.json").unlink()
+        err = io.StringIO()
+        with patch.object(gen, "ROOT", tmp), redirect_stderr(err):
+            self.assertEqual(gen.main(["--check"]), 1)
+        self.assertIn("opencode.json is out of date", err.getvalue())
+
+    def test_script_entry_point_runs_check_runtime(self):
+        """Cover the existing __main__ guard by executing the real script in-process."""
+        with patch.object(sys, "argv", ["gen-opencode.py", "--check-runtime"]):
+            with self.assertRaises(SystemExit) as raised:
+                runpy.run_path(str(ROOT / "scripts/gen-opencode.py"), run_name="__main__")
+        self.assertEqual(raised.exception.code, 0)
 
 
 if __name__ == "__main__":
