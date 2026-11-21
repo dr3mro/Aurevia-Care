@@ -796,7 +796,7 @@ def tui(stdscr):
             alarm["next"] = now + 5
         H, W = stdscr.getmaxyx()
         phase = int(now * 3) % 2 if alarm else 0
-        sig = (H, W, at, busy, phase, bool(alarm), int(now // 5), started_note, len(loading), ready)
+        sig = (H, W, at, busy, phase, bool(alarm), int(now), started_note, len(loading), ready)
         if sig == last:
             continue
         last = sig
