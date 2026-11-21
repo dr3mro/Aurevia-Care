@@ -12,6 +12,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import com.aurevia.smartclinic.api.ApiException;
 import com.aurevia.smartclinic.audit.AuditAppender;
+import com.aurevia.smartclinic.catalog.MedicationCatalog;
+import com.aurevia.smartclinic.catalog.MedicationCatalogVersion;
+import com.aurevia.smartclinic.catalog.VersionedCatalogSearch;
 import com.aurevia.smartclinic.prescription.PrescriptionContract.AllergyCheck;
 import com.aurevia.smartclinic.prescription.PrescriptionContract.AllergyCheckRequest;
 import com.aurevia.smartclinic.prescription.PrescriptionContract.CatalogHit;
@@ -107,6 +110,47 @@ public class PrescriptionService {
     }
 
     /**
+     * Search the approved effective catalog and return the published version used.
+     *
+     * <p>The catalog version is read in the same tenant-guarded transaction as the
+     * hits, so a publication between two searches is observed as a version change
+     * rather than a silently rewritten result.</p>
+     *
+     * @param query       name fragment, or {@code null}/blank for all
+     * @param formulation exact formulation, or {@code null}/blank for any
+     * @return effective items tagged with the catalog version they came from
+     * @throws ApiException on denial or invalid input
+     */
+    public VersionedCatalogSearch searchCatalogWithVersion(String query, String formulation) {
+        String name = PrescriptionInputs.optionalText(query, "query", 128);
+        String form = PrescriptionInputs.optionalText(formulation, "formulation", 64);
+        return execute(PrescriptionActions.SEARCH_CATALOG, "CATALOG", sink -> {
+            MedicationCatalogVersion version = repository.currentCatalogVersion();
+            MedicationCatalog catalog = new MedicationCatalog(repository.loadMedicationCatalog(), version);
+            VersionedCatalogSearch result = catalog.search(name, form, clock.instant());
+            success(PrescriptionActions.SEARCH_CATALOG, "CATALOG");
+            return result;
+        });
+    }
+
+    /**
+     * Read the catalog version a draft was built from.
+     *
+     * @param id draft identifier
+     * @return the immutable draft-to-catalog binding
+     * @throws ApiException on denial, invalid input or an invisible draft
+     */
+    public DraftCatalogVersion catalogVersion(String id) {
+        PrescriptionInputs.uuid(id, "id");
+        return execute(PrescriptionActions.READ_DRAFT, id, sink -> {
+            Draft draft = repository.find(id).orElseThrow(notFound());
+            DraftCatalogVersion binding = new DraftCatalogVersion(draft.id(), repository.catalogVersion(id));
+            success(PrescriptionActions.READ_DRAFT, id);
+            return binding;
+        });
+    }
+
+    /**
      * Check a candidate drug against the patient's verified allergy facts.
      *
      * @param id      draft identifier
@@ -151,7 +195,9 @@ public class PrescriptionService {
         return execute(PrescriptionActions.SELECT_MEDICATION, id, sink -> {
             Draft current = repository.loadForUpdate(id).orElseThrow(notFound());
             requireVersion(current, expectedVersion);
+            int catalogVersion = repository.currentCatalogVersion().version();
             DrugEntry entry = requireEntry(entryId);
+            requireApprovedRoute(entry, route);
             AllergyCheck check = AllergyChecker.check(entry, repository.allergyAssessment(current.patientId()));
             if (check.outcome() == CheckOutcome.CONFLICT && overrideReason == null) {
                 conflict(sink, PrescriptionActions.SELECT_MEDICATION, id, 409,
@@ -164,7 +210,7 @@ public class PrescriptionService {
             }
             repository.selectMedication(id, expectedVersion, entry.entryId(), entry.version(),
                     entry.genericName(), doseValue, doseUnit, route, frequency, quantity,
-                    quantityUnit, refills, instructions);
+                    quantityUnit, refills, instructions, catalogVersion);
             success(PrescriptionActions.SELECT_MEDICATION, id);
             return repository.find(id).orElseThrow();
         });
@@ -185,6 +231,27 @@ public class PrescriptionService {
             success(PrescriptionActions.READ_DRAFT, id);
             return view;
         });
+    }
+
+    /**
+     * Reject a route that contradicts the market-approved catalog route (RX-01).
+     *
+     * <p>Legacy entries carry the sentinel {@code unspecified} because they were
+     * recorded before the route column existed; they cannot be checked here and
+     * remain subject to the surrounding clinical workflow. A declared route is
+     * authoritative: a wrong-route prescription is a medication safety error.</p>
+     *
+     * @param entry          the approved catalog entry being selected
+     * @param requestedRoute route entered by the prescriber
+     * @throws ApiException when the requested route contradicts the catalog
+     */
+    private void requireApprovedRoute(DrugEntry entry, String requestedRoute) {
+        String approvedRoute = repository.catalogRoute(entry.entryId(), entry.version());
+        if (!"unspecified".equals(approvedRoute)
+                && !approvedRoute.equalsIgnoreCase(requestedRoute)) {
+            throw new ApiException(422, "ROUTE_MISMATCH",
+                    "the requested route does not match the market-approved catalog route");
+        }
     }
 
     private DrugEntry requireEntry(String entryId) {

@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.aurevia.smartclinic.catalog.VersionedCatalogSearch;
 import com.aurevia.smartclinic.prescription.PrescriptionContract.CatalogHit;
 
 /**
@@ -42,5 +43,18 @@ public class DrugCatalogController {
     public List<CatalogHit> search(@RequestParam(required = false) String query,
                                    @RequestParam(required = false) String formulation) {
         return service.searchCatalog(query, formulation);
+    }
+
+    /**
+     * Search approved effective catalog entries and report the version used.
+     *
+     * @param query       generic or trade name fragment
+     * @param formulation exact formulation filter
+     * @return effective route-bearing items tagged with the catalog version
+     */
+    @GetMapping("/search-with-version")
+    public VersionedCatalogSearch searchWithVersion(@RequestParam(required = false) String query,
+                                                    @RequestParam(required = false) String formulation) {
+        return service.searchCatalogWithVersion(query, formulation);
     }
 }
