@@ -1,4 +1,6 @@
-- [ ] RESP-APP-LAYOUT-HOOK · Patient app: window-size layout hook (new files)
+- [-] RESP-APP-LAYOUT-HOOK · Patient app: window-size layout hook (new files)
+  - agent: swarm-5
+  - attempts: 1
   - requirements: PAT-01, PAT-02, UX-01
   - scope: apps/patient-mobile/src/app/layout/useWindowClass.ts, apps/patient-mobile/src/app/layout/useWindowClass.test.ts
   - depends: RESP-APP-DECISION

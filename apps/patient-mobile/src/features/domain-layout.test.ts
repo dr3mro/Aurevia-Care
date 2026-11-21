@@ -12,19 +12,21 @@ import * as path from 'node:path';
 
 /** Owner-approved old-to-new mapping for AUD-20261119-04, ordered by story number. */
 const DOMAIN_FOLDERS = [
-  'appointments', // s_g3_01 - PAT-01
-  'reports', // s_g3_02 - PAT-02
-  'enrollment', // s_g3_03 - PAT-03
-  'units', // s_g3_04 - MSG-01
-  'conversations', // s_g3_05 - MSG-02
-  'attachments', // s_g3_06 - MSG-03
-  'instructions', // s_g3_07 - MSG-04
-  'acknowledgments', // s_g3_08 - MSG-05
-  'service-profiles', // s_g3_09 - MSG-06
-  'governance', // s_g3_10 - MSG-07
-  'flows', // s_g3_11 - PAT-01..03 / MSG-01..07 / UX-01
-  'evidence', // s_g3_12 - G3
-  'notifications', // PAT-01, MSG-05 - push notification domain
+  'appointments',
+  'reports',
+  'enrollment',
+  'units',
+  'conversations',
+  'attachments',
+  'instructions',
+  'acknowledgments',
+  'service-profiles',
+  'governance',
+  'flows',
+  'evidence',
+  'notifications',
+  'prescriptions',
+  'tracker',
 ] as const;
 
 /** A story/task ID directory name such as `s_g3_02`. */

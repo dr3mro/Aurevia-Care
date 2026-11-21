@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.aurevia.smartclinic.api.ApiException;
+import com.aurevia.smartclinic.api.contract.FacilityCode;
 import com.aurevia.smartclinic.authz.ActionPolicy;
 import com.aurevia.smartclinic.tenant.TenantContext;
 
@@ -21,9 +22,8 @@ import com.aurevia.smartclinic.tenant.TenantContext;
 @Service
 public class FacilityService {
 
-    private static final Pattern CODE = Pattern.compile("[A-Z0-9_-]{2,32}");
     private static final Pattern CURSOR = Pattern.compile(
-            "([A-Z0-9_-]{2,32}):"
+            "(" + FacilityCode.PATTERN + "):"
             + "([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})");
     private static final int DEFAULT_LIMIT = 50;
     private static final int MAX_LIMIT = 200;
@@ -151,8 +151,10 @@ public class FacilityService {
      * @throws ApiException on invalid input, denied access or a duplicate code
      */
     public Facility create(String code, String name, String timeZone) {
-        if (code == null || !CODE.matcher(code).matches()) {
-            throw new ApiException(422, "INVALID_CODE", "code must be 2-32 uppercase letters, digits, - or _");
+        try {
+            FacilityCode.facilityCode(code);
+        } catch (IllegalArgumentException invalid) {
+            throw new ApiException(422, "INVALID_CODE", FacilityCode.INVALID_MESSAGE);
         }
         if (name == null || name.isBlank() || name.length() > 200) {
             throw new ApiException(422, "INVALID_NAME", "name must be 1-200 characters");
