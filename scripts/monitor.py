@@ -7,13 +7,15 @@ LIVE = ("queued", "in_progress", "waiting", "pending", "requested")
 FAILED = ("failure", "timed_out")
 FIELDS = "databaseId,workflowName,displayTitle,conclusion,status,headSha,headBranch,event,createdAt,startedAt,updatedAt,url"
 TEXT = ("repo", "todo", "archive", "total", "commits")  # plain-text results; everything else is JSON
+RUN_LIMIT = 100  # how many of the newest runs the monitor fetches and reports on
+
 CALLS = {
     "repo": ["repo", "view", "--json", "nameWithOwner", "-q", ".nameWithOwner"],
     "issues": ["issue", "list", "--state", "open", "--limit", "100", "--json", "number,title,labels,createdAt"],
     "prs": ["pr", "list", "--state", "open", "--limit", "100", "--json", "number,title,isDraft,labels,headRefName,createdAt"],
     "merged": ["pr", "list", "--state", "merged", "--limit", "100", "--search", "merged:>={since}", "--json", "number,title,mergedAt"],
     "closed": ["pr", "list", "--state", "closed", "--limit", "100", "--search", "closed:>={since}", "--json", "number,title,closedAt,mergedAt"],
-    "runs": ["run", "list", "--limit", "100", "--json", FIELDS],
+    "runs": ["run", "list", "--limit", str(RUN_LIMIT), "--json", FIELDS],
     "total": ["api", "graphql", "-F", "o={owner}", "-F", "n={repo}", "-q", ".data.repository.defaultBranchRef.target.history.totalCount",
               "-f", "query=query($o:String!,$n:String!){repository(owner:$o,name:$n){defaultBranchRef{target{... on Commit{history{totalCount}}}}}}"],
     "todo": ["api", "repos/{owner}/{repo}/contents/TODO.md", "-H", "Accept: application/vnd.github.raw"],
@@ -362,7 +364,7 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False, loading=frozenset()):
     cards = [("MAIN", f"{msym} {mstate}", "b_" + mcol, age(main["updatedAt"]) if main else "-"),
              ("RUNNING", str(len(live)), "b_yellow" if live else "gray", "active runs"),
              ("MERGED 24h", cap(len(merged_day)), "b_green" if merged_day else "gray", "pull requests"),
-             ("FAILED", str(len(failed_day)), "b_red" if failed_day else "b_green", f"of last {len(runs_day)} runs"),
+             ("FAILED", str(len(failed_day)), "b_red" if failed_day else "b_green", f"of last {RUN_LIMIT} runs"),
              ("CLOSED 24h", cap(len(closed_day)), "b_yellow" if closed_day else "gray", "not merged"),
              ("COMMITS", (data.get("total") or "").strip() or "-", "b_blue" if data.get("total") else "gray", "all time"),
              ("COMMITS LAST 24H", cap(churn["commits"]) if churn else "-", "b_blue" if churn else "gray",
@@ -579,9 +581,9 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False, loading=frozenset()):
     labels = lambda x: ",".join(l["name"] for l in x.get("labels", []) if l["name"] in ("needs-human", "needs-fix"))
     left = [dict(title="In Progress", total=len(live), col="yellow", border="yellow" if live else "gray", prio=0,
                  items=flat(live, True)),
-            dict(title="Recent Runs", total=len(runs), col="cyan", border="gray", prio=2,
+            dict(title=f"Recent Runs (last {RUN_LIMIT} runs)", total=len(runs), col="cyan", border="gray", prio=2,
                  items=[run_row(r, r.get("status") != "completed") for r in runs[:RECENT]]),
-            dict(title=f"Failed (last {len(runs_day)} runs)", total=len(failed_day), col="red", border="red" if failed_day else "gray", prio=1,
+            dict(title=f"Failed (last {RUN_LIMIT} runs)", total=len(failed_day), col="red", border="red" if failed_day else "gray", prio=1,
                  items=[row for r in failed_day for row in failed_rows(r)])]
     prefix = re.compile(r"^([A-Z]+-(?:\d{8}-)?\d+)(:)(.*)$")
 
