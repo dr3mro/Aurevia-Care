@@ -420,7 +420,12 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False, loading=frozenset()):
 
     iw_top = W - 6
     shown = runs[:max(min(len(runs), iw_top - 90), 0)]  # as many marks as the line has room for (the newest ones)
-    hist = [("┃", "red" if bad(r) else "gray" if state(r) in ("cancelled", "skipped") else "green") for r in shown[::-1]]
+    # One colour per outcome: succeeded green, failed red, timed out magenta, stopped (cancelled) yellow,
+    # skipped dim grey, running cyan (red once a job has failed), queued or waiting blue.
+    hue = {"success": "green", "failure": "red", "timed_out": "magenta", "cancelled": "yellow", "skipped": "gray",
+           "in_progress": "cyan", "queued": "blue", "waiting": "blue", "pending": "blue", "requested": "blue",
+           "action_required": "magenta", "neutral": "gray", "stale": "gray", "startup_failure": "red"}
+    hist = [("┃", "red" if bad(r) else hue.get(state(r), "gray")) for r in shown[::-1]]
     pace = sum(1 for p in merged if ts(p.get("mergedAt")) and (now - ts(p["mergedAt"])).total_seconds() < 21600) / 6
     pending = n_open + len(taken)
     eta = span(pending / pace * 3600) if pace else "-"
