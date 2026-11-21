@@ -9,7 +9,15 @@ import type * as TransportModule from '../../api/transport';
 import { stateViewText } from '../../components/stateViewMessages';
 import { I18nProvider } from '../../i18n/I18nProvider';
 import { ThemeProvider } from '../../theme/ThemeProvider';
-import { alphaProfile, alphaUnitId, betaProfile, profileResponse, unpublishedProfile } from './fixtures';
+import {
+  alphaOrganizationId,
+  alphaProfile,
+  alphaUnitId,
+  betaOrganizationId,
+  betaProfile,
+  profileResponse,
+  unpublishedProfile,
+} from './fixtures';
 import { unitsText } from './messages';
 import { UnitsPage } from './UnitsPage';
 
@@ -90,6 +98,40 @@ describe('UnitsPage (MSG-06, ADM-01, WEB-09)', () => {
     expect(screen.getByText(stateViewText('en', 'forbiddenDetail'))).toBeTruthy();
   });
 
+  it.each([
+    ['timeout', 'error'],
+    ['offline', 'error'],
+    ['session-expired', 'sessionExpired'],
+  ] as const)('maps a %s load failure to the %s state', async (kind, headingKey) => {
+    sendMock.mockRejectedValueOnce(failure(kind));
+    wrap(<UnitsPage unitId={alphaUnitId} todayCivilDate="2026-03-09" />);
+    expect(await screen.findByRole('heading', { name: stateViewText('en', headingKey) })).toBeTruthy();
+  });
+
+  it('clears the previous tenant profile when the active organization changes', async () => {
+    sendMock
+      .mockResolvedValueOnce(profileResponse(alphaProfile))
+      .mockResolvedValue(profileResponse(betaProfile));
+    const view = render(
+      element(
+        <UnitsPage unitId={alphaUnitId} todayCivilDate="2026-03-09" />,
+        alphaOrganizationId,
+      ),
+    );
+    await screen.findByText(alphaProfile.details.serviceHours);
+
+    view.rerender(
+      element(
+        <UnitsPage unitId={alphaUnitId} todayCivilDate="2026-03-09" />,
+        betaOrganizationId,
+      ),
+    );
+
+    expect(await screen.findByText(betaProfile.details.serviceHours)).toBeTruthy();
+    expect(screen.queryByText(alphaProfile.details.serviceHours)).toBeNull();
+    expect(descriptorAt(1).headers['X-Active-Organization']).toBe(betaOrganizationId);
+  });
+
   it('uses the synthetic unit and today when props are omitted', async () => {
     sendMock.mockResolvedValue(profileResponse(alphaProfile));
     wrap(<UnitsPage />);
@@ -122,6 +164,22 @@ describe('UnitsPage (MSG-06, ADM-01, WEB-09)', () => {
 
     expect(await screen.findByText(stateViewText('en', 'conflict'))).toBeTruthy();
     expect(screen.getByText(stateViewText('en', 'conflictDetail'))).toBeTruthy();
+  });
+
+  it.each([
+    ['approve', alphaProfile, 'approve'],
+    ['enable', alphaProfile, 'enableUnit'],
+    ['disable', betaProfile, 'disableUnit'],
+  ] as const)('shows the conflict state when %s is rejected', async (_command, profile, button) => {
+    sendMock.mockResolvedValueOnce(profileResponse(profile));
+    sendMock.mockRejectedValueOnce(failure('conflict'));
+    wrap(<UnitsPage unitId={profile.unitId} todayCivilDate="2026-03-09" />);
+    await screen.findByText(profile.details.serviceHours);
+
+    fireEvent.click(screen.getByRole('button', { name: unitsText('en', button) }));
+
+    expect(await screen.findByText(stateViewText('en', 'conflict'))).toBeTruthy();
+    expect(screen.getByTestId('units-status').textContent).toBe('');
   });
 
   it('shows the correlation id for a typed server command failure', async () => {

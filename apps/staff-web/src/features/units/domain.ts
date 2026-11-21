@@ -19,6 +19,14 @@ export function displaySubject(subject: string, absentLabel: string): string {
 }
 
 /**
+ * Resolve the language of an isolated named subject so an Arabic-script owner
+ * is not mislabelled to a screen reader as English (UX-01, RTL section 7).
+ */
+export function subjectLanguage(subject: string): 'ar' | 'en' {
+  return /[\u0600-\u06FF]/.test(subject) ? 'ar' : 'en';
+}
+
+/**
  * Accept only a real calendar date in `YYYY-MM-DD` form so the screen never
  * passes an invalid instant to `Intl.DateTimeFormat` (a RangeError crash path).
  */

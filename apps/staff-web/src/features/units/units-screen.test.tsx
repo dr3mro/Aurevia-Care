@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { I18nProvider } from '../../i18n/I18nProvider';
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import type { Locale } from '../../i18n/messages';
@@ -21,16 +21,16 @@ function wrap(ui: ReactElement, locale: Locale = 'en') {
 /** Own the profile so command callbacks can switch the rendered state. */
 function Harness({
   initial = alphaProfile,
-  onPropose = vi.fn(),
-  onApprove = vi.fn(),
-  onEnable = vi.fn(),
-  onDisable = vi.fn(),
+  onPropose = vi.fn(async () => true),
+  onApprove = vi.fn(async () => true),
+  onEnable = vi.fn(async () => true),
+  onDisable = vi.fn(async () => true),
 }: {
   initial?: ServiceProfile;
-  onPropose?: (draft: ProfileDraft) => void;
-  onApprove?: () => void;
-  onEnable?: () => void;
-  onDisable?: () => void;
+  onPropose?: (draft: ProfileDraft) => Promise<boolean>;
+  onApprove?: () => Promise<boolean>;
+  onEnable?: () => Promise<boolean>;
+  onDisable?: () => Promise<boolean>;
 }) {
   const [profile] = useState(initial);
   return (
@@ -61,6 +61,7 @@ describe('UnitsScreen (MSG-06, ADM-01)', () => {
     expect(screen.getByText(alphaProfile.details.topics)).toBeTruthy();
     expect(screen.getByText(alphaProfile.details.urgentContactInstructions)).toBeTruthy();
     expect(screen.getByText(alphaProfile.details.queueOwner)).toBeTruthy();
+    expect(screen.getByText(unitsText('en', 'requiredHint'))).toBeTruthy();
   });
 
   it('shows an operational warning when no backup coverage is named', () => {
@@ -78,40 +79,48 @@ describe('UnitsScreen (MSG-06, ADM-01)', () => {
   });
 
   it('blocks enabling a unit with no named queue owner', () => {
-    const onEnable = vi.fn();
+    const onEnable = vi.fn(async () => true);
     wrap(<Harness initial={{ ...betaProfile, enabled: false }} onEnable={onEnable} />);
     fireEvent.click(screen.getByRole('button', { name: unitsText('en', 'enableUnit') }));
     expect(onEnable).not.toHaveBeenCalled();
     expect(screen.getByTestId('units-refusal').textContent).toBe(unitsText('en', 'missingOwner'));
+    expect(screen.getByLabelText(unitsText('en', 'queueOwner')).getAttribute('aria-invalid')).toBe('true');
   });
 
-  it('enables a unit that has a named queue owner', () => {
-    const onEnable = vi.fn();
+  it('enables a unit that has a named queue owner', async () => {
+    const onEnable = vi.fn(async () => true);
     wrap(<Harness onEnable={onEnable} />);
     fireEvent.click(screen.getByRole('button', { name: unitsText('en', 'enableUnit') }));
     expect(onEnable).toHaveBeenCalledTimes(1);
-    expect(screen.getByTestId('units-status').textContent).toBe(unitsText('en', 'unitEnabled'));
+    await waitFor(() =>
+      expect(screen.getByTestId('units-status').textContent).toBe(unitsText('en', 'unitEnabled')),
+    );
   });
 
-  it('disables an enabled unit', () => {
-    const onDisable = vi.fn();
+  it('disables an enabled unit', async () => {
+    const onDisable = vi.fn(async () => true);
     wrap(<Harness initial={betaProfile} onDisable={onDisable} />);
     fireEvent.click(screen.getByRole('button', { name: unitsText('en', 'disableUnit') }));
     expect(onDisable).toHaveBeenCalledTimes(1);
-    expect(screen.getByTestId('units-status').textContent).toBe(unitsText('en', 'unitDisabled'));
+    await waitFor(() =>
+      expect(screen.getByTestId('units-status').textContent).toBe(unitsText('en', 'unitDisabled')),
+    );
   });
 
   it('refuses a proposed change whose effective date is in the past', () => {
-    const onPropose = vi.fn();
+    const onPropose = vi.fn(async () => true);
     wrap(<Harness onPropose={onPropose} />);
     change('effectiveFrom', '2026-03-08');
     fireEvent.click(screen.getByRole('button', { name: unitsText('en', 'proposeChanges') }));
     expect(onPropose).not.toHaveBeenCalled();
-    expect(screen.getByTestId('units-refusal').textContent).toBe(unitsText('en', 'pastEffectiveDate'));
+    const summary = screen.getByTestId('units-refusal');
+    expect(summary.textContent).toBe(unitsText('en', 'pastEffectiveDate'));
+    expect(document.activeElement).toBe(summary);
+    expect(screen.getByLabelText(unitsText('en', 'effectiveFrom')).getAttribute('aria-invalid')).toBe('true');
   });
 
   it('refuses a proposed change without a named approver', () => {
-    const onPropose = vi.fn();
+    const onPropose = vi.fn(async () => true);
     wrap(<Harness onPropose={onPropose} />);
     change('namedApprover', '');
     fireEvent.click(screen.getByRole('button', { name: unitsText('en', 'proposeChanges') }));
@@ -120,7 +129,7 @@ describe('UnitsScreen (MSG-06, ADM-01)', () => {
   });
 
   it('refuses a malformed effective date', () => {
-    const onPropose = vi.fn();
+    const onPropose = vi.fn(async () => true);
     wrap(<Harness onPropose={onPropose} />);
     change('effectiveFrom', 'not-a-date');
     fireEvent.click(screen.getByRole('button', { name: unitsText('en', 'proposeChanges') }));
@@ -130,8 +139,8 @@ describe('UnitsScreen (MSG-06, ADM-01)', () => {
     );
   });
 
-  it('sends the whole approved, future-dated draft and announces the change', () => {
-    const onPropose = vi.fn();
+  it('sends the whole approved, future-dated draft and announces the change', async () => {
+    const onPropose = vi.fn(async () => true);
     wrap(<Harness onPropose={onPropose} />);
     change('topics', 'appointments, urgent guidance');
     fireEvent.click(screen.getByRole('button', { name: unitsText('en', 'proposeChanges') }));
@@ -144,11 +153,13 @@ describe('UnitsScreen (MSG-06, ADM-01)', () => {
       }),
     );
     expect(screen.getByTestId('units-refusal').textContent).toBe('');
-    expect(screen.getByTestId('units-status').textContent).toBe(unitsText('en', 'proposed'));
+    await waitFor(() =>
+      expect(screen.getByTestId('units-status').textContent).toBe(unitsText('en', 'proposed')),
+    );
   });
 
   it('edits every published service field before proposing', () => {
-    const onPropose = vi.fn();
+    const onPropose = vi.fn(async () => true);
     wrap(<Harness onPropose={onPropose} />);
     change('serviceHours', 'Sat 09:00-13:00');
     change('responseTargetUrgent', '5 minutes');
@@ -170,28 +181,70 @@ describe('UnitsScreen (MSG-06, ADM-01)', () => {
     );
   });
 
-  it('approves a pending version and shows the approval state', () => {
-    const onApprove = vi.fn();
+  it('approves a pending version and shows the approval state', async () => {
+    const onApprove = vi.fn(async () => true);
     wrap(<Harness onApprove={onApprove} />);
     expect(screen.getByText(unitsText('en', 'pendingApproval'))).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: unitsText('en', 'approve') }));
     expect(onApprove).toHaveBeenCalledTimes(1);
-    expect(screen.getByTestId('units-status').textContent).toBe(unitsText('en', 'approved'));
+    await waitFor(() =>
+      expect(screen.getByTestId('units-status').textContent).toBe(unitsText('en', 'approved')),
+    );
     wrap(<Harness initial={betaProfile} />);
     expect(screen.getByText(unitsText('en', 'approvedBadge'))).toBeTruthy();
   });
 
-  it('reaches the primary action by keyboard and submits the form with Enter', () => {
-    wrap(<Harness />);
+  it('reaches the primary action by keyboard and activates the form submit path', () => {
+    const onPropose = vi.fn(async () => true);
+    wrap(<Harness onPropose={onPropose} />);
     const propose = screen.getByRole('button', { name: unitsText('en', 'proposeChanges') });
     propose.focus();
     expect(document.activeElement).toBe(propose);
+    expect(propose.getAttribute('type')).toBe('submit');
     const form = propose.closest('form');
     if (!form) {
       throw new Error('propose button is not inside a form');
     }
+    // jsdom does not synthesise a click from the Enter key; the native submit
+    // path that Enter activates in a browser is exercised directly.
     fireEvent.submit(form);
+    expect(onPropose).toHaveBeenCalledTimes(1);
     expect(document.activeElement).toBe(propose);
+  });
+
+  it.each([
+    ['propose', alphaProfile, 'proposeChanges'],
+    ['approve', alphaProfile, 'approve'],
+    ['enable', { ...betaProfile, enabled: false }, 'enableUnit'],
+    ['disable', betaProfile, 'disableUnit'],
+  ] as const)('does not announce %s success when the page reports failure', async (_command, profile, button) => {
+    const fail = async () => false;
+    wrap(
+      <Harness
+        initial={profile}
+        onPropose={fail}
+        onApprove={fail}
+        onEnable={fail}
+        onDisable={fail}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: unitsText('en', button) }));
+    await waitFor(() => expect(screen.getByTestId('units-status').textContent).toBe(''));
+  });
+
+  it('isolates an Arabic-script owner with its own language and direction', () => {
+    wrap(
+      <Harness
+        initial={{
+          ...alphaProfile,
+          details: { ...alphaProfile.details, queueOwner: 'مالك تجريبي' },
+        }}
+      />,
+      'ar',
+    );
+    const owner = screen.getByText('مالك تجريبي');
+    expect(owner.getAttribute('lang')).toBe('ar');
+    expect(owner.getAttribute('dir')).toBe('auto');
   });
 
   it('renders Arabic copy with right-to-left direction and the same states', () => {

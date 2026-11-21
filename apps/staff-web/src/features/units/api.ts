@@ -1,6 +1,6 @@
 import { buildRequestDescriptor } from '../../api/client';
 import type { RequestDescriptor, RequestMeta } from '../../api/client';
-import { send } from '../../api/transport';
+import { TransportError, send } from '../../api/transport';
 import type { ProfileDraft, ServiceProfile } from './types';
 
 /**
@@ -88,13 +88,27 @@ export function approveServiceProfile(
   );
 }
 
-/** Enable or disable a unit for patient messages, guarded by its version. */
+/**
+ * Enable or disable a unit for patient messages, guarded by its version. The
+ * named-owner prerequisite is rechecked here so no caller can enable an
+ * unstaffed unit by bypassing the screen (MSG-06).
+ */
 export function setUnitEnabled(
   unitId: string,
   version: number,
   enabled: boolean,
+  queueOwner: string,
   organizationId: string,
 ): Promise<ServiceProfileResponse> {
+  if (enabled && queueOwner.trim().length === 0) {
+    return Promise.reject(
+      new TransportError('invalid', {
+        correlationId: undefined,
+        code: 'OWNER_REQUIRED',
+        retryAfterSeconds: undefined,
+      }),
+    );
+  }
   return send<ServiceProfileResponse>(
     profileDescriptor(
       'POST',

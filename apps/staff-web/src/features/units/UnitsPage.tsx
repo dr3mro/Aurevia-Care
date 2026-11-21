@@ -4,7 +4,6 @@ import { useActiveOrganization } from '../../api/activeOrganization';
 import { TransportError } from '../../api/transport';
 import { useApi } from '../../api/useApi';
 import { EmptyState, LoadingState, StateView } from '../../components/StateViews';
-import { alphaUnitId, todayCivilDate as defaultCivilDate } from './fixtures';
 import {
   approveServiceProfile,
   getServiceProfile,
@@ -15,6 +14,9 @@ import {
 import type { ServiceProfileResponse } from './api';
 import { UnitsScreen } from './UnitsScreen';
 import type { ProfileDraft } from './types';
+
+/** Synthetic placeholder used until a real unit directory is published. */
+const DEFAULT_UNIT_ID = 'synthetic-unit-001';
 
 /** Props for the API-backed care-unit service profile page. */
 export interface UnitsPageProps {
@@ -39,7 +41,12 @@ function asTransportError(failure: unknown): TransportError {
  * dispatch change, approval and enable commands through the typed client. A
  * failed command is shown above the editor so the person's draft is retained.
  */
-export function UnitsPage({ unitId = alphaUnitId, todayCivilDate = defaultCivilDate }: UnitsPageProps) {
+export function UnitsPage({
+  unitId = DEFAULT_UNIT_ID,
+  // Derive "today" from the clock at the boundary; a fixed fixture date would
+  // accept past effective dates in the running app.
+  todayCivilDate = new Date().toISOString().slice(0, 10),
+}: UnitsPageProps) {
   const organizationId = useActiveOrganization();
   const [commandError, setCommandError] = useState<TransportError | undefined>(undefined);
   const result = useApi<ServiceProfileResponse>(
@@ -48,14 +55,21 @@ export function UnitsPage({ unitId = alphaUnitId, todayCivilDate = defaultCivilD
   );
   const { reload } = result;
 
-  /** Run one command, then reload the authoritative profile or show its error. */
-  async function run(command: () => Promise<ServiceProfileResponse>): Promise<void> {
+  /**
+   * Run one command, then reload the authoritative profile or show its error.
+   *
+   * @returns `true` only when the command succeeded, so the screen never
+   * announces a success the page did not observe.
+   */
+  async function run(command: () => Promise<ServiceProfileResponse>): Promise<boolean> {
     try {
       await command();
       setCommandError(undefined);
       reload();
+      return true;
     } catch (failure: unknown) {
       setCommandError(asTransportError(failure));
+      return false;
     }
   }
 
@@ -75,18 +89,32 @@ export function UnitsPage({ unitId = alphaUnitId, todayCivilDate = defaultCivilD
       <UnitsScreen
         profile={profile}
         todayCivilDate={todayCivilDate}
-        onPropose={(draft: ProfileDraft) => {
-          void run(() => proposeServiceProfile(unitId, profile.version, draft, organizationId));
-        }}
-        onApprove={() => {
-          void run(() => approveServiceProfile(unitId, profile.version, organizationId));
-        }}
-        onEnable={() => {
-          void run(() => setUnitEnabled(unitId, profile.version, true, organizationId));
-        }}
-        onDisable={() => {
-          void run(() => setUnitEnabled(unitId, profile.version, false, organizationId));
-        }}
+        onPropose={(draft: ProfileDraft) =>
+          run(() => proposeServiceProfile(unitId, profile.version, draft, organizationId))
+        }
+        onApprove={() => run(() => approveServiceProfile(unitId, profile.version, organizationId))}
+        onEnable={() =>
+          run(() =>
+            setUnitEnabled(
+              unitId,
+              profile.version,
+              true,
+              profile.details.queueOwner,
+              organizationId,
+            ),
+          )
+        }
+        onDisable={() =>
+          run(() =>
+            setUnitEnabled(
+              unitId,
+              profile.version,
+              false,
+              profile.details.queueOwner,
+              organizationId,
+            ),
+          )
+        }
       />
     );
   }

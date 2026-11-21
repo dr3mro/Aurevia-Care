@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Button } from '../../components/Button';
 import { Form } from '../../components/Form';
 import { FormField } from '../../components/FormField';
@@ -6,7 +6,13 @@ import { MixedScriptText } from '../../components/MixedScriptText';
 import { formatCivilDate } from '../../i18n/format';
 import { useI18n } from '../../i18n/I18nProvider';
 import { useTheme } from '../../theme/ThemeProvider';
-import { canEnable, displaySubject, hasBackupCoverage, validateProfile } from './domain';
+import {
+  canEnable,
+  displaySubject,
+  hasBackupCoverage,
+  subjectLanguage,
+  validateProfile,
+} from './domain';
 import type { ProfileDraft, RefusalReason, ServiceProfile } from './types';
 import { refusalMessageKey, unitsText } from './messages';
 import type { UnitsMessageKey } from './messages';
@@ -19,10 +25,10 @@ export interface UnitsScreenProps {
   profile: ServiceProfile;
   /** Civil `YYYY-MM-DD` used to refuse a past effective date. */
   todayCivilDate: string;
-  onPropose: (draft: ProfileDraft) => void;
-  onApprove: () => void;
-  onEnable: () => void;
-  onDisable: () => void;
+  onPropose: (draft: ProfileDraft) => Promise<boolean>;
+  onApprove: () => Promise<boolean>;
+  onEnable: () => Promise<boolean>;
+  onDisable: () => Promise<boolean>;
 }
 
 /** Build the editable draft from the currently published profile. */
@@ -54,6 +60,7 @@ export function UnitsScreen({
   const [draft, setDraft] = useState<ProfileDraft>(() => initialDraft(profile));
   const [refusal, setRefusal] = useState<RefusalReason | null>(null);
   const [status, setStatus] = useState<StatusKey | null>(null);
+  const summaryRef = useRef<HTMLParagraphElement>(null);
   const text = (key: UnitsMessageKey) => unitsText(locale, key);
 
   const published = profile.details;
@@ -65,37 +72,59 @@ export function UnitsScreen({
     setRefusal(null);
   }
 
-  function propose() {
+  async function propose() {
     const validation = validateProfile(draft, todayCivilDate);
     if (!validation.ok) {
       setRefusal(validation.reason);
       setStatus(null);
+      summaryRef.current!.focus();
       return;
     }
-    onPropose(draft);
+    const accepted = await onPropose(draft);
+    if (!accepted) {
+      setRefusal(null);
+      setStatus(null);
+      return;
+    }
     setRefusal(null);
     setStatus('proposed');
   }
 
-  function enable() {
+  async function enable() {
     if (!canEnable(profile)) {
       setRefusal('missing-owner');
       setStatus(null);
+      summaryRef.current!.focus();
       return;
     }
-    onEnable();
+    const accepted = await onEnable();
+    if (!accepted) {
+      setRefusal(null);
+      setStatus(null);
+      return;
+    }
     setRefusal(null);
     setStatus('unitEnabled');
   }
 
-  function disable() {
-    onDisable();
+  async function disable() {
+    const accepted = await onDisable();
+    if (!accepted) {
+      setRefusal(null);
+      setStatus(null);
+      return;
+    }
     setRefusal(null);
     setStatus('unitDisabled');
   }
 
-  function approve() {
-    onApprove();
+  async function approve() {
+    const accepted = await onApprove();
+    if (!accepted) {
+      setRefusal(null);
+      setStatus(null);
+      return;
+    }
     setRefusal(null);
     setStatus('approved');
   }
@@ -141,7 +170,7 @@ export function UnitsScreen({
             <dd>
               <MixedScriptText
                 text={displaySubject(published.queueOwner, text('notRecorded'))}
-                lang="en"
+                lang={subjectLanguage(published.queueOwner)}
               />
             </dd>
           </div>
@@ -150,7 +179,7 @@ export function UnitsScreen({
             <dd>
               <MixedScriptText
                 text={displaySubject(published.backupCoverage, text('notRecorded'))}
-                lang="en"
+                lang={subjectLanguage(published.backupCoverage)}
               />
             </dd>
           </div>
@@ -171,7 +200,13 @@ export function UnitsScreen({
       <p role="status" data-testid="units-status" style={{ margin: 0 }}>
         {status === null ? '' : text(status)}
       </p>
-      <p role="alert" data-testid="units-refusal" style={{ margin: 0 }}>
+      <p
+        ref={summaryRef}
+        role="alert"
+        tabIndex={-1}
+        data-testid="units-refusal"
+        style={{ margin: 0 }}
+      >
         {refusal === null ? '' : text(refusalMessageKey[refusal])}
       </p>
 
@@ -191,15 +226,39 @@ export function UnitsScreen({
       </div>
 
       <Form label={text('serviceProfile')} submitLabel={text('proposeChanges')} onSubmit={propose}>
+        <p>{text('requiredHint')}</p>
         <FormField id="units-hours" label={text('serviceHours')} value={draft.serviceHours} onChange={(value) => update('serviceHours', value)} />
         <FormField id="units-urgent-target" label={text('responseTargetUrgent')} value={draft.responseTargetUrgent} onChange={(value) => update('responseTargetUrgent', value)} />
         <FormField id="units-routine-target" label={text('responseTargetRoutine')} value={draft.responseTargetRoutine} onChange={(value) => update('responseTargetRoutine', value)} />
         <FormField id="units-topics" label={text('topics')} value={draft.topics} onChange={(value) => update('topics', value)} />
         <FormField id="units-urgent-instructions" label={text('urgentContactInstructions')} value={draft.urgentContactInstructions} onChange={(value) => update('urgentContactInstructions', value)} />
-        <FormField id="units-owner" label={text('queueOwner')} value={draft.queueOwner} onChange={(value) => update('queueOwner', value)} />
+        <FormField
+          id="units-owner"
+          label={text('queueOwner')}
+          value={draft.queueOwner}
+          onChange={(value) => update('queueOwner', value)}
+          error={refusal === 'missing-owner' ? text('missingOwner') : ''}
+        />
         <FormField id="units-backup" label={text('backupCoverage')} value={draft.backupCoverage} onChange={(value) => update('backupCoverage', value)} />
-        <FormField id="units-approver" label={text('namedApprover')} value={draft.approver} onChange={(value) => update('approver', value)} />
-        <FormField id="units-effective" label={text('effectiveFrom')} value={draft.effectiveFrom} onChange={(value) => update('effectiveFrom', value)} placeholder="2026-03-10" />
+        <FormField
+          id="units-approver"
+          label={text('namedApprover')}
+          value={draft.approver}
+          onChange={(value) => update('approver', value)}
+          error={refusal === 'missing-approver' ? text('missingApprover') : ''}
+        />
+        <FormField
+          id="units-effective"
+          label={text('effectiveFrom')}
+          value={draft.effectiveFrom}
+          onChange={(value) => update('effectiveFrom', value)}
+          placeholder="2026-03-10"
+          error={
+            refusal === 'invalid-effective-date' || refusal === 'past-effective-date'
+              ? text(refusalMessageKey[refusal])
+              : ''
+          }
+        />
         <p>{text('effectiveFrom')}: <time dateTime={profile.approval.effectiveFrom}>{formatCivilDate(profile.approval.effectiveFrom, locale)}</time></p>
       </Form>
     </div>

@@ -89,13 +89,22 @@ describe('unit service profile API client (MSG-06, ADM-01)', () => {
   it.each([true, false])('sends the enabled flag %s with a version guard', async (enabled) => {
     sendMock.mockResolvedValueOnce(profileResponse(alphaProfile));
 
-    await setUnitEnabled(alphaUnitId, 3, enabled, alphaOrganizationId);
+    await setUnitEnabled(alphaUnitId, 3, enabled, 'Synthetic Unit Lead', alphaOrganizationId);
 
     const descriptor = descriptorAt(0);
     expect(descriptor.method).toBe('POST');
     expect(descriptor.url).toBe('/api/v1/units/synthetic-unit-001/enabled');
     expect(descriptor.body).toEqual({ enabled });
     expect(descriptor.headers['If-Match']).toBe('3');
+  });
+
+  it('refuses to enable a unit with no named owner before sending a request', async () => {
+    const rejected = setUnitEnabled(alphaUnitId, 3, true, '  ', alphaOrganizationId);
+    await expect(rejected).rejects.toMatchObject({
+      kind: 'invalid',
+      code: 'OWNER_REQUIRED',
+    });
+    expect(sendMock).not.toHaveBeenCalled();
   });
 
   it('propagates a typed transport failure unchanged', async () => {

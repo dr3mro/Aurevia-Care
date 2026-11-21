@@ -5,6 +5,7 @@ import {
   hasBackupCoverage,
   isPastEffectiveDate,
   isValidCivilDate,
+  subjectLanguage,
   validateProfile,
 } from './domain';
 import { alphaProfile } from './fixtures';
@@ -57,6 +58,11 @@ describe('unit service profile coverage rules (MSG-06)', () => {
     expect(displaySubject('synthetic.owner', 'Not recorded')).toBe('synthetic.owner');
     expect(displaySubject('', 'Not recorded')).toBe('Not recorded');
     expect(displaySubject('  ', 'Not recorded')).toBe('Not recorded');
+  });
+
+  it('labels an Arabic-script subject as Arabic and a Latin subject as English', () => {
+    expect(subjectLanguage('مالك تجريبي')).toBe('ar');
+    expect(subjectLanguage('Synthetic Unit Lead')).toBe('en');
   });
 });
 
