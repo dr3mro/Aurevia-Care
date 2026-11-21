@@ -808,6 +808,8 @@ def tui(stdscr):
 
     seen, alarm, checked_at, last = None, None, 0.0, None
     started_at, started_note, muted = 0.0, "", False
+    autostart = bool(AUTOSTART)
+    autostart_wait = AUTOSTART or 10
     stdscr.timeout(200)
     kick()
     while True:
@@ -821,6 +823,8 @@ def tui(stdscr):
                 kick()
             elif key in (ord("m"), ord("M")):
                 muted = not muted  # the alarm still shows; only the sound stops
+            elif key in (ord("s"), ord("S")):
+                autostart = not autostart
         if st["at"] and time.time() - st["at"] >= INTERVAL:
             kick()
         with lock:
@@ -843,7 +847,7 @@ def tui(stdscr):
                     ids = (alarm["ids"] if alarm else set()) | {r["databaseId"] for r in fresh}
                     alarm = {"ids": ids, "text": text, "next": now}
             seen = set(failed_now) | (seen or set())
-            if AUTOSTART and swarm_idle(data) and now - started_at >= AUTOSTART * 60:
+            if autostart and swarm_idle(data) and now - started_at >= autostart_wait * 60:
                 err = start_swarm()
                 started_at = now
                 started_note = (f"swarm start failed: {err}" if err else
@@ -854,7 +858,7 @@ def tui(stdscr):
             alarm["next"] = now + 5
         H, W = stdscr.getmaxyx()
         phase = int(now * 3) % 2 if alarm else 0
-        sig = (H, W, at, busy, phase, bool(alarm), int(now // 5), started_note, len(loading), ready, muted)
+        sig = (H, W, at, busy, phase, bool(alarm), int(now // 5), started_note, len(loading), ready, muted, autostart)
         if sig == last:
             continue
         last = sig
@@ -894,9 +898,11 @@ def tui(stdscr):
         else:
             status = (f"loading {len(st['data']) - len(loading)}/{len(st['data'])}..." if loading else "refreshing..." if busy
                       else f"updated {span(time.time() - at)} ago")
-            foot = f" q quit · r refresh · m {'unmute' if muted else 'mute'}{' (MUTED)' if muted else ''} · every {INTERVAL}s · {status}"
-            if AUTOSTART:
-                foot += f" · {started_note or f'auto-start on ({AUTOSTART}m)'}"
+            auto_status = f"on ({autostart_wait}m)" if autostart else "off"
+            foot = f" q quit · r refresh · m {'unmute' if muted else 'mute'}{' (MUTED)' if muted else ''} · s auto-start {auto_status}"
+            if autostart and started_note:
+                foot += f" · {started_note}"
+            foot += f" · every {INTERVAL}s · {status}"
             stdscr.addstr(H - 1, 0, foot[: W - 1], attr["dim"])
         stdscr.refresh()
 

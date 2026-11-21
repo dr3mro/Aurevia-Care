@@ -357,7 +357,7 @@ class AgentRunTests(unittest.TestCase):
     def debug(self, mode="report", **env):
         self.run_cmd("implement", FAKE_MODE="commit")
         self.run_cmd("fetch-main")
-        return self.run_cmd("debug", FAKE_MODE=mode, PR_NUMBER="9", PROMPT_LOG=str(self.tmp / "prompt.log"), **env)
+        return self.run_cmd("debug", FAKE_MODE=mode, PR_NUMBER="9", DEBUG_ROUND="2", PROMPT_LOG=str(self.tmp / "prompt.log"), **env)
 
     def test_the_debugger_merges_main_runs_the_agent_and_reports_the_file(self):
         self.push_to_main("other.txt", "from main\n")
@@ -367,8 +367,8 @@ class AgentRunTests(unittest.TestCase):
         self.assertTrue((self.repo / "other.txt").exists())
         self.assertIn("Root cause found: yes", (self.repo / ".agent/debug-report.md").read_text())
         prompt = (self.tmp / "prompt.log").read_text()
-        self.assertIn("You are the debugger", prompt)
-        self.assertIn("pull request #9", prompt)
+        self.assertIn("You are the debugger, round 2 of 3", prompt)
+        self.assertIn("Pull request #9", prompt)
         self.assertIn('merge state is "clean"', prompt)
         self.assertIn("Run all the tests", prompt)
         self.assertEqual((self.repo / "opencode.json").read_text(), '{"real": true}')

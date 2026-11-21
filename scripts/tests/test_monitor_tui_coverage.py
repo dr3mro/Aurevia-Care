@@ -490,6 +490,31 @@ class AutostartTests(TuiCase):
                                    "conclusion": "success"}],
                             todo="- [ ] X-1 · work")
 
+    def test_s_disables_autostart_before_the_first_refresh(self):
+        self.m.AUTOSTART = 7
+        with mock.patch.object(self.m, "start_swarm") as start:
+            self.run_tui([(None, ord("s")), (lambda: self.arrive(self.idle_payload()), -1),
+                          (None, ord("q"))])
+        start.assert_not_called()
+        self.assertIn("s auto-start off", self.screen.text())
+
+    def test_s_enables_autostart_with_the_default_wait_when_started_off(self):
+        with mock.patch.object(self.m, "start_swarm", return_value="") as start:
+            self.run_tui([(None, ord("S")), (lambda: self.arrive(self.idle_payload()), -1),
+                          (None, ord("q"))], size=(24, 150))
+        start.assert_called_once_with()
+        self.assertIn("s auto-start on (10m)", self.screen.text())
+
+    def test_toggling_preserves_the_wait_and_last_launch_time(self):
+        self.m.AUTOSTART = 7
+        with mock.patch.object(self.m, "start_swarm", return_value="") as start:
+            self.run_tui([(lambda: self.arrive(self.idle_payload()), -1), (None, ord("s")),
+                          (None, ord("s")), (lambda: self.advance(30), -1),
+                          (lambda: self.arrive(self.idle_payload()), -1), (None, ord("q"))],
+                         size=(24, 150))
+        start.assert_called_once_with()
+        self.assertIn("s auto-start on (7m)", self.screen.text())
+
     def test_a_wave_starts_when_swarm_is_idle_and_the_wait_has_elapsed(self):
         self.m.AUTOSTART = 10
         with mock.patch.object(self.m, "start_swarm", return_value="") as start:

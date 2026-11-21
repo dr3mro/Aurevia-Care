@@ -868,8 +868,8 @@ class ReleaseTests(unittest.TestCase):
         self.assertTrue(sent.said("workflow", "run", "swarm-debugger.yml"))
         self.assertFalse(sent.said("labels[]=needs-human"))
 
-    def test_a_fix_worker_that_fails_after_the_debugger_report_needs_a_person(self):
-        fake = FakeGh(pr_view={"labels": labels("swarm", "debugged")})
+    def test_a_fix_worker_that_fails_after_the_last_debugger_round_needs_a_person(self):
+        fake = FakeGh(pr_view={"labels": labels("swarm", "debug-1", "debug-2", "debug-3")})
         with mock.patch.object(swarm, "gh", fake):
             swarm.release(self.fix, "failed", 0)
         self.assertTrue(fake.said("labels[]=needs-human"))
@@ -892,45 +892,56 @@ class TaskFieldTests(unittest.TestCase):
 
 
 class FailTests(unittest.TestCase):
-    def fail(self, existing):
+    def fail(self, existing, **kwargs):
         fake = FakeGh(pr_view={"labels": labels("swarm", *existing)})
         with mock.patch.object(swarm, "gh", fake):
-            more = swarm.fail(9, "Integration failed", "line\n```evil\n" * 3)
+            more = swarm.fail(9, "Integration failed", "line\n```evil\n" * 3, **kwargs)
         return more, fake
 
-    def test_first_failure_asks_for_a_fix_and_dispatches_a_worker(self):
+    def test_a_failure_goes_to_the_debugger_first(self):
         more, fake = self.fail([])
-        self.assertTrue(more)
-        self.assertTrue(fake.said("labels[]=needs-fix") and fake.said("labels[]=fix-1"))
-        self.assertTrue(fake.said("workflow", "run", "swarm.yml"))
-        comment = [c for c in fake.calls if c[:2] == ("pr", "comment")][0][-1]
-        self.assertIn(swarm.MARK, comment)
-        self.assertNotIn("```evil", comment)
-
-    def test_a_waiting_wave_means_no_second_dispatch(self):
-        fake = FakeGh(pr_view={"labels": labels("swarm")})
-        with mock.patch.object(swarm, "gh", fake), mock.patch.object(swarm, "waiting_waves", return_value=1):
-            more = swarm.fail(9, "Integration failed")
-        self.assertTrue(more)
-        self.assertFalse(fake.said("workflow", "run", "swarm.yml"))
-
-    def test_attempts_are_counted_and_capped(self):
-        self.assertTrue(self.fail(["fix-1"])[1].said("labels[]=fix-2"))
-        more, fake = self.fail(["fix-1", "fix-2", "fix-3"])
         self.assertFalse(more)
         self.assertTrue(fake.said("labels[]=needs-debug"))
-        self.assertFalse(fake.said("labels[]=needs-human"))
+        self.assertFalse(fake.said("labels[]=needs-fix") or fake.said("labels[]=fix-1"))
         self.assertTrue(fake.said("workflow", "run", "swarm-debugger.yml"))
         self.assertFalse(fake.said("workflow", "run", "swarm.yml"))
+        comment = [c for c in fake.calls if c[:2] == ("pr", "comment")][0][-1]
+        self.assertIn(swarm.MARK, comment)
+        self.assertIn("3 rounds", comment)
+        self.assertNotIn("```evil", comment)
 
-    def test_a_failure_after_the_debugger_report_needs_a_person(self):
-        more, fake = self.fail(["debugged"])
+    def test_every_round_goes_back_to_the_debugger_until_the_third_fix_fails(self):
+        for existing in (["debug-1"], ["debug-1", "debug-2"]):
+            more, fake = self.fail(existing)
+            self.assertFalse(more)
+            self.assertTrue(fake.said("labels[]=needs-debug"), existing)
+            self.assertFalse(fake.said("labels[]=needs-human"))
+        more, fake = self.fail(["debug-1", "debug-2", "debug-3"])
         self.assertFalse(more)
         self.assertTrue(fake.said("labels[]=needs-human"))
         self.assertFalse(fake.said("labels[]=needs-debug"))
         self.assertFalse(fake.said("workflow"))
         comment = [c for c in fake.calls if c[:2] == ("pr", "comment")][0][-1]
-        self.assertIn("debugger's report", comment)
+        self.assertIn("3 debugger rounds", comment)
+
+    def test_a_failure_the_reason_explains_goes_to_a_fix_worker_first(self):
+        more, fake = self.fail([], simple=True)
+        self.assertTrue(more)
+        self.assertTrue(fake.said("labels[]=needs-fix") and fake.said("labels[]=fix-1"))
+        self.assertTrue(fake.said("workflow", "run", "swarm.yml"))
+        self.assertFalse(fake.said("labels[]=needs-debug"))
+        fake = FakeGh(pr_view={"labels": labels("swarm")})
+        with mock.patch.object(swarm, "gh", fake), mock.patch.object(swarm, "waiting_waves", return_value=1):
+            self.assertTrue(swarm.fail(9, "Integration failed", simple=True))
+        self.assertFalse(fake.said("workflow", "run", "swarm.yml"))
+
+    def test_simple_failures_use_up_their_fix_attempts_then_the_debugger(self):
+        self.assertTrue(self.fail(["fix-1"], simple=True)[1].said("labels[]=fix-2"))
+        more, fake = self.fail(["fix-1", "fix-2", "fix-3"], simple=True)
+        self.assertFalse(more)
+        self.assertTrue(fake.said("labels[]=needs-debug"))
+        more, fake = self.fail(["debug-1"], simple=True)
+        self.assertTrue(fake.said("labels[]=needs-debug"))
 
 
 class StrategistTests(unittest.TestCase):
@@ -1083,11 +1094,10 @@ class DebuggerTests(unittest.TestCase):
         return outcome, fake, stuck
 
     def test_a_report_with_a_cause_and_a_fix_plan_goes_to_a_fix_worker(self):
-        outcome, fake, stuck = self.publish(self.REPORT, ("swarm", "needs-debug", "fix-1", "fix-2", "fix-3"))
+        outcome, fake, stuck = self.publish(self.REPORT, ("swarm", "needs-debug", "debug-1"))
         self.assertEqual(outcome, "fix")
-        self.assertTrue(fake.said("labels[]=debugged") and fake.said("labels[]=needs-fix"))
-        for name in ("needs-debug", "fix-1", "fix-2", "fix-3"):
-            self.assertTrue(self.removed(fake, name), name)
+        self.assertTrue(fake.said("labels[]=debug-2") and fake.said("labels[]=needs-fix"))
+        self.assertTrue(self.removed(fake, "needs-debug"))
         comment = [c for c in fake.calls if c[:2] == ("pr", "comment")][0][-1]
         self.assertIn(swarm.MARK, comment)
         self.assertIn(swarm.DEBUG_MARK, comment)
@@ -1110,7 +1120,7 @@ class DebuggerTests(unittest.TestCase):
                 outcome, fake, stuck = self.publish(report)
                 self.assertEqual(outcome, "human")
                 self.assertTrue(fake.said("labels[]=needs-human"))
-                self.assertFalse(fake.said("labels[]=needs-fix") or fake.said("labels[]=debugged"))
+                self.assertFalse(fake.said("labels[]=needs-fix") or fake.said("labels[]=debug-1"))
                 self.assertTrue(self.removed(fake, "needs-debug"))
                 self.assertFalse(fake.said("workflow"))
                 stuck.assert_called_once()
@@ -1136,6 +1146,7 @@ class DebuggerTests(unittest.TestCase):
         self.assertIn("branch=swarm/CW-001-4\n", written)
         self.assertIn("task=CW-001\n", written)
         self.assertIn("count=2\n", written)
+        self.assertIn("round=1\n", written)
 
     def test_select_with_nothing_waiting_reports_zero(self):
         with tempfile.TemporaryDirectory() as tmp, mock.patch.object(swarm, "gh", FakeGh(prs=[])), \
@@ -1144,6 +1155,7 @@ class DebuggerTests(unittest.TestCase):
             written = (Path(tmp) / "out").read_text()
         self.assertIn("count=0\n", written)
         self.assertIn("pr=\n", written)
+        self.assertIn("round=\n", written)
 
     def test_pr_context_keeps_only_trusted_comments_with_the_marker(self):
         comments = [{"body": f"{swarm.MARK}\nIntegration failed", "user": {"login": "github-actions[bot]"}},
@@ -1179,9 +1191,58 @@ class DebuggerTests(unittest.TestCase):
         self.assertIn("2 comment(s) written to ctx.md", out.getvalue())
         self.assertIn("fix", out.getvalue())
 
+    def history(self, comments, body="First worker notes", **limits):
+        class Gh(FakeGh):
+            def __call__(self, *args, check=True):
+                self.calls.append(args)
+                if args[0] == "api":
+                    return json.dumps(comments)
+                if args[:2] == ("pr", "view"):
+                    return json.dumps({"body": body})
+                return ""
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(swarm, "gh", Gh()), \
+                mock.patch.multiple(swarm, **(limits or {"PR_HISTORY_LIMIT": swarm.PR_HISTORY_LIMIT})):
+            out = Path(tmp) / "history.md"
+            count = swarm.pr_context(9, str(out))
+            return count, out.read_text() if out.exists() else ""
+
+    def comment(self, body, when="2026-11-21T10:00:00Z"):
+        return {"body": body, "created_at": when, "user": {"login": "github-actions[bot]"}}
+
+    def test_the_history_lists_every_step_oldest_first_with_the_first_workers_notes(self):
+        comments = [self.comment(f"{swarm.MARK}\nIntegration failed: gate\nERROR in FooTest", "2026-11-21T10:00:00Z"),
+                    self.comment(f"{swarm.MARK}\n{swarm.DEBUG_MARK}\n**Debugger report, round 1 of 3.** cause A", "2026-11-21T11:00:00Z"),
+                    self.comment("Worker 3 ended with 'timeout' and pushed nothing.", "2026-11-21T12:00:00Z"),
+                    self.comment(f"{swarm.RESOLVE_MARK}\nresolver noise"),
+                    {"body": f"{swarm.MARK}\nstranger", "user": {"login": "x"}, "author_association": "NONE"}]
+        count, text = self.history(comments)
+        self.assertEqual(count, 3)
+        self.assertIn("First worker notes", text)
+        self.assertLess(text.index("Step 1: integrator"), text.index("Step 2: debugger report"))
+        self.assertLess(text.index("Step 2: debugger report"), text.index("Step 3: fix worker"))
+        self.assertIn("ERROR in FooTest", text)
+        self.assertNotIn("resolver noise", text)
+        self.assertNotIn("stranger", text)
+
+    def test_older_steps_are_shortened_and_the_oldest_go_when_the_history_is_too_long(self):
+        comments = [self.comment(f"{swarm.MARK}\n" + "x" * 400 + f" step{n}") for n in range(6)]
+        count, text = self.history(comments, PR_HISTORY_OLD=50, PR_HISTORY_RECENT=300, PR_HISTORY_LIMIT=700)
+        self.assertLess(count, 6)
+        self.assertIn("older step(s) left out", text)
+        self.assertIn("step5", text)  # a log's end is kept: that is where the error is
+        self.assertNotIn("step0", text)
+
+    def test_a_pull_request_with_no_history_writes_nothing(self):
+        count, text = self.history([], body="")
+        self.assertEqual((count, text), (0, ""))
+        count, text = self.history([], body="Only the notes")
+        self.assertEqual(count, 0)
+        self.assertIn("Only the notes", text)
+
     def test_labels_exist_and_the_debugger_is_budgeted(self):
         self.assertIn("needs-debug", swarm.LABELS)
-        self.assertIn("debugged", swarm.LABELS)
+        for name in ("debug-1", "debug-2", "debug-3"):
+            self.assertIn(name, swarm.LABELS)
         self.assertIn("swarm-debugger.yml", swarm.BUDGET_WORKFLOWS)
 
     def test_the_integration_queue_waits_for_the_debugger(self):
@@ -1463,6 +1524,19 @@ class ResolveConflictTests(unittest.TestCase):
             swarm.integrate_batch([5])
         self.assertTrue(failed.called)
         emitted.assert_any_call("conflicted", "[]")
+
+    def test_a_branch_that_moved_after_planning_is_retested_without_the_debugger(self):
+        fake = FakeGh(pr_view={"headRefOid": "new-sha"})
+        with mock.patch.object(swarm, "gh", fake), \
+             mock.patch.object(swarm, "guard", return_value=[]), \
+             mock.patch.object(swarm, "is_repair", return_value=False), \
+             mock.patch.object(swarm, "merge_local", return_value=("old-sha", "CW-001", [])), \
+             mock.patch.object(swarm, "git") as local, \
+             mock.patch.object(swarm, "fail") as failed, \
+             mock.patch.object(swarm, "emit"):
+            swarm.integrate_batch([5])
+        failed.assert_called_once_with(5, "the branch changed after planning; it will be retested", simple=True)
+        self.assertTrue(any(c.args[:2] == ("merge", "--abort") for c in local.call_args_list))
 
     def results(self, tmp, **outcomes):
         for pr, outcome in outcomes.items():

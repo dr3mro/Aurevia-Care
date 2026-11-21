@@ -472,7 +472,7 @@ class ContextTests(unittest.TestCase):
 
     def test_a_run_that_fails_to_release_does_not_change_labels(self):
         fake = Gh(pr_info={"title": "T", "headRefName": "swarm/CW-001-4", "url": "u",
-                           "labels": [{"name": "debugged"}]})
+                           "labels": [{"name": "debug-1"}, {"name": "debug-2"}, {"name": "debug-3"}]})
         with mock.patch.object(swarm, "gh", fake):
             swarm.release({"slot": 1, "id": "CW-001", "kind": "fix", "number": 7}, "failed", 0)
         self.assertTrue(fake.said("issue", "create"))

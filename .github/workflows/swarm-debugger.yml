@@ -1,10 +1,11 @@
 name: Swarm debugger
-# The last stop before a person. A pull request lands here (label needs-debug) when its
-# fix attempts are used up or a fix worker crashed. A read-only agent works on the whole
+# The first stop for a failing pull request (label needs-debug): worker, debugger, fix, and again
+# for up to three rounds, then a person. A pull request lands here when integration fails or a fix
+# worker crashed. A read-only agent works on the whole
 # project: it runs every test, compares the failures with main, finds the root cause and
-# writes a report. A trusted job then sends the report to one more fix worker (labels
-# debugged and needs-fix). If that fix fails too, or the debugger finds no cause, the pull
-# request gets needs-human. The agent step never holds a GitHub token.
+# writes a report. A trusted job then sends the report to a fix worker (labels debug-N and
+# needs-fix). If the debugger finds no cause, or the third fix fails, the pull request gets
+# needs-human. The agent step never holds a GitHub token.
 on:
   workflow_dispatch:
   # Safety net: a dispatch refused for lack of a token must not leave a pull request waiting.
@@ -33,6 +34,7 @@ jobs:
       pr: ${{ steps.pick.outputs.pr }}
       branch: ${{ steps.pick.outputs.branch }}
       task: ${{ steps.pick.outputs.task }}
+      round: ${{ steps.pick.outputs.round }}
       count: ${{ steps.pick.outputs.count }}
       image: ${{ steps.image.outputs.image }}
     steps:
@@ -71,6 +73,7 @@ jobs:
       SWARM: '1'
       MODE: fix
       PR_NUMBER: ${{ needs.select.outputs.pr }}
+      DEBUG_ROUND: ${{ needs.select.outputs.round }}
       BRANCH: ${{ needs.select.outputs.branch }}
       STORY_ID: ${{ needs.select.outputs.task }}
       BASE_BRANCH: ${{ github.event.repository.default_branch }}
