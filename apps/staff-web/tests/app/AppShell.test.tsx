@@ -133,6 +133,8 @@ describe('route registry', () => {
       '/schedule/book',
       '/patients/:id/chart',
       '/patients/:id/notes/:noteId',
+      '/admin/facilities',
+      '/admin/staff',
       '*',
     ]);
     expect(createRoutes(true).map((route) => route.pattern)).toEqual([
@@ -141,6 +143,8 @@ describe('route registry', () => {
       '/schedule/book',
       '/patients/:id/chart',
       '/patients/:id/notes/:noteId',
+      '/admin/facilities',
+      '/admin/staff',
       '/design-preview',
       '*',
     ]);
