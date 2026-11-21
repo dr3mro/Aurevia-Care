@@ -80,6 +80,8 @@ describe('screen to authorization integration (PAT-02)', () => {
           documentId: 'document-2',
           checksum: 'checksum-2',
           language: 'en',
+          patientId: 'patient-1',
+          releaseState: 'current',
         };
       },
     };

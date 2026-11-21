@@ -1,6 +1,7 @@
 import type {
   DownloadAuthorization,
   ReleasedReport,
+  ReleaseState,
   ReportLanguage,
   ReportTransport,
   TokenStore,
@@ -22,6 +23,11 @@ function isRevision(value: unknown): value is number {
 /** Narrow a decoded JSON value to a supported document language. */
 function isLanguage(value: unknown): value is ReportLanguage {
   return value === 'en' || value === 'ar';
+}
+
+/** Narrow a decoded JSON value to a known release lifecycle state. */
+function isReleaseState(value: unknown): value is ReleaseState {
+  return value === 'current' || value === 'withdrawn';
 }
 
 /** Narrow a decoded JSON value to a plain object. */
@@ -80,17 +86,25 @@ export function parseReleasedReport(value: unknown): ReleasedReport {
 }
 
 /**
- * Parse a server-issued download authorization and bind it to the requested revision.
+ * Parse a server-issued download authorization and bind it to this download (PAT-02).
  *
- * A well-formed authorization for another report or revision is not valid for this tap.
+ * A well-formed authorization is not enough: it must name the exact report and revision the
+ * patient tapped, must be linked to the authenticated patient, and must still describe a current
+ * release. A withdrawn release stops access even when an older authorization exists. These checks
+ * run on every download because release state can change after the list was loaded.
  */
-function parseAuthorization(value: unknown, expectedReportId: string, expectedRevision: number): DownloadAuthorization {
+function parseAuthorization(
+  value: unknown,
+  expectedReportId: string,
+  expectedRevision: number,
+  expectedPatientId: string,
+): DownloadAuthorization {
   if (!isRecord(value)) {
     throw new Error('MALFORMED_AUTHORIZATION');
   }
-  const { reportId, revision, documentId, checksum, language } = value;
+  const { reportId, revision, documentId, checksum, language, patientId, releaseState } = value;
   if (!isText(reportId) || !isRevision(revision) || !isText(documentId) || !isText(checksum)
-      || !isLanguage(language)) {
+      || !isLanguage(language) || !isText(patientId) || !isReleaseState(releaseState)) {
     throw new Error('MALFORMED_AUTHORIZATION');
   }
   if (reportId !== expectedReportId) {
@@ -99,7 +113,13 @@ function parseAuthorization(value: unknown, expectedReportId: string, expectedRe
   if (revision !== expectedRevision) {
     throw new Error('AUTHORIZATION_MISMATCH');
   }
-  return { reportId, revision, documentId, checksum, language };
+  if (patientId !== expectedPatientId) {
+    throw new Error('WRONG_PATIENT');
+  }
+  if (releaseState === 'withdrawn') {
+    throw new Error('RELEASE_WITHDRAWN');
+  }
+  return { reportId, revision, documentId, checksum, language, patientId, releaseState };
 }
 
 /** The narrow capability the download confirmation flow needs from a client. */
@@ -110,14 +130,30 @@ export type DownloadAuthorizer = Pick<ReleasedReportClient, 'authorizeDownload'>
  *
  * Every command reads the OS-backed credential immediately before the request and holds no
  * clinical state between calls. A download requires a fresh server authorization for the exact
- * revision; a failed authorization never produces a document reference.
+ * revision, linked to the authenticated patient and still a current release; a failed authorization
+ * never produces a document reference.
  */
 export class ReleasedReportClient {
-  /** Create the client from a transport and protected credential store. */
+  /**
+   * Create the client for one authenticated patient.
+   *
+   * @param transport protected report transport
+   * @param tokens OS-backed session credential store
+   * @param patientId verified identity of the patient this client is bound to; every download
+   * authorization must name this patient before any document reference is released
+   * @throws Error with code `INVALID_PATIENT` when the patient identity is blank
+   */
   constructor(
     private readonly transport: ReportTransport,
     private readonly tokens: TokenStore,
-  ) {}
+    private readonly patientId: string,
+  ) {
+    // Fail closed on a missing or blank patient identity: without it the WRONG_PATIENT check
+    // would compare against a meaningless value. The caller must supply the verified account id.
+    if (!isText(patientId)) {
+      throw new Error('INVALID_PATIENT');
+    }
+  }
 
   /** List the releases currently visible to the authenticated patient. */
   async listReleasedReports(): Promise<ReleasedReport[]> {
@@ -143,7 +179,7 @@ export class ReleasedReportClient {
       token,
       { revision },
     );
-    return parseAuthorization(body, reportId, revision);
+    return parseAuthorization(body, reportId, revision, this.patientId);
   }
 
   private async requireToken(): Promise<string> {
