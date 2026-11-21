@@ -7,7 +7,8 @@
 # migrations. With AUREVIA_PERSIST=1 and a volume on /dumps it is dumped on a clean
 # stop and restored on the next start.
 
-FROM node:22-alpine AS web
+# node:22-alpine (digest pinned; Dependabot bumps it)
+FROM node:22-alpine@sha256:1314fb30ec37592d5845e5a160d522c0e680972aa534549940b8d73bde88481a AS web
 WORKDIR /src
 COPY project.json ./project.json
 COPY apps/staff-web/package.json apps/staff-web/package-lock.json ./apps/staff-web/
@@ -15,7 +16,8 @@ RUN cd apps/staff-web && npm ci --no-audit --no-fund
 COPY apps/staff-web ./apps/staff-web
 RUN cd apps/staff-web && npm run build
 
-FROM maven:3.9-eclipse-temurin-21 AS api
+# maven:3.9-eclipse-temurin-21 (digest pinned; Dependabot bumps it)
+FROM maven:3.9-eclipse-temurin-21@sha256:99e61abcff91a9b1333463bd8451fb18495d6eba9250ac66a338b518f8278320 AS api
 WORKDIR /src
 COPY apps/api/pom.xml ./apps/api/pom.xml
 RUN mvn -B -q -f apps/api/pom.xml dependency:go-offline -Pno-security || true
