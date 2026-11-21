@@ -162,8 +162,10 @@ which is not a market pack.
 | Per-site launch approvals and final G5 acceptance | S-G5-12, GATE-PACK-G5 |
 | Recipient retention applied under law and policy | SPEC-XCH-03-C05 |
 
-The clause notes under `docs/spec/clauses` referenced by several of the tasks above are
-not present in the repository at the time of writing; those tasks are open.
+The clause-notes directory `docs/spec/clauses` now exists, but the OPS-01, PRD-05,
+RX-02 and XCH-03 clause notes referenced by several of the tasks above are not present
+in the repository at the time of writing; those tasks remain open. No market value was
+inferred from the product clause notes that do exist.
 
 ## Questions for the owner
 
