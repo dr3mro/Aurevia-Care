@@ -43,9 +43,9 @@ def copy_pack():
     """Copy the files the pack checks use into a scratch repository."""
     tmp = Path(tempfile.mkdtemp())
     (tmp / ".github").mkdir()
-    for name in ("opencode.json", "SMARTCLINIC_V1_SPEC.md", "TODO.md", ".github/opencode.ci.json"):
+    for name in ("opencode.json", "SMARTCLINIC_V1_SPEC.md", ".github/opencode.ci.json"):
         shutil.copy(ROOT / name, tmp / name)
-    for folder in (".opencode", "scripts"):
+    for folder in (".opencode", "scripts", "tasks"):
         shutil.copytree(ROOT / folder, tmp / folder,
                         ignore=shutil.ignore_patterns("__pycache__", "tests"))
     return tmp

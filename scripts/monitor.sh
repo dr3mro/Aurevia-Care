@@ -10,7 +10,7 @@
 # Usage:  bash monitor [--once] [--interval SECONDS] [--recent N] [--autostart-wait MINUTES] [--no-autostart]
 set -u
 
-INTERVAL=30
+INTERVAL=60
 ONCE=0
 RECENT=50
 AUTOSTART=10

@@ -1,5 +1,5 @@
-- [-] GATE-DECISION-RELEASE-AND-RECOVERY-RULES · Decision pack for a person to approve: Result release rules, sensitive information handling and identity recovery approvals
-  - agent: swarm-8
+- [x] GATE-DECISION-RELEASE-AND-RECOVERY-RULES · Decision pack for a person to approve: Result release rules, sensitive information handling and identity recovery approvals
+  - pr: #368
   - attempts: 1
   - requirements: XCH-06, IAM-05
   - scope: docs/launch/release-and-recovery-rules.md

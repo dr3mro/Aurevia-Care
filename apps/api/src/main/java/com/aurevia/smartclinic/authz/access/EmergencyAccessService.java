@@ -36,6 +36,7 @@ public class EmergencyAccessService {
     public static final String CONFIG_KEY = "access.emergency.enabled";
 
     private static final String GRANT_TYPE = "EMERGENCY_ACCESS_GRANT";
+    private static final String REVIEW_TYPE = "EMERGENCY_ACCESS_REVIEW";
     private static final String CLINICIAN = "clinician";
     private static final String UNKNOWN_FACILITY = "SYSTEM";
 
@@ -103,6 +104,11 @@ public class EmergencyAccessService {
                     row.id(), "SUCCESS");
             repository.appendAudit(context, PURPOSE, "EMERGENCY_ALERT", scope, GRANT_TYPE,
                     row.id(), "SUCCESS");
+            // The alert is also a durable work item for the privacy auditor, opened
+            // in the same guarded transaction so no grant can exist without it.
+            repository.openReview(context.organizationId(), row.id(), context.subject(), now);
+            repository.appendAudit(context, PURPOSE, "EMERGENCY_REVIEW_OPEN",
+                    "privacy_auditor:" + row.facilityCode(), REVIEW_TYPE, row.id(), "SUCCESS");
             return view(row, now);
         });
         if (failure.get() != null) {
@@ -199,15 +205,18 @@ public class EmergencyAccessService {
     }
 
     /**
-     * Record an independent review; the grantee cannot review their own grant.
+     * Record an independent review and close its open review row with an explicit
+     * outcome; the grantee cannot review their own grant.
      *
      * @param id      grant identifier from the path
-     * @param request reviewer finding
+     * @param request reviewer finding and closure outcome
      * @return the reviewed grant projection
      * @throws ApiException on invalid input, denied access or an unknown or already reviewed grant
      */
     public EmergencyGrantView review(String id, ReviewRequest request) {
         AccessRules.validateReason(request.note(), "INVALID_NOTE");
+        String outcome = request.outcome() == null ? AccessRules.DEFAULT_REVIEW_OUTCOME : request.outcome();
+        AccessRules.validateReviewOutcome(outcome);
         AtomicReference<ApiException> failure = new AtomicReference<>();
         EmergencyGrantView result = transactions.execute(status -> {
             TenantContext context = TenantContext.current();
@@ -224,6 +233,7 @@ public class EmergencyAccessService {
                 failure.set(new ApiException(404, "NOT_FOUND", "grant not found or already reviewed"));
                 return null;
             }
+            repository.closeReview(id, context.subject(), outcome, request.note(), clock.instant());
             GrantRow row = repository.findGrant(id).orElse(null);
             if (row == null) {
                 repository.appendAudit(context, PURPOSE, "EMERGENCY_REVIEW",

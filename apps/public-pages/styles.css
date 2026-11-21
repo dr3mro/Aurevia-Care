@@ -1,0 +1,134 @@
+/* Shared stylesheet for the separately hosted public information pages.
+   Plain CSS only: no JavaScript, no external fonts, no imported resources. */
+
+:root {
+  color-scheme: light;
+  /* One gutter drives both the body padding and the full-bleed header/footer
+     margins, so narrowing it at small widths cannot cause horizontal scroll. */
+  --gutter: 1rem;
+  --page: #ffffff;
+  --surface: #eef2f6;
+  --footer: #f7f9fb;
+  --ink: #1b2430;
+  --ink-soft: #33404f;
+  --link: #1a4f8b;
+  --border: #c9d3de;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 100%;
+}
+
+body {
+  margin: 0;
+  padding: 0 var(--gutter) 2rem;
+  max-width: 48rem;
+  margin-inline: auto;
+  background: var(--page);
+  color: var(--ink);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
+  line-height: 1.6;
+  overflow-wrap: break-word;
+}
+
+.skip-link {
+  position: absolute;
+  left: -10000px;
+  top: 0;
+  padding: 0.5rem 0.75rem;
+  background: var(--ink);
+  color: var(--page);
+}
+
+.skip-link:focus {
+  left: 0;
+  top: 0;
+}
+
+.site-header {
+  margin-inline: calc(-1 * var(--gutter));
+  padding: 1rem var(--gutter);
+  background: var(--surface);
+  border-block-end: 1px solid var(--border);
+}
+
+.site-name {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+main {
+  padding-block: 1.5rem;
+}
+
+h1 {
+  font-size: 1.75rem;
+  line-height: 1.25;
+  margin: 0 0 1rem;
+}
+
+h2 {
+  font-size: 1.25rem;
+  line-height: 1.3;
+  margin: 1.5rem 0 0.5rem;
+}
+
+p {
+  margin: 0 0 1rem;
+}
+
+a {
+  color: var(--link);
+  text-decoration: underline;
+}
+
+a:focus-visible {
+  outline: 3px solid var(--link);
+  outline-offset: 2px;
+}
+
+.callout {
+  padding: 0.75rem 1rem;
+  border-inline-start: 4px solid var(--link);
+  background: var(--footer);
+  border-radius: 4px;
+}
+
+.site-footer {
+  margin: 2rem 0 0;
+  margin-inline: calc(-1 * var(--gutter));
+  padding: 1rem var(--gutter);
+  background: var(--footer);
+  color: var(--ink-soft);
+  border-block-start: 1px solid var(--border);
+  font-size: 0.9375rem;
+}
+
+.site-footer ul {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+}
+
+.site-footer li {
+  margin: 0;
+}
+
+@media (max-width: 360px) {
+  :root {
+    --gutter: 0.75rem;
+  }
+
+  h1 {
+    font-size: 1.5rem;
+  }
+}

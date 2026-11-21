@@ -1012,15 +1012,118 @@ def slot_manifests_exist(slots, repo=None):
     return True
 
 
-def images_ready_command(slots=None):
+def generation_tag(sha, run_number):
+    """Immutable tag for one published generation of the slot images.
+
+    ``g<run>-<sha12>`` pins a generation to the exact commit and workflow run
+    that produced it, so a cancelled or replaced ``:latest`` publish cannot
+    change which image a wave starts from. The sha is lowercased for Docker tag
+    safety; a short sha is accepted as-is for synthetic fixtures.
+    """
+    return f"g{run_number}-{sha[:12].lower()}"
+
+
+def _generation_complete(generation):
+    """True when a generation records an image and a digest for every slot.
+
+    ``generation`` has a non-empty ``slots`` list; each entry holds ``exists``
+    (the image is in the registry) and ``digest`` (its recorded digest). A
+    malformed record — including a non-list ``slots`` value — is treated as
+    incomplete so a bad publish cannot be chosen.
+    """
+    slots = generation.get("slots") if isinstance(generation, dict) else None
+    # A truthy non-list (e.g. an int from bad JSON) is not iterable; reject it
+    # here rather than raising TypeError out of the plan job.
+    if not isinstance(slots, list) or not slots:
+        return False
+    for slot in slots:
+        if not isinstance(slot, dict):
+            return False
+        if not slot.get("exists"):
+            return False
+        if not slot.get("digest"):
+            return False
+    return True
+
+
+def pick_generation(generations):
+    """Return the newest generation when it is complete, else ``None``.
+
+    ``generations`` is ordered newest first. Only the newest entry is checked;
+    use ``last_good`` for the fallback when it is incomplete.
+    """
+    if generations and _generation_complete(generations[0]):
+        return generations[0]
+    return None
+
+
+def last_good(generations):
+    """Return the newest complete generation older than the newest one.
+
+    This is the fallback when the newest generation is incomplete. The newest
+    entry is deliberately skipped so a known-bad publish is never chosen.
+    """
+    for generation in generations[1:]:
+        if _generation_complete(generation):
+            return generation
+    return None
+
+
+def wave_generation(generations):
+    """Choose the generation a wave will use and name the source of the choice.
+
+    Returns ``(generation, source)`` where ``source`` is ``"newest"``,
+    ``"last-good"`` or ``"none"``. No complete generation means the wave waits.
+    """
+    newest = pick_generation(generations)
+    if newest is not None:
+        return newest, "newest"
+    fallback = last_good(generations)
+    if fallback is not None:
+        return fallback, "last-good"
+    return None, "none"
+
+
+def parse_generations(raw):
+    """Parse a JSON array of generation records, or ``None`` when unmanaged.
+
+    An empty value means the publish workflow has not supplied generations yet;
+    malformed JSON is ignored rather than failing the plan job on bad input.
+    """
+    if not raw or not raw.strip():
+        return None
+    try:
+        parsed = json.loads(raw)
+    except ValueError:
+        return None
+    return parsed if isinstance(parsed, list) else None
+
+
+def images_ready_command(slots=None, generations=None):
     """Gather inputs, decide readiness, dispatch one build if needed, emit outputs.
 
     Trusted call only (the plan job). The actual decision is the pure
     `images_ready()` function so it can be tested without GitHub or the network.
+    When ``generations`` is supplied (or ``None`` for an unmanaged publish), the
+    wave also reports which immutable generation it will use: the newest
+    complete one, the last good fallback, or none — in which case the wave waits
+    rather than pulling a stale or half-written ``:latest`` image.
     """
     runs = image_runs()
     manifests = slot_manifests_exist(load_slots(slots or ".github/swarm/slots.json"))
     ready, reason, dispatch = images_ready(runs, manifests)
+    if generations is None:
+        emit("generation", "")
+        emit("generation_source", "unmanaged")
+    else:
+        chosen, source = wave_generation(generations)
+        if chosen is None:
+            ready = False
+            reason = f"{reason}; no complete slot-image generation and no last good generation, so the wave waits"
+        else:
+            reason = f"{reason}; wave uses generation {chosen.get('tag', '')} ({source})"
+        emit("generation", chosen.get("tag", "") if chosen else "")
+        emit("generation_source", source)
     if dispatch:
         gh("workflow", "run", "agent-image.yml", "--ref", "main", check=False)
     print(reason)
@@ -2475,11 +2578,31 @@ def merge_local(pr):
     return git("rev-parse", f"pr-{pr}").strip(), task_id_of(info["headRefName"]), []
 
 
+class BranchMoved(SystemExit):
+    """The pull request branch changed after its merge was tested."""
+
+
+def record_merges(merged, gates):
+    """Record every tested merge. A branch that moved after its test (a worker pushed, someone
+    updated the branch) used to fail the whole batch after up to an hour of gating. Now its tested
+    commit stays in the merge, nothing is recorded for it, the pull request stays open, and the
+    next run integrates the newer commits. Returns `(recorded, comments, moved)`."""
+    recorded, comments, moved = [], [], []
+    for item in merged:
+        pr, task_id, sha = item
+        try:
+            comments.append(record_merge(pr, task_id, sha, gates[pr][0]))
+            recorded.append(item)
+        except BranchMoved:
+            moved.append(item)
+    return recorded, comments, moved
+
+
 def record_merge(pr, task_id, sha, gate="scripts/quick-check.sh"):
     """Record one already-gated merge in the shared trackers. No commit or push."""
     info = gh_json("pr", "view", str(pr), "--json", "headRefOid,body")
     if info["headRefOid"] != sha:
-        raise SystemExit("the branch changed after it was tested; it will be retested")
+        raise BranchMoved("the branch changed after it was tested; it will be retested")
     tasks = {t["id"]: t for t in parse_tasks(todo_read())}
     title = tasks.get(task_id, {}).get("task", task_id)
     Path("docs/swarm").mkdir(parents=True, exist_ok=True)
@@ -2622,7 +2745,7 @@ def integrate_batch(queue, gate="scripts/quick-check.sh"):
     if not merged:
         emit("merged", 0)
         return 0
-    comments = [record_merge(pr, task_id, sha, gates[pr][0]) for pr, task_id, sha in merged]
+    merged, comments, moved = record_merges(merged, gates)
     files = todo_paths() + [f"docs/swarm/{t}.md" for _, t, _ in merged]
     git("add", *files)
     try:
@@ -2650,8 +2773,9 @@ def integrate_batch(queue, gate="scripts/quick-check.sh"):
             authed_git("fetch", "origin", "main")
             git("reset", "--soft", "origin/main")
             restore_trackers()
-            for pr, task_id, sha in merged:
-                record_merge(pr, task_id, sha, gates[pr][0])
+            merged, comments, newly_moved = record_merges(merged, gates)
+            moved += newly_moved
+            files = todo_paths() + [f"docs/swarm/{t}.md" for _, t, _ in merged]
             git("add", *files)
             git(*IDENTITY, "commit", "-qm", "Integrate swarm PRs (reconciled)",
                 "--allow-empty", check=False)
@@ -2668,6 +2792,10 @@ def integrate_batch(queue, gate="scripts/quick-check.sh"):
                 return 0
     for (pr, _, _), comment in zip(merged, comments):
         gh("pr", "comment", str(pr), "--body", comment)
+    for pr, _, sha in moved:
+        gh("pr", "comment", str(pr), "--body",
+           f"{MARK}\nThe branch changed after its merge was tested. The tested commit {sha[:12]} is in main; "
+           "this pull request stays open and its newer commits are integrated by the next run.", check=False)
     close_merged_issues([(pr, task_id) for pr, task_id, _ in merged])
     dispatch_delivery()
     emit("merged", len(merged))
@@ -2756,6 +2884,7 @@ def main(argv=None):
     sub.add_parser("migrate-tasks")
     p = sub.add_parser("images-ready")
     p.add_argument("--slots", default=".github/swarm/slots.json")
+    p.add_argument("--generations", default="", help="JSON array of published generation records")
     p = sub.add_parser("budget-gate")
     p.add_argument("--cap", type=int, default=DEFAULT_MONTHLY_MINUTES)
     p = sub.add_parser("integrate-batch")
@@ -2831,7 +2960,7 @@ def main(argv=None):
     elif a.cmd == "archive-todo":
         print(f"archived {archive_todo()} finished task(s) to {ARCHIVE}")
     elif a.cmd == "images-ready":
-        images_ready_command(a.slots)
+        images_ready_command(a.slots, parse_generations(a.generations))
     elif a.cmd == "slot-matrix":
         emit("matrix", json.dumps({"slot": [s["slot"] for s in load_slots(".github/swarm/slots.json")]},
                                   separators=(",", ":")))

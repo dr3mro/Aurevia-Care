@@ -1,5 +1,5 @@
-- [-] COVPY-MONITOR-FETCH · Script tests: monitor tool coverage, fetch part (to 100% together with the other three parts)
-  - agent: swarm-10
+- [x] COVPY-MONITOR-FETCH · Script tests: monitor tool coverage, fetch part (to 100% together with the other three parts)
+  - pr: #393
   - attempts: 1
   - requirements: OPS-06
   - scope: scripts/tests/test_monitor_fetch_coverage.py

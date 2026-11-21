@@ -84,12 +84,25 @@ class JdbcPatientAccessStoreIntegrationTest {
     @Autowired
     JdbcPatientAccessStore jdbcStore;
 
-    /** Create roles and a fresh database, apply all migrations and seed two tenants. */
+    /**
+     * Create roles, a fresh database, apply all migrations and seed two tenants.
+     *
+     * <p>Role creation must happen in the same {@link org.junit.jupiter.api.BeforeAll}
+     * method that creates the database owned by that role. JUnit does not guarantee the
+     * relative order of several {@code @BeforeAll} methods in one class, so a separate
+     * role-creation method can run after {@code prepare()} and leave the
+     * {@code CREATE DATABASE ... OWNER smartclinic_migrate} statement with no role to
+     * own it.</p>
+     */
+
     @BeforeAll
     static void prepare() throws Exception {
         try (Connection root = DriverManager.getConnection(
                 "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
              Statement statement = root.createStatement()) {
+            // Roles must be created before CREATE DATABASE ... OWNER in the same
+            // @BeforeAll: JUnit does not guarantee the order of multiple @BeforeAll
+            // methods, so a separate roles() method could run after prepare().
             statement.execute("DO $$ BEGIN "
                     + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='smartclinic_migrate') THEN "
                     + "CREATE ROLE smartclinic_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "

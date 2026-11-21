@@ -2,6 +2,8 @@ package com.aurevia.smartclinic.documents;
 
 import java.time.Clock;
 
+import org.springframework.stereotype.Component;
+
 import com.aurevia.smartclinic.api.ApiException;
 import com.aurevia.smartclinic.documents.DocumentActions.Action;
 import com.aurevia.smartclinic.documents.DocumentContract.Actor;
@@ -16,6 +18,7 @@ import com.aurevia.smartclinic.documents.DocumentContract.EventType;
  * the two services cannot drift apart. A missing actor fails closed without an
  * audit record because there is no tenant to attribute it to.</p>
  */
+@Component
 public final class DocumentGuard {
 
     private final DocumentStore store;

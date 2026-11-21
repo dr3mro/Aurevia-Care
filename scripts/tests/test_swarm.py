@@ -22,6 +22,12 @@ def labels(*names):
     return [{"name": n} for n in names]
 
 
+
+def repo_tasks():
+    """The committed tasks as one text. TODO.md is not in git; they live one per file in tasks/."""
+    return swarm.store().joined()
+
+
 class FakeGh:
     """Record gh calls and answer the listing queries from canned data."""
 
@@ -669,7 +675,7 @@ class PlanTests(unittest.TestCase):
         self.assertIn('"commit", "-qm", f"{message} [skip ci]"', source)
 
     def test_open_spec_tasks_are_dispatchable(self):
-        tasks = swarm.parse_tasks((ROOT / "TODO.md").read_text())
+        tasks = swarm.parse_tasks(repo_tasks())
         dispatchable = [t for t in tasks
                         if t["status"] in ("todo", "taken") and t["scope"] and t["details"]
                         and swarm.attempts_of(t) < swarm.MAX_ATTEMPTS]
@@ -833,7 +839,7 @@ class PlanTests(unittest.TestCase):
         self.assertEqual((config["model"], config["autoupdate"], config["share"]),
                          (slots[1]["model"], False, "disabled"))
         self.assertNotIn("key", json.dumps(config).lower())
-        tasks = swarm.parse_tasks((ROOT / "TODO.md").read_text())
+        tasks = swarm.parse_tasks(repo_tasks())
         ids = [t["id"] for t in tasks]
         self.assertEqual(len(ids), len(set(ids)))
         for task in tasks:
@@ -1518,7 +1524,7 @@ class GitTests(unittest.TestCase):
             "check_names", ROOT / "scripts" / "check-names.py")
         names = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(names)
-        for task in swarm.parse_tasks((ROOT / "TODO.md").read_text()):
+        for task in swarm.parse_tasks(repo_tasks()):
             if task["status"] == "done":
                 continue
             for path in task["scope"]:
@@ -1834,6 +1840,32 @@ class TwoTierTests(unittest.TestCase):
         pushes = [c for c in fake.calls if c[:2] == ("workflow", "run")
                   and c[2] == "delivery.yml"]
         self.assertEqual(len(pushes), 1)
+
+    def test_integrate_batch_leaves_a_moved_branch_open(self):
+        self.repo = Path(tempfile.mkdtemp())
+        (self.repo / "TODO.md").write_text("# TODO\n")
+        self.addCleanup(shutil.rmtree, self.repo)
+        original = Path.cwd()
+        os.chdir(self.repo)
+        self.addCleanup(os.chdir, original)
+        fake = FakeGh(pr_view={"headRefOid": "abc", "body": "Task: CW-001"})
+        order = iter([("abc", "CW-001", []), ("abc", "CW-002", [])])
+
+        def record(pr, task_id, sha, gate):
+            if pr == 2:
+                raise swarm.BranchMoved("moved")
+            return "merged comment"
+        with mock.patch.object(swarm, "gh", fake), \
+             mock.patch.object(swarm, "guard", return_value=[]), \
+             mock.patch.object(swarm, "merge_local", side_effect=lambda *a, **k: next(order)), \
+             mock.patch.object(swarm, "record_merge", side_effect=record), \
+             mock.patch.object(swarm, "run_gate", return_value=(True, "ok")), \
+             mock.patch.object(swarm, "close_merged_issues"), \
+             mock.patch.object(swarm, "git"), mock.patch.object(swarm, "authed_git"):
+            swarm.integrate_batch([1, 2], "scripts/quick-check.sh")
+        comments = [c for c in fake.calls if c[:2] == ("pr", "comment")]
+        self.assertEqual({c[2] for c in comments}, {"1", "2"})
+        self.assertTrue(any(c[2] == "2" and "stays open" in c[4] for c in comments))
 
     def test_integrate_batch_retries_when_main_advanced(self):
         self.repo = Path(tempfile.mkdtemp())
