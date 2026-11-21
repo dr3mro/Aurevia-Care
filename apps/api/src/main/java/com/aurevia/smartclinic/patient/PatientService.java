@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.aurevia.smartclinic.api.ApiException;
+import com.aurevia.smartclinic.api.contract.IssuerCode;
 import com.aurevia.smartclinic.authz.ActionPolicy;
 import com.aurevia.smartclinic.tenant.TenantContext;
 
@@ -28,7 +29,6 @@ import com.aurevia.smartclinic.tenant.TenantContext;
 public class PatientService {
 
     private static final Pattern NAME = Pattern.compile("[\\p{L}\\p{M} '.-]{2,120}");
-    private static final Pattern ISSUER = Pattern.compile("[A-Za-z0-9_.:-]{2,32}");
     private static final Pattern MRN = Pattern.compile("[A-Za-z0-9_.:-]{2,64}");
     private static final Pattern REASON = Pattern.compile("[a-z_]{2,32}");
 
@@ -71,7 +71,9 @@ public class PatientService {
         if (mrn == null || !MRN.matcher(mrn).matches()) {
             throw new ApiException(422, "INVALID_MRN", "mrn must be 2-64 letters, digits or _ . : -");
         }
-        if (issuer == null || !ISSUER.matcher(issuer).matches()) {
+        try {
+            IssuerCode.issuerCode(issuer);
+        } catch (IllegalArgumentException invalid) {
             throw new ApiException(422, "INVALID_ISSUER", "issuer must be 2-32 letters, digits or _ . : -");
         }
         String date = validateDob(dob, dobUnknownReason);
