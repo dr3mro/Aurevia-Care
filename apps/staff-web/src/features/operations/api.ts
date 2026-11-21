@@ -1,5 +1,5 @@
 import { buildRequestDescriptor } from '../../api/client';
-import type { RequestDescriptor, RequestMeta } from '../../api/client';
+import type { RequestDescriptor } from '../../api/client';
 import { TransportError, send } from '../../api/transport';
 import { normalizeQueue } from './domain';
 import type { QueueAction, QueueCollection, QueueId, QueueRow } from './types';
@@ -39,66 +39,68 @@ export function queueRequest(
   return { ...base, url: queueUrl(queue, query) };
 }
 
-/** The HTTP target, extra body fields and precondition of one row command. */
+/** The HTTP target and body fields of one row command. */
 export interface ActionTarget {
   url: string;
   body: Record<string, unknown>;
-  ifMatch: number | undefined;
 }
 
 /**
- * Map a supported queue/action pair to a real API endpoint. Every command is
- * sent once by the caller; the reason is added by `actionDescriptor`.
+ * Map a supported queue/action pair to a real API endpoint accepted by the
+ * current contract. Commands are sent once by the caller. Every body carries
+ * a reason where the endpoint records one, and no precondition is invented:
+ * a revision is sent only when the list projection exposed it.
  */
 export function actionTarget(
   queue: QueueId,
   action: QueueAction,
   row: QueueRow,
+  reason: string,
 ): ActionTarget {
   switch (queue) {
     case 'work-items':
+      // The receiver must send issuer-scoped MRN plus an explicit attestation.
       return {
         url: `/api/v1/exchange/work-items/${encodeURIComponent(row.id)}/verify-patient`,
-        body: { localPatientId: row.detail },
-        ifMatch: undefined,
+        body: {
+          localPatientId: row.detail,
+          localMrn: row.localMrn,
+          mrnIssuer: row.mrnIssuer,
+          attestation: reason,
+        },
       };
     case 'dead-letters':
-      if (action === 'retry') {
-        return {
-          url: `/api/v1/delivery/events/${encodeURIComponent(row.id)}/retry`,
-          body: {},
-          ifMatch: 1,
-        };
-      }
+      // Both actions use the reviewed endpoint: its `resolution` wire keys are
+      // the only ones the server parses, and it records the operator reason.
       return {
         url: '/api/v1/delivery/dead-letters/review',
-        body: { eventId: row.id, resolution: 'retry' },
-        ifMatch: undefined,
+        body: {
+          eventId: row.id,
+          resolution: action === 'retry' ? 'requeued' : 'resolved',
+        },
       };
     case 'overdue-follow-ups':
       return {
         url: '/api/v1/messaging/instructions/follow-up/resolve',
-        body: { instructionId: row.id, revision: 1 },
-        ifMatch: undefined,
+        body: { instructionId: row.id, revision: row.version },
       };
     case 'duplicate-reviews':
+      // Open a review ticket for the pair. Consolidation is deliberately not
+      // offered: it needs a ticket id and independent identifier confirmation.
       return {
-        url: `/api/v1/duplicate-reviews/${encodeURIComponent(row.id)}/consolidate`,
-        body: { confirmedIdentifiers: [], alternateProcess: null },
-        ifMatch: 1,
+        url: '/api/v1/duplicate-reviews',
+        body: { survivorId: row.survivorId, duplicateId: row.duplicateId },
       };
     case 'clinic-worklist':
       if (action === 'assign') {
         return {
           url: `/api/v1/clinic/worklist/${encodeURIComponent(row.id)}/assign`,
           body: { assigneeSubject: 'synthetic.operator' },
-          ifMatch: undefined,
-        };
+          };
       }
       return {
         url: `/api/v1/clinic/worklist/${encodeURIComponent(row.id)}/handoff`,
         body: { toSubject: 'synthetic.supervisor' },
-        ifMatch: undefined,
       };
   }
 }
@@ -111,15 +113,10 @@ export function actionDescriptor(
   reason: string,
   organizationId: string,
 ): RequestDescriptor {
-  const target = actionTarget(queue, action, row);
-  const meta: RequestMeta = { activeOrganization: organizationId };
-  if (target.ifMatch !== undefined) {
-    meta.ifMatch = target.ifMatch;
-  }
-  const base = buildRequestDescriptor('POST', '/api/v1/facilities', meta, {
-    ...target.body,
-    reason,
-  });
+  const target = actionTarget(queue, action, row, reason);
+  const base = buildRequestDescriptor('POST', '/api/v1/facilities', {
+    activeOrganization: organizationId,
+  }, { ...target.body, reason });
   return { ...base, url: target.url };
 }
 

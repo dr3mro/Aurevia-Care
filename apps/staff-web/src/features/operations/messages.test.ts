@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { actionKey, operationsKeys, queuesText, queueTabKey } from './messages';
+import { actionKey, displayQueueText, operationsKeys, queuesText, queueTabKey } from './messages';
 import { queueIds } from './types';
 
 describe('operations messages', () => {
@@ -11,6 +11,13 @@ describe('operations messages', () => {
     }
     expect(queuesText('en', 'queuesTitle')).not.toBe(queuesText('ar', 'queuesTitle'));
     expect(queuesText('ar', 'queuesTitle')).toMatch(/[\u0600-\u06FF]/);
+  });
+
+  it('translates feature-owned state words and leaves server text verbatim', () => {
+    expect(displayQueueText('ar', 'pending review')).toBe('بانتظار المراجعة');
+    expect(displayQueueText('ar', 'No reason recorded')).toBe('لم يُسجَّل سبب');
+    expect(displayQueueText('ar', 'overdue')).toBe('overdue');
+    expect(displayQueueText('en', 'assigned')).toBe('assigned');
   });
 
   it('maps every queue and action to a declared message key', () => {

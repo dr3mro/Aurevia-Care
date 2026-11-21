@@ -99,6 +99,11 @@ export function normalizeQueue(queue: QueueId, raw: readonly unknown[]): QueueRo
         detail: item.localPatientId,
         state: item.state,
         occurredAt: item.createdAt,
+        version: undefined,
+        localMrn: item.patientMrn,
+        mrnIssuer: item.mrnIssuer,
+        survivorId: undefined,
+        duplicateId: undefined,
       }));
     case 'dead-letters':
       return (raw as readonly DeadLetterWire[]).map((entry) => ({
@@ -107,6 +112,11 @@ export function normalizeQueue(queue: QueueId, raw: readonly unknown[]): QueueRo
         detail: entry.reason,
         state: entry.reviewer === null ? 'pending review' : 'reviewed',
         occurredAt: entry.failedAt,
+        version: undefined,
+        localMrn: undefined,
+        mrnIssuer: undefined,
+        survivorId: undefined,
+        duplicateId: undefined,
       }));
     case 'overdue-follow-ups':
       return (raw as readonly FollowUpWire[]).map((followUp) => ({
@@ -115,6 +125,11 @@ export function normalizeQueue(queue: QueueId, raw: readonly unknown[]): QueueRo
         detail: followUp.reason ?? 'No reason recorded',
         state: followUp.state,
         occurredAt: followUp.routedAt,
+        version: followUp.revision,
+        localMrn: undefined,
+        mrnIssuer: undefined,
+        survivorId: undefined,
+        duplicateId: undefined,
       }));
     case 'duplicate-reviews':
       // The duplicate-review list carries no timestamp, so age is unavailable.
@@ -124,6 +139,11 @@ export function normalizeQueue(queue: QueueId, raw: readonly unknown[]): QueueRo
         detail: pair.duplicateId,
         state: 'pending review',
         occurredAt: undefined,
+        version: undefined,
+        localMrn: undefined,
+        mrnIssuer: undefined,
+        survivorId: pair.survivorId,
+        duplicateId: pair.duplicateId,
       }));
     case 'clinic-worklist':
       return (raw as readonly WorklistItemWire[]).map((item) => ({
@@ -132,6 +152,11 @@ export function normalizeQueue(queue: QueueId, raw: readonly unknown[]): QueueRo
         detail: item.intakeReason,
         state: item.assigneeSubject === null ? 'unassigned' : 'assigned',
         occurredAt: item.startsAt,
+        version: item.version,
+        localMrn: undefined,
+        mrnIssuer: undefined,
+        survivorId: undefined,
+        duplicateId: undefined,
       }));
   }
 }
@@ -144,7 +169,9 @@ export function oldestOccurrence(rows: readonly QueueRow[]): string | undefined 
   if (instants.length === 0) {
     return undefined;
   }
-  return instants.reduce((oldest, instant) => (instant < oldest ? instant : oldest));
+  return instants.reduce((oldest, instant) =>
+    Date.parse(instant) < Date.parse(oldest) ? instant : oldest,
+  );
 }
 
 /** Non-negative age of a server instant relative to an injected clock. */

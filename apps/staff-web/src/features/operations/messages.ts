@@ -30,6 +30,11 @@ export const operationsKeys = [
   'tabClinicWorklist',
   'operatorHome',
   'openQueues',
+  'statePendingReview',
+  'stateReviewed',
+  'stateUnassigned',
+  'stateAssigned',
+  'reasonNotRecorded',
 ] as const;
 
 /** A label key owned by the operations feature. */
@@ -65,6 +70,11 @@ const operationsMessages: Record<Locale, Record<OperationsMessageKey, string>> =
     tabClinicWorklist: 'Clinic worklist',
     operatorHome: 'Operations today',
     openQueues: 'Open operational queues',
+    statePendingReview: 'pending review',
+    stateReviewed: 'reviewed',
+    stateUnassigned: 'unassigned',
+    stateAssigned: 'assigned',
+    reasonNotRecorded: 'No reason recorded',
   },
   ar: {
     queuesTitle: 'قوائم العمليات',
@@ -94,6 +104,11 @@ const operationsMessages: Record<Locale, Record<OperationsMessageKey, string>> =
     tabClinicWorklist: 'قائمة عمل العيادة',
     operatorHome: 'عمليات اليوم',
     openQueues: 'فتح قوائم العمليات',
+    statePendingReview: 'بانتظار المراجعة',
+    stateReviewed: 'تمت المراجعة',
+    stateUnassigned: 'غير مسند',
+    stateAssigned: 'مسند',
+    reasonNotRecorded: 'لم يُسجَّل سبب',
   },
 };
 
@@ -117,4 +132,22 @@ export const actionKey: Record<QueueAction, OperationsMessageKey> = {
 /** Look up one operational-queue label for the active locale. */
 export function queuesText(locale: Locale, key: OperationsMessageKey): string {
   return operationsMessages[locale][key];
+}
+
+/** Feature-owned state words that must not stay English in the Arabic UI. */
+const stateMessageKeys: Record<string, OperationsMessageKey> = {
+  'pending review': 'statePendingReview',
+  reviewed: 'stateReviewed',
+  unassigned: 'stateUnassigned',
+  assigned: 'stateAssigned',
+  'No reason recorded': 'reasonNotRecorded',
+};
+
+/**
+ * Translate a feature-owned state or fallback phrase; server-owned text with
+ * no local key is displayed verbatim, never machine-translated.
+ */
+export function displayQueueText(locale: Locale, text: string): string {
+  const key = stateMessageKeys[text];
+  return key === undefined ? text : queuesText(locale, key);
 }

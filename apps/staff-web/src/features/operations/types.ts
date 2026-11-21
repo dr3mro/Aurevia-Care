@@ -39,6 +39,14 @@ export interface QueueRow {
   state: string;
   /** Server instant used to compute age, absent when the endpoint has none. */
   occurredAt: string | undefined;
+  /** Server revision/precondition for guarded commands, when one is exposed. */
+  version: number | undefined;
+  /** Issuer-scoped MRN fields required to verify an exchange work item. */
+  localMrn: string | undefined;
+  mrnIssuer: string | undefined;
+  /** Identifiers of a duplicate pair, used to open a review ticket. */
+  survivorId: string | undefined;
+  duplicateId: string | undefined;
 }
 
 /** The loaded state of one queue. A failed queue does not hide its siblings. */

@@ -25,6 +25,11 @@ function row(overrides: Partial<QueueRow> = {}): QueueRow {
     detail: 'detail',
     state: 'pending',
     occurredAt: '2026-03-09T11:00:00Z',
+    version: undefined,
+    localMrn: undefined,
+    mrnIssuer: undefined,
+    survivorId: undefined,
+    duplicateId: undefined,
     ...overrides,
   };
 }
@@ -48,6 +53,11 @@ describe('normalizeQueue', () => {
         detail: 'SYN-0001',
         state: 'awaiting_local_patient',
         occurredAt: '2026-03-09T11:30:00Z',
+        version: undefined,
+        localMrn: 'MRN-SYN-001',
+        mrnIssuer: 'SYNTHETIC',
+        survivorId: undefined,
+        duplicateId: undefined,
       },
     ]);
   });
@@ -79,6 +89,11 @@ describe('normalizeQueue', () => {
         detail: 'SYN-0003',
         state: 'pending review',
         occurredAt: undefined,
+        version: undefined,
+        localMrn: undefined,
+        mrnIssuer: undefined,
+        survivorId: 'SYN-0002',
+        duplicateId: 'SYN-0003',
       },
     ]);
   });
@@ -90,6 +105,12 @@ describe('normalizeQueue', () => {
         worklistItem({ id: 'wl-2', assigneeSubject: 'synthetic.nurse' }),
       ])[0]!.state,
     ).toBe('assigned');
+  });
+
+  it('keeps the server revision for guarded follow-up commands', () => {
+    expect(normalizeQueue('overdue-follow-ups', [followUp()])[0]!.version).toBe(2);
+    expect(normalizeQueue('clinic-worklist', [worklistItem()])[0]!.version).toBe(1);
+    expect(normalizeQueue('dead-letters', [deadLetter()])[0]!.version).toBeUndefined();
   });
 });
 
@@ -105,6 +126,14 @@ describe('oldestOccurrence and ageMs', () => {
       row({ id: 'b', occurredAt: undefined }),
       row({ id: 'c', occurredAt: '2026-03-09T09:00:00Z' }),
       row({ id: 'd', occurredAt: '2026-03-09T12:30:00Z' }),
+    ]);
+    expect(oldest).toBe('2026-03-09T09:00:00Z');
+  });
+
+  it('compares instants numerically so fractional seconds cannot invert the order', () => {
+    const oldest = oldestOccurrence([
+      row({ id: 'a', occurredAt: '2026-03-09T09:00:00Z' }),
+      row({ id: 'b', occurredAt: '2026-03-09T09:00:00.500Z' }),
     ]);
     expect(oldest).toBe('2026-03-09T09:00:00Z');
   });

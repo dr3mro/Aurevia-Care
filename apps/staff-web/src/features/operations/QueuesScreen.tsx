@@ -5,12 +5,14 @@ import { EmptyState, StateView } from '../../components/StateViews';
 import { useI18n } from '../../i18n/I18nProvider';
 import { useTheme } from '../../theme/ThemeProvider';
 import { ageMs, actionsFor, formatAge, oldestOccurrence, queueCounts } from './domain';
-import { actionKey, queuesText, queueTabKey } from './messages';
+import { actionKey, displayQueueText, queuesText, queueTabKey } from './messages';
 import type { QueueAction, QueueCollection, QueueId, QueueRow } from './types';
 import { queueIds } from './types';
 
 /** The row and action a reason dialog is open for. */
 interface PendingAction {
+  /** Queue captured when the dialog opened, so a tab switch cannot misroute it. */
+  queue: QueueId;
   row: QueueRow;
   action: QueueAction;
 }
@@ -63,8 +65,8 @@ export function QueuesScreen({
       ? queuesText(locale, 'notAvailable')
       : `${queuesText(locale, 'oldest')} ${formatAge(ageMs(oldest, nowMs), locale)}`;
 
-  function openAction(row: QueueRow, action: QueueAction): void {
-    setPending({ row, action });
+  function openAction(queue: QueueId, row: QueueRow, action: QueueAction): void {
+    setPending({ queue, row, action });
     setReason('');
     setReasonInvalid(false);
     setActionError(undefined);
@@ -84,7 +86,7 @@ export function QueuesScreen({
     setSending(true);
     setReasonInvalid(false);
     try {
-      await onAction(active, target.row, target.action, reason.trim());
+      await onAction(target.queue, target.row, target.action, reason.trim());
       setPending(undefined);
       setSent(true);
     } catch (failure: unknown) {
@@ -154,14 +156,14 @@ export function QueuesScreen({
               {rows.map((row) => (
                 <tr key={row.id}>
                   <th scope="row">{row.primary}</th>
-                  <td>{row.detail}</td>
-                  <td>{row.state}</td>
+                  <td>{displayQueueText(locale, row.detail)}</td>
+                  <td>{displayQueueText(locale, row.state)}</td>
                   <td>
                     {actionsFor(active).map((action) => (
                       <Button
                         key={action}
                         variant="secondary"
-                        onClick={() => openAction(row, action)}
+                        onClick={() => openAction(active, row, action)}
                       >
                         {`${queuesText(locale, actionKey[action])} ${row.primary}`}
                       </Button>

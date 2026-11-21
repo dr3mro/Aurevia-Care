@@ -12,6 +12,7 @@ import {
 } from './fixtures';
 import { normalizeQueue } from './domain';
 import { queueIds } from './types';
+import type { QueueRow } from './types';
 
 vi.mock('../../api/transport', async (importOriginal) => {
   const actual = await importOriginal<typeof TransportModule>();
@@ -22,13 +23,18 @@ const sendMock = vi.mocked(send);
 const orgId = 'synthetic-org-alpha';
 const query = { unitId: 'synthetic-unit', facilityCode: 'MAIN' };
 
-/** A row suitable for action-descriptor tests. */
-const row = {
+/** A row carrying every field a guarded command can need. */
+const row: QueueRow = {
   id: 'row-1',
   primary: 'ORD-SYN-001',
   detail: 'SYN-0001',
   state: 'pending',
   occurredAt: '2026-03-09T11:00:00Z',
+  version: 5,
+  localMrn: 'MRN-SYN-001',
+  mrnIssuer: 'SYNTHETIC',
+  survivorId: 'SYN-0002',
+  duplicateId: 'SYN-0003',
 };
 
 function descriptorAt(index: number): RequestDescriptor {
@@ -60,50 +66,68 @@ describe('queueRequest', () => {
 
 describe('actionTarget and actionDescriptor', () => {
   it.each([
-    ['work-items', 'review', '/api/v1/exchange/work-items/row-1/verify-patient', undefined],
-    ['dead-letters', 'retry', '/api/v1/delivery/events/row-1/retry', 1],
-    ['dead-letters', 'review', '/api/v1/delivery/dead-letters/review', undefined],
+    [
+      'work-items',
+      'review',
+      '/api/v1/exchange/work-items/row-1/verify-patient',
+      {
+        localPatientId: 'SYN-0001',
+        localMrn: 'MRN-SYN-001',
+        mrnIssuer: 'SYNTHETIC',
+        attestation: 'synthetic reason',
+      },
+    ],
+    [
+      'dead-letters',
+      'retry',
+      '/api/v1/delivery/dead-letters/review',
+      { eventId: 'row-1', resolution: 'requeued' },
+    ],
+    [
+      'dead-letters',
+      'review',
+      '/api/v1/delivery/dead-letters/review',
+      { eventId: 'row-1', resolution: 'resolved' },
+    ],
     [
       'overdue-follow-ups',
       'review',
       '/api/v1/messaging/instructions/follow-up/resolve',
-      undefined,
+      { instructionId: 'row-1', revision: 5 },
     ],
-    ['duplicate-reviews', 'review', '/api/v1/duplicate-reviews/row-1/consolidate', 1],
-    ['clinic-worklist', 'assign', '/api/v1/clinic/worklist/row-1/assign', undefined],
-    ['clinic-worklist', 'escalate', '/api/v1/clinic/worklist/row-1/handoff', undefined],
-  ] as const)('maps %s/%s to %s', (queue, action, url, ifMatch) => {
-    expect(actionTarget(queue, action, row)).toMatchObject({ url, ifMatch });
+    [
+      'duplicate-reviews',
+      'review',
+      '/api/v1/duplicate-reviews',
+      { survivorId: 'SYN-0002', duplicateId: 'SYN-0003' },
+    ],
+    [
+      'clinic-worklist',
+      'assign',
+      '/api/v1/clinic/worklist/row-1/assign',
+      { assigneeSubject: 'synthetic.operator' },
+    ],
+    [
+      'clinic-worklist',
+      'escalate',
+      '/api/v1/clinic/worklist/row-1/handoff',
+      { toSubject: 'synthetic.supervisor' },
+    ],
+  ] as const)('maps %s/%s to %s with contract-valid fields', (queue, action, url, body) => {
+    expect(actionTarget(queue, action, row, 'synthetic reason')).toMatchObject({ url, body });
     const descriptor = actionDescriptor(queue, action, row, 'synthetic reason', orgId);
     expect(descriptor.method).toBe('POST');
     expect(descriptor.url).toBe(url);
-    expect(descriptor.body).toMatchObject({ reason: 'synthetic reason' });
+    expect(descriptor.body).toMatchObject({ ...body, reason: 'synthetic reason' });
     expect(descriptor.headers['X-Active-Organization']).toBe(orgId);
-    expect(descriptor.headers['If-Match']).toBe(ifMatch === undefined ? undefined : '1');
+    expect(descriptor.headers['If-Match']).toBeUndefined();
   });
 
-  it('carries the endpoint-specific fields alongside the reason', () => {
-    expect(actionDescriptor('work-items', 'review', row, 'r', orgId).body).toMatchObject({
-      localPatientId: 'SYN-0001',
-    });
-    expect(actionDescriptor('dead-letters', 'review', row, 'r', orgId).body).toMatchObject({
-      eventId: 'row-1',
-      resolution: 'retry',
-    });
-    expect(actionDescriptor('overdue-follow-ups', 'review', row, 'r', orgId).body).toMatchObject({
-      instructionId: 'row-1',
-      revision: 1,
-    });
-    expect(actionDescriptor('duplicate-reviews', 'review', row, 'r', orgId).body).toMatchObject({
-      confirmedIdentifiers: [],
-      alternateProcess: null,
-    });
-    expect(actionDescriptor('clinic-worklist', 'assign', row, 'r', orgId).body).toMatchObject({
-      assigneeSubject: 'synthetic.operator',
-    });
-    expect(actionDescriptor('clinic-worklist', 'escalate', row, 'r', orgId).body).toMatchObject({
-      toSubject: 'synthetic.supervisor',
-    });
+  it('never consolidates a duplicate pair without a review ticket and confirmation', () => {
+    const descriptor = actionDescriptor('duplicate-reviews', 'review', row, 'r', orgId);
+    expect(descriptor.url).toBe('/api/v1/duplicate-reviews');
+    expect(descriptor.body).not.toHaveProperty('confirmedIdentifiers');
+    expect(descriptor.body).not.toHaveProperty('alternateProcess');
   });
 });
 

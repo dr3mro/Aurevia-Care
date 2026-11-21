@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { ReactElement } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Mock } from 'vitest';
@@ -13,6 +14,15 @@ import type { QueuesScreenProps } from './QueuesScreen';
 import { alphaOrganizationId, deadLetter, fixedNowMs, followUp, workItem, worklistItem } from './fixtures';
 import type { QueueAction, QueueCollection, QueueId, QueueRow } from './types';
 
+/** Extra projection fields, defaulted; each queue sets the ones its API exposes. */
+const extras = {
+  version: undefined,
+  localMrn: undefined,
+  mrnIssuer: undefined,
+  survivorId: undefined,
+  duplicateId: undefined,
+};
+
 function rowsFor(queue: QueueId): QueueRow[] {
   switch (queue) {
     case 'work-items':
@@ -23,6 +33,7 @@ function rowsFor(queue: QueueId): QueueRow[] {
           detail: 'SYN-0001',
           state: 'awaiting_local_patient',
           occurredAt: '2026-03-09T11:30:00Z',
+          ...extras,
         },
       ];
     case 'dead-letters':
@@ -33,6 +44,7 @@ function rowsFor(queue: QueueId): QueueRow[] {
           detail: 'partner unavailable',
           state: 'pending review',
           occurredAt: '2026-03-09T11:00:00Z',
+          ...extras,
         },
       ];
     case 'overdue-follow-ups':
@@ -43,6 +55,11 @@ function rowsFor(queue: QueueId): QueueRow[] {
           detail: 'no acknowledgment',
           state: 'overdue',
           occurredAt: '2026-03-09T10:45:00Z',
+          version: 2,
+          localMrn: undefined,
+          mrnIssuer: undefined,
+          survivorId: undefined,
+          duplicateId: undefined,
         },
       ];
     case 'duplicate-reviews':
@@ -53,6 +70,9 @@ function rowsFor(queue: QueueId): QueueRow[] {
           detail: 'SYN-0003',
           state: 'pending review',
           occurredAt: undefined,
+          ...extras,
+          survivorId: 'SYN-0002',
+          duplicateId: 'SYN-0003',
         },
       ];
     case 'clinic-worklist':
@@ -63,6 +83,11 @@ function rowsFor(queue: QueueId): QueueRow[] {
           detail: 'walk-in',
           state: 'unassigned',
           occurredAt: '2026-03-09T09:30:00Z',
+          version: 1,
+          localMrn: undefined,
+          mrnIssuer: undefined,
+          survivorId: undefined,
+          duplicateId: undefined,
         },
       ];
   }
@@ -186,10 +211,11 @@ describe('QueuesScreen tabs and states', () => {
     expect(onActiveChange).toHaveBeenCalledWith('dead-letters');
   });
 
-  it('renders the table with Arabic document direction', () => {
-    renderScreen(collection(), 'work-items', 'ar');
+  it('renders the table with Arabic document direction and translated state words', () => {
+    renderScreen(collection(), 'clinic-worklist', 'ar');
     expect(document.documentElement.dir).toBe('rtl');
-    expect(screen.getByRole('rowheader', { name: 'ORD-SYN-001' })).toBeTruthy();
+    expect(screen.getByRole('rowheader', { name: 'SYN-0004' })).toBeTruthy();
+    expect(screen.getByText('غير مسند')).toBeTruthy();
   });
 });
 
@@ -265,6 +291,35 @@ describe('QueuesScreen row actions', () => {
     fireEvent.click(confirm);
     expect(onAction).toHaveBeenCalledTimes(1);
     resolve();
+  });
+
+  it('targets the queue captured when the dialog opened after a tab switch', () => {
+    function Harness() {
+      const [active, setActive] = useState<QueueId>('work-items');
+      return (
+        <QueuesScreen
+          collection={collection()}
+          active={active}
+          onActiveChange={setActive}
+          nowMs={fixedNowMs}
+          onAction={onAction}
+          onReload={onReload}
+        />
+      );
+    }
+    render(element(<Harness />));
+    fireEvent.click(screen.getByRole('button', { name: 'Review ORD-SYN-001' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Dead letters (1)' }));
+    fireEvent.change(screen.getByLabelText('Reason'), {
+      target: { value: 'still the work item' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send action' }));
+    expect(onAction).toHaveBeenCalledWith(
+      'work-items',
+      expect.objectContaining({ id: 'work-001' }),
+      'review',
+      'still the work item',
+    );
   });
 
   it('cancels the reason dialog without sending anything', () => {
