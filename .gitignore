@@ -35,3 +35,7 @@ __pycache__/
 *.bak
 *.sql.gz
 !.env.example
+
+# Stryker mutation testing output (opt-in npm run mutation)
+apps/*/.stryker-tmp/
+apps/*/reports/mutation/
