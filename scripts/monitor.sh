@@ -141,7 +141,7 @@ need_gh
 PREV=""
 while true; do
   render
-  CUR=$(gh run list --limit 30 --json databaseId,conclusion 2>/dev/null)
+  CUR=$(gh run list --limit 7 --json databaseId,conclusion 2>/dev/null)
   if [[ "$CUR" != "$PREV" ]]; then
     # play sound if any new failure
     if echo "$CUR" | grep -q '"conclusion":"failure"'; then
