@@ -48,6 +48,10 @@ class RepositoryTests(unittest.TestCase):
         errors = docs.check(self.make_repo("IAM-01 [tasks](TODO.md) [up](../../TODO.md#x)"))
         self.assertEqual(errors, [])
 
+    def test_link_to_a_task_file_is_not_broken_when_the_task_moves(self):
+        errors = docs.check(self.make_repo("IAM-01 [t](../../tasks/00299000-GATE-X.md) [u](tasks/done/A-01.md)"))
+        self.assertEqual(errors, [])
+
 
 class StructureTests(unittest.TestCase):
     """One passing and one failing sample per generated-Markdown rule."""
