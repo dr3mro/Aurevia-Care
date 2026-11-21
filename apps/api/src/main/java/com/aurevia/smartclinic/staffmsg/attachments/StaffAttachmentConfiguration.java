@@ -30,4 +30,18 @@ public class StaffAttachmentConfiguration {
             @Value("${smartclinic.attachments.root:${java.io.tmpdir}/smartclinic-staff-attachments}") String root) {
         return new FileSystemObjectStore(Path.of(root));
     }
+
+    /**
+     * Provide the size and count bounds injected into the domain service.
+     *
+     * <p>Without this bean the application context cannot construct
+     * {@link com.aurevia.smartclinic.staffmsg.attachments.StaffAttachmentService}
+     * and every entry point that loads the context fails.</p>
+     *
+     * @return the default attachment bounds
+     */
+    @Bean
+    public StaffAttachmentLimits staffAttachmentLimits() {
+        return new StaffAttachmentLimits();
+    }
 }

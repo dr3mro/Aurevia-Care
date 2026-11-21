@@ -234,4 +234,11 @@ class JdbcStaffAttachmentStoreTest {
         assertTrue(new StaffAttachmentConfiguration()
                 .staffAttachmentObjectStore("/tmp/smartclinic-test") instanceof ObjectStorePort);
     }
+
+    @Test
+    void configurationProvidesTheLimitsBeanRequiredByTheService() {
+        StaffAttachmentLimits limits = new StaffAttachmentConfiguration().staffAttachmentLimits();
+        assertEquals(StaffAttachmentLimits.DEFAULT_MAX_SIZE_BYTES, limits.maxSizeBytes());
+        assertEquals(StaffAttachmentLimits.DEFAULT_MAX_FILES_PER_DRAFT, limits.maxFilesPerDraft());
+    }
 }
