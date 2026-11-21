@@ -53,6 +53,81 @@ Current source state (2026-11-19T07:19Z, from `main` at `311d69a`): 7 Flyway mig
     4. Tests: adding a new feature route does not change the result of either test; a duplicate pattern still fails.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
+## Start now: independent tasks (new files only, no dependencies)
+
+Each task adds new files in its own folder, depends on nothing and does not touch a file another open task owns, so the swarm can run all of them at once while the pull request queue drains.
+
+- [ ] START-01 · Staff web: English and Arabic message parity test across every feature
+  - requirements: UX-01, UX-04
+  - scope: apps/staff-web/tests/messageParity.test.ts
+  - details:
+    1. Find every message bundle in `apps/staff-web/src`: `i18n/messages.ts`, each `features/*/messages.ts` and `components/stateViewMessages.ts`. Read how each one exposes its English and Arabic strings.
+    2. Write one test file that loads all of them and checks, for each bundle: English and Arabic have exactly the same keys; no value is empty; every `{placeholder}` in the English text appears in the Arabic text and the other way round; every Arabic value contains at least one Arabic letter unless it is a code, a number or a brand name listed in an allow list at the top of the test.
+    3. The failure message names the bundle and the key, so a reader knows what to fix. Do not change any bundle: if the test finds a real gap, list it in your notes and put the key in the allow list with a comment `// TODO fix in a separate task`.
+    4. Tests: a deliberately broken sample bundle written inside the test (missing Arabic key, missing placeholder) makes the check fail, and the real bundles pass.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+- [ ] START-02 · Patient app: English and Arabic message parity test
+  - requirements: UX-01, UX-04, PAT-01
+  - scope: apps/patient-mobile/src/app/messageParity.test.ts
+  - details:
+    1. Find every message bundle in `apps/patient-mobile/src` (`app/messages.ts`, `features/*/messages.ts`). Read `jest.config.ts` so the new test runs with the normal test command.
+    2. Write one test that checks, for each bundle: English and Arabic have the same keys, no empty values, the same `{placeholder}` names in both, and Arabic values contain Arabic letters unless they are codes or numbers listed in an allow list at the top.
+    3. Do not change any bundle; list real gaps in your notes and allow-list them with a comment.
+    4. Tests: a broken sample bundle written inside the test fails the check, and the real bundles pass.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+- [ ] START-03 · API: OpenAPI contract rules as a unit test
+  - requirements: OPS-05, IAM-01, WEB-04
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/contract/OpenApiContractRulesTest.java
+  - details:
+    1. Find the contract file the staff web client is generated from (`npm run gen:api:check` in `apps/staff-web` names it; it is under `contracts/`). Read it and `contracts/README.md`.
+    2. Write a plain JUnit test that parses the file with the YAML library already on the test classpath (Spring Boot brings SnakeYAML). Do NOT add a dependency; if SnakeYAML is not on the classpath, stop and say so.
+    3. Rules to assert on every operation: it has a unique `operationId`; it has a summary and at least one tag; a secured operation documents 401 and 403; no path or query parameter is named like a tenant or organization (the tenant comes from the session); every POST, PUT, PATCH and DELETE operation either declares the `Idempotency-Key` header or is on a short allow list in the test with a comment saying why.
+    4. Tests: a small invalid contract held as a string in the test fails each rule once, and the real contract passes. If the real contract breaks a rule, put the operation on the allow list with `// TODO` and list it in your notes; do not edit the contract.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+- [ ] START-04 · Docs: operator runbooks for incident response, key rotation, on-call handover and a bad deploy
+  - requirements: OPS-01, OPS-03, OPS-04, OPS-07
+  - scope: docs/operations/runbooks
+  - details:
+    1. Read `docs/operations/recovery/runbook.md`, `docs/operations/production-readiness/launch-checklist.md`, `SMARTCLINIC_V1_SPEC.md` (OPS requirements) and the existing code that handles secrets, logging and alerts.
+    2. Write four short runbooks under `docs/operations/runbooks/` plus an `index.md`: incident response (severity, who is called, first 15 minutes, patient-safety escalation, evidence to keep), secret and key rotation (what rotates, how often, how to check nothing broke), on-call handover (what the outgoing person writes, open alerts, what is on fire), and a bad deploy (how to tell, roll back, roll forward, what to tell users).
+    3. Each runbook has: when to use it, who may act, numbered steps a tired person can follow, how to check it worked, and what to record. Use only what the repository really does; where a step needs a tool or contact that does not exist yet, write `NOT YET IN PLACE:` and the gap instead of inventing it.
+    4. Link the new index from `docs/operations/production-readiness/README.md`. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+- [ ] START-05 · Docs: one task guide per role (reception, clinician, laboratory, radiology, finance, administrator, patient)
+  - requirements: PRD-01, UX-01
+  - scope: docs/guides
+  - details:
+    1. Read `docs/design/approved/README.md`, the screens in `apps/staff-web/src/features` and `apps/patient-mobile/src`, and the role names in `apps/staff-web/src/app/navigation.ts`.
+    2. Write one page per role under `docs/guides/` plus an `index.md`. Each page lists the five to eight things that role does most, as numbered steps with the screen name and the button or field names exactly as the interface says them, and what the person should see when it worked.
+    3. Describe only screens that exist in the code today; mark a planned screen with `PLANNED:` and the task id from TODO.md. Plain language, short sentences, no patient data.
+    4. Link the index from `docs/reference/index.md`. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+- [ ] START-06 · Docs: data dictionary built from the migrations
+  - requirements: ARC-01, ARC-02, OPS-06
+  - scope: docs/reference/data-dictionary.md
+  - details:
+    1. Read every file in `db/migrations` in version order (V1 to the newest) and `scripts/check-migrations.py` for the rules the migrations follow.
+    2. Write `docs/reference/data-dictionary.md`: one section per table with its purpose in one line, columns with type and meaning, keys and constraints, whether it is append-only or row-level-secured by tenant, and the migration version that created or last changed it. Group tables by area (identity, scheduling, chart, exchange, finance, messaging and so on).
+    3. State at the top the newest migration version the dictionary covers. Where a column's meaning is not clear from the migration, write `UNCLEAR:` and the question; do not guess.
+    4. Link it from `docs/reference/index.md`. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+- [ ] START-07 · Docs: threat model for the staff web, the patient app and the API
+  - requirements: IAM-01, ARC-02, OPS-02, WEB-04
+  - scope: docs/security/threat-model.md
+  - details:
+    1. Read `SMARTCLINIC_V1_SPEC.md` (security and privacy requirements), `docs/decisions`, the authorization, tenancy, audit and web packages under `apps/api/src/main/java`, and the web security configuration.
+    2. Write `docs/security/threat-model.md` with a diagram-free table per area (staff web, patient app, API, database, background workers, partner exchange): assets, who can attack it, the main threats (spoofing, tampering, repudiation, disclosure, denial of service, elevation of privilege), the control that already exists with the file that implements it, and what is missing.
+    3. Every control you cite must name a real file or test; every gap becomes a line `GAP:` with a suggested task title. Do not describe controls that are not in the code.
+    4. Create `docs/security/README.md` as an index and link it from `docs/reference/index.md`. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
 - [ ] S-G0-04 · Isolation across search, files, workers and exports plus concurrent-connection and transaction tests (ARC-02). Concurrent-connection test slice merged by swarm as CW-003; other surfaces remain.
   - blocker 2026-11-19T07:12Z: the search, files, workers and exports surfaces do not exist in `apps/api` yet (only patient normalized-name search), so their isolation cannot be tested. Needs Product Owner/Architect decomposition into stories that first create each surface. Do not claim as a single implementation story.
 
