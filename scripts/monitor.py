@@ -6,7 +6,7 @@ AUTOSTART = int(sys.argv[4]) if len(sys.argv) > 4 else 0  # minutes between auto
 LIVE = ("queued", "in_progress", "waiting", "pending", "requested")
 FAILED = ("failure", "timed_out")
 FIELDS = "databaseId,workflowName,displayTitle,conclusion,status,headSha,headBranch,event,createdAt,startedAt,updatedAt,url"
-TEXT = ("repo", "todo", "archive", "total", "commits")  # plain-text results; everything else is JSON
+TEXT = ("repo", "todo", "archive", "total")  # plain-text results; everything else is JSON
 CALLS = {
     "repo": ["repo", "view", "--json", "nameWithOwner", "-q", ".nameWithOwner"],
     "issues": ["issue", "list", "--state", "open", "--limit", "40", "--json", "number,title,labels,createdAt"],
@@ -40,8 +40,8 @@ def collect(procs, text_keys=()):
 
 def fetch():
     since = (datetime.now(timezone.utc) - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%SZ")
-    calls = dict(CALLS, commits=["api", f"repos/{{owner}}/{{repo}}/commits?since={since}&per_page=100", "--paginate", "-q",
-                                 ".[] | \"\\(.sha) \\(.parents[0].sha // \"\")\""])
+    calls = dict(CALLS, commits=["api", f"repos/{{owner}}/{{repo}}/commits?since={since}&per_page=100", "-q",
+                                 "[.[] | {sha: .sha, parent: (.parents[0].sha // \"\")}]"])
     data = collect({k: spawn(a) for k, a in calls.items()}, TEXT)
     if data.get("repo"):
         data["repo"] = data["repo"].strip()
@@ -54,10 +54,7 @@ def fetch():
     jobs = collect({i: spawn(["run", "view", str(i), "--json", "jobs"]) for i in want})
     data["jobs"] = {i: (j or {}).get("jobs", []) for i, j in jobs.items() if isinstance(j, dict) or j is None}
     # Third step: what those commits changed, as one compare between the day's first parent and the latest commit.
-    # One line per commit ("sha parent"), newest first; --paginate so a busy day is not capped at one page of 100.
-    raw = data.pop("commits", None)
-    lines = raw.split("\n") if isinstance(raw, str) else []
-    commits = [{"sha": (f := ln.split(" "))[0], "parent": f[1] if len(f) > 1 else ""} for ln in lines if ln.strip()]
+    commits = data.pop("commits", None) or []
     if commits and commits[-1].get("parent"):
         total = spawn(["api", f"repos/{{owner}}/{{repo}}/compare/{commits[-1]['parent']}...{commits[0]['sha']}", "-q",
                        "{files: (.files | length), add: ([.files[].additions] | add // 0), del: ([.files[].deletions] | add // 0)}"])

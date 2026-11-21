@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Button } from '../../components/Button';
 import { Form } from '../../components/Form';
 import { FormField } from '../../components/FormField';
 import { MixedScriptText } from '../../components/MixedScriptText';
@@ -17,7 +18,13 @@ export interface ConfigurationEditorProps {
   organizationId: string;
   configKey: string;
   anchorCivilDate: string;
-  onPropose: (draft: ConfigurationDraft) => void;
+  /**
+   * Propose one version. Return `false` (or a promise resolving to `false`)
+   * when the command failed so the typed draft is kept for the conflict state.
+   */
+  onPropose: (draft: ConfigurationDraft) => Promise<boolean | void> | boolean | void;
+  /** When supplied, pending rows offer an approve trigger; the owner confirms. */
+  onApprove?: (version: number) => void;
 }
 
 /** Show versioned, effective-dated configuration and collect a local draft. */
@@ -27,6 +34,7 @@ export function ConfigEditor({
   configKey,
   anchorCivilDate,
   onPropose,
+  onApprove,
 }: ConfigurationEditorProps) {
   const { locale } = useI18n();
   const { tokens } = useTheme();
@@ -50,9 +58,19 @@ export function ConfigEditor({
       return;
     }
     setInvalidField(null);
-    onPropose({ value: proposedValue, effectiveFrom: proposedDate });
-    setValue('');
-    setEffectiveFrom('');
+    const outcome = onPropose({ value: proposedValue, effectiveFrom: proposedDate });
+    if (outcome instanceof Promise) {
+      // A rejected command resolves to false; the draft stays for comparison.
+      outcome.then((accepted) => {
+        if (accepted !== false) {
+          setValue('');
+          setEffectiveFrom('');
+        }
+      });
+    } else if (outcome !== false) {
+      setValue('');
+      setEffectiveFrom('');
+    }
   }
 
   return (
@@ -88,14 +106,27 @@ export function ConfigEditor({
                     <MixedScriptText text={entry.value} lang="en" />
                   </td>
                   <td>
-                    <time dateTime={entry.effectiveFrom}>{formatCivilDate(entry.effectiveFrom, locale)}</time>
+                    {entry.effectiveFrom === '' ? (
+                      <span>{text('notApplicable')}</span>
+                    ) : (
+                      <time dateTime={entry.effectiveFrom}>
+                        {formatCivilDate(entry.effectiveFrom, locale)}
+                      </time>
+                    )}
                   </td>
                   <td>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: tokens.spacing.sm }}>
                       {entry.approved ? (
                         <StateBadge glyph="✓" label={text('approved')} tone="approved" />
                       ) : (
-                        <StateBadge glyph="○" label={text('pending')} tone="pending" />
+                        <>
+                          <StateBadge glyph="○" label={text('pending')} tone="pending" />
+                          {onApprove === undefined ? null : (
+                            <Button variant="secondary" onClick={() => onApprove(entry.version)}>
+                              {text('approve')}
+                            </Button>
+                          )}
+                        </>
                       )}
                       {effective && entry.version === effective.version ? (
                         <StateBadge glyph="*" label={text('effectiveBadge')} tone="effective" />

@@ -240,7 +240,7 @@ describe('localized labels', () => {
     for (const kind of ['invited', 'role_granted', 'deactivated'] as const) {
       expect(adminKeys).toContain(staffEventMessageKey[kind]);
     }
-    for (const outcome of ['SUCCESS', 'DENIED'] as const) {
+    for (const outcome of ['SUCCESS', 'DENIED', 'NOT_FOUND', 'CONFLICT'] as const) {
       expect(adminKeys).toContain(outcomeMessageKey[outcome]);
     }
   });

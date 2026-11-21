@@ -232,8 +232,9 @@ Order of work for the whole production-readiness effort: (1) security and platfo
     4. Tests: each state, create success, validation error summary, deactivate confirmation, history view.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
-- [-] READY-24 · Admin pages: /admin/config and /admin/audit on the real API
-  - agent: swarm-2
+- [x] READY-24 · Admin pages: /admin/config and /admin/audit on the real API
+  - pr: #278
+  - evidence: PR #278; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/READY-24.md; simulated review only
   - attempts: 1
   - requirements: ADM-01, OPS-02
   - scope: apps/staff-web/src/features/admin
@@ -250,8 +251,9 @@ Order of work for the whole production-readiness effort: (1) security and platfo
 
 ### Phase 5 — New staff web screens (each follows docs/design/screen-recipe.md)
 
-- [-] READY-25 · Patients: /patients search and register, /patients/:id overview
-  - agent: swarm-3
+- [x] READY-25 · Patients: /patients search and register, /patients/:id overview
+  - pr: #277
+  - evidence: PR #277; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/READY-25.md; simulated review only
   - attempts: 1
   - requirements: PRD-01, IAM-03, IAM-04
   - scope: apps/staff-web/src/features/patients
@@ -355,8 +357,9 @@ Order of work for the whole production-readiness effort: (1) security and platfo
     4. Tests: each state per tab, an action needs a reason, oldest age is computed from server timestamps, a failed retry is not repeated.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
-- [-] READY-32 · System pages and browser-support check
-  - agent: swarm-10
+- [x] READY-32 · System pages and browser-support check
+  - pr: #276
+  - evidence: PR #276; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/READY-32.md; simulated review only
   - attempts: 1
   - requirements: WEB-03, WEB-07
   - scope: apps/staff-web/src/features/system, apps/staff-web/src/main.tsx, apps/staff-web/tests
