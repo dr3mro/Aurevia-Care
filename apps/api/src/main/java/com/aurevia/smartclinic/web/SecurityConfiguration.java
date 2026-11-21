@@ -1,7 +1,5 @@
 package com.aurevia.smartclinic.web;
 
-import static org.springframework.security.config.Customizer.withDefaults;
-
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Bean;
@@ -13,6 +11,14 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
+import org.springframework.security.oauth2.jwt.BadJwtException;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtAudienceValidator;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtIssuerValidator;
+import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.web.SecurityFilterChain;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -30,7 +36,10 @@ import jakarta.servlet.http.HttpServletRequest;
  * skipped only for requests that carry a bearer header, which browsers never
  * attach by themselves (WEB-02, WEB-03). Both production chains permit only the
  * exact {@code GET /health/live} and {@code GET /health/ready} probes without a
- * token; all other routes require authentication (WEB-05).</p>
+ * token; all other routes require authentication (WEB-05). The bearer chain
+ * additionally fails startup without an audience and rejects tokens that do not
+ * carry the configured audience, while keeping the issuer and timestamp checks
+ * (WEB-03, WEB-05).</p>
  */
 @Configuration
 @EnableWebSecurity
@@ -38,15 +47,21 @@ import jakarta.servlet.http.HttpServletRequest;
 public class SecurityConfiguration {
 
     private final String issuerUri;
+    private final String audience;
 
     /**
-     * Read the configured issuer; an absent property resolves to an empty string.
+     * Read the issuer and audience used to validate bearer tokens; an absent
+     * property resolves to an empty string and fails startup closed outside the
+     * synthetic profile.
      *
      * @param issuerUri configured OIDC issuer, possibly empty
+     * @param audience  expected OIDC token audience, possibly empty
      */
     public SecurityConfiguration(
-            @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri:}") String issuerUri) {
+            @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri:}") String issuerUri,
+            @Value("${spring.security.oauth2.resourceserver.jwt.audiences:}") String audience) {
         this.issuerUri = issuerUri;
+        this.audience = audience;
     }
 
     /**
@@ -67,21 +82,27 @@ public class SecurityConfiguration {
     /**
      * Stateless OIDC resource-server chain for all non-synthetic profiles.
      *
-     * <p>Fails closed at startup when the issuer is missing: without a trusted
-     * issuer there is no way to verify a token, so the application must not
-     * accept requests.</p>
+     * <p>Fails closed at startup when the issuer or the audience is missing:
+     * without either value there is no way to decide whether a signed token was
+     * intended for this service, so the application must not accept requests.
+     * The decoder is wrapped so the issuer, timestamp and audience validators
+     * run on every bearer token.</p>
      *
-     * @param http shared web security builder
+     * @param http       shared web security builder
+     * @param jwtDecoder the decoder supplied by the OAuth2 resource-server setup
      * @return the OIDC filter chain
      * @throws Exception when the chain cannot be built
-     * @throws IllegalStateException when no OIDC issuer is configured
+     * @throws IllegalStateException when no OIDC issuer or audience is configured
      */
     @Bean
     @Order(2)
     @Profile("!synthetic-auth")
-    SecurityFilterChain oidcSecurityFilterChain(HttpSecurity http) throws Exception {
+    SecurityFilterChain oidcSecurityFilterChain(HttpSecurity http, JwtDecoder jwtDecoder) throws Exception {
         if (issuerUri.isBlank()) {
             throw new IllegalStateException("SMARTCLINIC_OIDC_ISSUER_URI must be set");
+        }
+        if (audience.isBlank()) {
+            throw new IllegalStateException("SMARTCLINIC_OIDC_AUDIENCE must be set");
         }
         return http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .csrf(csrf -> csrf.ignoringRequestMatchers(SecurityConfiguration::isBearerRequest))
@@ -89,8 +110,33 @@ public class SecurityConfiguration {
                         // WEB-05: probes are the only unauthenticated routes; never a /health/** wildcard.
                         .requestMatchers(HttpMethod.GET, "/health/live", "/health/ready").permitAll()
                         .anyRequest().authenticated())
-                .oauth2ResourceServer(oauth2 -> oauth2.jwt(withDefaults()))
+                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.decoder(
+                        withClaimValidation(jwtDecoder, issuerUri, audience))))
                 .build();
+    }
+
+    /**
+     * Wrap a decoder so that every decoded token must satisfy the default JWT
+     * validators (type, timestamp and certificate thumbprint), the configured
+     * issuer and the configured audience. A token with no {@code aud} claim, or
+     * with an audience that does not contain the configured value, is rejected.
+     *
+     * @param delegate  decoder that verifies the token signature
+     * @param issuerUri trusted issuer, never blank when this method is called
+     * @param audience  required audience, never blank when this method is called
+     * @return a decoder that validates signature and claims
+     */
+    static JwtDecoder withClaimValidation(JwtDecoder delegate, String issuerUri, String audience) {
+        OAuth2TokenValidator<Jwt> validator = JwtValidators.createDefaultWithValidators(
+                new JwtIssuerValidator(issuerUri), new JwtAudienceValidator(audience));
+        return token -> {
+            Jwt jwt = delegate.decode(token);
+            OAuth2TokenValidatorResult result = validator.validate(jwt);
+            if (result.hasErrors()) {
+                throw new BadJwtException("Token failed issuer or audience validation");
+            }
+            return jwt;
+        };
     }
 
     /**
