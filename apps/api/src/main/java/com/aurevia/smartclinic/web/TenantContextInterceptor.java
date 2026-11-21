@@ -1,6 +1,7 @@
 package com.aurevia.smartclinic.web;
 
 import java.time.Clock;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -10,6 +11,8 @@ import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
@@ -28,7 +31,9 @@ import jakarta.servlet.http.HttpServletResponse;
  *
  * <p>The synthetic subject header is accepted only under the
  * {@code synthetic-auth} profile and is not a production authentication
- * mechanism.</p>
+ * mechanism. In production both a bearer {@code JwtAuthenticationToken} and a
+ * browser {@code OAuth2AuthenticationToken} are resolved by the same claim
+ * rules, so the tenant cannot be chosen from a request body.</p>
  */
 @Component
 public class TenantContextInterceptor implements HandlerInterceptor, WebMvcConfigurer {
@@ -91,13 +96,24 @@ public class TenantContextInterceptor implements HandlerInterceptor, WebMvcConfi
 
         if (!environment.acceptsProfiles(Profiles.of("synthetic-auth"))) {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            if (!(authentication instanceof JwtAuthenticationToken token)) {
-                throw new ApiException(401, "UNAUTHENTICATED", "authentication required");
+            String requestedOrganization = request.getHeader("X-Active-Organization");
+            if (authentication instanceof JwtAuthenticationToken token) {
+                TenantContext.set(new ClaimsTenantResolver().resolve(token.getToken().getClaims(),
+                        requestedOrganization, correlation));
+                enforceRateLimit(response);
+                return true;
             }
-            TenantContext.set(new ClaimsTenantResolver().resolve(token.getToken().getClaims(),
-                    request.getHeader("X-Active-Organization"), correlation));
-            enforceRateLimit(response);
-            return true;
+            // The staff web browser session authenticates with OIDC user-info
+            // attributes, which carry the same verified claims as the JWT path.
+            if (authentication instanceof OAuth2AuthenticationToken browser) {
+                OAuth2User principal = Objects.requireNonNull(browser.getPrincipal(),
+                        "OAuth2 browser principal must be present");
+                TenantContext.set(new ClaimsTenantResolver().resolve(
+                        principal.getAttributes(), requestedOrganization, correlation));
+                enforceRateLimit(response);
+                return true;
+            }
+            throw new ApiException(401, "UNAUTHENTICATED", "authentication required");
         }
         String subject = request.getHeader("X-Synthetic-Subject");
         if (subject == null || subject.isBlank()) {
