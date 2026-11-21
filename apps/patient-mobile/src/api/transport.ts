@@ -1,10 +1,13 @@
+/**
+ * Authenticated JSON transport for the patient app (PAT-01, ARC-03).
+ *
+ * Every call reads the current credential, sends an opaque correlation id and
+ * a bounded abort deadline, and converts any failure into a typed error whose
+ * message is derived only from the failure kind. Response bodies and tokens
+ * are never copied into error messages or logs.
+ */
 
-
-const CORRELATION_HEADER = 'X-Correlation-Id';
-const DEFAULT_TIMEOUT_MS = 15_000;
-
-
-/** Failure modes the patient app surfaces for a failed request. */
+/** The distinct failure modes a patient screen can present. */
 export type TransportErrorKind =
   | 'network'
   | 'timeout'
@@ -14,69 +17,119 @@ export type TransportErrorKind =
   | 'validation'
   | 'server';
 
-/** Field-level validation errors recovered from a 422 response. */
-export type TransportFieldErrors = Record<string, string[]>;
+/** One server-reported field problem on an invalid command. */
+export interface FieldError {
+  field: string;
+  message: string;
+}
 
+/** Diagnostic metadata that is safe to carry alongside a typed failure. */
+export interface TransportErrorDetails {
+  correlationId?: string;
+  code?: string;
+  fieldErrors?: FieldError[];
+}
+
+/**
+ * A failed API call. The message is always derived from the kind, so neither
+ * the request token nor untrusted response text can reach logs or the UI
+ * through it.
+ */
 export class TransportError extends Error {
   readonly kind: TransportErrorKind;
-  readonly correlationId: string;
-  readonly status: number | undefined;
-  readonly fieldErrors: TransportFieldErrors | undefined;
+  readonly correlationId: string | undefined;
+  readonly code: string | undefined;
+  readonly fieldErrors: readonly FieldError[];
 
-  constructor(
-    kind: TransportErrorKind,
-    correlationId: string,
-    status?: number,
-    fieldErrors?: TransportFieldErrors,
-  ) {
+  constructor(kind: TransportErrorKind, details: TransportErrorDetails) {
     super(`Request failed: ${kind}`);
     this.name = 'TransportError';
     this.kind = kind;
-    this.correlationId = correlationId;
-    this.status = status;
-    this.fieldErrors = fieldErrors;
+    this.correlationId = details.correlationId;
+    this.code = details.code;
+    this.fieldErrors = details.fieldErrors ?? [];
   }
 }
 
-export interface CreateTransportOptions {
+/** Supplies the current session credential immediately before each request. */
+export type TokenProvider = () => string | null | undefined | Promise<string | null | undefined>;
+
+/** Minimal response surface used by the transport; the platform fetch fits it. */
+export interface HttpResponse {
+  ok: boolean;
+  status: number;
+  headers: { get(name: string): string | null };
+  json(): Promise<unknown>;
+}
+
+/** Injectable fetch seam so tests can supply synthetic responses. */
+export type FetchImpl = (url: string, init: RequestInit) => Promise<HttpResponse>;
+
+/** Configuration for one authenticated API transport. */
+export interface TransportConfig {
+  /** API origin; HTTPS is required outside development. Paths are joined with one slash. */
   baseUrl: string;
-  getToken: () => string | null | Promise<string | null>;
-  fetchImpl?: typeof fetch;
+  /** Read the credential for each request so revocation takes effect immediately. */
+  getToken: TokenProvider;
+  /** Fetch implementation; tests inject a synthetic one. */
+  fetchImpl: FetchImpl;
+  /** Value of Accept-Language; defaults to 'en'. */
   language?: string;
 }
 
-export interface TransportRequestOptions {
-  headers?: Record<string, string>;
-  signal?: AbortSignal;
-}
-
+/** Versioned JSON operations exposed by the transport. */
 export interface Transport {
-  get<T = unknown>(path: string, options?: TransportRequestOptions): Promise<T>;
-  post<T = unknown>(path: string, body?: unknown, options?: TransportRequestOptions): Promise<T>;
-  put<T = unknown>(path: string, body?: unknown, options?: TransportRequestOptions): Promise<T>;
+  get<T = unknown>(path: string): Promise<T>;
+  post<T = unknown>(path: string, body?: unknown): Promise<T>;
+  put<T = unknown>(path: string, body?: unknown): Promise<T>;
 }
 
-function joinUrl(baseUrl: string, path: string): string {
-  const base = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
-  const suffix = path.startsWith('/') ? path : `/${path}`;
-  return `${base}${suffix}`;
+interface ResolvedConfig {
+  baseUrl: string;
+  getToken: TokenProvider;
+  fetchImpl: FetchImpl;
+  language: string;
 }
 
-function isDevEnvironment(): boolean {
-  const flag = (globalThis as { __DEV__?: unknown }).__DEV__;
-  return flag === true;
+interface ErrorBody {
+  code?: unknown;
+  fieldErrors?: unknown;
 }
 
-function validateBaseUrl(baseUrl: string): void {
-  if (baseUrl.startsWith('https://')) {
-    return;
+const CORRELATION_HEADER = 'X-Correlation-Id';
+const TIMEOUT_MS = 15_000;
+const DEV_LOCALHOST = /^http:\/\/localhost(?::\d+)?(?:\/|$)/;
+/** Only bounded opaque identifiers are accepted from a response header. */
+const SAFE_CORRELATION_ID = /^[A-Za-z0-9._:-]{1,64}$/;
+
+/** Narrow an untrusted JSON value to a plain object. */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** Narrow one untrusted entry to a well-formed field error. */
+function isFieldError(value: unknown): value is FieldError {
+  if (!isRecord(value)) {
+    return false;
   }
-  if (isDevEnvironment() && baseUrl.startsWith('http://localhost')) {
-    return;
-  }
-  throw new Error('baseUrl must use https://');
+  return typeof value.field === 'string' && typeof value.message === 'string';
 }
 
+/** Keep only well-formed field errors from an untrusted server payload. */
+function parseFieldErrors(value: unknown): FieldError[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const errors: FieldError[] = [];
+  for (const entry of value) {
+    if (isFieldError(entry)) {
+      errors.push({ field: entry.field, message: entry.message });
+    }
+  }
+  return errors;
+}
+
+/** Map an HTTP status to the closest patient-facing failure kind. */
 function kindForStatus(status: number): TransportErrorKind {
   if (status === 401) {
     return 'unauthenticated';
@@ -90,97 +143,139 @@ function kindForStatus(status: number): TransportErrorKind {
   if (status === 422) {
     return 'validation';
   }
-  if (status >= 500) {
-    return 'server';
-  }
   return 'server';
 }
 
-async function parseFieldErrors(response: Response): Promise<TransportFieldErrors | undefined> {
+/**
+ * Extract only structured metadata from an error body. Free-text fields are
+ * deliberately ignored so they cannot become error messages or log content.
+ */
+async function readErrorDetails(response: HttpResponse): Promise<{
+  code: string | undefined;
+  fieldErrors: FieldError[];
+}> {
   try {
-    const body = (await response.json()) as { errors?: unknown; fieldErrors?: unknown } | null;
-    const candidate = body?.fieldErrors ?? body?.errors;
-    if (candidate !== null && typeof candidate === 'object') {
-      return candidate as TransportFieldErrors;
-    }
-    return undefined;
+    const body = (await response.json()) as ErrorBody | null;
+    const code = typeof body?.code === 'string' ? body.code : undefined;
+    return { code, fieldErrors: parseFieldErrors(body?.fieldErrors) };
   } catch {
-    return undefined;
+    return { code: undefined, fieldErrors: [] };
   }
 }
 
-export function createTransport(options: CreateTransportOptions): Transport {
-  validateBaseUrl(options.baseUrl);
-  const fetchImpl = options.fetchImpl ?? fetch;
-  const language = options.language ?? 'en';
+/** Build a typed error for a non-ok response without copying its body text. */
+async function toTransportError(
+  response: HttpResponse,
+  requestCorrelationId: string,
+): Promise<TransportError> {
+  const suppliedId = response.headers.get(CORRELATION_HEADER);
+  // A peer must not be able to place arbitrary text (for example an echoed
+  // credential) into an error object that callers may log.
+  const responseCorrelationId =
+    suppliedId !== null && SAFE_CORRELATION_ID.test(suppliedId) ? suppliedId : requestCorrelationId;
+  const details = await readErrorDetails(response);
+  return new TransportError(kindForStatus(response.status), {
+    correlationId: responseCorrelationId,
+    code: details.code,
+    fieldErrors: details.fieldErrors,
+  });
+}
 
-  async function send(method: string, path: string, body: unknown, requestOptions: TransportRequestOptions = {}): Promise<unknown> {
-    const token = await options.getToken();
-    const correlationId =
-      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-        ? crypto.randomUUID()
-        : `corr-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+/** Fail closed on any origin that is not HTTPS, except development localhost. */
+function assertSecureBaseUrl(baseUrl: string): void {
+  if (baseUrl.startsWith('https://')) {
+    return;
+  }
+  const isDevelopment = (globalThis as { __DEV__?: boolean }).__DEV__ === true;
+  if (isDevelopment && DEV_LOCALHOST.test(baseUrl)) {
+    return;
+  }
+  throw new Error('Transport base URL must use HTTPS (localhost is allowed only in development)');
+}
+
+/** Generate an opaque request id, using the platform UUID when available. */
+function newCorrelationId(): string {
+  try {
+    return (globalThis.crypto as { randomUUID(): string }).randomUUID();
+  } catch {
+    const time = Date.now().toString(16);
+    const entropy = Math.floor(Math.random() * 0xffffffff)
+      .toString(16)
+      .padStart(8, '0');
+    return `${time}-${entropy}`;
+  }
+}
+
+/** Perform one credentialed request with a bounded deadline. */
+async function send<T>(
+  config: ResolvedConfig,
+  method: 'GET' | 'POST' | 'PUT',
+  path: string,
+  body: unknown,
+): Promise<T> {
+  const correlationId = newCorrelationId();
+  let controller: AbortController | undefined;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const token = await config.getToken();
+    if (typeof token !== 'string' || token.trim().length === 0) {
+      throw new TransportError('unauthenticated', { correlationId });
+    }
 
     const headers: Record<string, string> = {
+      Authorization: `Bearer ${token}`,
+      'Accept-Language': config.language,
       Accept: 'application/json',
-      'Accept-Language': language,
       [CORRELATION_HEADER]: correlationId,
-      ...(requestOptions.headers ?? {}),
     };
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
+    let serialized: string | undefined;
     if (body !== undefined) {
+      serialized = JSON.stringify(body);
       headers['Content-Type'] = 'application/json';
     }
 
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
-
-    let response: Response;
-    try {
-      const init: RequestInit = {
-        method,
-        headers,
-        signal: controller.signal,
-      };
-      if (body !== undefined) {
-        init.body = JSON.stringify(body);
-      }
-      response = await fetchImpl(joinUrl(options.baseUrl, path), init);
-    } catch {
-      clearTimeout(timer);
-      if (controller.signal.aborted) {
-        throw new TransportError('timeout', correlationId);
-      }
-      throw new TransportError('network', correlationId);
-    } finally {
-      // keep timer cleared in try success path too
-    }
-    // clear timer after response arrived
-    clearTimeout(timer);
-
+    const url = `${config.baseUrl.replace(/\/+$/, '')}/${path.replace(/^\/+/, '')}`;
+    controller = new AbortController();
+    timer = setTimeout(() => controller?.abort(), TIMEOUT_MS);
+    const response = await config.fetchImpl(url, {
+      method,
+      headers,
+      body: serialized,
+      signal: controller.signal,
+    });
     if (!response.ok) {
-      if (response.status === 422) {
-        const fieldErrors = await parseFieldErrors(response);
-        throw new TransportError('validation', correlationId, response.status, fieldErrors);
-      }
-      throw new TransportError(kindForStatus(response.status), correlationId, response.status);
+      throw await toTransportError(response, correlationId);
     }
-
-    if (response.status === 204) {
-      return undefined;
+    return (await response.json()) as T;
+  } catch (error) {
+    // A typed HTTP failure must survive even if the deadline expires while its
+    // error body is being read.
+    if (error instanceof TransportError) {
+      throw error;
     }
-    try {
-      return await response.json();
-    } catch {
-      return undefined;
+    if (controller?.signal.aborted === true) {
+      throw new TransportError('timeout', { correlationId });
+    }
+    throw new TransportError('network', { correlationId });
+  } finally {
+    if (timer !== undefined) {
+      clearTimeout(timer);
     }
   }
+}
 
+/**
+ * Create a transport bound to one API origin.
+ *
+ * @returns GET, POST and PUT operations that parse JSON on success and throw
+ * `TransportError` with a typed kind on every failure.
+ */
+export function createTransport(config: TransportConfig): Transport {
+  assertSecureBaseUrl(config.baseUrl);
+  const resolved: ResolvedConfig = { ...config, language: config.language ?? 'en' };
   return {
-    get: <T>(path: string, requestOptions?: TransportRequestOptions) => send('GET', path, undefined, requestOptions) as Promise<T>,
-    post: <T>(path: string, body?: unknown, requestOptions?: TransportRequestOptions) => send('POST', path, body, requestOptions) as Promise<T>,
-    put: <T>(path: string, body?: unknown, requestOptions?: TransportRequestOptions) => send('PUT', path, body, requestOptions) as Promise<T>,
+    get: <T>(path: string) => send<T>(resolved, 'GET', path, undefined),
+    post: <T>(path: string, body?: unknown) => send<T>(resolved, 'POST', path, body),
+    put: <T>(path: string, body?: unknown) => send<T>(resolved, 'PUT', path, body),
   };
 }
