@@ -15,6 +15,9 @@ spring:
       resourceserver:
         jwt:
           issuer-uri: ${SMARTCLINIC_OIDC_ISSUER_URI:}
+          # WEB-03/WEB-05: SMARTCLINIC_OIDC_AUDIENCE is required. Outside the
+          # synthetic-auth profile SecurityConfiguration fails startup when it
+          # is blank, and every bearer token must carry this value in `aud`.
           audiences: ${SMARTCLINIC_OIDC_AUDIENCE:}
 smartclinic:
   rate-limit:

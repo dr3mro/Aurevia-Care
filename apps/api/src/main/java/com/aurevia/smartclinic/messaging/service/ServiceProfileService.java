@@ -72,7 +72,9 @@ public class ServiceProfileService {
         TenantContext context = requireContext();
         authorize(context, ServiceProfileActions.PROFILE_VIEW, unit);
         requireUnitAccess(context, ServiceProfileActions.PROFILE_VIEW, unit);
-        ServiceProfile profile = store.effectiveProfile(context.organizationId(), unit, clock.instant())
+        Instant at = clock.instant();
+        ServiceProfile profile = store.effectiveProfile(context.organizationId(), unit, at)
+                .filter(candidate -> candidate.enablesUnitAt(at))
                 .orElseThrow(() -> deny(context, ServiceProfileActions.PROFILE_VIEW, unit, 404,
                         "NOT_FOUND", "no effective service profile for this unit"));
         audit(context, ServiceProfileActions.PROFILE_VIEW, profile.id(), "SUCCESS");
@@ -91,10 +93,12 @@ public class ServiceProfileService {
         TenantContext context = requireContext();
         authorize(context, ServiceProfileActions.AVAILABILITY_VIEW, unit);
         requireUnitAccess(context, ServiceProfileActions.AVAILABILITY_VIEW, unit);
-        ServiceProfile profile = store.effectiveProfile(context.organizationId(), unit, clock.instant())
+        Instant at = clock.instant();
+        ServiceProfile profile = store.effectiveProfile(context.organizationId(), unit, at)
+                .filter(candidate -> candidate.enablesUnitAt(at))
                 .orElseThrow(() -> deny(context, ServiceProfileActions.AVAILABILITY_VIEW, unit, 404,
                         "NOT_FOUND", "no effective service profile for this unit"));
-        ServiceAvailability result = ServiceHoursCalculator.calculate(profile.hours(), clock.instant());
+        ServiceAvailability result = ServiceHoursCalculator.calculate(profile.hours(), at);
         audit(context, ServiceProfileActions.AVAILABILITY_VIEW, profile.id(), "SUCCESS");
         return result;
     }
