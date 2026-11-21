@@ -2,6 +2,8 @@ import curses, json, re, shutil, subprocess, sys, threading, time
 from datetime import datetime, timedelta, timezone
 
 INTERVAL, RECENT, ONCE = int(sys.argv[1]), int(sys.argv[2]), sys.argv[3] == "1"
+AUTOSTART = int(sys.argv[4]) if len(sys.argv) > 4 else 0  # minutes between automatic wave starts; 0 = off
+LIVE = ("queued", "in_progress", "waiting", "pending", "requested")
 FAILED = ("failure", "timed_out")
 FIELDS = "databaseId,workflowName,displayTitle,conclusion,status,headSha,headBranch,event,createdAt,startedAt,updatedAt,url"
 TEXT = ("repo", "todo", "archive", "total")  # plain-text results; everything else is JSON
@@ -576,6 +578,22 @@ def once():
 
 
 # ---- live TUI ---------------------------------------------------------------------------------------
+def swarm_idle(data):
+    """True when no Agent swarm run is live and TODO.md still has open tasks (None until both are known)."""
+    runs, todo = data.get("runs"), data.get("todo")
+    if not runs or not todo:
+        return None
+    if any(r.get("workflowName") == "Agent swarm" and r.get("status") in LIVE for r in runs):
+        return False
+    return any(t["status"] == "todo" for t in parse_tasks(todo))
+
+
+def start_swarm():
+    """Dispatch one Agent swarm wave. Returns an empty string on success, else the error text."""
+    p = subprocess.run(["gh", "workflow", "run", "swarm.yml", "-f", "now=true"], capture_output=True, text=True)
+    return "" if p.returncode == 0 else (p.stderr.strip().splitlines() or ["gh failed"])[-1]
+
+
 def beep():
     for cmd in (["afplay", "/System/Library/Sounds/Glass.aiff"], ["paplay", "/usr/share/sounds/freedesktop/stereo/complete.oga"]):
         if shutil.which(cmd[0]):
@@ -622,6 +640,7 @@ def tui(stdscr):
         threading.Thread(target=refresh, daemon=True).start()
 
     seen, alarm, checked_at, last = None, None, 0.0, None
+    started_at, started_note = 0.0, ""
     stdscr.timeout(200)
     kick()
     while True:
@@ -651,12 +670,17 @@ def tui(stdscr):
                     ids = (alarm["ids"] if alarm else set()) | {r["databaseId"] for r in fresh}
                     alarm = {"ids": ids, "text": text, "next": now}
             seen = set(failed_now) | (seen or set())
+            if AUTOSTART and swarm_idle(data) and now - started_at >= AUTOSTART * 60:
+                err = start_swarm()
+                started_at = now
+                started_note = (f"swarm start failed: {err}" if err else
+                                f"swarm was idle, started a wave at {datetime.now().strftime('%H:%M')}")
         if alarm and now >= alarm["next"]:
             beep()
             alarm["next"] = now + 5
         H, W = stdscr.getmaxyx()
         phase = int(now * 3) % 2 if alarm else 0
-        sig = (H, W, at, busy, phase, bool(alarm), int(now // 5))
+        sig = (H, W, at, busy, phase, bool(alarm), int(now // 5), started_note)
         if sig == last:
             continue
         last = sig
@@ -696,6 +720,8 @@ def tui(stdscr):
         else:
             status = "refreshing..." if busy else f"updated {span(time.time() - at)} ago"
             foot = f" q quit · r refresh · every {INTERVAL}s · {status}"
+            if AUTOSTART:
+                foot += f" · {started_note or f'auto-start on ({AUTOSTART}m)'}"
             stdscr.addstr(H - 1, 0, foot[: W - 1], attr["dim"])
         stdscr.refresh()
 
