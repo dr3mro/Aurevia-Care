@@ -7,6 +7,9 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.regex.Pattern;
 
+import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
+
 import com.aurevia.smartclinic.api.ApiException;
 import com.aurevia.smartclinic.tenant.TenantContext;
 
@@ -20,7 +23,13 @@ import com.aurevia.smartclinic.tenant.TenantContext;
  * in the caller's transaction boundary. An unauthenticated request has no attributable actor or
  * tenant and is rejected before an audit subject can be derived; input validation failures occur
  * before any resource is addressed.</p>
+ *
+ * <p>Each store read opens its own tenant-guarded transaction, so a withdrawal or
+ * correction committed between two reads can change the outcome of an in-flight
+ * download. A single-transaction authorization port for concurrent release
+ * changes is a follow-up; sequential withdrawal stops the next download.</p>
  */
+@Service
 public final class ReleasedReportService {
 
     /** Audit action for listing released reports. */
@@ -34,7 +43,7 @@ public final class ReleasedReportService {
 
     private static final Pattern ID_PATTERN = Pattern.compile("[A-Za-z0-9_.:-]{2,64}");
 
-    private final InMemoryReportReleaseStore store;
+    private final ReportReleaseStore store;
     private final AuditSink audit;
     private final Clock clock;
 
@@ -45,7 +54,7 @@ public final class ReleasedReportService {
      * @param audit audit sink for access outcomes
      * @param clock injected clock for deterministic effective-date checks
      */
-    public ReleasedReportService(InMemoryReportReleaseStore store, AuditSink audit, Clock clock) {
+    public ReleasedReportService(ReportReleaseStore store, AuditSink audit, Clock clock) {
         this.store = store;
         this.audit = audit;
         this.clock = clock;
@@ -183,6 +192,7 @@ public final class ReleasedReportService {
     }
 
     /** Synthetic in-memory audit sink used until a durable adapter is wired. */
+    @Component
     public static final class InMemoryAuditSink implements AuditSink {
         private final List<AuditRecord> events = new java.util.concurrent.CopyOnWriteArrayList<>();
 
