@@ -40,7 +40,7 @@ Evidence source: executed tool commands (below); the specialist was a simulated 
   > tsc --noEmit
   ```
 - Lint: `cd apps/patient-mobile && npm run lint` → exit 0, 0 errors, 2 pre-existing `import/no-duplicates` warnings in `src/features/tracker/presentation.test.ts` (out of scope).
-- Module gate: `bash apps/patient-mobile/check.sh` → `Test Suites: 1 failed, 59 passed, 60 total`; `Tests: 1 failed, 613 passed, 614 total`. The single failure is `src/features/domain-layout.test.ts › names every feature directory after its business domain` — pre-existing and out of scope (see Findings / Why this is not finished). Typecheck and lint inside `check.sh` passed.
+- Module gate (initial, before repair): `bash apps/patient-mobile/check.sh` → `Test Suites: 1 failed, 59 passed, 60 total`; `Tests: 1 failed, 613 passed, 614 total` — the `src/features/domain-layout.test.ts` domain-set invariant. Repaired in "Repair attempt 1" below; the final gate is green (60/60 suites, 614/614 tests). Typecheck and lint inside `check.sh` passed.
 - Entry point to test trace: `useWindowClass.ts:windowClassFor` (pure classifier) → `windowClassFor.test` cases `classifies width 599/600/839/840 as …`; `useWindowClass.ts:useWindowClass` → real `useWindowDimensions` (driven by spied `Dimensions.get` and a spied `Dimensions.addEventListener('change')` listener fired inside `act`) → `useWindowClass.test.ts` hook cases; `useSafeAreaInsets` is mocked locally and asserted by `forwards the system font scale and safe-area insets`.
 
 ## Coverage
@@ -55,7 +55,7 @@ Evidence source: executed tool commands (below); the specialist was a simulated 
 
 ## Findings
 
-- Pre-existing module-gate failure (tool evidence): `src/features/domain-layout.test.ts` hard-codes 14 `DOMAIN_FOLDERS` and omits the tracked `tracker` feature folder, so `bash apps/patient-mobile/check.sh` fails at HEAD regardless of this change. Verified with `git show HEAD:apps/patient-mobile/src/features/domain-layout.test.ts` (14 entries) and `git ls-files apps/patient-mobile/src/features/tracker` (tracked at HEAD). TRACK-02 (TODO.md:2178) added the folder with scope limited to `src/features/tracker`. This file is outside my scope, so I did not edit it; a bounded follow-up is requested below.
+- Pre-existing module-gate failure (tool evidence): `src/features/domain-layout.test.ts` hard-codes 14 `DOMAIN_FOLDERS` and omits the tracked `tracker` feature folder, so `bash apps/patient-mobile/check.sh` fails at HEAD regardless of this change. Verified with `git show HEAD:apps/patient-mobile/src/features/domain-layout.test.ts` (14 entries) and `git ls-files apps/patient-mobile/src/features/tracker` (tracked at HEAD). TRACK-02 (TODO.md:2178) added the folder with scope limited to `src/features/tracker`. Repaired directly in "Repair attempt 1" below after the coverage gate returned this task; no follow-up task is needed.
 - Repository-level check artifact (tool evidence): `bash scripts/check.sh` exits 1 at its first step with `check-pack: opencode.json is stale: run scripts/gen-opencode.py`. `git ls-files -v opencode.json` reports flag `S` (skip-worktree) and the worktree file hash differs from `git show HEAD:opencode.json`; this is the documented cloud-worker CI-profile-under-skip-worktree artifact (MEMORY.md, 2026-11-20 daily notes), not a change from this story. `python3 -I scripts/gen-opencode.py --check` therefore also reports out of date in this worktree. I did not edit the protected generated file; use HEAD truth for policy evidence.
 - Pre-existing lint warnings: 2 `import/no-duplicates` warnings in `src/features/tracker/presentation.test.ts` (0 errors). Out of scope.
 - Specialist inference refuted by tool evidence: the reviewer suggested `jest.mock('react-native', () => ({ ...jest.requireActual('react-native'), useWindowDimensions: … }))`. The actual run threw a `TurboModuleRegistry.getEnforcing` invariant because spreading the RN barrel eagerly evaluates lazy native getters. Fixed by spying on the real `Dimensions.get` / `Dimensions.addEventListener` and firing a change event, which also tests the real `useWindowDimensions` implementation.
@@ -71,19 +71,23 @@ Evidence source: executed tool commands (below); the specialist was a simulated 
 
 Not required: this is a presentation-only helper with no signed data, cross-organization sharing, patient linkage change, prescribing or critical-result handling. No clinical sign-off is claimed; simulated senior-mobile review only.
 
-## Why this is not finished
+## Repair attempt 1 (2026-11-21) — resolved
 
-`bash apps/patient-mobile/check.sh` still exits non-zero because of a pre-existing, out-of-scope test: `FAIL src/features/domain-layout.test.ts › patient-mobile feature layout › names every feature directory after its business domain` — expected 14 folders, received 15 (extra `tracker`). Most likely cause: TRACK-02 added the `tracker` feature folder without updating that structural test's fixed list. What I tried: confirmed my new folder is `src/app/layout` (not under `src/features`); confirmed typecheck exit 0 with no `error TS…`, lint 0 errors and 100% coverage on my changed file; confirmed the test and its 14-entry list exist at HEAD while `tracker` is tracked at HEAD. Exact next step: run a bounded task to add `tracker` to `DOMAIN_FOLDERS` (or derive the list) in `apps/patient-mobile/src/features/domain-layout.test.ts`, then re-run `bash apps/patient-mobile/check.sh`. I did not edit that file because it is outside this task's scope. My two scoped files are complete and green.
+The coverage gate returned this task (repair 1 of 2). The failure was not in my production code: `bash apps/patient-mobile/check.sh` failed on the pre-existing structural invariant `src/features/domain-layout.test.ts › names every feature directory after its business domain` — its hardcoded 14-entry `DOMAIN_FOLDERS` omitted the already-tracked business-domain folder `tracker` (added by TRACK-02). Fix: added `'tracker'` to `DOMAIN_FOLDERS` (test-only, one line). No threshold was lowered, no exclusion added, and no production code changed.
 
-Separately, `bash scripts/check.sh` stops before module checks on the documented skip-worktree `opencode.json` artifact (flag `S`; worktree is the CI profile, HEAD holds the committed local profile). That is an environment/policy-check artifact, not a defect in the delivered source; the integrator/Delivery should judge policy from HEAD truth.
+Evidence source: executed tool commands only. No reviewer, simulated user or human participant was involved in this repair.
 
-```task-requests
-[
-  {
-    "title": "Patient mobile: update feature directory invariant for tracker",
-    "details": "apps/patient-mobile/src/features/domain-layout.test.ts hard-codes 14 DOMAIN_FOLDERS and omits the tracked 'tracker' feature folder, so bash apps/patient-mobile/check.sh fails at HEAD (1 failed test: expected 14 folders, received 15). Add 'tracker' to the expected list or derive the list from the approved domain mapping, keep the story-ID directory negative test and all other assertions, then re-run bash apps/patient-mobile/check.sh. Test-only change; no production code.",
-    "scope": ["apps/patient-mobile/src/features/domain-layout.test.ts"],
-    "depends": []
-  }
-]
-```
+- Fix: `apps/patient-mobile/src/features/domain-layout.test.ts` — single added line `  'tracker',` in `DOMAIN_FOLDERS`; `git diff` shows no other change.
+- Green invariant: `cd apps/patient-mobile && npx jest src/features/domain-layout.test.ts --runInBand --coverage=false` → `Test Suites: 1 passed, 1 total`; `Tests: 3 passed, 3 total`.
+- Full module gate: `bash apps/patient-mobile/check.sh` (from repo root) → exit code 0; `All files | 100 | 100 | 100 | 100`; `...src/app/layout | 100 | 100 | 100 | 100`; `Test Suites: 60 passed, 60 total`; `Tests: 614 passed, 614 total`. `tsc --noEmit` and lint inside the gate passed (no `error TS…`, no new errors).
+- The `types.ts` rows still display `0 | 0 | 0 | 0` because they are type-only modules with no executable statements; the build-failing global 100% threshold passes (`All files 100/100/100/100`), so no uncovered executable line or branch remains.
+
+### Branch-to-test list (every new/changed branch)
+
+- `src/app/layout/useWindowClass.ts` (production, from the original change) — 100% statements/branches/functions/lines:
+  - `windowClassFor` `if (width < 600)` true → `classifies width 599 as compact`; false → exercised by the `classifies width 600 as regular`, `classifies width 839 as regular` and `classifies width 840 as large` cases.
+  - `windowClassFor` `if (width < 840)` true → `classifies width 600 as regular` and `classifies width 839 as regular`; false → `classifies width 840 as large`.
+  - Straight-line hook body (`useWindowDimensions`, `useSafeAreaInsets`, returned object) runs in all four hook tests: `reports the compact class and portrait orientation for a narrow window`, `forwards the system font scale and safe-area insets`, the landscape case and the dimension-change case. `isLandscape: width > height` is a comparison expression, not an Istanbul branch; the file has no ternary, `&&`, `||`, `switch`, `catch` or optional-chain fallback.
+- `src/features/domain-layout.test.ts` (test-only repair) — no executable production branch added. The change is a single data value (`'tracker'`) in the expected `DOMAIN_FOLDERS` list; its three invariants (exact domain set, no story-ID directory, each domain exposes an entry point) are asserted by the three existing `it(...)` blocks and now pass. The file is excluded from coverage scope.
+
+`bash scripts/check.sh` still stops on the documented skip-worktree `opencode.json` CI-profile artifact (flag `S`; worktree is the CI profile, HEAD holds the committed local profile). That is an environment/policy-check artifact, not a defect in the delivered source; the integrator/Delivery should judge policy from HEAD truth. No task request is needed — the previously requested structural-test fix is now applied.
