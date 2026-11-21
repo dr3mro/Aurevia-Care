@@ -1,0 +1,224 @@
+-- Requirement IDs: ARC-06, CLN-07
+-- Change: expand
+-- Durable document artifacts, verified object metadata, PDF render jobs,
+-- immutable bindings, release decisions and an append-only fact ledger. Each
+-- table is tenant-owned and protected by forced row-level security. New tables
+-- are not covered by V2's static list, so every policy, grant and trigger is
+-- declared here. No existing object is altered and no object bytes are stored.
+--
+-- Local identifiers are unique only inside a tenant, so every key includes
+-- organization_id. A synthetic grant whose claimed organization differs is
+-- kept in grant_organization_id while the RLS column holds the active tenant:
+-- WITH CHECK stays strict and the service still rejects a foreign grant.
+-- Bindings, releases and facts are immutable for every role, including the
+-- migration owner, so triggers rather than GRANT alone enforce that rule.
+
+CREATE TABLE public.document_authorization (
+    organization_id       uuid NOT NULL REFERENCES public.organization(organization_id),
+    context_id            text NOT NULL CHECK (length(context_id) BETWEEN 1 AND 64),
+    grant_organization_id text NOT NULL,
+    patient_id            text NOT NULL,
+    active                boolean NOT NULL,
+    created_at            timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (organization_id, context_id)
+);
+
+CREATE TABLE public.document_artifact (
+    organization_id  uuid NOT NULL REFERENCES public.organization(organization_id),
+    id               uuid NOT NULL,
+    version          integer NOT NULL CHECK (version > 0),
+    uploader_subject text NOT NULL,
+    context_id       text NOT NULL,
+    patient_id       text,
+    file_name        text NOT NULL CHECK (length(file_name) BETWEEN 1 AND 200),
+    file_type        text NOT NULL CHECK (file_type IN
+                         ('application/pdf', 'image/jpeg', 'image/png')),
+    size_bytes       bigint NOT NULL CHECK (size_bytes > 0),
+    checksum         text NOT NULL,
+    object_key       text NOT NULL,
+    object_version   integer NOT NULL CHECK (object_version > 0),
+    verdict          text NOT NULL CHECK (verdict IN ('pending', 'clean', 'failed')),
+    state            text NOT NULL CHECK (state IN
+                         ('quarantined', 'clean', 'failed', 'completed', 'removed')),
+    created_at       timestamptz NOT NULL,
+    PRIMARY KEY (organization_id, id)
+);
+
+CREATE TABLE public.document_verified_object (
+    organization_id uuid NOT NULL REFERENCES public.organization(organization_id),
+    object_key      text NOT NULL,
+    object_version  integer NOT NULL CHECK (object_version > 0),
+    checksum        text NOT NULL,
+    size_bytes      bigint NOT NULL CHECK (size_bytes > 0),
+    created_at      timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (organization_id, object_key, object_version)
+);
+
+CREATE TABLE public.document_pdf_job (
+    organization_id  uuid NOT NULL REFERENCES public.organization(organization_id),
+    job_id           text NOT NULL,
+    revision_id      text NOT NULL,
+    revision_version integer NOT NULL CHECK (revision_version > 0),
+    content_checksum text NOT NULL,
+    template_id      text NOT NULL,
+    language         text NOT NULL CHECK (language IN ('en', 'ar')),
+    state            text NOT NULL CHECK (state IN
+                         ('requested', 'rendering', 'complete', 'failed')),
+    version          integer NOT NULL CHECK (version > 0),
+    object_key       text,
+    object_version   integer NOT NULL DEFAULT 0 CHECK (object_version >= 0),
+    checksum         text,
+    size_bytes       bigint NOT NULL DEFAULT 0 CHECK (size_bytes >= 0),
+    created_at       timestamptz NOT NULL,
+    PRIMARY KEY (organization_id, job_id)
+);
+
+CREATE TABLE public.document_pdf_binding (
+    organization_id  uuid NOT NULL REFERENCES public.organization(organization_id),
+    revision_id      text NOT NULL,
+    revision_version integer NOT NULL CHECK (revision_version > 0),
+    content_checksum text NOT NULL,
+    job_id           text NOT NULL,
+    object_key       text NOT NULL,
+    object_version   integer NOT NULL CHECK (object_version > 0),
+    checksum         text NOT NULL,
+    language         text NOT NULL CHECK (language IN ('en', 'ar')),
+    bound_at         timestamptz NOT NULL,
+    PRIMARY KEY (organization_id, revision_id)
+);
+
+CREATE TABLE public.document_release (
+    organization_id  uuid NOT NULL REFERENCES public.organization(organization_id),
+    revision_id      text NOT NULL,
+    revision_version integer NOT NULL CHECK (revision_version > 0),
+    content_checksum text NOT NULL,
+    policy_version   text NOT NULL,
+    released_by      text NOT NULL,
+    released_at      timestamptz NOT NULL,
+    PRIMARY KEY (organization_id, revision_id, revision_version, policy_version)
+);
+
+CREATE TABLE public.document_event (
+    organization_id uuid NOT NULL REFERENCES public.organization(organization_id),
+    id              uuid NOT NULL,
+    seq             bigint GENERATED BY DEFAULT AS IDENTITY,
+    resource_id     text NOT NULL,
+    event_type      text NOT NULL CHECK (event_type IN
+                        ('uploaded', 'scan_clean', 'scan_failed', 'upload_completed',
+                         'artifact_removed', 'downloaded', 'render_requested',
+                         'render_picked_up', 'render_complete', 'render_failed',
+                         'pdf_bound', 'release_blocked', 'released', 'access_denied')),
+    actor_subject   text,
+    outcome         text NOT NULL,
+    detail          text,
+    occurred_at     timestamptz NOT NULL,
+    created_at      timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (organization_id, id),
+    UNIQUE (organization_id, seq)
+);
+
+-- An artifact and a render job keep their original binding for every role:
+-- only lifecycle columns (version, verdict, state, object metadata) advance.
+CREATE OR REPLACE FUNCTION public.document_artifact_binding_immutable()
+RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog
+AS $$
+BEGIN
+    IF NEW.organization_id IS DISTINCT FROM OLD.organization_id
+       OR NEW.id IS DISTINCT FROM OLD.id
+       OR NEW.uploader_subject IS DISTINCT FROM OLD.uploader_subject
+       OR NEW.context_id IS DISTINCT FROM OLD.context_id
+       OR NEW.patient_id IS DISTINCT FROM OLD.patient_id
+       OR NEW.file_name IS DISTINCT FROM OLD.file_name
+       OR NEW.file_type IS DISTINCT FROM OLD.file_type
+       OR NEW.size_bytes IS DISTINCT FROM OLD.size_bytes
+       OR NEW.checksum IS DISTINCT FROM OLD.checksum
+       OR NEW.object_key IS DISTINCT FROM OLD.object_key
+       OR NEW.created_at IS DISTINCT FROM OLD.created_at
+       OR NEW.version < OLD.version THEN
+        RAISE EXCEPTION 'document artifact binding is immutable (id=%)', OLD.id
+            USING ERRCODE = '44000';
+    END IF;
+    RETURN NEW;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.document_job_binding_immutable()
+RETURNS trigger LANGUAGE plpgsql SET search_path = pg_catalog
+AS $$
+BEGIN
+    IF NEW.organization_id IS DISTINCT FROM OLD.organization_id
+       OR NEW.job_id IS DISTINCT FROM OLD.job_id
+       OR NEW.revision_id IS DISTINCT FROM OLD.revision_id
+       OR NEW.revision_version IS DISTINCT FROM OLD.revision_version
+       OR NEW.content_checksum IS DISTINCT FROM OLD.content_checksum
+       OR NEW.template_id IS DISTINCT FROM OLD.template_id
+       OR NEW.language IS DISTINCT FROM OLD.language
+       OR NEW.created_at IS DISTINCT FROM OLD.created_at
+       OR NEW.version < OLD.version THEN
+        RAISE EXCEPTION 'document render binding is immutable (job=%)', OLD.job_id
+            USING ERRCODE = '44000';
+    END IF;
+    RETURN NEW;
+END $$;
+
+DO $$
+DECLARE t text;
+BEGIN
+    FOREACH t IN ARRAY ARRAY[
+        'document_authorization', 'document_artifact', 'document_verified_object',
+        'document_pdf_job', 'document_pdf_binding', 'document_release', 'document_event'
+    ]
+    LOOP
+        EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', t);
+        EXECUTE format('ALTER TABLE public.%I FORCE ROW LEVEL SECURITY', t);
+        EXECUTE format($p$CREATE POLICY tenant_isolation ON public.%I
+             USING (organization_id = public.app_org())
+             WITH CHECK (organization_id = public.app_org())$p$, t);
+    END LOOP;
+
+    EXECUTE $b$CREATE TRIGGER document_artifact_binding_guard
+        BEFORE UPDATE ON public.document_artifact
+        FOR EACH ROW EXECUTE FUNCTION public.document_artifact_binding_immutable()$b$;
+    EXECUTE $b$CREATE TRIGGER document_job_binding_guard
+        BEFORE UPDATE ON public.document_pdf_job
+        FOR EACH ROW EXECUTE FUNCTION public.document_job_binding_immutable()$b$;
+
+    FOREACH t IN ARRAY ARRAY[
+        'document_pdf_binding', 'document_release', 'document_event'
+    ]
+    LOOP
+        EXECUTE format($d$CREATE TRIGGER %I_no_update_delete
+            BEFORE UPDATE OR DELETE ON public.%I
+            FOR EACH ROW EXECUTE FUNCTION public.reject_immutable_mutation()$d$, t, t);
+        EXECUTE format($d$CREATE TRIGGER %I_no_truncate
+            BEFORE TRUNCATE ON public.%I
+            FOR EACH STATEMENT EXECUTE FUNCTION public.reject_immutable_mutation()$d$, t, t);
+    END LOOP;
+END $$;
+
+CREATE INDEX document_artifact_context_idx
+    ON public.document_artifact (organization_id, context_id, created_at DESC);
+CREATE INDEX document_verified_object_idx
+    ON public.document_verified_object (organization_id, object_key, object_version);
+CREATE INDEX document_pdf_job_revision_idx
+    ON public.document_pdf_job (organization_id, revision_id, revision_version);
+CREATE INDEX document_event_resource_idx
+    ON public.document_event (organization_id, resource_id, seq);
+
+-- The runtime role advances artifact and job lifecycle columns, seeds grants,
+-- verifies objects and appends facts. Immutable ledgers accept only inserts;
+-- their triggers cover the migration owner too. A verified object record may
+-- be removed after a quarantine failure, but no artifact row is ever deleted.
+GRANT SELECT, INSERT, UPDATE ON public.document_authorization TO smartclinic_app;
+GRANT SELECT, INSERT, UPDATE ON public.document_artifact TO smartclinic_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.document_verified_object TO smartclinic_app;
+GRANT SELECT, INSERT, UPDATE ON public.document_pdf_job TO smartclinic_app;
+GRANT SELECT, INSERT ON public.document_pdf_binding TO smartclinic_app;
+GRANT SELECT, INSERT ON public.document_release TO smartclinic_app;
+GRANT SELECT, INSERT ON public.document_event TO smartclinic_app;
+REVOKE DELETE, TRUNCATE ON public.document_authorization FROM smartclinic_app;
+REVOKE DELETE, TRUNCATE ON public.document_artifact FROM smartclinic_app;
+REVOKE TRUNCATE ON public.document_verified_object FROM smartclinic_app;
+REVOKE DELETE, TRUNCATE ON public.document_pdf_job FROM smartclinic_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.document_pdf_binding FROM smartclinic_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.document_release FROM smartclinic_app;
+REVOKE UPDATE, DELETE, TRUNCATE ON public.document_event FROM smartclinic_app;

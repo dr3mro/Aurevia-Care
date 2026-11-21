@@ -4,6 +4,8 @@ import java.time.Clock;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.stereotype.Service;
+
 import com.aurevia.smartclinic.documents.DocumentActions.Action;
 import com.aurevia.smartclinic.documents.DocumentContract.Actor;
 import com.aurevia.smartclinic.documents.DocumentContract.BindRequest;
@@ -28,6 +30,7 @@ import com.aurevia.smartclinic.documents.DocumentContract.SourceRevision;
  * job and binding. A release that requires a PDF is refused without a decision
  * when the binding is missing, stale or backed by an unverified object.</p>
  */
+@Service
 public final class PdfBindingService {
 
     private final DocumentStore store;

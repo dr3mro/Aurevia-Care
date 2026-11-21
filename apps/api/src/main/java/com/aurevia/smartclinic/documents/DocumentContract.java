@@ -149,6 +149,24 @@ public final class DocumentContract {
         public String wire() {
             return wire;
         }
+
+        /**
+         * Parse a stored verdict key.
+         *
+         * @param value stored key, possibly {@code null}
+         * @return the matching verdict, or {@code null} when unknown
+         */
+        public static ScanVerdict from(String value) {
+            if (value == null) {
+                return null;
+            }
+            for (ScanVerdict candidate : values()) {
+                if (candidate.wire.equals(value)) {
+                    return candidate;
+                }
+            }
+            return null;
+        }
     }
 
     /**
@@ -195,6 +213,24 @@ public final class DocumentContract {
         public boolean downloadable() {
             return this == COMPLETED;
         }
+
+        /**
+         * Parse a stored lifecycle key.
+         *
+         * @param value stored key, possibly {@code null}
+         * @return the matching state, or {@code null} when unknown
+         */
+        public static ArtifactState from(String value) {
+            if (value == null) {
+                return null;
+            }
+            for (ArtifactState candidate : values()) {
+                if (candidate.wire.equals(value)) {
+                    return candidate;
+                }
+            }
+            return null;
+        }
     }
 
     /**
@@ -228,6 +264,24 @@ public final class DocumentContract {
          */
         public String wire() {
             return wire;
+        }
+
+        /**
+         * Parse a stored render-job state key.
+         *
+         * @param value stored key, possibly {@code null}
+         * @return the matching state, or {@code null} when unknown
+         */
+        public static PdfJobState from(String value) {
+            if (value == null) {
+                return null;
+            }
+            for (PdfJobState candidate : values()) {
+                if (candidate.wire.equals(value)) {
+                    return candidate;
+                }
+            }
+            return null;
         }
     }
 
@@ -332,6 +386,24 @@ public final class DocumentContract {
          */
         public String wire() {
             return wire;
+        }
+
+        /**
+         * Parse a stored fact-type key.
+         *
+         * @param value stored key, possibly {@code null}
+         * @return the matching type, or {@code null} when unknown
+         */
+        public static EventType from(String value) {
+            if (value == null) {
+                return null;
+            }
+            for (EventType candidate : values()) {
+                if (candidate.wire.equals(value)) {
+                    return candidate;
+                }
+            }
+            return null;
         }
     }
 
