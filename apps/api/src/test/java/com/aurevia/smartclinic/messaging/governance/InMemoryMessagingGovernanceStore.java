@@ -8,8 +8,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-import org.springframework.stereotype.Repository;
-
 import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.AuditEvent;
 import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.ConnectionReference;
 import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.CopyRequest;
@@ -25,13 +23,12 @@ import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.Reten
 /**
  * Synthetic, tenant-keyed in-memory adapter for MSG-07 governance facts.
  *
- * <p>This adapter lets the domain rules be exercised deterministically without
- * a database. It is not authoritative: a production adapter must persist these
- * records with forced tenant row-level security and append-only audit tables.
- * Every method takes the active organization and never merges rows across
- * tenants.</p>
+ * <p>Test-only fake: it lets the domain rules be exercised deterministically
+ * without a database and is not a Spring bean. Production uses
+ * {@link com.aurevia.smartclinic.messaging.governance.JdbcMessagingGovernanceStore}
+ * over V62's forced-RLS and append-only tables. Every method takes the active
+ * organization and never merges rows across tenants.</p>
  */
-@Repository
 public class InMemoryMessagingGovernanceStore implements MessagingGovernanceStore {
 
     private final Map<String, String> roles = new ConcurrentHashMap<>();
