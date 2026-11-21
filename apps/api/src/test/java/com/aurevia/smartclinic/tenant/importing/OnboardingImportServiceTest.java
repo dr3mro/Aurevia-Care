@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
@@ -170,6 +171,23 @@ class OnboardingImportServiceTest {
         assertEquals(List.of(new MissingAttachment("r1", "k5")), report.missingAttachments());
         assertEquals(1, report.counts().missingAttachments());
         assertEquals(5, report.counts().errors());
+    }
+
+    @Test
+    void uppercaseHexChecksumsAreAcceptedByTheSharedDigestRule() {
+        String upperSha = SHA_A.toUpperCase(Locale.ROOT);
+        ImportAttachment attachment = new ImportAttachment("doc-upper", upperSha, "pdf", true);
+        HistoricalSignature signature =
+                new HistoricalSignature("legacy-issuer", "2019-03-04T05:06:07Z", upperSha);
+        ImportRecord record = new ImportRecord("r1", fields("MRN-UPPER"), List.of(attachment), signature);
+
+        DryRunReport report = service.dryRun(manifest(List.of(record)));
+
+        assertTrue(report.errors().isEmpty(), () -> "expected no errors but got " + report.errors());
+        // OPS-08 keeps the caller's original signed evidence verbatim; validation
+        // normalizes only for the verdict, never for the preserved checksum text.
+        ImportedRecord projected = service.toImportedRecords(manifest(List.of(record))).get(0);
+        assertEquals(upperSha, projected.historicalSignature().checksum());
     }
 
     @Test
