@@ -13,14 +13,14 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: actions/setup-java@v4
+    - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6
       with:
         distribution: temurin
         java-version: '21'
         cache: maven
 
     - name: Cache OWASP NVD data
-      uses: actions/cache@v4
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
       with:
         path: ~/.m2/repository/org/owasp/dependency-check-data
         key: owasp-nvd-${{ runner.os }}-${{ runner.arch }}-${{ github.run_id }}
@@ -42,7 +42,7 @@ runs:
 
     - name: Upload verification reports
       if: always()
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
       with:
         name: java-verification-reports
         path: |

@@ -46,7 +46,7 @@ jobs:
       triage: ${{ steps.pick.outputs.triage }}
       image: ${{ steps.image.outputs.image }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: main
           fetch-depth: 1
@@ -60,7 +60,7 @@ jobs:
           SCHEDULE: ${{ github.event.schedule }}
           MODE: ${{ github.event_name == 'schedule' && (github.event.schedule == '37 * * * *' && 'hourly' || 'daily') || inputs.mode }}
         run: python3 -I scripts/swarm.py monitor-select --mode "$MODE" --out monitor
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: steps.pick.outputs.act == 'true'
         with:
           name: monitor-selection
@@ -88,11 +88,11 @@ jobs:
       SWARM: '1'
       AGENT_TIMEOUT: 45m
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 1
           persist-credentials: false
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: monitor-selection
           path: monitor
@@ -102,7 +102,7 @@ jobs:
         env:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY_2 || secrets.OPENCODE_API_KEY }}
         run: scripts/agent-run.sh triage
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: always()
         with:
           name: monitor-triage
@@ -121,16 +121,16 @@ jobs:
       pull-requests: write
       actions: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: main
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: monitor-selection
           path: monitor
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         if: needs.select.outputs.triage == 'true'
         continue-on-error: true
         with:

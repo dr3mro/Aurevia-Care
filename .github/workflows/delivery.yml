@@ -23,7 +23,7 @@ jobs:
     timeout-minutes: 5
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
       - name: Shell syntax and lint
@@ -39,17 +39,26 @@ jobs:
           python3 -I scripts/check-docs.py
           python3 -I scripts/check-secrets.py
           python3 -I scripts/check-migrations.py --require-baseline
-          python3 -I -m unittest discover -s scripts/tests -q
+
+  script-tests:
+    name: Delivery tooling tests
+    timeout-minutes: 10
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - run: python3 -I -m unittest discover -s scripts/tests -q
 
   frontend:
     name: Frontend standards
     timeout-minutes: 15
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '22'
           cache: npm
@@ -68,7 +77,7 @@ jobs:
     runs-on: ubuntu-24.04
     services:
       postgres:
-        image: postgres:17
+        image: postgres:17.12@sha256:b60e90042aa6b8dbecd58e224b3e36114dbf8ad754465264c2476ad58a86e45c
         env:
           POSTGRES_HOST_AUTH_METHOD: trust
         ports:
@@ -77,7 +86,7 @@ jobs:
           --health-cmd "pg_isready -U postgres"
           --health-interval 10s --health-timeout 5s --health-retries 5
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
       - uses: ./.github/actions/java-verify
@@ -90,7 +99,7 @@ jobs:
     timeout-minutes: 10
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
       - name: Install Doxygen
@@ -107,7 +116,7 @@ jobs:
           exit 1
       - name: Build developer reference
         run: scripts/docs.sh
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: developer-reference
           path: build/developer-reference/html
@@ -124,7 +133,7 @@ jobs:
       matrix: ${{ fromJSON(github.ref_type == 'tag' && '{"include":[{"arch":"amd64","runner":"ubuntu-24.04"},{"arch":"arm64","runner":"ubuntu-24.04-arm"}]}' || '{"include":[{"arch":"amd64","runner":"ubuntu-24.04"}]}') }}
     runs-on: ${{ matrix.runner }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
       - uses: ./.github/actions/resolve-version
@@ -137,7 +146,7 @@ jobs:
       - name: Save smoke-tested image for a release
         if: github.ref_type == 'tag'
         run: docker save smartclinic:test -o smartclinic-image.tar
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: github.ref_type == 'tag'
         with:
           name: smoke-tested-image-${{ matrix.arch }}
@@ -154,7 +163,7 @@ jobs:
       contents: write
       packages: write
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           pattern: smoke-tested-image-*
       - name: Require a green default-branch run for this commit
@@ -213,7 +222,7 @@ jobs:
   gate:
     name: Delivery gate
     if: always()
-    needs: [policy, frontend, java-verify, docs, verify, release]
+    needs: [policy, script-tests, frontend, java-verify, docs, verify, release]
     timeout-minutes: 5
     runs-on: ubuntu-24.04
     steps:

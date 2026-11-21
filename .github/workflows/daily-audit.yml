@@ -53,7 +53,7 @@ jobs:
       SWARM: '1'
       AGENT_TIMEOUT: 100m
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 1
           persist-credentials: false
@@ -62,7 +62,7 @@ jobs:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY_2 || secrets.OPENCODE_API_KEY }}
           AUDIT_FOCUS: ${{ inputs.focus }}
         run: scripts/agent-run.sh audit
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: always()
         with:
           name: audit-findings
@@ -78,16 +78,23 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: main
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         continue-on-error: true
         with:
           name: audit-findings
           path: findings
+      - name: Warn when SWARM_TOKEN is not configured
+        env:
+          HAS_SWARM_TOKEN: ${{ secrets.SWARM_TOKEN != '' }}
+        run: |
+          if [[ "$HAS_SWARM_TOKEN" != "true" ]]; then
+            echo "::warning title=SWARM_TOKEN missing::Falling back to the job token: it cannot push workflow files or open pull requests that trigger other workflows."
+          fi
       - name: Validate the findings and append new tasks
         env:
           GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
