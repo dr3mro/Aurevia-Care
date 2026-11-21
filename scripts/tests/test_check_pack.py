@@ -1,3 +1,7 @@
+import contextlib
+import io
+import json
+import runpy
 import shutil
 import unittest
 
@@ -37,6 +41,138 @@ class PackTests(unittest.TestCase):
         self.assertIsNone(pack.frontmatter("---\nbroken line\n---\n"))
         self.assertEqual(pack.frontmatter('---\na: "b"\n---\n'), {"a": "b"})
 
+    def test_agent_file_not_in_opencode_is_reported(self):
+        tmp = copy_pack()
+        self.addCleanup(shutil.rmtree, tmp)
+        (tmp / ".opencode/agents/smartclinic-ghost.md").write_text(
+            '---\ndescription: "ghost"\nmode: subagent\n---\n\n'
+            "Load smartclinic-delivery. Behave.\n")
+        errors = pack.check(tmp)
+        self.assertTrue(any("smartclinic-ghost.md" in e and "not in opencode.json" in e
+                            for e in errors), errors)
+
+    def test_configured_agent_with_no_file_is_reported(self):
+        tmp = copy_pack()
+        self.addCleanup(shutil.rmtree, tmp)
+        (tmp / ".opencode/agents/smartclinic-debugger.md").unlink()
+        errors = pack.check(tmp)
+        self.assertTrue(any("smartclinic-debugger" in e and "no file" in e
+                            for e in errors), errors)
+
+    def test_missing_skill_reference_names_agent_file(self):
+        tmp = copy_pack()
+        self.addCleanup(shutil.rmtree, tmp)
+        shutil.rmtree(tmp / ".opencode/skills/smartclinic-debugger")
+        errors = pack.check(tmp)
+        self.assertTrue(any("smartclinic-debugger.md" in e and "skill" in e
+                            for e in errors), errors)
+
+    def test_skill_without_skill_md_is_reported(self):
+        tmp = copy_pack()
+        self.addCleanup(shutil.rmtree, tmp)
+        (tmp / ".opencode/skills/smartclinic-debugger/SKILL.md").unlink()
+        errors = pack.check(tmp)
+        self.assertTrue(any("smartclinic-debugger/SKILL.md is missing" in e
+                            for e in errors), errors)
+
+    def test_duplicate_agent_name_is_reported(self):
+        tmp = copy_pack()
+        self.addCleanup(shutil.rmtree, tmp)
+        path = tmp / "opencode.json"
+        text = path.read_text()
+        needle = '"smartclinic-orchestrator": {'
+        self.assertIn(needle, text)
+        path.write_text(text.replace(needle, needle + '}, "smartclinic-orchestrator": {', 1))
+        errors = pack.check(tmp)
+        self.assertTrue(any("duplicate agent name smartclinic-orchestrator" in e
+                            and "opencode.json" in e for e in errors), errors)
+
+    def test_missing_agent_for_named_role_is_reported(self):
+        tmp = copy_pack()
+        self.addCleanup(shutil.rmtree, tmp)
+        primary = tmp / ".opencode/agents/smartclinic-orchestrator.md"
+        primary.write_text(primary.read_text() +
+                           "\nThe Tester reviews the evidence independently.\n")
+        (tmp / ".opencode/agents/smartclinic-test-engineer.md").unlink()
+        errors = pack.check(tmp)
+        self.assertTrue(any("Tester" in e and "smartclinic-test-engineer.md" in e
+                            for e in errors), errors)
+
+    def test_default_agent_without_definition_is_reported(self):
+        tmp = copy_pack()
+        self.addCleanup(shutil.rmtree, tmp)
+        (tmp / ".opencode/agents/smartclinic-orchestrator.md").unlink()
+        errors = pack.check(tmp)
+        self.assertTrue(any("default_agent" in e for e in errors), errors)
+
+    def test_agent_without_frontmatter_is_reported(self):
+        tmp = copy_pack()
+        self.addCleanup(shutil.rmtree, tmp)
+        (tmp / ".opencode/agents/smartclinic-debugger.md").write_text("no frontmatter\n")
+        errors = pack.check(tmp)
+        self.assertTrue(any("missing or malformed frontmatter" in e for e in errors), errors)
+
+    def test_agent_without_description_is_reported(self):
+        tmp = copy_pack()
+        self.addCleanup(shutil.rmtree, tmp)
+        path = tmp / ".opencode/agents/smartclinic-debugger.md"
+        path.write_text("\n".join(
+            line for line in path.read_text().splitlines()
+            if not line.startswith("description:")) + "\n")
+        errors = pack.check(tmp)
+        self.assertTrue(any("description is required" in e for e in errors), errors)
+
+    def test_agent_with_bad_name_is_reported(self):
+        tmp = copy_pack()
+        self.addCleanup(shutil.rmtree, tmp)
+        source = (tmp / ".opencode/agents/smartclinic-debugger.md").read_text()
+        (tmp / ".opencode/agents/smartclinic-Bad.md").write_text(source)
+        errors = pack.check(tmp)
+        self.assertTrue(any("name must be kebab-case" in e for e in errors), errors)
+
+    def test_orchestrator_allow_list_drift_is_reported(self):
+        tmp = copy_pack()
+        self.addCleanup(shutil.rmtree, tmp)
+        path = tmp / "opencode.json"
+        config = json.loads(path.read_text())
+        rules = config["agents"]["smartclinic-orchestrator"]["permissions"]
+        rules[:] = [r for r in rules
+                    if not (r["action"] == "subagent" and r["effect"] == "allow")]
+        path.write_text(json.dumps(config, indent=2) + "\n")
+        errors = pack.check(tmp)
+        self.assertTrue(any("allow list differs" in e for e in errors), errors)
+
+    def test_specialist_first_rule_drift_is_reported(self):
+        tmp = copy_pack()
+        self.addCleanup(shutil.rmtree, tmp)
+        path = tmp / "opencode.json"
+        config = json.loads(path.read_text())
+        rules = config["agents"]["smartclinic-debugger"]["permissions"]
+        rules[0] = {"action": "read", "resource": "*", "effect": "allow"}
+        path.write_text(json.dumps(config, indent=2) + "\n")
+        errors = pack.check(tmp)
+        self.assertTrue(any("first rule must deny everything" in e for e in errors), errors)
+
+    def test_skill_bad_directory_name_is_reported(self):
+        tmp = copy_pack()
+        self.addCleanup(shutil.rmtree, tmp)
+        bad = tmp / ".opencode/skills/smartclinic-Bad"
+        bad.mkdir()
+        (bad / "SKILL.md").write_text(
+            '---\nname: smartclinic-Bad\ndescription: "x"\n---\n')
+        errors = pack.check(tmp)
+        self.assertTrue(any("directory must be kebab-case" in e for e in errors), errors)
+
+    def test_skill_with_bad_frontmatter_is_reported(self):
+        tmp = copy_pack()
+        self.addCleanup(shutil.rmtree, tmp)
+        path = tmp / ".opencode/skills/smartclinic-debugger/SKILL.md"
+        path.write_text("\n".join(
+            "name: smartclinic-other" if line.startswith("name:") else line
+            for line in path.read_text().splitlines()) + "\n")
+        errors = pack.check(tmp)
+        self.assertTrue(any("frontmatter needs matching name" in e for e in errors), errors)
+
 
 class GeneratorTests(unittest.TestCase):
     def test_force_push_is_denied_and_env_files_unreadable(self):
@@ -75,6 +211,32 @@ class GeneratorTests(unittest.TestCase):
 
     def test_check_mode_detects_drift(self):
         self.assertEqual(gen.main(["--check"]), 0)
+
+
+class MainTests(unittest.TestCase):
+    def test_main_reports_success(self):
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            status = pack.main()
+        self.assertEqual(status, 0)
+        self.assertIn("agents,", stdout.getvalue())
+
+    def test_main_reports_errors(self):
+        original = pack.check
+        pack.check = lambda: ["synthetic problem"]
+        self.addCleanup(setattr, pack, "check", original)
+        stderr = io.StringIO()
+        with contextlib.redirect_stderr(stderr):
+            status = pack.main()
+        self.assertEqual(status, 1)
+        self.assertIn("check-pack: synthetic problem", stderr.getvalue())
+
+    def test_cli_entry_point(self):
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            with self.assertRaises(SystemExit) as ctx:
+                runpy.run_path(str(ROOT / "scripts/check-pack.py"), run_name="__main__")
+        self.assertEqual(ctx.exception.code, 0)
 
 
 if __name__ == "__main__":
