@@ -629,4 +629,23 @@ class AccessUnitTest {
         verify(supportMock).approveIncident("INC-100");
         verify(supportMock).checkAccess(checkRequest);
     }
+
+    @Test
+    void accessRulesBoundariesAreEnforced() {
+        AccessRules.validateReason("x", "E");
+        AccessRules.validateReason("a".repeat(AccessRules.MAX_REASON_LENGTH), "E");
+        assertThrows(ApiException.class, () -> AccessRules.validateReason(null, "E"));
+        assertThrows(ApiException.class, () -> AccessRules.validateReason("   ", "E"));
+        assertThrows(ApiException.class, () -> AccessRules.validateReason("a".repeat(AccessRules.MAX_REASON_LENGTH + 1), "E"));
+
+        AccessRules.validateDuration(1);
+        AccessRules.validateDuration(AccessRules.MAX_DURATION_MINUTES);
+        assertThrows(ApiException.class, () -> AccessRules.validateDuration(0));
+        assertThrows(ApiException.class, () -> AccessRules.validateDuration(AccessRules.MAX_DURATION_MINUTES + 1));
+
+        AccessRules.validateWindow(1);
+        AccessRules.validateWindow(AccessRules.MAX_WINDOW_MINUTES);
+        assertThrows(ApiException.class, () -> AccessRules.validateWindow(0));
+        assertThrows(ApiException.class, () -> AccessRules.validateWindow(AccessRules.MAX_WINDOW_MINUTES + 1));
+    }
 }
