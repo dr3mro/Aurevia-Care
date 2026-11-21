@@ -159,6 +159,7 @@ TRANSIENT = re.compile(
     r"Temporary failure in name resolution", re.I)
 CREDENTIALS = re.compile(r"Bad credentials|Resource not accessible|Requires authentication|"
                          r"permission denied|HTTP 40[13]|token.*(?:expired|invalid)", re.I)
+TEST_STEP = re.compile(r"unittest|pytest|\bmvn\b|vitest|jest|npm (?:run )?test|check\.sh|verify|require every", re.I)
 QUOTA = re.compile(r"rate limit|quota|insufficient balance|budget", re.I)
 TRUSTED_ASSOCIATIONS = {"OWNER", "MEMBER", "COLLABORATOR"}
 ISSUE_LABELS = {
@@ -337,7 +338,10 @@ def classify_failure(log, failed=None):
                     for job, step in failed)
     precise_auth = re.search(r"Bad credentials|Resource not accessible|Requires authentication|"
                              r"permission denied|HTTP 40[13]|token (?:expired|invalid)", log or "")
-    if (auth_step or precise_auth) and CREDENTIALS.search(log or ""):
+    # A failed test or build step prints whatever the code under test prints, including
+    # "permission denied" from tests of the swarm's own error handling (issue #262).
+    test_only = bool(failed) and all(TEST_STEP.search(step) for _, step in failed)
+    if (auth_step or (precise_auth and not test_only)) and CREDENTIALS.search(log or ""):
         return "credentials"
     if QUOTA.search(log or ""):
         return "quota"
