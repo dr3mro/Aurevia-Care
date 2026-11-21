@@ -29,13 +29,13 @@ import com.aurevia.smartclinic.tenant.TenantContext;
 public class IdentityProofingService {
 
     /**
-     * The single bounded lowercase subject key shared by the product's request
+     * The bounded lowercase subject key mirrored from the product's request
      * boundaries. An alphanumeric start and the exclusion of {@code :} keep the
      * value safe as a routing/log token; dot and underscore stay valid because
-     * staff and authz subjects already use them. This is the rule introduced as
-     * the canonical {@code subject(...)} primitive for the request-boundary
-     * unification; it is mirrored here only until that primitive is available to
-     * this module, and must be replaced by a call to it rather than duplicated.
+     * staff and authz subjects already use them. This mirrors the loose rule
+     * pending the canonical {@code subject(...)} primitive from the request
+     * boundary unification; replace this pattern with a call to that primitive
+     * when it becomes available rather than keeping a second copy of the rule.
      */
     private static final Pattern SUBJECT = Pattern.compile("[a-z0-9][a-z0-9._-]{1,63}");
     private static final Pattern DISPLAY_NAME = Pattern.compile("[\\p{L}\\p{M} '.-]{2,120}");

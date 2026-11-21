@@ -175,6 +175,20 @@ class SubjectValidationConsistencyTest {
     }
 
     @Test
+    void dottedAndUnderscoredParityIsPendingTheConversationMigration() {
+        // Honest characterisation of the cross-story gap, not a hidden omission:
+        // identity now applies the canonical loose rule but ConversationInputs
+        // still applies the legacy strict rule, so these inputs genuinely
+        // disagree today. AUD-20261121-10 migrates ConversationInputs to the
+        // canonical primitive; when that lands both decisions must become ACCEPT
+        // and this assertion must be changed to one of parity.
+        assertEquals(ACCEPTED, identityDecision("patient.one"));
+        assertEquals(INVALID, conversationDecision("patient.one"));
+        assertEquals(ACCEPTED, identityDecision("patient_one"));
+        assertEquals(INVALID, conversationDecision("patient_one"));
+    }
+
+    @Test
     void identityEndpointRejectsAColonSubjectWithTheSharedErrorCode() throws Exception {
         mvc.perform(post("/api/v1/patient-identity/accounts")
                         .contentType(MediaType.APPLICATION_JSON)
