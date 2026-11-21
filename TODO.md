@@ -529,8 +529,9 @@ Each task below owns its own files, so the planner can run them side by side wit
     3. In `routes.tsx` collect every `features/*/routes.ts` with `import.meta.glob(..., { eager: true })`, sort by path so the order is stable, and throw a clear error when two features register the same pattern.
     4. Tests in `app/routes.test.tsx`: all existing paths still resolve, the catch-all is last, a duplicate pattern fails, the preview flag still works.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
-- [-] READY-52 · API: structured JSON request log with a correlation ID and a redaction test (WEB-06)
-  - agent: swarm-3
+- [x] READY-52 · API: structured JSON request log with a correlation ID and a redaction test (WEB-06)
+  - pr: #270
+  - evidence: PR #270; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/READY-52.md; simulated review only
   - attempts: 1
   - requirements: WEB-06
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/observability, apps/api/src/test/java/com/aurevia/smartclinic/observability
