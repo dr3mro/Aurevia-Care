@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import * as safeAreaContext from 'react-native-safe-area-context';
 
 import { windowClassFor } from '../../app/layout/useWindowClass';
 import {
@@ -18,6 +19,16 @@ import type { Locale, TabId } from '../appointments/patientDesign';
 import { canReply, senderLabel } from './domain';
 import type { Conversation, LayoutDirection } from './domain';
 import { activeLayoutDirection } from './layout';
+
+/**
+ * Cross-platform safe-area view: the installed library applies real insets on
+ * iOS and Android, unlike React Native's iOS-only SafeAreaView. The shared
+ * Jest double exposes the library component only under `default`, so resolve
+ * both shapes once here instead of branching on every render.
+ */
+const SafeAreaView = safeAreaContext.SafeAreaView
+  ?? (safeAreaContext as unknown as { default: { SafeAreaView: typeof safeAreaContext.SafeAreaView } })
+    .default.SafeAreaView;
 
 /** Maximum readable width of the detail column on a large window, in dp. */
 const READING_WIDTH = 720;
