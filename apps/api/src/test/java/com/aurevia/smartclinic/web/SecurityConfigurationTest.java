@@ -21,8 +21,11 @@ import org.springframework.security.web.SecurityFilterChain;
 class SecurityConfigurationTest {
 
     private static final String ISSUER_PROPERTY = "spring.security.oauth2.resourceserver.jwt.issuer-uri";
+    private static final String AUDIENCE_PROPERTY = "spring.security.oauth2.resourceserver.jwt.audiences";
     private static final String ISSUER = "https://issuer.example.test";
+    private static final String AUDIENCE = "synthetic-api";
     private static final String FAILURE_MESSAGE = "SMARTCLINIC_OIDC_ISSUER_URI must be set";
+    private static final String AUDIENCE_FAILURE_MESSAGE = "SMARTCLINIC_OIDC_AUDIENCE must be set";
 
     /** Stops the issuer-based decoder from performing discovery during tests. */
     @TestConfiguration
@@ -49,10 +52,10 @@ class SecurityConfigurationTest {
     }
 
     @Test
-    void productionProfileBuildsTheOidcChainWithAnIssuer() {
+    void productionProfileBuildsTheOidcChainWithAnIssuerAndAudience() {
         new WebApplicationContextRunner()
                 .withUserConfiguration(SecurityConfiguration.class, DecoderStub.class)
-                .withPropertyValues(ISSUER_PROPERTY + "=" + ISSUER)
+                .withPropertyValues(ISSUER_PROPERTY + "=" + ISSUER, AUDIENCE_PROPERTY + "=" + AUDIENCE)
                 .run(context -> {
                     assertNull(context.getStartupFailure());
                     assertNotNull(context.getBean(SecurityFilterChain.class));
@@ -62,7 +65,7 @@ class SecurityConfigurationTest {
     @Test
     void productionProfileFailsClosedWithoutAnIssuer() {
         new WebApplicationContextRunner()
-                .withUserConfiguration(SecurityConfiguration.class)
+                .withUserConfiguration(SecurityConfiguration.class, DecoderStub.class)
                 .run(context -> {
                     Throwable failure = context.getStartupFailure();
                     assertNotNull(failure);
@@ -71,11 +74,33 @@ class SecurityConfigurationTest {
     }
 
     @Test
+    void productionProfileFailsClosedWithoutAnAudience() {
+        new WebApplicationContextRunner()
+                .withUserConfiguration(SecurityConfiguration.class, DecoderStub.class)
+                .withPropertyValues(ISSUER_PROPERTY + "=" + ISSUER)
+                .run(context -> {
+                    Throwable failure = context.getStartupFailure();
+                    assertNotNull(failure);
+                    assertTrue(failureMessageChain(failure).contains(AUDIENCE_FAILURE_MESSAGE));
+                });
+    }
+
+    @Test
     void blankIssuerIsRejectedDirectly() {
         IllegalStateException failure = org.junit.jupiter.api.Assertions.assertThrows(
                 IllegalStateException.class,
-                () -> new SecurityConfiguration("   ").oidcSecurityFilterChain(null));
+                () -> new SecurityConfiguration("   ", AUDIENCE)
+                        .oidcSecurityFilterChain(null, new DecoderStub().jwtDecoder()));
         assertEquals(FAILURE_MESSAGE, failure.getMessage());
+    }
+
+    @Test
+    void blankAudienceIsRejectedDirectly() {
+        IllegalStateException failure = org.junit.jupiter.api.Assertions.assertThrows(
+                IllegalStateException.class,
+                () -> new SecurityConfiguration(ISSUER, "   ")
+                        .oidcSecurityFilterChain(null, new DecoderStub().jwtDecoder()));
+        assertEquals(AUDIENCE_FAILURE_MESSAGE, failure.getMessage());
     }
 
     @Test

@@ -36,6 +36,7 @@ import jakarta.servlet.Filter;
 class SecurityFilterChainHttpTest {
 
     private static final String ISSUER_PROPERTY = "spring.security.oauth2.resourceserver.jwt.issuer-uri";
+    private static final String AUDIENCE_PROPERTY = "spring.security.oauth2.resourceserver.jwt.audiences";
     private static final String ORG = "11111111-1111-1111-1111-111111111111";
 
     private JdbcTemplate jdbc;
@@ -83,7 +84,7 @@ class SecurityFilterChainHttpTest {
     void unauthenticatedGetReturns401() throws Throwable {
         new WebApplicationContextRunner()
                 .withUserConfiguration(SecurityConfiguration.class, DecoderStub.class)
-                .withPropertyValues(ISSUER_PROPERTY + "=https://issuer.example.test")
+                .withPropertyValues(ISSUER_PROPERTY + "=https://issuer.example.test", AUDIENCE_PROPERTY + "=synthetic-api")
                 .run(context -> {
                     assertNull(context.getStartupFailure());
                     MockMvc mvc = mvc(context);
@@ -96,7 +97,7 @@ class SecurityFilterChainHttpTest {
     void unauthenticatedLiveProbeReturns200() throws Throwable {
         new WebApplicationContextRunner()
                 .withUserConfiguration(SecurityConfiguration.class, DecoderStub.class)
-                .withPropertyValues(ISSUER_PROPERTY + "=https://issuer.example.test")
+                .withPropertyValues(ISSUER_PROPERTY + "=https://issuer.example.test", AUDIENCE_PROPERTY + "=synthetic-api")
                 .run(context -> {
                     assertNull(context.getStartupFailure());
                     mvc(context).perform(get("/health/live"))
@@ -109,7 +110,7 @@ class SecurityFilterChainHttpTest {
     void unauthenticatedReadyProbeReturns200() throws Throwable {
         new WebApplicationContextRunner()
                 .withUserConfiguration(SecurityConfiguration.class, DecoderStub.class)
-                .withPropertyValues(ISSUER_PROPERTY + "=https://issuer.example.test")
+                .withPropertyValues(ISSUER_PROPERTY + "=https://issuer.example.test", AUDIENCE_PROPERTY + "=synthetic-api")
                 .run(context -> {
                     assertNull(context.getStartupFailure());
                     mvc(context).perform(get("/health/ready"))
@@ -122,7 +123,7 @@ class SecurityFilterChainHttpTest {
     void postWithoutAuthorizationIsRejectedByCsrf() {
         new WebApplicationContextRunner()
                 .withUserConfiguration(SecurityConfiguration.class, DecoderStub.class)
-                .withPropertyValues(ISSUER_PROPERTY + "=https://issuer.example.test")
+                .withPropertyValues(ISSUER_PROPERTY + "=https://issuer.example.test", AUDIENCE_PROPERTY + "=synthetic-api")
                 .run(context -> mvc(context).perform(post("/api/v1/probe")
                                 .header("X-Active-Organization", ORG))
                         .andExpect(status().isForbidden()));
@@ -132,7 +133,7 @@ class SecurityFilterChainHttpTest {
     void postWithNonBearerAuthorizationIsRejectedByCsrf() {
         new WebApplicationContextRunner()
                 .withUserConfiguration(SecurityConfiguration.class, DecoderStub.class)
-                .withPropertyValues(ISSUER_PROPERTY + "=https://issuer.example.test")
+                .withPropertyValues(ISSUER_PROPERTY + "=https://issuer.example.test", AUDIENCE_PROPERTY + "=synthetic-api")
                 .run(context -> mvc(context).perform(post("/api/v1/probe")
                                 .header("Authorization", "Basic dXNlcjpwYXNz")
                                 .header("X-Active-Organization", ORG))
@@ -143,7 +144,7 @@ class SecurityFilterChainHttpTest {
     void postWithBearerAuthorizationSkipsCsrfAndRequiresAuthentication() {
         new WebApplicationContextRunner()
                 .withUserConfiguration(SecurityConfiguration.class, DecoderStub.class)
-                .withPropertyValues(ISSUER_PROPERTY + "=https://issuer.example.test")
+                .withPropertyValues(ISSUER_PROPERTY + "=https://issuer.example.test", AUDIENCE_PROPERTY + "=synthetic-api")
                 .run(context -> mvc(context).perform(post("/api/v1/probe")
                                 .header("Authorization", "Bearer synthetic-token")
                                 .header("X-Active-Organization", ORG))

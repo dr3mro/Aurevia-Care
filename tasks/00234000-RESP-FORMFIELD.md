@@ -1,4 +1,6 @@
-- [ ] RESP-FORMFIELD · Staff web: responsive `FormField` component
+- [-] RESP-FORMFIELD · Staff web: responsive `FormField` component
+  - agent: swarm-8
+  - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/components/FormField.tsx, apps/staff-web/tests/components/FormField.responsive.test.tsx
   - depends: RESP-BREAKPOINTS, RESP-STYLESHEET
