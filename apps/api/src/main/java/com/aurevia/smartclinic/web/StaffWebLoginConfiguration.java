@@ -47,7 +47,9 @@ import jakarta.servlet.http.HttpServletResponse;
  *
  * <p>The exact {@code GET /health/live} and {@code GET /health/ready} probes are
  * permitted here and in the bearer chain because they carry no bearer header and
- * therefore reach this higher-priority chain first (WEB-05).</p>
+ * therefore reach this higher-priority chain first (WEB-05). The
+ * {@code GET /health/metrics} scrape is permitted here too but is gated by source
+ * address in {@link com.aurevia.smartclinic.web.MetricsController} (WEB-06).</p>
  */
 @Configuration
 @Profile("!synthetic-auth")
@@ -136,9 +138,9 @@ public class StaffWebLoginConfiguration {
                 })
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .authorizeHttpRequests(authorize -> authorize
-                        // WEB-05: probes carry no bearer header, so they meet this chain first;
-                        // permit the exact paths so they never reach the login entry point.
-                        .requestMatchers(HttpMethod.GET, "/health/live", "/health/ready").permitAll()
+                        // WEB-05/WEB-06: probes carry no bearer header, so they meet this chain
+                        // first; permit exact paths so they never reach the login entry point.
+                        .requestMatchers(HttpMethod.GET, "/health/live", "/health/ready", "/health/metrics").permitAll()
                         .anyRequest().authenticated())
                 .oauth2Login(withDefaults())
                 .logout(logout -> logout
