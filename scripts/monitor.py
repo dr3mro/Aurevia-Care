@@ -9,12 +9,11 @@ FIELDS = "databaseId,workflowName,displayTitle,conclusion,status,headSha,headBra
 TEXT = ("repo", "todo", "archive", "total", "commits")  # plain-text results; everything else is JSON
 CALLS = {
     "repo": ["repo", "view", "--json", "nameWithOwner", "-q", ".nameWithOwner"],
-    "issues": ["issue", "list", "--state", "open", "--limit", "300", "--json", "number,title,labels,createdAt"],
-    "prs": ["pr", "list", "--state", "open", "--limit", "300", "--json", "number,title,isDraft,labels,headRefName,createdAt"],
-    "merged": ["pr", "list", "--state", "merged", "--limit", "300", "--search", "merged:>={since}", "--json", "number,title,mergedAt"],
-    "closed": ["pr", "list", "--state", "closed", "--limit", "300", "--search", "closed:>={since}", "--json", "number,title,closedAt,mergedAt"],
-    "runs": ["run", "list", "--limit", "100", "--json", FIELDS],  # first page: shows quickly
-    "runs_more": ["run", "list", "--limit", "300", "--json", FIELDS],  # three pages, merged in when it arrives
+    "issues": ["issue", "list", "--state", "open", "--limit", "100", "--json", "number,title,labels,createdAt"],
+    "prs": ["pr", "list", "--state", "open", "--limit", "100", "--json", "number,title,isDraft,labels,headRefName,createdAt"],
+    "merged": ["pr", "list", "--state", "merged", "--limit", "100", "--search", "merged:>={since}", "--json", "number,title,mergedAt"],
+    "closed": ["pr", "list", "--state", "closed", "--limit", "100", "--search", "closed:>={since}", "--json", "number,title,closedAt,mergedAt"],
+    "runs": ["run", "list", "--limit", "100", "--json", FIELDS],
     "total": ["api", "graphql", "-F", "o={owner}", "-F", "n={repo}", "-q", ".data.repository.defaultBranchRef.target.history.totalCount",
               "-f", "query=query($o:String!,$n:String!){repository(owner:$o,name:$n){defaultBranchRef{target{... on Commit{history{totalCount}}}}}}"],
     "todo": ["api", "repos/{owner}/{repo}/contents/TODO.md", "-H", "Accept: application/vnd.github.raw"],
@@ -64,8 +63,8 @@ def fetch(emit=None):
     screen can fill in piece by piece; the merged result is also returned (a section that failed is None)."""
     since = (datetime.now(timezone.utc) - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%SZ")
     calls = {k: [a.replace("{since}", since) for a in v] for k, v in CALLS.items()}
-    # One line per commit ("sha parent"), newest first; --paginate so a busy day is not capped at one page of 100.
-    calls["commits"] = ["api", f"repos/{{owner}}/{{repo}}/commits?since={since}&per_page=100", "--paginate", "-q",
+    # One line per commit ("sha parent"), newest first: a single page of up to 100 commits.
+    calls["commits"] = ["api", f"repos/{{owner}}/{{repo}}/commits?since={since}&per_page=100", "-q",
                         ".[] | \"\\(.sha) \\(.parents[0].sha // \"\")\""]
     out, guard, timings, began, claimed = {}, threading.Lock(), [], time.monotonic(), set()
 
@@ -98,7 +97,7 @@ def fetch(emit=None):
                 timed("compare", t1, "what the day's commits changed")
                 churn = dict(got, commits=len(commits)) if isinstance(got, dict) else None
             return put({"churn": churn})
-        if k in ("runs", "runs_more"):  # the quick first page shows at once; the full list merges in when it lands
+        if k in ("runs",):  # the quick first page shows at once; the full list merges in when it lands
             with guard:
                 merged = merge_runs(val, out.get("runs") or [])
             put({"runs": merged})
@@ -126,7 +125,7 @@ def fetch(emit=None):
 
     # Start order follows the measured cost, cheapest first (timing log: issues, repo, prs, total, archive,
     # todo, closed, merged, commits, then the runs and their job lookups), so the quick boxes appear first.
-    order = ["issues", "repo", "prs", "total", "archive", "todo", "closed", "merged", "commits", "runs", "runs_more"]
+    order = ["issues", "repo", "prs", "total", "archive", "todo", "closed", "merged", "commits", "runs"]
     threads = [threading.Thread(target=load, args=(k, calls[k]), daemon=True)
                for k in sorted(calls, key=lambda k: order.index(k) if k in order else len(order))]
     for t in threads:
@@ -764,7 +763,7 @@ def tui(stdscr):
         with lock:
             data = {k: (v if v is not None else blank(k)) for k, v in st["data"].items()}
             busy, at = st["busy"], st["at"]
-            loading = frozenset(k for k in st["data"] if k not in st["loaded"]) - {"repo", "runs_more"}
+            loading = frozenset(k for k in st["data"] if k not in st["loaded"]) - {"repo"}
             if len(st["loaded"]) * 4 >= len(st["data"]) * 3:
                 st["ready"] = True  # three quarters of the sections are in: draw the dashboard from now on
             ready = st.get("ready", False)
