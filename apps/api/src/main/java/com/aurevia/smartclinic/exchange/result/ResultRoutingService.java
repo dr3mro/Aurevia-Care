@@ -70,8 +70,6 @@ public class ResultRoutingService {
      * @param audit        transactional audit appender
      * @param clock        injected clock for deterministic timestamps
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "Spring-managed singleton collaborators")
     public ResultRoutingService(ResultRepository repository, ResultActionPolicy policy,
                                 TransactionTemplate transactions, AuditAppender audit, Clock clock) {
         this.repository = repository;

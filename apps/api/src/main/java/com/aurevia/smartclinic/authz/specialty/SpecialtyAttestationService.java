@@ -51,8 +51,6 @@ public class SpecialtyAttestationService {
      * @param transactions tenant-guarded transaction template
      * @param audit        transactional audit appender
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "Spring-managed singleton collaborators")
     public SpecialtyAttestationService(SpecialtyAttestationRepository repository, SpecialtyActions actions,
                                        TransactionTemplate transactions, AuditAppender audit) {
         this.repository = repository;

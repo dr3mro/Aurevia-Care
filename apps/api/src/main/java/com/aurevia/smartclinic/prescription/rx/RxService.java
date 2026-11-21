@@ -63,8 +63,6 @@ public class RxService {
      * @param transactions tenant-guarded transaction template
      * @param audit        transactional audit appender
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "Spring-managed singleton collaborators")
     public RxService(RxRepository repository, RxActions actions, TransactionTemplate transactions,
                      AuditAppender audit) {
         this.repository = repository;

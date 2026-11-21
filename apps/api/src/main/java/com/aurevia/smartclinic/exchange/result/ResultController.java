@@ -40,8 +40,6 @@ public class ResultController {
      *
      * @param service result routing domain service
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "Spring-managed singleton collaborator")
     public ResultController(ResultRoutingService service) {
         this.service = service;
     }

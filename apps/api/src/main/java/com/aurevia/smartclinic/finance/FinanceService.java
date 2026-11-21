@@ -67,8 +67,6 @@ public class FinanceService {
      * @param transactions tenant-guarded transaction template
      * @param audit        transactional audit appender
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "Spring-managed singleton collaborators")
     public FinanceService(FinanceRepository repository, FinanceActions actions,
                           TransactionTemplate transactions, AuditAppender audit) {
         this.repository = repository;

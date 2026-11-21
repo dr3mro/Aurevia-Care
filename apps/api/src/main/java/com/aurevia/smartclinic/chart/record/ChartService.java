@@ -52,8 +52,6 @@ public class ChartService {
      * @param audit        transactional audit appender
      * @param clock        application clock for recorded and verified times
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "Spring-managed singleton collaborators")
     public ChartService(ChartRepository entries, ChartActionPolicy policy,
                         TransactionTemplate transactions, AuditAppender audit, Clock clock) {
         this.entries = entries;

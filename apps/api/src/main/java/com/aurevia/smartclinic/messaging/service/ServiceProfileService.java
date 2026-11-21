@@ -54,8 +54,6 @@ public class ServiceProfileService {
      * @param actions bounded action matrix
      * @param clock   application clock for approval, effectiveness and snapshots
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "Spring-managed singleton collaborators")
     public ServiceProfileService(ServiceProfileStore store, ServiceProfileActions actions, Clock clock) {
         this.store = store;
         this.actions = actions;

@@ -60,8 +60,6 @@ public final class FollowUpService {
      * @param policy  action policy
      * @param clock   application clock for provenance
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "injected singleton collaborators")
     public FollowUpService(FollowUpConfig config, FollowUpStore store, FollowUpAuth auth,
                            FollowUpBooking booking, AuditAppender audit, ActionPolicy policy,
                            Clock clock) {

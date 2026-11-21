@@ -40,8 +40,6 @@ public class InstructionController {
      *
      * @param service instruction domain service
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "Spring-managed singleton collaborator")
     public InstructionController(InstructionService service) {
         this.service = service;
     }

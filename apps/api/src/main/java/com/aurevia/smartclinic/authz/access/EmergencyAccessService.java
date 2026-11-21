@@ -50,8 +50,6 @@ public class EmergencyAccessService {
      * @param transactions tenant-guarded transaction template
      * @param clock        injected UTC clock for deterministic expiries
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "Spring-managed singleton collaborators")
     public EmergencyAccessService(AccessRepository repository, TransactionTemplate transactions, Clock clock) {
         this.repository = repository;
         this.transactions = transactions;

@@ -52,8 +52,6 @@ public class PrescriptionService {
      * @param audit        transactional audit appender
      * @param clock        application clock for catalog effective windows
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "Spring-managed singleton collaborators")
     public PrescriptionService(PrescriptionRepository repository, PrescriptionActions actions,
                                TransactionTemplate transactions, AuditAppender audit, Clock clock) {
         this.repository = repository;

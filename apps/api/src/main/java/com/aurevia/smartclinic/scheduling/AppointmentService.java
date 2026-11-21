@@ -65,8 +65,6 @@ public class AppointmentService {
      * @param audit        transactional audit appender
      * @param clock        application clock used by the booking rules
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "Spring-managed singleton collaborators")
     public AppointmentService(AppointmentRepository appointments, SchedulingRepository scheduling,
                               ActionPolicy policy, TransactionTemplate transactions,
                               AuditAppender audit, Clock clock) {

@@ -54,8 +54,6 @@ public class DocumentService {
      * @param transactions tenant-guarded transaction template
      * @param renderer     deterministic PDF renderer
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "Spring-managed singleton collaborators")
     public DocumentService(DocumentRepository repository, DocumentPolicy policy, AuditAppender audit,
                            TransactionTemplate transactions, PdfRenderer renderer) {
         this.repository = repository;

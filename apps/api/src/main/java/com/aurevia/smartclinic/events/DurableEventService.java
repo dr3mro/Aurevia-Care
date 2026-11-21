@@ -69,8 +69,6 @@ public class DurableEventService {
      * @param actions bounded action matrix
      * @param clock   application clock for deterministic server instants
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "Spring-managed singleton collaborators")
     public DurableEventService(DeliveryStore store, DeliveryActions actions, Clock clock) {
         this.store = store;
         this.actions = actions;

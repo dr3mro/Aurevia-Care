@@ -52,8 +52,6 @@ public class Xch03Service {
      * @param transactions tenant-guarded transaction template
      * @param audit        transactional audit appender
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "Spring-managed singleton collaborators")
     public Xch03Service(Xch03Repository repository, Xch03ActionPolicy policy,
                         TransactionTemplate transactions, AuditAppender audit) {
         this.repository = repository;

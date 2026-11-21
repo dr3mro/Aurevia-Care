@@ -67,8 +67,6 @@ public class ClinicalNoteService {
      * @param audit        transactional audit appender
      * @param clock        injected clock for effective and signed instants
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "Spring-managed singleton collaborators")
     public ClinicalNoteService(NoteRepository repository, TransactionTemplate transactions,
                                AuditAppender audit, Clock clock) {
         this.repository = repository;

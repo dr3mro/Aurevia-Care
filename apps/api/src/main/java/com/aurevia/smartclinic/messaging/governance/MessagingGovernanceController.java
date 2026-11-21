@@ -44,8 +44,6 @@ public class MessagingGovernanceController {
      *
      * @param service MSG-07 governance domain service
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "Spring-managed singleton collaborator")
     public MessagingGovernanceController(MessagingGovernanceService service) {
         this.service = service;
     }

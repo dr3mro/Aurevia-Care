@@ -106,8 +106,6 @@ public final class PatientAccessService {
      * @param clock        application clock for deterministic expiry and lockout
      * @param digestFactory factory for the identity-fact digest
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "Injected collaborators, not value objects")
     public PatientAccessService(PatientAccessStore store, EnrollmentActions actions, Clock clock,
                                 DigestFactory digestFactory) {
         this.store = store;

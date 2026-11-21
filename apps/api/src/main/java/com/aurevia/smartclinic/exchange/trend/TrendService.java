@@ -48,8 +48,6 @@ public class TrendService {
      * @param audit         transactional audit appender
      * @param analyzer      pure comparability analyzer
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "Spring-managed singleton collaborators")
     public TrendService(TrendRepository repository, TrendActionPolicy policy,
                         TransactionTemplate transactions, AuditAppender audit,
                         TrendAnalyzer analyzer) {
