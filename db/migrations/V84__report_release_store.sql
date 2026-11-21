@@ -84,6 +84,15 @@ BEGIN
     EXECUTE $d$CREATE TRIGGER report_release_history_no_truncate
         BEFORE TRUNCATE ON public.report_release_history
         FOR EACH STATEMENT EXECUTE FUNCTION public.reject_immutable_mutation()$d$;
+
+    -- A revision is append-only for every role as well: only its current access
+    -- state and latest policy version may advance. The identity guard below
+    -- covers UPDATE; these triggers cover removal of a revision with no history.
+    EXECUTE $d$CREATE TRIGGER report_release_revision_no_delete
+        BEFORE DELETE ON public.report_release_revision
+        FOR EACH ROW EXECUTE FUNCTION public.reject_immutable_mutation()$d$;
+    -- TRUNCATE is already refused while report_release_history references this
+    -- table by a composite foreign key, so no additional trigger is needed.
 END $$;
 
 -- The revision's identity and rendered artifact never change; only its current
@@ -104,6 +113,12 @@ BEGIN
        OR NEW.correction_revision IS DISTINCT FROM OLD.correction_revision
        OR NEW.correction_reason IS DISTINCT FROM OLD.correction_reason THEN
         RAISE EXCEPTION 'report revision identity is immutable' USING ERRCODE = '42501';
+    END IF;
+    -- A withdrawal is terminal: a stray UPDATE must not make a withdrawn
+    -- patient result downloadable again (XCH-06). The guarded upsert in the
+    -- adapter does not touch such a row, so this only blocks direct writes.
+    IF OLD.status = 'WITHDRAWN' AND NEW.status <> 'WITHDRAWN' THEN
+        RAISE EXCEPTION 'withdrawn report revision cannot be reactivated' USING ERRCODE = '23514';
     END IF;
     RETURN NEW;
 END $$;

@@ -130,7 +130,13 @@ final class InMemoryReportReleaseStore implements ReportReleaseStore {
     @Override
     public synchronized void recordRelease(ReportRelease release) {
         ReleasedReport revision = release.revision();
-        reports.put(reportKey(revision.organizationId(), revision.id(), revision.revision()), revision);
+        String key = reportKey(revision.organizationId(), revision.id(), revision.revision());
+        ReleasedReport current = reports.get(key);
+        if (current != null && current.status() == ReleasedReport.Status.WITHDRAWN
+                && revision.status() != ReleasedReport.Status.WITHDRAWN) {
+            throw new IllegalStateException("a withdrawn revision cannot be released again");
+        }
+        reports.put(key, revision);
         history.add(release);
     }
 

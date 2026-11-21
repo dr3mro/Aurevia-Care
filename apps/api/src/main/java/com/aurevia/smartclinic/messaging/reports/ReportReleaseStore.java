@@ -81,7 +81,9 @@ public interface ReportReleaseStore {
     boolean isSuperseded(String organizationId, ReleasedReport report);
 
     /**
-     * Withdraw one exact revision, retaining its history (XCH-06).
+     * Withdraw one exact revision, retaining its history (XCH-06). The appended
+     * decision inherits the revision's current policy version because withdrawal
+     * is a terminal state change, not a new release authorization.
      *
      * @param organizationId active organization identifier
      * @param id             report identifier
@@ -94,9 +96,11 @@ public interface ReportReleaseStore {
      * Append one release decision and make it the current access state in one transaction.
      *
      * <p>The immutable revision, release policy version, effective time and any hold reason
-     * and expiry are recorded with the fact (XCH-06).</p>
+     * and expiry are recorded with the fact (XCH-06). A withdrawn revision is terminal:
+     * a later released decision for the same key is rejected rather than restoring access.</p>
      *
      * @param release release fact to append
+     * @throws IllegalStateException when the revision was already withdrawn
      */
     void recordRelease(ReportRelease release);
 

@@ -1,6 +1,7 @@
 package com.aurevia.smartclinic.messaging.reports.it;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -9,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Instant;
@@ -24,6 +26,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.dao.DataAccessException;
 import org.springframework.mock.env.MockEnvironment;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -141,6 +144,13 @@ class JdbcReportReleaseStoreIntegrationTest {
         }
     }
 
+    private void runAs(String org, Runnable action) {
+        as(org, () -> {
+            action.run();
+            return null;
+        });
+    }
+
     private static ReleasedReport report(String reportId, String org, int revision, Status status,
                                          String effectiveDate, String documentId,
                                          CorrectionContext correction) {
@@ -162,6 +172,20 @@ class JdbcReportReleaseStoreIntegrationTest {
         });
     }
 
+    private static void assertRejectedWithState(String sqlState, Statement statement, String sql)
+            throws Exception {
+        SQLException failure = assertThrows(SQLException.class, () -> statement.execute(sql));
+        assertEquals(sqlState, failure.getSQLState(), sql);
+    }
+
+    private static int rowCount(Statement statement, String table, String organization) throws Exception {
+        try (ResultSet rows = statement.executeQuery(
+                "SELECT count(*) FROM public." + table + " WHERE organization_id = '" + organization + "'")) {
+            assertTrue(rows.next());
+            return rows.getInt(1);
+        }
+    }
+
     @Test
     void withdrawnReleaseStopsTheNextDownloadAndKeepsItsHistory() throws Exception {
         String reportId = "report-withdraw";
@@ -181,11 +205,12 @@ class JdbcReportReleaseStoreIntegrationTest {
                         .header("X-Active-Organization", ORG_A))
                 .andExpect(status().isGone())
                 .andExpect(jsonPath("$.code").value("RELEASE_WITHDRAWN"));
-        mvc.perform(get("/api/v1/patient/reports")
+        String listed = mvc.perform(get("/api/v1/patient/reports")
                         .header("X-Synthetic-Subject", SUBJECT)
                         .header("X-Active-Organization", ORG_A))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isEmpty());
+                .andReturn().getResponse().getContentAsString();
+        assertFalse(listed.contains("report-withdraw"));
 
         List<ReportRelease> history = as(ORG_A, () -> store.releaseHistory(ORG_A, reportId, 1));
         assertEquals(2, history.size());
@@ -282,13 +307,89 @@ class JdbcReportReleaseStoreIntegrationTest {
             // FORCE RLS hides rows without the GUC. Bind the tenant so a mutation
             // actually matches a row and the append-only trigger must fire.
             statement.execute("SET app.current_org = '" + ORG_B + "'");
-            assertThrows(SQLException.class, () -> statement.execute(
-                    "UPDATE public.report_release_history SET status = 'WITHDRAWN'"));
-            assertThrows(SQLException.class, () -> statement.execute(
-                    "DELETE FROM public.report_release_history"));
-            assertThrows(SQLException.class, () -> statement.execute(
-                    "TRUNCATE public.report_release_history"));
+            assertTrue(rowCount(statement, "report_release_history", ORG_B) > 0);
+            assertRejectedWithState("44000", statement,
+                    "UPDATE public.report_release_history SET status = 'WITHDRAWN'");
+            assertRejectedWithState("44000", statement, "DELETE FROM public.report_release_history");
+            assertRejectedWithState("44000", statement, "TRUNCATE public.report_release_history");
         }
         assertEquals(1, as(ORG_B, () -> store.releaseHistory(ORG_B, reportId, 1)).size());
+    }
+
+    @Test
+    void revisionIdentityIsImmutableButAccessStateCanAdvance() throws Exception {
+        String reportId = "report-identity";
+        linkAndRelease(ORG_A, reportId, "document-a");
+        try (Connection connection = DriverManager.getConnection(URL, "smartclinic_migrate", "");
+             Statement statement = connection.createStatement()) {
+            statement.execute("SET app.current_org = '" + ORG_A + "'");
+            assertTrue(rowCount(statement, "report_release_revision", ORG_A) > 0);
+            String where = " WHERE organization_id = '" + ORG_A + "' AND id = '" + reportId
+                    + "' AND revision = 1";
+            assertRejectedWithState("42501", statement,
+                    "UPDATE public.report_release_revision SET document_id = 'tampered'" + where);
+            assertRejectedWithState("42501", statement,
+                    "UPDATE public.report_release_revision SET checksum = 'tampered'" + where);
+            assertRejectedWithState("42501", statement,
+                    "UPDATE public.report_release_revision SET id = 'tampered'" + where);
+            assertRejectedWithState("42501", statement,
+                    "UPDATE public.report_release_revision SET revision = 9" + where);
+            assertRejectedWithState("42501", statement,
+                    "UPDATE public.report_release_revision SET patient_id = 'other'" + where);
+            assertRejectedWithState("44000", statement,
+                    "DELETE FROM public.report_release_revision" + where);
+            // TRUNCATE is refused by the history foreign key before a trigger
+            // could run; assert that it cannot erase the revision rows.
+            assertThrows(SQLException.class, () -> statement.execute("TRUNCATE public.report_release_revision"));
+            assertEquals(1, statement.executeUpdate(
+                    "UPDATE public.report_release_revision SET status = 'WITHDRAWN', policy_version = 99"
+                            + where));
+        }
+        assertEquals(Status.WITHDRAWN, as(ORG_A, () -> store.find(ORG_A, reportId, 1))
+                .orElseThrow().status());
+    }
+
+    @Test
+    void writesForAnotherTenantAreRejectedByThePolicyCheck() {
+        String reportId = "report-cross-tenant";
+        String foreignSubject = "foreign-subject";
+        TenantContext.set(new TenantContext(ORG_A, SUBJECT, "PATIENT_REPORT_ACCESS", "report-it"));
+        try {
+            assertThrows(DataAccessException.class, () -> store.putLink(ORG_B, foreignSubject,
+                    new PatientChartLink(PATIENT, true, true)));
+            assertThrows(DataAccessException.class, () -> store.putReport(
+                    report(reportId, ORG_B, 1, Status.RELEASED, "2026-06-10", "document-foreign", null)));
+        } finally {
+            TenantContext.clear();
+        }
+        assertTrue(as(ORG_B, () -> store.link(ORG_B, foreignSubject)).isEmpty());
+        assertTrue(as(ORG_B, () -> store.find(ORG_B, reportId, 1)).isEmpty());
+    }
+
+    @Test
+    void aWithdrawnRevisionCannotBeReleasedAgain() throws Exception {
+        String reportId = "report-terminal";
+        linkAndRelease(ORG_A, reportId, "document-a");
+        assertTrue(as(ORG_A, () -> store.withdraw(ORG_A, reportId, 1)));
+
+        ReleasedReport reRelease = report(reportId, ORG_A, 1, Status.RELEASED,
+                "2026-06-10", "document-a", null);
+        assertThrows(IllegalStateException.class,
+                () -> runAs(ORG_A, () -> store.recordRelease(release(reRelease, 5))));
+
+        mvc.perform(get("/api/v1/patient/reports/{id}/download", reportId)
+                        .param("revision", "1")
+                        .header("X-Synthetic-Subject", SUBJECT)
+                        .header("X-Active-Organization", ORG_A))
+                .andExpect(status().isGone());
+        assertEquals(2, as(ORG_A, () -> store.releaseHistory(ORG_A, reportId, 1)).size());
+
+        try (Connection connection = DriverManager.getConnection(URL, "smartclinic_migrate", "");
+             Statement statement = connection.createStatement()) {
+            statement.execute("SET app.current_org = '" + ORG_A + "'");
+            assertRejectedWithState("23514", statement,
+                    "UPDATE public.report_release_revision SET status = 'RELEASED'"
+                            + " WHERE id = '" + reportId + "' AND revision = 1");
+        }
     }
 }

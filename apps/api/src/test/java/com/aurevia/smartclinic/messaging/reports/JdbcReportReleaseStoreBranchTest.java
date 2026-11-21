@@ -2,6 +2,7 @@ package com.aurevia.smartclinic.messaging.reports;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -67,6 +68,7 @@ class JdbcReportReleaseStoreBranchTest {
             callback.accept(null);
             return null;
         }).when(transactions).executeWithoutResult(any());
+        when(jdbc.update(anyString(), any(SqlParameterSource.class))).thenReturn(1);
         store = new JdbcReportReleaseStore(jdbc, transactions);
     }
 
@@ -195,6 +197,35 @@ class JdbcReportReleaseStoreBranchTest {
     }
 
     @Test
+    void recordReleaseWritesCorrectionContextIntoTheUpsert() {
+        ReleasedReport corrected = new ReleasedReport(REPORT, 2, PATIENT, ORG, "Clinic A", "2026-06-12",
+                "en", "document-2", "checksum-2", Status.RELEASED,
+                new CorrectionContext(1, "corrected value"));
+        store.recordRelease(new ReportRelease(corrected, 5, NOW, null, null, NOW));
+        ArgumentCaptor<SqlParameterSource> params = ArgumentCaptor.forClass(SqlParameterSource.class);
+        verify(jdbc, times(2)).update(anyString(), params.capture());
+        assertEquals(1, params.getAllValues().get(0).getValue("correctionRevision"));
+        assertEquals("corrected value", params.getAllValues().get(0).getValue("correctionReason"));
+    }
+
+    @Test
+    void recordReleaseOfAWithdrawnRevisionIsRejectedWithoutAppendingHistory() {
+        when(jdbc.update(anyString(), any(SqlParameterSource.class))).thenReturn(0);
+        assertThrows(IllegalStateException.class, () -> store.recordRelease(release(false)));
+        verify(jdbc, times(1)).update(anyString(), any(SqlParameterSource.class));
+    }
+
+    @Test
+    void recordReleaseWithAReasonButNoExpiryBindsANullExpiryForTheCheckToReject() {
+        store.recordRelease(new ReportRelease(report(1, Status.RELEASED), 7, NOW,
+                "pending policy review", null, NOW));
+        ArgumentCaptor<SqlParameterSource> params = ArgumentCaptor.forClass(SqlParameterSource.class);
+        verify(jdbc, times(2)).update(anyString(), params.capture());
+        assertEquals("pending policy review", params.getAllValues().get(1).getValue("holdReason"));
+        assertEquals(null, params.getAllValues().get(1).getValue("holdExpiresAt"));
+    }
+
+    @Test
     void releaseHistoryReturnsItsRows() {
         ReportRelease expected = release(false);
         when(jdbc.query(anyString(), any(SqlParameterSource.class),
@@ -269,6 +300,13 @@ class JdbcReportReleaseStoreBranchTest {
         assertEquals("pending policy review", held.holdReason());
         assertEquals(Instant.parse("2026-06-20T00:00:00Z"), held.holdExpiresAt());
         assertEquals(NOW, held.recordedAt());
+
+        when(resultSet.getInt("correction_revision")).thenReturn(3);
+        when(resultSet.getString("correction_reason")).thenReturn("corrected value");
+        ReportRelease corrected = captor.getValue().mapRow(resultSet, 0);
+        assertEquals(new CorrectionContext(3, "corrected value"), corrected.revision().correction());
+        when(resultSet.getInt("correction_revision")).thenReturn(0);
+        when(resultSet.getString("correction_reason")).thenReturn(null);
 
         when(resultSet.getString("hold_reason")).thenReturn(null);
         when(resultSet.getObject("hold_expires_at", OffsetDateTime.class)).thenReturn(null);

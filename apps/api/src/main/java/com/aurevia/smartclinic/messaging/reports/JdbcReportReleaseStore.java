@@ -205,7 +205,7 @@ public class JdbcReportReleaseStore implements ReportReleaseStore {
     public void recordRelease(ReportRelease release) {
         ReleasedReport revision = release.revision();
         transactions.executeWithoutResult(status -> {
-            jdbc.update("""
+            int updated = jdbc.update("""
                     INSERT INTO public.report_release_revision
                         (organization_id, id, revision, patient_id, issuing_organization,
                          effective_date, language, document_id, checksum, status,
@@ -216,6 +216,7 @@ public class JdbcReportReleaseStore implements ReportReleaseStore {
                             :correctionReason, :policyVersion)
                     ON CONFLICT (organization_id, id, revision) DO UPDATE SET
                         status = EXCLUDED.status, policy_version = EXCLUDED.policy_version
+                    WHERE public.report_release_revision.status <> 'WITHDRAWN'
                     """, new MapSqlParameterSource()
                             .addValue("organizationId", revision.organizationId())
                             .addValue("id", revision.id())
@@ -230,6 +231,12 @@ public class JdbcReportReleaseStore implements ReportReleaseStore {
                             .addValue("correctionRevision", correctionRevision(revision))
                             .addValue("correctionReason", correctionReason(revision))
                             .addValue("policyVersion", release.policyVersion()));
+            // A withdrawn revision is terminal. The guarded upsert reports zero
+            // rows when it would resurrect one; abort before appending a decision
+            // that would contradict the current access state.
+            if (updated != 1) {
+                throw new IllegalStateException("a withdrawn revision cannot be released again");
+            }
 
             MapSqlParameterSource history = new MapSqlParameterSource()
                     .addValue("organizationId", revision.organizationId())
@@ -322,10 +329,10 @@ public class JdbcReportReleaseStore implements ReportReleaseStore {
      * <p>pgjdbc cannot infer a SQL type for {@link java.time.Instant}; the UTC
      * offset keeps the wire value unambiguous.</p>
      *
-     * @param instant server instant
-     * @return an offset date time
+     * @param instant server instant, or {@code null} for a nullable hold column
+     * @return an offset date time, or {@code null} for a nullable hold column
      */
     private static OffsetDateTime dateTime(Instant instant) {
-        return OffsetDateTime.ofInstant(instant, ZoneOffset.UTC);
+        return instant == null ? null : OffsetDateTime.ofInstant(instant, ZoneOffset.UTC);
     }
 }

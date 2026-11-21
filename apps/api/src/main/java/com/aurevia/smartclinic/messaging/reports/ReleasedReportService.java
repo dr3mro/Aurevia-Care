@@ -23,6 +23,11 @@ import com.aurevia.smartclinic.tenant.TenantContext;
  * in the caller's transaction boundary. An unauthenticated request has no attributable actor or
  * tenant and is rejected before an audit subject can be derived; input validation failures occur
  * before any resource is addressed.</p>
+ *
+ * <p>Each store read opens its own tenant-guarded transaction, so a withdrawal or
+ * correction committed between two reads can change the outcome of an in-flight
+ * download. A single-transaction authorization port for concurrent release
+ * changes is a follow-up; sequential withdrawal stops the next download.</p>
  */
 @Service
 public final class ReleasedReportService {
