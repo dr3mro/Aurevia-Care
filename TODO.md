@@ -40,7 +40,9 @@ Gate evidence: two tenants with identical local IDs remain isolated across API, 
 
 Current source state (2026-11-19T07:19Z, from `main` at `311d69a`): 7 Flyway migrations `V1__tenant_schema.sql` … `V7__patient_registration.sql`; 6 API controllers (facility, staff, configuration, catalog, patient, audit); 191 Java `@Test` methods (Surefire: 191 tests, 0 failures, 0 errors); 7 Python tooling test files / 122 tests, 0 failures. `scripts/check.sh`, `scripts/quick-check.sh`, `scripts/docs.sh` all exit 0 locally. CI on `311d69a`: Policy and tooling, Frontend standards, Java and database verification and Verify and smoke image (amd64) success; Developer reference still in progress. Gate is not yet complete — S-G0-04 remains blocked (see below).
 
-- [ ] FIX-ROUTES-01 · Staff web: route tests must not hard-code the list of registered routes (HIGH PRIORITY: pull requests are failing on it)
+- [-] FIX-ROUTES-01 · Staff web: route tests must not hard-code the list of registered routes (HIGH PRIORITY: pull requests are failing on it)
+  - agent: swarm-1
+  - attempts: 1
   - requirements: UX-01, WEB-09
   - scope: apps/staff-web/src/app/routes.test.tsx, apps/staff-web/tests/app/AppShell.test.tsx
   - details:
@@ -277,8 +279,9 @@ Order of work for the whole production-readiness effort: (1) security and platfo
     4. Tests: each state, short search rejected, register success and validation error, duplicate warning shown, Arabic name rendering.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
-- [ ] READY-26 · Orders: /orders list and /orders/:id detail with accept, reject, clarify
-  - attempts: 1
+- [-] READY-26 · Orders: /orders list and /orders/:id detail with accept, reject, clarify
+  - agent: swarm-2
+  - attempts: 2
   - requirements: XCH-01, XCH-02, XCH-03
   - scope: apps/staff-web/src/features/orders
   - depends: READY-19, READY-20, READY-16, READY-51
@@ -306,8 +309,9 @@ Order of work for the whole production-readiness effort: (1) security and platfo
     3. Tests: each state, countdown uses a fake timer, overdue marking has text, escalate needs a reason, acknowledge conflict.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
-- [ ] READY-28 · Lab: /lab/accessions list and accession actions
-  - attempts: 1
+- [-] READY-28 · Lab: /lab/accessions list and accession actions
+  - agent: swarm-3
+  - attempts: 2
   - requirements: LAB-01, LAB-02
   - scope: apps/staff-web/src/features/lab
   - depends: READY-19, READY-20, READY-17, READY-51
@@ -335,8 +339,9 @@ Order of work for the whole production-readiness effort: (1) security and platfo
     4. Tests: each state, reply success and conflict, assign, unread count updates after read, title contains no patient data.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
-- [ ] READY-30 · Finance: /finance invoices with issue, payment, refund and void
-  - attempts: 1
+- [-] READY-30 · Finance: /finance invoices with issue, payment, refund and void
+  - agent: swarm-4
+  - attempts: 2
   - requirements: FIN-01, PRD-04
   - scope: apps/staff-web/src/features/finance
   - depends: READY-19, READY-20, READY-18, READY-51
@@ -349,8 +354,9 @@ Order of work for the whole production-readiness effort: (1) security and platfo
     4. Tests: money formatting in English and Arabic, parser rejects bad input, each state, payment retry reuses the key, refund needs a reason.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
-- [ ] READY-31 · Operations: /operations/queues for the operational queues
-  - attempts: 1
+- [-] READY-31 · Operations: /operations/queues for the operational queues
+  - agent: swarm-5
+  - attempts: 2
   - requirements: ADM-02, OPS-05
   - scope: apps/staff-web/src/features/operations
   - depends: READY-19, READY-20, READY-51
@@ -1095,7 +1101,9 @@ OPS-07 and OPS-08 have no implementation yet. The spec asks for exports with a m
     3. Keep import provenance on every imported record and keep the historical signature evidence without creating a new attestation.
     4. Tests: the dry run changes no row, the same input gives the same report, an unsupported field is listed, a historical signature stays marked as imported.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] BUILD-44 · Onboarding import: controlled batches, reconciliation and sign-off
+- [-] BUILD-44 · Onboarding import: controlled batches, reconciliation and sign-off
+  - agent: swarm-6
+  - attempts: 1
   - requirements: OPS-08
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/tenant/importing, apps/api/src/test/java/com/aurevia/smartclinic/tenant/importing
   - depends: BUILD-43
@@ -1121,8 +1129,8 @@ The staff web has admin, chart and scheduling. READY-24 to READY-32 add admin, p
     3. A stale version never loses typed work: show compare, reload or copy.
     4. Tests: allergy warning, ambiguous transmission shows a reconcile action, forbidden and conflict states, English and Arabic.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [-] BUILD-46 · Staff web: radiology orders, scheduling, study link and interpretation
-  - agent: swarm-4
+- [x] BUILD-46 · Staff web: radiology orders, scheduling, study link and interpretation
+  - pr: #311
   - attempts: 1
   - requirements: RAD-01, WEB-09
   - scope: apps/staff-web/src/features/radiology
@@ -1317,7 +1325,9 @@ Section 9 of the specification defines the evidence for each gate and section 11
     3. Each test names the requirement IDs it proves.
     4. Record any missing behavior under `## Why this is not finished`.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] BUILD-63 · Gate G3 acceptance tests: patient access, messaging and operations
+- [-] BUILD-63 · Gate G3 acceptance tests: patient access, messaging and operations
+  - agent: swarm-7
+  - attempts: 1
   - requirements: PAT-01, PAT-02, PAT-03, MSG-01, MSG-02, MSG-03, MSG-04, MSG-05, MSG-06, MSG-07, G3
   - scope: apps/api/src/test/java/com/aurevia/smartclinic/acceptance/patient
   - depends: BUILD-28, BUILD-29, BUILD-30
@@ -1409,7 +1419,9 @@ The screen designs were reviewed against the specification. Each task makes one 
     4. Unit inbox: the unit's service hours, response target, owner and backup on top; a thread list with unread, state (new, replied, waiting, resolved) and owner; the conversation with sender role and server time, attachments with scan state, an explicit Send showing the recipient and pending files, and Assign and Resolve.
     5. Tests: a new inbound message creates a work item, an unscanned file cannot be opened, Send names the recipient, English and Arabic.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
-- [ ] BUILD-71 · Patient app screens: match the approved design in English and Arabic
+- [-] BUILD-71 · Patient app screens: match the approved design in English and Arabic
+  - agent: swarm-8
+  - attempts: 1
   - requirements: PAT-01, PAT-02, MSG-06, UX-01
   - scope: apps/patient-mobile/src/features/appointments, apps/patient-mobile/src/features/reports, apps/patient-mobile/src/features/conversations
   - depends: BUILD-19, BUILD-20, BUILD-55
