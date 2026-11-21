@@ -323,6 +323,27 @@ public class DocumentRepository {
                 .stream().findFirst();
     }
 
+    /**
+     * Read an original's retained bytes after the database re-verifies them.
+     *
+     * <p>V75's {@code document_association_verified_content} recomputes the
+     * SHA-256 from the bytes actually stored for the association and compares it
+     * with the digest captured on upload. A matching row is returned only when
+     * the bytes are intact; a tampered original raises an integrity violation
+     * that the service maps to a concealed conflict. Forced RLS on the table
+     * still bounds the read to the active tenant, so a foreign identifier yields
+     * no bytes.</p>
+     *
+     * @param id opaque association identifier
+     * @return the verified original bytes, or empty when the row is not visible
+     */
+    public Optional<byte[]> verifiedAssociationContent(String id) {
+        byte[] content = jdbc.queryForObject("""
+                SELECT public.document_association_verified_content(CAST(:id AS uuid))
+                """, new MapSqlParameterSource().addValue("id", id), byte[].class);
+        return Optional.ofNullable(content);
+    }
+
     private static DocumentAssoc mapAssoc(ResultSet resultSet, int rowNumber) throws SQLException {
         return new DocumentAssoc(
                 resultSet.getString("id"), resultSet.getInt("version"),
