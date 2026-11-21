@@ -34,6 +34,14 @@ const ChartPage = lazy(() =>
 const NotePage = lazy(() =>
   import('../features/chart/NotePage').then(({ NotePage: Page }) => ({ default: Page })),
 );
+const FacilitiesPage = lazy(() =>
+  import('../features/admin/FacilitiesPage').then(({ FacilitiesPage: Page }) => ({
+    default: Page,
+  })),
+);
+const StaffPage = lazy(() =>
+  import('../features/admin/StaffPage').then(({ StaffPage: Page }) => ({ default: Page })),
+);
 
 /**
  * Build the route table. The development preview is registered only when
@@ -47,6 +55,8 @@ export function createRoutes(includeDesignPreview: boolean): AppRoute[] {
     { pattern: '/schedule/book', component: SchedulingPage },
     { pattern: '/patients/:id/chart', component: ChartPage },
     { pattern: '/patients/:id/notes/:noteId', component: NotePage },
+    { pattern: '/admin/facilities', component: FacilitiesPage },
+    { pattern: '/admin/staff', component: StaffPage },
   ];
   if (includeDesignPreview) {
     candidates.push({ pattern: '/design-preview', component: DesignPreview });
