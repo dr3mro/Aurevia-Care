@@ -65,5 +65,13 @@ export function createIdleSessionGuard(options: IdleSessionOptions): IdleSession
  * @returns a guard that signs out on idle and can be touched or disposed
  */
 export function createSignOutOnIdle(idleMs: number): IdleSessionGuard {
-  return createIdleSessionGuard({ idleMs, onIdle: () => clearToken() });
+  return createIdleSessionGuard({
+    idleMs,
+    // A keychain failure must not become an unhandled rejection in a background
+    // timer. The credential may remain, but the clinical memory is still cleared
+    // by clearToken's finally block.
+    onIdle: () => {
+      void clearToken().catch(() => undefined);
+    },
+  });
 }

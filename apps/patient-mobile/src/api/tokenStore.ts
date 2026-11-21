@@ -3,21 +3,32 @@ import * as SecureStore from 'expo-secure-store';
 import { clearClinicalCache } from './clinicalCache';
 
 /**
- * OS-backed session credential storage (PAT-01, ARC-03).
+ * OS-backed session credential storage (PAT-02, ARC-03).
  *
  * The token lives only in `expo-secure-store`. It is read immediately before a
  * protected request so a revocation takes effect on the next action, and it is
  * never placed in AsyncStorage, application state or a clinical cache.
  */
 
-/** Stable key for the single patient session credential. */
-const TOKEN_KEY = 'session';
+/**
+ * Key for the single patient session credential. It deliberately matches the
+ * key used by the reports credential store so sign-out and idle timeout remove
+ * the real download credential as well, leaving no token in the OS store.
+ */
+const TOKEN_KEY = 'aurevia.patient.session';
 
 /** Biometric gating is deferred until the identity provider flow is approved. */
 const STORE_OPTIONS = { requireAuthentication: false };
 
-/** Persist the session credential in OS-backed storage. */
+/**
+ * Persist a non-blank session credential in OS-backed storage.
+ *
+ * @throws Error with code `INVALID_CREDENTIAL` when the token is empty or blank
+ */
 export async function saveToken(token: string): Promise<void> {
+  if (token.trim().length === 0) {
+    throw new Error('INVALID_CREDENTIAL');
+  }
   await SecureStore.setItemAsync(TOKEN_KEY, token, STORE_OPTIONS);
 }
 

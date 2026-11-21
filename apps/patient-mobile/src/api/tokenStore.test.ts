@@ -32,6 +32,8 @@ interface SecureStoreMock {
 
 const secureStore = jest.requireMock('expo-secure-store') as unknown as SecureStoreMock;
 const TOKEN = 'synthetic-session-token';
+/** Matches the reports credential store key, so sign-out removes the real token too. */
+const TOKEN_KEY = 'aurevia.patient.session';
 
 beforeEach(() => {
   secureStore.__store.clear();
@@ -45,17 +47,23 @@ describe('tokenStore (PAT-02, ARC-03)', () => {
   it('saves the token under the session key without requiring authentication', async () => {
     await saveToken(TOKEN);
 
-    expect(secureStore.setItemAsync).toHaveBeenCalledWith('session', TOKEN, {
+    expect(secureStore.setItemAsync).toHaveBeenCalledWith(TOKEN_KEY, TOKEN, {
       requireAuthentication: false,
     });
-    expect(secureStore.__store.get('session')).toBe(TOKEN);
+    expect(secureStore.__store.get(TOKEN_KEY)).toBe(TOKEN);
+  });
+
+  it('refuses to store a blank credential', async () => {
+    await expect(saveToken('   ')).rejects.toThrow('INVALID_CREDENTIAL');
+    expect(secureStore.setItemAsync).not.toHaveBeenCalled();
+    await expect(loadToken()).resolves.toBeNull();
   });
 
   it('loads the token from the session key', async () => {
     await saveToken(TOKEN);
 
     await expect(loadToken()).resolves.toBe(TOKEN);
-    expect(secureStore.getItemAsync).toHaveBeenCalledWith('session');
+    expect(secureStore.getItemAsync).toHaveBeenCalledWith(TOKEN_KEY);
   });
 
   it('returns null when no token has been stored', async () => {
@@ -68,7 +76,7 @@ describe('tokenStore (PAT-02, ARC-03)', () => {
 
     await clearToken();
 
-    expect(secureStore.deleteItemAsync).toHaveBeenCalledWith('session');
+    expect(secureStore.deleteItemAsync).toHaveBeenCalledWith(TOKEN_KEY);
     await expect(loadToken()).resolves.toBeNull();
   });
 

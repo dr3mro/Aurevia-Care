@@ -7,6 +7,7 @@
 import { jest } from '@jest/globals';
 
 import { cacheClinical, clinicalCacheSize, readClinical } from './clinicalCache';
+
 import { createIdleSessionGuard, createSignOutOnIdle } from './idleSession';
 import { loadToken, saveToken } from './tokenStore';
 
@@ -22,6 +23,10 @@ jest.mock('expo-secure-store', () => {
     }),
   };
 });
+
+const secureStore = jest.requireMock('expo-secure-store') as {
+  deleteItemAsync: jest.Mock<(key: string) => Promise<void>>;
+};
 
 const IDLE_MS = 60_000;
 const TOKEN = 'synthetic-session-token';
@@ -118,5 +123,25 @@ describe('createSignOutOnIdle (PAT-02)', () => {
     await expect(loadToken()).resolves.toBe(TOKEN);
     expect(clinicalCacheSize()).toBe(1);
     guard.dispose();
+  });
+
+  it('clears memory without an unhandled rejection when the keychain delete fails', async () => {
+    const unhandled = jest.fn<() => void>();
+    const listener = (): void => {
+      unhandled();
+    };
+    process.on('unhandledRejection', listener);
+    try {
+      secureStore.deleteItemAsync.mockRejectedValueOnce(new Error('keychain unavailable'));
+      const guard = createSignOutOnIdle(IDLE_MS);
+
+      await jest.advanceTimersByTimeAsync(IDLE_MS);
+
+      expect(clinicalCacheSize()).toBe(0);
+      expect(unhandled).not.toHaveBeenCalled();
+      guard.dispose();
+    } finally {
+      process.off('unhandledRejection', listener);
+    }
   });
 });

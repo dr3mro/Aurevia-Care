@@ -10,7 +10,7 @@
 
 /** Supplies the current wall-clock time in milliseconds. */
 export interface AuthenticationClock {
-  /** Current time as a monotonic-ish epoch value in milliseconds. */
+  /** Current wall-clock time as an epoch value in milliseconds. */
   now(): number;
 }
 
