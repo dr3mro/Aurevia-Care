@@ -1,4 +1,6 @@
-- [ ] COVPY-MONITOR-TUI · Script tests: monitor tool coverage, tui part (to 100% together with the other three parts)
+- [-] COVPY-MONITOR-TUI · Script tests: monitor tool coverage, tui part (to 100% together with the other three parts)
+  - agent: swarm-9
+  - attempts: 1
   - requirements: OPS-06
   - scope: scripts/tests/test_monitor_tui_coverage.py
   - details:

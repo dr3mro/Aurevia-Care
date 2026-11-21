@@ -1858,7 +1858,9 @@ The clinician side is in ORDER-01 to ORDER-10. These tasks add the receiving sid
     1. Write one integration test class for each loop with two tenants running side by side: prescribe, route, accept, dispense; and order, collect, result, verify, release, correct. Assert the journey timeline after each step and that nothing leaks between tenants.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
-- [ ] TRACK-05 · Docs: the care loop in one diagram and a role-by-step table (clinician, pharmacy, lab, radiology, patient)
+- [-] TRACK-05 · Docs: the care loop in one diagram and a role-by-step table (clinician, pharmacy, lab, radiology, patient)
+  - agent: swarm-5
+  - attempts: 1
   - requirements: RX-02, LAB-01, RAD-01
   - scope: docs/operations/care-loop
   - details:
@@ -1870,7 +1872,9 @@ The clinician side is in ORDER-01 to ORDER-10. These tasks add the receiving sid
 
 The specification covers patient and care-unit messaging only (MSG-01 to MSG-07). Staff-to-staff messaging is new scope: SMSG-01 is a decision pack for a person to approve and amend the specification. The build tasks can run meanwhile because they follow the same rules as MSG-03 and MSG-07 (explicit send, scanned attachments, audit, retention, no identifiers in notifications). Messaging between different organizations stays off and refused until a person enables it.
 
-- [ ] SMSG-01 · Decision pack: staff messaging inside a facility and between facilities (spec amendment for a person to approve)
+- [-] SMSG-01 · Decision pack: staff messaging inside a facility and between facilities (spec amendment for a person to approve)
+  - agent: swarm-6
+  - attempts: 1
   - requirements: MSG-03, MSG-07, ARC-07
   - scope: docs/decisions/staff-messaging
   - details:
@@ -2068,7 +2072,9 @@ The specification covers patient and care-unit messaging only (MSG-01 to MSG-07)
     1. Write the journey with three users in two facilities: instant chat with an attachment and explicit send, a mail with cc across facilities, a reply, a patient reference that is blocked for one recipient, and a quarantined file. Run in English and Arabic.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
-- [ ] SMSG-22 · Docs: staff messaging guide, rules for what not to send, and UAT scenario
+- [-] SMSG-22 · Docs: staff messaging guide, rules for what not to send, and UAT scenario
+  - agent: swarm-7
+  - attempts: 1
   - requirements: MSG-07
   - scope: docs/operations/staff-messaging
   - details:
@@ -4019,7 +4025,9 @@ On 2026-11-21 the scripts measured 70% overall: `swarm.py` 88%, `monitor.py` and
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
-- [ ] COVPY-MONITOR-COMPOSE · Script tests: monitor tool coverage, compose part (to 100% together with the other three parts)
+- [-] COVPY-MONITOR-COMPOSE · Script tests: monitor tool coverage, compose part (to 100% together with the other three parts)
+  - agent: swarm-8
+  - attempts: 1
   - requirements: OPS-06
   - scope: scripts/tests/test_monitor_compose_coverage.py
   - details:
@@ -4030,7 +4038,9 @@ On 2026-11-21 the scripts measured 70% overall: `swarm.py` 88%, `monitor.py` and
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
-- [ ] COVPY-MONITOR-TUI · Script tests: monitor tool coverage, tui part (to 100% together with the other three parts)
+- [-] COVPY-MONITOR-TUI · Script tests: monitor tool coverage, tui part (to 100% together with the other three parts)
+  - agent: swarm-9
+  - attempts: 1
   - requirements: OPS-06
   - scope: scripts/tests/test_monitor_tui_coverage.py
   - details:
@@ -4041,7 +4051,9 @@ On 2026-11-21 the scripts measured 70% overall: `swarm.py` 88%, `monitor.py` and
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
-- [ ] COVPY-MONITOR-CLI · Script tests: monitor tool coverage, cli part (to 100% together with the other three parts)
+- [-] COVPY-MONITOR-CLI · Script tests: monitor tool coverage, cli part (to 100% together with the other three parts)
+  - agent: swarm-10
+  - attempts: 1
   - requirements: OPS-06
   - scope: scripts/tests/test_monitor_cli_coverage.py
   - details:
@@ -4128,7 +4140,9 @@ On 2026-11-21 the scripts measured 70% overall: `swarm.py` 88%, `monitor.py` and
 
 Every sentence of the requirement tables, the role matrix, the gate evidence, the cross-cutting scenarios and the architecture decisions in `SMARTCLINIC_V1_SPEC.md` has its own task. Each writes one test file (or only a note when the clause needs human, partner or cloud evidence) and one status note under `docs/spec/clauses`. A clause that is not built gets a skipped test marked `GAP:` and a gap note, so the next round of tasks is generated from these notes. The result is a measured, clause-by-clause view of how much of the specification is built.
 
-- [ ] SPEC-PRD-01-C01 · Spec PRD-01 clause 1 (evidence note): One longitudinal chart per patient per organization, covering registration,…
+- [-] SPEC-PRD-01-C01 · Spec PRD-01 clause 1 (evidence note): One longitudinal chart per patient per organization, covering registration,…
+  - agent: swarm-1
+  - attempts: 1
   - requirements: PRD-01
   - scope: docs/spec/clauses/product/longitudinal-chart-patient-organization-covering-registration-booking.md
   - details:
