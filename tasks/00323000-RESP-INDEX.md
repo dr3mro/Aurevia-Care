@@ -1,5 +1,5 @@
-- [-] RESP-INDEX · Docs: link the responsive layout guide and the two decision records
-  - agent: swarm-8
+- [x] RESP-INDEX · Docs: link the responsive layout guide and the two decision records
+  - pr: #543
   - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: docs/reference/index.md
