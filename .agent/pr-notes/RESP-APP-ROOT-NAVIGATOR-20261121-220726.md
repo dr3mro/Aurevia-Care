@@ -115,3 +115,23 @@ A bounded `smartclinic-senior-mobile` review found no blocking issue and confirm
 - React Native style props read from Testing Library are nested arrays (`[rootStyle, [contentStyle, …]]`); use `StyleSheet.flatten` before asserting on them. `allowFontScaling` is a Text prop, not a TextStyle key.
 - Safe-area insets are physical: map left/right into `paddingStart`/`paddingEnd` with an explicit RTL swap at the shell boundary, and set `direction` on the same node, or RTL landscape insets land on the wrong edge.
 - Apply a safe-area inset in exactly one place in the tree. A bottom inset on a padded shell plus a second `paddingBottom` on a nested tab bar is a double inset on notched devices; reviewers will (correctly) flag it even when unit tests pass.
+
+## Segment 2 — post-merge verification and completion
+
+This segment resumed after the branch merged the latest `origin/main` (top commit `9afeebae`, "Merge remote-tracking branch 'origin/main'"). The scoped work from segment 1 was intact and no source change was needed. Gates re-run on the merged tree:
+
+- `git merge --no-edit origin/main` — "Already up to date." No conflicts in either scoped file.
+- `cd apps/patient-mobile && npm run typecheck` — final lines `> patient-mobile@0.1.0 typecheck` / `> tsc --noEmit`, exit 0, no `error TS…`.
+- `bash apps/patient-mobile/check.sh` — exit 0 (explicit `EXIT=0`); `Test Suites: 63 passed, 63 total`; `Tests: 665 passed, 665 total`; all files 100%.
+- `cd apps/patient-mobile && npx jest src/app/RootNavigator.tablet.test.tsx src/app/RootNavigator.test.tsx --coverage --collectCoverageFrom='src/app/RootNavigator.tsx' --runInBand --silent` — `RootNavigator.tsx | 100 | 100 | 100 | 100`; `All files | 100 | 100 | 100 | 100`; 2 suites / 34 tests passed.
+- `git status --short` — clean; only the two scoped source paths and this notes file differ from `origin/main` (2 commits ahead).
+
+Evidence source for segment 2: tool-executed commands in this worker only. No simulated user, reviewer or human participant was involved in this segment.
+
+### Story complete
+
+All acceptance criteria for PAT-01, PAT-02 and UX-01 are met within the two-file scope: responsive structure at every window class, orientation and font scale; logical RTL insets and row mirroring; 44 pt touch-target floor; unclipped text at 200%; unchanged screen-reader labels and focus order; and no persistent clinical cache. No behaviour, text, API call, exported name or dependency changed. Coverage is 100% on the changed file and all source files, and the canonical patient-app gate (`bash apps/patient-mobile/check.sh`) is green on the merged tree. **This story is complete; no further work remains in this segment.**
+
+### Finding carried forward (out of scope, not modified)
+
+`git grep -nE '^(<<<<<<<|>>>>>>>) '` reports conflict markers in three committed API files under `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/` (`Hl7ParseException.java`, `Hl7Parser.java`, `Hl7Segment.java`). `git show HEAD:<path>` confirms they are already committed on `main`; they were not produced by this branch's merge (which was "Already up to date") and are outside this story's scope, so I did not modify them. Flagging for the integrator/Delivery: these markers would break the Java compile gate. No `task-requests` block is filed because this is a pre-existing `main` defect, not a dependency of this story.
