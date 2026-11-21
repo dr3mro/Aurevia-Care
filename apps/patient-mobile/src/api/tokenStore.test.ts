@@ -1,5 +1,11 @@
 import { jest } from '@jest/globals';
 
+import {
+  cacheClinical,
+  clearClinicalCache,
+  clinicalCacheSize,
+  readClinical,
+} from './clinicalCache';
 import { clearToken, loadToken, saveToken } from './tokenStore';
 
 /** The native adapter is replaced with a synthetic, in-memory SecureStore. */
@@ -26,29 +32,38 @@ interface SecureStoreMock {
 
 const secureStore = jest.requireMock('expo-secure-store') as unknown as SecureStoreMock;
 const TOKEN = 'synthetic-session-token';
+/** Matches the reports credential store key, so sign-out removes the real token too. */
+const TOKEN_KEY = 'aurevia.patient.session';
 
 beforeEach(() => {
   secureStore.__store.clear();
   secureStore.setItemAsync.mockClear();
   secureStore.getItemAsync.mockClear();
   secureStore.deleteItemAsync.mockClear();
+  clearClinicalCache();
 });
 
 describe('tokenStore (PAT-02, ARC-03)', () => {
   it('saves the token under the session key without requiring authentication', async () => {
     await saveToken(TOKEN);
 
-    expect(secureStore.setItemAsync).toHaveBeenCalledWith('session', TOKEN, {
+    expect(secureStore.setItemAsync).toHaveBeenCalledWith(TOKEN_KEY, TOKEN, {
       requireAuthentication: false,
     });
-    expect(secureStore.__store.get('session')).toBe(TOKEN);
+    expect(secureStore.__store.get(TOKEN_KEY)).toBe(TOKEN);
+  });
+
+  it('refuses to store a blank credential', async () => {
+    await expect(saveToken('   ')).rejects.toThrow('INVALID_CREDENTIAL');
+    expect(secureStore.setItemAsync).not.toHaveBeenCalled();
+    await expect(loadToken()).resolves.toBeNull();
   });
 
   it('loads the token from the session key', async () => {
     await saveToken(TOKEN);
 
     await expect(loadToken()).resolves.toBe(TOKEN);
-    expect(secureStore.getItemAsync).toHaveBeenCalledWith('session');
+    expect(secureStore.getItemAsync).toHaveBeenCalledWith(TOKEN_KEY);
   });
 
   it('returns null when no token has been stored', async () => {
@@ -61,7 +76,30 @@ describe('tokenStore (PAT-02, ARC-03)', () => {
 
     await clearToken();
 
-    expect(secureStore.deleteItemAsync).toHaveBeenCalledWith('session');
+    expect(secureStore.deleteItemAsync).toHaveBeenCalledWith(TOKEN_KEY);
     await expect(loadToken()).resolves.toBeNull();
+  });
+
+  it('clears all in-memory clinical data at sign-out', async () => {
+    await saveToken(TOKEN);
+    cacheClinical('reports', 'report-1', { text: 'synthetic-report' });
+    cacheClinical('messages', 'msg-1', 'synthetic-message');
+    expect(clinicalCacheSize()).toBe(2);
+
+    await clearToken();
+
+    expect(clinicalCacheSize()).toBe(0);
+    expect(readClinical('reports', 'report-1')).toBeUndefined();
+    expect(readClinical('messages', 'msg-1')).toBeUndefined();
+  });
+
+  it('still clears clinical memory when secure storage removal fails', async () => {
+    cacheClinical('messages', 'msg-1', 'synthetic-message');
+    secureStore.deleteItemAsync.mockRejectedValueOnce(new Error('keychain unavailable'));
+
+    await expect(clearToken()).rejects.toThrow('keychain unavailable');
+
+    expect(clinicalCacheSize()).toBe(0);
+    expect(readClinical('messages', 'msg-1')).toBeUndefined();
   });
 });
