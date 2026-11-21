@@ -1,0 +1,141 @@
+import type { Locale } from '../../i18n/messages';
+import type { RefusalReason } from './types';
+
+/**
+ * Unit-service-profile label keys. The shared i18n bundle is outside this
+ * story's scope, so the feature owns a small, parity-checked en/ar dictionary.
+ */
+export const unitsKeys = [
+  'units',
+  'syntheticNotice',
+  'serviceProfile',
+  'publishedProfile',
+  'unit',
+  'version',
+  'serviceHours',
+  'responseTargetUrgent',
+  'responseTargetRoutine',
+  'topics',
+  'urgentContactInstructions',
+  'queueOwner',
+  'backupCoverage',
+  'namedApprover',
+  'effectiveFrom',
+  'approval',
+  'pendingApproval',
+  'approvedBadge',
+  'enabled',
+  'disabled',
+  'noBackupWarning',
+  'noBackupDetail',
+  'notRecorded',
+  'missingOwner',
+  'missingApprover',
+  'invalidEffectiveDate',
+  'pastEffectiveDate',
+  'proposed',
+  'approved',
+  'unitEnabled',
+  'unitDisabled',
+  'proposeChanges',
+  'approve',
+  'enableUnit',
+  'disableUnit',
+  'status',
+] as const;
+
+/** A unit-service-profile label key. */
+export type UnitsMessageKey = (typeof unitsKeys)[number];
+
+/** Bilingual unit-service-profile labels with identical key sets. */
+export const unitsMessages: Record<Locale, Record<UnitsMessageKey, string>> = {
+  en: {
+    units: 'Care units',
+    syntheticNotice: 'Synthetic data only. Service profiles are read from and written to the connected API.',
+    serviceProfile: 'Service profile',
+    publishedProfile: 'Published service details',
+    unit: 'Unit',
+    version: 'Version',
+    serviceHours: 'Service hours',
+    responseTargetUrgent: 'Urgent response target',
+    responseTargetRoutine: 'Routine response target',
+    topics: 'Supported topics',
+    urgentContactInstructions: 'Urgent contact instructions',
+    queueOwner: 'Named queue owner',
+    backupCoverage: 'Backup coverage',
+    namedApprover: 'Named approver',
+    effectiveFrom: 'Effective date (YYYY-MM-DD)',
+    approval: 'Approval',
+    pendingApproval: 'Pending approval',
+    approvedBadge: 'Approved',
+    enabled: 'Enabled',
+    disabled: 'Disabled',
+    noBackupWarning: 'Operational warning',
+    noBackupDetail: 'No backup coverage is named for this unit. Out-of-hours messages have no named backup.',
+    notRecorded: 'Not recorded',
+    missingOwner: 'A named queue owner is required before this unit can be enabled.',
+    missingApprover: 'A named approver is required for this change.',
+    invalidEffectiveDate: 'Enter a real effective date as YYYY-MM-DD.',
+    pastEffectiveDate: 'The effective date cannot be in the past.',
+    proposed: 'Change proposed with the named approval and effective date.',
+    approved: 'The proposed service profile version is approved.',
+    unitEnabled: 'The unit is enabled for patient messages.',
+    unitDisabled: 'The unit is disabled for patient messages.',
+    proposeChanges: 'Propose changes',
+    approve: 'Approve',
+    enableUnit: 'Enable unit',
+    disableUnit: 'Disable unit',
+    status: 'Service profile status',
+  },
+  ar: {
+    units: 'وحدات الرعاية',
+    syntheticNotice: 'بيانات توضيحية فقط؛ تُقرأ ملفات الخدمة من الخدمة المتصلة ويُكتب إليها.',
+    serviceProfile: 'ملف الخدمة',
+    publishedProfile: 'تفاصيل الخدمة المنشورة',
+    unit: 'الوحدة',
+    version: 'الإصدار',
+    serviceHours: 'ساعات الخدمة',
+    responseTargetUrgent: 'هدف الاستجابة العاجلة',
+    responseTargetRoutine: 'هدف الاستجابة المعتادة',
+    topics: 'المواضيع المدعومة',
+    urgentContactInstructions: 'تعليمات الاتصال العاجل',
+    queueOwner: 'مالك الطابور المعيّن',
+    backupCoverage: 'التغطية الاحتياطية',
+    namedApprover: 'المُعتمد المُسمّى',
+    effectiveFrom: 'تاريخ النفاذ (YYYY-MM-DD)',
+    approval: 'الاعتماد',
+    pendingApproval: 'بانتظار الاعتماد',
+    approvedBadge: 'معتمد',
+    enabled: 'مفعّل',
+    disabled: 'غير مفعّل',
+    noBackupWarning: 'تحذير تشغيلي',
+    noBackupDetail: 'لا يوجد بديل مُسمّى لهذه الوحدة. الرسائل خارج ساعات العمل ليس لها تغطية احتياطية.',
+    notRecorded: 'غير مسجّل',
+    missingOwner: 'يلزم مالك طابور مُسمّى قبل تفعيل هذه الوحدة.',
+    missingApprover: 'يلزم مُعتمد مُسمّى لهذا التغيير.',
+    invalidEffectiveDate: 'أدخل تاريخ نفاذ صحيحًا بصيغة YYYY-MM-DD.',
+    pastEffectiveDate: 'لا يمكن أن يكون تاريخ النفاذ في الماضي.',
+    proposed: 'تم اقتراح التغيير مع الاعتماد المُسمّى وتاريخ النفاذ.',
+    approved: 'تم اعتماد إصدار ملف الخدمة المقترح.',
+    unitEnabled: 'الوحدة مفعّلة لرسائل المرضى.',
+    unitDisabled: 'الوحدة غير مفعّلة لرسائل المرضى.',
+    proposeChanges: 'اقتراح التغييرات',
+    approve: 'اعتماد',
+    enableUnit: 'تفعيل الوحدة',
+    disableUnit: 'إيقاف الوحدة',
+    status: 'حالة ملف الخدمة',
+  },
+};
+
+/** Map each refusal reason to its bilingual label key. */
+export const refusalMessageKey: Record<RefusalReason, UnitsMessageKey> = {
+  'missing-owner': 'missingOwner',
+  'missing-approver': 'missingApprover',
+  'invalid-effective-date': 'invalidEffectiveDate',
+  'past-effective-date': 'pastEffectiveDate',
+};
+
+/** Look up one unit-service-profile label for the active locale. */
+export function unitsText(locale: Locale, key: UnitsMessageKey): string {
+  return unitsMessages[locale][key];
+}
