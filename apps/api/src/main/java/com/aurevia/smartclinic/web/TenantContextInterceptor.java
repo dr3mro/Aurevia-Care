@@ -5,6 +5,9 @@ import java.util.regex.Pattern;
 
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
@@ -65,7 +68,13 @@ public class TenantContextInterceptor implements HandlerInterceptor, WebMvcConfi
         response.setHeader("X-Correlation-Id", correlation);
 
         if (!environment.acceptsProfiles(Profiles.of("synthetic-auth"))) {
-            throw new ApiException(401, "UNAUTHENTICATED", "authentication required");
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (!(authentication instanceof JwtAuthenticationToken token)) {
+                throw new ApiException(401, "UNAUTHENTICATED", "authentication required");
+            }
+            TenantContext.set(new ClaimsTenantResolver().resolve(token.getToken().getClaims(),
+                    request.getHeader("X-Active-Organization"), correlation));
+            return true;
         }
         String subject = request.getHeader("X-Synthetic-Subject");
         if (subject == null || subject.isBlank()) {

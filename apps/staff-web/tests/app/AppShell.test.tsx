@@ -1,28 +1,44 @@
-import { describe, expect, it } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AppShell } from '../../src/app/AppShell';
+import type { Role } from '../../src/app/navigation';
+import { RouterProvider } from '../../src/app/router';
+import { createRoutes, routes } from '../../src/app/routes';
 import { I18nProvider } from '../../src/i18n/I18nProvider';
 import { ThemeProvider } from '../../src/theme/ThemeProvider';
 
-function renderShell() {
+const patterns = routes.map((route) => route.pattern);
+
+afterEach(() => {
+  window.history.replaceState(null, '', '/');
+});
+
+function renderShell(path = '/', role?: Role, onSignOut?: () => void) {
   return render(
     <ThemeProvider>
       <I18nProvider>
-        <AppShell />
+        <RouterProvider patterns={patterns} initialPath={path}>
+          <AppShell role={role} onSignOut={onSignOut} />
+        </RouterProvider>
       </I18nProvider>
     </ThemeProvider>,
   );
 }
 
-describe('staff web app shell', () => {
-  it('renders landmarks, a skip link and the product title from project.json', () => {
+function rail() {
+  return screen.getByRole('group', { name: 'Sections' });
+}
+
+describe('staff web application shell', () => {
+  it('renders landmarks and a skip link before the header with the product name', () => {
     renderShell();
-    expect(screen.getByRole('banner')).toBeTruthy();
-    expect(screen.getByRole('navigation')).toBeTruthy();
+    const banner = screen.getByRole('banner');
+    const skip = screen.getByRole('link', { name: /skip to main/i });
     expect(screen.getByRole('main')).toBeTruthy();
     expect(screen.getByRole('contentinfo')).toBeTruthy();
-    expect(screen.getByRole('link', { name: /skip to main/i }).getAttribute('href')).toBe('#main');
-    expect(screen.getByRole('banner').textContent).toContain('Aurevia Care');
+    expect(skip.getAttribute('href')).toBe('#main');
+    expect(skip.compareDocumentPosition(banner) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(banner.textContent).toContain('Aurevia Care');
   });
 
   it('exposes theme and language toggles with pressed state', () => {
@@ -39,32 +55,105 @@ describe('staff web app shell', () => {
     expect(document.documentElement.dir).toBe('rtl');
   });
 
-  it('shows the tenant switcher, sign-in and protected placeholders', () => {
+  it('shows the organization switcher and a status banner above the main landmark', () => {
     renderShell();
     expect(screen.getByLabelText('Organization')).toBeTruthy();
-    expect(screen.getByRole('heading', { name: 'Sign in' })).toBeTruthy();
-    expect(screen.getAllByRole('status').length).toBeGreaterThan(0);
+    const banner = screen.getByRole('status', { name: 'Notifications' });
+    expect(banner).toBeTruthy();
+    expect(banner.compareDocumentPosition(screen.getByRole('main')) &
+      Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('shows a synthetic facility table, mixed-script text and formatted values', () => {
-    renderShell();
-    expect(screen.getByRole('table', { name: 'Facilities' })).toBeTruthy();
-    expect(screen.getByText('ليلى Haddad · MAIN')).toBeTruthy();
-    expect(screen.getByText(/cm/)).toBeTruthy();
+  it('calls onSignOut from the user menu', () => {
+    const onSignOut = vi.fn();
+    renderShell('/', undefined, onSignOut);
+    const menu = screen.getByRole('group', { name: 'User menu' });
+    fireEvent.click(within(menu).getByRole('button', { name: 'Sign out' }));
+    expect(onSignOut).toHaveBeenCalledTimes(1);
   });
 
-  it('opens a labelled dialog and closes it through the explicit action', () => {
+  it('keeps sign out inert until a session supplies a handler', () => {
     renderShell();
+    fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
+    expect(screen.getByRole('banner')).toBeTruthy();
+  });
+
+  it('renders the welcome page in the main landmark using an empty state', async () => {
+    renderShell();
+    expect(await screen.findByRole('heading', { name: 'Welcome' })).toBeTruthy();
+    expect(screen.getAllByRole('status').some((node) => node.textContent?.includes('Nothing'))).toBe(
+      true,
+    );
+  });
+
+  it('shows the not-found page for an unknown path', async () => {
+    renderShell('/no-such-page');
+    expect(await screen.findByRole('heading', { name: 'Page not found' })).toBeTruthy();
+  });
+
+  it('shows only the role items and marks the active one with aria-current', () => {
+    renderShell('/', 'reception');
+    const links = within(rail()).getAllByRole('link');
+    expect(links.map((link) => link.textContent)).toContain('Check-in');
+    expect(links.map((link) => link.textContent)).not.toContain('Facilities');
+    expect(within(rail()).getByRole('link', { name: 'Today' }).getAttribute('aria-current')).toBe(
+      'page',
+    );
+    expect(within(rail()).getByRole('link', { name: 'Schedule' }).getAttribute('aria-current')).toBe(
+      null,
+    );
+  });
+
+  it('mirrors the rail in Arabic with logical positioning only', () => {
+    renderShell('/', 'reception');
+    const englishRail = rail();
+    expect(englishRail.getAttribute('style')).toContain('inset-inline-start');
+    expect(englishRail.getAttribute('style')).not.toMatch(/left:|right:/);
+    fireEvent.click(screen.getByRole('button', { name: 'Language' }));
+    expect(document.documentElement.dir).toBe('rtl');
+    const arabicRail = screen.getByRole('group', { name: 'الأقسام' });
+    expect(arabicRail.textContent).toContain('الجدول');
+    expect(arabicRail.getAttribute('style')).toContain('inset-inline-start');
+    expect(arabicRail.getAttribute('style')).not.toMatch(/left:|right:/);
+  });
+
+  it('moves focus to main after each navigation', async () => {
+    renderShell();
+    await screen.findByRole('heading', { name: 'Welcome' });
+    fireEvent.click(within(rail()).getByRole('link', { name: 'Check-in' }));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('main')));
+  });
+});
+
+describe('route registry', () => {
+  it('registers only welcome, the development preview and a catch-all', () => {
+    expect(createRoutes(false).map((route) => route.pattern)).toEqual(['/', '*']);
+    expect(createRoutes(true).map((route) => route.pattern)).toEqual([
+      '/',
+      '/design-preview',
+      '*',
+    ]);
+    const preview = routes.find((route) => route.pattern === '/design-preview');
+    if (import.meta.env.DEV) {
+      expect(preview).toBeDefined();
+    } else {
+      expect(preview).toBeUndefined();
+    }
+  });
+
+  it('keeps the development preview interactive for visual review', async () => {
+    if (!import.meta.env.DEV) {
+      return;
+    }
+    renderShell('/design-preview');
+    expect(await screen.findByText('ليلى Haddad · MAIN')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Show details' }));
     expect(screen.getByRole('dialog', { name: 'Facility details' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Close dialog' }));
     expect(screen.queryByRole('dialog')).toBeNull();
-  });
-
-  it('accepts a note through an accessible field and echoes it', () => {
-    renderShell();
-    const input = screen.getByLabelText('Shift note');
-    fireEvent.change(input, { target: { value: 'synthetic handoff' } });
+    fireEvent.change(screen.getByLabelText('Shift note'), {
+      target: { value: 'synthetic handoff' },
+    });
     fireEvent.submit(screen.getByRole('form', { name: 'Shift note form' }));
     expect(screen.getByRole('status', { name: 'Echo' }).textContent).toBe('synthetic handoff');
   });

@@ -5,9 +5,7 @@
  */
 import {
   placeholderAction,
-  placeholderAppointments,
   placeholderAttachments,
-  placeholderConversations,
   placeholderDevices,
   placeholderEnrollmentStrings,
   placeholderFacts,
@@ -18,18 +16,14 @@ import {
   placeholderPatientId,
   placeholderPublicationAuthorized,
   placeholderRecoveryStrings,
-  placeholderReports,
   placeholderSupportStrings,
   placeholderUnit,
   placeholderUnitId,
 } from './providers';
 
 describe('placeholder providers', () => {
-  it('returns empty synthetic projections for every list screen', () => {
-    expect(placeholderAppointments()).toEqual([]);
+  it('returns empty synthetic projections for the remaining list screens', () => {
     expect(placeholderDevices()).toEqual([]);
-    expect(placeholderReports()).toEqual([]);
-    expect(placeholderConversations()).toEqual([]);
     expect(placeholderAttachments()).toEqual([]);
     expect(placeholderInstructions()).toEqual([]);
     expect(placeholderFacts()).toEqual({});
