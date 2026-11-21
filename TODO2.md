@@ -248,3 +248,27 @@ Staff web and patient app work (UX-01, PAT-01 to PAT-03) and recovery evidence (
     3. The script writes a dated report and exits non-zero on any mismatch.
     4. Tests use a fixture; never run it against a real database.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+## API documentation (Swagger)
+
+The contract `contracts/openapi.yaml` is the authoritative description of the API. These tasks publish it; the second needs a person because it adds a dependency to `apps/api/pom.xml`.
+
+- [ ] BUILD-23 · Serve the OpenAPI contract from the API at /api/v1/openapi.yaml
+  - requirements: spec section 7 (generated OpenAPI client types)
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/web, apps/api/src/main/resources/contract/openapi.yaml
+  - details:
+    1. Read `contracts/openapi.yaml` and `web/SecurityConfiguration.java`.
+    2. Add a controller that returns the contract with `Content-Type: application/yaml` at `GET /api/v1/openapi.yaml`. Copy the contract into `src/main/resources/contract/` at build time through a test that fails when the copy differs from `contracts/openapi.yaml`, so the two cannot drift.
+    3. The endpoint needs no sign-in and returns no patient data. Rate limiting and the security headers still apply.
+    4. Tests: 200 with the YAML body, the body equals `contracts/openapi.yaml`, the response carries the usual security headers, and a drift between the two files fails the test.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+- [ ] BUILD-24 · Swagger UI at /swagger-ui for the contract (needs a person: pom.xml)
+  - requirements: spec section 7 (generated OpenAPI client types)
+  - scope: apps/api/pom.xml, apps/api/src/main/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/web
+  - depends: BUILD-23
+  - details:
+    1. `apps/api/pom.xml` is a protected file, so a person adds the Swagger UI webjar (for example `org.webjars:swagger-ui`, version pinned) and then the swarm may do the rest.
+    2. Serve Swagger UI at `/swagger-ui/` configured to load `/api/v1/openapi.yaml`. Do not let it load anything from a CDN.
+    3. Under the `synthetic-auth` profile and in development it is on; in production it is on only when `smartclinic.docs.enabled=true`, and the default is off.
+    4. Tests: the page loads in the synthetic profile, it is absent (404) in a profile without the setting, and the Content-Security-Policy still blocks external scripts.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.

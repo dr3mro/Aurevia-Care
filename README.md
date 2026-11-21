@@ -8,7 +8,6 @@ The `aurevia` tool runs the whole platform from one Docker image: the staff web 
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/dr3mro/Aurevia-Care/main/install.sh | sh
-aurevia run
 ```
 
 Open <http://localhost:3000> for the staff web and <http://localhost:8080> for the API. The image runs with the `synthetic-auth` profile, so no identity provider is needed. Use synthetic data only.
