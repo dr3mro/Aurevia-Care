@@ -54,7 +54,7 @@ function normalizeCorrection(
  * Validation happens at the client trust boundary so a tampered response cannot be rendered as a
  * clinical document reference.
  */
-function parseReleasedReport(value: unknown): ReleasedReport {
+export function parseReleasedReport(value: unknown): ReleasedReport {
   if (!isRecord(value)) {
     throw new Error('MALFORMED_REPORT');
   }

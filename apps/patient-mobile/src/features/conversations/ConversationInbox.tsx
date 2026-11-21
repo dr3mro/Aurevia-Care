@@ -8,6 +8,12 @@ import { activeLayoutDirection } from './layout';
 export interface ConversationInboxProps {
   /** Conversations belonging to the verified patient. */
   readonly conversations: readonly Conversation[];
+  /**
+   * Server-authored unread counts, keyed by conversation identifier. The inbox
+   * endpoint returns an authoritative count; the local derivation is a fallback
+   * for callers that only have a full message trail (MSG-02).
+   */
+  readonly unreadByConversation?: Readonly<Record<string, number>>;
   /** Called when the patient opens a conversation. */
   readonly onOpen: (conversationId: string) => void;
 }
@@ -20,12 +26,12 @@ export interface ConversationInboxProps {
  *
  * @param props conversations and open handler
  */
-export function ConversationInbox({ conversations, onOpen }: ConversationInboxProps) {
+export function ConversationInbox({ conversations, unreadByConversation, onOpen }: ConversationInboxProps) {
   const direction = activeLayoutDirection();
   return (
     <View accessibilityLabel="conversation inbox" style={[styles.list, { direction }]}>
       {conversations.map(conversation => {
-        const unread = unreadCount(conversation);
+        const unread = unreadByConversation?.[conversation.id] ?? unreadCount(conversation);
         const hasUnread = unread > 0;
         return (
           <Pressable
