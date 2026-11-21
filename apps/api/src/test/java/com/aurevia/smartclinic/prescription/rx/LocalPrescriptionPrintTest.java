@@ -79,6 +79,7 @@ class LocalPrescriptionPrintTest {
         ApiException failure = assertThrows(ApiException.class,
                 () -> printer.issue(new View(unrouted, List.of(attestation("synthetic", ATTESTED_AT)))));
 
+        assertEquals(422, failure.status());
         assertEquals("CHANNEL_MISMATCH", failure.code());
     }
 

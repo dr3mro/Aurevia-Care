@@ -80,6 +80,7 @@ class RxPrintableServiceTest {
         ApiException failure = assertThrows(ApiException.class, () -> service.printable(ID));
 
         assertEquals(403, failure.status());
+        assertEquals("FORBIDDEN", failure.code());
         verify(audit).append(any(), any(), any(), any(), any(), any(), org.mockito.ArgumentMatchers.eq("DENIED"));
     }
 
@@ -127,6 +128,7 @@ class RxPrintableServiceTest {
 
         ApiException failure = assertThrows(ApiException.class, () -> service.printable(ID));
 
+        assertEquals(422, failure.status());
         assertEquals("NO_ENTITLEMENT", failure.code());
     }
 
