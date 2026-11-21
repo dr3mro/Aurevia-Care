@@ -389,6 +389,14 @@ class AgentRunTests(unittest.TestCase):
         out = self.outputs()
         self.assertEqual((out["result"], out["merge"], out["report"]), ("rate_limited", "none", "no"))
 
+    def test_the_strategist_runs_read_only_and_restores_the_config(self):
+        self.assertEqual(self.run_cmd("strategy", FAKE_MODE="none", PROMPT_LOG=str(self.tmp / "prompt.log")).returncode, 0)
+        self.assertEqual(self.outputs()["result"], "ok")
+        prompt = (self.tmp / "prompt.log").read_text()
+        self.assertIn("six-hourly strategist", prompt)
+        self.assertIn("strategy.json", prompt)
+        self.assertEqual((self.repo / "opencode.json").read_text(), '{"real": true}')
+
     def test_unknown_command_is_a_usage_error(self):
         self.assertEqual(self.run_cmd("bogus").returncode, 2)
 

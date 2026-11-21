@@ -933,6 +933,103 @@ class FailTests(unittest.TestCase):
         self.assertIn("debugger's report", comment)
 
 
+class StrategistTests(unittest.TestCase):
+    def workflow(self):
+        import yaml
+        return yaml.safe_load((ROOT / ".github/workflows/swarm-strategist.yml").read_text(encoding="utf-8"))
+
+    def test_it_runs_every_six_hours_and_the_agent_step_has_no_token(self):
+        config = self.workflow()
+        triggers = config.get("on") or config.get(True)
+        self.assertEqual(triggers["schedule"], [{"cron": "23 */6 * * *"}])
+        self.assertIn("workflow_dispatch", triggers)
+        steps = config["jobs"]["review"]["steps"]
+        agent = [st for st in steps if st.get("run") == "scripts/agent-run.sh strategy"][0]
+        self.assertNotIn("GH_TOKEN", agent["env"])
+        self.assertEqual(config["jobs"]["publish"]["steps"][0]["with"]["ref"], "main")
+        self.assertIn("strategy-publish", config["jobs"]["publish"]["steps"][-1]["run"])
+
+    def test_state_lists_pull_requests_and_runs(self):
+        prs = [pr(9, "swarm/A-1", "swarm", "needs-debug"), pr(4, "swarm/B-1", "swarm")]
+        prs[0].update(title="Add thing", isDraft=True, createdAt="2026-11-20T10:00:00Z")
+        prs[1].update(title="Other", isDraft=False, createdAt="2026-11-19T10:00:00Z")
+
+        class Gh(FakeGh):
+            def __call__(self, *args, check=True):
+                self.calls.append(args)
+                if args[:2] == ("run", "list"):
+                    return json.dumps([{"conclusion": "failure", "status": "completed",
+                                        "createdAt": "2026-11-21T10:00:00Z",
+                                        "updatedAt": "2026-11-21T10:30:00Z"},
+                                       {"conclusion": "", "status": "queued",
+                                        "createdAt": "2026-11-21T11:00:00Z", "updatedAt": "2026-11-21T11:00:00Z"}])
+                return super().__call__(*args, check=check)
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(swarm, "gh", Gh(prs=prs)):
+            out = Path(tmp) / "state" / "swarm-state.md"
+            self.assertEqual(swarm.strategy_state(str(out)), 2)
+            text = out.read_text()
+        self.assertIn("#4 Other [swarm]", text)
+        self.assertIn("#9 Add thing [needs-debug, swarm, draft]", text)
+        self.assertIn("Last 2 runs of swarm.yml", text)
+        self.assertIn("failure", text)
+        self.assertIn("queued", text)
+
+    def publish(self, data, raw=None):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "strategy.json"
+            if raw is not None:
+                path.write_text(raw)
+            elif data is not None:
+                path.write_text(json.dumps(data))
+            with mock.patch.object(swarm, "add_audit_tasks", return_value=2) as add, \
+                    mock.patch.object(swarm, "record_issue", return_value="12") as issue:
+                result = swarm.strategy_publish(str(path))
+        return result, add, issue
+
+    def test_tasks_go_to_the_task_files_and_suggestions_to_one_issue(self):
+        data = {"summary": "Two things.", "tasks": [{"title": "T" * 12}],
+                "reorder": [{"id": "CW-001", "move": "earlier", "why": "unblocks five"}, "junk", {"id": ""}],
+                "workflow": [{"title": "Cache", "evidence": "slow", "change": "```x```"}]}
+        result, add, issue = self.publish(data)
+        self.assertEqual(result, {"tasks": 2, "issue": "12"})
+        add.assert_called_once()
+        body = issue.call_args.args[3]
+        self.assertIn("CW-001 — earlier — unblocks five", body)
+        self.assertIn("Cache — slow", body)
+        self.assertNotIn("```", body)
+        self.assertIn("Nothing here was applied", body)
+        self.assertEqual(issue.call_args.kwargs["labels"], ("swarm-review",))
+
+    def test_no_order_or_workflow_suggestions_open_no_issue(self):
+        result, add, issue = self.publish({"summary": "Fine.", "tasks": [], "reorder": [], "workflow": "bad"})
+        self.assertEqual(result, {"tasks": 2, "issue": ""})
+        issue.assert_not_called()
+
+    def test_unusable_reviews_change_nothing(self):
+        for kwargs in ({"data": None}, {"data": None, "raw": "not json"}):
+            with redirect_stderr(io.StringIO()):
+                result, add, issue = self.publish(**kwargs)
+            self.assertEqual(result, {"tasks": 0, "issue": ""})
+            add.assert_not_called()
+            issue.assert_not_called()
+        result, add, issue = self.publish(None, raw='["a list"]')
+        self.assertEqual(result["issue"], "")
+        issue.assert_not_called()
+
+    def test_the_command_line_runs_state_and_publish(self):
+        with mock.patch.object(swarm, "strategy_state", return_value=3) as state, \
+                mock.patch.object(swarm, "strategy_publish", return_value={"tasks": 1, "issue": ""}) as publish, \
+                mock.patch("sys.stdout", new_callable=io.StringIO) as out:
+            swarm.main(["strategy-state", "--out", "s.md"])
+            swarm.main(["strategy-publish", "--findings", "f.json", "--file", "T.md"])
+        state.assert_called_once_with("s.md")
+        publish.assert_called_once_with("f.json", "T.md")
+        self.assertIn("3 open pull request(s) written to s.md", out.getvalue())
+
+    def test_the_label_exists(self):
+        self.assertIn("swarm-review", swarm.LABELS)
+
+
 class DebuggerWorkflowTests(unittest.TestCase):
     def workflow(self):
         import yaml
