@@ -44,8 +44,6 @@ public class ReleaseService {
      * @param transactions tenant-guarded transaction template
      * @param clock        shared UTC clock for visibility decisions
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "Spring-managed singleton collaborators")
     public ReleaseService(ReleaseRepository repository, ReleaseActionPolicy policy,
                           TransactionTemplate transactions, Clock clock) {
         this.repository = repository;

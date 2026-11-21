@@ -68,8 +68,6 @@ public class OrderService {
      * @param transactions tenant-guarded transaction template
      * @param clock        injected clock used for validity windows
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "Spring-managed singleton collaborators")
     public OrderService(OrderRepository repository, AuditAppender audit,
                         TransactionTemplate transactions, Clock clock) {
         this.repository = repository;

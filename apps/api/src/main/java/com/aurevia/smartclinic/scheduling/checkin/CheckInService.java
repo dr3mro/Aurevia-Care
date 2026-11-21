@@ -63,8 +63,6 @@ public class CheckInService {
      * @param audit        transactional audit appender
      * @param clock        application clock for assignment and verification times
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "Spring-managed singleton collaborators")
     public CheckInService(WorklistRepository repository, AppointmentService appointments,
                           SchedulingRepository scheduling, WorklistPolicy policy,
                           TransactionTemplate transactions, AuditAppender audit, Clock clock) {

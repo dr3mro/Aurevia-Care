@@ -70,8 +70,6 @@ public class MessagingGovernanceService {
      * @param actions bounded action matrix
      * @param clock   application clock for deterministic timestamps and retention
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "Spring-managed singleton collaborators")
     public MessagingGovernanceService(MessagingGovernanceStore store, MessagingGovernanceActions actions,
                                       Clock clock) {
         this.store = store;

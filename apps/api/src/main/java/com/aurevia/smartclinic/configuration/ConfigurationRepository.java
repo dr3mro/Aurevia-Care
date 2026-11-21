@@ -38,8 +38,6 @@ public class ConfigurationRepository {
      *
      * @param jdbc shared named-parameter JDBC template
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "Spring-managed singleton collaborator")
     public ConfigurationRepository(NamedParameterJdbcTemplate jdbc) {
         this.jdbc = jdbc;
     }

@@ -43,8 +43,6 @@ public final class QuarantineService {
      * @param guard shared authorization and audit guard
      * @param clock source of server timestamps
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "Injected collaborators, not value objects")
     public QuarantineService(DocumentStore store, DocumentGuard guard, Clock clock) {
         this.store = store;
         this.guard = guard;

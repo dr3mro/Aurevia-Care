@@ -40,8 +40,6 @@ public class PatientFlowPresentationService {
      * @param store tenant-scoped policy store
      * @param clock application clock for audit timestamps
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "Spring-managed singleton collaborators")
     public PatientFlowPresentationService(FlowPolicyStore store, Clock clock) {
         this.store = store;
         this.clock = clock;

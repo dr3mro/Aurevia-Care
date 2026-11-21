@@ -66,8 +66,6 @@ public class InstructionFactService {
      * @param actions bounded action matrix
      * @param clock   injected clock for deterministic fact timestamps
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "Spring-managed singleton collaborators")
     public InstructionFactService(InstructionFactStore store, InstructionFactActions actions, Clock clock) {
         this.store = store;
         this.actions = actions;

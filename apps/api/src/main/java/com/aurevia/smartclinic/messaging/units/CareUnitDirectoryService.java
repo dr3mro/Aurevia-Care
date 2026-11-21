@@ -60,8 +60,6 @@ public class CareUnitDirectoryService implements PatientConnectionVerifier {
      * @param actions bounded action matrix
      * @param clock   application clock for invitation expiry and timestamps
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "Spring-managed singleton collaborators")
     public CareUnitDirectoryService(MessagingStore store, MessagingActions actions, Clock clock) {
         this.store = store;
         this.actions = actions;

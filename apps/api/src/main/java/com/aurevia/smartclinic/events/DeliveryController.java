@@ -45,8 +45,6 @@ public class DeliveryController {
      *
      * @param service ARC-05 durable delivery domain service
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "Spring-managed singleton collaborator")
     public DeliveryController(DurableEventService service) {
         this.service = service;
     }

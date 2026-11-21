@@ -67,8 +67,6 @@ public class ConversationService {
      * @param audit        transactional audit appender
      * @param connections  verified patient-unit connection resolver
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "Spring-managed singleton collaborators")
     public ConversationService(ConversationRepository repository, ConversationActions actions,
                                TransactionTemplate transactions, AuditAppender audit,
                                PatientConnectionVerifier connections) {
