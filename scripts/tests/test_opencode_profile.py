@@ -1,0 +1,148 @@
+"""Policy validation for the CI runtime OpenCode profile (OPS-06).
+
+The generated local config is covered by check-pack; these tests exercise the
+separate runtime profile that unattended swarm workers actually load.
+"""
+import io
+import json
+import shutil
+import tempfile
+import unittest
+from contextlib import redirect_stderr
+from pathlib import Path
+from unittest.mock import patch
+
+from helpers import ROOT, load
+
+gen = load("gen-opencode")
+
+
+class RuntimeProfileTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp)
+        (self.tmp / ".github" / "swarm").mkdir(parents=True)
+        self.profile = json.loads((ROOT / ".github/opencode.ci.json").read_text())
+        self.slots = json.loads((ROOT / ".github/swarm/slots.json").read_text())
+        for path in gen.INSTRUCTIONS:
+            target = self.tmp / path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text("synthetic instruction\n")
+        self.write_files()
+
+    def write_files(self):
+        (self.tmp / gen.RUNTIME_PROFILE).write_text(json.dumps(self.profile))
+        (self.tmp / gen.SLOTS_FILE).write_text(json.dumps(self.slots))
+
+    def violations(self):
+        self.write_files()
+        return gen.check_runtime(self.tmp)
+
+    def agent(self, name):
+        return self.profile["agents"][name]
+
+    def test_repository_runtime_profile_passes(self):
+        self.assertEqual(gen.check_runtime(ROOT), [])
+
+    def test_missing_profile_is_reported(self):
+        (self.tmp / gen.RUNTIME_PROFILE).unlink()
+        found = gen.check_runtime(self.tmp)
+        self.assertTrue(any("runtime profile" in v and "missing" in v for v in found), found)
+
+    def test_invalid_profile_json_is_reported(self):
+        (self.tmp / gen.RUNTIME_PROFILE).write_text("not json")
+        found = gen.check_runtime(self.tmp)
+        self.assertTrue(any("not valid JSON" in v for v in found), found)
+
+    def test_missing_slots_is_reported(self):
+        (self.tmp / gen.SLOTS_FILE).unlink()
+        found = gen.check_runtime(self.tmp)
+        self.assertTrue(any("swarm slots" in v for v in found), found)
+
+    def test_missing_instruction_file_is_reported(self):
+        missing = gen.INSTRUCTIONS[0]
+        (self.tmp / missing).unlink()
+        found = self.violations()
+        self.assertTrue(any(missing in v and "instruction" in v for v in found), found)
+
+    def test_editing_agent_without_bash_list_is_reported(self):
+        self.profile["agents"]["smartclinic-editor"] = {
+            "permissions": [{"action": "read", "resource": "*", "effect": "allow"}]
+        }
+        found = self.violations()
+        self.assertTrue(any("smartclinic-editor" in v and "bash" in v for v in found), found)
+
+    def test_reviewer_with_edit_permission_is_reported(self):
+        self.agent("smartclinic-qa-reviewer")["permissions"].append(
+            {"action": "write", "resource": "src/*", "effect": "allow"})
+        found = self.violations()
+        self.assertTrue(any("smartclinic-qa-reviewer" in v and "edit" in v for v in found), found)
+
+    def test_reviewer_with_denied_write_is_allowed(self):
+        self.agent("smartclinic-qa-reviewer")["permissions"].append(
+            {"action": "write", "resource": ".github/*", "effect": "deny"})
+        self.assertEqual(self.violations(), [])
+
+    def test_agent_writing_protected_paths_is_reported(self):
+        for resource, protected in (
+            (".github/workflows/delivery.yml", ".github/"),
+            ("TODO.md", "TODO.md"),
+            (".opencode/agents/example.md", ".opencode/"),
+        ):
+            with self.subTest(resource=resource):
+                self.profile["agents"]["smartclinic-editor"] = {
+                    "permissions": [
+                        {"action": "shell", "resource": "*", "effect": "allow"},
+                        {"action": "write", "resource": resource, "effect": "allow"},
+                    ]
+                }
+                found = self.violations()
+                self.assertTrue(any("smartclinic-editor" in v and protected in v for v in found),
+                                found)
+
+    def test_disallowed_agent_model_is_reported(self):
+        self.agent("smartclinic-qa-reviewer")["model"] = "other/expensive-model"
+        found = self.violations()
+        self.assertTrue(any("smartclinic-qa-reviewer" in v and "model" in v for v in found), found)
+
+    def test_allowed_agent_model_passes(self):
+        self.agent("smartclinic-qa-reviewer")["model"] = self.slots["slots"][0]["model"]
+        self.assertEqual(self.violations(), [])
+
+    def test_disallowed_profile_model_is_reported(self):
+        self.profile["model"] = "other/expensive-model"
+        found = self.violations()
+        self.assertTrue(any("runtime profile" in v and "model" in v for v in found), found)
+
+    def test_secret_variable_in_agent_is_reported(self):
+        self.agent("smartclinic-qa-reviewer")["apiKey"] = "OPENCODE_API_KEY"
+        found = self.violations()
+        self.assertTrue(any("smartclinic-qa-reviewer" in v and "key" in v.lower() for v in found),
+                        found)
+
+    def test_token_value_in_agent_is_reported(self):
+        self.agent("smartclinic-qa-reviewer")["header"] = "Bearer ghp_" + "a" * 24
+        found = self.violations()
+        self.assertTrue(any("smartclinic-qa-reviewer" in v for v in found), found)
+
+    def test_secret_in_profile_metadata_is_reported(self):
+        self.profile["credential"] = "NVD_API_KEY"
+        found = self.violations()
+        self.assertTrue(any("runtime profile" in v and "key" in v.lower() for v in found), found)
+
+    def test_check_runtime_flag_passes_on_repository_profile(self):
+        with redirect_stderr(io.StringIO()):
+            status = gen.main(["--check-runtime"])
+        self.assertEqual(status, 0)
+
+    def test_check_runtime_flag_reports_violations_and_fails(self):
+        err = io.StringIO()
+        with patch.object(gen, "check_runtime", return_value=["agent smartclinic-editor: bad"]):
+            with redirect_stderr(err):
+                status = gen.main(["--check-runtime"])
+        self.assertEqual(status, 1)
+        self.assertIn("smartclinic-editor", err.getvalue())
+
+
+if __name__ == "__main__":
+    unittest.main()
