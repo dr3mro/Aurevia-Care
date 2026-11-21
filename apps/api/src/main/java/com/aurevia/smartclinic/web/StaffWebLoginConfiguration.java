@@ -44,6 +44,10 @@ import jakarta.servlet.http.HttpServletResponse;
  * standard {@code /authorize}, {@code /token} and {@code /userinfo} endpoints
  * beneath the configured issuer, and its user-info response must carry the
  * same {@code sub} and {@code orgs} claims the bearer path validates.</p>
+ *
+ * <p>The exact {@code GET /health/live} and {@code GET /health/ready} probes are
+ * permitted here and in the bearer chain because they carry no bearer header and
+ * therefore reach this higher-priority chain first (WEB-05).</p>
  */
 @Configuration
 @Profile("!synthetic-auth")
@@ -131,7 +135,11 @@ public class StaffWebLoginConfiguration {
                             .csrfTokenRequestHandler(handler);
                 })
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
-                .authorizeHttpRequests(authorize -> authorize.anyRequest().authenticated())
+                .authorizeHttpRequests(authorize -> authorize
+                        // WEB-05: probes carry no bearer header, so they meet this chain first;
+                        // permit the exact paths so they never reach the login entry point.
+                        .requestMatchers(HttpMethod.GET, "/health/live", "/health/ready").permitAll()
+                        .anyRequest().authenticated())
                 .oauth2Login(withDefaults())
                 .logout(logout -> logout
                         .logoutRequestMatcher(PathPatternRequestMatcher.pathPattern(HttpMethod.POST, "/logout"))

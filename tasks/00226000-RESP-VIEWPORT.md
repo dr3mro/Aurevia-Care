@@ -1,4 +1,6 @@
-- [ ] RESP-VIEWPORT · Staff web: viewport meta, theme colour and safe-area support in `index.html`
+- [-] RESP-VIEWPORT · Staff web: viewport meta, theme colour and safe-area support in `index.html`
+  - agent: swarm-8
+  - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/index.html, apps/staff-web/tests/indexability.test.ts
   - depends: RESP-DECISION
