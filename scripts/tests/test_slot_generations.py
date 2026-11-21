@@ -63,6 +63,13 @@ class GenerationCompletenessTests(unittest.TestCase):
     def test_empty_slots_is_incomplete(self):
         self.assertFalse(swarm._generation_complete(generation(slots=[])))
 
+    def test_non_list_slots_is_incomplete(self):
+        # A truthy but non-list `slots` value is malformed input. It must be
+        # treated as incomplete, not raise TypeError while iterating it: the
+        # Javadoc promises a malformed record cannot be chosen as a generation.
+        self.assertFalse(swarm._generation_complete(generation(slots=5)))
+        self.assertFalse(swarm._generation_complete(generation(slots={"slot": 1})))
+
     def test_non_dict_slot_is_incomplete(self):
         self.assertFalse(swarm._generation_complete(generation(slots=["junk"])))
 

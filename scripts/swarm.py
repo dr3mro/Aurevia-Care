@@ -1028,10 +1028,13 @@ def _generation_complete(generation):
 
     ``generation`` has a non-empty ``slots`` list; each entry holds ``exists``
     (the image is in the registry) and ``digest`` (its recorded digest). A
-    malformed record is treated as incomplete so a bad publish cannot be chosen.
+    malformed record — including a non-list ``slots`` value — is treated as
+    incomplete so a bad publish cannot be chosen.
     """
     slots = generation.get("slots") if isinstance(generation, dict) else None
-    if not slots:
+    # A truthy non-list (e.g. an int from bad JSON) is not iterable; reject it
+    # here rather than raising TypeError out of the plan job.
+    if not isinstance(slots, list) or not slots:
         return False
     for slot in slots:
         if not isinstance(slot, dict):
