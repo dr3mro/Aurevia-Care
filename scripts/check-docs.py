@@ -174,6 +174,8 @@ def check(root=ROOT):
             file_part = target.split("#")[0]
             if rel.parts[:2] == ("docs", "reference") and file_part.startswith(GENERATED):
                 continue
+            if Path(file_part).name == "TODO.md":
+                continue  # a local view built from tasks/, not stored in git
             if file_part and not (path.parent / file_part).exists():
                 errors.append(f"{rel}: broken link {target}")
         if rel.name == SPEC:

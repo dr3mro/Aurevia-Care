@@ -84,7 +84,16 @@ class JdbcPatientAccessStoreIntegrationTest {
     @Autowired
     JdbcPatientAccessStore jdbcStore;
 
-    /** Create a fresh database, apply all migrations and seed two tenants. */
+    /**
+     * Create roles, a fresh database, apply all migrations and seed two tenants.
+     *
+     * <p>Role creation must happen in the same {@link org.junit.jupiter.api.BeforeAll}
+     * method that creates the database owned by that role. JUnit does not guarantee the
+     * relative order of several {@code @BeforeAll} methods in one class, so a separate
+     * role-creation method can run after {@code prepare()} and leave the
+     * {@code CREATE DATABASE ... OWNER smartclinic_migrate} statement with no role to
+     * own it.</p>
+     */
     @BeforeAll
     static void prepare() throws Exception {
         try (Connection root = DriverManager.getConnection(
