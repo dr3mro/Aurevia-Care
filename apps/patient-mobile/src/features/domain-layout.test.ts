@@ -27,6 +27,7 @@ const DOMAIN_FOLDERS = [
   'evidence',
   'notifications',
   'prescriptions',
+  // TRACK-02 added this business-domain folder after the AUD-20261119-04 mapping.
   'tracker',
 ] as const;
 
