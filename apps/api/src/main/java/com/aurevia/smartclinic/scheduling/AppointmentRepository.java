@@ -332,6 +332,119 @@ public class AppointmentRepository {
                 """, Map.of("appointmentId", appointmentId), EVENT_MAPPER);
     }
 
+    /**
+     * Find appointments already occupying either protected resource of a slot.
+     *
+     * <p>Called for every occurrence before any row of a series is inserted, so
+     * one command can report all clashes and reject the whole series. The
+     * partial exclusion constraints remain the authority for concurrent writers.</p>
+     *
+     * @param clinicianId clinician resource of the requested slot
+     * @param roomId      room resource of the requested slot, or {@code null}
+     * @param startsAt    requested slot start
+     * @param endsAt      requested slot end
+     * @return immutable identifiers of the conflicting appointments
+     */
+    public List<String> findConflicts(String clinicianId, String roomId, Instant startsAt,
+                                      Instant endsAt) {
+        return jdbc.query("""
+                SELECT a.id::text AS id
+                  FROM public.appointment a
+                 WHERE a.state IN ('held', 'booked', 'checked_in', 'in_progress')
+                   -- A lapsed hold is released by the booking path, not a real clash.
+                   AND (a.state <> 'held' OR a.expires_at > now())
+                   AND tstzrange(a.starts_at, a.ends_at, '[)')
+                       && tstzrange(CAST(:startsAt AS timestamptz),
+                                   CAST(:endsAt AS timestamptz), '[)')
+                   AND (a.clinician_resource_id = CAST(:clinicianId AS uuid)
+                        OR (CAST(:roomId AS uuid) IS NOT NULL
+                            AND a.room_resource_id = CAST(:roomId AS uuid)))
+                 ORDER BY a.starts_at, a.id
+                """, new MapSqlParameterSource().addValue("startsAt", startsAt.toString())
+                .addValue("endsAt", endsAt.toString()).addValue("clinicianId", clinicianId)
+                .addValue("roomId", roomId), (resultSet, rowNumber) -> resultSet.getString("id"));
+    }
+
+    /**
+     * Persist the recurrence pattern that produced a series.
+     *
+     * @param id              new opaque template identifier
+     * @param intervalWeeks   weeks between occurrences
+     * @param occurrenceCount fixed count, or {@code null} for an end date
+     * @param endDate         ISO-8601 local end date, or {@code null}
+     * @param localTime       local clock time of every occurrence
+     * @param timeZone        facility IANA zone identifier
+     * @return number of inserted rows
+     */
+    public int insertRecurrenceTemplate(String id, int intervalWeeks, Integer occurrenceCount,
+                                        String endDate, String localTime, String timeZone) {
+        return jdbc.update("""
+                INSERT INTO public.recurrence_template
+                    (organization_id, id, interval_weeks, occurrence_count, end_local_date,
+                     local_start_time, time_zone)
+                VALUES (public.app_org(), CAST(:id AS uuid), :intervalWeeks,
+                        CAST(:occurrenceCount AS integer), CAST(:endDate AS date),
+                        CAST(:localTime AS time), :timeZone)
+                """, new MapSqlParameterSource().addValue("id", id)
+                .addValue("intervalWeeks", intervalWeeks).addValue("occurrenceCount", occurrenceCount)
+                .addValue("endDate", endDate).addValue("localTime", localTime)
+                .addValue("timeZone", timeZone));
+    }
+
+    /**
+     * Persist the shared identity of a booked series.
+     *
+     * @param id             new opaque series identifier
+     * @param templateId     recurrence template that produced the series
+     * @param patientId      patient identifier
+     * @param facilityId     facility identifier
+     * @param clinicianId    clinician resource identifier
+     * @param roomId         room resource identifier, or {@code null}
+     * @param visitType      visit type code
+     * @param firstStartsAt  UTC start of the first occurrence
+     * @return number of inserted rows
+     */
+    public int insertAppointmentSeries(String id, String templateId, String patientId,
+                                       String facilityId, String clinicianId, String roomId,
+                                       String visitType, Instant firstStartsAt) {
+        return jdbc.update("""
+                INSERT INTO public.appointment_series
+                    (organization_id, id, template_id, patient_id, facility_id,
+                     clinician_resource_id, room_resource_id, visit_type, first_starts_at)
+                VALUES (public.app_org(), CAST(:id AS uuid), CAST(:templateId AS uuid),
+                        CAST(:patientId AS uuid), CAST(:facilityId AS uuid),
+                        CAST(:clinicianId AS uuid), CAST(:roomId AS uuid), :visitType,
+                        CAST(:firstStartsAt AS timestamptz))
+                """, new MapSqlParameterSource().addValue("id", id)
+                .addValue("templateId", templateId).addValue("patientId", patientId)
+                .addValue("facilityId", facilityId).addValue("clinicianId", clinicianId)
+                .addValue("roomId", roomId).addValue("visitType", visitType)
+                .addValue("firstStartsAt", firstStartsAt.toString()));
+    }
+
+    /**
+     * Persist one immutable occurrence of a series and the appointment it booked.
+     *
+     * @param id             new opaque occurrence identifier
+     * @param seriesId       owning series identifier
+     * @param appointmentId  appointment booked for this occurrence
+     * @param occurrenceIndex one-based position in the series
+     * @param plannedStart    originally planned UTC start, kept after any edit
+     * @return number of inserted rows
+     */
+    public int insertSeriesOccurrence(String id, String seriesId, String appointmentId,
+                                      int occurrenceIndex, Instant plannedStart) {
+        return jdbc.update("""
+                INSERT INTO public.series_occurrence
+                    (organization_id, id, series_id, appointment_id, occurrence_index, planned_starts_at)
+                VALUES (public.app_org(), CAST(:id AS uuid), CAST(:seriesId AS uuid),
+                        CAST(:appointmentId AS uuid), :occurrenceIndex,
+                        CAST(:plannedStart AS timestamptz))
+                """, new MapSqlParameterSource().addValue("id", id).addValue("seriesId", seriesId)
+                .addValue("appointmentId", appointmentId).addValue("occurrenceIndex", occurrenceIndex)
+                .addValue("plannedStart", plannedStart.toString()));
+    }
+
     private static String instantText(Instant instant) {
         return instant == null ? null : instant.toString();
     }
