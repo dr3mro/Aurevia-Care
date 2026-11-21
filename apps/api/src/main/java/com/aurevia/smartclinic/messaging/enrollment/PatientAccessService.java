@@ -10,6 +10,9 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
 import com.aurevia.smartclinic.api.ApiException;
 import com.aurevia.smartclinic.messaging.enrollment.EnrollmentContract.AccessDecision;
 import com.aurevia.smartclinic.messaging.enrollment.EnrollmentContract.AccessEvent;
@@ -48,6 +51,7 @@ import com.aurevia.smartclinic.messaging.enrollment.EnrollmentContract.SupportKi
  * state change and append-only access fact in one store call, and emits only a
  * generic notification that cannot carry clinical detail (PAT-01, OPS-02).</p>
  */
+@Service
 public final class PatientAccessService {
 
     /** Maximum consecutive failed verification attempts before a lockout. */
@@ -90,6 +94,7 @@ public final class PatientAccessService {
      * @param actions bounded action matrix
      * @param clock   application clock for deterministic expiry and lockout
      */
+    @Autowired
     public PatientAccessService(PatientAccessStore store, EnrollmentActions actions, Clock clock) {
         this(store, actions, clock, () -> MessageDigest.getInstance("SHA-256"));
     }
@@ -172,17 +177,19 @@ public final class PatientAccessService {
             Invitation failed = new Invitation(invitation.code(), invitation.organizationId(),
                     invitation.chartId(), invitation.factDigest(), invitation.expiresAt(),
                     invitation.state(), invitation.failedAttempts() + 1, invitation.issuedBy(), invitation.issuedAt());
-            store.putInvitation(actor.organizationId(), failed);
+            store.recordInvitationFailure(actor.organizationId(), code, failed.failedAttempts());
             audit(actor, EventType.VERIFICATION_FAILED, invitation.code(), "failed", "invalid_facts");
             throw unauthorized("VERIFICATION_FAILED", "identity facts did not match");
         }
         String accountId = newId();
         PatientAccount account = new PatientAccount(accountId, actor.organizationId(), actor.subject(),
                 Set.of(invitation.chartId()), invitation.factDigest(), AccountState.ACTIVE, 0, null, clock.instant());
+        // Claim the invitation atomically before creating the account: two
+        // simultaneous redemptions must not both create a verified account.
+        if (!store.consumeInvitation(actor.organizationId(), code)) {
+            throw conflict("INVITATION_REUSED", "the invitation was already redeemed");
+        }
         store.putAccount(actor.organizationId(), account);
-        store.putInvitation(actor.organizationId(), new Invitation(invitation.code(), invitation.organizationId(),
-                invitation.chartId(), invitation.factDigest(), invitation.expiresAt(),
-                InvitationState.REDEEMED, invitation.failedAttempts(), invitation.issuedBy(), invitation.issuedAt()));
         audit(actor, EventType.ENROLL_SUCCESS, accountId, "success", "enrolled");
         notify(actor, "enrollment_confirmed");
         return account;
@@ -222,7 +229,8 @@ public final class PatientAccessService {
         authorize(actor, EnrollmentActions.RECOVERY_REDEEM, RESOURCE_ACCOUNT);
         PatientAccount account = requireOwnedAccount(actor, uuid(request.accountId(), "accountId"));
         requireUsable(account);
-        AccessToken token = store.token(actor.organizationId(), text(request.code(), "code", 128))
+        String code = text(request.code(), "code", 128);
+        AccessToken token = store.token(actor.organizationId(), code)
                 .orElseThrow(() -> notFound("recovery code not found"));
         requireToken(token, actor, RECOVERY_PURPOSE);
         String presented = digest(request.factDigest(), "factDigest");
@@ -238,7 +246,7 @@ public final class PatientAccessService {
             }
             throw unauthorized("VERIFICATION_FAILED", "identity facts did not match");
         }
-        store.putToken(actor.organizationId(), used(token));
+        store.consumeToken(actor.organizationId(), code);
         PatientAccount restored = new PatientAccount(account.id(), account.organizationId(), account.subject(),
                 account.linkedChartIds(), account.factDigest(), AccountState.ACTIVE, 0,
                 account.contactDigest(), account.createdAt());
@@ -297,10 +305,11 @@ public final class PatientAccessService {
         }
         PatientAccount account = requireOwnedAccount(actor, uuid(request.accountId(), "accountId"));
         requireUsable(account);
-        AccessToken token = store.token(actor.organizationId(), text(request.token(), "token", 128))
+        String tokenValue = text(request.token(), "token", 128);
+        AccessToken token = store.token(actor.organizationId(), tokenValue)
                 .orElseThrow(() -> unauthorized("STALE_REAUTH", "renewed authentication is required"));
         requireToken(token, actor, request.action().wire());
-        store.putToken(actor.organizationId(), used(token));
+        store.consumeToken(actor.organizationId(), tokenValue);
         PatientAccount updated;
         if (request.action() == SensitiveAction.UNLINK_CHART) {
             String chartId = uuid(request.value(), "chartId");
@@ -531,11 +540,6 @@ public final class PatientAccessService {
 
     private AccessToken newToken(String organizationId, String subject, String purpose, long ttl) {
         return new AccessToken(newId(), organizationId, subject, purpose, clock.instant().plusSeconds(ttl), false);
-    }
-
-    private static AccessToken used(AccessToken token) {
-        return new AccessToken(token.token(), token.organizationId(), token.subject(), token.purpose(),
-                token.expiresAt(), true);
     }
 
     private void audit(PatientAccessActor actor, EventType type, String resourceId, String outcome, String detail) {
