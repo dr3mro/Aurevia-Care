@@ -50,8 +50,6 @@ public class JdbcFlowPolicyStore implements FlowPolicyStore {
      * @param jdbc         shared named-parameter JDBC template
      * @param transactions tenant-guarded transaction template
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "Spring-managed singleton collaborators")
     public JdbcFlowPolicyStore(NamedParameterJdbcTemplate jdbc, TransactionTemplate transactions) {
         this.jdbc = jdbc;
         this.transactions = transactions;
