@@ -163,8 +163,26 @@ gate and is not claimed here.
   lightweight policy checks that apply to the notes and names
   (`python3 -I scripts/check-docs.py`, `check-secrets.py`, `check-names.py`) also
   pass with exit 0. The integrator/Delivery owns the full repository gate.
-- Simulated senior-mobile review result: recorded below once the bounded
-  reviewer reports.
+- Simulated senior-mobile review (`smartclinic-senior-mobile`,
+  `ses_dffd17877ffeTUEyWk9it2YsJa`, static review only — no commands executed in
+  that session): layout logic, RTL mapping, hook-order stability, branch
+  coverage and the named/default inset resolution were judged sound. It raised
+  one claimed production blocker — "no `SafeAreaProvider` is mounted, so the
+  real `useSafeAreaInsets` throws". **Disproved by source inspection**: the
+  patient tabs run inside `NavigationContainer` → `Tab.Navigator`, and
+  `@react-navigation/bottom-tabs` `createBottomTabNavigator.tsx:56` renders
+  `BottomTabView`, whose `BottomTabView.tsx:269` wraps all screen content in
+  `SafeAreaProviderCompat`; that component
+  (`@react-navigation/elements/src/SafeAreaProviderCompat.tsx`) mounts a real
+  `SafeAreaProvider` with `initialWindowMetrics` when no context is present.
+  Therefore the inset hook resolves against a provider on every production
+  mount path (`RootNavigator` → tabs → `patientPages` → `PatientResource`). No
+  app-root change is needed and none is in scope. Advisory items from the same
+  review: pane children size to content unless they set `flex: 1` (the real
+  screens' `ScreenFrame` does), the pre-existing retry control has only a
+  `minHeight` floor (fixing `minWidth` needs `screenStates.tsx`, outside scope),
+  and font scale is absorbed by the absence of fixed heights rather than by a
+  branch. None is a regression introduced by this change.
 
 ## Lessons for workers
 
