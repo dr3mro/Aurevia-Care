@@ -1478,6 +1478,138 @@ Screens the earlier parts did not cover. Each exports its routes from `features/
     4. Tests: every route renders under its role, a direct link without the role shows the forbidden state.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
+## Printing: prescriptions, lab and imaging orders, chart summary and reports for the patient (new files and narrow edits)
+
+A physician can print a prescription, a lab or imaging order, a chart summary or a signed report for the patient. Only signed or placed items print; every print and reprint is audited. PRINT-01 to PRINT-03 are the API; PRINT-04 to PRINT-09 are the staff web; PRINT-10 to PRINT-12 are tests, the patient app and docs.
+
+- [ ] PRINT-01 · API: render a prescription, lab order, imaging order, chart summary or report as a patient handout PDF
+  - requirements: CLN-07, RX-02, LAB-01, RAD-01, ARC-06
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/printing, apps/api/src/test/java/com/aurevia/smartclinic/printing
+  - details:
+    1. Read the `documents` package (`PdfBindingService`, `DocumentGuard`), `prescription`, `orders` and `chart` packages and the PDF clauses of `SMARTCLINIC_V1_SPEC.md` (CLN-07, ARC-06).
+    2. Add a `printing` package with one service that builds a handout PDF for five kinds: prescription, lab order, imaging order, chart summary and signed report. English or Arabic, embedded fonts, direction-aware layout, page numbers, A4, patient name and identifier, clinician and facility, issue time and a provenance footer.
+    3. A prescription handout is produced only for a signed or attested prescription with an approved print channel (BUILD-10). An order handout only for an order that is placed, not draft. A chart summary or report only for signed content. Anything else returns a clear refusal.
+    4. Each output is an immutable versioned PDF bound to the source revision. Printing again of an unchanged source returns the same version; a changed source makes a new version.
+    5. Tests in `apps/api/src/test/java/com/aurevia/smartclinic/printing`: each kind renders in English and Arabic, draft sources are refused, another tenant is refused, an unchanged source reuses the version, a changed source makes a new one.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] PRINT-02 · API: print endpoints, permissions and the print audit trail
+  - requirements: CLN-07, RX-02, ARC-06
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/printing/web, apps/api/src/test/java/com/aurevia/smartclinic/printing/web, contracts/openapi.yaml
+  - depends: PRINT-01
+  - details:
+    1. Read the existing controllers under `web` and the permission model.
+    2. Add endpoints to request a handout PDF for each kind and to download a version. Only the treating clinician and roles with a print permission may call them; the permission is checked for the facility of the record.
+    3. Every print and every download writes an audit entry with who, what, which version, why (a short reason list: give to patient, referral, patient request) and when, and never the content.
+    4. Update `contracts/openapi.yaml` with the new paths and error responses, and regenerate nothing by hand.
+    5. Tests: allowed and forbidden roles, wrong tenant, audit entry on print and on reprint, no content in the audit entry.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] PRINT-03 · API: printable consolidated chart extract for a visit or a date range
+  - requirements: CLN-03, CLN-05, CLN-07
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/printing/chart, apps/api/src/test/java/com/aurevia/smartclinic/printing/chart
+  - depends: PRINT-01
+  - details:
+    1. Read the `chart` package and the release rules for what a patient may receive.
+    2. Build the chart extract: demographics, allergies, active problems, medications, vitals with units and time, signed notes for the chosen visit or range, and results released to the patient. Unsigned drafts and withheld results never appear.
+    3. A clinician can add or remove sections before printing; the choice is recorded with the version.
+    4. Tests: drafts excluded, withheld results excluded, section choices are recorded, Arabic layout, range filter.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] PRINT-04 · Staff web: shared print preview dialog, print styles and A4 layout
+  - requirements: WEB-09, CLN-07
+  - scope: apps/staff-web/src/features/print/components, apps/staff-web/src/features/print/styles
+  - details:
+    1. Read `docs/design/screen-recipe.md` and `apps/staff-web/src/components`.
+    2. Build a preview dialog that shows the handout PDF, a language choice (English or Arabic), a reason choice (give to patient, referral, patient request), and Print, Download and Close actions. The dialog has loading, error, forbidden and refused states, with the refusal reason in words.
+    3. Add print styles for A4, margins of 15 mm and no application chrome, for the case where the browser prints the page itself.
+    4. Tests: reason is required before Print, refusal reason is shown, keyboard focus and escape behave, English and Arabic.
+    5. Do not wire the dialog into other screens here.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] PRINT-05 · Staff web: Print button on prescriptions (patient copy and pharmacy copy)
+  - requirements: RX-02, WEB-09
+  - scope: apps/staff-web/src/features/print/prescription
+  - depends: PRINT-02, PRINT-04
+  - details:
+    1. Read `features/prescriptions` and `features/print/components`.
+    2. Export a `PrintPrescriptionButton` that the prescriptions screen can use. It is enabled only for a signed or attested prescription whose channel allows print, and shows why it is disabled otherwise. It opens the preview dialog with the prescription handout and records the reason.
+    3. Offer one copy for the patient and, where the channel needs it, one for the pharmacy.
+    4. Tests: disabled with a reason for a draft, enabled when allowed, reprint shows that it is a reprint, English and Arabic.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] PRINT-06 · Staff web: Print button on lab and imaging orders (requisition sheet for the patient)
+  - requirements: LAB-01, RAD-01, WEB-09
+  - scope: apps/staff-web/src/features/print/orders
+  - depends: PRINT-02, PRINT-04
+  - details:
+    1. Read `features/radiology`, the orders feature and the contract for orders.
+    2. Export a `PrintOrderButton` for lab and imaging orders. The sheet shows the tests or study, clinical question, priority, the preparation instructions (for example fasting), where to go and the order identifier with a barcode-free human readable number.
+    3. Several orders from one visit can be printed on one sheet or as separate sheets, by the clinician's choice.
+    4. Tests: draft orders cannot print, preparation text appears, combined and separate sheets, English and Arabic.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] PRINT-07 · Staff web: Print chart summary and signed report from the chart
+  - requirements: CLN-03, CLN-05, WEB-09
+  - scope: apps/staff-web/src/features/print/chart
+  - depends: PRINT-03, PRINT-04
+  - details:
+    1. Read `features/chart` and `features/print/components`.
+    2. Export a `PrintChartButton` and a section picker (visit or date range, which sections). Show a preview before printing and list what was left out and why (unsigned, withheld).
+    3. Signed reports print from their own screen through the same button.
+    4. Tests: left-out items are listed, section choices persist in the preview, English and Arabic.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] PRINT-08 · Staff web: register the Print buttons on the prescription, order and chart screens
+  - requirements: WEB-09
+  - scope: apps/staff-web/src/features/print/routes.ts, apps/staff-web/src/features/print/index.ts
+  - depends: PRINT-05, PRINT-06, PRINT-07
+  - details:
+    1. Export the three buttons from one index and add a short guide `apps/staff-web/src/features/print/README.md` showing where each button belongs.
+    2. Do not edit the prescriptions, radiology or chart features: the person or task that owns each screen mounts the button. Write the exact import and placement line for each in the README.
+    3. Tests: the index exports the three components and nothing else.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] PRINT-09 · Staff web: per-facility letterhead, footer text and print profile settings (admin)
+  - requirements: WEB-09, CLN-07
+  - scope: apps/staff-web/src/features/print/settings
+  - depends: PRINT-02
+  - details:
+    1. Read `features/admin` for the settings pattern.
+    2. Build an admin screen for the letterhead (facility name, address, logo reference), the footer text, the default language and paper size. Changes have an effective date and keep history.
+    3. Tests: a logo that is not an approved asset is refused, history is kept, forbidden for non-admin roles, English and Arabic.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] PRINT-10 · Browser test: a clinician prints a prescription, a lab order and a chart summary in English and Arabic
+  - requirements: WEB-09, RX-02, LAB-01
+  - scope: apps/staff-web/e2e/print
+  - depends: PRINT-08
+  - details:
+    1. Read the existing browser tests under `apps/staff-web/e2e` and their fixtures.
+    2. Write one journey: sign a prescription, print the patient copy; place a lab order, print the sheet; print a chart summary. Repeat in Arabic. Check the preview, the reason requirement, the audit entry through the API stub, and that a draft cannot print.
+    3. Tests must not need a real printer: use the browser's PDF output.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] PRINT-11 · Patient app: show handouts the clinician released, and save or share them
+  - requirements: PAT-02, CLN-07
+  - scope: apps/patient-mobile/src/features/handouts
+  - depends: PRINT-02
+  - details:
+    1. Read `apps/patient-mobile/src/features` and the released reports screen.
+    2. Add a list of handouts (prescription, order sheet, chart summary) the clinician released to the patient, with date and a Corrected note when a newer version replaces one. The patient can view and save or share a copy.
+    3. No clinical content is cached after sign-out. Each download is checked as with reports.
+    4. Tests: replaced version is marked, withheld handouts are absent, sign-out clears them, Arabic and right-to-left.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] PRINT-12 · Docs: printing guide, print permission matrix and user acceptance scenario
+  - requirements: CLN-07, RX-02, LAB-01
+  - scope: docs/operations/printing
+  - details:
+    1. Write `docs/operations/printing/README.md`: what can be printed, from where, who may print, the refusal rules (drafts, withheld results), reprints and the audit entry.
+    2. Write `docs/operations/printing/permissions.md` as a table of role against kind, and `docs/operations/printing/uat.md` with the clinician scenario in plain steps.
+    3. Do not create any folder named after a task or requirement id.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
 ## Frontend and design foundations (swarm tasks)
 
 Independent modules scoped to their own paths so workers cannot collide with backend work.
