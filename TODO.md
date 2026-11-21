@@ -53,6 +53,3695 @@ Current source state (2026-11-19T07:19Z, from `main` at `311d69a`): 7 Flyway mig
     4. Tests: adding a new feature route does not change the result of either test; a duplicate pattern still fails.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
+<<<<<<< HEAD
+=======
+## Start now: independent tasks (new files only, no dependencies)
+
+Each task adds new files in its own folder, depends on nothing and does not touch a file another open task owns, so the swarm can run all of them at once while the pull request queue drains.
+
+- [-] START-01 · Staff web: English and Arabic message parity test across every feature
+  - agent: swarm-3
+  - attempts: 1
+  - requirements: UX-01
+  - scope: apps/staff-web/tests/messageParity.test.ts
+  - details:
+    1. Find every message bundle in `apps/staff-web/src`: `i18n/messages.ts`, each `features/*/messages.ts` and `components/stateViewMessages.ts`. Read how each one exposes its English and Arabic strings.
+    2. Write one test file that loads all of them and checks, for each bundle: English and Arabic have exactly the same keys; no value is empty; every `{placeholder}` in the English text appears in the Arabic text and the other way round; every Arabic value contains at least one Arabic letter unless it is a code, a number or a brand name listed in an allow list at the top of the test.
+    3. The failure message names the bundle and the key, so a reader knows what to fix. Do not change any bundle: if the test finds a real gap, list it in your notes and put the key in the allow list with a comment `// TODO fix in a separate task`.
+    4. Tests: a deliberately broken sample bundle written inside the test (missing Arabic key, missing placeholder) makes the check fail, and the real bundles pass.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+- [-] START-02 · Patient app: English and Arabic message parity test
+  - agent: swarm-4
+  - attempts: 1
+  - requirements: UX-01, PAT-01
+  - scope: apps/patient-mobile/src/app/messageParity.test.ts
+  - details:
+    1. Find every message bundle in `apps/patient-mobile/src` (`app/messages.ts`, `features/*/messages.ts`). Read `jest.config.ts` so the new test runs with the normal test command.
+    2. Write one test that checks, for each bundle: English and Arabic have the same keys, no empty values, the same `{placeholder}` names in both, and Arabic values contain Arabic letters unless they are codes or numbers listed in an allow list at the top.
+    3. Do not change any bundle; list real gaps in your notes and allow-list them with a comment.
+    4. Tests: a broken sample bundle written inside the test fails the check, and the real bundles pass.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+- [-] START-03 · API: OpenAPI contract rules as a unit test
+  - agent: swarm-5
+  - attempts: 1
+  - requirements: OPS-05, IAM-01, WEB-04
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/contract/OpenApiContractRulesTest.java
+  - details:
+    1. Find the contract file the staff web client is generated from (`npm run gen:api:check` in `apps/staff-web` names it; it is under `contracts/`). Read it and `contracts/README.md`.
+    2. Write a plain JUnit test that parses the file with the YAML library already on the test classpath (Spring Boot brings SnakeYAML). Do NOT add a dependency; if SnakeYAML is not on the classpath, stop and say so.
+    3. Rules to assert on every operation: it has a unique `operationId`; it has a summary and at least one tag; a secured operation documents 401 and 403; no path or query parameter is named like a tenant or organization (the tenant comes from the session); every POST, PUT, PATCH and DELETE operation either declares the `Idempotency-Key` header or is on a short allow list in the test with a comment saying why.
+    4. Tests: a small invalid contract held as a string in the test fails each rule once, and the real contract passes. If the real contract breaks a rule, put the operation on the allow list with `// TODO` and list it in your notes; do not edit the contract.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+- [-] START-04 · Docs: operator runbooks for incident response, key rotation, on-call handover and a bad deploy
+  - agent: swarm-6
+  - attempts: 1
+  - requirements: OPS-01, OPS-03, OPS-04, OPS-07
+  - scope: docs/operations/runbooks
+  - details:
+    1. Read `docs/operations/recovery/runbook.md`, `docs/operations/production-readiness/launch-checklist.md`, `SMARTCLINIC_V1_SPEC.md` (OPS requirements) and the existing code that handles secrets, logging and alerts.
+    2. Write four short runbooks under `docs/operations/runbooks/` plus an `index.md`: incident response (severity, who is called, first 15 minutes, patient-safety escalation, evidence to keep), secret and key rotation (what rotates, how often, how to check nothing broke), on-call handover (what the outgoing person writes, open alerts, what is on fire), and a bad deploy (how to tell, roll back, roll forward, what to tell users).
+    3. Each runbook has: when to use it, who may act, numbered steps a tired person can follow, how to check it worked, and what to record. Use only what the repository really does; where a step needs a tool or contact that does not exist yet, write `NOT YET IN PLACE:` and the gap instead of inventing it.
+    4. Do not edit any shared index: START-18 links this page. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+- [-] START-05 · Docs: one task guide per role (reception, clinician, laboratory, radiology, finance, administrator, patient)
+  - agent: swarm-7
+  - attempts: 1
+  - requirements: PRD-01, UX-01
+  - scope: docs/guides
+  - details:
+    1. Read `docs/design/approved/README.md`, the screens in `apps/staff-web/src/features` and `apps/patient-mobile/src`, and the role names in `apps/staff-web/src/app/navigation.ts`.
+    2. Write one page per role under `docs/guides/` plus an `index.md`. Each page lists the five to eight things that role does most, as numbered steps with the screen name and the button or field names exactly as the interface says them, and what the person should see when it worked.
+    3. Describe only screens that exist in the code today; mark a planned screen with `PLANNED:` and the task id from TODO.md. Plain language, short sentences, no patient data.
+    4. Do not edit `docs/reference/index.md`: START-18 links this page. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+- [-] START-06 · Docs: data dictionary built from the migrations
+  - agent: swarm-8
+  - attempts: 1
+  - requirements: ARC-01, ARC-02, OPS-06
+  - scope: docs/reference/data-dictionary.md
+  - details:
+    1. Read every file in `db/migrations` in version order (V1 to the newest) and `scripts/check-migrations.py` for the rules the migrations follow.
+    2. Write `docs/reference/data-dictionary.md`: one section per table with its purpose in one line, columns with type and meaning, keys and constraints, whether it is append-only or row-level-secured by tenant, and the migration version that created or last changed it. Group tables by area (identity, scheduling, chart, exchange, finance, messaging and so on).
+    3. State at the top the newest migration version the dictionary covers. Where a column's meaning is not clear from the migration, write `UNCLEAR:` and the question; do not guess.
+    4. Do not edit `docs/reference/index.md`: START-18 links this page. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+- [-] START-07 · Docs: threat model for the staff web, the patient app and the API
+  - agent: swarm-9
+  - attempts: 1
+  - requirements: IAM-01, ARC-02, OPS-02, WEB-04
+  - scope: docs/security/threat-model.md, docs/security/README.md
+  - details:
+    1. Read `SMARTCLINIC_V1_SPEC.md` (security and privacy requirements), `docs/decisions`, the authorization, tenancy, audit and web packages under `apps/api/src/main/java`, and the web security configuration.
+    2. Write `docs/security/threat-model.md` with a diagram-free table per area (staff web, patient app, API, database, background workers, partner exchange): assets, who can attack it, the main threats (spoofing, tampering, repudiation, disclosure, denial of service, elevation of privilege), the control that already exists with the file that implements it, and what is missing.
+    3. Every control you cite must name a real file or test; every gap becomes a line `GAP:` with a suggested task title. Do not describe controls that are not in the code.
+    4. Create `docs/security/README.md` as an index of the security pages (it lives in your scope folder). Do not edit `docs/reference/index.md`: START-18 links it. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+## Start now, part 2: more independent tasks (new files only, no dependencies)
+
+Same rules as the first group. The documentation tasks do not edit the shared index; START-18 links them all at the end.
+
+- [-] START-08 · API: OpenAPI pagination rules as a unit test
+  - agent: swarm-10
+  - attempts: 1
+  - requirements: OPS-05, WEB-09
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/contract/OpenApiPaginationRulesTest.java
+  - details:
+    1. Find the contract file the staff web client is generated from (`npm run gen:api:check` in `apps/staff-web` names it; it is under `contracts/`). Read it and the list endpoints in the API controllers.
+    2. Write a plain JUnit test that parses the contract with SnakeYAML (already on the test classpath through Spring Boot; if it is not, stop and say so). For every GET operation that returns a list, assert that it uses the same cursor and limit parameter names as the other list endpoints, that the limit has a maximum, and that the response carries the same next-cursor field.
+    3. Put an operation that breaks a rule on a short allow list inside the test with `// TODO` and list it in your notes. Do not edit the contract or any controller.
+    4. Tests: a small invalid contract held as a string fails each rule once, and the real contract passes.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+- [-] START-09 · API: OpenAPI error response rules as a unit test
+  - agent: swarm-1
+  - attempts: 1
+  - requirements: WEB-04, UX-01
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/contract/OpenApiErrorRulesTest.java
+  - details:
+    1. Find the contract file the staff web client is generated from (`npm run gen:api:check` in `apps/staff-web` names it; it is under `contracts/`). Read how the API reports errors in `apps/api/src/main/java/com/aurevia/smartclinic/web`.
+    2. Write a plain JUnit test that parses the contract with SnakeYAML (already on the test classpath; if not, stop and say so). Assert that every 4xx and 5xx response uses one shared error schema, that the schema has a stable machine code and a correlation id, and that no error example contains a name, an e-mail address, a patient identifier or a stack trace.
+    3. Put an operation that breaks a rule on a short allow list inside the test with `// TODO` and list it in your notes. Do not edit the contract or any controller.
+    4. Tests: a small invalid contract held as a string fails each rule once, and the real contract passes.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+- [ ] START-10 · Docs: bilingual glossary of clinical and product terms
+  - requirements: UX-01, PRD-01
+  - scope: docs/reference/glossary.md
+  - details:
+    1. Read `SMARTCLINIC_V1_SPEC.md`, every `messages.ts` in `apps/staff-web/src` and `apps/patient-mobile/src`, and the domain names in `apps/api/src/main/java`.
+    2. Write `docs/reference/glossary.md`: a table of terms with the English term, the Arabic term the interface uses (copied from the message files, never invented), a one-line plain meaning, and the code name where one exists (for example the Java class or table).
+    3. Where the English and Arabic interfaces use two different words for one idea, or two ideas share one word, list it under `## Inconsistencies` with the file names. Do not fix any message file.
+    4. Do not edit `docs/reference/index.md`: START-18 links every new page, so two tasks never edit the same index line.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+- [ ] START-11 · Docs: Arabic interface style guide
+  - requirements: UX-01
+  - scope: docs/design/arabic-style-guide.md
+  - details:
+    1. Read `docs/design` (the right-to-left and accessibility documents), the Arabic strings in every `messages.ts` under `apps/staff-web/src` and `apps/patient-mobile/src`, and `docs/design/approved/README.md`.
+    2. Write `docs/design/arabic-style-guide.md`: tone and form of address, how numbers, dates, times and units are shown (and which numerals the product uses today), how mixed Arabic and Latin text such as drug names and codes is written, punctuation and quotation rules, how buttons, errors and confirmations are worded, and what must never be translated (codes, identifiers, drug names).
+    3. Take every rule from what the message files and design documents already do, and cite the file. Where the product is inconsistent, write `INCONSISTENT:` and the files, and do not choose a side.
+    4. Do not edit `docs/reference/index.md`: START-18 links every new page, so two tasks never edit the same index line.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+- [ ] START-12 · Docs: service level objectives and alert thresholds
+  - requirements: OPS-03, OPS-05
+  - scope: docs/operations/slo.md
+  - details:
+    1. Read the OPS requirements in `SMARTCLINIC_V1_SPEC.md`, `docs/operations/production-readiness`, and the metrics and health code in `apps/api/src/main/java/com/aurevia/smartclinic/observability`.
+    2. Write `docs/operations/slo.md`: one table of objectives (availability, API read and command latency, recovery point and time, critical-result acknowledgment time, partner delivery age, queue age), each with the exact target from the specification, how it is measured, the metric or log that measures it today, and the alert threshold and who is called.
+    3. Where the code does not measure something yet, write `NOT MEASURED YET:` with a suggested task title. Do not invent a metric name that is not in the code.
+    4. Do not edit `docs/reference/index.md`: START-18 links every new page, so two tasks never edit the same index line.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+- [ ] START-13 · Docs: partner integration guide for the exchange API
+  - requirements: XCH-01, XCH-05, WEB-04
+  - scope: docs/reference/partner-api-guide.md
+  - details:
+    1. Read the exchange, results and orders parts of the contract under `contracts/`, the code in `apps/api/src/main/java/com/aurevia/smartclinic/exchange`, and `docs/reference/maintainer.md`.
+    2. Write `docs/reference/partner-api-guide.md` for a laboratory or imaging partner: how a request is authenticated, how a tenant is chosen, the order and result lifecycle with every state and what moves it, idempotency and retry rules, how errors look, what a partner may rely on and what it must not, and one worked example with invented values.
+    3. Use only behaviour that exists in the contract and code; mark anything planned `PLANNED:` with the task id from TODO.md. Never put a real endpoint host, key or patient value in an example.
+    4. Do not edit `docs/reference/index.md`: START-18 links every new page, so two tasks never edit the same index line.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+- [ ] START-14 · Docs: catalogue of the synthetic test data
+  - requirements: OPS-06, ARC-02
+  - scope: docs/reference/synthetic-data.md
+  - details:
+    1. Read the test fixtures and seed data in `apps/api/src/test`, `apps/staff-web/tests` and `apps/patient-mobile`, and `scripts/check-secrets.py` for what must never appear.
+    2. Write `docs/reference/synthetic-data.md`: the invented tenants, facilities, staff, patients and orders the tests use, which identifiers are reserved for tests, the naming rules that make fake data obvious, and how to add a new fixture safely.
+    3. List only data that exists; for each item name the file. Do not copy a value that looks like a real person, phone number, e-mail address or identifier: describe the pattern instead.
+    4. Do not edit `docs/reference/index.md`: START-18 links every new page, so two tasks never edit the same index line.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+- [ ] START-15 · Docs: personal data inventory (what is stored, where, how long)
+  - requirements: OPS-01, ARC-03, PAT-03
+  - scope: docs/security/data-inventory.md
+  - details:
+    1. Read the migrations in `db/migrations`, the retention and export code in `apps/api/src/main/java/com/aurevia/smartclinic/tenant`, and the privacy and retention requirements in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/security/data-inventory.md`: for each table that holds personal or clinical data, the kind of data in plain words, the people who can read it (role names from the code), whether it is append-only, whether it is covered by tenant export and by retention, and the audit events that record access.
+    3. State at the top the newest migration version covered. Where retention or export is not implemented for a table, write `NOT YET:` and a suggested task title. This is an engineering inventory for a privacy officer to review, not legal advice; say so at the top.
+    4. Do not edit `docs/reference/index.md`: START-18 links every new page, so two tasks never edit the same index line.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+- [ ] START-16 · Docs: restore and failure drill scripts for the operations team
+  - requirements: OPS-04, OPS-07
+  - scope: docs/operations/exercises
+  - details:
+    1. Read `docs/operations/recovery/runbook.md`, `docs/operations/recovery/drill-evidence.md` and `docs/operations/production-readiness/launch-checklist.md`.
+    2. Write three exercise sheets under `docs/operations/exercises/` plus an `index.md`: a database restore drill, a partner outage drill (results stop arriving, orders pile up) and a lost-credential drill. Each sheet has the goal, who takes part, a timed script with injects, the questions the facilitator asks, the evidence to capture, and the pass criteria taken from the recovery targets in the specification.
+    3. Use only tools and commands the repository really has; where a step needs something that does not exist, write `NOT YET IN PLACE:` and the gap. Do not run any drill.
+    4. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+- [ ] START-17 · Docs: testing guide (every check, what it proves, how to run it)
+  - requirements: OPS-06, WEB-09
+  - scope: docs/reference/testing-guide.md
+  - details:
+    1. Read `scripts/check.sh`, `scripts/worker-check.sh`, `scripts/quick-check.sh`, `apps/api/check.sh`, `apps/staff-web/check.sh`, `apps/patient-mobile/check.sh` and the files they call.
+    2. Write `docs/reference/testing-guide.md`: a table with every check (name, command, what it proves, how long it takes, what a failure usually means and the first thing to try), then a short section on which checks run where: on a developer machine, in a worker, in the pull request run and in the integrator.
+    3. Take every fact from the scripts and cite the script name. Do not change any script.
+    4. Do not edit `docs/reference/index.md`: START-18 links every new page, so two tasks never edit the same index line.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+- [ ] START-18 · Docs: link every new guide, runbook and reference page from the documentation index
+  - requirements: PRD-01
+  - scope: docs/reference/index.md
+  - depends: START-04, START-05, START-06, START-07, START-10, START-11, START-12, START-13, START-14, START-15, START-16, START-17
+  - details:
+    1. Read `docs/reference/index.md` and list which of these pages exist now: `docs/operations/runbooks/index.md`, `docs/guides/index.md`, `docs/reference/data-dictionary.md`, `docs/security/README.md`, `docs/reference/glossary.md`, `docs/design/arabic-style-guide.md`, `docs/operations/slo.md`, `docs/reference/partner-api-guide.md`, `docs/reference/synthetic-data.md`, `docs/security/data-inventory.md`, `docs/operations/exercises/index.md`, `docs/reference/testing-guide.md`.
+    2. Add one line for each page that exists and is not already linked, with a one-line description, in the section where it fits. Do not add a link to a page that does not exist.
+    3. Run `python3 -I scripts/check-docs.py` and paste the result.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+## Start now, part 3a: one module guide per API package (new documentation files only)
+
+Each task reads one package and writes one page. They share no files, so they all run at once.
+
+- [ ] START-19 · Docs: module guide for the API package `api`
+  - requirements: WEB-04
+  - scope: docs/reference/modules/api-api.md
+  - details:
+    1. Read every class in `apps/api/src/main/java/com/aurevia/smartclinic/api` and its tests under `apps/api/src/test/java/com/aurevia/smartclinic/api`, the migrations and contract paths it uses, and `docs/reference/maintainer.md`.
+    2. Write `docs/reference/modules/api-api.md`: what the package is for in two sentences; a table of its entry points (controller routes, commands, scheduled jobs, event handlers) with the role that may call each; the tables it reads and writes (from the migrations); the events it publishes or consumes; the tests that cover it; and what other packages it depends on.
+    3. Take every fact from the code and cite the file. Where the package does something surprising or has a known weakness, add it under `## Things to know`. Do not change any code.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-20 · Docs: module guide for the API package `audit`
+  - requirements: OPS-02
+  - scope: docs/reference/modules/api-audit.md
+  - details:
+    1. Read every class in `apps/api/src/main/java/com/aurevia/smartclinic/audit` and its tests under `apps/api/src/test/java/com/aurevia/smartclinic/audit`, the migrations and contract paths it uses, and `docs/reference/maintainer.md`.
+    2. Write `docs/reference/modules/api-audit.md`: what the package is for in two sentences; a table of its entry points (controller routes, commands, scheduled jobs, event handlers) with the role that may call each; the tables it reads and writes (from the migrations); the events it publishes or consumes; the tests that cover it; and what other packages it depends on.
+    3. Take every fact from the code and cite the file. Where the package does something surprising or has a known weakness, add it under `## Things to know`. Do not change any code.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-21 · Docs: module guide for the API package `authz`
+  - requirements: IAM-01
+  - scope: docs/reference/modules/api-authz.md
+  - details:
+    1. Read every class in `apps/api/src/main/java/com/aurevia/smartclinic/authz` and its tests under `apps/api/src/test/java/com/aurevia/smartclinic/authz`, the migrations and contract paths it uses, and `docs/reference/maintainer.md`.
+    2. Write `docs/reference/modules/api-authz.md`: what the package is for in two sentences; a table of its entry points (controller routes, commands, scheduled jobs, event handlers) with the role that may call each; the tables it reads and writes (from the migrations); the events it publishes or consumes; the tests that cover it; and what other packages it depends on.
+    3. Take every fact from the code and cite the file. Where the package does something surprising or has a known weakness, add it under `## Things to know`. Do not change any code.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-22 · Docs: module guide for the API package `catalog`
+  - requirements: ADM-01
+  - scope: docs/reference/modules/api-catalog.md
+  - details:
+    1. Read every class in `apps/api/src/main/java/com/aurevia/smartclinic/catalog` and its tests under `apps/api/src/test/java/com/aurevia/smartclinic/catalog`, the migrations and contract paths it uses, and `docs/reference/maintainer.md`.
+    2. Write `docs/reference/modules/api-catalog.md`: what the package is for in two sentences; a table of its entry points (controller routes, commands, scheduled jobs, event handlers) with the role that may call each; the tables it reads and writes (from the migrations); the events it publishes or consumes; the tests that cover it; and what other packages it depends on.
+    3. Take every fact from the code and cite the file. Where the package does something surprising or has a known weakness, add it under `## Things to know`. Do not change any code.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-23 · Docs: module guide for the API package `chart`
+  - requirements: CLN-07
+  - scope: docs/reference/modules/api-chart.md
+  - details:
+    1. Read every class in `apps/api/src/main/java/com/aurevia/smartclinic/chart` and its tests under `apps/api/src/test/java/com/aurevia/smartclinic/chart`, the migrations and contract paths it uses, and `docs/reference/maintainer.md`.
+    2. Write `docs/reference/modules/api-chart.md`: what the package is for in two sentences; a table of its entry points (controller routes, commands, scheduled jobs, event handlers) with the role that may call each; the tables it reads and writes (from the migrations); the events it publishes or consumes; the tests that cover it; and what other packages it depends on.
+    3. Take every fact from the code and cite the file. Where the package does something surprising or has a known weakness, add it under `## Things to know`. Do not change any code.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-24 · Docs: module guide for the API package `clinical`
+  - requirements: CLN-06
+  - scope: docs/reference/modules/api-clinical.md
+  - details:
+    1. Read every class in `apps/api/src/main/java/com/aurevia/smartclinic/clinical` and its tests under `apps/api/src/test/java/com/aurevia/smartclinic/clinical`, the migrations and contract paths it uses, and `docs/reference/maintainer.md`.
+    2. Write `docs/reference/modules/api-clinical.md`: what the package is for in two sentences; a table of its entry points (controller routes, commands, scheduled jobs, event handlers) with the role that may call each; the tables it reads and writes (from the migrations); the events it publishes or consumes; the tests that cover it; and what other packages it depends on.
+    3. Take every fact from the code and cite the file. Where the package does something surprising or has a known weakness, add it under `## Things to know`. Do not change any code.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-25 · Docs: module guide for the API package `config`
+  - requirements: ADM-01
+  - scope: docs/reference/modules/api-config.md
+  - details:
+    1. Read every class in `apps/api/src/main/java/com/aurevia/smartclinic/config` and its tests under `apps/api/src/test/java/com/aurevia/smartclinic/config`, the migrations and contract paths it uses, and `docs/reference/maintainer.md`.
+    2. Write `docs/reference/modules/api-config.md`: what the package is for in two sentences; a table of its entry points (controller routes, commands, scheduled jobs, event handlers) with the role that may call each; the tables it reads and writes (from the migrations); the events it publishes or consumes; the tests that cover it; and what other packages it depends on.
+    3. Take every fact from the code and cite the file. Where the package does something surprising or has a known weakness, add it under `## Things to know`. Do not change any code.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-26 · Docs: module guide for the API package `configuration`
+  - requirements: ADM-01
+  - scope: docs/reference/modules/api-configuration.md
+  - details:
+    1. Read every class in `apps/api/src/main/java/com/aurevia/smartclinic/configuration` and its tests under `apps/api/src/test/java/com/aurevia/smartclinic/configuration`, the migrations and contract paths it uses, and `docs/reference/maintainer.md`.
+    2. Write `docs/reference/modules/api-configuration.md`: what the package is for in two sentences; a table of its entry points (controller routes, commands, scheduled jobs, event handlers) with the role that may call each; the tables it reads and writes (from the migrations); the events it publishes or consumes; the tests that cover it; and what other packages it depends on.
+    3. Take every fact from the code and cite the file. Where the package does something surprising or has a known weakness, add it under `## Things to know`. Do not change any code.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-27 · Docs: module guide for the API package `documents`
+  - requirements: CLN-07
+  - scope: docs/reference/modules/api-documents.md
+  - details:
+    1. Read every class in `apps/api/src/main/java/com/aurevia/smartclinic/documents` and its tests under `apps/api/src/test/java/com/aurevia/smartclinic/documents`, the migrations and contract paths it uses, and `docs/reference/maintainer.md`.
+    2. Write `docs/reference/modules/api-documents.md`: what the package is for in two sentences; a table of its entry points (controller routes, commands, scheduled jobs, event handlers) with the role that may call each; the tables it reads and writes (from the migrations); the events it publishes or consumes; the tests that cover it; and what other packages it depends on.
+    3. Take every fact from the code and cite the file. Where the package does something surprising or has a known weakness, add it under `## Things to know`. Do not change any code.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-28 · Docs: module guide for the API package `events`
+  - requirements: OPS-05
+  - scope: docs/reference/modules/api-events.md
+  - details:
+    1. Read every class in `apps/api/src/main/java/com/aurevia/smartclinic/events` and its tests under `apps/api/src/test/java/com/aurevia/smartclinic/events`, the migrations and contract paths it uses, and `docs/reference/maintainer.md`.
+    2. Write `docs/reference/modules/api-events.md`: what the package is for in two sentences; a table of its entry points (controller routes, commands, scheduled jobs, event handlers) with the role that may call each; the tables it reads and writes (from the migrations); the events it publishes or consumes; the tests that cover it; and what other packages it depends on.
+    3. Take every fact from the code and cite the file. Where the package does something surprising or has a known weakness, add it under `## Things to know`. Do not change any code.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-29 · Docs: module guide for the API package `exchange`
+  - requirements: XCH-01
+  - scope: docs/reference/modules/api-exchange.md
+  - details:
+    1. Read every class in `apps/api/src/main/java/com/aurevia/smartclinic/exchange` and its tests under `apps/api/src/test/java/com/aurevia/smartclinic/exchange`, the migrations and contract paths it uses, and `docs/reference/maintainer.md`.
+    2. Write `docs/reference/modules/api-exchange.md`: what the package is for in two sentences; a table of its entry points (controller routes, commands, scheduled jobs, event handlers) with the role that may call each; the tables it reads and writes (from the migrations); the events it publishes or consumes; the tests that cover it; and what other packages it depends on.
+    3. Take every fact from the code and cite the file. Where the package does something surprising or has a known weakness, add it under `## Things to know`. Do not change any code.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-30 · Docs: module guide for the API package `finance`
+  - requirements: FIN-01
+  - scope: docs/reference/modules/api-finance.md
+  - details:
+    1. Read every class in `apps/api/src/main/java/com/aurevia/smartclinic/finance` and its tests under `apps/api/src/test/java/com/aurevia/smartclinic/finance`, the migrations and contract paths it uses, and `docs/reference/maintainer.md`.
+    2. Write `docs/reference/modules/api-finance.md`: what the package is for in two sentences; a table of its entry points (controller routes, commands, scheduled jobs, event handlers) with the role that may call each; the tables it reads and writes (from the migrations); the events it publishes or consumes; the tests that cover it; and what other packages it depends on.
+    3. Take every fact from the code and cite the file. Where the package does something surprising or has a known weakness, add it under `## Things to know`. Do not change any code.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-31 · Docs: module guide for the API package `lab`
+  - requirements: LAB-01
+  - scope: docs/reference/modules/api-lab.md
+  - details:
+    1. Read every class in `apps/api/src/main/java/com/aurevia/smartclinic/lab` and its tests under `apps/api/src/test/java/com/aurevia/smartclinic/lab`, the migrations and contract paths it uses, and `docs/reference/maintainer.md`.
+    2. Write `docs/reference/modules/api-lab.md`: what the package is for in two sentences; a table of its entry points (controller routes, commands, scheduled jobs, event handlers) with the role that may call each; the tables it reads and writes (from the migrations); the events it publishes or consumes; the tests that cover it; and what other packages it depends on.
+    3. Take every fact from the code and cite the file. Where the package does something surprising or has a known weakness, add it under `## Things to know`. Do not change any code.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-32 · Docs: module guide for the API package `messaging`
+  - requirements: MSG-01
+  - scope: docs/reference/modules/api-messaging.md
+  - details:
+    1. Read every class in `apps/api/src/main/java/com/aurevia/smartclinic/messaging` and its tests under `apps/api/src/test/java/com/aurevia/smartclinic/messaging`, the migrations and contract paths it uses, and `docs/reference/maintainer.md`.
+    2. Write `docs/reference/modules/api-messaging.md`: what the package is for in two sentences; a table of its entry points (controller routes, commands, scheduled jobs, event handlers) with the role that may call each; the tables it reads and writes (from the migrations); the events it publishes or consumes; the tests that cover it; and what other packages it depends on.
+    3. Take every fact from the code and cite the file. Where the package does something surprising or has a known weakness, add it under `## Things to know`. Do not change any code.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-33 · Docs: module guide for the API package `observability`
+  - requirements: OPS-05
+  - scope: docs/reference/modules/api-observability.md
+  - details:
+    1. Read every class in `apps/api/src/main/java/com/aurevia/smartclinic/observability` and its tests under `apps/api/src/test/java/com/aurevia/smartclinic/observability`, the migrations and contract paths it uses, and `docs/reference/maintainer.md`.
+    2. Write `docs/reference/modules/api-observability.md`: what the package is for in two sentences; a table of its entry points (controller routes, commands, scheduled jobs, event handlers) with the role that may call each; the tables it reads and writes (from the migrations); the events it publishes or consumes; the tests that cover it; and what other packages it depends on.
+    3. Take every fact from the code and cite the file. Where the package does something surprising or has a known weakness, add it under `## Things to know`. Do not change any code.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-34 · Docs: module guide for the API package `patient`
+  - requirements: PAT-01
+  - scope: docs/reference/modules/api-patient.md
+  - details:
+    1. Read every class in `apps/api/src/main/java/com/aurevia/smartclinic/patient` and its tests under `apps/api/src/test/java/com/aurevia/smartclinic/patient`, the migrations and contract paths it uses, and `docs/reference/maintainer.md`.
+    2. Write `docs/reference/modules/api-patient.md`: what the package is for in two sentences; a table of its entry points (controller routes, commands, scheduled jobs, event handlers) with the role that may call each; the tables it reads and writes (from the migrations); the events it publishes or consumes; the tests that cover it; and what other packages it depends on.
+    3. Take every fact from the code and cite the file. Where the package does something surprising or has a known weakness, add it under `## Things to know`. Do not change any code.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-35 · Docs: module guide for the API package `prescription`
+  - requirements: RX-01
+  - scope: docs/reference/modules/api-prescription.md
+  - details:
+    1. Read every class in `apps/api/src/main/java/com/aurevia/smartclinic/prescription` and its tests under `apps/api/src/test/java/com/aurevia/smartclinic/prescription`, the migrations and contract paths it uses, and `docs/reference/maintainer.md`.
+    2. Write `docs/reference/modules/api-prescription.md`: what the package is for in two sentences; a table of its entry points (controller routes, commands, scheduled jobs, event handlers) with the role that may call each; the tables it reads and writes (from the migrations); the events it publishes or consumes; the tests that cover it; and what other packages it depends on.
+    3. Take every fact from the code and cite the file. Where the package does something surprising or has a known weakness, add it under `## Things to know`. Do not change any code.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-36 · Docs: module guide for the API package `radiology`
+  - requirements: RAD-01
+  - scope: docs/reference/modules/api-radiology.md
+  - details:
+    1. Read every class in `apps/api/src/main/java/com/aurevia/smartclinic/radiology` and its tests under `apps/api/src/test/java/com/aurevia/smartclinic/radiology`, the migrations and contract paths it uses, and `docs/reference/maintainer.md`.
+    2. Write `docs/reference/modules/api-radiology.md`: what the package is for in two sentences; a table of its entry points (controller routes, commands, scheduled jobs, event handlers) with the role that may call each; the tables it reads and writes (from the migrations); the events it publishes or consumes; the tests that cover it; and what other packages it depends on.
+    3. Take every fact from the code and cite the file. Where the package does something surprising or has a known weakness, add it under `## Things to know`. Do not change any code.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-37 · Docs: module guide for the API package `scheduling`
+  - requirements: CLN-01
+  - scope: docs/reference/modules/api-scheduling.md
+  - details:
+    1. Read every class in `apps/api/src/main/java/com/aurevia/smartclinic/scheduling` and its tests under `apps/api/src/test/java/com/aurevia/smartclinic/scheduling`, the migrations and contract paths it uses, and `docs/reference/maintainer.md`.
+    2. Write `docs/reference/modules/api-scheduling.md`: what the package is for in two sentences; a table of its entry points (controller routes, commands, scheduled jobs, event handlers) with the role that may call each; the tables it reads and writes (from the migrations); the events it publishes or consumes; the tests that cover it; and what other packages it depends on.
+    3. Take every fact from the code and cite the file. Where the package does something surprising or has a known weakness, add it under `## Things to know`. Do not change any code.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-38 · Docs: module guide for the API package `staff`
+  - requirements: IAM-02
+  - scope: docs/reference/modules/api-staff.md
+  - details:
+    1. Read every class in `apps/api/src/main/java/com/aurevia/smartclinic/staff` and its tests under `apps/api/src/test/java/com/aurevia/smartclinic/staff`, the migrations and contract paths it uses, and `docs/reference/maintainer.md`.
+    2. Write `docs/reference/modules/api-staff.md`: what the package is for in two sentences; a table of its entry points (controller routes, commands, scheduled jobs, event handlers) with the role that may call each; the tables it reads and writes (from the migrations); the events it publishes or consumes; the tests that cover it; and what other packages it depends on.
+    3. Take every fact from the code and cite the file. Where the package does something surprising or has a known weakness, add it under `## Things to know`. Do not change any code.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-39 · Docs: module guide for the API package `tenancy`
+  - requirements: ARC-02
+  - scope: docs/reference/modules/api-tenancy.md
+  - details:
+    1. Read every class in `apps/api/src/main/java/com/aurevia/smartclinic/tenancy` and its tests under `apps/api/src/test/java/com/aurevia/smartclinic/tenancy`, the migrations and contract paths it uses, and `docs/reference/maintainer.md`.
+    2. Write `docs/reference/modules/api-tenancy.md`: what the package is for in two sentences; a table of its entry points (controller routes, commands, scheduled jobs, event handlers) with the role that may call each; the tables it reads and writes (from the migrations); the events it publishes or consumes; the tests that cover it; and what other packages it depends on.
+    3. Take every fact from the code and cite the file. Where the package does something surprising or has a known weakness, add it under `## Things to know`. Do not change any code.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-40 · Docs: module guide for the API package `tenant`
+  - requirements: OPS-07
+  - scope: docs/reference/modules/api-tenant.md
+  - details:
+    1. Read every class in `apps/api/src/main/java/com/aurevia/smartclinic/tenant` and its tests under `apps/api/src/test/java/com/aurevia/smartclinic/tenant`, the migrations and contract paths it uses, and `docs/reference/maintainer.md`.
+    2. Write `docs/reference/modules/api-tenant.md`: what the package is for in two sentences; a table of its entry points (controller routes, commands, scheduled jobs, event handlers) with the role that may call each; the tables it reads and writes (from the migrations); the events it publishes or consumes; the tests that cover it; and what other packages it depends on.
+    3. Take every fact from the code and cite the file. Where the package does something surprising or has a known weakness, add it under `## Things to know`. Do not change any code.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-41 · Docs: module guide for the API package `therapy`
+  - requirements: PT-01
+  - scope: docs/reference/modules/api-therapy.md
+  - details:
+    1. Read every class in `apps/api/src/main/java/com/aurevia/smartclinic/therapy` and its tests under `apps/api/src/test/java/com/aurevia/smartclinic/therapy`, the migrations and contract paths it uses, and `docs/reference/maintainer.md`.
+    2. Write `docs/reference/modules/api-therapy.md`: what the package is for in two sentences; a table of its entry points (controller routes, commands, scheduled jobs, event handlers) with the role that may call each; the tables it reads and writes (from the migrations); the events it publishes or consumes; the tests that cover it; and what other packages it depends on.
+    3. Take every fact from the code and cite the file. Where the package does something surprising or has a known weakness, add it under `## Things to know`. Do not change any code.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-42 · Docs: module guide for the API package `web`
+  - requirements: WEB-04
+  - scope: docs/reference/modules/api-web.md
+  - details:
+    1. Read every class in `apps/api/src/main/java/com/aurevia/smartclinic/web` and its tests under `apps/api/src/test/java/com/aurevia/smartclinic/web`, the migrations and contract paths it uses, and `docs/reference/maintainer.md`.
+    2. Write `docs/reference/modules/api-web.md`: what the package is for in two sentences; a table of its entry points (controller routes, commands, scheduled jobs, event handlers) with the role that may call each; the tables it reads and writes (from the migrations); the events it publishes or consumes; the tests that cover it; and what other packages it depends on.
+    3. Take every fact from the code and cite the file. Where the package does something surprising or has a known weakness, add it under `## Things to know`. Do not change any code.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+
+## Start now, part 3b: negative-path tests per API package (one new test file each)
+
+Each task adds one new JUnit file for one package and changes no production code.
+
+- [ ] START-43 · API: negative-path and tenant-isolation tests for the package `api`
+  - requirements: WEB-04, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/api/ApiNegativePathsTest.java
+  - details:
+    1. Read the public services and controllers in `apps/api/src/main/java/com/aurevia/smartclinic/api` and the tests that already exist in `apps/api/src/test/java/com/aurevia/smartclinic/api`. List which failure paths they already cover.
+    2. Write one new test class `ApiNegativePathsTest` for the paths that are not covered yet: input that is missing, too long or malformed; a caller with the wrong role; an identifier that belongs to another tenant (the answer must look like not found, never reveal the record); a stale version; a repeated request with the same idempotency key. Use the fixtures and test style the neighbouring tests use.
+    3. Only assert behaviour the code has today. If you find a real bug (for example another tenant's record is readable), do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact call that shows it, and keep the pull request green.
+    4. Do not change production code, existing tests, the contract or a migration. Run the package's tests and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-44 · API: negative-path and tenant-isolation tests for the package `audit`
+  - requirements: OPS-02, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/audit/AuditNegativePathsTest.java
+  - details:
+    1. Read the public services and controllers in `apps/api/src/main/java/com/aurevia/smartclinic/audit` and the tests that already exist in `apps/api/src/test/java/com/aurevia/smartclinic/audit`. List which failure paths they already cover.
+    2. Write one new test class `AuditNegativePathsTest` for the paths that are not covered yet: input that is missing, too long or malformed; a caller with the wrong role; an identifier that belongs to another tenant (the answer must look like not found, never reveal the record); a stale version; a repeated request with the same idempotency key. Use the fixtures and test style the neighbouring tests use.
+    3. Only assert behaviour the code has today. If you find a real bug (for example another tenant's record is readable), do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact call that shows it, and keep the pull request green.
+    4. Do not change production code, existing tests, the contract or a migration. Run the package's tests and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-45 · API: negative-path and tenant-isolation tests for the package `authz`
+  - requirements: IAM-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/authz/AuthzNegativePathsTest.java
+  - details:
+    1. Read the public services and controllers in `apps/api/src/main/java/com/aurevia/smartclinic/authz` and the tests that already exist in `apps/api/src/test/java/com/aurevia/smartclinic/authz`. List which failure paths they already cover.
+    2. Write one new test class `AuthzNegativePathsTest` for the paths that are not covered yet: input that is missing, too long or malformed; a caller with the wrong role; an identifier that belongs to another tenant (the answer must look like not found, never reveal the record); a stale version; a repeated request with the same idempotency key. Use the fixtures and test style the neighbouring tests use.
+    3. Only assert behaviour the code has today. If you find a real bug (for example another tenant's record is readable), do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact call that shows it, and keep the pull request green.
+    4. Do not change production code, existing tests, the contract or a migration. Run the package's tests and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-46 · API: negative-path and tenant-isolation tests for the package `catalog`
+  - requirements: ADM-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/catalog/CatalogNegativePathsTest.java
+  - details:
+    1. Read the public services and controllers in `apps/api/src/main/java/com/aurevia/smartclinic/catalog` and the tests that already exist in `apps/api/src/test/java/com/aurevia/smartclinic/catalog`. List which failure paths they already cover.
+    2. Write one new test class `CatalogNegativePathsTest` for the paths that are not covered yet: input that is missing, too long or malformed; a caller with the wrong role; an identifier that belongs to another tenant (the answer must look like not found, never reveal the record); a stale version; a repeated request with the same idempotency key. Use the fixtures and test style the neighbouring tests use.
+    3. Only assert behaviour the code has today. If you find a real bug (for example another tenant's record is readable), do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact call that shows it, and keep the pull request green.
+    4. Do not change production code, existing tests, the contract or a migration. Run the package's tests and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-47 · API: negative-path and tenant-isolation tests for the package `chart`
+  - requirements: CLN-07, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/chart/ChartNegativePathsTest.java
+  - details:
+    1. Read the public services and controllers in `apps/api/src/main/java/com/aurevia/smartclinic/chart` and the tests that already exist in `apps/api/src/test/java/com/aurevia/smartclinic/chart`. List which failure paths they already cover.
+    2. Write one new test class `ChartNegativePathsTest` for the paths that are not covered yet: input that is missing, too long or malformed; a caller with the wrong role; an identifier that belongs to another tenant (the answer must look like not found, never reveal the record); a stale version; a repeated request with the same idempotency key. Use the fixtures and test style the neighbouring tests use.
+    3. Only assert behaviour the code has today. If you find a real bug (for example another tenant's record is readable), do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact call that shows it, and keep the pull request green.
+    4. Do not change production code, existing tests, the contract or a migration. Run the package's tests and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-48 · API: negative-path and tenant-isolation tests for the package `clinical`
+  - requirements: CLN-06, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/clinical/ClinicalNegativePathsTest.java
+  - details:
+    1. Read the public services and controllers in `apps/api/src/main/java/com/aurevia/smartclinic/clinical` and the tests that already exist in `apps/api/src/test/java/com/aurevia/smartclinic/clinical`. List which failure paths they already cover.
+    2. Write one new test class `ClinicalNegativePathsTest` for the paths that are not covered yet: input that is missing, too long or malformed; a caller with the wrong role; an identifier that belongs to another tenant (the answer must look like not found, never reveal the record); a stale version; a repeated request with the same idempotency key. Use the fixtures and test style the neighbouring tests use.
+    3. Only assert behaviour the code has today. If you find a real bug (for example another tenant's record is readable), do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact call that shows it, and keep the pull request green.
+    4. Do not change production code, existing tests, the contract or a migration. Run the package's tests and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-49 · API: negative-path and tenant-isolation tests for the package `config`
+  - requirements: ADM-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/config/ConfigNegativePathsTest.java
+  - details:
+    1. Read the public services and controllers in `apps/api/src/main/java/com/aurevia/smartclinic/config` and the tests that already exist in `apps/api/src/test/java/com/aurevia/smartclinic/config`. List which failure paths they already cover.
+    2. Write one new test class `ConfigNegativePathsTest` for the paths that are not covered yet: input that is missing, too long or malformed; a caller with the wrong role; an identifier that belongs to another tenant (the answer must look like not found, never reveal the record); a stale version; a repeated request with the same idempotency key. Use the fixtures and test style the neighbouring tests use.
+    3. Only assert behaviour the code has today. If you find a real bug (for example another tenant's record is readable), do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact call that shows it, and keep the pull request green.
+    4. Do not change production code, existing tests, the contract or a migration. Run the package's tests and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-50 · API: negative-path and tenant-isolation tests for the package `configuration`
+  - requirements: ADM-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/configuration/ConfigurationNegativePathsTest.java
+  - details:
+    1. Read the public services and controllers in `apps/api/src/main/java/com/aurevia/smartclinic/configuration` and the tests that already exist in `apps/api/src/test/java/com/aurevia/smartclinic/configuration`. List which failure paths they already cover.
+    2. Write one new test class `ConfigurationNegativePathsTest` for the paths that are not covered yet: input that is missing, too long or malformed; a caller with the wrong role; an identifier that belongs to another tenant (the answer must look like not found, never reveal the record); a stale version; a repeated request with the same idempotency key. Use the fixtures and test style the neighbouring tests use.
+    3. Only assert behaviour the code has today. If you find a real bug (for example another tenant's record is readable), do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact call that shows it, and keep the pull request green.
+    4. Do not change production code, existing tests, the contract or a migration. Run the package's tests and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-51 · API: negative-path and tenant-isolation tests for the package `documents`
+  - requirements: CLN-07, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/documents/DocumentsNegativePathsTest.java
+  - details:
+    1. Read the public services and controllers in `apps/api/src/main/java/com/aurevia/smartclinic/documents` and the tests that already exist in `apps/api/src/test/java/com/aurevia/smartclinic/documents`. List which failure paths they already cover.
+    2. Write one new test class `DocumentsNegativePathsTest` for the paths that are not covered yet: input that is missing, too long or malformed; a caller with the wrong role; an identifier that belongs to another tenant (the answer must look like not found, never reveal the record); a stale version; a repeated request with the same idempotency key. Use the fixtures and test style the neighbouring tests use.
+    3. Only assert behaviour the code has today. If you find a real bug (for example another tenant's record is readable), do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact call that shows it, and keep the pull request green.
+    4. Do not change production code, existing tests, the contract or a migration. Run the package's tests and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-52 · API: negative-path and tenant-isolation tests for the package `events`
+  - requirements: OPS-05, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/events/EventsNegativePathsTest.java
+  - details:
+    1. Read the public services and controllers in `apps/api/src/main/java/com/aurevia/smartclinic/events` and the tests that already exist in `apps/api/src/test/java/com/aurevia/smartclinic/events`. List which failure paths they already cover.
+    2. Write one new test class `EventsNegativePathsTest` for the paths that are not covered yet: input that is missing, too long or malformed; a caller with the wrong role; an identifier that belongs to another tenant (the answer must look like not found, never reveal the record); a stale version; a repeated request with the same idempotency key. Use the fixtures and test style the neighbouring tests use.
+    3. Only assert behaviour the code has today. If you find a real bug (for example another tenant's record is readable), do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact call that shows it, and keep the pull request green.
+    4. Do not change production code, existing tests, the contract or a migration. Run the package's tests and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-53 · API: negative-path and tenant-isolation tests for the package `exchange`
+  - requirements: XCH-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/exchange/ExchangeNegativePathsTest.java
+  - details:
+    1. Read the public services and controllers in `apps/api/src/main/java/com/aurevia/smartclinic/exchange` and the tests that already exist in `apps/api/src/test/java/com/aurevia/smartclinic/exchange`. List which failure paths they already cover.
+    2. Write one new test class `ExchangeNegativePathsTest` for the paths that are not covered yet: input that is missing, too long or malformed; a caller with the wrong role; an identifier that belongs to another tenant (the answer must look like not found, never reveal the record); a stale version; a repeated request with the same idempotency key. Use the fixtures and test style the neighbouring tests use.
+    3. Only assert behaviour the code has today. If you find a real bug (for example another tenant's record is readable), do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact call that shows it, and keep the pull request green.
+    4. Do not change production code, existing tests, the contract or a migration. Run the package's tests and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-54 · API: negative-path and tenant-isolation tests for the package `finance`
+  - requirements: FIN-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/finance/FinanceNegativePathsTest.java
+  - details:
+    1. Read the public services and controllers in `apps/api/src/main/java/com/aurevia/smartclinic/finance` and the tests that already exist in `apps/api/src/test/java/com/aurevia/smartclinic/finance`. List which failure paths they already cover.
+    2. Write one new test class `FinanceNegativePathsTest` for the paths that are not covered yet: input that is missing, too long or malformed; a caller with the wrong role; an identifier that belongs to another tenant (the answer must look like not found, never reveal the record); a stale version; a repeated request with the same idempotency key. Use the fixtures and test style the neighbouring tests use.
+    3. Only assert behaviour the code has today. If you find a real bug (for example another tenant's record is readable), do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact call that shows it, and keep the pull request green.
+    4. Do not change production code, existing tests, the contract or a migration. Run the package's tests and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-55 · API: negative-path and tenant-isolation tests for the package `lab`
+  - requirements: LAB-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/lab/LabNegativePathsTest.java
+  - details:
+    1. Read the public services and controllers in `apps/api/src/main/java/com/aurevia/smartclinic/lab` and the tests that already exist in `apps/api/src/test/java/com/aurevia/smartclinic/lab`. List which failure paths they already cover.
+    2. Write one new test class `LabNegativePathsTest` for the paths that are not covered yet: input that is missing, too long or malformed; a caller with the wrong role; an identifier that belongs to another tenant (the answer must look like not found, never reveal the record); a stale version; a repeated request with the same idempotency key. Use the fixtures and test style the neighbouring tests use.
+    3. Only assert behaviour the code has today. If you find a real bug (for example another tenant's record is readable), do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact call that shows it, and keep the pull request green.
+    4. Do not change production code, existing tests, the contract or a migration. Run the package's tests and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-56 · API: negative-path and tenant-isolation tests for the package `messaging`
+  - requirements: MSG-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/messaging/MessagingNegativePathsTest.java
+  - details:
+    1. Read the public services and controllers in `apps/api/src/main/java/com/aurevia/smartclinic/messaging` and the tests that already exist in `apps/api/src/test/java/com/aurevia/smartclinic/messaging`. List which failure paths they already cover.
+    2. Write one new test class `MessagingNegativePathsTest` for the paths that are not covered yet: input that is missing, too long or malformed; a caller with the wrong role; an identifier that belongs to another tenant (the answer must look like not found, never reveal the record); a stale version; a repeated request with the same idempotency key. Use the fixtures and test style the neighbouring tests use.
+    3. Only assert behaviour the code has today. If you find a real bug (for example another tenant's record is readable), do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact call that shows it, and keep the pull request green.
+    4. Do not change production code, existing tests, the contract or a migration. Run the package's tests and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-57 · API: negative-path and tenant-isolation tests for the package `observability`
+  - requirements: OPS-05, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/observability/ObservabilityNegativePathsTest.java
+  - details:
+    1. Read the public services and controllers in `apps/api/src/main/java/com/aurevia/smartclinic/observability` and the tests that already exist in `apps/api/src/test/java/com/aurevia/smartclinic/observability`. List which failure paths they already cover.
+    2. Write one new test class `ObservabilityNegativePathsTest` for the paths that are not covered yet: input that is missing, too long or malformed; a caller with the wrong role; an identifier that belongs to another tenant (the answer must look like not found, never reveal the record); a stale version; a repeated request with the same idempotency key. Use the fixtures and test style the neighbouring tests use.
+    3. Only assert behaviour the code has today. If you find a real bug (for example another tenant's record is readable), do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact call that shows it, and keep the pull request green.
+    4. Do not change production code, existing tests, the contract or a migration. Run the package's tests and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-58 · API: negative-path and tenant-isolation tests for the package `patient`
+  - requirements: PAT-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/patient/PatientNegativePathsTest.java
+  - details:
+    1. Read the public services and controllers in `apps/api/src/main/java/com/aurevia/smartclinic/patient` and the tests that already exist in `apps/api/src/test/java/com/aurevia/smartclinic/patient`. List which failure paths they already cover.
+    2. Write one new test class `PatientNegativePathsTest` for the paths that are not covered yet: input that is missing, too long or malformed; a caller with the wrong role; an identifier that belongs to another tenant (the answer must look like not found, never reveal the record); a stale version; a repeated request with the same idempotency key. Use the fixtures and test style the neighbouring tests use.
+    3. Only assert behaviour the code has today. If you find a real bug (for example another tenant's record is readable), do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact call that shows it, and keep the pull request green.
+    4. Do not change production code, existing tests, the contract or a migration. Run the package's tests and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-59 · API: negative-path and tenant-isolation tests for the package `prescription`
+  - requirements: RX-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/prescription/PrescriptionNegativePathsTest.java
+  - details:
+    1. Read the public services and controllers in `apps/api/src/main/java/com/aurevia/smartclinic/prescription` and the tests that already exist in `apps/api/src/test/java/com/aurevia/smartclinic/prescription`. List which failure paths they already cover.
+    2. Write one new test class `PrescriptionNegativePathsTest` for the paths that are not covered yet: input that is missing, too long or malformed; a caller with the wrong role; an identifier that belongs to another tenant (the answer must look like not found, never reveal the record); a stale version; a repeated request with the same idempotency key. Use the fixtures and test style the neighbouring tests use.
+    3. Only assert behaviour the code has today. If you find a real bug (for example another tenant's record is readable), do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact call that shows it, and keep the pull request green.
+    4. Do not change production code, existing tests, the contract or a migration. Run the package's tests and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-60 · API: negative-path and tenant-isolation tests for the package `radiology`
+  - requirements: RAD-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/radiology/RadiologyNegativePathsTest.java
+  - details:
+    1. Read the public services and controllers in `apps/api/src/main/java/com/aurevia/smartclinic/radiology` and the tests that already exist in `apps/api/src/test/java/com/aurevia/smartclinic/radiology`. List which failure paths they already cover.
+    2. Write one new test class `RadiologyNegativePathsTest` for the paths that are not covered yet: input that is missing, too long or malformed; a caller with the wrong role; an identifier that belongs to another tenant (the answer must look like not found, never reveal the record); a stale version; a repeated request with the same idempotency key. Use the fixtures and test style the neighbouring tests use.
+    3. Only assert behaviour the code has today. If you find a real bug (for example another tenant's record is readable), do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact call that shows it, and keep the pull request green.
+    4. Do not change production code, existing tests, the contract or a migration. Run the package's tests and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-61 · API: negative-path and tenant-isolation tests for the package `scheduling`
+  - requirements: CLN-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/scheduling/SchedulingNegativePathsTest.java
+  - details:
+    1. Read the public services and controllers in `apps/api/src/main/java/com/aurevia/smartclinic/scheduling` and the tests that already exist in `apps/api/src/test/java/com/aurevia/smartclinic/scheduling`. List which failure paths they already cover.
+    2. Write one new test class `SchedulingNegativePathsTest` for the paths that are not covered yet: input that is missing, too long or malformed; a caller with the wrong role; an identifier that belongs to another tenant (the answer must look like not found, never reveal the record); a stale version; a repeated request with the same idempotency key. Use the fixtures and test style the neighbouring tests use.
+    3. Only assert behaviour the code has today. If you find a real bug (for example another tenant's record is readable), do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact call that shows it, and keep the pull request green.
+    4. Do not change production code, existing tests, the contract or a migration. Run the package's tests and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-62 · API: negative-path and tenant-isolation tests for the package `staff`
+  - requirements: IAM-02, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/staff/StaffNegativePathsTest.java
+  - details:
+    1. Read the public services and controllers in `apps/api/src/main/java/com/aurevia/smartclinic/staff` and the tests that already exist in `apps/api/src/test/java/com/aurevia/smartclinic/staff`. List which failure paths they already cover.
+    2. Write one new test class `StaffNegativePathsTest` for the paths that are not covered yet: input that is missing, too long or malformed; a caller with the wrong role; an identifier that belongs to another tenant (the answer must look like not found, never reveal the record); a stale version; a repeated request with the same idempotency key. Use the fixtures and test style the neighbouring tests use.
+    3. Only assert behaviour the code has today. If you find a real bug (for example another tenant's record is readable), do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact call that shows it, and keep the pull request green.
+    4. Do not change production code, existing tests, the contract or a migration. Run the package's tests and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-63 · API: negative-path and tenant-isolation tests for the package `tenancy`
+  - requirements: ARC-02, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/tenancy/TenancyNegativePathsTest.java
+  - details:
+    1. Read the public services and controllers in `apps/api/src/main/java/com/aurevia/smartclinic/tenancy` and the tests that already exist in `apps/api/src/test/java/com/aurevia/smartclinic/tenancy`. List which failure paths they already cover.
+    2. Write one new test class `TenancyNegativePathsTest` for the paths that are not covered yet: input that is missing, too long or malformed; a caller with the wrong role; an identifier that belongs to another tenant (the answer must look like not found, never reveal the record); a stale version; a repeated request with the same idempotency key. Use the fixtures and test style the neighbouring tests use.
+    3. Only assert behaviour the code has today. If you find a real bug (for example another tenant's record is readable), do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact call that shows it, and keep the pull request green.
+    4. Do not change production code, existing tests, the contract or a migration. Run the package's tests and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-64 · API: negative-path and tenant-isolation tests for the package `tenant`
+  - requirements: OPS-07, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/tenant/TenantNegativePathsTest.java
+  - details:
+    1. Read the public services and controllers in `apps/api/src/main/java/com/aurevia/smartclinic/tenant` and the tests that already exist in `apps/api/src/test/java/com/aurevia/smartclinic/tenant`. List which failure paths they already cover.
+    2. Write one new test class `TenantNegativePathsTest` for the paths that are not covered yet: input that is missing, too long or malformed; a caller with the wrong role; an identifier that belongs to another tenant (the answer must look like not found, never reveal the record); a stale version; a repeated request with the same idempotency key. Use the fixtures and test style the neighbouring tests use.
+    3. Only assert behaviour the code has today. If you find a real bug (for example another tenant's record is readable), do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact call that shows it, and keep the pull request green.
+    4. Do not change production code, existing tests, the contract or a migration. Run the package's tests and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-65 · API: negative-path and tenant-isolation tests for the package `therapy`
+  - requirements: PT-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/therapy/TherapyNegativePathsTest.java
+  - details:
+    1. Read the public services and controllers in `apps/api/src/main/java/com/aurevia/smartclinic/therapy` and the tests that already exist in `apps/api/src/test/java/com/aurevia/smartclinic/therapy`. List which failure paths they already cover.
+    2. Write one new test class `TherapyNegativePathsTest` for the paths that are not covered yet: input that is missing, too long or malformed; a caller with the wrong role; an identifier that belongs to another tenant (the answer must look like not found, never reveal the record); a stale version; a repeated request with the same idempotency key. Use the fixtures and test style the neighbouring tests use.
+    3. Only assert behaviour the code has today. If you find a real bug (for example another tenant's record is readable), do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact call that shows it, and keep the pull request green.
+    4. Do not change production code, existing tests, the contract or a migration. Run the package's tests and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-66 · API: negative-path and tenant-isolation tests for the package `web`
+  - requirements: WEB-04, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/web/WebNegativePathsTest.java
+  - details:
+    1. Read the public services and controllers in `apps/api/src/main/java/com/aurevia/smartclinic/web` and the tests that already exist in `apps/api/src/test/java/com/aurevia/smartclinic/web`. List which failure paths they already cover.
+    2. Write one new test class `WebNegativePathsTest` for the paths that are not covered yet: input that is missing, too long or malformed; a caller with the wrong role; an identifier that belongs to another tenant (the answer must look like not found, never reveal the record); a stale version; a repeated request with the same idempotency key. Use the fixtures and test style the neighbouring tests use.
+    3. Only assert behaviour the code has today. If you find a real bug (for example another tenant's record is readable), do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact call that shows it, and keep the pull request green.
+    4. Do not change production code, existing tests, the contract or a migration. Run the package's tests and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+
+## Start now, part 3c: keyboard and focus tests per staff web feature (one new test file each)
+
+- [ ] START-67 · Staff web: keyboard-only and focus-order test for `features/admin`
+  - requirements: WEB-09, UX-01
+  - scope: apps/staff-web/tests/a11y/adminKeyboard.test.tsx
+  - details:
+    1. Read `apps/staff-web/src/features/admin`, `docs/design` (the accessibility document) and a neighbouring test to copy its rendering helpers.
+    2. Write one test file that renders each page of the `admin` feature with synthetic data and checks, using only keyboard events: every control can be reached with Tab in a sensible order, focus is visible (a focus style or attribute is present), Enter or Space activates buttons, Escape closes a dialog and returns focus to the control that opened it, and no element is a keyboard trap.
+    3. Only assert what the pages do today. If a page fails a check, do not edit it: list the page and the failed check under `## Why this is not finished` and leave that one check out of the test.
+    4. Do not change any source file or add a dependency.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-68 · Staff web: keyboard-only and focus-order test for `features/chart`
+  - requirements: WEB-09, UX-01
+  - scope: apps/staff-web/tests/a11y/chartKeyboard.test.tsx
+  - details:
+    1. Read `apps/staff-web/src/features/chart`, `docs/design` (the accessibility document) and a neighbouring test to copy its rendering helpers.
+    2. Write one test file that renders each page of the `chart` feature with synthetic data and checks, using only keyboard events: every control can be reached with Tab in a sensible order, focus is visible (a focus style or attribute is present), Enter or Space activates buttons, Escape closes a dialog and returns focus to the control that opened it, and no element is a keyboard trap.
+    3. Only assert what the pages do today. If a page fails a check, do not edit it: list the page and the failed check under `## Why this is not finished` and leave that one check out of the test.
+    4. Do not change any source file or add a dependency.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-69 · Staff web: keyboard-only and focus-order test for `features/duplicates`
+  - requirements: WEB-09, UX-01
+  - scope: apps/staff-web/tests/a11y/duplicatesKeyboard.test.tsx
+  - details:
+    1. Read `apps/staff-web/src/features/duplicates`, `docs/design` (the accessibility document) and a neighbouring test to copy its rendering helpers.
+    2. Write one test file that renders each page of the `duplicates` feature with synthetic data and checks, using only keyboard events: every control can be reached with Tab in a sensible order, focus is visible (a focus style or attribute is present), Enter or Space activates buttons, Escape closes a dialog and returns focus to the control that opened it, and no element is a keyboard trap.
+    3. Only assert what the pages do today. If a page fails a check, do not edit it: list the page and the failed check under `## Why this is not finished` and leave that one check out of the test.
+    4. Do not change any source file or add a dependency.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-70 · Staff web: keyboard-only and focus-order test for `features/patients`
+  - requirements: WEB-09, UX-01
+  - scope: apps/staff-web/tests/a11y/patientsKeyboard.test.tsx
+  - details:
+    1. Read `apps/staff-web/src/features/patients`, `docs/design` (the accessibility document) and a neighbouring test to copy its rendering helpers.
+    2. Write one test file that renders each page of the `patients` feature with synthetic data and checks, using only keyboard events: every control can be reached with Tab in a sensible order, focus is visible (a focus style or attribute is present), Enter or Space activates buttons, Escape closes a dialog and returns focus to the control that opened it, and no element is a keyboard trap.
+    3. Only assert what the pages do today. If a page fails a check, do not edit it: list the page and the failed check under `## Why this is not finished` and leave that one check out of the test.
+    4. Do not change any source file or add a dependency.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-71 · Staff web: keyboard-only and focus-order test for `features/scheduling`
+  - requirements: WEB-09, UX-01
+  - scope: apps/staff-web/tests/a11y/schedulingKeyboard.test.tsx
+  - details:
+    1. Read `apps/staff-web/src/features/scheduling`, `docs/design` (the accessibility document) and a neighbouring test to copy its rendering helpers.
+    2. Write one test file that renders each page of the `scheduling` feature with synthetic data and checks, using only keyboard events: every control can be reached with Tab in a sensible order, focus is visible (a focus style or attribute is present), Enter or Space activates buttons, Escape closes a dialog and returns focus to the control that opened it, and no element is a keyboard trap.
+    3. Only assert what the pages do today. If a page fails a check, do not edit it: list the page and the failed check under `## Why this is not finished` and leave that one check out of the test.
+    4. Do not change any source file or add a dependency.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-72 · Staff web: keyboard-only and focus-order test for `features/system`
+  - requirements: WEB-09, UX-01
+  - scope: apps/staff-web/tests/a11y/systemKeyboard.test.tsx
+  - details:
+    1. Read `apps/staff-web/src/features/system`, `docs/design` (the accessibility document) and a neighbouring test to copy its rendering helpers.
+    2. Write one test file that renders each page of the `system` feature with synthetic data and checks, using only keyboard events: every control can be reached with Tab in a sensible order, focus is visible (a focus style or attribute is present), Enter or Space activates buttons, Escape closes a dialog and returns focus to the control that opened it, and no element is a keyboard trap.
+    3. Only assert what the pages do today. If a page fails a check, do not edit it: list the page and the failed check under `## Why this is not finished` and leave that one check out of the test.
+    4. Do not change any source file or add a dependency.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+
+## Start now, part 3d: patient app feature guides
+
+- [ ] START-73 · Docs: guide to the patient app feature `app`
+  - requirements: PAT-01, UX-01
+  - scope: docs/reference/modules/patient-app.md
+  - details:
+    1. Read `apps/patient-mobile/src/app` and its tests, and the patient API paths it calls in the contract under `contracts/`.
+    2. Write `docs/reference/modules/patient-app.md`: what the patient sees and can do, each screen and its states (loading, empty, error, forbidden, offline), the API calls it makes, how it stores data on the device, what it must never show, and the tests that cover it.
+    3. Take every fact from the code and cite the file. Mark anything planned `PLANNED:` with the task id from TODO.md.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-74 · Docs: guide to the patient app feature `appointments`
+  - requirements: PAT-01, UX-01
+  - scope: docs/reference/modules/patient-appointments.md
+  - details:
+    1. Read `apps/patient-mobile/src/features/appointments` and its tests, and the patient API paths it calls in the contract under `contracts/`.
+    2. Write `docs/reference/modules/patient-appointments.md`: what the patient sees and can do, each screen and its states (loading, empty, error, forbidden, offline), the API calls it makes, how it stores data on the device, what it must never show, and the tests that cover it.
+    3. Take every fact from the code and cite the file. Mark anything planned `PLANNED:` with the task id from TODO.md.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-75 · Docs: guide to the patient app feature `conversations`
+  - requirements: PAT-01, UX-01
+  - scope: docs/reference/modules/patient-conversations.md
+  - details:
+    1. Read `apps/patient-mobile/src/features/conversations` and its tests, and the patient API paths it calls in the contract under `contracts/`.
+    2. Write `docs/reference/modules/patient-conversations.md`: what the patient sees and can do, each screen and its states (loading, empty, error, forbidden, offline), the API calls it makes, how it stores data on the device, what it must never show, and the tests that cover it.
+    3. Take every fact from the code and cite the file. Mark anything planned `PLANNED:` with the task id from TODO.md.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-76 · Docs: guide to the patient app feature `reports`
+  - requirements: PAT-01, UX-01
+  - scope: docs/reference/modules/patient-reports.md
+  - details:
+    1. Read `apps/patient-mobile/src/features/reports` and its tests, and the patient API paths it calls in the contract under `contracts/`.
+    2. Write `docs/reference/modules/patient-reports.md`: what the patient sees and can do, each screen and its states (loading, empty, error, forbidden, offline), the API calls it makes, how it stores data on the device, what it must never show, and the tests that cover it.
+    3. Take every fact from the code and cite the file. Mark anything planned `PLANNED:` with the task id from TODO.md.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-77 · Docs: guide to the patient app feature `attachments`
+  - requirements: PAT-01, UX-01
+  - scope: docs/reference/modules/patient-attachments.md
+  - details:
+    1. Read `apps/patient-mobile/src/features/attachments` and its tests, and the patient API paths it calls in the contract under `contracts/`.
+    2. Write `docs/reference/modules/patient-attachments.md`: what the patient sees and can do, each screen and its states (loading, empty, error, forbidden, offline), the API calls it makes, how it stores data on the device, what it must never show, and the tests that cover it.
+    3. Take every fact from the code and cite the file. Mark anything planned `PLANNED:` with the task id from TODO.md.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+
+## Start now, part 3e: requirement traceability evidence per requirement family
+
+Each task checks one family of the specification against the code. BUILD-66 builds the final table from these pages when they exist.
+
+- [ ] START-78 · Docs: traceability evidence for the Identity and access requirements (IAM-nn)
+  - requirements: IAM-01
+  - scope: docs/reference/traceability/iam.md
+  - details:
+    1. Read every `IAM-nn` requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. For each one find the code, migration, contract path and tests that implement it (search `apps`, `db`, `contracts` and the test folders) and write `docs/reference/traceability/iam.md`: a table with the requirement id, a one-line summary, status (`DONE`, `PARTIAL`, `MISSING`), the files and tests that prove it, and for anything not `DONE` the open TODO.md task id that will finish it, or `NO TASK` when none exists.
+    3. A status of `DONE` needs a named test that exercises it; a file that merely exists is `PARTIAL`. End the page with a list of every `NO TASK` requirement, each with a suggested task title.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-79 · Docs: traceability evidence for the Clinic requirements (CLN-nn)
+  - requirements: CLN-01
+  - scope: docs/reference/traceability/cln.md
+  - details:
+    1. Read every `CLN-nn` requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. For each one find the code, migration, contract path and tests that implement it (search `apps`, `db`, `contracts` and the test folders) and write `docs/reference/traceability/cln.md`: a table with the requirement id, a one-line summary, status (`DONE`, `PARTIAL`, `MISSING`), the files and tests that prove it, and for anything not `DONE` the open TODO.md task id that will finish it, or `NO TASK` when none exists.
+    3. A status of `DONE` needs a named test that exercises it; a file that merely exists is `PARTIAL`. End the page with a list of every `NO TASK` requirement, each with a suggested task title.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-80 · Docs: traceability evidence for the Orders, results and partner exchange requirements (XCH-nn)
+  - requirements: XCH-01
+  - scope: docs/reference/traceability/xch.md
+  - details:
+    1. Read every `XCH-nn` requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. For each one find the code, migration, contract path and tests that implement it (search `apps`, `db`, `contracts` and the test folders) and write `docs/reference/traceability/xch.md`: a table with the requirement id, a one-line summary, status (`DONE`, `PARTIAL`, `MISSING`), the files and tests that prove it, and for anything not `DONE` the open TODO.md task id that will finish it, or `NO TASK` when none exists.
+    3. A status of `DONE` needs a named test that exercises it; a file that merely exists is `PARTIAL`. End the page with a list of every `NO TASK` requirement, each with a suggested task title.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-81 · Docs: traceability evidence for the Laboratory requirements (LAB-nn)
+  - requirements: LAB-01
+  - scope: docs/reference/traceability/lab.md
+  - details:
+    1. Read every `LAB-nn` requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. For each one find the code, migration, contract path and tests that implement it (search `apps`, `db`, `contracts` and the test folders) and write `docs/reference/traceability/lab.md`: a table with the requirement id, a one-line summary, status (`DONE`, `PARTIAL`, `MISSING`), the files and tests that prove it, and for anything not `DONE` the open TODO.md task id that will finish it, or `NO TASK` when none exists.
+    3. A status of `DONE` needs a named test that exercises it; a file that merely exists is `PARTIAL`. End the page with a list of every `NO TASK` requirement, each with a suggested task title.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-82 · Docs: traceability evidence for the Radiology requirements (RAD-nn)
+  - requirements: RAD-01
+  - scope: docs/reference/traceability/rad.md
+  - details:
+    1. Read every `RAD-nn` requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. For each one find the code, migration, contract path and tests that implement it (search `apps`, `db`, `contracts` and the test folders) and write `docs/reference/traceability/rad.md`: a table with the requirement id, a one-line summary, status (`DONE`, `PARTIAL`, `MISSING`), the files and tests that prove it, and for anything not `DONE` the open TODO.md task id that will finish it, or `NO TASK` when none exists.
+    3. A status of `DONE` needs a named test that exercises it; a file that merely exists is `PARTIAL`. End the page with a list of every `NO TASK` requirement, each with a suggested task title.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-83 · Docs: traceability evidence for the Physical therapy requirements (PT-nn)
+  - requirements: PT-01
+  - scope: docs/reference/traceability/pt.md
+  - details:
+    1. Read every `PT-nn` requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. For each one find the code, migration, contract path and tests that implement it (search `apps`, `db`, `contracts` and the test folders) and write `docs/reference/traceability/pt.md`: a table with the requirement id, a one-line summary, status (`DONE`, `PARTIAL`, `MISSING`), the files and tests that prove it, and for anything not `DONE` the open TODO.md task id that will finish it, or `NO TASK` when none exists.
+    3. A status of `DONE` needs a named test that exercises it; a file that merely exists is `PARTIAL`. End the page with a list of every `NO TASK` requirement, each with a suggested task title.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-84 · Docs: traceability evidence for the Prescriptions requirements (RX-nn)
+  - requirements: RX-01
+  - scope: docs/reference/traceability/rx.md
+  - details:
+    1. Read every `RX-nn` requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. For each one find the code, migration, contract path and tests that implement it (search `apps`, `db`, `contracts` and the test folders) and write `docs/reference/traceability/rx.md`: a table with the requirement id, a one-line summary, status (`DONE`, `PARTIAL`, `MISSING`), the files and tests that prove it, and for anything not `DONE` the open TODO.md task id that will finish it, or `NO TASK` when none exists.
+    3. A status of `DONE` needs a named test that exercises it; a file that merely exists is `PARTIAL`. End the page with a list of every `NO TASK` requirement, each with a suggested task title.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-85 · Docs: traceability evidence for the Finance requirements (FIN-nn)
+  - requirements: FIN-01
+  - scope: docs/reference/traceability/fin.md
+  - details:
+    1. Read every `FIN-nn` requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. For each one find the code, migration, contract path and tests that implement it (search `apps`, `db`, `contracts` and the test folders) and write `docs/reference/traceability/fin.md`: a table with the requirement id, a one-line summary, status (`DONE`, `PARTIAL`, `MISSING`), the files and tests that prove it, and for anything not `DONE` the open TODO.md task id that will finish it, or `NO TASK` when none exists.
+    3. A status of `DONE` needs a named test that exercises it; a file that merely exists is `PARTIAL`. End the page with a list of every `NO TASK` requirement, each with a suggested task title.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-86 · Docs: traceability evidence for the Patient access requirements (PAT-nn)
+  - requirements: PAT-01
+  - scope: docs/reference/traceability/pat.md
+  - details:
+    1. Read every `PAT-nn` requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. For each one find the code, migration, contract path and tests that implement it (search `apps`, `db`, `contracts` and the test folders) and write `docs/reference/traceability/pat.md`: a table with the requirement id, a one-line summary, status (`DONE`, `PARTIAL`, `MISSING`), the files and tests that prove it, and for anything not `DONE` the open TODO.md task id that will finish it, or `NO TASK` when none exists.
+    3. A status of `DONE` needs a named test that exercises it; a file that merely exists is `PARTIAL`. End the page with a list of every `NO TASK` requirement, each with a suggested task title.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-87 · Docs: traceability evidence for the Administration requirements (ADM-nn)
+  - requirements: ADM-01
+  - scope: docs/reference/traceability/adm.md
+  - details:
+    1. Read every `ADM-nn` requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. For each one find the code, migration, contract path and tests that implement it (search `apps`, `db`, `contracts` and the test folders) and write `docs/reference/traceability/adm.md`: a table with the requirement id, a one-line summary, status (`DONE`, `PARTIAL`, `MISSING`), the files and tests that prove it, and for anything not `DONE` the open TODO.md task id that will finish it, or `NO TASK` when none exists.
+    3. A status of `DONE` needs a named test that exercises it; a file that merely exists is `PARTIAL`. End the page with a list of every `NO TASK` requirement, each with a suggested task title.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-88 · Docs: traceability evidence for the Interface, language and accessibility requirements (UX-nn)
+  - requirements: UX-01
+  - scope: docs/reference/traceability/ux.md
+  - details:
+    1. Read every `UX-nn` requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. For each one find the code, migration, contract path and tests that implement it (search `apps`, `db`, `contracts` and the test folders) and write `docs/reference/traceability/ux.md`: a table with the requirement id, a one-line summary, status (`DONE`, `PARTIAL`, `MISSING`), the files and tests that prove it, and for anything not `DONE` the open TODO.md task id that will finish it, or `NO TASK` when none exists.
+    3. A status of `DONE` needs a named test that exercises it; a file that merely exists is `PARTIAL`. End the page with a list of every `NO TASK` requirement, each with a suggested task title.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-89 · Docs: traceability evidence for the Messaging requirements (MSG-nn)
+  - requirements: MSG-01
+  - scope: docs/reference/traceability/msg.md
+  - details:
+    1. Read every `MSG-nn` requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. For each one find the code, migration, contract path and tests that implement it (search `apps`, `db`, `contracts` and the test folders) and write `docs/reference/traceability/msg.md`: a table with the requirement id, a one-line summary, status (`DONE`, `PARTIAL`, `MISSING`), the files and tests that prove it, and for anything not `DONE` the open TODO.md task id that will finish it, or `NO TASK` when none exists.
+    3. A status of `DONE` needs a named test that exercises it; a file that merely exists is `PARTIAL`. End the page with a list of every `NO TASK` requirement, each with a suggested task title.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-90 · Docs: traceability evidence for the Architecture and data requirements (ARC-nn)
+  - requirements: ARC-01
+  - scope: docs/reference/traceability/arc.md
+  - details:
+    1. Read every `ARC-nn` requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. For each one find the code, migration, contract path and tests that implement it (search `apps`, `db`, `contracts` and the test folders) and write `docs/reference/traceability/arc.md`: a table with the requirement id, a one-line summary, status (`DONE`, `PARTIAL`, `MISSING`), the files and tests that prove it, and for anything not `DONE` the open TODO.md task id that will finish it, or `NO TASK` when none exists.
+    3. A status of `DONE` needs a named test that exercises it; a file that merely exists is `PARTIAL`. End the page with a list of every `NO TASK` requirement, each with a suggested task title.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-91 · Docs: traceability evidence for the Operations and security requirements (OPS-nn)
+  - requirements: OPS-01
+  - scope: docs/reference/traceability/ops.md
+  - details:
+    1. Read every `OPS-nn` requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. For each one find the code, migration, contract path and tests that implement it (search `apps`, `db`, `contracts` and the test folders) and write `docs/reference/traceability/ops.md`: a table with the requirement id, a one-line summary, status (`DONE`, `PARTIAL`, `MISSING`), the files and tests that prove it, and for anything not `DONE` the open TODO.md task id that will finish it, or `NO TASK` when none exists.
+    3. A status of `DONE` needs a named test that exercises it; a file that merely exists is `PARTIAL`. End the page with a list of every `NO TASK` requirement, each with a suggested task title.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-92 · Docs: traceability evidence for the Staff web behaviour requirements (WEB-nn)
+  - requirements: WEB-01
+  - scope: docs/reference/traceability/web.md
+  - details:
+    1. Read every `WEB-nn` requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. For each one find the code, migration, contract path and tests that implement it (search `apps`, `db`, `contracts` and the test folders) and write `docs/reference/traceability/web.md`: a table with the requirement id, a one-line summary, status (`DONE`, `PARTIAL`, `MISSING`), the files and tests that prove it, and for anything not `DONE` the open TODO.md task id that will finish it, or `NO TASK` when none exists.
+    3. A status of `DONE` needs a named test that exercises it; a file that merely exists is `PARTIAL`. End the page with a list of every `NO TASK` requirement, each with a suggested task title.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-93 · Docs: traceability evidence for the Product scope requirements (PRD-nn)
+  - requirements: PRD-01
+  - scope: docs/reference/traceability/prd.md
+  - details:
+    1. Read every `PRD-nn` requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. For each one find the code, migration, contract path and tests that implement it (search `apps`, `db`, `contracts` and the test folders) and write `docs/reference/traceability/prd.md`: a table with the requirement id, a one-line summary, status (`DONE`, `PARTIAL`, `MISSING`), the files and tests that prove it, and for anything not `DONE` the open TODO.md task id that will finish it, or `NO TASK` when none exists.
+    3. A status of `DONE` needs a named test that exercises it; a file that merely exists is `PARTIAL`. End the page with a list of every `NO TASK` requirement, each with a suggested task title.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+
+## Start now, part 3f: gate evidence checklists
+
+- [ ] START-94 · Docs: acceptance evidence checklist for gate G0 (platform: identity, tenant isolation, catalog, audit)
+  - requirements: PRD-01, OPS-06
+  - scope: docs/reference/gates/g0-evidence.md
+  - details:
+    1. Read the `G0` section of `SMARTCLINIC_V1_SPEC.md`, the `G0` tasks in TODO.md and `docs/archive/TODO-DONE.md`.
+    2. Write `docs/reference/gates/g0-evidence.md`: one row per acceptance condition of gate G0 with the evidence that would prove it (a named test, a report, a drill record, a signed review), whether that evidence exists today and where, and who must sign it off.
+    3. Take the conditions word for word from the specification. Do not mark anything as proven that has no named test or document; use `NOT YET:` and a suggested task title.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-95 · Docs: acceptance evidence checklist for gate G1 (clinic)
+  - requirements: PRD-01, OPS-06
+  - scope: docs/reference/gates/g1-evidence.md
+  - details:
+    1. Read the `G1` section of `SMARTCLINIC_V1_SPEC.md`, the `G1` tasks in TODO.md and `docs/archive/TODO-DONE.md`.
+    2. Write `docs/reference/gates/g1-evidence.md`: one row per acceptance condition of gate G1 with the evidence that would prove it (a named test, a report, a drill record, a signed review), whether that evidence exists today and where, and who must sign it off.
+    3. Take the conditions word for word from the specification. Do not mark anything as proven that has no named test or document; use `NOT YET:` and a suggested task title.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-96 · Docs: acceptance evidence checklist for gate G2 (laboratory and exchange)
+  - requirements: PRD-01, OPS-06
+  - scope: docs/reference/gates/g2-evidence.md
+  - details:
+    1. Read the `G2` section of `SMARTCLINIC_V1_SPEC.md`, the `G2` tasks in TODO.md and `docs/archive/TODO-DONE.md`.
+    2. Write `docs/reference/gates/g2-evidence.md`: one row per acceptance condition of gate G2 with the evidence that would prove it (a named test, a report, a drill record, a signed review), whether that evidence exists today and where, and who must sign it off.
+    3. Take the conditions word for word from the specification. Do not mark anything as proven that has no named test or document; use `NOT YET:` and a suggested task title.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-97 · Docs: acceptance evidence checklist for gate G3 (patient access and operations)
+  - requirements: PRD-01, OPS-06
+  - scope: docs/reference/gates/g3-evidence.md
+  - details:
+    1. Read the `G3` section of `SMARTCLINIC_V1_SPEC.md`, the `G3` tasks in TODO.md and `docs/archive/TODO-DONE.md`.
+    2. Write `docs/reference/gates/g3-evidence.md`: one row per acceptance condition of gate G3 with the evidence that would prove it (a named test, a report, a drill record, a signed review), whether that evidence exists today and where, and who must sign it off.
+    3. Take the conditions word for word from the specification. Do not mark anything as proven that has no named test or document; use `NOT YET:` and a suggested task title.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-98 · Docs: acceptance evidence checklist for gate G4 (specialty and finance)
+  - requirements: PRD-01, OPS-06
+  - scope: docs/reference/gates/g4-evidence.md
+  - details:
+    1. Read the `G4` section of `SMARTCLINIC_V1_SPEC.md`, the `G4` tasks in TODO.md and `docs/archive/TODO-DONE.md`.
+    2. Write `docs/reference/gates/g4-evidence.md`: one row per acceptance condition of gate G4 with the evidence that would prove it (a named test, a report, a drill record, a signed review), whether that evidence exists today and where, and who must sign it off.
+    3. Take the conditions word for word from the specification. Do not mark anything as proven that has no named test or document; use `NOT YET:` and a suggested task title.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-99 · Docs: acceptance evidence checklist for gate G5 (launch and operations)
+  - requirements: PRD-01, OPS-06
+  - scope: docs/reference/gates/g5-evidence.md
+  - details:
+    1. Read the `G5` section of `SMARTCLINIC_V1_SPEC.md`, the `G5` tasks in TODO.md and `docs/archive/TODO-DONE.md`.
+    2. Write `docs/reference/gates/g5-evidence.md`: one row per acceptance condition of gate G5 with the evidence that would prove it (a named test, a report, a drill record, a signed review), whether that evidence exists today and where, and who must sign it off.
+    3. Take the conditions word for word from the specification. Do not mark anything as proven that has no named test or document; use `NOT YET:` and a suggested task title.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+
+## Start now, part 3g: focused security reviews (documents with findings; no code changes)
+
+- [ ] START-100 · Security review: authn sessions
+  - requirements: IAM-01, OPS-02
+  - scope: docs/security/reviews/authn-sessions.md
+  - details:
+    1. Read the code in `apps/api/src/main/java/com/aurevia/smartclinic/web`, `apps/api/src/main/java/com/aurevia/smartclinic/authz`, the matching controllers and the contract paths, the migrations for its tables, and `docs/security/threat-model.md` if it exists. Scope of the review: staff sign-in, sessions, CSRF and logout (staff web login and the web security configuration).
+    2. Write `docs/security/reviews/authn-sessions.md`: a table with one row per endpoint or command in scope and the checks that apply to it (sign-in, role, tenant, audit event, idempotency, input limits, error shape), each marked present with the file that does it, or `MISSING`.
+    3. End with a `## Findings` list. Each finding has a severity (high, medium, low), the exact file and line, what could go wrong in one sentence, and a suggested task title. Do not fix anything and do not write exploit steps.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-101 · Security review: authorization
+  - requirements: IAM-02, OPS-02
+  - scope: docs/security/reviews/authorization.md
+  - details:
+    1. Read the code in `apps/api/src/main/java/com/aurevia/smartclinic/authz`, `apps/api/src/main/java/com/aurevia/smartclinic/staff`, the matching controllers and the contract paths, the migrations for its tables, and `docs/security/threat-model.md` if it exists. Scope of the review: roles, permissions and the checks that guard each command.
+    2. Write `docs/security/reviews/authorization.md`: a table with one row per endpoint or command in scope and the checks that apply to it (sign-in, role, tenant, audit event, idempotency, input limits, error shape), each marked present with the file that does it, or `MISSING`.
+    3. End with a `## Findings` list. Each finding has a severity (high, medium, low), the exact file and line, what could go wrong in one sentence, and a suggested task title. Do not fix anything and do not write exploit steps.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-102 · Security review: tenant isolation
+  - requirements: ARC-02, OPS-02
+  - scope: docs/security/reviews/tenant-isolation.md
+  - details:
+    1. Read the code in `apps/api/src/main/java/com/aurevia/smartclinic/tenancy`, `apps/api/src/main/java/com/aurevia/smartclinic/tenant`, the matching controllers and the contract paths, the migrations for its tables, and `docs/security/threat-model.md` if it exists. Scope of the review: tenant context, row-level security and cross-tenant access.
+    2. Write `docs/security/reviews/tenant-isolation.md`: a table with one row per endpoint or command in scope and the checks that apply to it (sign-in, role, tenant, audit event, idempotency, input limits, error shape), each marked present with the file that does it, or `MISSING`.
+    3. End with a `## Findings` list. Each finding has a severity (high, medium, low), the exact file and line, what could go wrong in one sentence, and a suggested task title. Do not fix anything and do not write exploit steps.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-103 · Security review: audit trail
+  - requirements: OPS-02, OPS-02
+  - scope: docs/security/reviews/audit-trail.md
+  - details:
+    1. Read the code in `apps/api/src/main/java/com/aurevia/smartclinic/audit`, the matching controllers and the contract paths, the migrations for its tables, and `docs/security/threat-model.md` if it exists. Scope of the review: what is audited, who can read the audit trail and whether it can be altered.
+    2. Write `docs/security/reviews/audit-trail.md`: a table with one row per endpoint or command in scope and the checks that apply to it (sign-in, role, tenant, audit event, idempotency, input limits, error shape), each marked present with the file that does it, or `MISSING`.
+    3. End with a `## Findings` list. Each finding has a severity (high, medium, low), the exact file and line, what could go wrong in one sentence, and a suggested task title. Do not fix anything and do not write exploit steps.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-104 · Security review: documents attachments
+  - requirements: CLN-07, OPS-02
+  - scope: docs/security/reviews/documents-attachments.md
+  - details:
+    1. Read the code in `apps/api/src/main/java/com/aurevia/smartclinic/documents`, the matching controllers and the contract paths, the migrations for its tables, and `docs/security/threat-model.md` if it exists. Scope of the review: upload, scanning, storage, download and deletion of documents and attachments.
+    2. Write `docs/security/reviews/documents-attachments.md`: a table with one row per endpoint or command in scope and the checks that apply to it (sign-in, role, tenant, audit event, idempotency, input limits, error shape), each marked present with the file that does it, or `MISSING`.
+    3. End with a `## Findings` list. Each finding has a severity (high, medium, low), the exact file and line, what could go wrong in one sentence, and a suggested task title. Do not fix anything and do not write exploit steps.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-105 · Security review: messaging
+  - requirements: MSG-01, OPS-02
+  - scope: docs/security/reviews/messaging.md
+  - details:
+    1. Read the code in `apps/api/src/main/java/com/aurevia/smartclinic/messaging`, the matching controllers and the contract paths, the migrations for its tables, and `docs/security/threat-model.md` if it exists. Scope of the review: conversations, patient links, attachments and governance.
+    2. Write `docs/security/reviews/messaging.md`: a table with one row per endpoint or command in scope and the checks that apply to it (sign-in, role, tenant, audit event, idempotency, input limits, error shape), each marked present with the file that does it, or `MISSING`.
+    3. End with a `## Findings` list. Each finding has a severity (high, medium, low), the exact file and line, what could go wrong in one sentence, and a suggested task title. Do not fix anything and do not write exploit steps.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-106 · Security review: partner exchange
+  - requirements: XCH-01, OPS-02
+  - scope: docs/security/reviews/partner-exchange.md
+  - details:
+    1. Read the code in `apps/api/src/main/java/com/aurevia/smartclinic/exchange`, `apps/api/src/main/java/com/aurevia/smartclinic/lab`, `apps/api/src/main/java/com/aurevia/smartclinic/radiology`, the matching controllers and the contract paths, the migrations for its tables, and `docs/security/threat-model.md` if it exists. Scope of the review: orders, results, delivery to partners, retries and critical results.
+    2. Write `docs/security/reviews/partner-exchange.md`: a table with one row per endpoint or command in scope and the checks that apply to it (sign-in, role, tenant, audit event, idempotency, input limits, error shape), each marked present with the file that does it, or `MISSING`.
+    3. End with a `## Findings` list. Each finding has a severity (high, medium, low), the exact file and line, what could go wrong in one sentence, and a suggested task title. Do not fix anything and do not write exploit steps.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-107 · Security review: finance
+  - requirements: FIN-01, OPS-02
+  - scope: docs/security/reviews/finance.md
+  - details:
+    1. Read the code in `apps/api/src/main/java/com/aurevia/smartclinic/finance`, the matching controllers and the contract paths, the migrations for its tables, and `docs/security/threat-model.md` if it exists. Scope of the review: invoices, payments, refunds and credits.
+    2. Write `docs/security/reviews/finance.md`: a table with one row per endpoint or command in scope and the checks that apply to it (sign-in, role, tenant, audit event, idempotency, input limits, error shape), each marked present with the file that does it, or `MISSING`.
+    3. End with a `## Findings` list. Each finding has a severity (high, medium, low), the exact file and line, what could go wrong in one sentence, and a suggested task title. Do not fix anything and do not write exploit steps.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-108 · Security review: prescriptions
+  - requirements: RX-01, OPS-02
+  - scope: docs/security/reviews/prescriptions.md
+  - details:
+    1. Read the code in `apps/api/src/main/java/com/aurevia/smartclinic/prescription`, the matching controllers and the contract paths, the migrations for its tables, and `docs/security/threat-model.md` if it exists. Scope of the review: prescription drafts, signing, transmission and overrides.
+    2. Write `docs/security/reviews/prescriptions.md`: a table with one row per endpoint or command in scope and the checks that apply to it (sign-in, role, tenant, audit event, idempotency, input limits, error shape), each marked present with the file that does it, or `MISSING`.
+    3. End with a `## Findings` list. Each finding has a severity (high, medium, low), the exact file and line, what could go wrong in one sentence, and a suggested task title. Do not fix anything and do not write exploit steps.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-109 · Security review: patient access
+  - requirements: PAT-01, OPS-02
+  - scope: docs/security/reviews/patient-access.md
+  - details:
+    1. Read the code in `apps/api/src/main/java/com/aurevia/smartclinic/patient`, the matching controllers and the contract paths, the migrations for its tables, and `docs/security/threat-model.md` if it exists. Scope of the review: patient enrollment, recovery, release of reports and the patient app.
+    2. Write `docs/security/reviews/patient-access.md`: a table with one row per endpoint or command in scope and the checks that apply to it (sign-in, role, tenant, audit event, idempotency, input limits, error shape), each marked present with the file that does it, or `MISSING`.
+    3. End with a `## Findings` list. Each finding has a severity (high, medium, low), the exact file and line, what could go wrong in one sentence, and a suggested task title. Do not fix anything and do not write exploit steps.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+
+## Start now, part 3h: decision records written after the fact
+
+Each records one design decision the code already follows, in the format of `docs/decisions/template.md`. They go in their own folder so numbers never clash with new decisions.
+
+- [ ] START-110 · Docs: decision record for `tenant-from-session`
+  - requirements: ARC-02
+  - scope: docs/decisions/backfill/tenant-from-session.md
+  - details:
+    1. Read `docs/decisions/template.md`, the existing records in `docs/decisions`, and find where the code and migrations enforce this decision: the tenant comes from the signed-in session and never from a URL, body or header the caller controls.
+    2. Write `docs/decisions/backfill/tenant-from-session.md` in the template format with Status `accepted (recorded after the fact)`. The Context explains the problem the decision solves; the Decision states the rule in one paragraph; Alternatives considered lists only alternatives the code or documents show were weighed, otherwise `none recorded`; Consequences and evidence cites the files and tests that enforce it.
+    3. Never invent a date, a person or a reason. Use `unknown` where the history is not in the repository.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-111 · Docs: decision record for `append-only-triggers`
+  - requirements: ARC-03
+  - scope: docs/decisions/backfill/append-only-triggers.md
+  - details:
+    1. Read `docs/decisions/template.md`, the existing records in `docs/decisions`, and find where the code and migrations enforce this decision: history tables are append-only, enforced by database triggers.
+    2. Write `docs/decisions/backfill/append-only-triggers.md` in the template format with Status `accepted (recorded after the fact)`. The Context explains the problem the decision solves; the Decision states the rule in one paragraph; Alternatives considered lists only alternatives the code or documents show were weighed, otherwise `none recorded`; Consequences and evidence cites the files and tests that enforce it.
+    3. Never invent a date, a person or a reason. Use `unknown` where the history is not in the repository.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-112 · Docs: decision record for `row-level-security`
+  - requirements: ARC-02
+  - scope: docs/decisions/backfill/row-level-security.md
+  - details:
+    1. Read `docs/decisions/template.md`, the existing records in `docs/decisions`, and find where the code and migrations enforce this decision: every tenant table is protected by row-level security with a session setting.
+    2. Write `docs/decisions/backfill/row-level-security.md` in the template format with Status `accepted (recorded after the fact)`. The Context explains the problem the decision solves; the Decision states the rule in one paragraph; Alternatives considered lists only alternatives the code or documents show were weighed, otherwise `none recorded`; Consequences and evidence cites the files and tests that enforce it.
+    3. Never invent a date, a person or a reason. Use `unknown` where the history is not in the repository.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-113 · Docs: decision record for `idempotency-keys`
+  - requirements: WEB-04
+  - scope: docs/decisions/backfill/idempotency-keys.md
+  - details:
+    1. Read `docs/decisions/template.md`, the existing records in `docs/decisions`, and find where the code and migrations enforce this decision: commands carry an idempotency key and repeats return the stored result.
+    2. Write `docs/decisions/backfill/idempotency-keys.md` in the template format with Status `accepted (recorded after the fact)`. The Context explains the problem the decision solves; the Decision states the rule in one paragraph; Alternatives considered lists only alternatives the code or documents show were weighed, otherwise `none recorded`; Consequences and evidence cites the files and tests that enforce it.
+    3. Never invent a date, a person or a reason. Use `unknown` where the history is not in the repository.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-114 · Docs: decision record for `durable-outbox`
+  - requirements: XCH-01
+  - scope: docs/decisions/backfill/durable-outbox.md
+  - details:
+    1. Read `docs/decisions/template.md`, the existing records in `docs/decisions`, and find where the code and migrations enforce this decision: events leave the system through a durable outbox with a dead letter and replay.
+    2. Write `docs/decisions/backfill/durable-outbox.md` in the template format with Status `accepted (recorded after the fact)`. The Context explains the problem the decision solves; the Decision states the rule in one paragraph; Alternatives considered lists only alternatives the code or documents show were weighed, otherwise `none recorded`; Consequences and evidence cites the files and tests that enforce it.
+    3. Never invent a date, a person or a reason. Use `unknown` where the history is not in the repository.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-115 · Docs: decision record for `optimistic-versioning`
+  - requirements: ARC-04
+  - scope: docs/decisions/backfill/optimistic-versioning.md
+  - details:
+    1. Read `docs/decisions/template.md`, the existing records in `docs/decisions`, and find where the code and migrations enforce this decision: records carry a version that must advance by exactly one.
+    2. Write `docs/decisions/backfill/optimistic-versioning.md` in the template format with Status `accepted (recorded after the fact)`. The Context explains the problem the decision solves; the Decision states the rule in one paragraph; Alternatives considered lists only alternatives the code or documents show were weighed, otherwise `none recorded`; Consequences and evidence cites the files and tests that enforce it.
+    3. Never invent a date, a person or a reason. Use `unknown` where the history is not in the repository.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-116 · Docs: decision record for `signed-note-immutability`
+  - requirements: CLN-06
+  - scope: docs/decisions/backfill/signed-note-immutability.md
+  - details:
+    1. Read `docs/decisions/template.md`, the existing records in `docs/decisions`, and find where the code and migrations enforce this decision: a signed clinical note is never edited; a correction is a new revision.
+    2. Write `docs/decisions/backfill/signed-note-immutability.md` in the template format with Status `accepted (recorded after the fact)`. The Context explains the problem the decision solves; the Decision states the rule in one paragraph; Alternatives considered lists only alternatives the code or documents show were weighed, otherwise `none recorded`; Consequences and evidence cites the files and tests that enforce it.
+    3. Never invent a date, a person or a reason. Use `unknown` where the history is not in the repository.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-117 · Docs: decision record for `feature-self-registered-routes`
+  - requirements: WEB-09
+  - scope: docs/decisions/backfill/feature-self-registered-routes.md
+  - details:
+    1. Read `docs/decisions/template.md`, the existing records in `docs/decisions`, and find where the code and migrations enforce this decision: each staff web feature registers its own routes and chunks.
+    2. Write `docs/decisions/backfill/feature-self-registered-routes.md` in the template format with Status `accepted (recorded after the fact)`. The Context explains the problem the decision solves; the Decision states the rule in one paragraph; Alternatives considered lists only alternatives the code or documents show were weighed, otherwise `none recorded`; Consequences and evidence cites the files and tests that enforce it.
+    3. Never invent a date, a person or a reason. Use `unknown` where the history is not in the repository.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-118 · Docs: decision record for `synthetic-auth-profile`
+  - requirements: OPS-06
+  - scope: docs/decisions/backfill/synthetic-auth-profile.md
+  - details:
+    1. Read `docs/decisions/template.md`, the existing records in `docs/decisions`, and find where the code and migrations enforce this decision: development and tests sign in through a synthetic authentication profile.
+    2. Write `docs/decisions/backfill/synthetic-auth-profile.md` in the template format with Status `accepted (recorded after the fact)`. The Context explains the problem the decision solves; the Decision states the rule in one paragraph; Alternatives considered lists only alternatives the code or documents show were weighed, otherwise `none recorded`; Consequences and evidence cites the files and tests that enforce it.
+    3. Never invent a date, a person or a reason. Use `unknown` where the history is not in the repository.
+    4. Do not edit `docs/reference/index.md` or any shared index: START-119 links every page from this group.
+    5. Run `python3 -I scripts/check-docs.py` and paste the result.
+    6. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+
+## Start now, part 3i: link the new pages
+
+- [ ] START-119 · Docs: link the part 3 pages from the documentation index
+  - requirements: PRD-01
+  - scope: docs/reference/index.md
+  - depends: START-18, START-19, START-20, START-21, START-22, START-23, START-24, START-25, START-26, START-27, START-28, START-29, START-30, START-31, START-32, START-33, START-34, START-35, START-36, START-37, START-38, START-39, START-40, START-41, START-42, START-73, START-74, START-75, START-76, START-77, START-78, START-79, START-80, START-81, START-82, START-83, START-84, START-85, START-86, START-87, START-88, START-89, START-90, START-91, START-92, START-93, START-94, START-95, START-96, START-97, START-98, START-99, START-100, START-101, START-102, START-103, START-104, START-105, START-106, START-107, START-108, START-109, START-110, START-111, START-112, START-113, START-114, START-115, START-116, START-117, START-118
+  - details:
+    1. Read `docs/reference/index.md` and list which of these folders exist now with pages in them: `docs/reference/modules`, `docs/reference/traceability`, `docs/reference/gates`, `docs/security/reviews`, `docs/decisions/backfill`.
+    2. Add one link per page that exists and is not already linked, grouped under one heading per folder, each with a one-line description. Do not link a page that does not exist.
+    3. Run `python3 -I scripts/check-docs.py` and paste the result.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+## Start now, part 4a: edge-case tests for each API service and controller (one new test file each)
+
+Statement coverage is already 100%, so these tasks look for cases that coverage does not prove: boundaries, other tenants, repeats, races and clock edges. Each adds one new test file and changes no production code.
+
+- [ ] START-120 · API: edge-case tests for `TherapyService`
+  - requirements: PT-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/therapy/TherapyServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/therapy/TherapyService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/therapy` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `TherapyServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-121 · API: edge-case tests for `AppointmentService`
+  - requirements: CLN-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/scheduling/AppointmentServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/scheduling/AppointmentService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/scheduling` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `AppointmentServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-122 · API: edge-case tests for `ImagingService`
+  - requirements: RAD-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/radiology/ImagingServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/radiology/ImagingService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/radiology` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `ImagingServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-123 · API: edge-case tests for `PatientAccessService`
+  - requirements: MSG-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/messaging/enrollment/PatientAccessServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/messaging/enrollment/PatientAccessService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/messaging/enrollment` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `PatientAccessServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-124 · API: edge-case tests for `ClinicalNoteService`
+  - requirements: CLN-06, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/clinical/notes/ClinicalNoteServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/clinical/notes/ClinicalNoteService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/clinical/notes` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `ClinicalNoteServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-125 · API: edge-case tests for `ConsolidationService`
+  - requirements: PAT-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/patient/consolidation/ConsolidationServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/patient/consolidation/ConsolidationService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/patient/consolidation` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `ConsolidationServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-126 · API: edge-case tests for `RxService`
+  - requirements: RX-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/prescription/rx/RxServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/prescription/rx/RxService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/prescription/rx` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `RxServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-127 · API: edge-case tests for `ResultRoutingService`
+  - requirements: XCH-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/exchange/result/ResultRoutingServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/exchange/result/ResultRoutingService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/exchange/result` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `ResultRoutingServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-128 · API: edge-case tests for `FinanceService`
+  - requirements: FIN-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/finance/FinanceServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/finance/FinanceService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/finance` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `FinanceServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-129 · API: edge-case tests for `DurableEventService`
+  - requirements: OPS-05, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/events/DurableEventServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/events/DurableEventService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/events` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `DurableEventServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-130 · API: edge-case tests for `LabAccessionService`
+  - requirements: LAB-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/lab/accession/LabAccessionServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/lab/accession/LabAccessionService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/lab/accession` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `LabAccessionServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-131 · API: edge-case tests for `MessagingGovernanceService`
+  - requirements: MSG-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/messaging/governance/MessagingGovernanceServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/messaging/governance/MessagingGovernanceService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/messaging/governance` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `MessagingGovernanceServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-132 · API: edge-case tests for `ConversationService`
+  - requirements: MSG-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/messaging/conversations/ConversationServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/messaging/conversations/ConversationService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/messaging/conversations` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `ConversationServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-133 · API: edge-case tests for `DocumentService`
+  - requirements: CLN-07, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/documents/DocumentServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/documents/DocumentService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/documents` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `DocumentServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-134 · API: edge-case tests for `ReleaseService`
+  - requirements: XCH-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/exchange/release/ReleaseServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/exchange/release/ReleaseService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/exchange/release` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `ReleaseServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-135 · API: edge-case tests for `CriticalResultService`
+  - requirements: XCH-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/exchange/critical/CriticalResultServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/exchange/critical/CriticalResultService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/exchange/critical` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `CriticalResultServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-136 · API: edge-case tests for `Xch03Service`
+  - requirements: XCH-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/exchange/response/Xch03ServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/exchange/response/Xch03Service.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/exchange/response` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `Xch03ServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-137 · API: edge-case tests for `CheckInService`
+  - requirements: CLN-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/scheduling/checkin/CheckInServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/scheduling/checkin/CheckInService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/scheduling/checkin` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `CheckInServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-138 · API: edge-case tests for `InstructionFactService`
+  - requirements: MSG-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/messaging/acknowledgment/InstructionFactServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/messaging/acknowledgment/InstructionFactService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/messaging/acknowledgment` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `InstructionFactServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-139 · API: edge-case tests for `IdentityProofingService`
+  - requirements: PAT-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/patient/identity/IdentityProofingServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/patient/identity/IdentityProofingService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/patient/identity` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `IdentityProofingServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-140 · API: edge-case tests for `OrderService`
+  - requirements: XCH-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/exchange/order/OrderServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/exchange/order/OrderService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/exchange/order` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `OrderServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-141 · API: edge-case tests for `LabResultService`
+  - requirements: LAB-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/lab/result/LabResultServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/lab/result/LabResultService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/lab/result` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `LabResultServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-142 · API: edge-case tests for `AttachmentService`
+  - requirements: MSG-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/messaging/attachments/AttachmentServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/messaging/attachments/AttachmentService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/messaging/attachments` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `AttachmentServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-143 · API: edge-case tests for `CareUnitDirectoryService`
+  - requirements: MSG-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/messaging/units/CareUnitDirectoryServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/messaging/units/CareUnitDirectoryService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/messaging/units` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `CareUnitDirectoryServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-144 · API: edge-case tests for `InstructionService`
+  - requirements: MSG-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/messaging/instructions/InstructionServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/messaging/instructions/InstructionService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/messaging/instructions` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `InstructionServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-145 · API: edge-case tests for `ChartService`
+  - requirements: CLN-07, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/chart/record/ChartServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/chart/record/ChartService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/chart/record` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `ChartServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-146 · API: edge-case tests for `TemplateService`
+  - requirements: CLN-06, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/clinical/templates/TemplateServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/clinical/templates/TemplateService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/clinical/templates` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `TemplateServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-147 · API: edge-case tests for `FollowUpService`
+  - requirements: CLN-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/scheduling/followup/FollowUpServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/scheduling/followup/FollowUpService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/scheduling/followup` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `FollowUpServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-148 · API: edge-case tests for `PrescriptionService`
+  - requirements: RX-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/prescription/PrescriptionServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/prescription/PrescriptionService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/prescription` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `PrescriptionServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-149 · API: edge-case tests for `StaffService`
+  - requirements: IAM-02, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/staff/StaffServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/staff/StaffService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/staff` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `StaffServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-150 · API: edge-case tests for `EmergencyAccessService`
+  - requirements: IAM-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/authz/access/EmergencyAccessServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/authz/access/EmergencyAccessService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/authz/access` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `EmergencyAccessServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-151 · API: edge-case tests for `OnboardingImportService`
+  - requirements: OPS-07, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/tenant/importing/OnboardingImportServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/tenant/importing/OnboardingImportService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/tenant/importing` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `OnboardingImportServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-152 · API: edge-case tests for `PdfBindingService`
+  - requirements: CLN-07, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/documents/PdfBindingServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/documents/PdfBindingService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/documents` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `PdfBindingServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-153 · API: edge-case tests for `QuarantineService`
+  - requirements: CLN-07, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/documents/QuarantineServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/documents/QuarantineService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/documents` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `QuarantineServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-154 · API: edge-case tests for `ServiceProfileService`
+  - requirements: MSG-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/messaging/service/ServiceProfileServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/messaging/service/ServiceProfileService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/messaging/service` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `ServiceProfileServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-155 · API: edge-case tests for `StaffInvitationService`
+  - requirements: IAM-02, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/staff/StaffInvitationServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/staff/StaffInvitationService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/staff` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `StaffInvitationServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-156 · API: edge-case tests for `ConfigurationService`
+  - requirements: ADM-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/configuration/ConfigurationServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/configuration/ConfigurationService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/configuration` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `ConfigurationServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-157 · API: edge-case tests for `ExchangeTaskService`
+  - requirements: XCH-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/exchange/task/ExchangeTaskServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/exchange/task/ExchangeTaskService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/exchange/task` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `ExchangeTaskServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-158 · API: edge-case tests for `PatientService`
+  - requirements: PAT-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/patient/PatientServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/patient/PatientService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/patient` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `PatientServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-159 · API: edge-case tests for `SpecialtyAttestationService`
+  - requirements: IAM-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/authz/specialty/SpecialtyAttestationServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/authz/specialty/SpecialtyAttestationService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/authz/specialty` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `SpecialtyAttestationServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-160 · API: edge-case tests for `TrendService`
+  - requirements: XCH-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/exchange/trend/TrendServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/exchange/trend/TrendService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/exchange/trend` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `TrendServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-161 · API: edge-case tests for `PatientAppointmentService`
+  - requirements: MSG-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/messaging/appointments/PatientAppointmentServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/messaging/appointments/PatientAppointmentService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/messaging/appointments` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `PatientAppointmentServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-162 · API: edge-case tests for `SchedulingAdminService`
+  - requirements: CLN-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/scheduling/SchedulingAdminServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/scheduling/SchedulingAdminService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/scheduling` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `SchedulingAdminServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-163 · API: edge-case tests for `RxController`
+  - requirements: RX-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/prescription/rx/RxControllerEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/prescription/rx/RxController.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/prescription/rx` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `RxControllerEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-164 · API: edge-case tests for `FacilityService`
+  - requirements: ARC-02, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/tenancy/FacilityServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/tenancy/FacilityService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/tenancy` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `FacilityServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-165 · API: edge-case tests for `Xch03Controller`
+  - requirements: XCH-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/exchange/response/Xch03ControllerEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/exchange/response/Xch03Controller.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/exchange/response` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `Xch03ControllerEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-166 · API: edge-case tests for `DeliveryController`
+  - requirements: OPS-05, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/events/DeliveryControllerEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/events/DeliveryController.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/events` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `DeliveryControllerEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-167 · API: edge-case tests for `SupportAccessService`
+  - requirements: IAM-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/authz/access/SupportAccessServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/authz/access/SupportAccessService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/authz/access` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `SupportAccessServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-168 · API: edge-case tests for `AttachmentController`
+  - requirements: MSG-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/messaging/attachments/AttachmentControllerEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/messaging/attachments/AttachmentController.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/messaging/attachments` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `AttachmentControllerEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-169 · API: edge-case tests for `CriticalResultController`
+  - requirements: XCH-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/exchange/critical/CriticalResultControllerEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/exchange/critical/CriticalResultController.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/exchange/critical` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `CriticalResultControllerEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-170 · API: edge-case tests for `CatalogService`
+  - requirements: ADM-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/catalog/CatalogServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/catalog/CatalogService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/catalog` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `CatalogServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-171 · API: edge-case tests for `ConversationController`
+  - requirements: MSG-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/messaging/conversations/ConversationControllerEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/messaging/conversations/ConversationController.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/messaging/conversations` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `ConversationControllerEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-172 · API: edge-case tests for `FinanceController`
+  - requirements: FIN-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/finance/FinanceControllerEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/finance/FinanceController.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/finance` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `FinanceControllerEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-173 · API: edge-case tests for `PatientFlowPresentationService`
+  - requirements: MSG-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/messaging/flows/PatientFlowPresentationServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/messaging/flows/PatientFlowPresentationService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/messaging/flows` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `PatientFlowPresentationServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-174 · API: edge-case tests for `AuditService`
+  - requirements: OPS-02, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/audit/AuditServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/audit/AuditService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/audit` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `AuditServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-175 · API: edge-case tests for `MessagingGovernanceController`
+  - requirements: MSG-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/messaging/governance/MessagingGovernanceControllerEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/messaging/governance/MessagingGovernanceController.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/messaging/governance` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `MessagingGovernanceControllerEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-176 · API: edge-case tests for `ClinicController`
+  - requirements: CLN-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/scheduling/checkin/ClinicControllerEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/scheduling/checkin/ClinicController.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/scheduling/checkin` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `ClinicControllerEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-177 · API: edge-case tests for `AccessController`
+  - requirements: IAM-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/authz/access/AccessControllerEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/authz/access/AccessController.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/authz/access` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `AccessControllerEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-178 · API: edge-case tests for `FollowUpCommandService`
+  - requirements: CLN-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/scheduling/followup/FollowUpCommandServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/scheduling/followup/FollowUpCommandService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/scheduling/followup` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `FollowUpCommandServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-179 · API: edge-case tests for `LabAccessionController`
+  - requirements: LAB-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/lab/accession/LabAccessionControllerEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/lab/accession/LabAccessionController.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/lab/accession` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `LabAccessionControllerEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-180 · API: edge-case tests for `ServiceProfileController`
+  - requirements: MSG-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/messaging/service/ServiceProfileControllerEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/messaging/service/ServiceProfileController.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/messaging/service` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `ServiceProfileControllerEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-181 · API: edge-case tests for `InstructionController`
+  - requirements: MSG-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/messaging/instructions/InstructionControllerEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/messaging/instructions/InstructionController.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/messaging/instructions` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `InstructionControllerEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-182 · API: edge-case tests for `InstructionFactController`
+  - requirements: MSG-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/messaging/acknowledgment/InstructionFactControllerEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/messaging/acknowledgment/InstructionFactController.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/messaging/acknowledgment` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `InstructionFactControllerEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-183 · API: edge-case tests for `TherapyController`
+  - requirements: PT-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/therapy/TherapyControllerEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/therapy/TherapyController.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/therapy` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `TherapyControllerEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-184 · API: edge-case tests for `ResultController`
+  - requirements: XCH-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/exchange/result/ResultControllerEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/exchange/result/ResultController.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/exchange/result` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `ResultControllerEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-185 · API: edge-case tests for `OrderController`
+  - requirements: XCH-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/exchange/order/OrderControllerEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/exchange/order/OrderController.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/exchange/order` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `OrderControllerEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-186 · API: edge-case tests for `RoleHistoryService`
+  - requirements: IAM-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/authz/history/RoleHistoryServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/authz/history/RoleHistoryService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/authz/history` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `RoleHistoryServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-187 · API: edge-case tests for `PrescriptionController`
+  - requirements: RX-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/prescription/PrescriptionControllerEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/prescription/PrescriptionController.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/prescription` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `PrescriptionControllerEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-188 · API: edge-case tests for `SpecialtyController`
+  - requirements: IAM-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/authz/specialty/SpecialtyControllerEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/authz/specialty/SpecialtyController.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/authz/specialty` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `SpecialtyControllerEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-189 · API: edge-case tests for `G3EvidenceService`
+  - requirements: MSG-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/messaging/evidence/G3EvidenceServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/messaging/evidence/G3EvidenceService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/messaging/evidence` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `G3EvidenceServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-190 · API: edge-case tests for `CareUnitController`
+  - requirements: MSG-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/messaging/units/CareUnitControllerEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/messaging/units/CareUnitController.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/messaging/units` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `CareUnitControllerEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-191 · API: edge-case tests for `ChartController`
+  - requirements: CLN-07, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/chart/record/ChartControllerEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/chart/record/ChartController.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/chart/record` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `ChartControllerEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-192 · API: edge-case tests for `DiagnosisCatalogService`
+  - requirements: ADM-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/catalog/dictionary/DiagnosisCatalogServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/catalog/dictionary/DiagnosisCatalogService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/catalog/dictionary` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `DiagnosisCatalogServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-193 · API: edge-case tests for `ExchangeTaskController`
+  - requirements: XCH-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/exchange/task/ExchangeTaskControllerEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/exchange/task/ExchangeTaskController.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/exchange/task` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `ExchangeTaskControllerEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-194 · API: edge-case tests for `TrendController`
+  - requirements: XCH-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/exchange/trend/TrendControllerEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/exchange/trend/TrendController.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/exchange/trend` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `TrendControllerEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-195 · API: edge-case tests for `FollowUpBookingService`
+  - requirements: CLN-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/scheduling/followup/FollowUpBookingServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/scheduling/followup/FollowUpBookingService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/scheduling/followup` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `FollowUpBookingServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-196 · API: edge-case tests for `DrugCatalogController`
+  - requirements: RX-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/prescription/DrugCatalogControllerEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/prescription/DrugCatalogController.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/prescription` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `DrugCatalogControllerEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-197 · API: edge-case tests for `ClinicalDictionaryService`
+  - requirements: ADM-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/catalog/dictionary/ClinicalDictionaryServiceEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/catalog/dictionary/ClinicalDictionaryService.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/catalog/dictionary` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `ClinicalDictionaryServiceEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-198 · API: edge-case tests for `ReleasedReportController`
+  - requirements: MSG-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/messaging/reports/ReleasedReportControllerEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/messaging/reports/ReleasedReportController.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/messaging/reports` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `ReleasedReportControllerEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-199 · API: edge-case tests for `GateEvidenceController`
+  - requirements: MSG-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/messaging/evidence/GateEvidenceControllerEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/messaging/evidence/GateEvidenceController.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/messaging/evidence` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `GateEvidenceControllerEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-200 · API: edge-case tests for `AuditController`
+  - requirements: WEB-04, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/web/AuditControllerEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/web/AuditController.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/web` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `AuditControllerEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-201 · API: edge-case tests for `PatientReleasedRevisionsController`
+  - requirements: XCH-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/exchange/release/PatientReleasedRevisionsControllerEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/exchange/release/PatientReleasedRevisionsController.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/exchange/release` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `PatientReleasedRevisionsControllerEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-202 · API: edge-case tests for `ImportController`
+  - requirements: OPS-07, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/tenant/importing/ImportControllerEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/tenant/importing/ImportController.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/tenant/importing` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `ImportControllerEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-203 · API: edge-case tests for `RoleHistoryController`
+  - requirements: IAM-01, ARC-02
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/authz/history/RoleHistoryControllerEdgeCasesTest.java
+  - details:
+    1. Read `apps/api/src/main/java/com/aurevia/smartclinic/authz/history/RoleHistoryController.java`, the other classes in `apps/api/src/main/java/com/aurevia/smartclinic/authz/history` it calls, and every existing test for it under `apps/api/src/test/java/com/aurevia/smartclinic`. Write down which input cases the existing tests do not exercise.
+    2. Write one new test class `RoleHistoryControllerEdgeCasesTest` using the same fixtures and style as the neighbouring tests. Cover the cases that are missing from this list: empty, null and maximum-length input; Arabic text, right-to-left marks and emoji in text fields; a caller with the wrong role; an identifier from another tenant (must look like not found); a stale version; the same idempotency key sent twice and at the same time; dates at midnight, daylight-saving changes and different facility time zones.
+    3. Only assert behaviour the code has today. If you find a real bug, do NOT put a failing test in the pull request: describe it under `## Why this is not finished` with the exact input that shows it, and keep the pull request green.
+    4. Do not change production code, an existing test, the contract or a migration. Run the tests of the package and the SpotBugs check from the backend skill and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+
+## Start now, part 4b: edge-case tests for staff web components (one new test file each)
+
+- [ ] START-204 · Staff web: edge-case test for `admin/AuditEventList`
+  - requirements: WEB-09, UX-01
+  - scope: apps/staff-web/src/features/admin/AuditEventList.edge.test.tsx
+  - details:
+    1. Read `apps/staff-web/src/features/admin/AuditEventList.tsx`, its existing test and a neighbouring test to copy the rendering helpers. Statement coverage is already 100%, so look for cases the existing test does not prove.
+    2. Write one new test file for: very long text and Arabic text in every field; right-to-left layout of the page; a double click on submit sends one request; the response arrives after the page was closed (no warning, no state update); 401, 403, 409 and 500 responses show the matching state with words and not only colour; focus returns to the control that opened a dialog.
+    3. Only assert behaviour the page has today. If the page fails a case, do NOT edit it: list the case under `## Why this is not finished` and leave that one assertion out.
+    4. Do not change any source file, existing test or dependency. Run the staff web check and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-205 · Staff web: edge-case test for `admin/AuditPage`
+  - requirements: WEB-09, UX-01
+  - scope: apps/staff-web/src/features/admin/AuditPage.edge.test.tsx
+  - details:
+    1. Read `apps/staff-web/src/features/admin/AuditPage.tsx`, its existing test and a neighbouring test to copy the rendering helpers. Statement coverage is already 100%, so look for cases the existing test does not prove.
+    2. Write one new test file for: very long text and Arabic text in every field; right-to-left layout of the page; a double click on submit sends one request; the response arrives after the page was closed (no warning, no state update); 401, 403, 409 and 500 responses show the matching state with words and not only colour; focus returns to the control that opened a dialog.
+    3. Only assert behaviour the page has today. If the page fails a case, do NOT edit it: list the case under `## Why this is not finished` and leave that one assertion out.
+    4. Do not change any source file, existing test or dependency. Run the staff web check and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-206 · Staff web: edge-case test for `admin/ConfigEditor`
+  - requirements: WEB-09, UX-01
+  - scope: apps/staff-web/src/features/admin/ConfigEditor.edge.test.tsx
+  - details:
+    1. Read `apps/staff-web/src/features/admin/ConfigEditor.tsx`, its existing test and a neighbouring test to copy the rendering helpers. Statement coverage is already 100%, so look for cases the existing test does not prove.
+    2. Write one new test file for: very long text and Arabic text in every field; right-to-left layout of the page; a double click on submit sends one request; the response arrives after the page was closed (no warning, no state update); 401, 403, 409 and 500 responses show the matching state with words and not only colour; focus returns to the control that opened a dialog.
+    3. Only assert behaviour the page has today. If the page fails a case, do NOT edit it: list the case under `## Why this is not finished` and leave that one assertion out.
+    4. Do not change any source file, existing test or dependency. Run the staff web check and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-207 · Staff web: edge-case test for `admin/ConfigPage`
+  - requirements: WEB-09, UX-01
+  - scope: apps/staff-web/src/features/admin/ConfigPage.edge.test.tsx
+  - details:
+    1. Read `apps/staff-web/src/features/admin/ConfigPage.tsx`, its existing test and a neighbouring test to copy the rendering helpers. Statement coverage is already 100%, so look for cases the existing test does not prove.
+    2. Write one new test file for: very long text and Arabic text in every field; right-to-left layout of the page; a double click on submit sends one request; the response arrives after the page was closed (no warning, no state update); 401, 403, 409 and 500 responses show the matching state with words and not only colour; focus returns to the control that opened a dialog.
+    3. Only assert behaviour the page has today. If the page fails a case, do NOT edit it: list the case under `## Why this is not finished` and leave that one assertion out.
+    4. Do not change any source file, existing test or dependency. Run the staff web check and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-208 · Staff web: edge-case test for `admin/FacilitiesPage`
+  - requirements: WEB-09, UX-01
+  - scope: apps/staff-web/src/features/admin/FacilitiesPage.edge.test.tsx
+  - details:
+    1. Read `apps/staff-web/src/features/admin/FacilitiesPage.tsx`, its existing test and a neighbouring test to copy the rendering helpers. Statement coverage is already 100%, so look for cases the existing test does not prove.
+    2. Write one new test file for: very long text and Arabic text in every field; right-to-left layout of the page; a double click on submit sends one request; the response arrives after the page was closed (no warning, no state update); 401, 403, 409 and 500 responses show the matching state with words and not only colour; focus returns to the control that opened a dialog.
+    3. Only assert behaviour the page has today. If the page fails a case, do NOT edit it: list the case under `## Why this is not finished` and leave that one assertion out.
+    4. Do not change any source file, existing test or dependency. Run the staff web check and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-209 · Staff web: edge-case test for `admin/StaffHistoryView`
+  - requirements: WEB-09, UX-01
+  - scope: apps/staff-web/src/features/admin/StaffHistoryView.edge.test.tsx
+  - details:
+    1. Read `apps/staff-web/src/features/admin/StaffHistoryView.tsx`, its existing test and a neighbouring test to copy the rendering helpers. Statement coverage is already 100%, so look for cases the existing test does not prove.
+    2. Write one new test file for: very long text and Arabic text in every field; right-to-left layout of the page; a double click on submit sends one request; the response arrives after the page was closed (no warning, no state update); 401, 403, 409 and 500 responses show the matching state with words and not only colour; focus returns to the control that opened a dialog.
+    3. Only assert behaviour the page has today. If the page fails a case, do NOT edit it: list the case under `## Why this is not finished` and leave that one assertion out.
+    4. Do not change any source file, existing test or dependency. Run the staff web check and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-210 · Staff web: edge-case test for `admin/StaffPage`
+  - requirements: WEB-09, UX-01
+  - scope: apps/staff-web/src/features/admin/StaffPage.edge.test.tsx
+  - details:
+    1. Read `apps/staff-web/src/features/admin/StaffPage.tsx`, its existing test and a neighbouring test to copy the rendering helpers. Statement coverage is already 100%, so look for cases the existing test does not prove.
+    2. Write one new test file for: very long text and Arabic text in every field; right-to-left layout of the page; a double click on submit sends one request; the response arrives after the page was closed (no warning, no state update); 401, 403, 409 and 500 responses show the matching state with words and not only colour; focus returns to the control that opened a dialog.
+    3. Only assert behaviour the page has today. If the page fails a case, do NOT edit it: list the case under `## Why this is not finished` and leave that one assertion out.
+    4. Do not change any source file, existing test or dependency. Run the staff web check and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-211 · Staff web: edge-case test for `chart/ChartPage`
+  - requirements: WEB-09, UX-01
+  - scope: apps/staff-web/src/features/chart/ChartPage.edge.test.tsx
+  - details:
+    1. Read `apps/staff-web/src/features/chart/ChartPage.tsx`, its existing test and a neighbouring test to copy the rendering helpers. Statement coverage is already 100%, so look for cases the existing test does not prove.
+    2. Write one new test file for: very long text and Arabic text in every field; right-to-left layout of the page; a double click on submit sends one request; the response arrives after the page was closed (no warning, no state update); 401, 403, 409 and 500 responses show the matching state with words and not only colour; focus returns to the control that opened a dialog.
+    3. Only assert behaviour the page has today. If the page fails a case, do NOT edit it: list the case under `## Why this is not finished` and leave that one assertion out.
+    4. Do not change any source file, existing test or dependency. Run the staff web check and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-212 · Staff web: edge-case test for `chart/DocumentList`
+  - requirements: WEB-09, UX-01
+  - scope: apps/staff-web/src/features/chart/DocumentList.edge.test.tsx
+  - details:
+    1. Read `apps/staff-web/src/features/chart/DocumentList.tsx`, its existing test and a neighbouring test to copy the rendering helpers. Statement coverage is already 100%, so look for cases the existing test does not prove.
+    2. Write one new test file for: very long text and Arabic text in every field; right-to-left layout of the page; a double click on submit sends one request; the response arrives after the page was closed (no warning, no state update); 401, 403, 409 and 500 responses show the matching state with words and not only colour; focus returns to the control that opened a dialog.
+    3. Only assert behaviour the page has today. If the page fails a case, do NOT edit it: list the case under `## Why this is not finished` and leave that one assertion out.
+    4. Do not change any source file, existing test or dependency. Run the staff web check and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-213 · Staff web: edge-case test for `chart/NoteEditor`
+  - requirements: WEB-09, UX-01
+  - scope: apps/staff-web/src/features/chart/NoteEditor.edge.test.tsx
+  - details:
+    1. Read `apps/staff-web/src/features/chart/NoteEditor.tsx`, its existing test and a neighbouring test to copy the rendering helpers. Statement coverage is already 100%, so look for cases the existing test does not prove.
+    2. Write one new test file for: very long text and Arabic text in every field; right-to-left layout of the page; a double click on submit sends one request; the response arrives after the page was closed (no warning, no state update); 401, 403, 409 and 500 responses show the matching state with words and not only colour; focus returns to the control that opened a dialog.
+    3. Only assert behaviour the page has today. If the page fails a case, do NOT edit it: list the case under `## Why this is not finished` and leave that one assertion out.
+    4. Do not change any source file, existing test or dependency. Run the staff web check and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-214 · Staff web: edge-case test for `chart/NotePage`
+  - requirements: WEB-09, UX-01
+  - scope: apps/staff-web/src/features/chart/NotePage.edge.test.tsx
+  - details:
+    1. Read `apps/staff-web/src/features/chart/NotePage.tsx`, its existing test and a neighbouring test to copy the rendering helpers. Statement coverage is already 100%, so look for cases the existing test does not prove.
+    2. Write one new test file for: very long text and Arabic text in every field; right-to-left layout of the page; a double click on submit sends one request; the response arrives after the page was closed (no warning, no state update); 401, 403, 409 and 500 responses show the matching state with words and not only colour; focus returns to the control that opened a dialog.
+    3. Only assert behaviour the page has today. If the page fails a case, do NOT edit it: list the case under `## Why this is not finished` and leave that one assertion out.
+    4. Do not change any source file, existing test or dependency. Run the staff web check and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-215 · Staff web: edge-case test for `duplicates/DuplicatesPage`
+  - requirements: WEB-09, UX-01
+  - scope: apps/staff-web/src/features/duplicates/DuplicatesPage.edge.test.tsx
+  - details:
+    1. Read `apps/staff-web/src/features/duplicates/DuplicatesPage.tsx`, its existing test and a neighbouring test to copy the rendering helpers. Statement coverage is already 100%, so look for cases the existing test does not prove.
+    2. Write one new test file for: very long text and Arabic text in every field; right-to-left layout of the page; a double click on submit sends one request; the response arrives after the page was closed (no warning, no state update); 401, 403, 409 and 500 responses show the matching state with words and not only colour; focus returns to the control that opened a dialog.
+    3. Only assert behaviour the page has today. If the page fails a case, do NOT edit it: list the case under `## Why this is not finished` and leave that one assertion out.
+    4. Do not change any source file, existing test or dependency. Run the staff web check and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-216 · Staff web: edge-case test for `patients/PatientOverviewPage`
+  - requirements: WEB-09, UX-01
+  - scope: apps/staff-web/src/features/patients/PatientOverviewPage.edge.test.tsx
+  - details:
+    1. Read `apps/staff-web/src/features/patients/PatientOverviewPage.tsx`, its existing test and a neighbouring test to copy the rendering helpers. Statement coverage is already 100%, so look for cases the existing test does not prove.
+    2. Write one new test file for: very long text and Arabic text in every field; right-to-left layout of the page; a double click on submit sends one request; the response arrives after the page was closed (no warning, no state update); 401, 403, 409 and 500 responses show the matching state with words and not only colour; focus returns to the control that opened a dialog.
+    3. Only assert behaviour the page has today. If the page fails a case, do NOT edit it: list the case under `## Why this is not finished` and leave that one assertion out.
+    4. Do not change any source file, existing test or dependency. Run the staff web check and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-217 · Staff web: edge-case test for `patients/PatientsPage`
+  - requirements: WEB-09, UX-01
+  - scope: apps/staff-web/src/features/patients/PatientsPage.edge.test.tsx
+  - details:
+    1. Read `apps/staff-web/src/features/patients/PatientsPage.tsx`, its existing test and a neighbouring test to copy the rendering helpers. Statement coverage is already 100%, so look for cases the existing test does not prove.
+    2. Write one new test file for: very long text and Arabic text in every field; right-to-left layout of the page; a double click on submit sends one request; the response arrives after the page was closed (no warning, no state update); 401, 403, 409 and 500 responses show the matching state with words and not only colour; focus returns to the control that opened a dialog.
+    3. Only assert behaviour the page has today. If the page fails a case, do NOT edit it: list the case under `## Why this is not finished` and leave that one assertion out.
+    4. Do not change any source file, existing test or dependency. Run the staff web check and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-218 · Staff web: edge-case test for `patients/RegisterPatientForm`
+  - requirements: WEB-09, UX-01
+  - scope: apps/staff-web/src/features/patients/RegisterPatientForm.edge.test.tsx
+  - details:
+    1. Read `apps/staff-web/src/features/patients/RegisterPatientForm.tsx`, its existing test and a neighbouring test to copy the rendering helpers. Statement coverage is already 100%, so look for cases the existing test does not prove.
+    2. Write one new test file for: very long text and Arabic text in every field; right-to-left layout of the page; a double click on submit sends one request; the response arrives after the page was closed (no warning, no state update); 401, 403, 409 and 500 responses show the matching state with words and not only colour; focus returns to the control that opened a dialog.
+    3. Only assert behaviour the page has today. If the page fails a case, do NOT edit it: list the case under `## Why this is not finished` and leave that one assertion out.
+    4. Do not change any source file, existing test or dependency. Run the staff web check and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-219 · Staff web: edge-case test for `scheduling/AppointmentWorklist`
+  - requirements: WEB-09, UX-01
+  - scope: apps/staff-web/src/features/scheduling/AppointmentWorklist.edge.test.tsx
+  - details:
+    1. Read `apps/staff-web/src/features/scheduling/AppointmentWorklist.tsx`, its existing test and a neighbouring test to copy the rendering helpers. Statement coverage is already 100%, so look for cases the existing test does not prove.
+    2. Write one new test file for: very long text and Arabic text in every field; right-to-left layout of the page; a double click on submit sends one request; the response arrives after the page was closed (no warning, no state update); 401, 403, 409 and 500 responses show the matching state with words and not only colour; focus returns to the control that opened a dialog.
+    3. Only assert behaviour the page has today. If the page fails a case, do NOT edit it: list the case under `## Why this is not finished` and leave that one assertion out.
+    4. Do not change any source file, existing test or dependency. Run the staff web check and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-220 · Staff web: edge-case test for `scheduling/BookingForm`
+  - requirements: WEB-09, UX-01
+  - scope: apps/staff-web/src/features/scheduling/BookingForm.edge.test.tsx
+  - details:
+    1. Read `apps/staff-web/src/features/scheduling/BookingForm.tsx`, its existing test and a neighbouring test to copy the rendering helpers. Statement coverage is already 100%, so look for cases the existing test does not prove.
+    2. Write one new test file for: very long text and Arabic text in every field; right-to-left layout of the page; a double click on submit sends one request; the response arrives after the page was closed (no warning, no state update); 401, 403, 409 and 500 responses show the matching state with words and not only colour; focus returns to the control that opened a dialog.
+    3. Only assert behaviour the page has today. If the page fails a case, do NOT edit it: list the case under `## Why this is not finished` and leave that one assertion out.
+    4. Do not change any source file, existing test or dependency. Run the staff web check and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-221 · Staff web: edge-case test for `scheduling/SchedulingPage`
+  - requirements: WEB-09, UX-01
+  - scope: apps/staff-web/src/features/scheduling/SchedulingPage.edge.test.tsx
+  - details:
+    1. Read `apps/staff-web/src/features/scheduling/SchedulingPage.tsx`, its existing test and a neighbouring test to copy the rendering helpers. Statement coverage is already 100%, so look for cases the existing test does not prove.
+    2. Write one new test file for: very long text and Arabic text in every field; right-to-left layout of the page; a double click on submit sends one request; the response arrives after the page was closed (no warning, no state update); 401, 403, 409 and 500 responses show the matching state with words and not only colour; focus returns to the control that opened a dialog.
+    3. Only assert behaviour the page has today. If the page fails a case, do NOT edit it: list the case under `## Why this is not finished` and leave that one assertion out.
+    4. Do not change any source file, existing test or dependency. Run the staff web check and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-222 · Staff web: edge-case test for `system/ForbiddenPage`
+  - requirements: WEB-09, UX-01
+  - scope: apps/staff-web/src/features/system/ForbiddenPage.edge.test.tsx
+  - details:
+    1. Read `apps/staff-web/src/features/system/ForbiddenPage.tsx`, its existing test and a neighbouring test to copy the rendering helpers. Statement coverage is already 100%, so look for cases the existing test does not prove.
+    2. Write one new test file for: very long text and Arabic text in every field; right-to-left layout of the page; a double click on submit sends one request; the response arrives after the page was closed (no warning, no state update); 401, 403, 409 and 500 responses show the matching state with words and not only colour; focus returns to the control that opened a dialog.
+    3. Only assert behaviour the page has today. If the page fails a case, do NOT edit it: list the case under `## Why this is not finished` and leave that one assertion out.
+    4. Do not change any source file, existing test or dependency. Run the staff web check and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-223 · Staff web: edge-case test for `system/NotFoundPage`
+  - requirements: WEB-09, UX-01
+  - scope: apps/staff-web/src/features/system/NotFoundPage.edge.test.tsx
+  - details:
+    1. Read `apps/staff-web/src/features/system/NotFoundPage.tsx`, its existing test and a neighbouring test to copy the rendering helpers. Statement coverage is already 100%, so look for cases the existing test does not prove.
+    2. Write one new test file for: very long text and Arabic text in every field; right-to-left layout of the page; a double click on submit sends one request; the response arrives after the page was closed (no warning, no state update); 401, 403, 409 and 500 responses show the matching state with words and not only colour; focus returns to the control that opened a dialog.
+    3. Only assert behaviour the page has today. If the page fails a case, do NOT edit it: list the case under `## Why this is not finished` and leave that one assertion out.
+    4. Do not change any source file, existing test or dependency. Run the staff web check and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-224 · Staff web: edge-case test for `system/SessionExpiredPage`
+  - requirements: WEB-09, UX-01
+  - scope: apps/staff-web/src/features/system/SessionExpiredPage.edge.test.tsx
+  - details:
+    1. Read `apps/staff-web/src/features/system/SessionExpiredPage.tsx`, its existing test and a neighbouring test to copy the rendering helpers. Statement coverage is already 100%, so look for cases the existing test does not prove.
+    2. Write one new test file for: very long text and Arabic text in every field; right-to-left layout of the page; a double click on submit sends one request; the response arrives after the page was closed (no warning, no state update); 401, 403, 409 and 500 responses show the matching state with words and not only colour; focus returns to the control that opened a dialog.
+    3. Only assert behaviour the page has today. If the page fails a case, do NOT edit it: list the case under `## Why this is not finished` and leave that one assertion out.
+    4. Do not change any source file, existing test or dependency. Run the staff web check and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-225 · Staff web: edge-case test for `system/SignedOutPage`
+  - requirements: WEB-09, UX-01
+  - scope: apps/staff-web/src/features/system/SignedOutPage.edge.test.tsx
+  - details:
+    1. Read `apps/staff-web/src/features/system/SignedOutPage.tsx`, its existing test and a neighbouring test to copy the rendering helpers. Statement coverage is already 100%, so look for cases the existing test does not prove.
+    2. Write one new test file for: very long text and Arabic text in every field; right-to-left layout of the page; a double click on submit sends one request; the response arrives after the page was closed (no warning, no state update); 401, 403, 409 and 500 responses show the matching state with words and not only colour; focus returns to the control that opened a dialog.
+    3. Only assert behaviour the page has today. If the page fails a case, do NOT edit it: list the case under `## Why this is not finished` and leave that one assertion out.
+    4. Do not change any source file, existing test or dependency. Run the staff web check and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-226 · Staff web: edge-case test for `system/UnsupportedBrowserPage`
+  - requirements: WEB-09, UX-01
+  - scope: apps/staff-web/src/features/system/UnsupportedBrowserPage.edge.test.tsx
+  - details:
+    1. Read `apps/staff-web/src/features/system/UnsupportedBrowserPage.tsx`, its existing test and a neighbouring test to copy the rendering helpers. Statement coverage is already 100%, so look for cases the existing test does not prove.
+    2. Write one new test file for: very long text and Arabic text in every field; right-to-left layout of the page; a double click on submit sends one request; the response arrives after the page was closed (no warning, no state update); 401, 403, 409 and 500 responses show the matching state with words and not only colour; focus returns to the control that opened a dialog.
+    3. Only assert behaviour the page has today. If the page fails a case, do NOT edit it: list the case under `## Why this is not finished` and leave that one assertion out.
+    4. Do not change any source file, existing test or dependency. Run the staff web check and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+
+## Start now, part 4c: edge-case tests for patient app screens (one new test file each)
+
+- [ ] START-227 · Patient app: edge-case test for `SignedOutScreen`
+  - requirements: PAT-01, UX-01
+  - scope: apps/patient-mobile/src/app/SignedOutScreen.edge.test.tsx
+  - details:
+    1. Read `apps/patient-mobile/src/app/SignedOutScreen.tsx`, its existing test and the jest setup in `apps/patient-mobile/jest.setup.ts`. Statement coverage is already 100%, so look for cases the existing test does not prove.
+    2. Write one new test file for: very long text and Arabic text; right-to-left layout; large system text size; an offline or slow network state; 401, 403, 409 and 500 responses shown in words; the app moved to the background and back without losing the entered text or leaking it to a log.
+    3. Only assert behaviour the screen has today. If it fails a case, do NOT edit it: list the case under `## Why this is not finished` and leave that assertion out.
+    4. Do not change any source file, existing test or dependency. Run the patient app check and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-228 · Patient app: edge-case test for `patientPages`
+  - requirements: PAT-01, UX-01
+  - scope: apps/patient-mobile/src/app/patientPages.edge.test.tsx
+  - details:
+    1. Read `apps/patient-mobile/src/app/patientPages.tsx`, its existing test and the jest setup in `apps/patient-mobile/jest.setup.ts`. Statement coverage is already 100%, so look for cases the existing test does not prove.
+    2. Write one new test file for: very long text and Arabic text; right-to-left layout; large system text size; an offline or slow network state; 401, 403, 409 and 500 responses shown in words; the app moved to the background and back without losing the entered text or leaking it to a log.
+    3. Only assert behaviour the screen has today. If it fails a case, do NOT edit it: list the case under `## Why this is not finished` and leave that assertion out.
+    4. Do not change any source file, existing test or dependency. Run the patient app check and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-229 · Patient app: edge-case test for `InstructionAcknowledgmentScreen`
+  - requirements: PAT-01, UX-01
+  - scope: apps/patient-mobile/src/features/acknowledgments/InstructionAcknowledgmentScreen.edge.test.tsx
+  - details:
+    1. Read `apps/patient-mobile/src/features/acknowledgments/InstructionAcknowledgmentScreen.tsx`, its existing test and the jest setup in `apps/patient-mobile/jest.setup.ts`. Statement coverage is already 100%, so look for cases the existing test does not prove.
+    2. Write one new test file for: very long text and Arabic text; right-to-left layout; large system text size; an offline or slow network state; 401, 403, 409 and 500 responses shown in words; the app moved to the background and back without losing the entered text or leaking it to a log.
+    3. Only assert behaviour the screen has today. If it fails a case, do NOT edit it: list the case under `## Why this is not finished` and leave that assertion out.
+    4. Do not change any source file, existing test or dependency. Run the patient app check and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-230 · Patient app: edge-case test for `AppointmentListScreen`
+  - requirements: PAT-01, UX-01
+  - scope: apps/patient-mobile/src/features/appointments/AppointmentListScreen.edge.test.tsx
+  - details:
+    1. Read `apps/patient-mobile/src/features/appointments/AppointmentListScreen.tsx`, its existing test and the jest setup in `apps/patient-mobile/jest.setup.ts`. Statement coverage is already 100%, so look for cases the existing test does not prove.
+    2. Write one new test file for: very long text and Arabic text; right-to-left layout; large system text size; an offline or slow network state; 401, 403, 409 and 500 responses shown in words; the app moved to the background and back without losing the entered text or leaking it to a log.
+    3. Only assert behaviour the screen has today. If it fails a case, do NOT edit it: list the case under `## Why this is not finished` and leave that assertion out.
+    4. Do not change any source file, existing test or dependency. Run the patient app check and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-231 · Patient app: edge-case test for `AttachmentReviewScreen`
+  - requirements: PAT-01, UX-01
+  - scope: apps/patient-mobile/src/features/attachments/AttachmentReviewScreen.edge.test.tsx
+  - details:
+    1. Read `apps/patient-mobile/src/features/attachments/AttachmentReviewScreen.tsx`, its existing test and the jest setup in `apps/patient-mobile/jest.setup.ts`. Statement coverage is already 100%, so look for cases the existing test does not prove.
+    2. Write one new test file for: very long text and Arabic text; right-to-left layout; large system text size; an offline or slow network state; 401, 403, 409 and 500 responses shown in words; the app moved to the background and back without losing the entered text or leaking it to a log.
+    3. Only assert behaviour the screen has today. If it fails a case, do NOT edit it: list the case under `## Why this is not finished` and leave that assertion out.
+    4. Do not change any source file, existing test or dependency. Run the patient app check and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-232 · Patient app: edge-case test for `ReleasedReportsScreen`
+  - requirements: PAT-01, UX-01
+  - scope: apps/patient-mobile/src/features/reports/ReleasedReportsScreen.edge.test.tsx
+  - details:
+    1. Read `apps/patient-mobile/src/features/reports/ReleasedReportsScreen.tsx`, its existing test and the jest setup in `apps/patient-mobile/jest.setup.ts`. Statement coverage is already 100%, so look for cases the existing test does not prove.
+    2. Write one new test file for: very long text and Arabic text; right-to-left layout; large system text size; an offline or slow network state; 401, 403, 409 and 500 responses shown in words; the app moved to the background and back without losing the entered text or leaking it to a log.
+    3. Only assert behaviour the screen has today. If it fails a case, do NOT edit it: list the case under `## Why this is not finished` and leave that assertion out.
+    4. Do not change any source file, existing test or dependency. Run the patient app check and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+
+## Start now, part 4d: user acceptance scenarios (one document per workflow)
+
+These are the scripts a Product Owner and clinic staff will run for the gate sign-offs. Each is a document only.
+
+- [ ] START-233 · UAT scenario (Reception): Register a new adult patient with identity proofing
+  - requirements: CLN-01
+  - scope: docs/uat/reception/01-register-a-new-adult-patient-with-identity-proof.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/reception/01-register-a-new-adult-patient-with-identity-proof.md` for the workflow "Register a new adult patient with identity proofing": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-234 · UAT scenario (Reception): Search for an existing patient and avoid a duplicate
+  - requirements: CLN-01
+  - scope: docs/uat/reception/02-search-for-an-existing-patient-and-avoid-a-dupli.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/reception/02-search-for-an-existing-patient-and-avoid-a-dupli.md` for the workflow "Search for an existing patient and avoid a duplicate": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-235 · UAT scenario (Reception): Book a new appointment in the next available slot
+  - requirements: CLN-01
+  - scope: docs/uat/reception/03-book-a-new-appointment-in-the-next-available-slo.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/reception/03-book-a-new-appointment-in-the-next-available-slo.md` for the workflow "Book a new appointment in the next available slot": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-236 · UAT scenario (Reception): Book a recurring series of visits
+  - requirements: CLN-01
+  - scope: docs/uat/reception/04-book-a-recurring-series-of-visits.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/reception/04-book-a-recurring-series-of-visits.md` for the workflow "Book a recurring series of visits": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-237 · UAT scenario (Reception): Reschedule an appointment and tell the patient
+  - requirements: CLN-01
+  - scope: docs/uat/reception/05-reschedule-an-appointment-and-tell-the-patient.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/reception/05-reschedule-an-appointment-and-tell-the-patient.md` for the workflow "Reschedule an appointment and tell the patient": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-238 · UAT scenario (Reception): Cancel an appointment with a reason
+  - requirements: CLN-01
+  - scope: docs/uat/reception/06-cancel-an-appointment-with-a-reason.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/reception/06-cancel-an-appointment-with-a-reason.md` for the workflow "Cancel an appointment with a reason": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-239 · UAT scenario (Reception): Check a patient in and verify identity at the desk
+  - requirements: CLN-01
+  - scope: docs/uat/reception/07-check-a-patient-in-and-verify-identity-at-the-de.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/reception/07-check-a-patient-in-and-verify-identity-at-the-de.md` for the workflow "Check a patient in and verify identity at the desk": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-240 · UAT scenario (Reception): Handle a walk-in patient with no booking
+  - requirements: CLN-01
+  - scope: docs/uat/reception/08-handle-a-walk-in-patient-with-no-booking.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/reception/08-handle-a-walk-in-patient-with-no-booking.md` for the workflow "Handle a walk-in patient with no booking": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-241 · UAT scenario (Reception): Record missing coverage at check-in
+  - requirements: CLN-01
+  - scope: docs/uat/reception/09-record-missing-coverage-at-check-in.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/reception/09-record-missing-coverage-at-check-in.md` for the workflow "Record missing coverage at check-in": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-242 · UAT scenario (Reception): Resolve a duplicate patient with a reviewer
+  - requirements: CLN-01
+  - scope: docs/uat/reception/10-resolve-a-duplicate-patient-with-a-reviewer.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/reception/10-resolve-a-duplicate-patient-with-a-reviewer.md` for the workflow "Resolve a duplicate patient with a reviewer": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-243 · UAT scenario (Reception): Handle a double-booking conflict
+  - requirements: CLN-01
+  - scope: docs/uat/reception/11-handle-a-double-booking-conflict.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/reception/11-handle-a-double-booking-conflict.md` for the workflow "Handle a double-booking conflict": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-244 · UAT scenario (Reception): Mark a no-show and offer a new slot
+  - requirements: CLN-01
+  - scope: docs/uat/reception/12-mark-a-no-show-and-offer-a-new-slot.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/reception/12-mark-a-no-show-and-offer-a-new-slot.md` for the workflow "Mark a no-show and offer a new slot": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-245 · UAT scenario (Clinician): Open a chart and read the longitudinal timeline
+  - requirements: CLN-06
+  - scope: docs/uat/clinician/01-open-a-chart-and-read-the-longitudinal-timeline.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/clinician/01-open-a-chart-and-read-the-longitudinal-timeline.md` for the workflow "Open a chart and read the longitudinal timeline": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-246 · UAT scenario (Clinician): Write, sign and lock a clinical note
+  - requirements: CLN-06
+  - scope: docs/uat/clinician/02-write-sign-and-lock-a-clinical-note.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/clinician/02-write-sign-and-lock-a-clinical-note.md` for the workflow "Write, sign and lock a clinical note": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-247 · UAT scenario (Clinician): Correct a signed note with a new revision
+  - requirements: CLN-06
+  - scope: docs/uat/clinician/03-correct-a-signed-note-with-a-new-revision.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/clinician/03-correct-a-signed-note-with-a-new-revision.md` for the workflow "Correct a signed note with a new revision": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-248 · UAT scenario (Clinician): Mark an entry as entered in error
+  - requirements: CLN-06
+  - scope: docs/uat/clinician/04-mark-an-entry-as-entered-in-error.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/clinician/04-mark-an-entry-as-entered-in-error.md` for the workflow "Mark an entry as entered in error": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-249 · UAT scenario (Clinician): Order a laboratory test and follow it to the result
+  - requirements: CLN-06
+  - scope: docs/uat/clinician/05-order-a-laboratory-test-and-follow-it-to-the-res.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/clinician/05-order-a-laboratory-test-and-follow-it-to-the-res.md` for the workflow "Order a laboratory test and follow it to the result": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-250 · UAT scenario (Clinician): Order an imaging study with a clinical question
+  - requirements: CLN-06
+  - scope: docs/uat/clinician/06-order-an-imaging-study-with-a-clinical-question.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/clinician/06-order-an-imaging-study-with-a-clinical-question.md` for the workflow "Order an imaging study with a clinical question": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-251 · UAT scenario (Clinician): Review and acknowledge a critical result
+  - requirements: CLN-06
+  - scope: docs/uat/clinician/07-review-and-acknowledge-a-critical-result.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/clinician/07-review-and-acknowledge-a-critical-result.md` for the workflow "Review and acknowledge a critical result": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-252 · UAT scenario (Clinician): Compare a result with earlier values
+  - requirements: CLN-06
+  - scope: docs/uat/clinician/08-compare-a-result-with-earlier-values.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/clinician/08-compare-a-result-with-earlier-values.md` for the workflow "Compare a result with earlier values": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-253 · UAT scenario (Clinician): Write and send a prescription
+  - requirements: CLN-06
+  - scope: docs/uat/clinician/09-write-and-send-a-prescription.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/clinician/09-write-and-send-a-prescription.md` for the workflow "Write and send a prescription": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-254 · UAT scenario (Clinician): Override a drug warning with a reason
+  - requirements: CLN-06
+  - scope: docs/uat/clinician/10-override-a-drug-warning-with-a-reason.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/clinician/10-override-a-drug-warning-with-a-reason.md` for the workflow "Override a drug warning with a reason": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-255 · UAT scenario (Clinician): Refer a patient to a specialist and track the reply
+  - requirements: CLN-06
+  - scope: docs/uat/clinician/11-refer-a-patient-to-a-specialist-and-track-the-re.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/clinician/11-refer-a-patient-to-a-specialist-and-track-the-re.md` for the workflow "Refer a patient to a specialist and track the reply": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-256 · UAT scenario (Clinician): Use a note template and field dictionary
+  - requirements: CLN-06
+  - scope: docs/uat/clinician/12-use-a-note-template-and-field-dictionary.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/clinician/12-use-a-note-template-and-field-dictionary.md` for the workflow "Use a note template and field dictionary": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-257 · UAT scenario (Clinician): Suggest and book a follow-up visit
+  - requirements: CLN-06
+  - scope: docs/uat/clinician/13-suggest-and-book-a-follow-up-visit.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/clinician/13-suggest-and-book-a-follow-up-visit.md` for the workflow "Suggest and book a follow-up visit": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-258 · UAT scenario (Clinician): Attach a document to the chart
+  - requirements: CLN-06
+  - scope: docs/uat/clinician/14-attach-a-document-to-the-chart.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/clinician/14-attach-a-document-to-the-chart.md` for the workflow "Attach a document to the chart": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-259 · UAT scenario (Laboratory): Receive an order and create an accession
+  - requirements: LAB-01
+  - scope: docs/uat/laboratory/01-receive-an-order-and-create-an-accession.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/laboratory/01-receive-an-order-and-create-an-accession.md` for the workflow "Receive an order and create an accession": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-260 · UAT scenario (Laboratory): Enter a result and send it for release
+  - requirements: LAB-01
+  - scope: docs/uat/laboratory/02-enter-a-result-and-send-it-for-release.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/laboratory/02-enter-a-result-and-send-it-for-release.md` for the workflow "Enter a result and send it for release": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-261 · UAT scenario (Laboratory): Handle an unmatched report
+  - requirements: LAB-01
+  - scope: docs/uat/laboratory/03-handle-an-unmatched-report.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/laboratory/03-handle-an-unmatched-report.md` for the workflow "Handle an unmatched report": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-262 · UAT scenario (Laboratory): Send a critical result and record the acknowledgment
+  - requirements: LAB-01
+  - scope: docs/uat/laboratory/04-send-a-critical-result-and-record-the-acknowledg.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/laboratory/04-send-a-critical-result-and-record-the-acknowledg.md` for the workflow "Send a critical result and record the acknowledgment": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-263 · UAT scenario (Laboratory): Correct a released result with a revision
+  - requirements: LAB-01
+  - scope: docs/uat/laboratory/05-correct-a-released-result-with-a-revision.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/laboratory/05-correct-a-released-result-with-a-revision.md` for the workflow "Correct a released result with a revision": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-264 · UAT scenario (Laboratory): Reject a sample with a reason
+  - requirements: LAB-01
+  - scope: docs/uat/laboratory/06-reject-a-sample-with-a-reason.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/laboratory/06-reject-a-sample-with-a-reason.md` for the workflow "Reject a sample with a reason": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-265 · UAT scenario (Laboratory): Resolve a partner delivery failure
+  - requirements: LAB-01
+  - scope: docs/uat/laboratory/07-resolve-a-partner-delivery-failure.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/laboratory/07-resolve-a-partner-delivery-failure.md` for the workflow "Resolve a partner delivery failure": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-266 · UAT scenario (Radiology): Receive an imaging order and schedule the study
+  - requirements: RAD-01
+  - scope: docs/uat/radiology/01-receive-an-imaging-order-and-schedule-the-study.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/radiology/01-receive-an-imaging-order-and-schedule-the-study.md` for the workflow "Receive an imaging order and schedule the study": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-267 · UAT scenario (Radiology): Verify patient and accession before linking a study
+  - requirements: RAD-01
+  - scope: docs/uat/radiology/02-verify-patient-and-accession-before-linking-a-st.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/radiology/02-verify-patient-and-accession-before-linking-a-st.md` for the workflow "Verify patient and accession before linking a study": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-268 · UAT scenario (Radiology): Record the radiology report
+  - requirements: RAD-01
+  - scope: docs/uat/radiology/03-record-the-radiology-report.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/radiology/03-record-the-radiology-report.md` for the workflow "Record the radiology report": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-269 · UAT scenario (Radiology): Link a study to the chart
+  - requirements: RAD-01
+  - scope: docs/uat/radiology/04-link-a-study-to-the-chart.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/radiology/04-link-a-study-to-the-chart.md` for the workflow "Link a study to the chart": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-270 · UAT scenario (Radiology): Send a critical imaging finding
+  - requirements: RAD-01
+  - scope: docs/uat/radiology/05-send-a-critical-imaging-finding.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/radiology/05-send-a-critical-imaging-finding.md` for the workflow "Send a critical imaging finding": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-271 · UAT scenario (Physical therapy): Open a therapy episode
+  - requirements: PT-01
+  - scope: docs/uat/therapy/01-open-a-therapy-episode.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/therapy/01-open-a-therapy-episode.md` for the workflow "Open a therapy episode": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-272 · UAT scenario (Physical therapy): Record an outcome scale with units
+  - requirements: PT-01
+  - scope: docs/uat/therapy/02-record-an-outcome-scale-with-units.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/therapy/02-record-an-outcome-scale-with-units.md` for the workflow "Record an outcome scale with units": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-273 · UAT scenario (Physical therapy): Sign a therapy note
+  - requirements: PT-01
+  - scope: docs/uat/therapy/03-sign-a-therapy-note.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/therapy/03-sign-a-therapy-note.md` for the workflow "Sign a therapy note": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-274 · UAT scenario (Physical therapy): Discharge an episode
+  - requirements: PT-01
+  - scope: docs/uat/therapy/04-discharge-an-episode.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/therapy/04-discharge-an-episode.md` for the workflow "Discharge an episode": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-275 · UAT scenario (Physical therapy): Handle a missed session
+  - requirements: PT-01
+  - scope: docs/uat/therapy/05-handle-a-missed-session.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/therapy/05-handle-a-missed-session.md` for the workflow "Handle a missed session": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-276 · UAT scenario (Prescriptions): Transmit a prescription to a partner
+  - requirements: RX-01
+  - scope: docs/uat/prescriptions/01-transmit-a-prescription-to-a-partner.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/prescriptions/01-transmit-a-prescription-to-a-partner.md` for the workflow "Transmit a prescription to a partner": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-277 · UAT scenario (Prescriptions): Handle an ambiguous transmission
+  - requirements: RX-01
+  - scope: docs/uat/prescriptions/02-handle-an-ambiguous-transmission.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/prescriptions/02-handle-an-ambiguous-transmission.md` for the workflow "Handle an ambiguous transmission": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-278 · UAT scenario (Prescriptions): Print a local prescription with channel evidence
+  - requirements: RX-01
+  - scope: docs/uat/prescriptions/03-print-a-local-prescription-with-channel-evidence.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/prescriptions/03-print-a-local-prescription-with-channel-evidence.md` for the workflow "Print a local prescription with channel evidence": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-279 · UAT scenario (Prescriptions): Renew a prescription
+  - requirements: RX-01
+  - scope: docs/uat/prescriptions/04-renew-a-prescription.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/prescriptions/04-renew-a-prescription.md` for the workflow "Renew a prescription": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-280 · UAT scenario (Finance): Issue an invoice
+  - requirements: FIN-01
+  - scope: docs/uat/finance/01-issue-an-invoice.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/finance/01-issue-an-invoice.md` for the workflow "Issue an invoice": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-281 · UAT scenario (Finance): Record a payment
+  - requirements: FIN-01
+  - scope: docs/uat/finance/02-record-a-payment.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/finance/02-record-a-payment.md` for the workflow "Record a payment": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-282 · UAT scenario (Finance): Refund a payment
+  - requirements: FIN-01
+  - scope: docs/uat/finance/03-refund-a-payment.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/finance/03-refund-a-payment.md` for the workflow "Refund a payment": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-283 · UAT scenario (Finance): Issue a credit note
+  - requirements: FIN-01
+  - scope: docs/uat/finance/04-issue-a-credit-note.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/finance/04-issue-a-credit-note.md` for the workflow "Issue a credit note": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-284 · UAT scenario (Finance): Void an invoice with a reason
+  - requirements: FIN-01
+  - scope: docs/uat/finance/05-void-an-invoice-with-a-reason.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/finance/05-void-an-invoice-with-a-reason.md` for the workflow "Void an invoice with a reason": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-285 · UAT scenario (Finance): Reconcile the day
+  - requirements: FIN-01
+  - scope: docs/uat/finance/06-reconcile-the-day.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/finance/06-reconcile-the-day.md` for the workflow "Reconcile the day": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-286 · UAT scenario (Administration): Add a facility
+  - requirements: ADM-01
+  - scope: docs/uat/admin/01-add-a-facility.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/admin/01-add-a-facility.md` for the workflow "Add a facility": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-287 · UAT scenario (Administration): Invite a staff member
+  - requirements: ADM-01
+  - scope: docs/uat/admin/02-invite-a-staff-member.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/admin/02-invite-a-staff-member.md` for the workflow "Invite a staff member": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-288 · UAT scenario (Administration): Assign and change roles with history
+  - requirements: ADM-01
+  - scope: docs/uat/admin/03-assign-and-change-roles-with-history.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/admin/03-assign-and-change-roles-with-history.md` for the workflow "Assign and change roles with history": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-289 · UAT scenario (Administration): Revoke a staff member's access
+  - requirements: ADM-01
+  - scope: docs/uat/admin/04-revoke-a-staff-member-s-access.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/admin/04-revoke-a-staff-member-s-access.md` for the workflow "Revoke a staff member's access": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-290 · UAT scenario (Administration): Set clinician availability
+  - requirements: ADM-01
+  - scope: docs/uat/admin/05-set-clinician-availability.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/admin/05-set-clinician-availability.md` for the workflow "Set clinician availability": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-291 · UAT scenario (Administration): Edit visit types and booking rules
+  - requirements: ADM-01
+  - scope: docs/uat/admin/06-edit-visit-types-and-booking-rules.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/admin/06-edit-visit-types-and-booking-rules.md` for the workflow "Edit visit types and booking rules": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-292 · UAT scenario (Administration): Edit a coverage roster and escalation rule
+  - requirements: ADM-01
+  - scope: docs/uat/admin/07-edit-a-coverage-roster-and-escalation-rule.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/admin/07-edit-a-coverage-roster-and-escalation-rule.md` for the workflow "Edit a coverage roster and escalation rule": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-293 · UAT scenario (Administration): Define a catalog entry with approval
+  - requirements: ADM-01
+  - scope: docs/uat/admin/08-define-a-catalog-entry-with-approval.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/admin/08-define-a-catalog-entry-with-approval.md` for the workflow "Define a catalog entry with approval": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-294 · UAT scenario (Administration): Export tenant data
+  - requirements: ADM-01
+  - scope: docs/uat/admin/09-export-tenant-data.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/admin/09-export-tenant-data.md` for the workflow "Export tenant data": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-295 · UAT scenario (Administration): Import onboarding data with a dry run
+  - requirements: ADM-01
+  - scope: docs/uat/admin/10-import-onboarding-data-with-a-dry-run.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/admin/10-import-onboarding-data-with-a-dry-run.md` for the workflow "Import onboarding data with a dry run": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-296 · UAT scenario (Operations): Watch the unit queues
+  - requirements: OPS-05
+  - scope: docs/uat/operations/01-watch-the-unit-queues.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/operations/01-watch-the-unit-queues.md` for the workflow "Watch the unit queues": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-297 · UAT scenario (Operations): Work the unsigned encounters queue
+  - requirements: OPS-05
+  - scope: docs/uat/operations/02-work-the-unsigned-encounters-queue.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/operations/02-work-the-unsigned-encounters-queue.md` for the workflow "Work the unsigned encounters queue": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-298 · UAT scenario (Operations): Work the missing coverage queue
+  - requirements: OPS-05
+  - scope: docs/uat/operations/03-work-the-missing-coverage-queue.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/operations/03-work-the-missing-coverage-queue.md` for the workflow "Work the missing coverage queue": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-299 · UAT scenario (Operations): Edit service hours and flow policies
+  - requirements: OPS-05
+  - scope: docs/uat/operations/04-edit-service-hours-and-flow-policies.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/operations/04-edit-service-hours-and-flow-policies.md` for the workflow "Edit service hours and flow policies": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-300 · UAT scenario (Operations): Request support access and close it
+  - requirements: OPS-05
+  - scope: docs/uat/operations/05-request-support-access-and-close-it.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/operations/05-request-support-access-and-close-it.md` for the workflow "Request support access and close it": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-301 · UAT scenario (Operations): Review emergency access
+  - requirements: OPS-05
+  - scope: docs/uat/operations/06-review-emergency-access.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/operations/06-review-emergency-access.md` for the workflow "Review emergency access": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-302 · UAT scenario (Messaging): Reply to a patient message
+  - requirements: MSG-01
+  - scope: docs/uat/messaging/01-reply-to-a-patient-message.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/messaging/01-reply-to-a-patient-message.md` for the workflow "Reply to a patient message": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-303 · UAT scenario (Messaging): Triage the unit inbox
+  - requirements: MSG-01
+  - scope: docs/uat/messaging/02-triage-the-unit-inbox.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/messaging/02-triage-the-unit-inbox.md` for the workflow "Triage the unit inbox": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-304 · UAT scenario (Messaging): Send an instruction and track the acknowledgment
+  - requirements: MSG-01
+  - scope: docs/uat/messaging/03-send-an-instruction-and-track-the-acknowledgment.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/messaging/03-send-an-instruction-and-track-the-acknowledgment.md` for the workflow "Send an instruction and track the acknowledgment": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-305 · UAT scenario (Messaging): Handle a quarantined attachment
+  - requirements: MSG-01
+  - scope: docs/uat/messaging/04-handle-a-quarantined-attachment.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/messaging/04-handle-a-quarantined-attachment.md` for the workflow "Handle a quarantined attachment": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-306 · UAT scenario (Messaging): Link a conversation to a verified patient
+  - requirements: MSG-01
+  - scope: docs/uat/messaging/05-link-a-conversation-to-a-verified-patient.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/messaging/05-link-a-conversation-to-a-verified-patient.md` for the workflow "Link a conversation to a verified patient": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-307 · UAT scenario (Messaging): Close a conversation
+  - requirements: MSG-01
+  - scope: docs/uat/messaging/06-close-a-conversation.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/messaging/06-close-a-conversation.md` for the workflow "Close a conversation": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-308 · UAT scenario (Patient app): Enroll in the app
+  - requirements: PAT-01
+  - scope: docs/uat/patient/01-enroll-in-the-app.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/patient/01-enroll-in-the-app.md` for the workflow "Enroll in the app": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-309 · UAT scenario (Patient app): Recover an account
+  - requirements: PAT-01
+  - scope: docs/uat/patient/02-recover-an-account.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/patient/02-recover-an-account.md` for the workflow "Recover an account": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-310 · UAT scenario (Patient app): Lock an account after failed attempts
+  - requirements: PAT-01
+  - scope: docs/uat/patient/03-lock-an-account-after-failed-attempts.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/patient/03-lock-an-account-after-failed-attempts.md` for the workflow "Lock an account after failed attempts": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-311 · UAT scenario (Patient app): See appointments in the facility time zone
+  - requirements: PAT-01
+  - scope: docs/uat/patient/04-see-appointments-in-the-facility-time-zone.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/patient/04-see-appointments-in-the-facility-time-zone.md` for the workflow "See appointments in the facility time zone": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-312 · UAT scenario (Patient app): Read a released report
+  - requirements: PAT-01
+  - scope: docs/uat/patient/05-read-a-released-report.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/patient/05-read-a-released-report.md` for the workflow "Read a released report": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-313 · UAT scenario (Patient app): Request a copy of records
+  - requirements: PAT-01
+  - scope: docs/uat/patient/06-request-a-copy-of-records.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/patient/06-request-a-copy-of-records.md` for the workflow "Request a copy of records": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-314 · UAT scenario (Patient app): Read an instruction and acknowledge it
+  - requirements: PAT-01
+  - scope: docs/uat/patient/07-read-an-instruction-and-acknowledge-it.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/patient/07-read-an-instruction-and-acknowledge-it.md` for the workflow "Read an instruction and acknowledge it": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-315 · UAT scenario (Patient app): Change notification preferences
+  - requirements: PAT-01
+  - scope: docs/uat/patient/08-change-notification-preferences.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/patient/08-change-notification-preferences.md` for the workflow "Change notification preferences": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-316 · UAT scenario (Patient app): Message the clinic
+  - requirements: PAT-01
+  - scope: docs/uat/patient/09-message-the-clinic.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/patient/09-message-the-clinic.md` for the workflow "Message the clinic": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-317 · UAT scenario (Patient app): Switch the language to Arabic
+  - requirements: PAT-01
+  - scope: docs/uat/patient/10-switch-the-language-to-arabic.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/patient/10-switch-the-language-to-arabic.md` for the workflow "Switch the language to Arabic": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    5. If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+
+## Start now, part 4e: link the acceptance scenarios
+
+- [ ] START-318 · Docs: index of the user acceptance scenarios
+  - requirements: PRD-01
+  - scope: docs/uat/index.md
+  - depends: START-233, START-234, START-235, START-236, START-237, START-238, START-239, START-240, START-241, START-242, START-243, START-244, START-245, START-246, START-247, START-248, START-249, START-250, START-251, START-252, START-253, START-254, START-255, START-256, START-257, START-258, START-259, START-260, START-261, START-262, START-263, START-264, START-265, START-266, START-267, START-268, START-269, START-270, START-271, START-272, START-273, START-274, START-275, START-276, START-277, START-278, START-279, START-280, START-281, START-282, START-283, START-284, START-285, START-286, START-287, START-288, START-289, START-290, START-291, START-292, START-293, START-294, START-295, START-296, START-297, START-298, START-299, START-300, START-301, START-302, START-303, START-304, START-305, START-306, START-307, START-308, START-309, START-310, START-311, START-312, START-313, START-314, START-315, START-316, START-317, START-319
+  - details:
+    1. List every `.md` file under `docs/uat` that exists now, grouped by the role folder.
+    2. Write `docs/uat/index.md`: one table per role with the scenario title (read from each file), the requirement id and a link; at the top, a short note on how a Product Owner uses the scenarios for the gate sign-offs.
+    3. Do not edit `docs/reference/index.md`. Run `python3 -I scripts/check-docs.py` and paste the result.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] START-319 · UAT scenario (Clinician): Answer a patient's question about a released result
+  - requirements: CLN-06
+  - scope: docs/uat/clinician/15-answer-a-patients-question-about-a-released-result.md
+  - details:
+    1. Read the screens and API for this workflow in `apps/staff-web/src/features`, `apps/patient-mobile/src` and the controllers under `apps/api/src/main/java/com/aurevia/smartclinic`, and the matching requirement in `SMARTCLINIC_V1_SPEC.md`.
+    2. Write `docs/uat/clinician/15-answer-a-patients-question-about-a-released-result.md` for the workflow "Answer a patient's question about a released result": purpose in one sentence; the role that performs it; preconditions and the invented data needed; numbered steps that name each screen, button and field exactly as the interface says them; the expected result after each step; at least two negative variants (what must be refused and what the person should see); an Arabic-interface variant; the evidence to capture; and clear pass and fail criteria.
+    3. Describe only screens that exist today. Mark a step that needs a screen or an API that does not exist yet with `PLANNED:` and the TODO.md task id, or `NO TASK` when none exists.
+    4. Use only invented people, numbers and organisation names. Run `python3 -I scripts/check-docs.py` and paste the result.
+    If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] S-G0-04 · Isolation across search, files, workers and exports plus concurrent-connection and transaction tests (ARC-02). Concurrent-connection test slice merged by swarm as CW-003; other surfaces remain.
+  - blocker 2026-11-19T07:12Z: the search, files, workers and exports surfaces do not exist in `apps/api` yet (only patient normalized-name search), so their isolation cannot be tested. Needs Product Owner/Architect decomposition into stories that first create each surface. Do not claim as a single implementation story.
+
+## G1 — clinic
+
+Gate evidence: competing bookings enforce one protected slot; stale drafts cannot overwrite signed records; corrections preserve the signed original; English and Arabic PDFs validated; consolidation is all-or-nothing.
+
+- [ ] S-G1-09 · G1 gate evidence and Product Owner acceptance (G1).
+
+## G2 — labs and exchange
+
+Gate evidence: rejected or recollected specimens trace to the right order; duplicate and reordered events do not duplicate or overwrite final reports; unmatched results wait for review; critical results escalate on deadline with human acknowledgment, and corrections reopen review.
+
+- [ ] S-G2-11 · G2 gate evidence and Product Owner acceptance (G2).
+
+## G3 — patient and operations
+
+Gate evidence: confirmed patients see only authorized revisions; generic notifications reveal no clinical detail; withdrawn releases stop future access; messaging works on both mobile platforms including wrong-unit denial, uploads, instructions, revision-specific acknowledgment, failed uploads, notification retry and revoked connections.
+
+- [ ] S-G3-13 · G3 gate evidence and Product Owner acceptance (G3).
+
+## G4 — specialty and finance
+
+Gate evidence: wrong-patient study association refused; radiology addendum reaches referrer; PT episode produces signed discharge and referral closure; ambiguous prescription transmission reconciles without duplication; payment and refund replay reproduces balances.
+
+- [ ] S-G4-07 · G4 gate evidence and Product Owner acceptance (G4).
+
+## G5 — launch and operations
+
+Gate evidence: each site approves workflow, release policy, market constraints, integrations, identity procedures, staffing and downtime drills; messaging units verify eligibility, ownership, after-hours guidance and backup coverage; no unresolved isolation, record-integrity or critical-escalation defects.
+
+- [ ] S-G5-01 · Market policy pack, hosting region, jurisdiction and data handling map (OPS-01, PRD-05).
+- [ ] S-G5-02 · Clinical templates, code sets, interpreting privileges and result escalation approvals (ADM-01).
+- [ ] S-G5-03 · Result release rules, sensitive information handling and identity recovery approvals (OPS-01).
+- [ ] S-G5-04 · Laboratory, PACS and pharmacy interface contracts, credentials and outage drills (OPS-01).
+- [ ] S-G5-12 · Per-site launch approvals and final G5 acceptance (G5).
+
+## Cross-cutting contracts
+
+Delivered inside the stories above, not scheduled separately.
+
+>>>>>>> origin/main
 ## Delivery repair (swarm tasks)
 
 Main's Delivery run is red; these tasks restore it. They share `apps/api`, so the swarm runs them one at a time.
