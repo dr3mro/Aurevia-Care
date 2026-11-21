@@ -14,6 +14,7 @@ import * as path from 'node:path';
 const DOMAIN_FOLDERS = [
   'appointments',
   'reports',
+  'handouts', // PAT-02, CLN-07 - patient handout domain
   'enrollment',
   'units',
   'conversations',
