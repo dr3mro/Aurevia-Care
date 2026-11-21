@@ -12,7 +12,7 @@ The agent team runs as the swarm: OpenCode workers on GitHub-hosted runners, coo
 
 ## Setup
 
-Follow the setup in [SWARM.md](SWARM.md#setup): run **Agent image** once, save `OPENCODE_API_KEY_<n>` per slot (or one `OPENCODE_API_KEY`), allow Actions to create pull requests, and save `SWARM_TOKEN`. Free models change and some retain prompts, so check each model's privacy note and use synthetic data only.
+Follow the setup in [SWARM.md](SWARM.md#setup): run **Agent image** once, save `OPENCODE_API_KEY_<n>` per slot (or one `OPENCODE_API_KEY`), allow Actions to create pull requests, and save `SWARM_TOKEN`. The optional repository variable `SWARM_ALLOW_PROTECTED=1` is a kill switch that lets protected-file pull requests merge after the full gate with a non-blocking `protected-change` oversight issue ([Kill switch](SWARM.md#kill-switch)); leave it unset to keep the default person-review rule. Free models change and some retain prompts, so check each model's privacy note and use synthetic data only.
 
 ## What runs when
 
@@ -32,6 +32,6 @@ Everything else is event driven: a push to `TODO.md`, a finished wave, a pull re
 
 - Agent steps have no write token. Pushing, pull request creation, labels and issues happen in separate trusted jobs that run the scripts from `main`. The agent profile denies `gh`, `git push`, `git tag`, `curl`, `wget`, `ssh` and `docker`.
 - Issues and comments are read only when written by the repository's automation or by an owner, member or collaborator; their text reaches agents as untrusted notes.
-- Reviewers and the triage, audit and notes workers run read-only. Anything they write is validated before it lands: bounded text, safe scopes, no workflow, script or agent files, and the docs and secret checks Delivery runs.
+- Reviewers and the triage, audit and notes workers run read-only. Anything they write is validated before it lands: bounded text, safe scopes, no workflow, script or agent files, and the docs and secret checks Delivery runs. The `SWARM_ALLOW_PROTECTED` repository variable is the only exception to the protected-file rule: with it on, a protected-file pull request merges after the full gate and opens a non-blocking `protected-change` oversight issue ([Kill switch](SWARM.md#kill-switch)); the full gate, tracker rule and file-count limit remain.
 - Do not make `Delivery gate` a required check on `main` while the integrator merges locally and pushes straight to `main`; a required check would reject its push.
 - Use synthetic data only. Free models are not suitable for real patient data.
