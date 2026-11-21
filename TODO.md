@@ -323,8 +323,8 @@ Cadence and limits:
 
 Found while extending the specification (section 8.1 and docs/design/screens-and-navigation.md). Run after the main repair tasks; each task states its own dependency.
 
-- [-] READY-01 · Health endpoints /health/live and /health/ready (WEB-05)
-  - agent: swarm-2
+- [x] READY-01 · Health endpoints /health/live and /health/ready (WEB-05)
+  - pr: #253
   - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/web
   - depends: AUD-20261120-03
@@ -339,8 +339,9 @@ Found while extending the specification (section 8.1 and docs/design/screens-and
     Do NOT register the new routes in the interceptor, do not add Spring Actuator, do not return build or version data.
 
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` (API tasks) or `bash apps/staff-web/check.sh` (staff web tasks) must pass. Synthetic data only; write the failing test first; stay inside the declared scope; name folders and packages after what they hold, never a task ID; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
-- [ ] READY-02 · Security headers on every API response (WEB-02)
-  - attempts: 0
+- [-] READY-02 · Security headers on every API response (WEB-02)
+  - agent: swarm-1
+  - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/web, apps/api/src/main/resources
   - depends: READY-01
   - details:
@@ -632,8 +633,8 @@ Order of work for the whole production-readiness effort: (1) security and platfo
 
 ### Phase 4 — Wire the three existing screens to the real API
 
-- [-] READY-21 · Scheduling page: /schedule and /schedule/book on the real API
-  - agent: swarm-3
+- [x] READY-21 · Scheduling page: /schedule and /schedule/book on the real API
+  - pr: #254
   - attempts: 1
   - requirements: CLN-01, CLN-02
   - scope: apps/staff-web/src/features/scheduling, apps/staff-web/src/app/routes.tsx, apps/staff-web/src/app/navigation.ts
@@ -648,9 +649,10 @@ Order of work for the whole production-readiness effort: (1) security and platfo
     Do NOT change the backend and do NOT remove the fixtures (tests still use them).
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT add a dependency, change files outside `scope`, or put patient data in logs, URLs or browser storage.
-- [ ] READY-22 · Chart page: /patients/:id/chart and the note editor on the real API
+- [-] READY-22 · Chart page: /patients/:id/chart and the note editor on the real API
+  - agent: swarm-2
+  - attempts: 1
   - requirements: CLN-03, CLN-05
-  - attempts: 0
   - scope: apps/staff-web/src/features/chart, apps/staff-web/src/app/routes.tsx
   - depends: READY-19, READY-20
   - details:
@@ -857,8 +859,8 @@ Do these after part 2 where `depends` says so. Persistence tasks run one at a ti
     If the interface cannot be implemented with a clean table design, STOP and write exactly which method and why into `.agent/pr-notes/<task-id>.md`; make no code changes.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT change files outside `scope`, add patient data to logs, or edit any existing migration.
-- [-] READY-36 · Persist care units in PostgreSQL (V60) instead of memory
-  - agent: swarm-2
+- [x] READY-36 · Persist care units in PostgreSQL (V60) instead of memory
+  - pr: #252
   - attempts: 1
   - requirements: ARC-01, ARC-02, OPS-02
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/messaging/units, apps/api/src/test/java/com/aurevia/smartclinic/messaging/units, db/migrations/V60__care_units.sql, apps/api/src/test/java/com/aurevia/smartclinic/it
@@ -875,9 +877,10 @@ Do these after part 2 where `depends` says so. Persistence tasks run one at a ti
     If the interface cannot be implemented with a clean table design, STOP and write exactly which method and why into `.agent/pr-notes/<task-id>.md`; make no code changes.
 
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT change files outside `scope`, add patient data to logs, or edit any existing migration.
-- [ ] READY-37 · Persist flow policies in PostgreSQL (V61) instead of memory
+- [-] READY-37 · Persist flow policies in PostgreSQL (V61) instead of memory
+  - agent: swarm-3
+  - attempts: 1
   - requirements: ARC-01, ARC-02, OPS-02
-  - attempts: 0
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/messaging/flows, apps/api/src/test/java/com/aurevia/smartclinic/messaging/flows, db/migrations/V61__flow_policies.sql, apps/api/src/test/java/com/aurevia/smartclinic/it
   - depends: READY-36
   - reserved: V61
