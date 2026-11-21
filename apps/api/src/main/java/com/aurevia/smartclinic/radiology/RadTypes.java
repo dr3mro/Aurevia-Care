@@ -149,6 +149,31 @@ public interface RadTypes {
     }
 
     /**
+     * Lifecycle of a study-link review raised by a patient or accession mismatch (RAD-01).
+     *
+     * <p>A review is created in {@code OPEN} when an external study cannot be
+     * associated, and is replaced by a {@code RESOLVED} revision when an
+     * authorized reviewer records the decision. Both revisions stay in the
+     * queue so the linkage decision is auditable.</p>
+     */
+    enum StudyLinkReviewStatus {
+
+        /** Awaiting a reviewer decision; the study is not linked. */
+        OPEN,
+        /** Reviewed and cleared for a fresh association attempt. */
+        RESOLVED;
+
+        /**
+         * Return the wire form used by projections and events.
+         *
+         * @return lower-case status name
+         */
+        public String wire() {
+            return name().toLowerCase(Locale.ROOT);
+        }
+    }
+
+    /**
      * Immutable facts emitted by the RAD-01 kernel for a later outbox publisher (ARC-05).
      *
      * <p>A referrer notification is a separate fact from the interpretation or
@@ -165,6 +190,10 @@ public interface RadTypes {
         ACCESSION_RECORDED,
         /** An external study was associated with a verified patient. */
         STUDY_ASSOCIATED,
+        /** A patient or accession mismatch queued a study-link review. */
+        STUDY_LINK_REVIEW_OPENED,
+        /** A study-link review was resolved by an authorized reviewer. */
+        STUDY_LINK_REVIEW_RESOLVED,
         /** An interpretation was signed. */
         INTERPRETATION_SIGNED,
         /** A signed addendum was linked. */

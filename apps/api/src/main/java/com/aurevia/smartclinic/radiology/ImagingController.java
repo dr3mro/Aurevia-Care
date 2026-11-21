@@ -16,7 +16,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.aurevia.smartclinic.api.ApiException;
+import com.aurevia.smartclinic.radiology.RadCommands.AssociateStudyCommand;
 import com.aurevia.smartclinic.radiology.RadCommands.IntakeCommand;
+import com.aurevia.smartclinic.radiology.RadCommands.StudyReviewCommand;
 import com.aurevia.smartclinic.radiology.RadTypes.Modality;
 import com.aurevia.smartclinic.radiology.RadTypes.Urgency;
 import com.aurevia.smartclinic.staff.StaffRepository;
@@ -77,7 +79,8 @@ public final class ImagingController {
                 context.subject(), activeRoles(context), request.orderId(), request.patientId(),
                 request.encounterId(), request.orderCode(), request.urgency(),
                 request.clinicalQuestion(), request.sourceActor(), request.destination(),
-                request.responsibleClinician(), request.workQueue(), request.referrer()));
+                request.responsibleClinician(), request.workQueue(), request.referrer(),
+                request.modality()));
         return ResponseEntity.created(URI.create("/api/v1/imaging/orders/" + created.orderId()))
                 .body(created);
     }
@@ -91,6 +94,49 @@ public final class ImagingController {
     @GetMapping("/{orderId}")
     public ImagingOrder read(@PathVariable String orderId) {
         return service.read(context().organizationId(), orderId);
+    }
+
+    /**
+     * Link an external study after the supplied patient and accession labels match the order.
+     *
+     * <p>A mismatch raises a review item and changes no order revision. Identity
+     * and the active roles always come from the request context, never the body.</p>
+     *
+     * @param orderId tenant-local order identifier
+     * @param request link fields plus the version the caller last read
+     * @return the new study-associated order revision
+     */
+    @PostMapping("/{orderId}/studies")
+    public ImagingOrder linkStudy(@PathVariable String orderId, @RequestBody StudyLinkRequest request) {
+        TenantContext context = context();
+        return service.associateStudy(new AssociateStudyCommand(context.organizationId(),
+                context.subject(), activeRoles(context), orderId, request.expectedVersion(),
+                request.studyInstanceUid(), request.patientId(), request.accession(),
+                request.workstationRef()));
+    }
+
+    /**
+     * Read the active tenant's study-link review queue (RAD-01).
+     *
+     * @return immutable review revisions in the order they were raised
+     */
+    @GetMapping("/study-link-reviews")
+    public List<StudyLinkReview> studyLinkReviews() {
+        return service.studyLinkReviews(context().organizationId());
+    }
+
+    /**
+     * Resolve a study-link review after a reviewer checked the mismatching labels.
+     *
+     * @param request review decision fields; tenant and actor come from the context
+     * @return the new resolved review revision
+     */
+    @PostMapping("/study-link-reviews/resolve")
+    public StudyLinkReview resolveStudyLinkReview(@RequestBody StudyReviewRequest request) {
+        TenantContext context = context();
+        return service.resolveStudyLinkReview(new StudyReviewCommand(context.organizationId(),
+                context.subject(), activeRoles(context), request.orderId(),
+                request.studyInstanceUid(), request.resolution()));
     }
 
     /**
@@ -130,11 +176,60 @@ public final class ImagingController {
      * @param responsibleClinician named owner when urgency requires one
      * @param workQueue            responsible work queue
      * @param referrer             referring subject
+     * @param modality             pre-selected approved modality, or {@code null} when set at scheduling
      * @return the intake request
      */
     public record IntakeRequest(String orderId, String patientId, String encounterId, String orderCode,
                                 Urgency urgency, String clinicalQuestion, String sourceActor,
                                 String destination, String responsibleClinician, String workQueue,
-                                String referrer) {
+                                String referrer, Modality modality) {
+
+        /**
+         * Create an intake request whose modality is chosen when the order is scheduled.
+         *
+         * @param orderId              tenant-local order identifier
+         * @param patientId            matched patient identifier
+         * @param encounterId          source encounter identifier
+         * @param orderCode            local order code
+         * @param urgency              clinical urgency
+         * @param clinicalQuestion     clinical question for the reader
+         * @param sourceActor          ordering actor
+         * @param destination          receiving destination
+         * @param responsibleClinician named owner when urgency requires one
+         * @param workQueue            responsible work queue
+         * @param referrer             referring subject
+         */
+        public IntakeRequest(String orderId, String patientId, String encounterId, String orderCode,
+                             Urgency urgency, String clinicalQuestion, String sourceActor,
+                             String destination, String responsibleClinician, String workQueue,
+                             String referrer) {
+            this(orderId, patientId, encounterId, orderCode, urgency, clinicalQuestion, sourceActor,
+                    destination, responsibleClinician, workQueue, referrer, null);
+        }
+    }
+
+    /**
+     * Client-supplied fields for linking an external study to an order.
+     *
+     * @param expectedVersion  version of the order the caller last read
+     * @param studyInstanceUid external DICOM Study Instance UID
+     * @param patientId        patient label from the partner system
+     * @param accession        accession label from the partner system
+     * @param workstationRef   partner diagnostic workstation reference
+     * @return the study-link request
+     */
+    public record StudyLinkRequest(int expectedVersion, String studyInstanceUid, String patientId,
+                                   String accession, String workstationRef) {
+    }
+
+    /**
+     * Client-supplied fields for resolving a study-link review.
+     *
+     * @param orderId          tenant-local order identifier
+     * @param studyInstanceUid external study that raised the review
+     * @param resolution       bounded decision text recorded for the audit trail
+     * @return the review-resolution request
+     */
+    public record StudyReviewRequest(String orderId, String studyInstanceUid, String resolution) {
     }
 }
