@@ -174,3 +174,52 @@ These are cross-boundary Java/OpenAPI-contract integration defects owned by the 
 - **What I tried:** reproduced the gate, read `.agent/coverage.log`, proved the changed-file set is the main merge (64 api/db files, not my 2 patient-mobile files), and proved by blob identity that the failing tests, contract and controllers are identical on HEAD and `origin/main`. Re-ran patient-mobile Jest coverage: 100% on my scope. Considered patching the contract, but declined as out-of-scope cross-worker work.
 - **Exact next step (for integrator/Delivery, not this worker):** on `origin/main`, reconcile `contracts/openapi.yaml` + `contracts/openapi/missing-routes.txt` with the merged substitution/mail/metrics/instant controllers (add missing route docs or baselines, `tags`, `Idempotency-Key` headers and pagination params), or fix the responsible workers' stories; then re-run `bash scripts/coverage-check.sh`. Once main is green, this story's branch needs no source change — its own scope is already at 100%.
 - **Evidence source:** tool-executed commands in this worker only (git, grep, `npx jest --coverage`, reading `.agent/coverage.log`). No reviewer, simulated user or human participant was involved in this repair segment.
+
+## Coverage repair — attempt 2 (final, 2 of 2; 2026-11-21)
+
+### Answer to the repair request: there is no uncovered line or branch in this story's scope
+
+The only production file this story changed is `apps/patient-mobile/src/app/RootNavigator.tsx`. It remains at **100% statements / branches / functions / lines**, re-proven fresh this attempt with a focused command:
+
+- `cd apps/patient-mobile && npx jest src/app/RootNavigator.tablet.test.tsx src/app/RootNavigator.test.tsx --coverage --collectCoverageFrom='src/app/RootNavigator.tsx' --runInBand --silent` →
+  ```
+  All files          |     100 |      100 |     100 |     100 |
+   RootNavigator.tsx |     100 |      100 |     100 |     100 |
+  Test Suites: 2 passed, 2 total
+  Tests:       34 passed, 34 total
+  ```
+- The full patient-mobile gate is also green: `Test Suites: 63 passed`, `Tests: 665 passed`, `All files | 100 | 100 | 100 | 100` (see `.agent/coverage.log`, "coverage check: patient-mobile" section).
+
+No line or branch in the changed scope is uncovered, so there is no deterministic test to add and no unreachable code to delete. Fabricating a test that only touches a line would violate the coverage rules ("A test that only exists to touch a line" is not allowed). No threshold, exclusion, skip, disable, `@Generated`, ignore comment or `pragma` was added or changed.
+
+### Branch-to-test list (re-affirmed; unchanged from attempt 1)
+
+| Branch in `RootNavigator.tsx` | True side | False side / test |
+|---|---|---|
+| `layout.windowClass === 'large' ? styles.contentLarge : null` | `RootNavigator.tablet.test.tsx` "centres content … on a large window", "mirrors direction … on a large RTL window" | "uses the full width on a compact window" + structural `it.each` compact/regular rows |
+| `isRTL ? 'rtl' : 'ltr'` (content `direction`) | RTL test | "maps physical insets to logical padding on a left-to-right window" |
+| `isRTL ? layout.insets.right : layout.insets.left` (`paddingStart`) | RTL test (`30`) | LTR test (`10`) |
+| `isRTL ? layout.insets.left : layout.insets.right` (`paddingEnd`) | RTL test (`10`) | LTR test (`30`) |
+| `TabViewport`: `if (layout.windowClass === 'large')` | structural `it.each` large rows, RTL test, live-`Dimensions`-change test (after event) | compact/regular rows, live-change test (before event) |
+| `isRTL ? 'rtl' : 'ltr'` (`two-pane` style) | RTL test | large `it.each` rows |
+| `signedOut` early return (pre-existing) | existing session-expiry tests | all other tests |
+| `TabContent` switch (pre-existing, 4 cases) | existing "renders each tab screen when that tab is pressed" | same |
+
+`allowFontScaling` is a prop, not a branch. Every new or changed branch has a deterministic test.
+
+### Root cause of the gate failure (external to this story, proven with fresh commands)
+
+1. `git diff --name-only origin/main..HEAD` → exactly **3 files**: this notes file, `RootNavigator.tsx`, `RootNavigator.tablet.test.tsx`. The story's real diff is 2 source files.
+2. `git diff --name-only 36cf64ce..HEAD` → **64 `apps/api`/`db` files** plus many others — all inherited from this branch's legitimate `origin/main` merge (`9afeebae`), not authored by this story.
+3. The orchestrator's gate used the stale worker-start `base-sha` (`36cf64ce`), so the Java section ran (`coverage check: java (JaCoCo 100%)`) and died in **surefire, before JaCoCo**: the same 4 pre-existing `origin/main` OpenAPI contract-policy failures documented in attempt 1 (`OpenApiRouteParityTest`, `OpenApiPaginationRulesTest` ×2, `OpenApiContractRulesTest`; `Tests run: 4095, Failures: 4`). The patient-mobile and staff-web sections both completed with 100% tables.
+4. **Proof the scope itself passes the gate:** `bash scripts/coverage-check.sh origin/main` → `coverage check: passed`, `GATE_EXIT=0` (patient-mobile 100%; Java/staff-web correctly skipped because only the 2 mobile files + notes differ from `origin/main`).
+
+The failure is therefore a stale-base / pre-existing-main defect, not a coverage gap. The daily-note lesson (2026-11-20, line 99) — "After merging `origin/main`, re-run `git diff origin/main...HEAD`" — applies directly. Fixing the shared OpenAPI contract/baseline and Java contract tests is cross-boundary work owned by the substitution/mail/metrics/instant-messaging stories and the integrator, and is outside this 2-file patient-mobile scope; editing it here would break swarm scope and risk parallel-PR conflicts. I did not modify it.
+
+### Why this is not finished
+
+- **Failing command:** the orchestrator ran `bash scripts/coverage-check.sh` with stale `base-sha=36cf64ce`; `mvn -f apps/api/pom.xml -Pno-security verify` exited 1 in surefire on 4 pre-existing `origin/main` OpenAPI contract-policy tests. No JaCoCo coverage violation; patient-mobile and staff-web were 100%.
+- **Most likely cause:** the branch merged `origin/main`, so the stale worker-start base pulls 64 api/db files into the diff and needlessly triggers the Java gate on a definition of "changed" that includes other workers' merged stories.
+- **What I tried:** re-ran focused Jest coverage (`RootNavigator.tsx` 100%, 34/34); re-ran the gate against the correct base (`bash scripts/coverage-check.sh origin/main` → `coverage check: passed`, exit 0); proved by `git diff` that the real scope is only the 2 mobile files and that the failing Java artifacts are inherited from `origin/main`. No in-scope test can fix an out-of-scope Java contract failure, and no uncovered line exists to test.
+- **Exact next step (for the integrator/Delivery, not this worker):** either (a) run the coverage gate with `origin/main` as the base for this merged branch (this story then passes as proven above), or (b) on `origin/main`, reconcile `contracts/openapi.yaml` + `contracts/openapi/missing-routes.txt` with the merged substitution/mail/metrics/instant controllers and fix the 4 contract-policy tests, then re-run the gate. This story needs no source change — its scope is already 100%.
+- **Evidence source:** tool-executed commands in this worker only (git diff, `npx jest --coverage`, `bash scripts/coverage-check.sh origin/main`, reading `.agent/coverage.log`). No reviewer, simulated user or human participant was involved in this repair segment.
