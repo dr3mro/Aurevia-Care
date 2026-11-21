@@ -465,7 +465,7 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False, loading=frozenset()):
         return [r.get("workflowName", ""), mid(r.get("headBranch") or "", 24), trigger_of(r),
                 (r.get("headSha") or "")[:7], took, (age(r["updatedAt"]) if end else "")]
 
-    wide_w = [max([len(natural(r)[i]) for r in done[:RECENT] + live] or [1]) for i in range(6)]
+    wide_w = [max([len(natural(r)[i]) for r in runs[:RECENT] + live] or [1]) for i in range(6)]
     spare = max(iw - 2 - sum(wide_w), 5)
     gaps = [spare // 5 + (1 if i < spare % 5 else 0) for i in range(5)]  # near-equal gaps between the six columns
 
@@ -579,8 +579,8 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False, loading=frozenset()):
     labels = lambda x: ",".join(l["name"] for l in x.get("labels", []) if l["name"] in ("needs-human", "needs-fix"))
     left = [dict(title="In Progress", total=len(live), col="yellow", border="yellow" if live else "gray", prio=0,
                  items=flat(live, True)),
-            dict(title="Recent Runs", total=len(done), col="cyan", border="gray", prio=2,
-                 items=[run_row(r, False) for r in done[:RECENT]]),
+            dict(title="Recent Runs", total=len(runs), col="cyan", border="gray", prio=2,
+                 items=[run_row(r, r.get("status") != "completed") for r in runs[:RECENT]]),
             dict(title=f"Failed (last {len(runs_day)} runs)", total=len(failed_day), col="red", border="red" if failed_day else "gray", prio=1,
                  items=[row for r in failed_day for row in failed_rows(r)])]
     prefix = re.compile(r"^([A-Z]+-(?:\d{8}-)?\d+)(:)(.*)$")
