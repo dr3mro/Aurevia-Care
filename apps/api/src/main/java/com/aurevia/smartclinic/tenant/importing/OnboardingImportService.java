@@ -1,8 +1,6 @@
 package com.aurevia.smartclinic.tenant.importing;
 
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -37,39 +35,36 @@ public class OnboardingImportService {
             List.of("mrn", "mrnIssuer", "givenName", "familyName", "birthDate");
     private static final Set<String> ATTACHMENT_TYPES = Set.of("pdf", "jpeg", "png");
     private static final Pattern SHA256 = Pattern.compile("[0-9a-f]{64}");
-    private static final char[] HEX = "0123456789abcdef".toCharArray();
 
-    /** Creates a message digest on demand. */
-    @FunctionalInterface
-    interface DigestFactory {
-        /**
-         * Create a fresh digest instance.
-         *
-         * @return a message digest
-         * @throws NoSuchAlgorithmException when SHA-256 is unavailable
-         */
-        MessageDigest create() throws NoSuchAlgorithmException;
-    }
-
-    private final DigestFactory digestFactory;
+    private final ImportDigests digests;
 
     /**
      * Create the service over the platform SHA-256 implementation.
      */
     public OnboardingImportService() {
-        this(() -> MessageDigest.getInstance("SHA-256"));
+        this(new ImportDigests());
     }
 
     /**
-     * Create the service over an explicit digest factory.
+     * Create the service over the shared import digest primitive.
      *
-     * <p>The factory is an extension point used by a failure test so an unavailable
+     * <p>The primitive is an extension point used by a failure test so an unavailable
      * algorithm fails closed rather than producing an unverifiable identity key.</p>
      *
-     * @param digestFactory digest factory used for every identity hash
+     * @param digests shared digest primitive used for every identity hash
      */
-    OnboardingImportService(DigestFactory digestFactory) {
-        this.digestFactory = digestFactory;
+    OnboardingImportService(ImportDigests digests) {
+        this.digests = digests;
+    }
+
+    /**
+     * Compute the shared lowercase-hex SHA-256 of canonical bytes.
+     *
+     * @param bytes canonical bytes to digest
+     * @return lowercase 64-hex-digit digest
+     */
+    String digest(byte[] bytes) {
+        return digests.sha256Hex(bytes);
     }
 
     /**
@@ -98,8 +93,8 @@ public class OnboardingImportService {
         Map<String, List<String>> identities = new LinkedHashMap<>();
         for (ImportRecord record : manifest.records()) {
             String sourceId = record.sourceId();
-            String label = isNonBlank(sourceId) ? sourceId : "<invalid>";
-            if (!isNonBlank(sourceId)) {
+            String label = ImportDigests.isNonBlank(sourceId) ? sourceId : "<invalid>";
+            if (!ImportDigests.isNonBlank(sourceId)) {
                 errors.add(label + ": invalid source_id");
             }
             Map<String, String> fields = record.fields();
@@ -112,7 +107,7 @@ public class OnboardingImportService {
             for (String target : REQUIRED_TARGETS) {
                 String source = reverse.get(target);
                 String value = source == null ? null : fields.get(source);
-                if (!isNonBlank(value)) {
+                if (!ImportDigests.isNonBlank(value)) {
                     errors.add(label + ": missing required field " + target);
                 }
             }
@@ -175,7 +170,7 @@ public class OnboardingImportService {
         if (version == null || version <= 0) {
             errors.add("manifest.manifest_version");
         }
-        if (!isNonBlank(manifest.source())) {
+        if (!ImportDigests.isNonBlank(manifest.source())) {
             errors.add("manifest.source");
         }
         if (!Boolean.TRUE.equals(manifest.syntheticOnly())) {
@@ -215,10 +210,10 @@ public class OnboardingImportService {
             errors.add("provenance.creates_new_attestation");
             return;
         }
-        if (!isNonBlank(provenance.sourceSystem())) {
+        if (!ImportDigests.isNonBlank(provenance.sourceSystem())) {
             errors.add("provenance.source_system");
         }
-        if (!isNonBlank(provenance.sourceVersion())) {
+        if (!ImportDigests.isNonBlank(provenance.sourceVersion())) {
             errors.add("provenance.source_version");
         }
         if (!Boolean.TRUE.equals(provenance.preserveHistoricalSignatures())) {
@@ -235,17 +230,13 @@ public class OnboardingImportService {
     }
 
     private static boolean validAttachment(ImportAttachment attachment) {
-        return isNonBlank(attachment.key()) && isSha256(attachment.sha256())
+        return ImportDigests.isNonBlank(attachment.key()) && isSha256(attachment.sha256())
                 && ATTACHMENT_TYPES.contains(attachment.type()) && attachment.present() != null;
     }
 
     private static boolean signatureValid(HistoricalSignature signature) {
-        return signature != null && isNonBlank(signature.issuer())
-                && isNonBlank(signature.signedAt()) && isSha256(signature.checksum());
-    }
-
-    private static boolean isNonBlank(String value) {
-        return value != null && !value.isBlank();
+        return signature != null && ImportDigests.isNonBlank(signature.issuer())
+                && ImportDigests.isNonBlank(signature.signedAt()) && isSha256(signature.checksum());
     }
 
     private static boolean isSha256(String value) {
@@ -259,7 +250,7 @@ public class OnboardingImportService {
             String source = reverse.get(target);
             values.add(source == null ? null : fields.get(source));
         }
-        return sha256(canonical(values));
+        return digest(canonical(values));
     }
 
     /** Canonical JSON bytes: sorted keys, compact separators, UTF-8, no escaping of non-ASCII. */
@@ -282,18 +273,5 @@ public class OnboardingImportService {
     private static String quote(String value) {
         return value.replace("\\", "\\\\").replace("\"", "\\\"")
                 .replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t");
-    }
-
-    private String sha256(byte[] bytes) {
-        try {
-            byte[] digest = digestFactory.create().digest(bytes);
-            StringBuilder hex = new StringBuilder(digest.length * 2);
-            for (byte value : digest) {
-                hex.append(HEX[(value >> 4) & 0xf]).append(HEX[value & 0xf]);
-            }
-            return hex.toString();
-        } catch (NoSuchAlgorithmException exception) {
-            throw new IllegalStateException("SHA-256 is unavailable", exception);
-        }
     }
 }

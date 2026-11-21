@@ -1,8 +1,6 @@
 package com.aurevia.smartclinic.tenant.importing;
 
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -12,8 +10,6 @@ import java.util.Objects;
 import java.util.Set;
 
 import org.springframework.stereotype.Service;
-
-import com.aurevia.smartclinic.tenant.importing.OnboardingImportService.DigestFactory;
 
 /**
  * Applies a versioned onboarding manifest in controlled, resumable batches and
@@ -32,26 +28,35 @@ public class ControlledImportService {
 
     private static final Set<String> AUTHORIZED_ROLES =
             Set.of("tenant_admin", "privacy_auditor", "clinical_safety_lead");
-    private static final char[] HEX = "0123456789abcdef".toCharArray();
 
-    private final DigestFactory digestFactory;
+    private final ImportDigests digests;
 
     /** Create the service over the platform SHA-256 implementation. */
     public ControlledImportService() {
-        this(() -> MessageDigest.getInstance("SHA-256"));
+        this(new ImportDigests());
     }
 
     /**
-     * Create the service over an explicit digest factory.
+     * Create the service over the shared import digest primitive.
      *
-     * <p>The factory is an extension point used by a failure test so an
+     * <p>The primitive is an extension point used by a failure test so an
      * unavailable algorithm fails closed instead of yielding an unverifiable
      * batch digest.</p>
      *
-     * @param digestFactory digest factory used for every reconciliation hash
+     * @param digests shared digest primitive used for every reconciliation hash
      */
-    ControlledImportService(DigestFactory digestFactory) {
-        this.digestFactory = digestFactory;
+    ControlledImportService(ImportDigests digests) {
+        this.digests = digests;
+    }
+
+    /**
+     * Compute the shared lowercase-hex SHA-256 of canonical bytes.
+     *
+     * @param bytes canonical bytes to digest
+     * @return lowercase 64-hex-digit digest
+     */
+    String digest(byte[] bytes) {
+        return digests.sha256Hex(bytes);
     }
 
     /**
@@ -138,7 +143,7 @@ public class ControlledImportService {
                     "batch names an unknown source id: " + id);
             canonical.append(canonicalRecord(record)).append('\n');
         }
-        return sha256(canonical.toString().getBytes(StandardCharsets.UTF_8));
+        return digest(canonical.toString().getBytes(StandardCharsets.UTF_8));
     }
 
     /**
@@ -153,7 +158,7 @@ public class ControlledImportService {
         for (ImportBatch batch : manifest.batches()) {
             bound.append('|').append(batchDigest(manifest, batch));
         }
-        return sha256(bound.toString().getBytes(StandardCharsets.UTF_8));
+        return digest(bound.toString().getBytes(StandardCharsets.UTF_8));
     }
 
     /**
@@ -180,7 +185,7 @@ public class ControlledImportService {
         if (progress == null || progress.manifestVersion() != manifest.manifestVersion()) {
             return refused(progress, "version");
         }
-        if (!isNonBlank(signOff.approver())) {
+        if (!ImportDigests.isNonBlank(signOff.approver())) {
             return refused(progress, "approver");
         }
         if (!AUTHORIZED_ROLES.contains(signOff.role())) {
@@ -201,7 +206,7 @@ public class ControlledImportService {
         if (!contentDigest(manifest).equals(signOff.contentSha256())) {
             return refused(progress, "content");
         }
-        if (!isNonBlank(signOff.approvedAt())) {
+        if (!ImportDigests.isNonBlank(signOff.approvedAt())) {
             return refused(progress, "approved_at");
         }
         if (!progress.committedSequences().containsAll(allSequences)) {
@@ -226,10 +231,6 @@ public class ControlledImportService {
 
     private static SignOffResult refused(ImportProgress progress, String reason) {
         return new SignOffResult(false, reason, progress);
-    }
-
-    private static boolean isNonBlank(String value) {
-        return value != null && !value.isBlank();
     }
 
     private static int sequenceOf(ImportBatch batch) {
@@ -259,18 +260,5 @@ public class ControlledImportService {
                         .append(String.valueOf(attachment.present())).append(';'));
         return canonical.append('|')
                 .append(String.valueOf(record.historicalSignature())).toString();
-    }
-
-    private String sha256(byte[] bytes) {
-        try {
-            byte[] digest = digestFactory.create().digest(bytes);
-            StringBuilder hex = new StringBuilder(digest.length * 2);
-            for (byte value : digest) {
-                hex.append(HEX[(value >> 4) & 0xf]).append(HEX[value & 0xf]);
-            }
-            return hex.toString();
-        } catch (NoSuchAlgorithmException exception) {
-            throw new IllegalStateException("SHA-256 is unavailable", exception);
-        }
     }
 }
