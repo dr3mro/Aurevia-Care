@@ -37,10 +37,13 @@ public class ActionPolicy {
     public static final String APPOINTMENT_NO_SHOW = "APPOINTMENT_NO_SHOW";
     /** Administer visit types, resources and availability windows. */
     public static final String SCHEDULING_ADMIN = "SCHEDULING_ADMIN";
+    /** Read the append-only membership and role-change history (IAM-02). */
+    public static final String ROLE_HISTORY_READ = "ROLE_HISTORY_READ";
 
     private static final Set<String> ADMIN_ACTIONS = Set.of(
             "FACILITY_READ", "FACILITY_WRITE",
             "STAFF_INVITE", "STAFF_DEACTIVATE", "STAFF_READ", "STAFF_HISTORY",
+            ROLE_HISTORY_READ,
             "CONFIG_CREATE", "CONFIG_APPROVE", "CONFIG_READ", "CONFIG_HISTORY", "AUDIT_READ",
             "CATALOG_READ",
             APPOINTMENT_READ, APPOINTMENT_BOOK, APPOINTMENT_HOLD, APPOINTMENT_CONFIRM,
