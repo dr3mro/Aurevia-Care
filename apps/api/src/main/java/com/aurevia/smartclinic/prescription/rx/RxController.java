@@ -43,8 +43,6 @@ public class RxController {
      *
      * @param service prescription transmission domain service
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "Spring-managed singleton collaborator")
     public RxController(RxService service) {
         this.service = service;
     }

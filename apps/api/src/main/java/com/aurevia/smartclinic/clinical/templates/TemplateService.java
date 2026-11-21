@@ -48,8 +48,6 @@ public final class TemplateService {
      *
      * @param store persistence boundary for templates, dictionaries and audit
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "Injected persistence collaborator, not a value object")
     public TemplateService(TemplateStore store) {
         this.store = store;
     }

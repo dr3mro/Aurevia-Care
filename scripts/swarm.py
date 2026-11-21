@@ -159,6 +159,7 @@ TRANSIENT = re.compile(
     r"Temporary failure in name resolution", re.I)
 CREDENTIALS = re.compile(r"Bad credentials|Resource not accessible|Requires authentication|"
                          r"permission denied|HTTP 40[13]|token.*(?:expired|invalid)", re.I)
+TEST_STEP = re.compile(r"unittest|pytest|\bmvn\b|vitest|jest|npm (?:run )?test|check\.sh|verify|require every", re.I)
 QUOTA = re.compile(r"rate limit|quota|insufficient balance|budget", re.I)
 TRUSTED_ASSOCIATIONS = {"OWNER", "MEMBER", "COLLABORATOR"}
 ISSUE_LABELS = {
@@ -337,7 +338,10 @@ def classify_failure(log, failed=None):
                     for job, step in failed)
     precise_auth = re.search(r"Bad credentials|Resource not accessible|Requires authentication|"
                              r"permission denied|HTTP 40[13]|token (?:expired|invalid)", log or "")
-    if (auth_step or precise_auth) and CREDENTIALS.search(log or ""):
+    # A failed test or build step prints whatever the code under test prints, including
+    # "permission denied" from tests of the swarm's own error handling (issue #262).
+    test_only = bool(failed) and all(TEST_STEP.search(step) for _, step in failed)
+    if (auth_step or (precise_auth and not test_only)) and CREDENTIALS.search(log or ""):
         return "credentials"
     if QUOTA.search(log or ""):
         return "quota"
@@ -1054,6 +1058,59 @@ def parse_tasks(text):
     return tasks
 
 
+ARCHIVE = "docs/archive/TODO-DONE.md"
+
+
+def archived_done_ids(path=ARCHIVE):
+    """Ids and aliases of tasks moved out of TODO.md by archive_done; they still satisfy `depends`."""
+    file = Path(path)
+    if not file.exists():
+        return set()
+    return {name for t in parse_tasks(file.read_text()) if t["status"] == "done"
+            for name in (t["id"], *t["aliases"])}
+
+
+def archive_done(text):
+    """Split finished entries out of TODO.md text: returns `(remaining_text, archived_blocks)`.
+
+    An entry is its `- [x]` line plus the indented lines and blank lines up to the next entry or
+    heading. Open and taken entries, headings and prose stay where they are."""
+    keep, moved, block, lines = [], [], None, text.splitlines(keepends=True)
+    for line in lines:
+        entry = ENTRY.match(line.rstrip("\n"))
+        if entry:
+            if block is not None:
+                moved.append("".join(block).rstrip("\n") + "\n")
+            block = [line] if entry.group(1) == "x" else None
+            if block is None:
+                keep.append(line)
+        elif block is not None and (line.startswith(" ") or not line.strip()):
+            block.append(line)
+        else:
+            if block is not None:
+                moved.append("".join(block).rstrip("\n") + "\n")
+                block = None
+            keep.append(line)
+    if block is not None:
+        moved.append("".join(block).rstrip("\n") + "\n")
+    return "".join(keep), moved
+
+
+def archive_todo(todo="TODO.md", archive=ARCHIVE):
+    """Move done entries from TODO.md to the archive file. Returns how many moved."""
+    remaining, moved = archive_done(Path(todo).read_text())
+    if not moved:
+        return 0
+    target = Path(archive)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    head = target.read_text() if target.exists() else (
+        "# Finished tasks\n\nMoved out of TODO.md by `swarm.py archive-todo`. "
+        "Their ids still satisfy `depends`.\n\n")
+    target.write_text(head.rstrip("\n") + "\n\n" + "\n".join(moved))
+    Path(todo).write_text(re.sub(r"\n{3,}", "\n\n", remaining))
+    return len(moved)
+
+
 MAX_AUDIT_NEW = 10      # findings turned into tasks per daily audit
 MAX_AUDIT_OPEN = 25     # no new audit tasks while this many are still open
 def add_under(text, header, entries):
@@ -1410,6 +1467,7 @@ def plan_workers(max_workers, slots, text, open_prs, repair=None, live=()):
                          "fix": clip(notes[-1] if notes else "Integration failed.")})
     in_flight = {task_id_of(p["headRefName"]) for p in open_prs}
     done = {name for t in tasks if t["status"] == "done" for name in (t["id"], *t["aliases"])}
+    done |= archived_done_ids()
     # Repairs of main come first: a red main blocks every other merge.
     for task in sorted(tasks, key=lambda t: not is_repair_task(t)):
         if task["status"] != "todo" or not task["scope"] or task["id"] in in_flight \
@@ -2434,6 +2492,7 @@ def main(argv=None):
     sub = parser.add_subparsers(dest="cmd", required=True)
     for name in ("ensure-labels", "plan-integration", "slot-matrix"):
         sub.add_parser(name)
+    sub.add_parser("archive-todo")
     p = sub.add_parser("images-ready")
     p.add_argument("--slots", default=".github/swarm/slots.json")
     p = sub.add_parser("budget-gate")
@@ -2508,6 +2567,8 @@ def main(argv=None):
     a = parser.parse_args(argv)
     if a.cmd == "ensure-labels":
         ensure_labels()
+    elif a.cmd == "archive-todo":
+        print(f"archived {archive_todo()} finished task(s) to {ARCHIVE}")
     elif a.cmd == "images-ready":
         images_ready_command(a.slots)
     elif a.cmd == "slot-matrix":

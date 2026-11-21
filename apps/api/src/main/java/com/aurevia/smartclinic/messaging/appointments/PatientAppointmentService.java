@@ -38,8 +38,6 @@ public final class PatientAppointmentService {
      * @param gateway synthetic push boundary
      * @param audit   append-only audit sink
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "injected port collaborators")
     public PatientAppointmentService(VerifiedPatientLink links, PatientAppointmentStore store,
                                      DeviceTokenStore devices, PushGateway gateway,
                                      AuditSink audit) {

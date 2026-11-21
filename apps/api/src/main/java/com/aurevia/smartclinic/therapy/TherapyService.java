@@ -105,8 +105,6 @@ public final class TherapyService {
      * @param store persistence boundary for episodes, scales and audit
      * @param clock application clock for system timestamps
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "Injected collaborators, not value objects")
     public TherapyService(TherapyStore store, Clock clock) {
         this.store = store;
         this.clock = clock;

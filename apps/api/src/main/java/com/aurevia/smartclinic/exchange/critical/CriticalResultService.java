@@ -61,8 +61,6 @@ public class CriticalResultService {
      * @param audit        transactional audit appender
      * @param clock        application clock for deadlines and escalation
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "Spring-managed singleton collaborators")
     public CriticalResultService(CriticalResultRepository repository, CriticalActions actions,
                                  TransactionTemplate transactions, AuditAppender audit, Clock clock) {
         this.repository = repository;

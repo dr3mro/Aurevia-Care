@@ -49,8 +49,6 @@ public final class AttachmentService {
      * @param store tenant-scoped persistence boundary
      * @param clock source of server timestamps
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "Injected persistence collaborator, not a value object")
     public AttachmentService(AttachmentStore store, Clock clock) {
         this.store = store;
         this.clock = clock;

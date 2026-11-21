@@ -45,8 +45,6 @@ public final class ReleasedReportService {
      * @param audit audit sink for access outcomes
      * @param clock injected clock for deterministic effective-date checks
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "singleton collaborators supplied by the application context")
     public ReleasedReportService(InMemoryReportReleaseStore store, AuditSink audit, Clock clock) {
         this.store = store;
         this.audit = audit;

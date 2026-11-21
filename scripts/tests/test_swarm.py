@@ -1401,6 +1401,7 @@ class GitTests(unittest.TestCase):
         self.assertIn("Task: CW-001", create[create.index("--body") + 1])
         self.assertEqual(create[create.index("--title") + 1], "CW-001: Staff")
         self.assertNotIn("--draft", create)
+        self.assertFalse(fake.said("issue", "create", "worker-handoff"))
 
     def test_failed_worker_still_publishes_its_work_as_a_draft(self):
         out, fake = self.worker_dir(result="timeout", checks="failed"), FakeGh()
@@ -1565,6 +1566,7 @@ class GitTests(unittest.TestCase):
         with mock.patch.object(swarm, "gh", fake):
             swarm.publish(self.TASK, out)
         self.assertIn("--draft", [c for c in fake.calls if c[:2] == ("pr", "create")][0])
+        self.assertTrue(fake.said("issue", "create", "worker-handoff"))
 
     def test_publish_refuses_foreign_or_mismatched_branches(self):
         for branch in ("main", "swarm/CW-009-1"):
@@ -1991,6 +1993,34 @@ class ImageReadinessTests(unittest.TestCase):
         # actions: write. Both belong to the plan job, not just the workers.
         self.assertIn("packages: read", perms)
         self.assertIn("actions: write", perms)
+
+
+class ArchiveTodoTest(unittest.TestCase):
+    TEXT = ("# T\n\n## G0\n\n- [x] A-1 · done one\n  - evidence: e\n  - details:\n    body\n\n"
+            "- [ ] A-2 · open\n  - depends: A-1\n  - scope: x\n- [-] A-3 · taken\n"
+            "- [x] A-4 · done two\n\n## Next\n\nprose\n")
+
+    def test_moves_only_done_entries(self):
+        rest, moved = swarm.archive_done(self.TEXT)
+        self.assertEqual([m.split(" ")[2] for m in moved], ["A-1", "A-4"])
+        self.assertIn("body", moved[0])
+        self.assertNotIn("[x]", rest)
+        for keep in ("A-2", "A-3", "## Next", "prose"):
+            self.assertIn(keep, rest)
+
+    def test_no_done_entries_changes_nothing(self):
+        text = "- [ ] B-1 · open\n"
+        self.assertEqual(swarm.archive_done(text), (text, []))
+
+    def test_files_and_archived_ids_satisfy_depends(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            todo, arc = Path(tmp, "TODO.md"), Path(tmp, "sub", "DONE.md")
+            todo.write_text(self.TEXT)
+            self.assertEqual(swarm.archive_todo(str(todo), str(arc)), 2)
+            self.assertEqual(swarm.archive_todo(str(todo), str(arc)), 0)
+            self.assertEqual(swarm.archived_done_ids(str(arc)), {"A-1", "A-4"})
+            self.assertEqual(swarm.archived_done_ids(str(Path(tmp, "none.md"))), set())
+            self.assertNotIn("[x]", todo.read_text())
 
 
 if __name__ == "__main__":

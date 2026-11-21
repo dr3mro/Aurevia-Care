@@ -26,8 +26,6 @@ public class HealthController {
      *
      * @param jdbc template used only by the readiness probe
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "Spring-managed singleton collaborator")
     public HealthController(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
     }

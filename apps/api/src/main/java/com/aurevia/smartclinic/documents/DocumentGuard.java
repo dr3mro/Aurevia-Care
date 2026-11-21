@@ -27,8 +27,6 @@ public final class DocumentGuard {
      * @param store tenant-scoped persistence boundary
      * @param clock source of server timestamps
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "Injected persistence and clock collaborators, not value objects")
     public DocumentGuard(DocumentStore store, Clock clock) {
         this.store = store;
         this.clock = clock;

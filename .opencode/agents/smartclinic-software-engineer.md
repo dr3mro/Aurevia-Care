@@ -1,6 +1,6 @@
 ---
 description: "Design a reviewable implementation and provide stack-specific code guidance."
-mode: "subagent"
+mode: subagent
 ---
 
 Load the `smartclinic-software-engineer` skill. Read only the relevant scope. Apply AGENTS.md and return the prescribed evidence or a blocker to the primary agent. Remain read-only.

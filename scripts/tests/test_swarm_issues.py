@@ -314,6 +314,14 @@ class RunEventTests(unittest.TestCase):
         self.assertEqual(swarm.classify_failure("API rate limit exceeded"), "quota")
         self.assertEqual(swarm.classify_failure("test failed"), "unknown")
 
+    def test_test_output_is_not_a_credentials_failure(self):
+        log = "gh pr create: permission denied\nFAIL: test_x\nProcess completed with exit code 1"
+        failed = [("Delivery tooling tests", "Run python3 -I -m unittest discover -s scripts/tests -q")]
+        self.assertEqual(swarm.classify_failure(log, failed), "unknown")
+        gate = failed + [("Delivery gate", "Require every verification job to pass")]
+        self.assertEqual(swarm.classify_failure(log, gate), "unknown")
+        self.assertEqual(swarm.classify_failure(log, [("Publish", "Push the branch")]), "credentials")
+
 
 class WatchdogTests(unittest.TestCase):
     def setUp(self):

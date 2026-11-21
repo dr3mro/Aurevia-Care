@@ -28,6 +28,12 @@ const SchedulingPage = lazy(() =>
     default: Page,
   })),
 );
+const ChartPage = lazy(() =>
+  import('../features/chart/ChartPage').then(({ ChartPage: Page }) => ({ default: Page })),
+);
+const NotePage = lazy(() =>
+  import('../features/chart/NotePage').then(({ NotePage: Page }) => ({ default: Page })),
+);
 
 /**
  * Build the route table. The development preview is registered only when
@@ -39,6 +45,8 @@ export function createRoutes(includeDesignPreview: boolean): AppRoute[] {
     { pattern: '/', component: WelcomePage },
     { pattern: '/schedule', component: SchedulingPage },
     { pattern: '/schedule/book', component: SchedulingPage },
+    { pattern: '/patients/:id/chart', component: ChartPage },
+    { pattern: '/patients/:id/notes/:noteId', component: NotePage },
   ];
   if (includeDesignPreview) {
     candidates.push({ pattern: '/design-preview', component: DesignPreview });

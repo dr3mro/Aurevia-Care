@@ -34,8 +34,6 @@ public class SchedulingAdminController {
      *
      * @param service scheduling administration service
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "Spring-managed singleton collaborator")
     public SchedulingAdminController(SchedulingAdminService service) {
         this.service = service;
     }

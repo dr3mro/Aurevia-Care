@@ -30,8 +30,6 @@ public class ClinicalNoteController {
      *
      * @param service clinical note domain service
      */
-    @edu.umd.cs.findbugs.annotations.SuppressFBWarnings(
-            value = "EI_EXPOSE_REP2", justification = "Spring-managed singleton collaborator")
     public ClinicalNoteController(ClinicalNoteService service) {
         this.service = service;
     }
