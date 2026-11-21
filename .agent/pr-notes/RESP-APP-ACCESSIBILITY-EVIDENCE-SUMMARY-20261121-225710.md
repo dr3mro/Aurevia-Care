@@ -123,9 +123,10 @@ that `allowFontScaling` is not `false`, and that the container uses `flexWrap:
 ## Clinical and architecture review
 
 No signed data, cross-organization sharing, patient association, prescribing or
-critical result is involved. A bounded senior-mobile review was requested; its
-result is recorded below under Findings. This is simulated/synthetic evidence,
-not clinical or patient acceptance.
+critical result is involved. A bounded senior-mobile review was requested (files
+and acceptance criteria only); no reviewer result was available at commit time,
+so delegation is reported as unavailable rather than assumed green. This is
+simulated/synthetic evidence, not clinical or patient acceptance.
 
 ## Findings
 
