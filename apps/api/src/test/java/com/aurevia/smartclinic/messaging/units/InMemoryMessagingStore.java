@@ -9,8 +9,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-import org.springframework.stereotype.Repository;
-
 import com.aurevia.smartclinic.messaging.units.MessagingContract.CareUnit;
 import com.aurevia.smartclinic.messaging.units.MessagingContract.EligibleRelationship;
 import com.aurevia.smartclinic.messaging.units.MessagingContract.MessagingAudit;
@@ -19,14 +17,12 @@ import com.aurevia.smartclinic.messaging.units.MessagingContract.PatientUnitConn
 /**
  * Synthetic, tenant-keyed in-memory adapter for the messaging foundation.
  *
- * <p>This adapter exists so the verification and connection-scoping domain can
- * be exercised deterministically without a database. It is deliberately not the
- * authoritative store: a production adapter must persist these records with
- * forced tenant row-level security and a unique constraint on the connection
- * business key. Every method takes the active organization and never merges
- * rows across tenants.</p>
+ * <p>Test-only: {@link com.aurevia.smartclinic.messaging.units.JdbcMessagingStore}
+ * is the production bean. This adapter lets the verification and
+ * connection-scoping domain be exercised deterministically without a database.
+ * Every method takes the active organization and never merges rows across
+ * tenants.</p>
  */
-@Repository
 public class InMemoryMessagingStore implements MessagingStore {
 
     private final Map<String, String> roles = new ConcurrentHashMap<>();
