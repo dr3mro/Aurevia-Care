@@ -34,7 +34,7 @@ import tools.jackson.databind.ObjectMapper;
  * PostgreSQL-backed persistence boundary for the MSG-06 service-profile slice
  * (ARC-01, ARC-02, OPS-02).
  *
- * <p>V91 owns the four tenant tables and their forced row-level security. Every
+ * <p>V92 owns the four tenant tables and their forced row-level security. Every
  * operation runs in the tenant-guarded transaction, which binds
  * {@code app.current_org} and {@code app.actor} after the transaction opens;
  * forced RLS therefore confines each statement to the active organization and
@@ -49,7 +49,7 @@ import tools.jackson.databind.ObjectMapper;
  * {@code current_chart_links} and {@code patient_unit_connection}) rather than
  * projecting a second copy, so a deactivation, unlink or revocation takes
  * effect on the next request. Staff-to-unit assignment has no other durable
- * source and is read from the V91 reference table. Profile versions are
+ * source and is read from the V92 reference table. Profile versions are
  * insert-only except for the single, database-guarded draft-to-approved
  * transition; a replay of a publish returns the row that already won.</p>
  */
