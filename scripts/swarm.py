@@ -1601,6 +1601,12 @@ def publish(task, directory):
             pr = str(task["number"])
             gh("pr", "comment", pr, "--body",
                f"Worker {task['slot']} pushed a fix (local checks: {checks}). The integrator will retest.")
+    elif commits > 0:
+        # The bundle step failed (it runs with `|| true`): the commits exist only in the
+        # worker's artifact and would otherwise be dropped without a trace.
+        report_issue(f"{task['id']}: worker made {commits} commit(s) but no bundle reached publish",
+                     f"Result: {result}. The `Pack the commits` step produced no result.bundle, so nothing "
+                     f"was pushed. Check the worker artifact and its log. {run_url()}")
     release(task, result, 1 if pr else 0, pr)
     note_worker_outcome(task, result, directory, pr)
     if task["kind"] == "story" and (result != "ok" or not pr):

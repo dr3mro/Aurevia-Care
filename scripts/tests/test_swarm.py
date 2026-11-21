@@ -1514,6 +1514,15 @@ class GitTests(unittest.TestCase):
                 git_call.assert_not_called()
                 self.assertFalse(fake.said("issue", "create"))
 
+    def test_commits_without_a_bundle_are_reported_not_dropped(self):
+        out = self.worker_dir()
+        (out / "result.bundle").unlink()
+        fake = FakeGh()
+        with mock.patch.object(swarm, "gh", fake), mock.patch.object(swarm, "release_claim"):
+            swarm.publish(self.TASK, out)
+        self.assertNotIn("refs/heads/swarm/CW-001-1", self.run_git("ls-remote", "--heads", "origin"))
+        self.assertTrue(fake.said("issue", "create"))
+
     def test_pull_request_failure_after_push_opens_an_issue(self):
         out = self.worker_dir()
 

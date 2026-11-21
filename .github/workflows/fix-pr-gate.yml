@@ -115,7 +115,10 @@ jobs:
           # The integrator runs its own full gate before main moves, so a forged
           # pass only queues the pull request; it never merges it.
           if [[ "$PASSED" == true ]]; then
-            gh pr ready "$PR" || true
+            # Already-ready is fine; any other failure must stop here, not leave a draft.
+            if [[ "$(gh pr view "$PR" --json isDraft --jq .isDraft)" == true ]]; then
+              gh pr ready "$PR"
+            fi
             gh api --method POST "repos/$GITHUB_REPOSITORY/issues/$PR/labels" \
               -f 'labels[]=swarm' -f 'labels[]=autofix'
             gh workflow run swarm-integrator.yml
