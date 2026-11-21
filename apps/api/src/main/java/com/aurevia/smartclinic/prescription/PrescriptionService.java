@@ -197,6 +197,7 @@ public class PrescriptionService {
             requireVersion(current, expectedVersion);
             int catalogVersion = repository.currentCatalogVersion().version();
             DrugEntry entry = requireEntry(entryId);
+            requireApprovedRoute(entry, route);
             AllergyCheck check = AllergyChecker.check(entry, repository.allergyAssessment(current.patientId()));
             if (check.outcome() == CheckOutcome.CONFLICT && overrideReason == null) {
                 conflict(sink, PrescriptionActions.SELECT_MEDICATION, id, 409,
@@ -230,6 +231,27 @@ public class PrescriptionService {
             success(PrescriptionActions.READ_DRAFT, id);
             return view;
         });
+    }
+
+    /**
+     * Reject a route that contradicts the market-approved catalog route (RX-01).
+     *
+     * <p>Legacy entries carry the sentinel {@code unspecified} because they were
+     * recorded before the route column existed; they cannot be checked here and
+     * remain subject to the surrounding clinical workflow. A declared route is
+     * authoritative: a wrong-route prescription is a medication safety error.</p>
+     *
+     * @param entry          the approved catalog entry being selected
+     * @param requestedRoute route entered by the prescriber
+     * @throws ApiException when the requested route contradicts the catalog
+     */
+    private void requireApprovedRoute(DrugEntry entry, String requestedRoute) {
+        String approvedRoute = repository.catalogRoute(entry.entryId(), entry.version());
+        if (!"unspecified".equals(approvedRoute)
+                && !approvedRoute.equalsIgnoreCase(requestedRoute)) {
+            throw new ApiException(422, "ROUTE_MISMATCH",
+                    "the requested route does not match the market-approved catalog route");
+        }
     }
 
     private DrugEntry requireEntry(String entryId) {

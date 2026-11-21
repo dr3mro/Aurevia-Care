@@ -164,6 +164,7 @@ class VersionedPrescriptionCatalogTest {
         when(repository.loadCatalog()).thenReturn(List.of(
                 new DrugEntry(ENTRY, 1, "Amoxicillin", "Amoxil", "tablet", "500", "mg",
                         List.of(new Ingredient("SUB", null, 0)), true, FROM, TO, "synthetic-market-v1")));
+        when(repository.catalogRoute(ENTRY, 1)).thenReturn("ORAL");
         when(repository.allergyAssessment(anyString()))
                 .thenReturn(new AllergyAssessment(AllergyStatus.VERIFIED_NONE, List.of()));
         when(repository.selectMedication(anyString(), anyInt(), anyString(), anyInt(), anyString(), anyString(),
@@ -178,6 +179,42 @@ class VersionedPrescriptionCatalogTest {
                 anyString(), anyString(), anyString(), anyString(), anyString(), any(), anyString(),
                 captured.capture());
         assertEquals(2, captured.getValue(), "the current catalog version is bound to the draft on selection");
+    }
+
+    @Test
+    void selectionRejectsARouteThatContradictsTheApprovedCatalogRoute() {
+        authorized();
+        when(repository.loadForUpdate(DRAFT)).thenReturn(Optional.of(draft(1)));
+        when(repository.currentCatalogVersion()).thenReturn(version(1));
+        when(repository.loadCatalog()).thenReturn(List.of(item("oral", true, FROM, TO).drug()));
+        when(repository.catalogRoute(ENTRY, 1)).thenReturn("oral");
+
+        ApiException failure = assertThrows(ApiException.class,
+                () -> service.selectMedication(DRAFT,
+                        new SelectMedicationRequest(ENTRY, "500", "mg", "intrathecal", "once daily",
+                                "10", "tablet", null, "synthetic", null), 1));
+        assertEquals(422, failure.status());
+        assertEquals("ROUTE_MISMATCH", failure.code());
+        verify(repository, never()).selectMedication(anyString(), anyInt(), anyString(), anyInt(), anyString(),
+                anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), any(),
+                anyString(), anyInt());
+    }
+
+    @Test
+    void legacyUnspecifiedCatalogRouteDoesNotBlockSelection() {
+        authorized();
+        when(repository.loadForUpdate(DRAFT)).thenReturn(Optional.of(draft(1)));
+        when(repository.currentCatalogVersion()).thenReturn(version(1));
+        when(repository.loadCatalog()).thenReturn(List.of(item("unspecified", true, FROM, TO).drug()));
+        when(repository.catalogRoute(ENTRY, 1)).thenReturn("unspecified");
+        when(repository.allergyAssessment(anyString()))
+                .thenReturn(new AllergyAssessment(AllergyStatus.VERIFIED_NONE, List.of()));
+        when(repository.selectMedication(anyString(), anyInt(), anyString(), anyInt(), anyString(), anyString(),
+                anyString(), anyString(), anyString(), anyString(), anyString(), any(), anyString(),
+                anyInt())).thenReturn(1);
+        when(repository.find(DRAFT)).thenReturn(Optional.of(draft(2)));
+
+        assertEquals(2, service.selectMedication(DRAFT, select(), 1).version());
     }
 
     @Test

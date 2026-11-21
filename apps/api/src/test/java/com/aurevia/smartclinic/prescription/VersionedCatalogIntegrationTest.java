@@ -192,8 +192,12 @@ class VersionedCatalogIntegrationTest {
     }
 
     private ResponseEntity<String> select(String org, String draftId, int version, String entryId) {
+        return select(org, draftId, version, entryId, "oral");
+    }
+
+    private ResponseEntity<String> select(String org, String draftId, int version, String entryId, String route) {
         String body = "{\"catalogEntryId\":\"" + entryId + "\",\"doseValue\":\"500\",\"doseUnit\":\"mg\","
-                + "\"route\":\"oral\",\"frequency\":\"once daily\",\"quantity\":\"10\","
+                + "\"route\":\"" + route + "\",\"frequency\":\"once daily\",\"quantity\":\"10\","
                 + "\"quantityUnit\":\"tablet\",\"instructions\":\"synthetic\"}";
         return rest.method(HttpMethod.POST)
                 .uri("/api/v1/prescription-drafts/" + draftId + "/select-medication")
@@ -256,6 +260,17 @@ class VersionedCatalogIntegrationTest {
         assertEquals(2, json(send(HttpMethod.GET,
                 "/api/v1/drug-catalog/search-with-version?query=amox", null, ORG_C))
                 .at("/version/version").asInt(), "search reports the current version");
+    }
+
+    @Test
+    void aRouteThatContradictsTheApprovedCatalogRouteIsRejected() throws Exception {
+        String draft = createDraft(ORG_A);
+        ResponseEntity<String> wrongRoute = select(ORG_A, draft, 1, APPROVED, "intrathecal");
+        assertEquals(422, wrongRoute.getStatusCode().value());
+        assertEquals("ROUTE_MISMATCH", json(wrongRoute).at("/code").asText());
+        JsonNode view = json(send(HttpMethod.GET,
+                "/api/v1/prescription-drafts/" + draft, null, ORG_A));
+        assertTrue(view.at("/draft/selectedEntryId").isNull(), "a wrong-route selection is not persisted");
     }
 
     @Test

@@ -265,6 +265,21 @@ public class PrescriptionRepository {
     }
 
     /**
+     * Read the market-approved route declared on a specific drug catalog version.
+     *
+     * @param entryId catalog entry key
+     * @param version approved version number
+     * @return the declared route, or the sentinel {@code unspecified} for legacy entries
+     */
+    public String catalogRoute(String entryId, int version) {
+        return jdbc.queryForObject("""
+                SELECT route FROM public.drug_catalog_entry
+                 WHERE entry_key = :entryKey AND version = :version
+                """, new MapSqlParameterSource().addValue("entryKey", entryId)
+                .addValue("version", version), String.class);
+    }
+
+    /**
      * Read the catalog version a draft was built from.
      *
      * @param draftId draft identifier
