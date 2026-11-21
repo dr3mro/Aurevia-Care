@@ -1,4 +1,4 @@
-import curses, json, re, shutil, subprocess, sys, threading, time
+import curses, json, os, re, shutil, subprocess, sys, tempfile, threading, time
 from datetime import datetime, timedelta, timezone
 
 INTERVAL, RECENT, ONCE = int(sys.argv[1]), int(sys.argv[2]), sys.argv[3] == "1"
@@ -6,14 +6,15 @@ AUTOSTART = int(sys.argv[4]) if len(sys.argv) > 4 else 0  # minutes between auto
 LIVE = ("queued", "in_progress", "waiting", "pending", "requested")
 FAILED = ("failure", "timed_out")
 FIELDS = "databaseId,workflowName,displayTitle,conclusion,status,headSha,headBranch,event,createdAt,startedAt,updatedAt,url"
-TEXT = ("repo", "todo", "archive", "total")  # plain-text results; everything else is JSON
+TEXT = ("repo", "todo", "archive", "total", "commits")  # plain-text results; everything else is JSON
 CALLS = {
     "repo": ["repo", "view", "--json", "nameWithOwner", "-q", ".nameWithOwner"],
-    "issues": ["issue", "list", "--state", "open", "--limit", "40", "--json", "number,title,labels,createdAt"],
-    "prs": ["pr", "list", "--state", "open", "--limit", "40", "--json", "number,title,isDraft,labels,headRefName,createdAt"],
-    "merged": ["pr", "list", "--state", "merged", "--limit", "50", "--json", "number,title,mergedAt"],
-    "closed": ["pr", "list", "--state", "closed", "--limit", "30", "--json", "number,title,closedAt,mergedAt"],
-    "runs": ["run", "list", "--limit", "100", "--json", FIELDS],
+    "issues": ["issue", "list", "--state", "open", "--limit", "300", "--json", "number,title,labels,createdAt"],
+    "prs": ["pr", "list", "--state", "open", "--limit", "300", "--json", "number,title,isDraft,labels,headRefName,createdAt"],
+    "merged": ["pr", "list", "--state", "merged", "--limit", "300", "--search", "merged:>={since}", "--json", "number,title,mergedAt"],
+    "closed": ["pr", "list", "--state", "closed", "--limit", "300", "--search", "closed:>={since}", "--json", "number,title,closedAt,mergedAt"],
+    "runs": ["run", "list", "--limit", "100", "--json", FIELDS],  # first page: shows quickly
+    "runs_more": ["run", "list", "--limit", "300", "--json", FIELDS],  # three pages, merged in when it arrives
     "total": ["api", "graphql", "-F", "o={owner}", "-F", "n={repo}", "-q", ".data.repository.defaultBranchRef.target.history.totalCount",
               "-f", "query=query($o:String!,$n:String!){repository(owner:$o,name:$n){defaultBranchRef{target{... on Commit{history{totalCount}}}}}}"],
     "todo": ["api", "repos/{owner}/{repo}/contents/TODO.md", "-H", "Accept: application/vnd.github.raw"],
@@ -30,7 +31,7 @@ def collect(procs, text_keys=()):
     data = {}
     for k, p in procs.items():
         try:
-            out, _ = p.communicate(timeout=60)
+            out, _ = p.communicate(timeout=180)
             data[k] = out if k in text_keys else json.loads(out or "[]")
         except Exception:
             p.kill()
@@ -38,31 +39,98 @@ def collect(procs, text_keys=()):
     return data
 
 
-def fetch():
+TIMING_LOG = os.path.join(tempfile.gettempdir(), "swarm-monitor-timing.log")
+
+
+def log_timing(rows, total):
+    """Append one block per refresh: how long each section took, slowest first (to find the bottleneck)."""
+    try:
+        with open(TIMING_LOG, "a") as f:
+            f.write(f"--- {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}  refresh took {total:.1f}s\n")
+            for name, secs, note in sorted(rows, key=lambda r: -r[1]):
+                f.write(f"{secs:7.2f}s  {name:<12} {note}\n")
+    except OSError:
+        pass
+
+
+def merge_runs(a, b):
+    """Runs of the last 24 hours plus the newest ones of any age, one entry per run, newest first."""
+    seen = {r["databaseId"]: r for r in [*b, *a]}
+    return sorted(seen.values(), key=lambda r: r.get("createdAt") or "", reverse=True)
+
+
+def fetch(emit=None):
+    """Load every section in parallel. Each section is handed to `emit(part)` the moment it is ready, so a
+    screen can fill in piece by piece; the merged result is also returned (a section that failed is None)."""
     since = (datetime.now(timezone.utc) - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%SZ")
-    calls = dict(CALLS, commits=["api", f"repos/{{owner}}/{{repo}}/commits?since={since}&per_page=100", "-q",
-                                 "[.[] | {sha: .sha, parent: (.parents[0].sha // \"\")}]"])
-    data = collect({k: spawn(a) for k, a in calls.items()}, TEXT)
-    if data.get("repo"):
-        data["repo"] = data["repo"].strip()
-    # Second wave: job detail for the runs that are live or recently failed.
-    runs = data.get("runs") or []
-    now = datetime.now(timezone.utc)
-    want = [r["databaseId"] for r in runs if r.get("status") != "completed"][:6]
-    want += [r["databaseId"] for r in runs if r.get("status") == "completed" and state(r) in FAILED
-             and r.get("updatedAt") and (now - ts(r["updatedAt"])).total_seconds() < 86400][:6]
-    jobs = collect({i: spawn(["run", "view", str(i), "--json", "jobs"]) for i in want})
-    data["jobs"] = {i: (j or {}).get("jobs", []) for i, j in jobs.items() if isinstance(j, dict) or j is None}
-    # Third step: what those commits changed, as one compare between the day's first parent and the latest commit.
-    commits = data.pop("commits", None) or []
-    if commits and commits[-1].get("parent"):
-        total = spawn(["api", f"repos/{{owner}}/{{repo}}/compare/{commits[-1]['parent']}...{commits[0]['sha']}", "-q",
-                       "{files: (.files | length), add: ([.files[].additions] | add // 0), del: ([.files[].deletions] | add // 0)}"])
-        got = collect({"x": total})["x"]
-        data["churn"] = dict(got, commits=len(commits)) if isinstance(got, dict) else None
-    else:
-        data["churn"] = {"commits": len(commits), "files": 0, "add": 0, "del": 0} if data.get("runs") is not None else None
-    return data
+    calls = {k: [a.replace("{since}", since) for a in v] for k, v in CALLS.items()}
+    # One line per commit ("sha parent"), newest first; --paginate so a busy day is not capped at one page of 100.
+    calls["commits"] = ["api", f"repos/{{owner}}/{{repo}}/commits?since={since}&per_page=100", "--paginate", "-q",
+                        ".[] | \"\\(.sha) \\(.parents[0].sha // \"\")\""]
+    out, guard, timings, began, claimed = {}, threading.Lock(), [], time.monotonic(), set()
+
+    def put(part):
+        with guard:
+            out.update(part)
+        if emit:
+            emit(part)
+
+    def timed(name, t0, note=""):
+        with guard:
+            timings.append((name, time.monotonic() - t0, note))
+
+    def load(k, args):
+        t0 = time.monotonic()
+        val = collect({k: spawn(args)}, (*TEXT, "commits"))[k]
+        timed(k, t0, "FAILED or timed out" if val is None else f"{len(val)} {'chars' if isinstance(val, str) else 'items'}")
+        if val is None:
+            return put({k: None}) if k not in ("commits", "runs") else None
+        if k == "repo":
+            val = val.strip()
+        if k == "commits":
+            commits = [{"sha": f[0], "parent": f[1] if len(f) > 1 else ""}
+                       for f in (ln.split(" ") for ln in val.split("\n") if ln.strip())]
+            churn = {"commits": len(commits), "files": 0, "add": 0, "del": 0}
+            if commits and commits[-1]["parent"]:
+                t1 = time.monotonic()
+                got = collect({"x": spawn(["api", f"repos/{{owner}}/{{repo}}/compare/{commits[-1]['parent']}...{commits[0]['sha']}", "-q",
+                                           "{files: (.files | length), add: ([.files[].additions] | add // 0), del: ([.files[].deletions] | add // 0)}"])})["x"]
+                timed("compare", t1, "what the day's commits changed")
+                churn = dict(got, commits=len(commits)) if isinstance(got, dict) else None
+            return put({"churn": churn})
+        if k in ("runs", "runs_more"):  # the quick first page shows at once; the full list merges in when it lands
+            with guard:
+                merged = merge_runs(val, out.get("runs") or [])
+            put({"runs": merged})
+            return add_jobs(merged)
+        put({k: val})
+
+    def add_jobs(runs):
+        """Job detail for runs that are live or recently failed, only for runs not looked up yet."""
+        now = datetime.now(timezone.utc)
+        want = [r["databaseId"] for r in runs if r.get("status") != "completed"]
+        want += [r["databaseId"] for r in runs if r.get("status") == "completed" and state(r) in FAILED
+                 and r.get("updatedAt") and (now - ts(r["updatedAt"])).total_seconds() < 86400]
+        with guard:
+            want = [i for i in dict.fromkeys(want) if i not in claimed]
+            claimed.update(want)
+        if not want and out.get("jobs") is not None:
+            return
+        t1 = time.monotonic()
+        jobs = collect({i: spawn(["run", "view", str(i), "--json", "jobs"]) for i in want})
+        timed("jobs", t1, f"{len(want)} run view calls")
+        with guard:
+            have = dict(out.get("jobs") or {})
+        have.update({i: (j or {}).get("jobs", []) for i, j in jobs.items() if isinstance(j, dict) or j is None})
+        put({"jobs": have})
+
+    threads = [threading.Thread(target=load, args=(k, a), daemon=True) for k, a in calls.items()]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    log_timing(timings, time.monotonic() - began)
+    return out
 
 
 def blank(k):
@@ -232,7 +300,9 @@ def fit_col(panels, avail, iw):
     lines = []
     for i, p in enumerate(panels):
         items = p["items"]
-        if not items:
+        if p.get("loading"):
+            rows, p = [[("loading…", "dim")]], dict(p, total="…")
+        elif not items:
             rows = [[("(none)", "dim")]]
         elif len(items) <= show[i]:
             rows = list(items)
@@ -242,7 +312,7 @@ def fit_col(panels, avail, iw):
     return lines
 
 
-def compose(data, W, H, alarm_ids=frozenset(), busy=False):
+def compose(data, W, H, alarm_ids=frozenset(), busy=False, loading=frozenset()):
     """Return (top_lines, left_lines, right_lines, column_width) for a W x H screen (H None: natural)."""
     now = datetime.now(timezone.utc)
     runs, issues, prs = data["runs"], data["issues"], data["prs"]
@@ -289,6 +359,10 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False):
               f"+{churn.get('add', 0)} -{churn.get('del', 0)} {churn.get('files', 0)}f" if churn else "no data"),
              ("MEDIAN RUN", span(median), "b_cyan", f"{len(durs)} runs"),
              ("NEEDS HUMAN", str(hot), "b_red" if hot else "b_green", "issues, PRs")]
+    waits = {"MAIN": {"runs"}, "RUNNING": {"runs"}, "MERGED 24h": {"merged"}, "FAILED 24h": {"runs"}, "CLOSED 24h": {"closed"},
+             "COMMITS": {"total"}, "COMMITS LAST 24H": {"churn"}, "MEDIAN RUN": {"runs"}, "NEEDS HUMAN": {"issues", "prs"}}
+    cards = [(c[0], "…", "gray", "loading") if waits.get(c[0], set()) & loading else c for c in cards]
+
     def base(c):  # a card is at least 16 wide and grows when its label, value or caption needs more
         sub = c[3] if isinstance(c[3], str) else "".join(t for t, _ in c[3])
         return max(16, len(c[0]) + 5, len(sub) + 3, len(c[1]) + 3)
@@ -357,6 +431,10 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False):
                             [(f"   {len(merged_day)} merged 24h", "green" if merged_day else "gray"),
                              (f"   {sum(1 for x in prs if any(l['name'] == 'needs-fix' for l in x.get('labels', [])))} needs-fix", "gray"),
                              ("   " + "  ".join(f"{a}:{c}" for a, c in sorted(load.items())) if load else "", "magenta")]))
+    if {"runs"} & loading:
+        meters = [[("runs  ", "gray"), ("loading…", "dim")]] + ([[("tasks ", "gray"), ("loading…", "dim")]] if {"todo"} & loading else [])
+    elif {"todo"} & loading:
+        meters.append([("tasks ", "gray"), ("loading…", "dim")])
     if H is None or H >= 24:
         top += box("PIPELINE", "", "cyan", "gray", meters, W - 6, len(meters) + 2)
     else:
@@ -528,6 +606,10 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False):
                   items=[cells(iw, ("o", "red" if any(l["name"] == "needs-human" for l in i.get("labels", [])) else "magenta", 1),
                                (f"#{i['number']}", "", 5), (i["title"], "", None), (age(i["createdAt"]), "dim", 10, "r"))
                          for i in issues])]
+    for panel, keys in ((left[0], {"runs", "jobs"}), (left[1], {"runs"}), (left[2], {"runs", "jobs"}), (right[0], {"todo", "archive"}),
+                        (right[1], {"todo"}), (right[2], {"merged"}), (right[3], {"prs"}), (right[4], {"issues"})):
+        if keys & loading:
+            panel["loading"] = True
     body = None if H is None else max(H - len(top) - 1, 0)
     right = [right[i] for i in (3, 4, 0, 1, 2)]  # open PRs and issues first
     return top, fit_col(left, body, iw), fit_col(right, body, iw), cw
@@ -621,16 +703,22 @@ def tui(stdscr):
         attr[name] = pair[name]
         attr["b_" + name] = pair[name] | curses.A_BOLD
 
-    st = {"data": {k: blank(k) for k in [*CALLS, "jobs", "churn"]}, "busy": False, "at": 0.0}
+    st = {"data": {k: blank(k) for k in [*CALLS, "jobs", "churn"]}, "busy": False, "at": 0.0, "loaded": set()}
     lock = threading.Lock()
 
-    def refresh():
-        fresh = fetch()
+    def part(got):  # a section arrived: show it now
         with lock:
-            for k, v in fresh.items():
+            for k, v in got.items():
                 if v is not None:
                     st["data"][k] = v
-            st["busy"], st["at"] = False, time.time()
+                    st["loaded"].add(k)
+            st["at"] = time.time()
+
+    def refresh():
+        fetch(part)
+        with lock:
+            st["busy"] = False
+            st["loaded"] |= set(st["data"])  # a section that failed shows empty instead of loading forever
 
     def kick():
         with lock:
@@ -657,8 +745,12 @@ def tui(stdscr):
         with lock:
             data = {k: (v if v is not None else blank(k)) for k, v in st["data"].items()}
             busy, at = st["busy"], st["at"]
+            loading = frozenset(k for k in st["data"] if k not in st["loaded"]) - {"repo", "runs_more"}
+            if len(st["loaded"]) * 2 >= len(st["data"]):
+                st["ready"] = True  # half of the sections are in: draw the dashboard from now on
+            ready = st.get("ready", False)
         now = time.time()
-        if at and at != checked_at:  # new data: look for runs that failed since the last look
+        if at and at != checked_at and "runs" in st["loaded"]:  # new data: look for runs that failed since the last look
             checked_at = at
             failed_now = {r["databaseId"]: r for r in data["runs"]
                           if r.get("status") == "completed" and state(r) in FAILED}
@@ -680,17 +772,17 @@ def tui(stdscr):
             alarm["next"] = now + 5
         H, W = stdscr.getmaxyx()
         phase = int(now * 3) % 2 if alarm else 0
-        sig = (H, W, at, busy, phase, bool(alarm), int(now // 5), started_note)
+        sig = (H, W, at, busy, phase, bool(alarm), int(now // 5), started_note, len(loading), ready)
         if sig == last:
             continue
         last = sig
         stdscr.erase()
-        if not at:
+        if not ready:  # plain black screen until half of the sections have loaded
             stdscr.addstr(0, 1, "Loading...")
             stdscr.refresh()
             continue
         ids = alarm["ids"] if alarm else frozenset()
-        top, left, right, cw = compose(data, max(W, 80), H, ids, busy)
+        top, left, right, cw = compose(data, max(W, 80), H, ids, busy, loading)
 
         def put(y, x, line, limit):
             for text, style in clipline(line, limit)[0]:
@@ -718,7 +810,8 @@ def tui(stdscr):
             a = pair["red"] | curses.A_BOLD | (curses.A_REVERSE if phase else 0)
             stdscr.addstr(H - 1, 0, msg.ljust(W - 1)[: W - 1], a)
         else:
-            status = "refreshing..." if busy else f"updated {span(time.time() - at)} ago"
+            status = (f"loading {len(st['data']) - len(loading)}/{len(st['data'])}..." if loading else "refreshing..." if busy
+                      else f"updated {span(time.time() - at)} ago")
             foot = f" q quit · r refresh · every {INTERVAL}s · {status}"
             if AUTOSTART:
                 foot += f" · {started_note or f'auto-start on ({AUTOSTART}m)'}"
