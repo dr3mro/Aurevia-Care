@@ -3,6 +3,7 @@ import datetime
 import io
 import json
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -44,6 +45,16 @@ class FakeGh:
 
     def said(self, *needle):
         return any(all(n in call for n in needle) for call in self.calls)
+
+
+class SplitDiffGh(FakeGh):
+    """Answers `pr diff --name-only` with the file names and a plain `pr diff` with the diff."""
+
+    def __call__(self, *args, check=True):
+        if args[:2] == ("pr", "diff") and "--name-only" in args:
+            self.calls.append(args)
+            return "\n".join(re.findall(r"(?m)^diff --git a/(\S+) ", self.diff))
+        return super().__call__(*args, check=check)
 
 
 TASKS = """# TODO
@@ -922,6 +933,38 @@ class IntegrationTests(unittest.TestCase):
             self.assertEqual(swarm.guard(9), [])
         self.assertFalse(fake.said("labels[]=needs-human"))
         self.assertTrue(any("Kill switch SWARM_ALLOW_PROTECTED is on" in " ".join(call) for call in fake.calls))
+
+    def test_kill_switch_opens_an_oversight_issue_with_only_the_protected_diffs(self):
+        diff = ("diff --git a/apps/api/src/A.java b/apps/api/src/A.java\n+ordinary\n"
+                "diff --git a/apps/api/pom.xml b/apps/api/pom.xml\n+<dep>x</dep>\n")
+        fake = SplitDiffGh(diff=diff, pr_view={"url": "https://example.test/pull/9",
+                                               "headRefName": "swarm/BUILD-24-5",
+                                               "headRefOid": "abcdef1234567890"})
+        with mock.patch.dict(os.environ, {"SWARM_ALLOW_PROTECTED": "1"}), \
+                mock.patch.object(swarm, "gh", fake), \
+                mock.patch.object(swarm, "trusted_issues", lambda: []):
+            self.assertEqual(swarm.guard(9), [])
+        created = [c for c in fake.calls if c[:2] == ("issue", "create")]
+        self.assertTrue(created)  # the fake answers no URL, so the label retry repeats the call
+        text = " ".join(created[0])
+        self.assertIn("https://example.test/pull/9", text)
+        self.assertIn("apps/api/pom.xml", text)
+        self.assertIn("+<dep>x</dep>", text)
+        self.assertNotIn("ordinary", text)
+        self.assertIn("protected-change", created[0])
+        self.assertNotIn("needs-human", created[0])
+        self.assertNotIn("needs-review", created[0])
+
+    def test_kill_switch_issue_is_not_repeated_for_the_same_revision(self):
+        diff = "diff --git a/apps/api/pom.xml b/apps/api/pom.xml\n+x\n"
+        info = {"url": "u", "headRefName": "swarm/BUILD-24-5", "headRefOid": "abcdef1234567890"}
+        tag = swarm.marker("fingerprint", swarm.fingerprint("protected-merge", "9", "abcdef123456"))
+        fake = SplitDiffGh(diff=diff, pr_view=info)
+        with mock.patch.dict(os.environ, {"SWARM_ALLOW_PROTECTED": "1"}), \
+                mock.patch.object(swarm, "gh", fake), \
+                mock.patch.object(swarm, "trusted_issues", lambda: [{"number": 4, "body": tag}]):
+            swarm.guard(9)
+        self.assertFalse([c for c in fake.calls if c[:2] == ("issue", "create")])
 
     def test_kill_switch_off_values_keep_the_secure_rule(self):
         for value in ("", "0", "false", "no"):

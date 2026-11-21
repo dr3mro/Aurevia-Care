@@ -173,6 +173,7 @@ ISSUE_LABELS = {
     "stalled": ("b60205", "No wave is running although work is waiting"),
     "needs-review": ("fbca04", "Working as designed; a person must approve or merge"),
     "worker-handoff": ("c5def5", "A worker stopped; the next worker continues from here"),
+    "protected-change": ("bfd4f2", "A protected file merged under SWARM_ALLOW_PROTECTED; for oversight only"),
 }
 LABELS.update(ISSUE_LABELS)
 
@@ -2218,6 +2219,42 @@ def repair_gate(run_id, now=None):
     return True, "Starting a repair."
 
 
+def protected_diffs(diff_text, files, per_file=5000):
+    """The diff sections of the named files only, secrets masked, each section clipped."""
+    wanted, sections = set(files), []
+    for block in re.split(r"(?m)^(?=diff --git )", diff_text or ""):
+        match = re.match(r"diff --git a/(\S+) b/", block)
+        if match and match.group(1) in wanted:
+            shown = clip_to(SECRET.sub("***", block).replace("```", "'''"), per_file)
+            sections.append(f"#### `{match.group(1)}`\n\n```diff\n{shown}\n```")
+    return "\n\n".join(sections) or "(the diff was not available; open the pull request to see it)"
+
+
+@best_effort
+def report_protected_merge(pr, touched):
+    """Kill switch on: tell the owner which protected files a PR changes, without blocking it.
+
+    One issue per pull request revision. It carries no needs-human or needs-review label,
+    nothing waits for it, and it stays open until the owner closes it."""
+    info = gh_json("pr", "view", str(pr), "--json", "title,headRefName,url,headRefOid") or {}
+    link = info.get("url") or f"#{pr}"
+    task = task_id_of(info.get("headRefName", ""))
+    revision = (info.get("headRefOid") or "")[:12]
+    if issues_with("fingerprint", fingerprint("protected-merge", str(pr), revision)):
+        return ""
+    diffs = protected_diffs(gh("pr", "diff", str(pr), check=False), touched)
+    files = "\n".join(f"- `{f}`" for f in touched)
+    body = (f"**Pull request:** {link}\n**Task:** {task or 'unknown'}\n"
+            f"**Revision:** `{revision or 'unknown'}`\n\n"
+            "SWARM_ALLOW_PROTECTED is on, so this pull request is merged automatically after the full "
+            f"gate. Nothing is blocked. Protected files it changes:\n\n{files}\n\n### Diffs\n\n{diffs}\n\n"
+            "**What to do:** read it when you have time and close this issue. If something is wrong, "
+            "revert the merge or turn the switch off by deleting the variable.")
+    title = f"Protected files changed in PR #{pr}: " + ", ".join(touched[:3])
+    return record_issue("protected-merge", [str(pr), revision], title[:200], body,
+                        labels=("protected-change",), markers={"pr": pr, "task": task})
+
+
 def protected_override():
     """True while the kill switch is on: repository variable SWARM_ALLOW_PROTECTED=1.
 
@@ -2240,7 +2277,9 @@ def guard(pr, repair=False):
     if touched and protected_override():
         gh("pr", "comment", str(pr), "--body",
            f"{MARK}\nKill switch SWARM_ALLOW_PROTECTED is on: the protected-file rule was skipped for "
-           f"{', '.join(touched[:10])}. The full gate still runs before the merge.")
+           f"{', '.join(touched[:10])}. The full gate still runs before the merge. "
+           "An issue lists the diffs for review; it does not block anything.")
+        report_protected_merge(pr, touched)
         touched = []
     if touched:
         add_labels(pr, "needs-human")
