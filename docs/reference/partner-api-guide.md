@@ -158,7 +158,7 @@ mismatch is `403 IDENTITY_MISMATCH`, a repeat bind is `409 ALREADY_VERIFIED`
 ([WorkItemView.java](../../apps/api/src/main/java/com/aurevia/smartclinic/exchange/order/WorkItemView.java)).
 
 Recipient-side state for an exchanged order moved by
-[Xch03Controller.java](../../apps/api/src/main/java/com/aurevia/smartclinic/exchange/response/Xch03Controller.java)
+[ExchangeResponseController.java](../../apps/api/src/main/java/com/aurevia/smartclinic/exchange/response/ExchangeResponseController.java)
 and [ExchangeState.java](../../apps/api/src/main/java/com/aurevia/smartclinic/exchange/response/ExchangeState.java):
 
 | From | Command | To |
@@ -174,7 +174,7 @@ and [ExchangeState.java](../../apps/api/src/main/java/com/aurevia/smartclinic/ex
 
 `retrieve` returns the current released revision on every call and re-checks
 revocation: a revoked release returns `410 RETRIEVAL_REVOKED`
-([Xch03Service.java](../../apps/api/src/main/java/com/aurevia/smartclinic/exchange/response/Xch03Service.java)).
+([ExchangeResponseService.java](../../apps/api/src/main/java/com/aurevia/smartclinic/exchange/response/ExchangeResponseService.java)).
 A proposed change is held in the revision ledger until the recipient responds;
 refusing it never serves unretained content.
 

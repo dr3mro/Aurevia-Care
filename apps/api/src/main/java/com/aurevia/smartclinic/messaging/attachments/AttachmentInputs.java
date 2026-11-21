@@ -1,31 +1,23 @@
 package com.aurevia.smartclinic.messaging.attachments;
 
-import java.util.Locale;
-import java.util.UUID;
-import java.util.regex.Pattern;
-
 import com.aurevia.smartclinic.api.ApiException;
+import com.aurevia.smartclinic.documents.UploadValidation;
 import com.aurevia.smartclinic.messaging.attachments.AttachmentContract.FileType;
 import com.aurevia.smartclinic.messaging.attachments.AttachmentContract.ScanVerdict;
 
 /**
- * Pure, total validation of every S-G3-06 command field.
+ * Pure, total validation of every S-G3-06 attachment command field (MSG-03).
  *
  * <p>Every method either returns a normalized value or raises a {@code 422}
  * with a stable code before any durable state changes, so a malformed type,
- * size or checksum can never reach the quarantine store.</p>
+ * size or checksum can never reach the quarantine store. Shared upload rules
+ * (size, file name, checksum, key) live in the single {@code UploadValidation}
+ * primitive; only the attachment-specific media-type parser remains here.</p>
  */
 public final class AttachmentInputs {
 
     /** Largest accepted payload, ten mebibytes. */
-    public static final long MAX_SIZE_BYTES = 10L * 1024L * 1024L;
-
-    private static final Pattern UUID_PATTERN = Pattern.compile(
-            "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
-    private static final Pattern HEX = Pattern.compile("[0-9a-fA-F]+");
-    private static final Pattern CHECKSUM = Pattern.compile("[0-9a-f]{64}");
-    private static final Pattern KEY = Pattern.compile("[A-Za-z0-9][A-Za-z0-9_-]{1,63}");
-    private static final Pattern FILE_NAME = Pattern.compile("[^/\\\\\\x00-\\x1F]{1,200}");
+    public static final long MAX_SIZE_BYTES = UploadValidation.MAX_SIZE_BYTES;
 
     private AttachmentInputs() {
     }
@@ -39,10 +31,7 @@ public final class AttachmentInputs {
      * @throws ApiException when the value is not a UUID
      */
     public static String uuid(String value, String field) {
-        if (value == null || !UUID_PATTERN.matcher(value).matches()) {
-            throw invalid(field, "must be a UUID");
-        }
-        return value;
+        return UploadValidation.uuid(value, field);
     }
 
     /**
@@ -54,11 +43,7 @@ public final class AttachmentInputs {
      * @throws ApiException when the key is blank, malformed or too long
      */
     public static String key(String value, String field) {
-        String normalized = value == null ? null : value.trim();
-        if (normalized == null || !KEY.matcher(normalized).matches()) {
-            throw invalid(field, "must be 2-64 letters, digits, _ or -");
-        }
-        return normalized;
+        return UploadValidation.key(value, field);
     }
 
     /**
@@ -69,10 +54,7 @@ public final class AttachmentInputs {
      * @throws ApiException when the name is blank, too long or contains a path separator
      */
     public static String fileName(String value) {
-        if (value == null || !FILE_NAME.matcher(value).matches() || value.contains("..")) {
-            throw invalid("fileName", "must be 1-200 characters without a path or control character");
-        }
-        return value.trim();
+        return UploadValidation.fileName(value);
     }
 
     /**
@@ -99,38 +81,29 @@ public final class AttachmentInputs {
      * @throws ApiException when the value is not 2-32 hex characters
      */
     public static String magicHex(String value) {
-        if (value == null || value.length() < 2 || value.length() > 32 || !HEX.matcher(value).matches()) {
-            throw invalid("magicHex", "must be 2-32 hexadecimal characters");
-        }
-        return value.toLowerCase(Locale.ROOT);
+        return UploadValidation.magicHex(value);
     }
 
     /**
      * Validate a SHA-256 checksum.
      *
      * @param value supplied checksum
-     * @return the lowercased checksum
+     * @return the validated lowercase checksum
      * @throws ApiException when the value is not 64 lowercase hex characters
      */
     public static String checksum(String value) {
-        if (value == null || !CHECKSUM.matcher(value).matches()) {
-            throw invalid("checksum", "must be 64 lowercase hexadecimal characters");
-        }
-        return value;
+        return UploadValidation.checksum(value);
     }
 
     /**
-     * Validate a payload size against the configured bounds.
+     * Validate a payload size against the shared bound.
      *
      * @param size supplied size in bytes
      * @return the validated size
      * @throws ApiException when the size is outside 1..10 MiB
      */
     public static long size(long size) {
-        if (size < 1 || size > MAX_SIZE_BYTES) {
-            throw invalid("sizeBytes", "must be 1-" + MAX_SIZE_BYTES + " bytes");
-        }
-        return size;
+        return UploadValidation.size(size);
     }
 
     /**
@@ -141,15 +114,8 @@ public final class AttachmentInputs {
      * @throws ApiException when the verdict is absent or is not a terminal verdict
      */
     public static ScanVerdict verdict(String value) {
-        if (value == null) {
-            throw invalid("verdict", "must be clean or failed");
-        }
-        for (ScanVerdict candidate : new ScanVerdict[] {ScanVerdict.CLEAN, ScanVerdict.FAILED}) {
-            if (candidate.wire().equals(value)) {
-                return candidate;
-            }
-        }
-        throw invalid("verdict", "must be clean or failed");
+        String wire = UploadValidation.terminalVerdict(value, "verdict");
+        return "clean".equals(wire) ? ScanVerdict.CLEAN : ScanVerdict.FAILED;
     }
 
     /**
@@ -161,14 +127,7 @@ public final class AttachmentInputs {
      * @throws ApiException when the detail is too long
      */
     public static String detail(String value, int max) {
-        if (value == null) {
-            return null;
-        }
-        String normalized = value.trim();
-        if (normalized.length() > max) {
-            throw invalid("detail", "must be at most " + max + " characters");
-        }
-        return normalized.isEmpty() ? null : normalized;
+        return UploadValidation.detail(value, max);
     }
 
     /**
@@ -180,7 +139,7 @@ public final class AttachmentInputs {
      * @return a private, deterministic object key
      */
     public static String objectKey(String organizationId, String id, int objectVersion) {
-        return "quarantine/" + organizationId + "/" + id + "/v" + objectVersion;
+        return UploadValidation.objectKey(organizationId, id, objectVersion);
     }
 
     /**
@@ -189,11 +148,6 @@ public final class AttachmentInputs {
      * @return random UUID text
      */
     public static String newId() {
-        return UUID.randomUUID().toString();
-    }
-
-    private static ApiException invalid(String field, String rule) {
-        String stableField = field.replaceAll("([a-z])([A-Z])", "$1_$2").toUpperCase(Locale.ROOT);
-        return new ApiException(422, "INVALID_" + stableField, field + " " + rule);
+        return UploadValidation.newId();
     }
 }

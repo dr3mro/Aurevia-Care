@@ -13,7 +13,7 @@ import com.aurevia.smartclinic.authz.ActionPolicy;
 import com.aurevia.smartclinic.authz.specialty.SpecialtyActions;
 import com.aurevia.smartclinic.exchange.critical.CriticalActions;
 import com.aurevia.smartclinic.exchange.release.ReleaseActionPolicy;
-import com.aurevia.smartclinic.exchange.response.Xch03ActionPolicy;
+import com.aurevia.smartclinic.exchange.response.ExchangeResponseActionPolicy;
 import com.aurevia.smartclinic.finance.FinanceActions;
 import com.aurevia.smartclinic.lab.accession.LabActionPolicy;
 import com.aurevia.smartclinic.messaging.acknowledgment.InstructionFactActions;
@@ -351,7 +351,7 @@ public final class CommandAuthorization {
         owners.put(CommandCatalog.WORKLIST_POLICY, new WorklistPolicy()::allows);
         owners.put(CommandCatalog.LAB_POLICY, new LabActionPolicy()::allows);
         owners.put(CommandCatalog.SPECIALTY_POLICY, new SpecialtyActions()::allows);
-        owners.put(CommandCatalog.EXCHANGE_POLICY, new Xch03ActionPolicy()::allows);
+        owners.put(CommandCatalog.EXCHANGE_RESPONSE_POLICY, new ExchangeResponseActionPolicy()::allows);
         owners.put(CommandCatalog.RELEASE_POLICY, new ReleaseActionPolicy()::allows);
         owners.put(CommandCatalog.CRITICAL_POLICY, new CriticalActions()::allows);
         owners.put(CommandCatalog.FINANCE_POLICY, new FinanceActions()::allows);

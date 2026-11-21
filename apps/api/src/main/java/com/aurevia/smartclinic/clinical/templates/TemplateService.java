@@ -4,10 +4,15 @@ import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Service;
 
 import com.aurevia.smartclinic.api.ApiException;
 
@@ -25,6 +30,7 @@ import com.aurevia.smartclinic.api.ApiException;
  * any active role, while define, approve and audit are role gated. Each command
  * appends an append-only audit fact.</p>
  */
+@Service
 public final class TemplateService {
 
     /** Role that administers tenant configuration and may define templates. */
@@ -39,6 +45,7 @@ public final class TemplateService {
     private static final String ACTION_DEFINE = "TEMPLATE_DEFINE";
     private static final String ACTION_APPROVE = "TEMPLATE_APPROVE";
     private static final String ACTION_READ = "TEMPLATE_READ";
+    private static final String ACTION_SAVE_NOTE = "TEMPLATE_NOTE_SAVE";
     private static final String ACTION_AUDIT = "AUDIT_READ";
 
     private final TemplateStore store;
@@ -310,6 +317,72 @@ public final class TemplateService {
     }
 
     /**
+     * Save a note together with the exact field meanings it was validated against.
+     *
+     * <p>The version's field definitions and the entries of every referenced dictionary
+     * are captured now, so a later dictionary or template change cannot rewrite what
+     * this note meant (CLN-04). A note must first satisfy its exact template version.</p>
+     *
+     * @param actor  caller identity
+     * @param noteId tenant-local opaque note identifier
+     * @param note   authored note revision bound to one exact template version
+     * @return the saved revision with its frozen field meanings
+     * @throws ApiException on invalid input, denied access or an unknown version
+     */
+    public SavedNoteRevision saveNote(TemplateActor actor, String noteId, TemplateNoteRevision note) {
+        authorize(actor, ACTION_SAVE_NOTE, "note");
+        if (blank(noteId)) {
+            throw invalid("INVALID_NOTE_ID", "note id is required");
+        }
+        if (note == null) {
+            throw invalid("INVALID_NOTE", "note is required");
+        }
+        TemplateVersion version = store.version(actor.organizationId(), note.kind(), note.templateVersion())
+                .orElse(null);
+        if (version == null) {
+            audit(actor, ACTION_SAVE_NOTE, "note", note.kind().name(), "NOT_FOUND");
+            throw notFound("template version not found");
+        }
+        if (!validate(actor, note).valid()) {
+            audit(actor, ACTION_SAVE_NOTE, "note", note.kind().name(), "INVALID");
+            throw invalid("INVALID_NOTE", "note does not satisfy its template version");
+        }
+        Map<String, List<String>> dictionaries = new HashMap<>();
+        for (FieldDefinition field : version.fields()) {
+            if (field.type() == FieldType.CODE) {
+                Optional<FieldDictionary> dictionary = store.dictionary(
+                        actor.organizationId(), field.dictionaryKey());
+                dictionaries.put(field.dictionaryKey(),
+                        dictionary.isPresent() ? dictionary.get().entries() : List.of());
+            }
+        }
+        SavedNoteRevision saved = new SavedNoteRevision(actor.organizationId(), noteId, note,
+                version.fields(), dictionaries);
+        store.saveNoteRevision(actor.organizationId(), saved);
+        audit(actor, ACTION_SAVE_NOTE, "note", note.kind().name(), "SUCCESS");
+        return saved;
+    }
+
+    /**
+     * Read a saved note with the field meanings captured when it was saved.
+     *
+     * @param actor  caller identity
+     * @param noteId tenant-local opaque note identifier
+     * @return the saved revision with its frozen field meanings
+     * @throws ApiException on denied access or when the note is not visible in this tenant
+     */
+    public SavedNoteRevision savedNote(TemplateActor actor, String noteId) {
+        authorize(actor, ACTION_READ, "note");
+        SavedNoteRevision saved = store.noteRevision(actor.organizationId(), noteId).orElse(null);
+        if (saved == null) {
+            audit(actor, ACTION_READ, "note", "saved", "NOT_FOUND");
+            throw notFound("saved note not found");
+        }
+        audit(actor, ACTION_READ, "note", "saved", "SUCCESS");
+        return saved;
+    }
+
+    /**
      * Read the tenant's append-only template audit trail.
      *
      * @param actor caller identity
@@ -336,6 +409,7 @@ public final class TemplateService {
         Set<String> allowed = switch (action) {
             case ACTION_DEFINE -> Set.of(TENANT_ADMIN, CLINICAL_GOVERNANCE);
             case ACTION_APPROVE -> Set.of(CLINICAL_GOVERNANCE);
+            case ACTION_SAVE_NOTE -> Set.of(CLINICIAN);
             case ACTION_AUDIT -> Set.of(PRIVACY_AUDITOR, TENANT_ADMIN);
             default -> null;
         };
