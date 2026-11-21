@@ -1,5 +1,5 @@
-- [-] COVPY-MONITOR-COMPOSE · Script tests: monitor tool coverage, compose part (to 100% together with the other three parts)
-  - agent: swarm-8
+- [x] COVPY-MONITOR-COMPOSE · Script tests: monitor tool coverage, compose part (to 100% together with the other three parts)
+  - pr: #419
   - attempts: 1
   - requirements: OPS-06
   - scope: scripts/tests/test_monitor_compose_coverage.py

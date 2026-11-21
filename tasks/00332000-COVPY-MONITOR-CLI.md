@@ -1,5 +1,5 @@
-- [-] COVPY-MONITOR-CLI · Script tests: monitor tool coverage, cli part (to 100% together with the other three parts)
-  - agent: swarm-10
+- [x] COVPY-MONITOR-CLI · Script tests: monitor tool coverage, cli part (to 100% together with the other three parts)
+  - pr: #416
   - attempts: 1
   - requirements: OPS-06
   - scope: scripts/tests/test_monitor_cli_coverage.py
