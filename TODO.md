@@ -1478,6 +1478,592 @@ Screens the earlier parts did not cover. Each exports its routes from `features/
     4. Tests: every route renders under its role, a direct link without the role shows the forbidden state.
     Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
+## Clinician orders: place lab and imaging orders and send them electronically or print them (new files and narrow edits)
+
+Prescriptions already have draft, attestation and a channel choice (BUILD-45, BUILD-10). These tasks add the same for lab and imaging orders: the clinician places an order from the chart, chooses electronic delivery, print or both, and a failed send can switch to print without a duplicate order. ORDER-01 to ORDER-04 are the API; ORDER-05 to ORDER-08 are the staff web; ORDER-09 and ORDER-10 are the browser test and docs. The print tasks below depend on these.
+
+- [ ] ORDER-01 · API: orderable test and study catalog per facility (versioned)
+  - requirements: LAB-01, RAD-01, XCH-01
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/orderentry/catalog, apps/api/src/test/java/com/aurevia/smartclinic/orderentry/catalog
+  - details:
+    1. Read the catalog code from G0, `exchange/order` and the lab and imaging packages. Write in the pr-notes what already exists.
+    2. Where missing, add a versioned catalog of orderable lab tests and imaging studies per facility: name, code, specimen or modality, preparation instructions (for example fasting), default priority and the partner that performs it. Changes take effect on a date and old orders keep the version they used.
+    3. Tests: search by name and code, a retired item cannot be ordered, an old order still shows its catalog version, another tenant sees nothing.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] ORDER-02 · API: place a lab or imaging order from the chart with a delivery mode (electronic, print, or both)
+  - requirements: LAB-01, RAD-01, XCH-01, XCH-02
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/orderentry/place, apps/api/src/test/java/com/aurevia/smartclinic/orderentry/place, contracts/openapi.yaml
+  - depends: ORDER-01
+  - details:
+    1. Read `exchange/order/OrderController.java` and the chart context rules for who may order.
+    2. Add placing an order: patient, encounter, items from the catalog, clinical question, priority, preparation instructions, destination partner and delivery mode. Delivery modes: electronic to the partner, print for the patient to carry, or both. The chosen mode is stored.
+    3. Only a clinician with ordering privilege in the facility may place an order. A draft order can be saved and edited; placing makes it immutable except through cancel or amend.
+    4. Use `If-Match` and `Idempotency-Key` as other endpoints do. Update `contracts/openapi.yaml`.
+    5. Tests: each delivery mode, draft versus placed, wrong role, wrong tenant, retried placement creates one order.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] ORDER-03 · API: electronic delivery to the partner with evidence, and a print fallback when it fails
+  - requirements: XCH-01, XCH-02, XCH-03, PRD-02
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/orderentry/delivery, apps/api/src/test/java/com/aurevia/smartclinic/orderentry/delivery
+  - depends: ORDER-02
+  - details:
+    1. Read the partner delivery and retry code in `exchange` and the order history model.
+    2. Send a placed electronic order to the partner through the approved channel and record delivery events separately: submitted, delivery confirmed, accepted, rejected, clarification asked. A partner with no approved interface is recorded as manual delivery with who delivered it and when.
+    3. When delivery fails after the retry limit, mark the order as needing action, keep the failed attempt in history, and allow the clinician to switch the order to print without creating a duplicate order. An ambiguous send is reconciled before any resend.
+    4. Tests: confirmed delivery, failure then switch to print keeps one order, ambiguous send is not resent blindly, manual delivery needs evidence.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] ORDER-04 · API: order status to result, with cancel and amend rules
+  - requirements: LAB-01, LAB-02, RAD-01, XCH-03
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/orderentry/status, apps/api/src/test/java/com/aurevia/smartclinic/orderentry/status
+  - depends: ORDER-03
+  - details:
+    1. Read the order history and result linking code.
+    2. Expose one status per order: draft, placed, delivered, accepted, collected or scheduled, resulted, cancelled. Cancel is allowed until the partner accepts and needs a reason; after that it becomes a cancel request to the partner. Amend makes a new revision and tells the partner.
+    3. A result links back to its order and shows in the order status. A critical result still follows the critical-result workflow.
+    4. Tests: cancel before and after acceptance, amend creates a revision and notifies, result links to the order, status order cannot go backwards.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] ORDER-05 · Staff web: order entry screen in the chart (search catalog, clinical question, priority, preparation)
+  - requirements: LAB-01, RAD-01, WEB-09
+  - scope: apps/staff-web/src/features/orderentry/entry
+  - depends: ORDER-02
+  - details:
+    1. Read `docs/design/screen-recipe.md` and `features/chart`.
+    2. Build an order entry panel that exports `OrderEntryPanel`: catalog search, selected items, clinical question (required for imaging), priority, preparation instructions that the clinician can edit, and a save-draft action. Show allergies and relevant active orders so a duplicate is noticed.
+    3. A stale version never loses typed work: show compare, reload or copy.
+    4. Tests: imaging needs a clinical question, duplicate warning, draft saves and reloads, forbidden for roles without ordering privilege, English and Arabic.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] ORDER-06 · Staff web: choose delivery (send electronically, print, or both) and handle a failed send
+  - requirements: LAB-01, RAD-01, XCH-02, WEB-09
+  - scope: apps/staff-web/src/features/orderentry/delivery
+  - depends: ORDER-03, ORDER-05
+  - details:
+    1. Read `features/orderentry/entry` and the delivery API.
+    2. Export a `DeliveryChoice` step: the three delivery modes with the partner name, what the patient will receive, and a final confirm that states the mode in words. Show the delivery timeline after placing.
+    3. On a failed or ambiguous send show a clear message and two actions: retry (only when safe) and print instead. Print opens the print preview from the printing tasks through an exported callback prop, not a direct import.
+    4. Tests: each mode, failed send shows print instead, ambiguous send shows reconcile and no resend button, English and Arabic.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] ORDER-07 · Staff web: orders list in the chart with status, results link, cancel and amend
+  - requirements: LAB-01, RAD-01, XCH-03, WEB-09
+  - scope: apps/staff-web/src/features/orderentry/tracking
+  - depends: ORDER-04, ORDER-05
+  - details:
+    1. Read `features/chart` and the status API.
+    2. Export an `OrdersTab` for the chart: each order with its status, delivery evidence, link to the result when it exists, and cancel and amend actions with a required reason.
+    3. Tests: status wording, cancel needs a reason, cancel after acceptance says a request is sent, result link opens the result, English and Arabic.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] ORDER-08 · Staff web: register the order entry parts and mount points
+  - requirements: WEB-09
+  - scope: apps/staff-web/src/features/orderentry/index.ts, apps/staff-web/src/features/orderentry/README.md
+  - depends: ORDER-05, ORDER-06, ORDER-07
+  - details:
+    1. Export `OrderEntryPanel`, `DeliveryChoice` and `OrdersTab` from one index. Write the exact import and placement line for the chart screen in the README (the chart feature belongs to another task; do not edit it).
+    2. Tests: the index exports these three and nothing else.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] ORDER-09 · Browser test: place a lab order and an imaging order, send electronically, fail and print instead
+  - requirements: LAB-01, RAD-01, WEB-09
+  - scope: apps/staff-web/e2e/orderentry
+  - depends: ORDER-08
+  - details:
+    1. Read the existing browser tests and their fixtures.
+    2. Write the journey: search and place a lab order sent electronically; place an imaging order with a clinical question; make the partner stub fail and print instead; cancel an order and amend another. Check the status wording and that one order exists after the switch to print. Run it in English and Arabic.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] ORDER-10 · Docs: clinician workflow guide for prescriptions and orders (electronic or printed) and UAT scenario
+  - requirements: RX-02, LAB-01, RAD-01, XCH-02
+  - scope: docs/operations/clinician-orders
+  - details:
+    1. Write `docs/operations/clinician-orders/README.md` as one plain workflow: write a prescription or place an order, choose electronic, print or both, what the patient receives, what happens when a send fails, how to cancel or amend, and how to see the result.
+    2. Write `docs/operations/clinician-orders/uat.md` with the scenario in numbered steps for a person to run.
+    3. Do not create any folder named after a task or requirement id.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+## Pharmacy, laboratory and radiology workflows, plus order tracking (new files and narrow edits)
+
+The clinician side is in ORDER-01 to ORDER-10. These tasks add the receiving sides and the links between them. PHARM: routed inbox, status events, clarification thread, substitution proposals the prescriber must approve, and plain patient status. LABFLOW: collection, rejection and recollection, result entry and verification with change checks, corrections and release, outage fallback and a turnaround board. RADFLOW: performing-site worklist and report or addendum delivery with acknowledgment. TRACK: one journey timeline, a patient 'where is it' tracker, a partner outage board, an end-to-end test and a care-loop diagram.
+
+- [ ] PHARM-01 · API: routed-prescription inbox for pharmacy staff (only items explicitly routed to that pharmacy)
+  - requirements: RX-02, XCH-01
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/pharmacyflow/inbox, apps/api/src/test/java/com/aurevia/smartclinic/pharmacyflow/inbox
+  - details:
+    1. Read the `prescription` package, the role matrix (Pharmacy staff: review routed items, communicate, record status evidence) and the partner routing code.
+    2. Add a read model and endpoints for a pharmacy's inbox: only prescriptions explicitly routed to that pharmacy, newest first, with status filter and cursor paging. Show the minimum clinical data the pharmacy needs; never the chart.
+    3. Tests in `apps/api/src/test/java/com/aurevia/smartclinic/pharmacyflow/inbox`: another pharmacy's item is invisible, an unrouted prescription is invisible, a pharmacy user cannot read the chart, tenant isolation.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] PHARM-02 · API: pharmacy status events (accepted, rejected with reason, clarification asked, dispensing evidence) kept separate
+  - requirements: RX-02
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/pharmacyflow/status, apps/api/src/test/java/com/aurevia/smartclinic/pharmacyflow/status
+  - depends: PHARM-01
+  - details:
+    1. Read the prescription status events and `SPEC-RX-02` clauses.
+    2. Add actions for pharmacy staff: accept, reject with a required reason, ask for clarification, and record dispensing evidence (who, when, what was handed over). Dispensing evidence is a different event from acceptance and never implies it. No inventory or stock concepts.
+    3. Every event is append-only with the actor and time. Use `If-Match` and `Idempotency-Key`.
+    4. Tests: reject needs a reason, dispensing evidence does not mark accepted, events are append-only, a retried action records once.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] PHARM-03 · API: clarification thread between pharmacy and prescriber, tied to the prescription
+  - requirements: RX-02, MSG-04
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/pharmacyflow/clarify, apps/api/src/test/java/com/aurevia/smartclinic/pharmacyflow/clarify
+  - depends: PHARM-02
+  - details:
+    1. Read the messaging package for how staff-to-staff and unit conversations are modelled.
+    2. A clarification request opens a thread on the prescription addressed to the prescriber. The prescriber answers with text or an amended prescription revision; the answer closes the request and reaches the pharmacy.
+    3. Unanswered requests older than a configured limit appear as overdue.
+    4. Tests: answer closes the request, amended revision is linked, overdue flag, only the two parties and their tenant see the thread.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] PHARM-04 · API: pharmacy substitution proposal that the prescriber must approve (never automatic)
+  - requirements: RX-01, RX-02
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/pharmacyflow/substitution, apps/api/src/test/java/com/aurevia/smartclinic/pharmacyflow/substitution
+  - depends: PHARM-03
+  - details:
+    1. Read the drug catalog and the tagged alternatives code in `prescription`.
+    2. Let the pharmacy propose a catalog alternative with a reason (stock, brand, formulation). The prescriber sees the difference side by side and approves, which creates a new signed revision, or declines with an optional note. Nothing changes the prescription until approval.
+    3. Tests: no change before approval, approval creates a new revision with provenance, decline keeps the original, only catalog alternatives can be proposed.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] PHARM-05 · Staff web: pharmacy inbox and detail (accept, reject, clarify, record dispensing)
+  - requirements: RX-02, WEB-09
+  - scope: apps/staff-web/src/features/pharmacyinbox
+  - depends: PHARM-02
+  - details:
+    1. Read `docs/design/screen-recipe.md` and `features/prescriptions`.
+    2. Build `PharmacyInboxPage` and `PharmacyItemPage`: status filter, a clear card showing medication, dose, quantity, instructions and prescriber, and the four actions. Reject and clarify require a reason. Dispensing evidence has its own form and is shown as a separate step from acceptance.
+    3. Export routes from `features/pharmacyinbox/routes.ts` (BUILD-52 style registration is done by a person or later task).
+    4. Tests: each state, reject needs a reason, dispensing is separate from accept, conflict keeps typed text, English and Arabic.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] PHARM-06 · Staff web: prescriber view of pharmacy status, clarification replies and substitution approval
+  - requirements: RX-02, WEB-09
+  - scope: apps/staff-web/src/features/prescriberstatus
+  - depends: PHARM-03, PHARM-04
+  - details:
+    1. Read `features/prescriptions` and the new pharmacy APIs.
+    2. Export `PharmacyStatusTimeline`, `ClarificationReply` and `SubstitutionReview` components. The timeline shows submitted, delivered, accepted or rejected, clarification and dispensing as separate rows. Substitution review shows original and proposal side by side with Approve and Decline.
+    3. Tests: rows stay separate, approval makes a new revision link, decline keeps the original, Arabic and right-to-left.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] PHARM-07 · Patient app: simple prescription status in plain words
+  - requirements: RX-02, PAT-02
+  - scope: apps/patient-mobile/src/features/prescriptions
+  - depends: PHARM-02
+  - details:
+    1. Read `apps/patient-mobile/src/features` and the released-reports screen for the pattern.
+    2. Show each released prescription with plain status words: Sent to pharmacy, Pharmacy accepted, Pharmacy needs to check with your doctor, Handed over. Never imply the medicine is ready unless dispensing evidence exists. No clinical cache after sign-out.
+    3. Tests: each status wording, no ready claim without evidence, sign-out clears, Arabic.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] PHARM-08 · Browser test and guide: prescribe, route, pharmacy accepts, clarifies, substitutes and dispenses
+  - requirements: RX-02, WEB-09
+  - scope: apps/staff-web/e2e/pharmacyflow, docs/operations/pharmacy-workflow
+  - depends: PHARM-06
+  - details:
+    1. Write one browser journey across two users (prescriber, pharmacy): prescribe and route, pharmacy asks a question, prescriber answers, pharmacy proposes a substitute, prescriber approves, pharmacy accepts and records dispensing. Check the status wording each side sees.
+    2. Write `docs/operations/pharmacy-workflow/README.md` with the same steps in plain language and what each status means.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] LABFLOW-01 · API: specimen collection with patient and accession match, and label data
+  - requirements: LAB-01
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/labflow/collection, apps/api/src/test/java/com/aurevia/smartclinic/labflow/collection
+  - details:
+    1. Read the lab accession code and the `SPEC-LAB-01` clauses.
+    2. Record collection: specimen type, site, collector, collection time and quality, after confirming patient and accession match. A mismatch refuses the record and writes an audit entry.
+    3. Return label data (accession, patient name and identifier, specimen type, collection time) for printing a label sheet.
+    4. Tests: mismatch refused and audited, quality recorded, label data complete, another tenant refused.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] LABFLOW-02 · API: reject a specimen with a reason, notify the clinician and create a linked recollection
+  - requirements: LAB-01
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/labflow/rejection, apps/api/src/test/java/com/aurevia/smartclinic/labflow/rejection
+  - depends: LABFLOW-01
+  - details:
+    1. Rejection keeps the reason (haemolysed, wrong tube, unlabelled, insufficient volume, other with text) and notifies the ordering clinician and, where the policy allows, the patient.
+    2. Recollection creates a new specimen ID linked to the rejected one on the same order.
+    3. Tests: reason required, clinician notified, recollection is linked and the order stays one order, the rejected specimen keeps its history.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] LABFLOW-03 · API: result entry and verification (numeric, qualified, text, coded) with ranges, flags and verifier
+  - requirements: LAB-02
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/labflow/results, apps/api/src/test/java/com/aurevia/smartclinic/labflow/results
+  - depends: LABFLOW-01
+  - details:
+    1. Read the observation model and `SPEC-LAB-02` clauses.
+    2. Add entry of observations with units, reference range for the site, method, instrument or source, and abnormal and critical flags computed from the approved ranges. A verifier different from the enterer confirms the report after the specimen, patient and observations are checked.
+    3. States: preliminary, final, corrected, entered in error. A critical value starts the existing critical-result workflow.
+    4. Tests: flags from ranges, same person cannot enter and verify, wrong patient refused, critical starts the workflow.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] LABFLOW-04 · API: corrected and entered-in-error reports, and release to the clinician and the patient by policy
+  - requirements: LAB-02, PAT-02
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/labflow/release, apps/api/src/test/java/com/aurevia/smartclinic/labflow/release
+  - depends: LABFLOW-03
+  - details:
+    1. A correction creates a new revision that names what changed and why, and tells the clinician and any patient who already saw the earlier one. Entered in error withdraws a report with a reason and leaves the history.
+    2. Release follows the facility's release policy: clinician first, patient after a configured delay or review.
+    3. Tests: correction notifies earlier viewers, withdrawn report shows a notice, policy delays patient release, history is complete.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] LABFLOW-05 · API: partner outage fallback: manual result upload linked to the order, with an unmatched queue
+  - requirements: LAB-02, XCH-03, PRD-02
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/labflow/outage, apps/api/src/test/java/com/aurevia/smartclinic/labflow/outage
+  - depends: LABFLOW-03
+  - details:
+    1. Read `BUILD-08` (unmatched results) and the partner delivery code.
+    2. When the partner interface is down, allow a person to attach the original report and key in results against an order with a reason and evidence. Results that match no order go to the unmatched queue with an owner.
+    3. Tests: manual entry needs a reason, attachment is linked to the order, unmatched goes to the queue, the outage is visible in history.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] LABFLOW-06 · Staff web: collection desk (find order, verify patient and accession, record collection, print labels)
+  - requirements: LAB-01, WEB-09
+  - scope: apps/staff-web/src/features/labcollection
+  - depends: LABFLOW-01, LABFLOW-02
+  - details:
+    1. Read `docs/design/screen-recipe.md` and `features/orders` conventions.
+    2. Build the collection desk: open an order by accession or patient, confirm the match with a clear two-name check, record the specimen details, print the label sheet, or reject the specimen with a reason.
+    3. Tests: mismatch blocks and explains, label sheet shows required fields, rejection needs a reason, English and Arabic.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] LABFLOW-07 · Staff web: result entry and verification with the earlier value and a change check
+  - requirements: LAB-02, WEB-09
+  - scope: apps/staff-web/src/features/labresults
+  - depends: LABFLOW-03
+  - details:
+    1. Build a result entry grid with units, range and flag shown as words and icons, the previous value and date beside each test, and a warning when the change is larger than the configured limit. A second user verifies with a summary of what will be released.
+    2. Tests: flags as words, large change warning, enterer cannot verify, critical shows the notification step, English and Arabic.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] LABFLOW-08 · Staff web: corrections, withdrawals and release screen
+  - requirements: LAB-02, WEB-09
+  - scope: apps/staff-web/src/features/labrelease
+  - depends: LABFLOW-04
+  - details:
+    1. Build the correction form (what changed, why) with a side-by-side view of the old and new revision, the withdraw action with a reason, and a release status for clinician and patient.
+    2. Tests: correction needs a reason, side-by-side shows the differences, withdrawn state is visible, English and Arabic.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] LABFLOW-09 · Staff web: laboratory turnaround board (orders by age against target, overdue, outage banner)
+  - requirements: LAB-01, LAB-02, WEB-09
+  - scope: apps/staff-web/src/features/labboard
+  - depends: LABFLOW-05
+  - details:
+    1. Build a board with columns Ordered, Collected, In analysis, Awaiting verification, Released. Each card shows age against the target, overdue in words and colour, and an outage banner when the partner interface is down with the manual route link.
+    2. Tests: overdue wording, outage banner, columns count correctly, English and Arabic.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] LABFLOW-10 · Browser test and guide: order, collect, reject and recollect, enter, verify, correct and release
+  - requirements: LAB-01, LAB-02, WEB-09
+  - scope: apps/staff-web/e2e/labflow, docs/operations/lab-workflow
+  - depends: LABFLOW-08
+  - details:
+    1. Write the journey with two lab users and a clinician: collect, reject then recollect, enter, verify, release, correct. Check what the clinician and patient see after each step.
+    2. Write `docs/operations/lab-workflow/README.md` with the steps in plain language, the outage route and the correction rules.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RADFLOW-01 · API: performing-site worklist and handoff (received, scheduled, performed, reported)
+  - requirements: RAD-01
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/radflow/worklist, apps/api/src/test/java/com/aurevia/smartclinic/radflow/worklist
+  - details:
+    1. Read `radiology` and the BUILD-11 patient and accession check.
+    2. Add a worklist for the performing site with status per order and a handoff event when the study is done. An accession and modality are recorded at scheduling; linking the study still goes through the patient and accession check.
+    3. Tests: statuses move forward only, another site cannot see the order, linking a study for the wrong patient is refused.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RADFLOW-02 · API: signed interpretation reaches the referrer, addenda notify and need acknowledgment
+  - requirements: RAD-01
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/radflow/report, apps/api/src/test/java/com/aurevia/smartclinic/radflow/report
+  - depends: RADFLOW-01
+  - details:
+    1. The signed interpretation (technique, comparison, findings, impression) goes to the referring clinician. An addendum creates a new revision, notifies the referrer and stays open until acknowledged.
+    2. Tests: addendum reaches the referrer, acknowledgment closes it, unacknowledged addenda age into an overdue list, unsigned reports are never sent.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RADFLOW-03 · Staff web: performing-site worklist screen
+  - requirements: RAD-01, WEB-09
+  - scope: apps/staff-web/src/features/radworklist
+  - depends: RADFLOW-01
+  - details:
+    1. Build a worklist with status filters, an accession and modality form, and a handoff action. Show the patient-and-accession check result before a study can be linked.
+    2. Tests: mismatch blocks, statuses, English and Arabic.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RADFLOW-04 · Staff web: referrer view of imaging reports and addenda with acknowledgment
+  - requirements: RAD-01, WEB-09
+  - scope: apps/staff-web/src/features/radreferrer
+  - depends: RADFLOW-02
+  - details:
+    1. Export `ImagingReportCard` and `AddendumBanner` for the chart: the signed report with its sections, a banner for an unacknowledged addendum, and an acknowledge action.
+    2. Tests: banner until acknowledged, report sections in order, Arabic and right-to-left.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] RADFLOW-05 · Browser test and guide: imaging order, schedule, link study, sign, addendum and acknowledgment
+  - requirements: RAD-01, WEB-09
+  - scope: apps/staff-web/e2e/radflow, docs/operations/radiology-workflow
+  - depends: RADFLOW-04
+  - details:
+    1. Write the journey across clinician and radiology users, including the wrong-patient link refusal and the addendum acknowledgment.
+    2. Write `docs/operations/radiology-workflow/README.md` with the steps in plain language.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] TRACK-01 · API: one order journey timeline for any prescription, lab order, imaging order or referral
+  - requirements: XCH-03, RX-02, LAB-01, RAD-01
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/journey, apps/api/src/test/java/com/aurevia/smartclinic/journey
+  - details:
+    1. Read the history models for prescriptions, orders and referrals.
+    2. Add a read model that returns one ordered list of steps for an item (placed, delivered, accepted, collected or scheduled, resulted, released, acknowledged), with the actor type and time, and the next expected step with its age.
+    3. Tests: events from each source merge in time order, a missing step is shown as pending, a patient sees only released steps, tenant isolation.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] TRACK-02 · Patient app: Where is it? tracker for prescriptions, lab tests and imaging
+  - requirements: PAT-02, XCH-03
+  - scope: apps/patient-mobile/src/features/tracker
+  - depends: TRACK-01
+  - details:
+    1. Show a simple step line per item in plain words, such as Ordered, Sent, Sample taken, Result ready for your doctor, Released to you. Only released steps appear.
+    2. Tests: hidden steps stay hidden, Arabic and right-to-left, sign-out clears.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] TRACK-03 · Staff web: partner interface and outage board (which orders are stuck, which fallback applies)
+  - requirements: XCH-02, XCH-03, PRD-02
+  - scope: apps/staff-web/src/features/partnerboard
+  - depends: TRACK-01
+  - details:
+    1. Build a board per partner (lab, imaging, pharmacy): interface health, the orders and prescriptions waiting, how long, and the manual fallback to use (print, call, manual upload).
+    2. Tests: waiting counts, fallback link per partner type, English and Arabic.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] TRACK-04 · API integration test: the whole loop, prescribe to pharmacy and order to released result
+  - requirements: RX-02, LAB-01, LAB-02, RAD-01, XCH-03
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/journey/loop
+  - depends: TRACK-01, PHARM-02, LABFLOW-04, RADFLOW-02
+  - details:
+    1. Write one integration test class for each loop with two tenants running side by side: prescribe, route, accept, dispense; and order, collect, result, verify, release, correct. Assert the journey timeline after each step and that nothing leaks between tenants.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] TRACK-05 · Docs: the care loop in one diagram and a role-by-step table (clinician, pharmacy, lab, radiology, patient)
+  - requirements: RX-02, LAB-01, RAD-01
+  - scope: docs/operations/care-loop
+  - details:
+    1. Write `docs/operations/care-loop/README.md` with a Mermaid swimlane diagram for the prescription loop and one for the lab and imaging loop, and a table of who does what at each step and what the patient sees.
+    2. Do not create any folder named after a task or requirement id.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+## Staff messaging: inside a facility and between facilities, instant and email-like, with attachments (new files and narrow edits)
+
+The specification covers patient and care-unit messaging only (MSG-01 to MSG-07). Staff-to-staff messaging is new scope: SMSG-01 is a decision pack for a person to approve and amend the specification. The build tasks can run meanwhile because they follow the same rules as MSG-03 and MSG-07 (explicit send, scanned attachments, audit, retention, no identifiers in notifications). Messaging between different organizations stays off and refused until a person enables it.
+
+- [ ] SMSG-01 · Decision pack: staff messaging inside a facility and between facilities (spec amendment for a person to approve)
+  - requirements: MSG-03, MSG-07, ARC-07
+  - scope: docs/decisions/staff-messaging
+  - details:
+    1. Read the messaging requirements (MSG-01 to MSG-07, ARC-07) in `SMARTCLINIC_V1_SPEC.md`. They cover patient and care-unit conversations only; staff-to-staff messaging is new scope.
+    2. Write `docs/decisions/staff-messaging/README.md`: the proposed requirement text (instant chat and email-like messages, inside a facility and between facilities, with attachments), what is out of scope (patient messaging, external email, voice), and the questions a person must answer: may facilities of different organizations message each other and under what agreement; retention and legal hold period; whether patient identifiers are allowed in message text; attachment size limit.
+    3. Do NOT edit `SMARTCLINIC_V1_SPEC.md`: a person amends it. Say that plainly at the top of the file.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] SMSG-02 · API: data model and migration for staff conversations, mail messages, participants, folders and attachment links
+  - requirements: MSG-03, MSG-07, ARC-07
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/staffmsg/model, apps/api/src/test/java/com/aurevia/smartclinic/staffmsg/model, apps/api/src/main/resources/db/migrations
+  - details:
+    1. Read an existing messaging migration and `messaging/` for style. Pick the next free migration number.
+    2. Add tables: conversation (kind: direct, group, mail thread; facility scope), participant (role, joined, left, muted), message (immutable content, sender, server time, sequence; a correction is a new message that points to the old one), mail metadata (subject, to, cc, folder per participant, flags, draft state), attachment link (message, document id, checksum, scan state). Every table carries the tenant id.
+    3. Tests: tenant column is enforced, a message cannot be edited in place, sequences are gap-free per conversation, migration runs on an empty and a populated database.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] SMSG-03 · API: instant conversations inside a facility (direct and group), send, read state and unread counts
+  - requirements: MSG-02, ARC-07
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/staffmsg/instant, apps/api/src/test/java/com/aurevia/smartclinic/staffmsg/instant
+  - depends: SMSG-02
+  - details:
+    1. Add open or find a direct conversation, create a group, add or remove participants (history stays visible to those who were members), send a message, mark read up to a sequence, and unread counts.
+    2. Only staff of the same facility with an active role may take part. Use `Idempotency-Key` on send so a retry never duplicates.
+    3. Tests: a retried send makes one message, a removed member cannot read later messages, unread counts are per person, wrong facility or tenant is refused.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] SMSG-04 · API: real-time delivery with server-sent events, reconnect by last sequence, and a polling fallback
+  - requirements: ARC-07
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/staffmsg/realtime, apps/api/src/test/java/com/aurevia/smartclinic/staffmsg/realtime
+  - depends: SMSG-03
+  - details:
+    1. Read how the API handles long requests and authentication. Add a stream endpoint that sends new message and read events to authorized participants, resumes from a `Last-Event-ID` sequence after a drop, and has a plain polling endpoint with the same result.
+    2. Events carry identifiers only, never message text. Revoking a participant ends their stream at once. Add no dependency.
+    3. Tests: resume after a gap returns missed events, events contain no text, revoked user stream closes, polling and stream agree.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] SMSG-05 · API: email-like messages (subject, to, cc, drafts, reply, reply all, forward, folders, flags, threads)
+  - requirements: MSG-02, ARC-07
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/staffmsg/mail, apps/api/src/test/java/com/aurevia/smartclinic/staffmsg/mail
+  - depends: SMSG-02
+  - details:
+    1. Add compose and save draft (versioned, stale drafts never overwrite), send, reply, reply all, forward, move between inbox, sent and archive per person, flag, and thread grouping by subject and reference.
+    2. There is no blind copy. Recipients can be people, a role in a facility or a shared mailbox of a unit. Sending requires explicit confirmation of the recipient list.
+    3. Tests: draft versions, reply all reaches the right people, forwarding keeps the attachment links, folders are per person, a role recipient expands to the current holders at send time and records them.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] SMSG-06 · API: facility and staff directory, and messaging between facilities of the same organization
+  - requirements: MSG-02, ARC-07
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/staffmsg/directory, apps/api/src/test/java/com/aurevia/smartclinic/staffmsg/directory
+  - depends: SMSG-03, SMSG-05
+  - details:
+    1. Add a directory of facilities, units, roles and staff who may be messaged, shown with their facility. Allow instant and mail messages across facilities of the same tenant when the tenant policy allows it.
+    2. Cross-organization messaging is a separate, approved connection between two tenants and is switched off unless a person enables it (see SMSG-01). Build only the policy check and refusal now: a cross-organization attempt returns a clear refusal.
+    3. Tests: allowed across facilities of one tenant, refused when policy is off, cross-organization refused, directory hides people without an active role.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] SMSG-07 · API: attachments (PDF, JPEG, PNG) with scan, quarantine, size limits and explicit send, in both kinds of message
+  - requirements: MSG-03, CLN-07
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/staffmsg/attachments, apps/api/src/test/java/com/aurevia/smartclinic/staffmsg/attachments
+  - depends: SMSG-02
+  - details:
+    1. Read the `documents` package (object store port, scan and quarantine).
+    2. Upload goes to a draft bound to the uploader and the selected conversation or mail draft. Allow only PDF, JPEG and PNG, with a configured size and count limit. Files are scanned; a file in quarantine cannot be attached to a sent message and the sender sees why. The send step lists the pending files and needs explicit confirmation.
+    3. Download is checked per recipient and audited. Keep original bytes and checksum.
+    4. Tests: other types refused, size limit, quarantined file blocked, only recipients can download, download audited, bytes unchanged.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] SMSG-08 · API: reference a patient, visit or document in a message without copying the chart
+  - requirements: MSG-07, ARC-07
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/staffmsg/references, apps/api/src/test/java/com/aurevia/smartclinic/staffmsg/references
+  - depends: SMSG-03, SMSG-05
+  - details:
+    1. Let a sender attach a reference to a patient, encounter, order or document. The recipient sees the reference label only; opening it runs the normal permission check for the recipient, so a person without a care relationship sees a blocked state.
+    2. Warn the sender when the subject line looks like it holds a name or identifier, and keep identifiers out of notification text and push payloads.
+    3. Tests: recipient without access is blocked, access granted opens it and audits, subject warning, notifications contain no identifiers.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] SMSG-09 · API: audit, search, retention, export and legal hold for staff messages
+  - requirements: MSG-07
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/staffmsg/governance, apps/api/src/test/java/com/aurevia/smartclinic/staffmsg/governance
+  - depends: SMSG-03, SMSG-05, SMSG-07
+  - details:
+    1. Audit opening, sending, forwarding, attaching, downloading, folder moves and deletions. Apply the tenant's retention period and legal hold; deletion by a user is a hide, not a purge, while retention applies.
+    2. Search by sender, subject, date and text for the current user's own conversations and folders only. Provide an export of a conversation for an authorized records officer.
+    3. Tests: audit entries exist, a hold prevents purge, search never returns others' messages, export contains attachments' checksums.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] SMSG-10 · API: notifications, mute, do-not-disturb, out-of-office reply and urgent flag
+  - requirements: MSG-06, ARC-07
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/staffmsg/notify, apps/api/src/test/java/com/aurevia/smartclinic/staffmsg/notify
+  - depends: SMSG-04, SMSG-05
+  - details:
+    1. Add per-person settings: mute a conversation, do-not-disturb hours, and an out-of-office auto-reply for mail that names a delegate. A message can be marked urgent; urgent never replaces the facility's emergency procedure and the composer says so.
+    2. Notification text is generic (for example 'You have a new message') with no names or content.
+    3. Tests: mute and DND suppress notifications but keep unread counts, out-of-office replies once per sender per day, generic text only.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] SMSG-11 · API: tenant and facility messaging policy (who may message whom, allowed file types, retention, cross-facility on or off)
+  - requirements: MSG-07
+  - scope: apps/api/src/main/java/com/aurevia/smartclinic/staffmsg/policy, apps/api/src/test/java/com/aurevia/smartclinic/staffmsg/policy
+  - depends: SMSG-06, SMSG-07, SMSG-09
+  - details:
+    1. Add policy settings with effective dates and history, edited only by a tenant or facility administrator, and read by the other staffmsg services.
+    2. Tests: effective date, history kept, forbidden for non-admin roles, a policy change applies to new messages only.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] SMSG-12 · Staff web: instant messenger panel (conversation list, thread, composer, unread, attachment tray)
+  - requirements: MSG-02, MSG-03, WEB-09
+  - scope: apps/staff-web/src/features/staffmsg/messenger
+  - depends: SMSG-04, SMSG-07
+  - details:
+    1. Read `docs/design/screen-recipe.md`. Build `MessengerPanel`: conversation list with unread counts, thread with date separators and delivery state, composer with an attachment tray that lists pending files and needs an explicit Send, and a banner that says this is not for emergencies.
+    2. Use the stream with an automatic fall back to polling and show a quiet 'reconnecting' state. A failed send keeps the text and offers retry.
+    3. Tests: unread counts, send retry keeps text, explicit send of attachments, reconnecting state, English and Arabic with right-to-left bubbles.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] SMSG-13 · Staff web: mail view (folders, compose with to and cc, drafts, reply, forward, attachments)
+  - requirements: MSG-02, MSG-03, WEB-09
+  - scope: apps/staff-web/src/features/staffmsg/mail
+  - depends: SMSG-05, SMSG-07
+  - details:
+    1. Build `MailPage`: folder list with counts, message list, reading pane, compose with recipient picker (people, roles, unit mailboxes), subject, text, attachments, draft autosave and a confirmation step that shows the recipients.
+    2. A stale draft shows compare, reload or copy and never loses typed work.
+    3. Tests: autosave, stale draft, recipient confirmation, reply all, folders, English and Arabic.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] SMSG-14 · Staff web: contact directory and recipient picker that shows the facility of each person
+  - requirements: MSG-02, WEB-09
+  - scope: apps/staff-web/src/features/staffmsg/directory
+  - depends: SMSG-06
+  - details:
+    1. Export `RecipientPicker` and `DirectoryPage`: search by name, role or unit, each result labelled with its facility, a clear marker for another facility, and a refusal message when policy blocks messaging that person.
+    2. Tests: facility label, blocked recipient explanation, keyboard navigation, English and Arabic.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] SMSG-15 · Staff web: patient reference chip and blocked-view state
+  - requirements: MSG-07, WEB-09
+  - scope: apps/staff-web/src/features/staffmsg/references
+  - depends: SMSG-08
+  - details:
+    1. Export `PatientReferenceChip` and `ReferenceInserter`. The chip shows a label, opens the record through the normal route, and shows a clear blocked state when the viewer has no access. The inserter warns when the subject looks like it holds an identifier.
+    2. Tests: blocked state, warning, opens the right route, English and Arabic.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] SMSG-16 · Staff web: header unread badge, notification settings, mute, do-not-disturb and out-of-office
+  - requirements: MSG-06, WEB-09
+  - scope: apps/staff-web/src/features/staffmsg/settings
+  - depends: SMSG-10
+  - details:
+    1. Export `UnreadBadge` and a settings page for mute, do-not-disturb hours and the out-of-office reply with a delegate. Sounds are off by default.
+    2. Tests: badge counts, settings save with conflict handling, delegate required for out-of-office, English and Arabic.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] SMSG-17 · Staff web: messaging policy administration screen
+  - requirements: MSG-07, WEB-09
+  - scope: apps/staff-web/src/features/staffmsg/policyadmin
+  - depends: SMSG-11
+  - details:
+    1. Read `features/admin` for the pattern. Build the policy screen with effective dates and history for who may message whom, cross-facility on or off, allowed file types and size, and retention.
+    2. Tests: forbidden for non-admin roles, effective date, history, English and Arabic.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] SMSG-18 · Staff web: compact and tablet layouts for messenger and mail (drawer, single-pane at 768 px)
+  - requirements: WEB-09
+  - scope: apps/staff-web/src/features/staffmsg/layout
+  - depends: SMSG-12, SMSG-13
+  - details:
+    1. Read the responsive tasks (`RESP-*`) and the breakpoint tokens. Export a layout wrapper: three panes on desktop, two on tablet, one pane with a back action on narrow screens, and a composer that stays above the keyboard.
+    2. Tests: each width renders the right panes, back action restores the list, no horizontal scroll at 768 px.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] SMSG-19 · Staff web: register the messaging routes, navigation entry and mount points
+  - requirements: WEB-09
+  - scope: apps/staff-web/src/features/staffmsg/routes.ts, apps/staff-web/src/features/staffmsg/index.ts, apps/staff-web/src/features/staffmsg/README.md
+  - depends: SMSG-12, SMSG-13, SMSG-14, SMSG-15, SMSG-16, SMSG-17, SMSG-18
+  - details:
+    1. Export the routes and one index of components. Write the exact lines that a person or the navigation owner adds to the app router and menu in the README; do not edit files outside `scope`.
+    2. Tests: the index exports the expected names only.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] SMSG-20 · API security tests: cross-tenant and cross-facility access, object-level access by id, malicious attachments
+  - requirements: MSG-03, MSG-07
+  - scope: apps/api/src/test/java/com/aurevia/smartclinic/staffmsg/security
+  - depends: SMSG-09
+  - details:
+    1. Write tests that try to read, send to, download from and stream another tenant's and another facility's conversations by guessing ids, replay an old stream id after removal, and attach a test file that the scanner flags. Every attempt must be refused and audited without leaking whether the id exists.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] SMSG-21 · Browser test: instant chat in a facility, a mail between two facilities, attachments, and a blocked patient reference
+  - requirements: MSG-02, MSG-03, WEB-09
+  - scope: apps/staff-web/e2e/staffmsg
+  - depends: SMSG-19
+  - details:
+    1. Write the journey with three users in two facilities: instant chat with an attachment and explicit send, a mail with cc across facilities, a reply, a patient reference that is blocked for one recipient, and a quarantined file. Run in English and Arabic.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
+- [ ] SMSG-22 · Docs: staff messaging guide, rules for what not to send, and UAT scenario
+  - requirements: MSG-07
+  - scope: docs/operations/staff-messaging
+  - details:
+    1. Write `docs/operations/staff-messaging/README.md`: instant messages versus mail, inside a facility and between facilities, attachments, patient references, not for emergencies, retention and what is audited.
+    2. Write `docs/operations/staff-messaging/uat.md` with a numbered scenario. Do not create any folder named after a task or requirement id.
+    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+
 ## Printing: prescriptions, lab and imaging orders, chart summary and reports for the patient (new files and narrow edits)
 
 A physician can print a prescription, a lab or imaging order, a chart summary or a signed report for the patient. Only signed or placed items print; every print and reprint is audited. PRINT-01 to PRINT-03 are the API; PRINT-04 to PRINT-09 are the staff web; PRINT-10 to PRINT-12 are tests, the patient app and docs.
@@ -1541,7 +2127,7 @@ A physician can print a prescription, a lab or imaging order, a chart summary or
 - [ ] PRINT-06 · Staff web: Print button on lab and imaging orders (requisition sheet for the patient)
   - requirements: LAB-01, RAD-01, WEB-09
   - scope: apps/staff-web/src/features/print/orders
-  - depends: PRINT-02, PRINT-04
+  - depends: PRINT-02, PRINT-04, ORDER-02
   - details:
     1. Read `features/radiology`, the orders feature and the contract for orders.
     2. Export a `PrintOrderButton` for lab and imaging orders. The sheet shows the tests or study, clinical question, priority, the preparation instructions (for example fasting), where to go and the order identifier with a barcode-free human readable number.
