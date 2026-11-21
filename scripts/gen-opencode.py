@@ -12,26 +12,16 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 PRIMARY = "smartclinic-orchestrator"
 
-# Project instructions loaded into every agent session. Keep this list aligned
-# with the Markdown inventory in the repository: working rules, style, delivery
-# workflow, architecture decisions, maintainer guide and API conventions.
+# Project instructions loaded into every agent session: only the short rules every
+# task needs (about 5,000 words). The specification, trackers, architecture decisions,
+# swarm guide and READMEs are large and task-specific; AGENTS.md tells agents which
+# of them to read for their task, so they are read on demand instead of paying for
+# them in every session, including the read-only reviewers.
 INSTRUCTIONS = [
     "AGENTS.md",
-    "README.md",
-    "README-SETUP.md",
     "CODING_STYLE.md",
-    "SMARTCLINIC_V1_SPEC.md",
+    "README-SETUP.md",
     "docs/WORKFLOW.md",
-    "docs/SWARM.md",
-    "docs/decisions/*.md",
-    "docs/reference/*.md",
-    "contracts/README.md",
-    "db/migrations/README.md",
-    "infra/DEPLOYMENT.md",
-    "MEMORY.md",
-    "PROJECT.md",
-    "WORKSPACE.md",
-    "apps/*/README.md",
 ]
 
 # Environment files may hold credentials. Rules are evaluated last match wins,

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Central SpotBugs exclusions for apps/api.
+
+  EI_EXPOSE_REP2 on a Spring-managed singleton is a false positive: the constructor
+  stores an injected collaborator (a store, clock or another service), never mutable
+  caller data. Agents used to silence it with a @SuppressFBWarnings annotation on every
+  class (86 of them). Excluding it here, by role suffix, keeps SpotBugs strict for value
+  objects, records and DTOs, which is where the warning is real.
+
+  Do not add @SuppressFBWarnings to source files: scripts/check-wiring.py fails on new
+  ones. Add a narrow <Match> here, with a comment saying why, or fix the code.
+-->
+<FindBugsFilter>
+  <Match>
+    <Bug pattern="EI_EXPOSE_REP2"/>
+    <Class name="~.*(Service|Repository|Controller|Store|Interceptor|Guard|Appender|Configuration)$"/>
+  </Match>
+</FindBugsFilter>
