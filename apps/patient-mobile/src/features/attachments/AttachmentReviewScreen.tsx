@@ -124,21 +124,19 @@ export function AttachmentReviewScreen({
   const insets = useSafeInsets();
   const isLarge = windowClassFor(width) === 'large';
   const direction: 'rtl' | 'ltr' = isRTL ? 'rtl' : 'ltr';
-  // Safe-area insets are device-physical (notch, home indicator), so they map
-  // to left/right rather than logical start/end. Swapping them for logical
-  // props would mirror the wrong inset in Arabic RTL.
+  // The inset values are device-physical (notch, home indicator). Assign them
+  // to logical props with an RTL swap: physical props are a defect here because
+  // iOS swaps them under RTL while Android does not, so the inset would land on
+  // the wrong edge in Arabic landscape. Direction is set once on the root and
+  // inherited by the content wrapper.
   const safeStyle: ViewStyle = {
     paddingTop: insets.top + BASE_PADDING,
     paddingBottom: insets.bottom + BASE_PADDING,
-    paddingLeft: insets.left + BASE_PADDING,
-    paddingRight: insets.right + BASE_PADDING,
+    paddingStart: (isRTL ? insets.right : insets.left) + BASE_PADDING,
+    paddingEnd: (isRTL ? insets.left : insets.right) + BASE_PADDING,
   };
   const containerStyle: StyleProp<ViewStyle> = [styles.container, { direction }, safeStyle];
-  const contentStyle: StyleProp<ViewStyle> = [
-    styles.content,
-    { direction },
-    isLarge ? styles.largeContent : null,
-  ];
+  const contentStyle: StyleProp<ViewStyle> = [styles.content, isLarge ? styles.largeContent : null];
   const textStyle: StyleProp<TextStyle> = { textAlign: isRTL ? 'right' : 'left' };
 
   // Business rules stay out of JSX: scope, authorize and decide first.

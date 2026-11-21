@@ -9,6 +9,7 @@
  */
 import { jest } from '@jest/globals';
 import { fireEvent, render } from '@testing-library/react-native';
+import type { RenderResult } from '@testing-library/react-native';
 import { Dimensions } from 'react-native';
 
 import { sha256Hex } from './domain';
@@ -102,15 +103,20 @@ async function screen(overrides: Partial<AttachmentReviewScreenProps> = {}) {
 
 const windowClasses: WindowClass[] = ['compact', 'regular', 'large'];
 const fontScales = [1, 1.5, 2];
-const textTestIds = [
-  'synthetic-notice',
-  'recipient-heading',
-  'recipient-organization',
-  'pending-heading',
-  'send-hint',
-  'supplied-file-1',
-  'provenance-file-1',
-];
+
+/** Assert that no rendered text node is shrunk, capped or clipped. */
+function expectUnclippedText(rendered: RenderResult): void {
+  // RNTL v14 exposes host nodes through `root.queryAll`, not the removed
+  // UNSAFE_getAllByType query; every Text host node is checked.
+  const nodes = rendered.root?.queryAll((node) => node.type === 'Text') ?? [];
+  expect(nodes.length).toBeGreaterThan(0);
+  for (const node of nodes) {
+    expect(node.props.numberOfLines).toBeUndefined();
+    expect(node.props.maxFontSizeMultiplier).toBeUndefined();
+    expect(node.props.adjustsFontSizeToFit).toBeUndefined();
+    expect(node.props.allowFontScaling).not.toBe(false);
+  }
+}
 
 describe('AttachmentReviewScreen responsive layout', () => {
   beforeEach(() => {
@@ -160,6 +166,9 @@ describe('AttachmentReviewScreen responsive layout', () => {
         expect(view.getByTestId(testId)).toBeTruthy();
       }
       expect(view.getByTestId('send').props.accessibilityState.disabled).toBe(false);
+      // Exercise the no-clip style contract at font scales 1.0, 1.5 and 2.0,
+      // not just at the default scale.
+      expectUnclippedText(view);
     },
   );
 
@@ -184,15 +193,26 @@ describe('AttachmentReviewScreen responsive layout', () => {
     },
   );
 
-  it('respects safe-area insets on every edge', async () => {
-    const view = await screen();
+  it.each(['en', 'ar'] as const)(
+    'respects safe-area insets on every edge in %s',
+    async (locale) => {
+      const view = await screen({ locale });
 
-    const container = styleOf(view.getByTestId('attachment-review'));
-    expect(container.paddingTop).toBe(mockInsets.top + 16);
-    expect(container.paddingBottom).toBe(mockInsets.bottom + 16);
-    expect(container.paddingLeft).toBe(mockInsets.left + 16);
-    expect(container.paddingRight).toBe(mockInsets.right + 16);
-  });
+      const container = styleOf(view.getByTestId('attachment-review'));
+      expect(container.paddingTop).toBe(mockInsets.top + 16);
+      expect(container.paddingBottom).toBe(mockInsets.bottom + 16);
+      // Values are device-physical, but the props are logical: RTL swaps them
+      // so the notch and home-indicator insets land on the correct edges.
+      expect(container.paddingLeft).toBeUndefined();
+      expect(container.paddingRight).toBeUndefined();
+      expect(container.paddingStart).toBe(
+        (locale === 'ar' ? mockInsets.right : mockInsets.left) + 16,
+      );
+      expect(container.paddingEnd).toBe(
+        (locale === 'ar' ? mockInsets.left : mockInsets.right) + 16,
+      );
+    },
+  );
 
   it('keeps every touch target at least 44 by 44 points', async () => {
     const clean = await screen();
@@ -209,15 +229,9 @@ describe('AttachmentReviewScreen responsive layout', () => {
     }
   });
 
-  it('never clips or caps text scaling at 200 percent', async () => {
-    const view = await screen();
-    for (const testId of textTestIds) {
-      const text = view.getByTestId(testId);
-      expect(text.props.numberOfLines).toBeUndefined();
-      expect(text.props.maxFontSizeMultiplier).toBeUndefined();
-      expect(text.props.adjustsFontSizeToFit).toBeUndefined();
-      expect(text.props.allowFontScaling).not.toBe(false);
-    }
+  it.each(fontScales)('never clips or caps any text node at font scale %s', async (fontScale) => {
+    mockWindow = { width: 390, height: 844, scale: 2, fontScale };
+    expectUnclippedText(await screen());
   });
 
   it.each(['en', 'ar'] as const)(
@@ -255,15 +269,17 @@ describe('AttachmentReviewScreen responsive layout', () => {
 
   it('mirrors writing direction and text alignment for Arabic', async () => {
     const rtl = await screen({ locale: 'ar' });
+    // Direction is declared once on the root and inherited by the wrapper, so
+    // there is no second direction scope on the same screen.
     expect(styleOf(rtl.getByTestId('attachment-review')).direction).toBe('rtl');
-    expect(styleOf(rtl.getByTestId('attachment-review-content')).direction).toBe('rtl');
+    expect(styleOf(rtl.getByTestId('attachment-review-content')).direction).toBeUndefined();
     expect(rtl.getByTestId('pending-heading').props.style).toEqual(
       expect.arrayContaining([{ textAlign: 'right' }]),
     );
 
     const ltr = await screen({ locale: 'en' });
     expect(styleOf(ltr.getByTestId('attachment-review')).direction).toBe('ltr');
-    expect(styleOf(ltr.getByTestId('attachment-review-content')).direction).toBe('ltr');
+    expect(styleOf(ltr.getByTestId('attachment-review-content')).direction).toBeUndefined();
     expect(ltr.getByTestId('pending-heading').props.style).toEqual(
       expect.arrayContaining([{ textAlign: 'left' }]),
     );
