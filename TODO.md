@@ -175,8 +175,9 @@ Found while extending the specification (section 8.1 and docs/design/screens-and
     Do NOT use a wildcard in any form, and do NOT change the interceptor.
 
     Run the checks yourself before you finish: `bash scripts/worker-check.sh` (API tasks) or `bash apps/staff-web/check.sh` (staff web tasks) must pass. Synthetic data only; write the failing test first; stay inside the declared scope; name folders and packages after what they hold, never a task ID; record what you did and the command output in `.agent/pr-notes/<story-id>.md`.
-- [-] READY-05 · Structured JSON logs with correlation ID and a redaction test (WEB-06)
-  - agent: swarm-1
+- [x] READY-05 · Structured JSON logs with correlation ID and a redaction test (WEB-06)
+  - pr: #274
+  - evidence: PR #274; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/READY-05.md; simulated review only
   - attempts: 1
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/web, apps/api/src/main/resources
   - depends: READY-04
