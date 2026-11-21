@@ -16,4 +16,15 @@
     <Bug pattern="EI_EXPOSE_REP2"/>
     <Class name="~.*(Service|Repository|Controller|Store|Interceptor|Guard|Appender|Configuration)$"/>
   </Match>
+
+  <!-- GateEvidenceService.ledger() returns the service's owned domain aggregate so
+       callers can independently verify the append-only evidence chain. The ledger is
+       never caller-supplied and its own entries() accessor already returns an immutable
+       copy, so exposing the aggregate here is intentional. This replaces a per-file
+       @SuppressFBWarnings that check-wiring.py would reject on the renamed class. -->
+  <Match>
+    <Bug pattern="EI_EXPOSE_REP"/>
+    <Class name="com.aurevia.smartclinic.messaging.evidence.GateEvidenceService"/>
+    <Method name="ledger"/>
+  </Match>
 </FindBugsFilter>

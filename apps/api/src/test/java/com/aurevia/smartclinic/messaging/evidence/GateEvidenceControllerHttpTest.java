@@ -51,7 +51,7 @@ class GateEvidenceControllerHttpTest {
     @BeforeEach
     void setUp() throws Exception {
         Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
-        G3EvidenceService service = new G3EvidenceService(new EvidenceHash(), clock);
+        GateEvidenceService service = new GateEvidenceService(new EvidenceHash(), clock);
         controller = new GateEvidenceController(service);
         MockEnvironment environment = new MockEnvironment();
         environment.setActiveProfiles("synthetic-auth");
