@@ -1,7 +1,5 @@
 package com.aurevia.smartclinic.documents;
 
-import java.util.Locale;
-import java.util.UUID;
 import java.util.regex.Pattern;
 
 import com.aurevia.smartclinic.api.ApiException;
@@ -10,25 +8,20 @@ import com.aurevia.smartclinic.documents.DocumentContract.MediaType;
 import com.aurevia.smartclinic.documents.DocumentContract.ScanVerdict;
 
 /**
- * Pure, total validation of every X-03 command field (ARC-06).
+ * Pure, total validation of every X-03 document-artifact command field (ARC-06).
  *
  * <p>Every method either returns a normalized value or raises a stable
  * {@code 422} before durable state changes, so a malformed type, size,
  * checksum or selector can never reach the quarantine or binding store.
  * Server-owned fields such as object keys and versions are never read from a
- * command.</p>
+ * command. Shared upload rules (size, file name, checksum, key) are owned by
+ * {@code UploadValidation}; only the document-specific parsers remain here.</p>
  */
 public final class ArtifactInputs {
 
     /** Largest accepted payload, ten mebibytes. */
-    public static final long MAX_SIZE_BYTES = 10L * 1024L * 1024L;
+    public static final long MAX_SIZE_BYTES = UploadValidation.MAX_SIZE_BYTES;
 
-    private static final Pattern UUID_PATTERN = Pattern.compile(
-            "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
-    private static final Pattern HEX = Pattern.compile("[0-9a-fA-F]+");
-    private static final Pattern CHECKSUM = Pattern.compile("[0-9a-f]{64}");
-    private static final Pattern KEY = Pattern.compile("[A-Za-z0-9][A-Za-z0-9_-]{1,63}");
-    private static final Pattern FILE_NAME = Pattern.compile("[^/\\\\\\x00-\\x1F]{1,200}");
     private static final Pattern OBJECT_KEY = Pattern.compile("[A-Za-z0-9][A-Za-z0-9/_.:-]{1,127}");
 
     private ArtifactInputs() {
@@ -43,10 +36,7 @@ public final class ArtifactInputs {
      * @throws ApiException when the value is not a UUID
      */
     public static String uuid(String value, String field) {
-        if (value == null || !UUID_PATTERN.matcher(value).matches()) {
-            throw invalid(field, "must be a UUID");
-        }
-        return value;
+        return UploadValidation.uuid(value, field);
     }
 
     /**
@@ -58,11 +48,7 @@ public final class ArtifactInputs {
      * @throws ApiException when the key is blank, malformed or too long
      */
     public static String key(String value, String field) {
-        String normalized = value == null ? null : value.trim();
-        if (normalized == null || !KEY.matcher(normalized).matches()) {
-            throw invalid(field, "must be 2-64 letters, digits, _ or -");
-        }
-        return normalized;
+        return UploadValidation.key(value, field);
     }
 
     /**
@@ -73,10 +59,7 @@ public final class ArtifactInputs {
      * @throws ApiException when the name is blank, too long or contains a path
      */
     public static String fileName(String value) {
-        if (value == null || !FILE_NAME.matcher(value).matches() || value.contains("..")) {
-            throw invalid("fileName", "must be 1-200 characters without a path or control character");
-        }
-        return value.trim();
+        return UploadValidation.fileName(value);
     }
 
     /**
@@ -103,10 +86,7 @@ public final class ArtifactInputs {
      * @throws ApiException when the value is not 2-32 hex characters
      */
     public static String magicHex(String value) {
-        if (value == null || value.length() < 2 || value.length() > 32 || !HEX.matcher(value).matches()) {
-            throw invalid("magicHex", "must be 2-32 hexadecimal characters");
-        }
-        return value.toLowerCase(Locale.ROOT);
+        return UploadValidation.magicHex(value);
     }
 
     /**
@@ -117,10 +97,7 @@ public final class ArtifactInputs {
      * @throws ApiException when the value is not 64 lowercase hex characters
      */
     public static String checksum(String value) {
-        if (value == null || !CHECKSUM.matcher(value).matches()) {
-            throw invalid("checksum", "must be 64 lowercase hexadecimal characters");
-        }
-        return value;
+        return UploadValidation.checksum(value);
     }
 
     /**
@@ -131,10 +108,7 @@ public final class ArtifactInputs {
      * @throws ApiException when the size is outside 1..10 MiB
      */
     public static long size(long size) {
-        if (size < 1 || size > MAX_SIZE_BYTES) {
-            throw invalid("sizeBytes", "must be 1-" + MAX_SIZE_BYTES + " bytes");
-        }
-        return size;
+        return UploadValidation.size(size);
     }
 
     /**
@@ -145,15 +119,8 @@ public final class ArtifactInputs {
      * @throws ApiException when the verdict is absent or not terminal
      */
     public static ScanVerdict verdict(String value) {
-        if (value == null) {
-            throw invalid("verdict", "must be clean or failed");
-        }
-        for (ScanVerdict candidate : new ScanVerdict[] {ScanVerdict.CLEAN, ScanVerdict.FAILED}) {
-            if (candidate.wire().equals(value)) {
-                return candidate;
-            }
-        }
-        throw invalid("verdict", "must be clean or failed");
+        String wire = UploadValidation.terminalVerdict(value, "verdict");
+        return "clean".equals(wire) ? ScanVerdict.CLEAN : ScanVerdict.FAILED;
     }
 
     /**
@@ -166,7 +133,7 @@ public final class ArtifactInputs {
     public static Language language(String value) {
         Language language = Language.from(value);
         if (language == null) {
-            throw invalid("language", "must be en or ar");
+            throw UploadValidation.invalid("language", "must be en or ar");
         }
         return language;
     }
@@ -181,7 +148,7 @@ public final class ArtifactInputs {
      */
     public static int positiveVersion(int value, String field) {
         if (value < 1) {
-            throw invalid(field, "must be positive");
+            throw UploadValidation.invalid(field, "must be positive");
         }
         return value;
     }
@@ -195,14 +162,7 @@ public final class ArtifactInputs {
      * @throws ApiException when the detail is too long
      */
     public static String detail(String value, int max) {
-        if (value == null) {
-            return null;
-        }
-        String normalized = value.trim();
-        if (normalized.length() > max) {
-            throw invalid("detail", "must be at most " + max + " characters");
-        }
-        return normalized.isEmpty() ? null : normalized;
+        return UploadValidation.detail(value, max);
     }
 
     /**
@@ -216,7 +176,7 @@ public final class ArtifactInputs {
     public static String verifiedObjectKey(String value, String field) {
         String normalized = value == null ? null : value.trim();
         if (normalized == null || !OBJECT_KEY.matcher(normalized).matches()) {
-            throw invalid(field, "must be a bounded private object key");
+            throw UploadValidation.invalid(field, "must be a bounded private object key");
         }
         return normalized;
     }
@@ -230,7 +190,7 @@ public final class ArtifactInputs {
      * @return a private deterministic object key
      */
     public static String objectKey(String organizationId, String id, int objectVersion) {
-        return "quarantine/" + organizationId + "/" + id + "/v" + objectVersion;
+        return UploadValidation.objectKey(organizationId, id, objectVersion);
     }
 
     /**
@@ -253,11 +213,6 @@ public final class ArtifactInputs {
      * @return random UUID text
      */
     public static String newId() {
-        return UUID.randomUUID().toString();
-    }
-
-    private static ApiException invalid(String field, String rule) {
-        String stableField = field.replaceAll("([a-z])([A-Z])", "$1_$2").toUpperCase(Locale.ROOT);
-        return new ApiException(422, "INVALID_" + stableField, field + " " + rule);
+        return UploadValidation.newId();
     }
 }
