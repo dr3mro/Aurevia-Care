@@ -1,4 +1,6 @@
-- [ ] RESP-SESSION-EXPIRED-PAGE · Staff web: responsive `SessionExpiredPage` (features-system)
+- [-] RESP-SESSION-EXPIRED-PAGE · Staff web: responsive `SessionExpiredPage` (features-system)
+  - agent: swarm-8
+  - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/system/SessionExpiredPage.tsx, apps/staff-web/tests/responsive/features-system/SessionExpiredPage.responsive.test.tsx
   - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
