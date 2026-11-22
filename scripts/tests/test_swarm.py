@@ -1075,6 +1075,8 @@ class DebuggerWorkflowTests(unittest.TestCase):
         self.assertEqual(jobs["debug"]["permissions"].get("contents"), "read")
         publish = jobs["publish"]
         self.assertEqual(publish["needs"], ["select", "debug"])
+        self.assertEqual(publish["strategy"]["max-parallel"], 1)
+        self.assertEqual(jobs["debug"]["strategy"]["max-parallel"], swarm.DEBUG_PARALLEL)
         checkout = publish["steps"][0]["with"]
         self.assertEqual(checkout["ref"], "${{ github.event.repository.default_branch }}")
         self.assertIn("debug-publish", publish["steps"][-1]["run"])
@@ -1086,6 +1088,7 @@ class DebuggerWorkflowTests(unittest.TestCase):
         self.assertEqual(len(triggers["schedule"]), 1)
         self.assertIn("count != '0'", config["jobs"]["debug"]["if"])
         self.assertIn("count != '0'", config["jobs"]["publish"]["if"])
+        self.assertEqual(len(swarm.DEBUG_SLOTS), swarm.DEBUG_PARALLEL)
 
     def test_fix_workers_read_the_pull_request_comments_the_debugger_writes(self):
         text = (ROOT / ".github/workflows/swarm-worker.yml").read_text(encoding="utf-8")
@@ -1186,22 +1189,28 @@ class DebuggerTests(unittest.TestCase):
                pr(6, "feature/by-hand", "swarm", "needs-debug")]
         with tempfile.TemporaryDirectory() as tmp, mock.patch.object(swarm, "gh", FakeGh(prs=prs)), \
                 mock.patch.dict(os.environ, {"GITHUB_OUTPUT": str(Path(tmp) / "out")}):
-            self.assertEqual(swarm.debug_select(), 8)
+            self.assertEqual(swarm.debug_select(), [8, 12])
             written = (Path(tmp) / "out").read_text()
-        self.assertIn("pr=8\n", written)
-        self.assertIn("branch=swarm/CW-001-4\n", written)
-        self.assertIn("task=CW-001\n", written)
+        matrix = json.loads(re.search(r"matrix=(.*)\n", written).group(1))["include"]
+        self.assertEqual(matrix, [
+            {"pr": 8, "branch": "swarm/CW-001-4", "task": "CW-001", "round": 1, "slot": 3},
+            {"pr": 12, "branch": "swarm/CW-002-5", "task": "CW-002", "round": 1, "slot": 6}])
         self.assertIn("count=2\n", written)
-        self.assertIn("round=1\n", written)
+
+    def test_select_takes_at_most_one_pull_request_per_debugger_slot(self):
+        prs = [pr(n, f"swarm/CW-{n:03d}-4", "swarm", "needs-debug") for n in range(1, 8)]
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(swarm, "gh", FakeGh(prs=prs)), \
+                mock.patch.dict(os.environ, {"GITHUB_OUTPUT": str(Path(tmp) / "out")}):
+            self.assertEqual(swarm.debug_select(), [1, 2, 3, 4])
+            self.assertIn("count=4\n", (Path(tmp) / "out").read_text())
 
     def test_select_with_nothing_waiting_reports_zero(self):
         with tempfile.TemporaryDirectory() as tmp, mock.patch.object(swarm, "gh", FakeGh(prs=[])), \
                 mock.patch.dict(os.environ, {"GITHUB_OUTPUT": str(Path(tmp) / "out")}):
-            self.assertEqual(swarm.debug_select(), "")
+            self.assertEqual(swarm.debug_select(), [])
             written = (Path(tmp) / "out").read_text()
         self.assertIn("count=0\n", written)
-        self.assertIn("pr=\n", written)
-        self.assertIn("round=\n", written)
+        self.assertIn('matrix={"include":[]}\n', written)
 
     def test_pr_context_keeps_only_trusted_comments_with_the_marker(self):
         comments = [{"body": f"{swarm.MARK}\nIntegration failed", "user": {"login": "github-actions[bot]"}},

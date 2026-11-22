@@ -561,6 +561,10 @@ def run_event(run_id):
         or [(j["name"], "") for j in info.get("jobs", []) if j.get("conclusion") == "failure"]
     where = "; ".join(f"{job} / {step}".strip(" /") for job, step in failed[:6]) or "run level"
     kind = classify_failure(log, failed)
+    if name == "Delivery" and info.get("headBranch") == "main" and kind == "unknown" and not waiting_waves():
+        # A red main is repaired by the next plan. Start it now instead of waiting for the
+        # watchdog's half hour, because nothing else merges while main is red.
+        gh("workflow", "run", "swarm.yml", "--ref", "main", check=False)
     body = (f"**Workflow:** {name} · **Event:** {info.get('event')} · **Branch:** {info.get('headBranch')} "
             f"· **Commit:** {str(info.get('headSha'))[:7]}\n**Run:** {info.get('url')}\n"
             f"**Failed:** {where}\n**Class:** {kind}"
@@ -2703,20 +2707,28 @@ DEBUG_MARK = "<!-- swarm-debug-report -->"
 DEBUG_RETRY_MARK = "<!-- swarm-debug-retry"
 
 
+DEBUG_PARALLEL = 4
+# Slots whose account and image the debugger runs on, one per pull request side by side.
+DEBUG_SLOTS = (3, 6, 7, 8)
+
+
 def debug_select():
-    """The oldest pull request waiting for the debugger; emits its number, branch and the count."""
+    """The oldest pull requests waiting for the debugger, up to DEBUG_PARALLEL, one per slot.
+
+    Emits the job matrix (pr, branch, task, round, slot) and how many were chosen; returns the
+    pull request numbers."""
     prs = gh_json("pr", "list", "--state", "open", "--label", "needs-debug", "--limit", "50",
                   "--json", "number,headRefName,isCrossRepository,labels") or []
     ready = [p for p in sorted(prs, key=lambda p: p["number"])
              if not p["isCrossRepository"] and "needs-human" not in label_names(p)
              and BRANCH.fullmatch(p["headRefName"])]
-    chosen = ready[0] if ready else {"number": "", "headRefName": ""}
-    emit("pr", chosen["number"])
-    emit("branch", chosen["headRefName"])
-    emit("task", task_id_of(chosen["headRefName"]))
-    emit("round", debug_rounds(label_names(chosen)) + 1 if chosen["number"] else "")
-    emit("count", len(ready))
-    return chosen["number"]
+    chosen = ready[:DEBUG_PARALLEL]
+    include = [{"pr": p["number"], "branch": p["headRefName"], "task": task_id_of(p["headRefName"]),
+                "round": debug_rounds(label_names(p)) + 1, "slot": DEBUG_SLOTS[i]}
+               for i, p in enumerate(chosen)]
+    emit("matrix", json.dumps({"include": include}, separators=(",", ":")))
+    emit("count", len(chosen))
+    return [p["number"] for p in chosen]
 
 
 PR_HISTORY_LIMIT = 45000   # characters of history a worker or debugger gets

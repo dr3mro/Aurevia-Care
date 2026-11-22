@@ -306,7 +306,7 @@ class HandoffTests(unittest.TestCase):
 class RunEventTests(unittest.TestCase):
     def event(self, info, log="", **kw):
         fake = Gh(run_info=info, log=log, **kw)
-        with mock.patch.object(swarm, "gh", fake):
+        with mock.patch.object(swarm, "gh", fake), mock.patch.object(swarm, "waiting_waves", return_value=0):
             return swarm.run_event(5), fake
 
     FAILED = {"name": "Delivery", "conclusion": "failure", "url": "https://x/run/5", "headBranch": "main",
@@ -328,6 +328,16 @@ class RunEventTests(unittest.TestCase):
         body = args[args.index("--body") + 1]
         self.assertIn("Java / Coverage", body)
         self.assertIn("<!-- swarm-workflow:delivery -->", body)
+
+    def test_a_red_main_starts_a_wave_at_once_unless_one_is_already_waiting(self):
+        for waiting, branch, workflow, started in ((0, "main", "Delivery", True), (1, "main", "Delivery", False),
+                                                    (0, "feature", "Delivery", False), (0, "main", "Daily audit", False)):
+            with self.subTest(waiting=waiting, branch=branch, workflow=workflow):
+                fake = Gh(run_info={**self.FAILED, "headBranch": branch, "name": workflow}, log="test failed")
+                with mock.patch.object(swarm, "gh", fake), \
+                        mock.patch.object(swarm, "waiting_waves", return_value=waiting):
+                    swarm.run_event(5)
+                self.assertEqual(fake.said("--ref", "swarm.yml"), started)
 
     def test_a_transient_error_is_rerun_once_and_not_reported(self):
         result, fake = self.event(self.FAILED, log="curl: ECONNRESET")
