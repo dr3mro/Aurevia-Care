@@ -4,8 +4,18 @@
  * is presentational: the parent owns state and the server owns all decisions.
  */
 import React from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  Pressable,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TextInput,
+  useWindowDimensions,
+  View,
+  type ViewStyle,
+} from 'react-native';
 
+import { windowClassFor, type WindowClass } from '../../app/layout/useWindowClass';
 import {
   formatLockoutCountdown,
   buildSubmissionNotice,
@@ -19,6 +29,39 @@ import {
   type StepUpReason,
   type SupportCategory,
 } from './model';
+
+/** Maximum readable width for a column of enrollment content on a wide window. */
+const MAX_CONTENT_WIDTH = 720;
+
+/**
+ * Build the presentational container style shared by every enrollment screen.
+ * On a large window the column is capped at `MAX_CONTENT_WIDTH` and centred;
+ * narrower windows fill the available width. Each screen is wrapped in React
+ * Native's core `SafeAreaView` so content stays clear of display cutouts at
+ * any font scale. This is presentation only: it adds no state and no clinical
+ * cache (PAT-02).
+ *
+ * @param windowClass layout class for the current window width
+ * @returns the style applied to the root view of each screen
+ */
+function contentStyleFor(windowClass: WindowClass): ViewStyle {
+  const wide = windowClass === 'large';
+  return {
+    width: '100%',
+    maxWidth: wide ? MAX_CONTENT_WIDTH : undefined,
+    alignSelf: wide ? 'center' : 'stretch',
+  };
+}
+
+/**
+ * Classify the current window through the shared breakpoint rule and return
+ * the responsive container style. React Native re-renders on a dimension
+ * change, so rotation and split-screen recompute the class from the new width.
+ */
+function useScreenStyle(): ViewStyle {
+  const { width } = useWindowDimensions();
+  return contentStyleFor(windowClassFor(width));
+}
 
 /** Labels for the enrollment screen, pre-localized by the caller. */
 export interface EnrollmentStrings {
@@ -50,13 +93,14 @@ export function EnrollmentScreen({
   strings,
   isRTL,
 }: EnrollmentScreenProps): React.JSX.Element {
+  const screenStyle = useScreenStyle();
   const valid = validateInvitationCode(normalizeInvitationCode(code)).valid;
   // All failures render the same generic line so the screen cannot reveal a
   // code's state. The status-specific strings remain part of the shared label
   // contract but are intentionally not rendered by this pre-auth screen.
   const failed = isFailedStatus(status);
   return (
-    <View style={styles.screen}>
+    <SafeAreaView style={[styles.screen, screenStyle]}>
       <Text accessibilityRole="header" style={{ textAlign: getTextAlign(isRTL) }}>
         {strings.codeLabel}
       </Text>
@@ -86,7 +130,7 @@ export function EnrollmentScreen({
         style={styles.button}>
         <Text>{strings.submit}</Text>
       </Pressable>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -124,11 +168,12 @@ export function RecoveryScreen({
   strings,
   isRTL,
 }: RecoveryScreenProps): React.JSX.Element {
+  const screenStyle = useScreenStyle();
   const ready = validateInvitationCode(normalizeInvitationCode(code)).valid && verification.trim().length > 0;
   // A recovery failure is indistinguishable from any other failure (PAT-03).
   const failed = isFailedStatus(status);
   return (
-    <View style={styles.screen}>
+    <SafeAreaView style={[styles.screen, screenStyle]}>
       <TextInput
         accessibilityLabel={strings.codeLabel}
         value={code}
@@ -160,7 +205,7 @@ export function RecoveryScreen({
         style={styles.button}>
         <Text>{strings.submit}</Text>
       </Pressable>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -189,8 +234,9 @@ export function LockoutScreen({
   strings,
   isRTL,
 }: LockoutScreenProps): React.JSX.Element {
+  const screenStyle = useScreenStyle();
   return (
-    <View style={styles.screen}>
+    <SafeAreaView style={[styles.screen, screenStyle]}>
       <Text accessibilityRole="header" style={{ textAlign: getTextAlign(isRTL) }}>
         {strings.title}
       </Text>
@@ -205,7 +251,7 @@ export function LockoutScreen({
           <Text>{strings.retry}</Text>
         </Pressable>
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -237,11 +283,12 @@ export function StepUpPrompt({
   strings,
   isRTL,
 }: StepUpPromptProps): React.JSX.Element {
+  const screenStyle = useScreenStyle();
   const explanation = reason === 'unlink_chart' ? strings.unlink : strings.changeContact;
   return (
-    <View accessible accessibilityRole="alert" style={styles.screen}>
+    <SafeAreaView accessible accessibilityRole="alert" style={[styles.screen, screenStyle]}>
       <Text style={{ textAlign: getTextAlign(isRTL) }}>{explanation}</Text>
-      <View style={{ flexDirection: getRowDirection(isRTL) }}>
+      <View style={{ flexDirection: getRowDirection(isRTL), flexWrap: 'wrap' }}>
         <Pressable accessibilityRole="button" accessibilityLabel={strings.confirm} onPress={onConfirm} style={styles.button}>
           <Text>{strings.confirm}</Text>
         </Pressable>
@@ -249,7 +296,7 @@ export function StepUpPrompt({
           <Text>{strings.cancel}</Text>
         </Pressable>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -288,6 +335,7 @@ export function SupportRequestScreen({
   strings,
   isRTL,
 }: SupportRequestScreenProps): React.JSX.Element {
+  const screenStyle = useScreenStyle();
   const validation = validateSupportRequest({ category, message });
   const error = validation.ok
     ? null
@@ -299,7 +347,7 @@ export function SupportRequestScreen({
           ? strings.tooLong
           : strings.phi;
   return (
-    <View style={styles.screen}>
+    <SafeAreaView style={[styles.screen, screenStyle]}>
       <Text accessibilityRole="header" style={{ textAlign: getTextAlign(isRTL) }}>
         {strings.title}
       </Text>
@@ -338,7 +386,7 @@ export function SupportRequestScreen({
         <Text>{strings.submit}</Text>
       </Pressable>
       {noticeVisible ? <Text accessibilityRole="alert">{buildSubmissionNotice()}</Text> : null}
-    </View>
+    </SafeAreaView>
   );
 }
 

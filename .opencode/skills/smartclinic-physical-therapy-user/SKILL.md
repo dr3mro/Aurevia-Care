@@ -1,6 +1,6 @@
 ---
 name: smartclinic-physical-therapy-user
-description: "Exercise physical therapy as a simulated user."
+description: "Exercises physical therapy as a simulated user. Use when a slice affects therapy episodes or plans and needs a synthetic walkthrough."
 ---
 
 # Physical Therapy User

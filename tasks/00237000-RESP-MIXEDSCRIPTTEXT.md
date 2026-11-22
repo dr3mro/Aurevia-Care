@@ -1,5 +1,5 @@
-- [-] RESP-MIXEDSCRIPTTEXT · Staff web: responsive `MixedScriptText` component
-  - agent: swarm-6
+- [x] RESP-MIXEDSCRIPTTEXT · Staff web: responsive `MixedScriptText` component
+  - pr: #611
   - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/components/MixedScriptText.tsx, apps/staff-web/tests/components/MixedScriptText.responsive.test.tsx

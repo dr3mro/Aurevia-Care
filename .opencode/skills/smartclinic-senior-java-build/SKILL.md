@@ -1,6 +1,6 @@
 ---
 name: smartclinic-senior-java-build
-description: "Review changes as Senior Java Build and Test Tooling."
+description: "Reviews the Java toolchain, Maven build, JaCoCo, SpotBugs and test tooling. Use when a change touches pom.xml, coverage gates, static analysis, Javadoc or how tests run."
 ---
 
 # Senior Java Build and Test Tooling
@@ -14,3 +14,23 @@ Return scoped findings, proposed edits, and executable checks to the orchestrato
 Keep SpotBugs strict and central: exclusions live in `apps/api/spotbugs-exclude.xml` with a comment per entry; reject per-file `@SuppressFBWarnings`. Treat `scripts/check-wiring.py` as part of the gate, and consider mutation testing (PIT) for identity, authorization, release and prescribing packages once the build can run it.
 
 Always compile before invoking SpotBugs: a bare `mvn ... spotbugs:check` is vacuously green when no class files exist. Use `mvn -f apps/api/pom.xml -DskipTests -Djacoco.skip=true -Dspotbugs.skip=false compile spotbugs:check` so a finding cannot be missed during a fix or repair pass.
+
+## Common rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| SpotBugs passed. | Only if the classes were compiled first; a bare `spotbugs:check` is vacuously green. |
+| A Javadoc link with a simple name is fine. | Doxygen fails on it. Use fully qualified links or plain text and run `scripts/docs.sh`. |
+| Pending integration tests count as covered. | Never. Run them against a real PostgreSQL and merge the execution data. |
+
+## Red flags
+
+- A coverage threshold lowered or a class excluded.
+- A per-file `@SuppressFBWarnings`.
+- A gate that exits zero when it ran nothing.
+
+## Verification
+
+- [ ] All production sources enter the 100% JaCoCo gate.
+- [ ] SpotBugs ran after a compile and `scripts/check-wiring.py` passes.
+- [ ] `scripts/docs.sh` passes.

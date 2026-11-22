@@ -1,0 +1,164 @@
+name: Swarm debugger
+# The first stop for a failing pull request (label needs-debug): worker, debugger, fix, and again
+# for up to three rounds, then a person. A pull request lands here when integration fails or a fix
+# worker crashed. A read-only agent works on the whole
+# project: it runs every test, compares the failures with main, finds the root cause and
+# writes a report. A trusted job then sends the report to a fix worker (labels debug-N and
+# needs-fix). If the debugger finds no cause, or the third fix fails, the pull request gets
+# needs-human. The agent step never holds a GitHub token.
+on:
+  workflow_dispatch:
+  # Safety net: a dispatch refused for lack of a token must not leave a pull request waiting.
+  schedule:
+    - cron: '47 * * * *'
+permissions:
+  contents: read
+# One debugger run at a time: every run takes the oldest waiting pull request, and a run
+# that finds none ends in the select job.
+concurrency:
+  group: swarm-debugger
+  cancel-in-progress: false
+env:
+  SWARM_GIT_NAME: ${{ vars.SWARM_GIT_NAME }}
+  SWARM_GIT_EMAIL: ${{ vars.SWARM_GIT_EMAIL }}
+
+jobs:
+  select:
+    name: Pick the pull request
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      matrix: ${{ steps.pick.outputs.matrix }}
+      count: ${{ steps.pick.outputs.count }}
+      image_prefix: ${{ steps.image.outputs.prefix }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          sparse-checkout: scripts
+      - id: pick
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 -I scripts/swarm.py debug-select
+      - id: image
+        run: echo "prefix=ghcr.io/${GITHUB_REPOSITORY,,}-agent" >> "$GITHUB_OUTPUT"
+  debug:
+    name: Find the cause
+    needs: select
+    if: needs.select.outputs.count != '0'
+    # Up to four pull requests are debugged side by side, each on its own slot's account, so a
+    # queue of failures does not wait for one debugger at a time.
+    strategy:
+      max-parallel: 4
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.select.outputs.matrix) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    container:
+      image: ${{ needs.select.outputs.image_prefix }}-${{ matrix.slot }}:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    permissions:
+      contents: read
+      packages: read
+      issues: read
+      pull-requests: read
+    defaults:
+      run:
+        shell: bash
+    env:
+      MODEL: opencode-go/hy4-flash-free
+      SWARM: '1'
+      MODE: fix
+      PR_NUMBER: ${{ matrix.pr }}
+      DEBUG_ROUND: ${{ matrix.round }}
+      BRANCH: ${{ matrix.branch }}
+      STORY_ID: ${{ matrix.task }}
+      BASE_BRANCH: ${{ github.event.repository.default_branch }}
+      SMARTCLINIC_PG_ADMIN: postgres
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ matrix.branch }}
+          # Full history: the debugger bisects the branch and compares it with main.
+          fetch-depth: 0
+          persist-credentials: false
+      # The read-only token is used before the agent runs: fetch main, then write what the
+      # integrator and earlier workers said about this pull request and task to files.
+      - name: Fetch main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/agent-run.sh fetch-main || true
+      - name: Collect the failure context
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SWARM_ISSUES: ${{ vars.SWARM_ISSUES }}
+        run: |
+          mkdir -p .agent
+          python3 -I scripts/swarm.py pr-context --pr "$PR_NUMBER" --out .agent/debug-context.md || true
+          python3 -I scripts/swarm.py issue-context --task "$STORY_ID" || true
+      - name: Start PostgreSQL for the integration tests
+        run: |
+          if command -v start-postgres >/dev/null; then
+            start-postgres
+          else
+            echo "start-postgres missing - older agent image" >&2
+          fi
+      - id: debug
+        name: Debug the pull request (no GitHub token in this step)
+        env:
+          OPENCODE_API_KEY: ${{ secrets[format('OPENCODE_API_KEY_{0}', matrix.slot)] || secrets.OPENCODE_API_KEY }}
+          AGENT_TIMEOUT: 130m
+        run: |
+          # Keep the PR checkout for diagnosis. Older PRs may predate the debug command.
+          runner=$(mktemp)
+          trap 'rm -f "$runner"' EXIT
+          git show "$GITHUB_SHA:scripts/agent-run.sh" > "$runner"
+          bash "$runner" debug
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        if: always()
+        with:
+          name: debug-report-${{ matrix.pr }}
+          path: |
+            .agent/debug-report.md
+            .agent/result
+          if-no-files-found: ignore
+          retention-days: 7
+  publish:
+    name: Send the report on
+    needs: [select, debug]
+    if: always() && needs.select.outputs.count != '0'
+    # One at a time: each report may dispatch the fix wave, and two must not both do it.
+    strategy:
+      max-parallel: 1
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.select.outputs.matrix) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      actions: write
+    steps:
+      # Trusted copy of the scripts from the default branch: the debug job never had a
+      # token and cannot alter what runs here.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        continue-on-error: true
+        with:
+          name: debug-report-${{ matrix.pr }}
+          path: results/debug
+      - name: Report to the pull request
+        env:
+          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
+          GH_ISSUES_TOKEN: ${{ github.token }}
+          PR: ${{ matrix.pr }}
+        run: python3 -I scripts/swarm.py debug-publish --pr "$PR" --dir results/debug

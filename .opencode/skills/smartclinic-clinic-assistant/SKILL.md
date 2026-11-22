@@ -1,6 +1,6 @@
 ---
 name: smartclinic-clinic-assistant
-description: "Exercise the clinic assistant and reception workflow as a simulated user."
+description: "Exercises the clinic assistant and reception workflow as a simulated user. Use when a slice affects check-in, scheduling or front-desk tasks and needs a synthetic walkthrough."
 ---
 
 # Clinic Assistant

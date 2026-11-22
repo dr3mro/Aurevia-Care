@@ -1,4 +1,6 @@
-- [ ] RESP-APP-PATIENT-PAGES · Patient app: tablet, landscape and large-text layout for `patientPages` (app)
+- [x] RESP-APP-PATIENT-PAGES · Patient app: tablet, landscape and large-text layout for `patientPages` (app)
+  - pr: #626
+  - attempts: 1
   - requirements: PAT-01, PAT-02, UX-01
   - scope: apps/patient-mobile/src/app/patientPages.tsx, apps/patient-mobile/src/app/patientPages.tablet.test.tsx
   - depends: RESP-APP-LAYOUT-HOOK, RESP-APP-CONFIG

@@ -1,4 +1,6 @@
-- [ ] RESP-APP-SERVICE-PROFILE-NOTICE · Patient app: tablet, landscape and large-text layout for `ServiceProfileNotice` (service-profiles)
+- [x] RESP-APP-SERVICE-PROFILE-NOTICE · Patient app: tablet, landscape and large-text layout for `ServiceProfileNotice` (service-profiles)
+  - pr: #657
+  - attempts: 1
   - requirements: PAT-01, PAT-02, UX-01
   - scope: apps/patient-mobile/src/features/service-profiles/ServiceProfileNotice.tsx, apps/patient-mobile/src/features/service-profiles/ServiceProfileNotice.tablet.test.tsx
   - depends: RESP-APP-LAYOUT-HOOK, RESP-APP-CONFIG

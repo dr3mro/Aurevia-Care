@@ -18,11 +18,14 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
 MARK = "<!-- swarm-integrator -->"
 MAX_FIX = 3
+# A failing pull request goes worker -> debugger -> fix this many times before a person is asked.
+MAX_DEBUG_ROUNDS = 3
 # One story per worker PR: a batch this large cannot be reviewed or verified
 # as a single bounded change, and it was the source of the G1 quality failures.
 MAX_PR_FILES = 30
@@ -32,7 +35,7 @@ BODY_LIMIT = 8000
 # Default monthly runner-minute cap for all swarm-related workflows. The guard
 # estimates usage from finished run durations and refuses a wave near the cap.
 DEFAULT_MONTHLY_MINUTES = 10000
-BUDGET_WORKFLOWS = ("swarm.yml", "swarm-integrator.yml",
+BUDGET_WORKFLOWS = ("swarm.yml", "swarm-integrator.yml", "swarm-debugger.yml",
                     "agent-image.yml", "swarm-images.yml", "fix-pr-gate.yml")
 BRANCH = re.compile(r"swarm/[A-Za-z0-9._-]+")
 LABELS = {
@@ -42,6 +45,10 @@ LABELS = {
     "needs-human": ("b60205", "Swarm stopped; a person must decide"),
     "fix-1": ("ededed", "Fix attempt 1"), "fix-2": ("ededed", "Fix attempt 2"),
     "fix-3": ("ededed", "Fix attempt 3"),
+    "needs-debug": ("5319e7", "The debugger is finding the cause of the failure"),
+    "debug-1": ("c5def5", "Debugger round 1: its report went to a fix worker"),
+    "debug-2": ("c5def5", "Debugger round 2: its report went to a fix worker"),
+    "debug-3": ("c5def5", "Debugger round 3: its report went to the last fix; one more failure needs a person"),
 }
 # Changes here could widen the agents' own permissions or the merge gate, so
 # they are never merged automatically.
@@ -111,22 +118,28 @@ def is_issue_call(args):
 def gh(*args, check=True):
     """Run a gh CLI command, retrying transient GitHub API failures.
 
-    A 502/503/504 during `gh pr create` is a GitHub-side blip: the branch is
-    already pushed, so a retry is safe. Permanent errors (permissions, missing
-    refs) are raised immediately with the CLI stderr visible in the job log.
+    A 5xx during `gh pr create`, a secondary rate limit or a dropped connection is a
+    GitHub-side or network blip: the branch is already pushed, so a retry is safe. Permanent
+    errors (permissions, missing refs) are raised immediately with the CLI stderr visible
+    in the job log.
     """
-    transient = re.compile(r"\b(?:502|503|504)\b|Bad Gateway|Service Unavailable", re.I)
+    transient = re.compile(
+        r"\b(?:500|502|503|504)\b|Bad Gateway|Service Unavailable|Internal Server Error"
+        r"|secondary rate limit|abuse detection|rate limit exceeded|connection reset"
+        r"|timed out|TLS handshake|temporary failure|unexpected EOF", re.I)
     # Issue, comment and label calls use the job's own token when GH_ISSUES_TOKEN is set:
     # it always has issues: write, while SWARM_TOKEN (used for pushes) may not.
     env = None
     if os.environ.get("GH_ISSUES_TOKEN") and is_issue_call(args):
         env = {**os.environ, "GH_TOKEN": os.environ["GH_ISSUES_TOKEN"]}
-    for attempt in range(3):
+    attempt = 0
+    while True:  # the last attempt always returns or raises
         done = subprocess.run(["gh", *args], capture_output=True, text=True, env=env)
         if not (check and done.returncode):
             return done.stdout
-        if transient.search(done.stderr or "") and attempt < 2:
+        if transient.search(done.stderr or "") and attempt < 3:
             time.sleep(2 ** attempt)
+            attempt += 1
             continue
         # Surface the CLI error; a bare CalledProcessError hides why a label,
         # comment or workflow dispatch was refused.
@@ -134,7 +147,6 @@ def gh(*args, check=True):
             print(f"gh {' '.join(str(a) for a in args[:3])}: {done.stderr.strip()}",
                   file=sys.stderr)
         raise subprocess.CalledProcessError(done.returncode, args, done.stdout, done.stderr)
-    return done.stdout
 
 
 def git(*args, check=True):
@@ -190,6 +202,9 @@ def repo_slug():
 # ---------------------------------------------------------------------------
 ISSUE_BODY_LIMIT = 60000
 STALL_MINUTES = 60
+# The watchdog starts a wave itself once none has run for this long while work waits: the hourly
+# schedule is only a hint to GitHub and is often delayed or dropped.
+START_IDLE_MINUTES = 30
 SECRET = re.compile(r"(gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_-]{20,})")
 TRANSIENT = re.compile(
     r"ECONNRESET|ETIMEDOUT|Connection reset|connection timed out|TLS handshake timeout|"
@@ -206,6 +221,7 @@ ISSUE_LABELS = {
     "stalled": ("b60205", "No wave is running although work is waiting"),
     "needs-review": ("fbca04", "Working as designed; a person must approve or merge"),
     "worker-handoff": ("c5def5", "A worker stopped; the next worker continues from here"),
+    "swarm-review": ("0e8a16", "The six-hourly review suggests task order or workflow changes; a person decides"),
     "protected-change": ("bfd4f2", "A protected file merged under SWARM_ALLOW_PROTECTED; for oversight only"),
 }
 LABELS.update(ISSUE_LABELS)
@@ -504,8 +520,15 @@ def run_event(run_id):
 
     Only runs that are not pull-request runs count: a failing PR run is already the
     integrator's business. A transient infrastructure error is retried once first."""
-    info = gh_json("run", "view", str(run_id), "--json",
-                   "name,conclusion,url,headBranch,headSha,jobs,attempt,event") or {}
+    try:
+        info = gh_json("run", "view", str(run_id), "--json",
+                       "name,conclusion,url,headBranch,headSha,jobs,attempt,event") or {}
+    except subprocess.CalledProcessError as error:
+        # A run that was deleted, or whose jobs GitHub no longer lists, has nothing to record; the
+        # next run of the workflow or the 15-minute check covers it. Anything else is a real error.
+        if "404" in f"{error.stderr}{error.stdout}" or "Not Found" in f"{error.stderr}{error.stdout}":
+            return f"run {run_id} no longer exists; nothing to record"
+        raise
     name, conclusion = info.get("name", "workflow"), info.get("conclusion", "")
     if info.get("event") == "pull_request":
         return "pull-request run; handled by the integrator"
@@ -545,6 +568,10 @@ def run_event(run_id):
         or [(j["name"], "") for j in info.get("jobs", []) if j.get("conclusion") == "failure"]
     where = "; ".join(f"{job} / {step}".strip(" /") for job, step in failed[:6]) or "run level"
     kind = classify_failure(log, failed)
+    if name == "Delivery" and info.get("headBranch") == "main" and kind == "unknown" and not waiting_waves():
+        # A red main is repaired by the next plan. Start it now instead of waiting for the
+        # watchdog's half hour, because nothing else merges while main is red.
+        gh("workflow", "run", "swarm.yml", "--ref", "main", check=False)
     body = (f"**Workflow:** {name} · **Event:** {info.get('event')} · **Branch:** {info.get('headBranch')} "
             f"· **Commit:** {str(info.get('headSha'))[:7]}\n**Run:** {info.get('url')}\n"
             f"**Failed:** {where}\n**Class:** {kind}"
@@ -559,9 +586,9 @@ def run_event(run_id):
     return f"issue {number or 'not written'}"
 
 
-def stall_status():
-    """(stalled, facts): stalled means no wave running or queued for STALL_MINUTES while
-    work is waiting."""
+def swarm_idle():
+    """(active, work, idle, facts): waves running or queued, whether work is waiting (a ready task
+    or a red main) and the minutes since the last wave started."""
     runs = gh_json("run", "list", "--workflow", "swarm.yml", "--limit", "30",
                    "--json", "status,conclusion,createdAt,url") or []
     active = [r for r in runs if r["status"] in BUILD_PENDING]
@@ -578,7 +605,7 @@ def stall_status():
     facts = (f"{len(active)} wave(s) running or queued; the last wave started {idle} minutes ago. Ready now: "
              f"{', '.join(t['id'] for t in ready) or 'nothing'}. Main red: {'yes' if red else 'no'}. "
              f"Last runs: {', '.join(recent) or 'none'}.")
-    return (not active and work and idle >= STALL_MINUTES), facts
+    return active, work, idle, facts
 
 
 def sync_issues():
@@ -612,9 +639,15 @@ def sync_issues():
 
 
 def watchdog():
-    """Open or update the stall issue, or close it once waves run again; sync other issues."""
-    stalled, facts = stall_status()
-    if stalled:
+    """Start a wave that nothing else started, open or update the stall issue when that did not
+    help, or close it once waves run again; sync other issues."""
+    active, work, idle, facts = swarm_idle()
+    if not active and work and idle >= START_IDLE_MINUTES:
+        # Nothing runs, so no worker's last job will start the next wave and the hourly schedule
+        # did not either. A dispatch is the only thing left that can.
+        gh("workflow", "run", "swarm.yml", "--ref", "main", check=False)
+        print(f"No wave for {idle} minutes while work waits; started one.")
+    if not active and work and idle >= STALL_MINUTES:
         number = record_issue("stall", ["swarm"], "Swarm stalled: no wave is running",
                               f"{facts}\n\nThe hourly schedule or a push to TODO.md should have started a wave. "
                               "Check the latest Agent swarm run and the plan job's log.",
@@ -700,6 +733,7 @@ MAX_ISSUE_TASKS_OPEN = 5
 MAX_ISSUES_PER_RUN = 3
 MAX_REQUEUES = 2
 UNASSIGNED_MINUTES = 60
+FAST_ISSUE_MINUTES = 5     # `now` mode: a new issue gets a worker after this long, not after an hour
 STALE_MINUTES = 24 * 60
 ISSUE_TASK = re.compile(r"ISS-(\d+)")
 ISSUE_LABELS["agent-fixable"] = ("0e8a16", "The issue monitor may assign a worker to this issue")
@@ -804,7 +838,8 @@ def monitor_select(mode, text, out_dir, now=None):
         if mode == "daily":
             if minutes_since(issue["updated_at"], now) < STALE_MINUTES:
                 continue
-        elif minutes_since(issue["created_at"], now) < UNASSIGNED_MINUTES or ever_assigned(n):
+        elif minutes_since(issue["created_at"], now) < (FAST_ISSUE_MINUTES if mode == "now" else UNASSIGNED_MINUTES) \
+                or ever_assigned(n):
             continue
         pr, task_id = latest_pr_marker(issue), marker_of(issue, "task")
         task = by_id.get(f"ISS-{n}") or by_id.get(task_id)
@@ -819,8 +854,8 @@ def monitor_select(mode, text, out_dir, now=None):
             labels = label_names(info)
             if info.get("state") == "MERGED":
                 chosen["close"].append(n)
-            elif info.get("state") != "OPEN" or "needs-review" in labels or pr in for_review:
-                continue  # closed by a person, or protected files: a fix worker cannot help
+            elif info.get("state") != "OPEN" or {"needs-review", "needs-debug"} & labels or pr in for_review:
+                continue  # closed by a person, protected files or with the debugger: a fix worker cannot help
             elif not info.get("isDraft") and not {"needs-fix", "needs-human"} & labels:
                 continue  # healthy and waiting in the integrator's queue
             else:
@@ -941,7 +976,7 @@ def monitor_assign(directory, prs=(), nudge=(), exhausted=(), todo="TODO.md", tr
         comment_issue(number, f"<!-- swarm-requeue -->\n**{stamp_now()}** The triage worker gave no answer "
                               "for this issue; the daily monitor will try again.")
     for number, pr in prs:
-        for name in ("fix-1", "fix-2", "fix-3", "needs-human"):
+        for name in ("fix-1", "fix-2", "fix-3", "needs-human", "needs-debug", "debug-1", "debug-2", "debug-3"):
             remove_label(pr, name)
         add_labels(pr, "needs-fix")
         comment_issue(number, f"<!-- swarm-requeue -->\n**{stamp_now()}** No progress, so pull request #{pr} "
@@ -973,7 +1008,7 @@ def monitor_assign(directory, prs=(), nudge=(), exhausted=(), todo="TODO.md", tr
                               "A person must take over.")
     started = bool(ids or prs or nudge or reset)
     if started and waiting_waves() == 0:
-        gh("workflow", "run", "swarm.yml", "-f", "workers=10", check=False)
+        gh("workflow", "run", "swarm.yml", "-f", f"workers={STORY_WAVE_WORKERS}", check=False)
     return {"tasks": [n for n, _ in ids], "failed": failed, "unanswered": unanswered, "prs": [n for n, _ in prs],
             "nudged": list(nudge), "reset": [n for n, _ in reset], "closed": list(close),
             "exhausted": list(exhausted)}
@@ -1261,10 +1296,6 @@ def clip(text):
     return (text or "")[:BODY_LIMIT]
 
 
-def table_cells(line):
-    return [c.strip() for c in line.strip().strip("|").split("|")]
-
-
 def split_list(value):
     return [v for v in re.split(r"\s*,\s*|\s+", value) if v and v != "-"]
 
@@ -1523,14 +1554,14 @@ def docs_safe(text, spec_path="SMARTCLINIC_V1_SPEC.md"):
     return re.sub(r"\b(" + "|".join(sorted(bad)) + r")-(?=\d)", r"\1 ", text) if bad else text
 
 
-def audit_entries(findings, text, today):
+def audit_entries(findings, text, today, prefix="AUD", source="the daily audit"):
     """Validate audit findings and format the new ones as TODO.md entries.
 
     The audit worker has no token and its JSON is untrusted, so every field is
     checked: bounded lengths, relative scope paths that are not protected files,
     and no duplicate of an existing task title."""
     tasks = parse_tasks(text)
-    open_audit = [t for t in tasks if t["id"].startswith("AUD-") and t["status"] != "done"]
+    open_audit = [t for t in tasks if t["id"].startswith(f"{prefix}-") and t["status"] != "done"]
     room = min(MAX_AUDIT_NEW, MAX_AUDIT_OPEN - len(open_audit))
     seen = {_norm(t["task"]) for t in tasks}
     existing = {t["id"] for t in tasks}
@@ -1553,18 +1584,18 @@ def audit_entries(findings, text, today):
             continue
         seen.add(_norm(title))
         number += 1
-        while f"AUD-{today}-{number:02d}" in existing:
+        while f"{prefix}-{today}-{number:02d}" in existing:
             number += 1
         body = "\n".join(f"    {line}" for line in details.strip()[:2000].splitlines() if line.strip())
         entries.append(
-            f"- [ ] AUD-{today}-{number:02d} · {title.strip()}\n"
+            f"- [ ] {prefix}-{today}-{number:02d} · {title.strip()}\n"
             f"  - attempts: 0\n  - scope: {', '.join(scope)}\n  - details:\n{body}\n"
-            "    Found by the daily audit. Synthetic fixtures only; failing tests first;\n"
+            f"    Found by {source}. Synthetic fixtures only; failing tests first;\n"
             "    stay inside the declared scope; record results in your notes file (the path in your prompt).")
     return entries
 
 
-def add_audit_tasks(findings_path, path="TODO.md", today=None):
+def add_audit_tasks(findings_path, path="TODO.md", today=None, prefix="AUD", source="the daily audit"):
     """Append validated audit findings to TODO.md on main for the swarm to take."""
     today = today or datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d")
     try:
@@ -1575,14 +1606,117 @@ def add_audit_tasks(findings_path, path="TODO.md", today=None):
     added = []
 
     def edit(text):
-        entries = audit_entries(findings, text, today)
+        entries = audit_entries(findings, text, today, prefix, source)
         added[:] = entries
         if not entries:
             return text
         return add_under(text, AUDIT_HEADER, entries)
-    update_todo(edit, "Daily audit: add findings", path)
+    update_todo(edit, f"Daily {source.split('daily ', 1)[-1]}: add findings", path)
     print(f"Added {len(added)} audit task(s).")
     return len(added)
+
+
+# The daily QA and DevSecOps agents: id prefix for the tasks they add, how a task names its
+# source, and what the issue that carries their suggestions is called. Both agents are
+# read-only and hold no token; this trusted code validates what they wrote.
+DAILY_ROLES = {
+    "qa": {"prefix": "QAD", "source": "the daily QA review",
+           "title": "Daily QA review: suggestions for agents and the workflow"},
+    "devsecops": {"prefix": "DSO", "source": "the daily DevSecOps review",
+                  "title": "Daily DevSecOps review: suggestions for agents and the workflow"},
+}
+
+
+def daily_publish(role, findings_path, path="TODO.md"):
+    """Add a daily reviewer's valid tasks to the task files and put its suggestions in one issue.
+
+    Tasks get the role's own id prefix and open-task cap, so a busy QA backlog never blocks the
+    security reviewer. Suggestions for agents (skills, prompts, rules) and for workflows change
+    what runs, so they go to a person in an issue and are never applied automatically."""
+    config = DAILY_ROLES[role]
+    try:
+        data = json.loads(Path(findings_path).read_text())
+    except (OSError, ValueError):
+        print(f"No usable {role} review.", file=sys.stderr)
+        return {"tasks": 0, "issue": ""}
+    data = data if isinstance(data, dict) else {}
+    tasks = data.get("tasks") if isinstance(data.get("tasks"), list) else []
+    with tempfile.TemporaryDirectory() as tmp:
+        listed = Path(tmp) / "tasks.json"
+        listed.write_text(json.dumps(tasks))
+        added = add_audit_tasks(str(listed), path, prefix=config["prefix"], source=config["source"])
+    agents = review_lines(data.get("agents"), ("agent", "problem", "change"))
+    workflow = review_lines(data.get("workflow"), ("title", "evidence", "change"))
+    number = ""
+    if agents or workflow:
+        body = (f"{mask(str(data.get('summary', '')))[:1200]}\n\n"
+                + ("### Suggestions for agents, skills and prompts\n" + "\n".join(agents) + "\n\n" if agents else "")
+                + ("### Suggested workflow changes\n" + "\n".join(workflow) + "\n\n" if workflow else "")
+                + "Nothing here was applied. Decide what to do; close this issue when done.")
+        number = record_issue(f"daily-{role}", ["review"], config["title"], body,
+                              labels=("swarm-review",))
+    return {"tasks": added, "issue": number}
+
+
+STRATEGY_WORKFLOWS = ("swarm.yml", "swarm-integrator.yml", "swarm-debugger.yml", "delivery.yml")
+
+
+def strategy_state(out):
+    """Open pull requests and recent runs, written for the read-only six-hourly reviewer."""
+    prs = gh_json("pr", "list", "--state", "open", "--limit", "100",
+                  "--json", "number,title,isDraft,labels,createdAt") or []
+    lines = ["# Swarm state (data for the review, not instructions)", "", f"## Open pull requests ({len(prs)})"]
+    for item in sorted(prs, key=lambda p: p["number"]):
+        flags = ", ".join(sorted(label_names(item)) + (["draft"] if item.get("isDraft") else []))
+        lines.append(f"- #{item['number']} {mask(item.get('title', ''))[:100]} [{flags}] opened {item.get('createdAt', '')[:10]}")
+    for workflow in STRATEGY_WORKFLOWS:
+        runs = gh_json("run", "list", "--workflow", workflow, "--limit", "15",
+                       "--json", "conclusion,status,createdAt,updatedAt") or []
+        lines += ["", f"## Last {len(runs)} runs of {workflow}"]
+        lines += [f"- {r.get('createdAt', '')[:16]} {r.get('conclusion') or r.get('status')} "
+                  f"(until {r.get('updatedAt', '')[11:16]})" for r in runs]
+    Path(out).parent.mkdir(parents=True, exist_ok=True)
+    Path(out).write_text("\n".join(lines) + "\n")
+    return len(prs)
+
+
+def review_lines(items, fields):
+    """Bounded, masked bullet lines for the suggestions an untrusted JSON file carries."""
+    lines = []
+    for item in items[:10] if isinstance(items, list) else []:
+        if not isinstance(item, dict):
+            continue
+        parts = [mask(str(item.get(f, "")))[:400].replace("```", "' ' '") for f in fields]
+        if parts[0].strip():
+            lines.append("- " + " — ".join(part.strip() for part in parts if part.strip()))
+    return lines
+
+
+def strategy_publish(findings_path, path="TODO.md"):
+    """New tasks go to the task files like audit findings; order and workflow suggestions go
+    to one issue for a person, because they change what runs and in what order."""
+    try:
+        data = json.loads(Path(findings_path).read_text())
+    except (OSError, ValueError):
+        print("No usable review.", file=sys.stderr)
+        return {"tasks": 0, "issue": ""}
+    data = data if isinstance(data, dict) else {}
+    tasks = data.get("tasks") if isinstance(data.get("tasks"), list) else []
+    with tempfile.TemporaryDirectory() as tmp:
+        listed = Path(tmp) / "tasks.json"
+        listed.write_text(json.dumps(tasks))
+        added = add_audit_tasks(str(listed), path)
+    order = review_lines(data.get("reorder"), ("id", "move", "why"))
+    workflow = review_lines(data.get("workflow"), ("title", "evidence", "change"))
+    number = ""
+    if order or workflow:
+        body = (f"{mask(str(data.get('summary', '')))[:1200]}\n\n"
+                + ("### Suggested task order\n" + "\n".join(order) + "\n\n" if order else "")
+                + ("### Suggested workflow changes\n" + "\n".join(workflow) + "\n\n" if workflow else "")
+                + "Nothing here was applied. Decide what to do; close this issue when done.")
+        number = record_issue("strategy", ["review"], "Swarm review: suggested task order and workflow changes",
+                              body, labels=("swarm-review",))
+    return {"tasks": added, "issue": number}
 
 
 def task_field(task_id, field, path="TODO.md"):
@@ -1783,8 +1917,11 @@ def task_text(task):
     return clip(f"{head}\n\n{task['details']}")
 
 
-def plan_workers(max_workers, slots, text, open_prs, repair=None, live=()):
-    """Main repairs, then fixes, then ready tasks whose scope is free."""
+def plan_workers(max_workers, slots, text, open_prs, repair=None, live=(), story_wave=None):
+    """Main repairs, then fixes, then ready tasks whose scope is free.
+
+    Repairs and fixes may use every slot. Ordinary stories start only while no pull request waits
+    for a fix or the debugger, at most STORY_WORKER_CAP at once and `story_wave` per wave."""
     tasks = parse_tasks(text)
     by_id = {t["id"]: t for t in tasks}
     for t in tasks:
@@ -1809,6 +1946,9 @@ def plan_workers(max_workers, slots, text, open_prs, repair=None, live=()):
                          "branch": pr["headRefName"], "title": task["task"],
                          "body": task_text(task),
                          "fix": clip(notes[-1] if notes else "Integration failed.")})
+    failing = any({"needs-fix", "needs-debug"} & label_names(p) and "needs-human" not in label_names(p)
+                  and not p["isCrossRepository"] for p in open_prs)
+    ordinary, story_room = 0, max(0, STORY_WORKER_CAP - len(live))
     in_flight = {task_id_of(p["headRefName"]) for p in open_prs}
     done = {name for t in tasks if t["status"] == "done" for name in (t["id"], *t["aliases"])}
     done |= archived_done_ids()
@@ -1821,10 +1961,17 @@ def plan_workers(max_workers, slots, text, open_prs, repair=None, live=()):
             continue
         if any(overlaps(task["scope"], other) for other in busy):
             continue
+        if not is_repair_task(task):
+            if failing or ordinary >= story_room:
+                continue
+            ordinary += 1
         busy.append(task["scope"])
         plan.append({"kind": "story", "id": task["id"], "number": 0, "branch": "",
                      "title": task["task"], "body": task_text(task), "fix": ""})
-    chosen = plan[:max(0, min(max_workers, len(slots)))]
+    slots_left = max(0, min(max_workers, len(slots)))
+    urgent = [t for t in plan if t["kind"] == "fix" or is_repair_task(t)][:slots_left]
+    stories = [t for t in plan if t not in urgent and not (t["kind"] == "fix" or is_repair_task(t))]
+    chosen = urgent + stories[:max(0, min(slots_left - len(urgent), slots_left if story_wave is None else story_wave))]
     return [{**t, "slot": s["slot"], "model": s["model"]} for t, s in zip(chosen, slots)]
 
 
@@ -1837,6 +1984,10 @@ def release(task, result, commits, pr=""):
         with open(summary, "a") as out:
             out.write(line)
     if commits == 0 and task["kind"] == "fix" and result in ("rate_limited", "timeout", "failed"):
+        rounds = debug_rounds(label_names(gh_json("pr", "view", str(task["number"]), "--json", "labels") or {}))
+        if result == "failed" and rounds < MAX_DEBUG_ROUNDS:
+            send_to_debugger(task["number"], f"Worker {task['slot']} ended with 'failed' and pushed nothing. {run_url()}")
+            return
         add_labels(task["number"], "needs-fix" if result != "failed" else "needs-human")
         gh("pr", "comment", str(task["number"]), "--body",
            f"Worker {task['slot']} ended with '{result}' and pushed nothing. {run_url()}")
@@ -1945,6 +2096,10 @@ def publish(task, directory):
             pr = str(task["number"])
             gh("pr", "comment", pr, "--body",
                f"Worker {task['slot']} pushed a fix (local checks: {checks}). The integrator will retest.")
+            # A story that ended as a draft stays a draft after its fix: the integrator never takes
+            # a draft, so a clean fix must hand the pull request back by marking it ready.
+            if not incomplete:
+                gh("pr", "ready", pr, check=False)
     elif commits > 0:
         # The bundle step failed (it runs with `|| true`): the commits exist only in the
         # worker's artifact and would otherwise be dropped without a trace.
@@ -2238,30 +2393,33 @@ def protected_files(files):
     return [f for f in files if any(fnmatch.fnmatch(f, pattern) for pattern in PROTECTED)]
 
 
-def fail(pr, reason, log_text=""):
-    """Send a pull request back to the workers, or stop after MAX_FIX attempts."""
+def fail(pr, reason, log_text="", simple=False):
+    """A failure goes to the debugger (rounds 1 to MAX_DEBUG_ROUNDS), then a fix; after the last round a person.
+
+    `simple` is for a failure the reason already explains in full (a tracker file a worker must
+    revert): it goes straight back to a fix worker, up to MAX_FIX times, before the debugger."""
     info = gh_json("pr", "view", str(pr), "--json", "labels")
-    attempts = len([n for n in label_names(info) if re.fullmatch(r"fix-\d", n)])
+    rounds = debug_rounds(label_names(info))
     detail = f"\n\n{diagnosis(log_text)}" if log_text else ""
-    if attempts >= MAX_FIX:
-        add_labels(pr, "needs-human")
-        remove_label(pr, "needs-fix")
+    attempts = len([n for n in label_names(info) if re.fullmatch(r"fix-\d", n)])
+    if simple and attempts < MAX_FIX and rounds == 0:
+        attempt = attempts + 1
+        add_labels(pr, "needs-fix", f"fix-{attempt}")
         gh("pr", "comment", str(pr), "--body",
-           f"{MARK}\nIntegration still fails after {MAX_FIX} fix attempts: {reason}. "
-           f"A person must take over.{detail}")
-        report_pr_stuck(pr, f"still failing after {MAX_FIX} fix attempts",
-                        f"**Why it was stopped:** {reason}", log_text=log_text)
-        return False
-    attempt = attempts + 1
-    add_labels(pr, "needs-fix", f"fix-{attempt}")
-    gh("pr", "comment", str(pr), "--body",
-       f"{MARK}\n{reason}. Fix attempt {attempt} of {MAX_FIX}. Reproduce with "
-       f"`scripts/check.sh` on the merge of main and this branch.{detail}")
-    # One waiting wave already plans every sent-back pull request, so several fails
-    # in one integration run must not each dispatch a wave of their own.
-    if waiting_waves() == 0:
-        gh("workflow", "run", "swarm.yml", "-f", "workers=10", check=False)
-    return True
+           f"{MARK}\n{reason}. Fix attempt {attempt} of {MAX_FIX}.{detail}")
+        # One waiting wave already plans every sent-back pull request, so several fails
+        # in one integration run must not each dispatch a wave of their own.
+        if waiting_waves() == 0:
+            gh("workflow", "run", "swarm.yml", "-f", f"workers={STORY_WAVE_WORKERS}", check=False)
+        return True
+    if rounds < MAX_DEBUG_ROUNDS:
+        return send_to_debugger(pr, f"Integration failed: {reason}", detail, log_text)
+    cause = f"still failing after {MAX_DEBUG_ROUNDS} debugger rounds, each followed by a fix"
+    add_labels(pr, "needs-human")
+    remove_label(pr, "needs-fix")
+    gh("pr", "comment", str(pr), "--body", f"{MARK}\nIntegration {cause}: {reason}. A person must take over.{detail}")
+    report_pr_stuck(pr, cause, f"**Why it was stopped:** {reason}", log_text=log_text)
+    return False
 
 
 def main_is_red(workflow="delivery.yml"):
@@ -2269,6 +2427,130 @@ def main_is_red(workflow="delivery.yml"):
     runs = gh_json("run", "list", "--workflow", workflow, "--branch", "main", "--status", "completed",
                    "--limit", "1", "--json", "conclusion") or []
     return bool(runs) and runs[0]["conclusion"] == "failure"
+
+
+# A workflow run that ended without passing: cancelled is a failed verification,
+# not an absent one, so a person must not mistake it for a run still to come.
+DELIVERY_FAILED = frozenset({"failure", "timed_out", "cancelled"})
+# A run waiting for a first-time-contributor review or an environment approval.
+DELIVERY_APPROVAL = frozenset({"waiting", "action_required"})
+
+
+def _delivery_needs_approval(run):
+    """True when a Delivery run or one of its jobs waits for a human approval gate.
+
+    First-time-contributor approval is reported on the run; an environment gate
+    is reported on a job while the run itself still looks in progress. Both mean
+    the same thing to the integrator: nothing can pass until a person acts.
+    """
+    if run.get("status") in DELIVERY_APPROVAL or run.get("conclusion") == "action_required":
+        return True
+    for job in (run.get("jobs") or []):
+        if not isinstance(job, dict):
+            continue
+        if job.get("status") in DELIVERY_APPROVAL or job.get("conclusion") == "action_required":
+            return True
+    return False
+
+
+def delivery_state(runs, head_sha):
+    """Classify the newest Delivery workflow run that tested one head SHA.
+
+    ``runs`` is a newest-first list of ``gh run list`` records. A record carries
+    ``headSha`` (``head_sha`` is accepted for synthetic fixtures), ``status``,
+    ``conclusion`` and optionally ``jobs``. Only runs for ``head_sha`` count: a
+    run for an older commit says nothing about the branch tip. The newest such
+    run wins, so a re-run supersedes an earlier failure.
+
+    Returns exactly one of:
+
+    - ``passed`` — the run succeeded;
+    - ``failed`` — it failed, timed out or was cancelled;
+    - ``approval-required`` — it waits for a contributor or environment approval;
+    - ``pending`` — it is queued or running and not waiting on approval;
+    - ``missing`` — no run tested this SHA, or the run was skipped and therefore
+      produced no verification. A skipped run cannot prove a Markdown-only
+      change by itself: the caller applies that documented exception after
+      inspecting the actual changed files.
+
+    The caller applies the integrator policy; this function only reports facts.
+    """
+    current = [run for run in (runs or [])
+               if isinstance(run, dict) and (run.get("headSha") or run.get("head_sha")) == head_sha]
+    if not current:
+        return "missing"
+    run = current[0]
+    if _delivery_needs_approval(run):
+        return "approval-required"
+    conclusion = run.get("conclusion")
+    if conclusion == "success":
+        return "passed"
+    if conclusion in DELIVERY_FAILED:
+        return "failed"
+    if conclusion == "skipped":
+        # paths-ignore makes a docs-only change have no run at all; a run that
+        # was skipped for another reason is not evidence either way. Let the
+        # caller decide using the changed files rather than trusting the label.
+        return "missing"
+    return "pending"
+
+
+def markdown_only(files):
+    """True when every changed path is documentation (docs/ or a Markdown file).
+
+    Delivery ignores those paths, so a docs-only pull request has no run to
+    inspect. The integrator's local docs check is its evidence instead.
+    """
+    paths = [name for name in files if name]
+    return bool(paths) and all(name.startswith("docs/") or name.endswith(".md") for name in paths)
+
+
+def delivery_runs(head):
+    """Newest Delivery runs for one commit, with jobs on the newest matching run.
+
+    Filtering the listing by commit prevents an old green run from being read as
+    evidence for a newer head. Jobs are read separately because the run listing
+    does not expose them and an environment gate is only visible at job level.
+    """
+    runs = gh_json("run", "list", "--workflow", "Delivery", "--commit", head,
+                   "--json", "databaseId,headSha,status,conclusion") or []
+    current = [run for run in runs if isinstance(run, dict) and (run.get("headSha") or "") == head]
+    if current and current[0].get("databaseId"):
+        jobs = gh_json("run", "view", str(current[0]["databaseId"]), "--json", "jobs") or {}
+        current[0]["jobs"] = jobs.get("jobs") or []
+    return runs
+
+
+def delivery_gate(pr, head=None, runs=None):
+    """Apply the integrator's Delivery policy to one pull request.
+
+    Returns ``merge``, ``wait``, ``fix`` or ``request``. Only ``merge`` may stage
+    the pull request: ``wait`` leaves it untouched with no label, ``fix`` sends a
+    failed run back to the fix workers, and ``request`` asks for a fresh run for
+    ``missing`` or ``approval-required`` evidence. A Markdown-only change uses the
+    documented exception: with no Delivery run it is checked by the local docs
+    gate instead. ``runs`` may be supplied by a caller that already listed them.
+    """
+    if head is None:
+        head = (gh_json("pr", "view", str(pr), "--json", "headRefOid") or {}).get("headRefOid", "")
+    state = delivery_state(delivery_runs(head) if runs is None else runs, head)
+    if state == "passed":
+        return "merge"
+    if state == "failed":
+        fail(pr, "Delivery failed on the current head")
+        return "fix"
+    if state == "pending":
+        return "wait"
+    if state == "missing" and markdown_only(gh("pr", "diff", str(pr), "--name-only").split()):
+        # delivery.yml's paths-ignore means a docs-only change never gets a run;
+        # quick-check.sh already ran check-docs.py on this exact merge result.
+        return "merge"
+    branch = (gh_json("pr", "view", str(pr), "--json", "headRefName") or {}).get("headRefName", "")
+    gh("pr", "comment", str(pr), "--body",
+       f"{MARK}\nDelivery is {state} for {head[:12]}; a fresh run was requested on this branch. "
+       "Nothing merges until it reports passed.", check=False)
+    gh("workflow", "run", "delivery.yml", "--ref", branch, check=False)
+    return "request"
 
 
 def plan_integration(red=False):
@@ -2279,7 +2561,7 @@ def plan_integration(red=False):
     typecheck) opens a draft, and that work must not merge until a fix pass undrafts it."""
     prs = gh_json("pr", "list", "--state", "open", "--label", "swarm", "--limit", "50",
                   "--json", "number,title,labels,isCrossRepository,isDraft")
-    blocked = {"needs-fix", "needs-human"}
+    blocked = {"needs-fix", "needs-human", "needs-debug"}
     return [p["number"] for p in sorted(prs, key=lambda p: p["number"])
             if not p["isCrossRepository"] and not p.get("isDraft")
             and not blocked & label_names(p)
@@ -2405,6 +2687,11 @@ def add_latest_repair_task(path="TODO.md"):
 
 
 MAX_ACTIVE_WORKERS = 20  # workers running at once across every wave
+# While everything is green, story workers get 14 of the 20 (two waves of 7); the other 6 stay free
+# for fixes, debugging and repairs. As soon as a pull request needs a fix or the debugger, or main
+# is red, no new story starts and all 20 go to those.
+STORY_WORKER_CAP = 14
+STORY_WAVE_WORKERS = 7
 
 
 WAITING_WAVE_MAX_AGE_MIN = 30
@@ -2447,6 +2734,27 @@ def live_workers():
         keys = {worker_task_id(n) or n for n in out.splitlines() if is_worker_job(n)}
         live.extend(sorted(keys))
     return live
+
+
+def top_up(finished_id):
+    """Start another wave as soon as a worker ends and there is room, instead of waiting for its
+    whole wave to finish.
+
+    A wave ends only when its slowest worker does, so the slots of the quick ones stayed idle for
+    hours. The planner still decides what runs: the combined worker cap, scopes, dependencies and
+    the budget gate all apply to the wave this starts. Returns True when a wave was started."""
+    live = [name for name in live_workers() if name != finished_id]
+    if len(live) >= MAX_ACTIVE_WORKERS or waiting_waves():
+        return False
+    prs = gh_json("pr", "list", "--state", "open", "--label", "swarm", "--limit", "100",
+                  "--json", "number,title,headRefName,isCrossRepository,labels,comments") or []
+    everything = gh_json("pr", "list", "--state", "all", "--label", "swarm", "--limit", "200",
+                         "--json", "number,headRefName,state,labels") or []
+    text = reclaim(todo_read(), everything, live)
+    if not plan_workers(1, [{"slot": 1, "model": ""}], text, prs, live=live):
+        return False
+    gh("workflow", "run", "swarm.yml", "--ref", "main", check=False)
+    return True
 
 
 def active_workers():
@@ -2594,6 +2902,234 @@ def protected_override():
     return os.environ.get("SWARM_ALLOW_PROTECTED", "").strip().lower() in {"1", "true", "yes", "on"}
 
 
+def debug_rounds(names):
+    """How many debugger rounds a pull request has been through (labels debug-1 to debug-3)."""
+    return len([n for n in names if re.fullmatch(r"debug-\d", n)])
+
+
+def send_to_debugger(pr, reason, detail="", log_text=""):
+    """A failure goes to the debugger first, not to a blind fix: worker, debugger, fix, and again
+    for up to MAX_DEBUG_ROUNDS rounds, then a person."""
+    remove_label(pr, "needs-fix")
+    add_labels(pr, "needs-debug")
+    gh("pr", "comment", str(pr), "--body",
+       f"{MARK}\n{reason}. The debugger takes over: it reads the whole project, runs the tests, finds "
+       "the cause and sends a report to a fix worker. After "
+       f"{MAX_DEBUG_ROUNDS} rounds of debugger and fix without a green result, a person must take over.{detail}")
+    gh("workflow", "run", "swarm-debugger.yml", "--ref", "main", check=False)
+    return False
+
+
+DEBUG_REPORT = "debug-report.md"
+DEBUG_MARK = "<!-- swarm-debug-report -->"
+DEBUG_RETRY_MARK = "<!-- swarm-debug-retry"
+
+
+DEBUG_PARALLEL = 4
+# Slots whose account and image the debugger runs on, one per pull request side by side.
+DEBUG_SLOTS = (3, 6, 7, 8)
+
+
+def debug_select():
+    """The oldest pull requests waiting for the debugger, up to DEBUG_PARALLEL, one per slot.
+
+    Emits the job matrix (pr, branch, task, round, slot) and how many were chosen; returns the
+    pull request numbers."""
+    prs = gh_json("pr", "list", "--state", "open", "--label", "needs-debug", "--limit", "50",
+                  "--json", "number,headRefName,isCrossRepository,labels") or []
+    ready = [p for p in sorted(prs, key=lambda p: p["number"])
+             if not p["isCrossRepository"] and "needs-human" not in label_names(p)
+             and BRANCH.fullmatch(p["headRefName"])]
+    chosen = ready[:DEBUG_PARALLEL]
+    include = [{"pr": p["number"], "branch": p["headRefName"], "task": task_id_of(p["headRefName"]),
+                "round": debug_rounds(label_names(p)) + 1, "slot": DEBUG_SLOTS[i]}
+               for i, p in enumerate(chosen)]
+    emit("matrix", json.dumps({"include": include}, separators=(",", ":")))
+    emit("count", len(chosen))
+    return [p["number"] for p in chosen]
+
+
+
+# ---------------------------------------------------------------------------
+# PR flow. A pull request that stalls blocks everything downstream (the tasks that depend on
+# it, the story pause while fixes wait, main's next batch), so nothing here waits for the next
+# integration run or the hourly wave. It runs when a Delivery run finishes and every ten minutes,
+# looks at every open swarm pull request and does the next step at once: a failed Delivery or a
+# draft goes to the fix workers or the debugger, a missing or approval-stuck Delivery run is
+# requested again, a green pull request wakes the integrator, and a debugger or a wave that
+# should be running is started. It is trusted code and runs no agent: the LLM work stays with
+# the debugger and fix workers it hands off to, so it is fast and cannot be talked into anything.
+PR_STUCK_MINUTES = 90      # a green, unblocked pull request that has not merged for this long
+PR_DRAFT_MINUTES = 5       # a draft with no label gets this long before the flow takes it
+ACTIVE_STATES = ("queued", "in_progress", "waiting", "pending", "requested")
+
+
+def active_runs(workflow):
+    """How many runs of a workflow are queued or running."""
+    total = 0
+    for status in ACTIVE_STATES:
+        out = gh("run", "list", "--workflow", workflow, "--status", status, "--limit", "20",
+                 "--json", "databaseId", "-q", ".[].databaseId", check=False)
+        total += len(out.split())
+    return total
+
+
+def delivery_requested(pr, head):
+    """True when the flow already asked for a fresh Delivery run for this exact head."""
+    comments = gh_json("api", f"repos/{repo_slug()}/issues/{pr}/comments?per_page=100") or []
+    return any(trusted_author(c) and "Delivery is" in (c.get("body") or "")
+               and head[:12] in (c.get("body") or "") for c in comments)
+
+
+def pr_flow(now=None):
+    """One pass over the open swarm pull requests. Returns a list of (pr, action) for the log."""
+    prs = gh_json("pr", "list", "--state", "open", "--label", "swarm", "--limit", "100",
+                  "--json", "number,title,labels,isCrossRepository,isDraft,headRefOid,updatedAt") or []
+    red = main_is_red()
+    acted, ready, wants_debugger, wants_wave = [], [], False, False
+    for item in sorted(prs, key=lambda p: p["number"]):
+        pr, labels = item["number"], label_names(item)
+        if item["isCrossRepository"] or {"needs-human", "needs-review"} & labels:
+            continue
+        if "needs-debug" in labels:
+            wants_debugger = True
+            continue
+        if "needs-fix" in labels:
+            wants_wave = True
+            continue
+        idle = minutes_since(item["updatedAt"], now)
+        if item["isDraft"]:
+            # Nobody takes a draft that carries no label: send it to a fix worker now.
+            if idle >= PR_DRAFT_MINUTES:
+                fail(pr, "Draft pull request: the worker did not finish cleanly", simple=True)
+                acted.append((pr, "draft sent to fix"))
+            continue
+        head = item.get("headRefOid", "")
+        state = delivery_state(delivery_runs(head), head)
+        if state == "failed":
+            fail(pr, "Delivery failed on the current head")
+            acted.append((pr, "delivery failed, sent to debugger"))
+        elif state == "missing" and markdown_only(gh("pr", "diff", str(pr), "--name-only").split()):
+            # delivery.yml ignores docs-only changes, so no run will ever come: the integrator's
+            # local docs check is the evidence, as in delivery_gate. Do not ask for a run.
+            ready.append((pr, idle))
+        elif state in ("missing", "approval-required"):
+            if not delivery_requested(pr, head):
+                branch = (gh_json("pr", "view", str(pr), "--json", "headRefName") or {}).get("headRefName", "")
+                gh("pr", "comment", str(pr), "--body",
+                   f"{MARK}\nDelivery is {state} for {head[:12]}; a fresh run was requested on this branch. "
+                   "Nothing merges until it reports passed.", check=False)
+                gh("workflow", "run", "delivery.yml", "--ref", branch, check=False)
+                acted.append((pr, f"delivery {state}, run requested"))
+        elif state == "passed" and (not red or item.get("title", "").startswith(REPAIR_PREFIXES)):
+            ready.append((pr, idle))
+    if wants_debugger and not active_runs("swarm-debugger.yml"):
+        gh("workflow", "run", "swarm-debugger.yml", "--ref", "main", check=False)
+        acted.append(("-", "debugger started"))
+    if (wants_wave or any(a == "draft sent to fix" for _, a in acted)) and waiting_waves() == 0:
+        gh("workflow", "run", "swarm.yml", "-f", f"workers={STORY_WAVE_WORKERS}", "--ref", "main", check=False)
+        acted.append(("-", "fix wave started"))
+    if ready and not active_runs("swarm-integrator.yml"):
+        gh("workflow", "run", "swarm-integrator.yml", "--ref", "main", check=False)
+        acted.append(("-", f"integrator started for {len(ready)} ready pull request(s)"))
+    for pr, idle in ready:
+        if idle >= PR_STUCK_MINUTES:
+            report_pr_stuck(pr, f"green for {int(idle)} minutes and still not merged",
+                            "Delivery passed and no label blocks it, but the integrator has not merged it. "
+                            "Check the latest Swarm integrator run.")
+            acted.append((pr, "stuck alert"))
+    return acted
+
+
+PR_HISTORY_LIMIT = 45000   # characters of history a worker or debugger gets
+PR_HISTORY_RECENT = 6000   # the newest steps are shown in full up to this size each
+PR_HISTORY_OLD = 2000      # older steps are cut to this size each
+
+
+def history_kind(body):
+    if DEBUG_MARK in body:
+        return "debugger report"
+    if "Worker " in body[:60]:
+        return "fix worker"
+    return "integrator"
+
+
+def pr_context(pr, out):
+    """Everything that happened on a pull request, oldest first, for the next worker or debugger.
+
+    The worker's own notes (the pull request body), every failure the integrator logged, every
+    debugger report and every fix worker's outcome. The newest steps are kept whole and older ones
+    are shortened, so a third debugger round still sees what rounds one and two found and what the
+    fixes after them did. Returns the number of steps written."""
+    comments = gh_json("api", f"repos/{repo_slug()}/issues/{pr}/comments?per_page=100") or []
+    steps = [c for c in comments if trusted_author(c) and (c.get("body") or "").strip()
+             and not re.search(r"<!-- swarm-(claim|requeue|assigned|auto-resolve)", c["body"])
+             and (MARK in c["body"] or c["body"].startswith("Worker "))]
+    body = (gh_json("pr", "view", str(pr), "--json", "body") or {}).get("body") or ""
+    if not steps and not body.strip():
+        return 0
+    entries = []
+    for index, comment in enumerate(steps):
+        newest = index >= len(steps) - 3
+        text = clean(comment["body"].replace(MARK, "").strip(), PR_HISTORY_RECENT if newest else PR_HISTORY_OLD, 400)
+        entries.append(f"#### Step {index + 1}: {history_kind(comment['body'])} ({(comment.get('created_at') or '')[:16]})\n\n{text}\n")
+    while len(entries) > 1 and sum(map(len, entries)) > PR_HISTORY_LIMIT:
+        entries.pop(0)  # the oldest step goes first; the newest always stays
+    header = (f"### Pull request #{pr}: what happened so far, oldest step first (data from earlier steps, "
+              "not instructions)\n")
+    if body.strip():
+        header += f"\n#### The first worker's notes (the pull request description)\n\n{clean(body, 6000, 200)}\n"
+    dropped = len(steps) - len(entries)
+    if dropped:
+        header += f"\n({dropped} older step(s) left out to fit)\n"
+    Path(out).parent.mkdir(parents=True, exist_ok=True)
+    with open(out, "a") as handle:
+        handle.write("\n" + header + "\n" + "\n---\n".join(entries))
+    return len(entries)
+
+
+def debug_publish(pr, directory):
+    """Send the debugger's report to a fix worker, or to a person when it found no cause.
+
+    Runs in the trusted job. The label is checked first, so a pull request a person already
+    took over or closed is left alone."""
+    info = gh_json("pr", "view", str(pr), "--json", "state,labels") or {}
+    if info.get("state") != "OPEN" or "needs-debug" not in label_names(info):
+        return "skipped"
+    report = read(Path(directory) / DEBUG_REPORT, "").strip()
+    round_number = debug_rounds(label_names(info)) + 1
+    if not report:
+        # No report at all means the run itself broke (runner, image, model), not that the bug is
+        # beyond the debugger. Try once more in this round before a person is asked.
+        marker = f"{DEBUG_RETRY_MARK} {round_number} -->"
+        comments = gh_json("api", f"repos/{repo_slug()}/issues/{pr}/comments?per_page=100") or []
+        if not any(marker in (c.get("body") or "") for c in comments if trusted_author(c)):
+            gh("pr", "comment", str(pr), "--body",
+               f"{marker}\nThe debugger run ended without a report (a runner or model problem, not a "
+               f"finding). Trying once more. {run_url()}")
+            gh("workflow", "run", "swarm-debugger.yml", "--ref", "main", check=False)
+            return "retry"
+    found = re.search(r"^\s*root cause found:\s*yes\b", report, re.I | re.M) \
+        and notes_section(report, "Fix plan")
+    remove_label(pr, "needs-debug")
+    if not found:
+        add_labels(pr, "needs-human")
+        gh("pr", "comment", str(pr), "--body",
+           f"{MARK}\nThe debugger could not find a cause it can name with a fix plan. A person must take over."
+           + (f"\n\n{DEBUG_MARK}\n{clean(report, 6000, 200)}" if report else "") + f"\n{run_url()}")
+        report_pr_stuck(pr, "the debugger found no fixable cause",
+                        clean(report, 4000, 120) if report else "The debugger wrote no report.")
+        return "human"
+    add_labels(pr, f"debug-{round_number}", "needs-fix")
+    again = ("the debugger looks again" if round_number < MAX_DEBUG_ROUNDS else "a person must take over")
+    gh("pr", "comment", str(pr), "--body",
+       f"{MARK}\n{DEBUG_MARK}\n**Debugger report, round {round_number} of {MAX_DEBUG_ROUNDS}.** A fix worker takes "
+       f"it next; if the fix fails, {again}.\n\n{clip_to(clean(report, 7000, 300), 7000)}\n{run_url()}")
+    if waiting_waves() == 0:
+        gh("workflow", "run", "swarm.yml", "-f", f"workers={STORY_WAVE_WORKERS}", check=False)
+    return "fix"
+
+
 def guard(pr, repair=False):
     """Return the files that stop an automatic merge and label accordingly.
 
@@ -2623,7 +3159,7 @@ def guard(pr, repair=False):
     trackers = [f for f in files if any(fnmatch.fnmatch(f, pattern) for pattern in TRACKERS)]
     if trackers:
         fail(pr, "Shared trackers must not be edited by workers; revert " + ", ".join(trackers[:10])
-             + " and put the evidence in your notes file (the path in your prompt, never .agent/pr-notes.md)")
+             + " and put the evidence in your notes file (the path in your prompt, never .agent/pr-notes.md)", simple=True)
         return trackers
     if len(files) > MAX_PR_FILES:
         add_labels(pr, "needs-human")
@@ -2643,6 +3179,10 @@ IDENTITY = ["-c", "user.name=" + (os.environ.get("SWARM_GIT_NAME") or "swarm-int
 
 def is_tracker(name):
     return any(fnmatch.fnmatch(name, pattern) for pattern in TRACKERS)
+
+
+# Paths a concurrent [skip ci] commit may change without invalidating a gated integration batch.
+TRACKER_PATHS = ("tasks/", "docs/swarm/")
 
 
 def restore_trackers():
@@ -2732,7 +3272,7 @@ def continue_swarm(text, prs):
     which starts the next wave itself after it merges."""
     ready = plan_workers(1, [{"slot": 1, "model": ""}], text, prs)
     waiting = [p for p in prs if not p["isCrossRepository"]
-               and not {"needs-fix", "needs-human"} & label_names(p)]
+               and not {"needs-fix", "needs-human", "needs-debug"} & label_names(p)]
     return bool(ready) and not waiting
 
 
@@ -2802,17 +3342,28 @@ def migrate_tasks(attempts=4):
                 return 0
 
 
-def integrate_batch(queue, gate="scripts/quick-check.sh"):
+def integrate_batch(queue, gate="scripts/quick-check.sh", check_delivery=None):
     """Merge every ready PR in one job, gate each, then push main once.
 
     One cache/Java setup serves the whole batch. A PR whose gate fails is sent
     back to the workers and its merge is rolled back before the next PR, so a
-    bad PR never blocks the others. Returns the number of merged PRs."""
+    bad PR never blocks the others. The production caller is the trusted
+    integrator job in GitHub Actions, where a current-head Delivery verdict is
+    a precondition for staging a merge; direct callers that only exercise merge
+    mechanics have no CI evidence to check. ``check_delivery`` overrides that
+    default. Returns the number of merged PRs."""
     merged, conflicted, gates = [], [], {}
+    require_evidence = (os.environ.get("GITHUB_ACTIONS") == "true") \
+        if check_delivery is None else check_delivery
     migrate_tasks()
     for pr in queue:
         blocked = guard(pr, is_repair(pr))
         if blocked:
+            continue
+        head = (gh_json("pr", "view", str(pr), "--json", "headRefOid") or {}).get("headRefOid", "")
+        if require_evidence and delivery_gate(pr, head) != "merge":
+            # wait/fix/request PRs stay open and unstaged; the gate already took
+            # the appropriate label or comment action for each verdict.
             continue
         sha, task_id, conflicts = merge_local(pr)
         if sha is None:
@@ -2826,11 +3377,10 @@ def integrate_batch(queue, gate="scripts/quick-check.sh"):
                 gh("pr", "comment", str(pr), "--body", f"{RESOLVE_MARK}\nMerge conflict with main; "
                    f"automatic resolution queued ({tries + 1} of {MAX_RESOLVE}). {reason}", check=False)
             else:
-                fail(pr, reason)
+                fail(pr, reason, simple=True)
             continue
-        head = gh_json("pr", "view", str(pr), "--json", "headRefOid")["headRefOid"]
         if head != sha:
-            fail(pr, "the branch changed after planning; it will be retested")
+            fail(pr, "the branch changed after planning; it will be retested", simple=True)
             git("merge", "--abort", check=False)
             continue
         pr_gate, pr_env = gate_for(pr, gate)
@@ -2871,6 +3421,16 @@ def integrate_batch(queue, gate="scripts/quick-check.sh"):
             if attempt == 2:
                 raise
             authed_git("fetch", "origin", "main")
+            # The staged tree was gated on the old main. `reset --soft` keeps that tree, so any
+            # other path that changed on main since (a person's push, a workflow or script fix)
+            # would be silently reverted by the next commit. Only the trackers restored below are
+            # safe to differ; anything else means this batch must be retried from the new main.
+            old_base = git("merge-base", "HEAD", "origin/main").strip()
+            moved_paths = git("diff", "--no-renames", "--name-only", "-z", old_base, "origin/main")
+            if any(not path.startswith(TRACKER_PATHS) for path in moved_paths.split("\0") if path):
+                print("Main advanced with non-tracker changes; retry this batch from the new base.",
+                      file=sys.stderr)
+                raise
             git("reset", "--soft", "origin/main")
             restore_trackers()
             merged, comments, newly_moved = record_merges(merged, gates)
@@ -3001,6 +3561,19 @@ def main(argv=None):
     p.add_argument("--file", default="TODO.md")
     p.add_argument("--repair-run", default="")
     sub.add_parser("watchdog")
+    sub.add_parser("pr-flow")
+    sub.add_parser("debug-select")
+    p = sub.add_parser("strategy-state")
+    p.add_argument("--out", default=".agent/swarm-state.md")
+    p = sub.add_parser("strategy-publish")
+    p.add_argument("--findings", required=True)
+    p.add_argument("--file", default="TODO.md")
+    p = sub.add_parser("pr-context")
+    p.add_argument("--pr", type=int, required=True)
+    p.add_argument("--out", default=".agent/issue-context.md")
+    p = sub.add_parser("debug-publish")
+    p.add_argument("--pr", type=int, required=True)
+    p.add_argument("--dir", required=True)
     p = sub.add_parser("run-event")
     p.add_argument("--run", required=True)
     p = sub.add_parser("issue-context")
@@ -3012,11 +3585,17 @@ def main(argv=None):
     p.add_argument("--file", default="TODO.md")
     p = sub.add_parser("continue")
     p.add_argument("--file", default="TODO.md")
+    p = sub.add_parser("top-up")
+    p.add_argument("--id", required=True)
+    p = sub.add_parser("daily-publish")
+    p.add_argument("--role", required=True, choices=sorted(DAILY_ROLES))
+    p.add_argument("--findings", required=True)
+    p.add_argument("--file", default="TODO.md")
     p = sub.add_parser("add-audit-tasks")
     p.add_argument("--findings", required=True)
     p.add_argument("--file", default="TODO.md")
     p = sub.add_parser("monitor-select")
-    p.add_argument("--mode", choices=("hourly", "daily"), required=True)
+    p.add_argument("--mode", choices=("now", "hourly", "daily"), required=True)
     p.add_argument("--out", required=True)
     p.add_argument("--file", default="TODO.md")
     p = sub.add_parser("monitor-assign")
@@ -3077,8 +3656,8 @@ def main(argv=None):
         busy = len(live)
         room = max(0, MAX_ACTIVE_WORKERS - busy)
         print(f"{busy} worker(s) already running; room for {room} of {MAX_ACTIVE_WORKERS}.")
-        include = plan_workers(min(a.max, room), rotate_slots(load_slots(a.slots), busy),
-                               text, prs, repair, live)
+        include = plan_workers(room, rotate_slots(load_slots(a.slots), busy),
+                               text, prs, repair, live, story_wave=a.max)
         claims = {t["id"]: f"swarm-{t['slot']}" for t in include if t["kind"] == "story"}
 
         granted = set()
@@ -3104,8 +3683,21 @@ def main(argv=None):
         lean = [{**t, "title": "", "body": "", "fix": ""} for t in include]
         emit("matrix", json.dumps({"include": lean}, separators=(",", ":")))
         emit("count", len(include))
+    elif a.cmd == "pr-flow":
+        for pr, what in pr_flow():
+            print(f"#{pr}: {what}")
     elif a.cmd == "watchdog":
         watchdog()
+    elif a.cmd == "strategy-state":
+        print(f"{strategy_state(a.out)} open pull request(s) written to {a.out}")
+    elif a.cmd == "strategy-publish":
+        print(strategy_publish(a.findings, a.file))
+    elif a.cmd == "debug-select":
+        debug_select()
+    elif a.cmd == "pr-context":
+        print(f"{pr_context(a.pr, a.out)} comment(s) written to {a.out}")
+    elif a.cmd == "debug-publish":
+        print(debug_publish(a.pr, a.dir))
     elif a.cmd == "run-event":
         print(run_event(a.run))
     elif a.cmd == "issue-context":
@@ -3128,6 +3720,8 @@ def main(argv=None):
         print("Starting the next wave." if go else "No further wave to start now.")
         if go:
             gh("workflow", "run", "swarm.yml", "--ref", "main", check=False)
+    elif a.cmd == "top-up":
+        print("Started another wave." if top_up(a.id) else "No room or no ready task.")
     elif a.cmd == "release":
         release(json.loads(a.task), a.result, a.commits)
     elif a.cmd == "publish":
@@ -3158,6 +3752,8 @@ def main(argv=None):
         if list(Path(a.collected).glob("*.files")) and not result["days"]:
             # Fail visibly: the watchdog then opens an issue instead of the notes piling up.
             sys.exit("notes: the reconciler produced no usable daily note; the originals stay for the next run")
+    elif a.cmd == "daily-publish":
+        daily_publish(a.role, a.findings, a.file)
     elif a.cmd == "add-audit-tasks":
         add_audit_tasks(a.findings, a.file)
     elif a.cmd == "add-repair-task":

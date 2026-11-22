@@ -1,5 +1,5 @@
-- [-] RESP-APP-ROOT-NAVIGATOR · Patient app: tablet, landscape and large-text layout for `RootNavigator` (app)
-  - agent: swarm-9
+- [x] RESP-APP-ROOT-NAVIGATOR · Patient app: tablet, landscape and large-text layout for `RootNavigator` (app)
+  - pr: #664
   - attempts: 1
   - requirements: PAT-01, PAT-02, UX-01
   - scope: apps/patient-mobile/src/app/RootNavigator.tsx, apps/patient-mobile/src/app/RootNavigator.tablet.test.tsx

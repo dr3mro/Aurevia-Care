@@ -283,6 +283,28 @@ def parse_tasks(text):
     return tasks
 
 
+WORKER_CAP = 20  # the most workers the swarm runs at once (MAX_ACTIVE_WORKERS in swarm.py)
+WORKER_JOB = re.compile(r"^Swarm worker(?: \((?:story|fix), (?P<id>[A-Za-z0-9-]+),)?")
+
+
+def worker_counts(live, jobs):
+    """(running, queued) workers across the live Agent swarm runs.
+
+    A worker is one task: its Work and Publish jobs count once, as swarm.py's live_workers does.
+    Running means a job of the worker is in progress; queued means it has jobs but none running."""
+    running, queued = set(), set()
+    for run in live:
+        if run.get("workflowName") != "Agent swarm":
+            continue
+        for job in jobs.get(run.get("databaseId"), None) or []:
+            match = WORKER_JOB.match(job.get("name") or "")
+            if not match or job.get("status") == "completed":
+                continue
+            key = (run.get("databaseId"), match.group("id") or job.get("name"))
+            (running if job.get("status") == "in_progress" else queued).add(key)
+    return len(running), len(queued - running)
+
+
 def job_summary(jobs, now):
     """One short line about a live run's jobs: what runs, what waits, how many finished."""
     running = [j for j in jobs if j.get("status") == "in_progress"]
@@ -420,6 +442,7 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False, loading=frozenset()):
     n_done = sum(1 for t in todo if t["status"] == "done") + len(re.findall(r"^- \[x\] ", data.get("archive") or "", re.M))
     n_open = sum(1 for t in todo if t["status"] == "todo")
     taken = [t for t in todo if t["status"] == "taken"]
+    busy_workers, queued_workers = worker_counts(live, jobs)
     n_all = n_done + n_open + len(taken)
     hot = sum(1 for x in issues + prs for l in x.get("labels", []) if l["name"] == "needs-human")
     day_ok = (len(runs_day) - len(failed_day)) / len(runs_day) if runs_day else 1.0
@@ -429,7 +452,8 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False, loading=frozenset()):
     title = f" {data['repo'] or 'repo'}  ·  swarm monitor"
     top = [[(title + " " * max(W - 2 - len(title) - len(stamp) - 1, 1) + stamp + " ", "bar")]]
     cards = [("MAIN", f"{msym} {mstate}", "b_" + mcol, age(main["updatedAt"]) if main else "-"),
-             ("RUNNING", str(len(live)), "b_yellow" if live else "gray", "active runs"),
+             ("WORKERS", f"{busy_workers}/{WORKER_CAP}", "b_yellow" if busy_workers else "gray",
+              f"running, {queued_workers} queued" if queued_workers else "running"),
              ("MERGED 24h", str(len(merged_day)), "b_green" if merged_day else "gray", "pull requests"),
              ("FAILED 24h", str(len(failed_day)), "b_red" if failed_day else "b_green", f"of {len(runs_day)} runs"),
              ("CLOSED 24h", str(len(closed_day)), "b_yellow" if closed_day else "gray", "not merged"),
@@ -438,7 +462,7 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False, loading=frozenset()):
               f"+{churn.get('add', 0)} -{churn.get('del', 0)} {churn.get('files', 0)}f" if churn else "no data"),
              ("MEDIAN RUN", span(median), "b_cyan", f"{len(durs)} runs"),
              ("NEEDS HUMAN", str(hot), "b_red" if hot else "b_green", "issues, PRs")]
-    waits = {"MAIN": {"runs"}, "RUNNING": {"runs"}, "MERGED 24h": {"merged"}, "FAILED 24h": {"runs"}, "CLOSED 24h": {"closed"},
+    waits = {"MAIN": {"runs"}, "WORKERS": {"runs", "jobs"}, "MERGED 24h": {"merged"}, "FAILED 24h": {"runs"}, "CLOSED 24h": {"closed"},
              "COMMITS": {"total"}, "COMMITS LAST 24H": {"churn"}, "MEDIAN RUN": {"runs"}, "NEEDS HUMAN": {"issues", "prs"}}
     cards = [(c[0], "…", "gray", "loading") if waits.get(c[0], set()) & loading else c for c in cards]
 
@@ -668,9 +692,12 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False, loading=frozenset()):
         return ([("+", "green"), (" ", ""), (f"#{p['number']}".ljust(5), "blue"), (" ", "")] + body
                 + [(" " * (room - used + 1), ""), (age(p["mergedAt"]).rjust(10), "dim")])
 
-    idw = max([len(t["id"]) for t in taken] or [8])
+    # The id column is as wide as the longest id on screen, at most ID_MAX: one very long id used to
+    # pad every row and push the titles to the right edge, where they were cut off.
+    ID_MAX = 20
+    idw = min(max([len(t["id"]) for t in taken[:12]] or [8]), ID_MAX)
     queue = [t for t in todo if t["status"] == "todo"]
-    qw = max([len(t["id"]) for t in queue[:12]] or [8])
+    qw = min(max([len(t["id"]) for t in queue[:12]] or [8]), ID_MAX)
     right = [dict(title="Swarm Tasks Taken", total=len(taken), col="cyan", border="gray", prio=2,
                   items=[cells(iw, (">", "yellow", 1), (t["agent"] or "-", "magenta", 9), (t["id"], "b_cyan", idw), (t["title"], "", None))
                          for t in taken]),
@@ -807,7 +834,9 @@ def tui(stdscr):
         threading.Thread(target=refresh, daemon=True).start()
 
     seen, alarm, checked_at, last = None, None, 0.0, None
-    started_at, started_note = 0.0, ""
+    started_at, started_note, muted = 0.0, "", False
+    autostart = bool(AUTOSTART)
+    autostart_wait = AUTOSTART or 10
     stdscr.timeout(200)
     kick()
     while True:
@@ -819,6 +848,10 @@ def tui(stdscr):
                 return
             elif key in (ord("r"), ord("R")):
                 kick()
+            elif key in (ord("m"), ord("M")):
+                muted = not muted  # the alarm still shows; only the sound stops
+            elif key in (ord("s"), ord("S")):
+                autostart = not autostart
         if st["at"] and time.time() - st["at"] >= INTERVAL:
             kick()
         with lock:
@@ -841,17 +874,18 @@ def tui(stdscr):
                     ids = (alarm["ids"] if alarm else set()) | {r["databaseId"] for r in fresh}
                     alarm = {"ids": ids, "text": text, "next": now}
             seen = set(failed_now) | (seen or set())
-            if AUTOSTART and swarm_idle(data) and now - started_at >= AUTOSTART * 60:
+            if autostart and swarm_idle(data) and now - started_at >= autostart_wait * 60:
                 err = start_swarm()
                 started_at = now
                 started_note = (f"swarm start failed: {err}" if err else
                                 f"swarm was idle, started a wave at {datetime.now().strftime('%H:%M')}")
         if alarm and now >= alarm["next"]:
-            beep()
+            if not muted:
+                beep()
             alarm["next"] = now + 5
         H, W = stdscr.getmaxyx()
         phase = int(now * 3) % 2 if alarm else 0
-        sig = (H, W, at, busy, phase, bool(alarm), int(now // 5), started_note, len(loading), ready)
+        sig = (H, W, at, busy, phase, bool(alarm), int(now // 5), started_note, len(loading), ready, muted, autostart)
         if sig == last:
             continue
         last = sig
@@ -885,15 +919,17 @@ def tui(stdscr):
             if i < len(right):
                 put(y, cw + 1, right[i], min(cw, W - cw - 2))
         if alarm:
-            msg = f" !! NEW FAILED RUN: {alarm['text']}  -  press ANY KEY to silence the alarm (beeps every 5s) "
+            msg = f" !! NEW FAILED RUN: {alarm['text']}  -  press ANY KEY to silence the alarm ({'muted' if muted else 'beeps every 5s'}) "
             a = pair["red"] | curses.A_BOLD | (curses.A_REVERSE if phase else 0)
             stdscr.addstr(H - 1, 0, msg.ljust(W - 1)[: W - 1], a)
         else:
             status = (f"loading {len(st['data']) - len(loading)}/{len(st['data'])}..." if loading else "refreshing..." if busy
                       else f"updated {span(time.time() - at)} ago")
-            foot = f" q quit · r refresh · every {INTERVAL}s · {status}"
-            if AUTOSTART:
-                foot += f" · {started_note or f'auto-start on ({AUTOSTART}m)'}"
+            auto_status = f"on ({autostart_wait}m)" if autostart else "off"
+            foot = f" q quit · r refresh · m {'unmute' if muted else 'mute'}{' (MUTED)' if muted else ''} · s auto-start {auto_status}"
+            if autostart and started_note:
+                foot += f" · {started_note}"
+            foot += f" · every {INTERVAL}s · {status}"
             stdscr.addstr(H - 1, 0, foot[: W - 1], attr["dim"])
         stdscr.refresh()
 

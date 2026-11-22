@@ -1,6 +1,6 @@
 ---
 name: smartclinic-patient-user
-description: "Exercise the mobile product as a simulated patient."
+description: "Exercises the mobile product as a simulated patient. Use when a patient-facing slice needs a synthetic walkthrough on iOS or Android."
 ---
 
 # Patient User

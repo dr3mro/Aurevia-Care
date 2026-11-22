@@ -1,4 +1,5 @@
 import json
+import subprocess
 import os
 import tempfile
 import unittest
@@ -306,13 +307,26 @@ class HandoffTests(unittest.TestCase):
 class RunEventTests(unittest.TestCase):
     def event(self, info, log="", **kw):
         fake = Gh(run_info=info, log=log, **kw)
-        with mock.patch.object(swarm, "gh", fake):
+        with mock.patch.object(swarm, "gh", fake), mock.patch.object(swarm, "waiting_waves", return_value=0):
             return swarm.run_event(5), fake
 
     FAILED = {"name": "Delivery", "conclusion": "failure", "url": "https://x/run/5", "headBranch": "main",
               "headSha": "abcdef123", "event": "push", "attempt": 1,
               "jobs": [{"name": "Java", "conclusion": "failure",
                         "steps": [{"name": "Coverage", "conclusion": "failure"}]}]}
+
+    def test_a_run_github_no_longer_has_is_skipped_but_other_errors_are_not(self):
+        def gone(*args, check=True):
+            raise subprocess.CalledProcessError(
+                1, args, "", "gh run view 5: HTTP 404: Not Found (https://api.github.com/x/jobs)")
+        with mock.patch.object(swarm, "gh", gone):
+            self.assertIn("no longer exists", swarm.run_event(5))
+
+        def broken(*args, check=True):
+            raise subprocess.CalledProcessError(1, args, "", "HTTP 401: Bad credentials")
+        with mock.patch.object(swarm, "gh", broken):
+            with self.assertRaises(subprocess.CalledProcessError):
+                swarm.run_event(5)
 
     def test_pull_request_runs_are_ignored(self):
         result, fake = self.event({**self.FAILED, "event": "pull_request"})
@@ -328,6 +342,16 @@ class RunEventTests(unittest.TestCase):
         body = args[args.index("--body") + 1]
         self.assertIn("Java / Coverage", body)
         self.assertIn("<!-- swarm-workflow:delivery -->", body)
+
+    def test_a_red_main_starts_a_wave_at_once_unless_one_is_already_waiting(self):
+        for waiting, branch, workflow, started in ((0, "main", "Delivery", True), (1, "main", "Delivery", False),
+                                                    (0, "feature", "Delivery", False), (0, "main", "Daily audit", False)):
+            with self.subTest(waiting=waiting, branch=branch, workflow=workflow):
+                fake = Gh(run_info={**self.FAILED, "headBranch": branch, "name": workflow}, log="test failed")
+                with mock.patch.object(swarm, "gh", fake), \
+                        mock.patch.object(swarm, "waiting_waves", return_value=waiting):
+                    swarm.run_event(5)
+                self.assertEqual(fake.said("--ref", "swarm.yml"), started)
 
     def test_a_transient_error_is_rerun_once_and_not_reported(self):
         result, fake = self.event(self.FAILED, log="curl: ECONNRESET")
@@ -395,6 +419,19 @@ class WatchdogTests(unittest.TestCase):
         self.assertIn("stalled", args)
         self.assertIn("needs-human", args)
         self.assertIn("CW-001", args[args.index("--body") + 1])
+
+    def test_the_watchdog_starts_a_wave_when_none_has_run_for_half_an_hour(self):
+        fake = self.run_dog([self.run_at(45)])
+        self.assertTrue(fake.said("--ref", "main", "swarm.yml"))
+        self.assertFalse(fake.said("issue", "create"))
+
+    def test_the_watchdog_leaves_a_recent_wave_a_running_wave_and_an_empty_queue_alone(self):
+        Path("TODO.md").write_text("# TODO\n\n## Tasks\n")
+        for runs, todo in (([self.run_at(10)], TODO), ([self.run_at(300, "in_progress")], TODO),
+                           ([self.run_at(300)], "# TODO\n\n## Tasks\n")):
+            with self.subTest(runs=runs[0]["status"], todo=len(todo)):
+                Path("TODO.md").write_text(todo)
+                self.assertFalse(self.run_dog(runs).said("--ref"))
 
     def test_a_recent_wave_is_not_a_stall(self):
         fake = self.run_dog([self.run_at(20)])
@@ -471,7 +508,8 @@ class ContextTests(unittest.TestCase):
         self.assertFalse(fake.said("Worker 4"))
 
     def test_a_run_that_fails_to_release_does_not_change_labels(self):
-        fake = Gh(pr_info={"title": "T", "headRefName": "swarm/CW-001-4", "url": "u"})
+        fake = Gh(pr_info={"title": "T", "headRefName": "swarm/CW-001-4", "url": "u",
+                           "labels": [{"name": "debug-1"}, {"name": "debug-2"}, {"name": "debug-3"}]})
         with mock.patch.object(swarm, "gh", fake):
             swarm.release({"slot": 1, "id": "CW-001", "kind": "fix", "number": 7}, "failed", 0)
         self.assertTrue(fake.said("issue", "create"))

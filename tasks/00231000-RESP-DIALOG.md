@@ -1,5 +1,5 @@
-- [-] RESP-DIALOG · Staff web: responsive `Dialog` component
-  - agent: swarm-5
+- [x] RESP-DIALOG · Staff web: responsive `Dialog` component
+  - pr: #596
   - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/components/Dialog.tsx, apps/staff-web/tests/components/Dialog.responsive.test.tsx

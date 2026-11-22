@@ -1,4 +1,6 @@
-- [ ] RESP-APP-CONVERSATION-THREAD · Patient app: tablet, landscape and large-text layout for `ConversationThread` (conversations)
+- [x] RESP-APP-CONVERSATION-THREAD · Patient app: tablet, landscape and large-text layout for `ConversationThread` (conversations)
+  - pr: #645
+  - attempts: 1
   - requirements: PAT-01, PAT-02, UX-01
   - scope: apps/patient-mobile/src/features/conversations/ConversationThread.tsx, apps/patient-mobile/src/features/conversations/ConversationThread.tablet.test.tsx
   - depends: RESP-APP-LAYOUT-HOOK, RESP-APP-CONFIG

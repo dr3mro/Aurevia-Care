@@ -1,6 +1,6 @@
 ---
 name: smartclinic-system-designer
-description: "Design deployment topology, load balancing, capacity and recovery."
+description: "Designs deployment topology, load balancing, capacity and recovery. Use when a change affects scaling, availability, capacity or disaster recovery."
 ---
 
 # System Designer

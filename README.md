@@ -84,7 +84,7 @@ Pushing a `v*` tag runs the release workflow, which builds the image on native a
 git tag v0.1.0 && git push origin v0.1.0
 ```
 
-The workflow file is `infra/app/release-app-image.yml`; copy it to `.github/workflows/release-app-image.yml` to enable it.
+The workflow file is `.github/workflows/release-app-image.yml`.
 
 ## Development
 

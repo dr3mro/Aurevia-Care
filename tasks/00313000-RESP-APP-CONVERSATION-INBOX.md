@@ -1,4 +1,6 @@
-- [ ] RESP-APP-CONVERSATION-INBOX · Patient app: tablet, landscape and large-text layout for `ConversationInbox` (conversations)
+- [x] RESP-APP-CONVERSATION-INBOX · Patient app: tablet, landscape and large-text layout for `ConversationInbox` (conversations)
+  - pr: #643
+  - attempts: 1
   - requirements: PAT-01, PAT-02, UX-01
   - scope: apps/patient-mobile/src/features/conversations/ConversationInbox.tsx, apps/patient-mobile/src/features/conversations/ConversationInbox.tablet.test.tsx
   - depends: RESP-APP-LAYOUT-HOOK, RESP-APP-CONFIG

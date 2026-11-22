@@ -1,5 +1,6 @@
-- [ ] RESP-BUTTON · Staff web: responsive `Button` component
-  - attempts: 1
+- [x] RESP-BUTTON · Staff web: responsive `Button` component
+  - pr: #619
+  - attempts: 2
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/components/Button.tsx, apps/staff-web/tests/components/Button.responsive.test.tsx
   - depends: RESP-BREAKPOINTS, RESP-STYLESHEET

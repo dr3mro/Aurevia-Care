@@ -1,6 +1,6 @@
 ---
 name: smartclinic-senior-typescript
-description: "Review changes as Senior TypeScript."
+description: "Reviews strict TypeScript, shared types and generated clients. Use when a change touches TypeScript in any app, a generated client, a shared type or a Node dependency."
 ---
 
 # Senior TypeScript
@@ -16,3 +16,25 @@ Unit tests do not replace the typechecker. Before claiming green:
 3. When a constructor or function gains a required field (for example `correlationId` on error details), update every call site in the same change — including tests that previously passed `{}`.
 
 Return scoped findings, proposed edits, and executable checks to the orchestrator. Report which checks were actually observed.
+
+## Common rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| It typechecks under `any`. | That is rejected. Fix the type. |
+| I added a required field, the tests will tell me. | Update every call site in the same change, including tests that passed `{}`. |
+| Runtime validation is redundant with types. | Untrusted boundaries keep runtime validation; types do not exist at runtime. |
+
+## Red flags
+
+- A public unit, script or migration with no doc comment, or a comment that only repeats the code instead of saying why.
+- `@ts-ignore`, `as any` or a widened type.
+- A changed shared type with an unchecked consumer app.
+- A dependency added with no lock file change.
+
+## Verification
+
+- [ ] New or changed public units carry doc comments (purpose, inputs, outputs, errors, invariant) and tricky code explains why.
+- [ ] `npm run typecheck` or the module `check.sh` passes in every changed module.
+- [ ] No new `any` or ignore comment.
+- [ ] Boundary inputs are validated at runtime.
