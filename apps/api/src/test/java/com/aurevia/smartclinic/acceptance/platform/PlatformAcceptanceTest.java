@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -61,11 +62,11 @@ import com.aurevia.smartclinic.tenant.TenantContext;
  * Gate G0 and G1 acceptance evidence against a real PostgreSQL instance.
  *
  * <p>Requirements proved by this suite: ARC-02 (tenant isolation across API,
- * search, files, workers and exports, with fail-closed context), IAM-04
- * (all-or-nothing duplicate consolidation and immediate revocation of an
- * active membership), CLN-01 (competing bookings keep one protected slot) and
- * CLN-05 (a stale draft cannot overwrite a signed note). Requirement IDs are
- * named on each test method and in the Javadoc of its fixtures.</p>
+ * search, files, workers and exports, with fail-closed context), IAM-02
+ * (a deactivated member is refused on the next protected request), IAM-04
+ * (all-or-nothing duplicate consolidation), CLN-01 (competing bookings keep
+ * one protected slot) and CLN-05 (a stale draft cannot overwrite a signed
+ * note). Requirement IDs are named on each test method.</p>
  *
  * <p>Two synthetic organizations reuse exactly the same local identifiers —
  * facility code {@code MAIN}, issuer-scoped MRN {@code MRN-SHARED@CLINIC},
@@ -424,9 +425,11 @@ class PlatformAcceptanceTest {
         assertEquals(HttpStatus.NOT_FOUND,
                 content("/api/v1/documents/associations/" + fileA + "/content", "clinician-b", ORG_B)
                         .getStatusCode());
-        assertEquals(HttpStatus.OK,
-                content("/api/v1/documents/associations/" + fileA + "/content", "clinician-a", ORG_A)
-                        .getStatusCode());
+        ResponseEntity<byte[]> ownedBytes = content(
+                "/api/v1/documents/associations/" + fileA + "/content", "clinician-a", ORG_A);
+        assertEquals(HttpStatus.OK, ownedBytes.getStatusCode());
+        assertEquals(new String(ORIGINAL, StandardCharsets.UTF_8),
+                new String(ownedBytes.getBody(), StandardCharsets.UTF_8));
 
         String eventA = publishEvent("worker-a", ORG_A);
         String eventB = publishEvent("worker-b", ORG_B);
@@ -485,8 +488,10 @@ class PlatformAcceptanceTest {
 
         // Forced RLS with WITH CHECK on export_job confines each tenant to its
         // own row even though object_id is byte-identical across the two tenants.
-        assertEquals("1", scalar(ORG_A, "admin-a", "SELECT count(*) FROM public.export_job"));
-        assertEquals("1", scalar(ORG_B, "admin-b", "SELECT count(*) FROM public.export_job"));
+        assertEquals("1", scalar(ORG_A, "admin-a",
+                "SELECT count(*) FROM public.export_job WHERE id = '" + jobA + "'"));
+        assertEquals("1", scalar(ORG_B, "admin-b",
+                "SELECT count(*) FROM public.export_job WHERE id = '" + jobB + "'"));
         assertEquals("0", scalar(ORG_A, "admin-a",
                 "SELECT count(*) FROM public.export_job WHERE id = '" + jobB + "'"));
         assertEquals("0", scalar(ORG_B, "admin-b",
@@ -515,8 +520,10 @@ class PlatformAcceptanceTest {
     }
 
     /**
-     * ARC-02 / IAM-04 / G0: a deactivated member loses access on the next
-     * request, while the peer tenant's membership is unaffected.
+     * ARC-02 / IAM-02 / G0: a deactivated member loses access on the next
+     * protected request, while the peer tenant's membership is unaffected.
+     * Revocation of outstanding invitations and protected releases is a
+     * separate G3 access path and is not claimed by this test.
      */
     @Test
     void revocationAppliesOnTheNextRequest() {
@@ -575,12 +582,14 @@ class PlatformAcceptanceTest {
             int created = 0;
             int conflicted = 0;
             for (Future<ResponseEntity<String>> future : futures) {
-                HttpStatus status = HttpStatus.valueOf(future.get(60, TimeUnit.SECONDS)
-                        .getStatusCode().value());
+                ResponseEntity<String> response = future.get(60, TimeUnit.SECONDS);
+                HttpStatus status = HttpStatus.valueOf(response.getStatusCode().value());
                 if (status == HttpStatus.CREATED) {
                     created++;
                 } else if (status == HttpStatus.CONFLICT) {
                     conflicted++;
+                } else {
+                    fail("unexpected booking status " + status + ": " + response.getBody());
                 }
             }
             assertEquals(1, created, "only one competing booking may win the protected slot");
@@ -637,7 +646,12 @@ class PlatformAcceptanceTest {
         assertTrue(view.getBody().contains("\"signed\""));
         assertTrue(view.getBody().contains("Chief concern: chest pain"));
         assertFalse(view.getBody().contains("Late content"));
-        assertEquals(signedChecksum, field(signed.getBody(), "contentChecksum"));
+        // The signed checksum must be the digest of the original draft content
+        // and must be the value preserved in the append-only revision history,
+        // not an echo of the sign response.
+        assertFalse(signedChecksum.isBlank());
+        assertEquals(sha256("Chief concern: chest pain".getBytes(StandardCharsets.UTF_8)), signedChecksum);
+        assertEquals(signedChecksum, field(view.getBody(), "contentChecksum"));
     }
 
     /**
