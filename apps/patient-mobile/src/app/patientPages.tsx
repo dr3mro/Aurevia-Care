@@ -180,9 +180,9 @@ export function AppointmentListPage({
    *
    * A press while a command is in flight is dropped before any request or state
    * change. The server instant becomes the displayed timestamp on success; a
-   * stale version reloads the list instead of asserting a confirmation; a 401
-   * ends the session; every other failure leaves the row untouched so the
-   * patient can retry.
+   * stale version or an already-confirmed row reloads the list instead of
+   * asserting a confirmation; a 401 ends the session; every other failure
+   * leaves the row untouched so the patient can retry.
    */
   const confirm = useCallback(
     async (row: AppointmentView): Promise<void> => {
@@ -206,6 +206,13 @@ export function AppointmentListPage({
           setReloadCount((value) => value + 1);
         } else if (result.kind === 'unauthenticated') {
           onSessionExpired();
+        } else if (result.error.code === 'NOT_CONFIRMABLE') {
+          // The server may have committed before its reply was lost. A retry
+          // with the old version then reports 422 NOT_CONFIRMABLE because the
+          // row is already confirmed; reload to show the server's truth rather
+          // than looping on a retry that can never succeed.
+          setConfirmedRows({});
+          setReloadCount((value) => value + 1);
         }
       } finally {
         releasePendingCommand(pendingRef);

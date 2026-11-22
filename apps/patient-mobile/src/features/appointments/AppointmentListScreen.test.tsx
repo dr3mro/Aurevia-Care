@@ -115,6 +115,31 @@ describe('AppointmentListScreen', () => {
     expect(confirm.calls).toEqual([]);
   });
 
+  it('disables every confirm control while any appointment command is in flight', async () => {
+    const confirm = confirmRecorder();
+    const second: AppointmentView = {
+      ...pending,
+      key: 'org-a\u0000apt-2',
+      id: 'apt-2',
+    };
+    const view = await render(
+      <AppointmentListScreen
+        appointments={[pending, second]}
+        notice={notice}
+        patientId="patient-1"
+        devices={[]}
+        onConfirm={confirm.fn}
+        pendingAppointmentId="apt-1"
+        onOpenDetails={recorder().fn}
+        onRevokeDevice={recorder().fn}
+      />,
+    );
+    expect(view.getByTestId('confirm-apt-1').props.accessibilityState).toEqual({ disabled: true });
+    expect(view.getByTestId('confirm-apt-2').props.accessibilityState).toEqual({ disabled: true });
+    await fireEvent.press(view.getByTestId('confirm-apt-2'));
+    expect(confirm.calls).toEqual([]);
+  });
+
   it('shows a confirmed visit without a confirmation action', async () => {
     const confirmed: AppointmentView = {
       ...pending,

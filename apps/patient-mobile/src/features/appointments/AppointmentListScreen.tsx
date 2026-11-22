@@ -32,7 +32,11 @@ export interface AppointmentListScreenProps {
    * The row carries the version the confirm command must echo.
    */
   readonly onConfirm: (appointment: AppointmentView) => void;
-  /** Appointment whose confirm command is in flight; its control is disabled. */
+  /**
+   * Appointment whose confirm command is in flight. All confirm controls are
+   * disabled while any command is in flight: one command is processed at a
+   * time, so an enabled control on another row would silently drop the press.
+   */
   readonly pendingAppointmentId?: string | null;
   /** Called to request authenticated detail retrieval. */
   readonly onOpenDetails: (appointmentId: string) => void;
@@ -237,7 +241,7 @@ export function AppointmentListScreen({
                     testID={`confirm-${row.id}`}
                     label={screenText(locale, 'confirmAppointment')}
                     locale={locale}
-                    disabled={pendingAppointmentId === row.id}
+                    disabled={pendingAppointmentId != null}
                     onPress={() => onConfirm(row)}
                   />
                 ) : null}

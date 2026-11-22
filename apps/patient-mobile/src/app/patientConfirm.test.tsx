@@ -143,6 +143,24 @@ describe('patient appointment confirmation through the installed page', () => {
     expect(view.queryByTestId('confirmed-apt-1')).toBeNull();
   });
 
+  it('reconciles a lost response when the server reports the row is no longer confirmable', async () => {
+    const page = pageTransport(
+      async () => [eligible],
+      async () => {
+        throw new TransportError('validation', {
+          correlationId: 'corr-not-confirmable',
+          code: 'NOT_CONFIRMABLE',
+        });
+      },
+    );
+    const view = await renderPage(page);
+
+    await fireEvent.press(await readyConfirm(view));
+
+    await waitFor(() => expect(page.get).toHaveBeenCalledTimes(2));
+    expect(view.queryByTestId('confirmed-apt-1')).toBeNull();
+  });
+
   it('ends the session when confirmation is rejected as unauthenticated', async () => {
     const onSessionExpired = jest.fn();
     const page = pageTransport(
