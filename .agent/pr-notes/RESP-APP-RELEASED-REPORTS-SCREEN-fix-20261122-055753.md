@@ -220,7 +220,15 @@ claimed here.
    showed an `act()` warning from `src/app/PatientResource.tsx:54`; tests pass.
    Unrelated to the scoped file.
 6. **No new defect was introduced by this fix.** No conflict markers were
-   introduced by the `origin/main` merge.
+   introduced by the `origin/main` merge in the scoped path. A full-tree
+   `git grep -nE '^(<<<<<<<|>>>>>>>) '` does report committed conflict markers in
+   three out-of-scope files
+   (`apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7ParseException.java`,
+   `Hl7Parser.java`, `Hl7Segment.java`): `git show HEAD:<file>` and
+   `git show origin/main:<file>` each contain 2 markers, so these predate this
+   branch, are on the base branch, and are outside the story's two-file scope.
+   They were left untouched; Java compile and unit tests pass on the base branch,
+   so they are inert here. Flagged separately, not fixed in this scope.
 
 ## Lessons for workers
 
