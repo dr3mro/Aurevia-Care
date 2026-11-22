@@ -264,13 +264,18 @@ class TenantExportServiceTest {
     }
 
     @Test
-    void expireRefusesWhenTheObjectWasAlreadyRemoved() {
-        ExportJob job = new ExportJob("job-gone", "COMPLETE", "gone", 1, "c".repeat(64),
-                "2026-11-21T10:00:00Z", "2026-11-22T10:00:00Z");
+    void anInterruptedExpiryCanBeRetriedToCompletion() {
+        ExportJob job = startAndCaptureJob();
         when(store.find(job.id())).thenReturn(Optional.of(job));
-        ApiException failure = assertThrows(ApiException.class, () -> service.expire(job.id()));
-        assertEquals(409, failure.status());
-        assertEquals("EXPORT_OBJECT_MISSING", failure.code());
+        when(store.markExpired(job.id())).thenReturn(true);
+        // An earlier interrupted expire() removed the object while the row was still
+        // COMPLETE. A retry must still reach the durable transition: failing at the
+        // object check would leave this job permanently stuck in COMPLETE.
+        objects.expire(new ObjectKey(ORG, job.objectId(), job.objectVersion()));
+        service.expire(job.id());
+        verify(store).markExpired(job.id());
+        verify(audit).append(any(), eq("TENANT_EXPORT"), eq("EXPORT_EXPIRE"), eq("EXPORT"), eq("TENANT_EXPORT"),
+                eq(job.id()), eq("SUCCESS"));
     }
 
     @Test
@@ -281,5 +286,9 @@ class TenantExportServiceTest {
         ApiException failure = assertThrows(ApiException.class, () -> service.expire(job.id()));
         assertEquals(409, failure.status());
         assertEquals("EXPORT_STATE_CONFLICT", failure.code());
+        // A refused state transition must leave the object in place so a later
+        // retry can still complete the expiry instead of hitting a missing object.
+        assertTrue(objects.getVerified(
+                new ObjectKey(ORG, job.objectId(), job.objectVersion()), job.checksum()).isPresent());
     }
 }

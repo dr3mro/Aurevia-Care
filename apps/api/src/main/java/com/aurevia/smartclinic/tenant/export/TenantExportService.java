@@ -153,19 +153,27 @@ public class TenantExportService {
     /**
      * Expire a job, remove its object and record the event.
      *
+     * <p>The durable status transition is the gate: the row is marked EXPIRED
+     * before the object is removed, so a refused or interrupted expiry can always
+     * be retried to a consistent end state.</p>
+     *
      * @param jobId opaque job identifier
-     * @throws ApiException when denied, unknown, already removed, or not durable
+     * @throws ApiException when denied, unknown, or the job is no longer COMPLETE
      */
     public void expire(String jobId) {
         TenantContext context = authorize("expire");
         ExportJob job = findJob(jobId);
-        ObjectKey key = new ObjectKey(context.organizationId(), job.objectId(), job.objectVersion());
-        if (!objects.expire(key)) {
-            throw new ApiException(409, "EXPORT_OBJECT_MISSING", "export artifact is unavailable");
-        }
+        // Mark the row first. If it is no longer COMPLETE (already expired or changed
+        // concurrently), refuse without touching the object: the artifact then stays
+        // available and a retried expire can still finish the transition.
         if (!store.markExpired(jobId)) {
             throw new ApiException(409, "EXPORT_STATE_CONFLICT", "export job state changed");
         }
+        ObjectKey key = new ObjectKey(context.organizationId(), job.objectId(), job.objectVersion());
+        // The row is now EXPIRED. A missing promoted object is already the desired end
+        // state (for example after an earlier interrupted expiry), so its false result
+        // is not a conflict; the durable transition is the single source of truth.
+        objects.expire(key);
         audit.append(context, PURPOSE, "EXPORT_EXPIRE", RESOURCE_TYPE, SCOPE, jobId, "SUCCESS");
     }
 
