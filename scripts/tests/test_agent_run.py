@@ -12,6 +12,13 @@ from helpers import ROOT
 FAKE_OPENCODE = """#!/usr/bin/env bash
 cp opencode.json "$SEEN"
 printf '%s\\n' "$*" >> "${PROMPT_LOG:-/dev/null}"
+case "$*" in *smartclinic-task-advisor*)
+  case "${BRIEF_MODE:-none}" in
+    good) printf 'chatter\\n<<<BRIEF\\nGoal: advised goal\\nBRIEF>>>\\n' ;;
+    rate) echo "Error: 429 rate limit exceeded"; exit 1 ;;
+  esac
+  exit 0 ;;
+esac
 case "$FAKE_MODE" in
   commit) echo work > feature.txt; git add feature.txt; git commit -qm feature; echo done ;;
   rate) echo "Error: 429 rate limit exceeded"; exit 1 ;;
@@ -43,18 +50,22 @@ class AgentRunTests(unittest.TestCase):
         (self.repo / "scripts").mkdir()
         (self.repo / ".github").mkdir()
         shutil.copy(ROOT / "scripts/agent-run.sh", self.repo / "scripts/agent-run.sh")
+        shutil.copy(ROOT / "scripts/route-task.py", self.repo / "scripts/route-task.py")
         (self.repo / "scripts/check.sh").write_text("#!/usr/bin/env bash\nexit ${CHECK_EXIT:-0}\n")
         (self.repo / "scripts/coverage-check.sh").write_text(
             "#!/usr/bin/env bash\necho x >> \"${COVERAGE_LOG:-/dev/null}\"\nexit ${COVERAGE_EXIT:-0}\n")
         (self.repo / "scripts/frontend-typecheck-check.sh").write_text(
             "#!/usr/bin/env bash\necho t >> \"${FRONTEND_TYPECHECK_LOG:-/dev/null}\"\n"
             "exit ${FRONTEND_TYPECHECK_EXIT:-0}\n")
+        (self.repo / "scripts/quality-gate.sh").write_text(
+            "#!/usr/bin/env bash\necho q >> \"${QUALITY_LOG:-/dev/null}\"\n"
+            "echo \"$*\" >> \"${QUALITY_ARGS:-/dev/null}\"\nexit ${QUALITY_EXIT:-0}\n")
         (self.repo / ".github/pull_request_template.md").write_text("## Summary\n")
         (self.repo / ".github/opencode.ci.json").write_text('{"ci": true}')
         (self.repo / "opencode.json").write_text('{"real": true}')
         (self.repo / ".gitignore").write_text("/.agent/\n")
         for name in ("agent-run.sh", "check.sh", "coverage-check.sh",
-                     "frontend-typecheck-check.sh"):
+                     "frontend-typecheck-check.sh", "quality-gate.sh"):
             (self.repo / "scripts" / name).chmod(0o755)
         self.git("add", "-A")
         self.git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "init")
@@ -259,6 +270,65 @@ class AgentRunTests(unittest.TestCase):
         self.run_cmd("implement", FAKE_MODE="commit", COVERAGE_EXIT="1", COVERAGE_LOG=str(log))
         self.assertEqual(self.outputs()["checks"], "failed")
         self.assertEqual(len(log.read_text().split()), 3)
+
+    def test_the_quality_gate_gets_the_base_and_the_notes_file(self):
+        args = self.repo.parent / "quality-args.log"
+        self.run_cmd("implement", FAKE_MODE="commit", QUALITY_ARGS=str(args))
+        base, notes = args.read_text().split()
+        self.assertRegex(base, r"^[0-9a-f]{40}$")
+        self.assertRegex(notes, r"^\.agent/pr-notes/issue-5-.*\.md$")
+        self.assertEqual(self.outputs()["checks"], "passed")
+
+    def test_a_quality_gate_miss_gets_two_repairs_then_opens_a_draft(self):
+        log = self.repo.parent / "quality.log"
+        prompts = self.repo.parent / "prompts.log"
+        self.run_cmd("implement", FAKE_MODE="commit", QUALITY_EXIT="1",
+                     QUALITY_LOG=str(log), PROMPT_LOG=str(prompts))
+        self.assertEqual(self.outputs()["checks"], "failed")
+        # Initial failure + two repair re-runs = three invocations.
+        self.assertEqual(len(log.read_text().split()), 3)
+        self.assertEqual(prompts.read_text().count("The quality gate failed"), 2)
+        self.assertIn("## Review verdicts", prompts.read_text())
+
+    def brief_prompts(self, **env):
+        prompts = self.repo.parent / "prompts.log"
+        self.run_cmd("implement", FAKE_MODE="commit", SWARM="1", PROMPT_LOG=str(prompts), **env)
+        return prompts.read_text()
+
+    def test_the_worker_gets_the_senior_developer_brief(self):
+        text = self.brief_prompts(BRIEF_MODE="good", STORY_BODY="  - scope: apps/api\n")
+        self.assertIn("<<<BRIEF-FOR-WORKER", text)
+        self.assertIn("Goal: advised goal", text)
+        self.assertIn("## Routing", text)
+        self.assertIn("smartclinic-task-advisor", text)
+        self.assertNotIn("load the full project context", text)
+
+    def test_a_failed_advisor_falls_back_to_the_routing_block(self):
+        text = self.brief_prompts(BRIEF_MODE="rate")
+        self.assertIn("<<<BRIEF-FOR-WORKER", text)
+        self.assertIn("## Routing", text)
+        self.assertNotIn("Goal: advised goal", text)
+        self.assertEqual(self.outputs()["checks"], "passed")
+
+    def test_brief_off_skips_the_advisor(self):
+        text = self.brief_prompts(BRIEF="off")
+        self.assertNotIn("--agent smartclinic-task-advisor", text)
+        self.assertIn("## Routing", text)
+
+    def test_a_non_swarm_run_keeps_the_full_context_prompt(self):
+        prompts = self.repo.parent / "prompts.log"
+        self.run_cmd("implement", FAKE_MODE="commit", PROMPT_LOG=str(prompts))
+        self.assertIn("load the full project context", prompts.read_text())
+        self.assertNotIn("BRIEF-FOR-WORKER", prompts.read_text())
+
+    def test_the_worker_prompt_asks_for_the_reviewers_and_their_verdicts(self):
+        prompts = self.repo.parent / "prompts.log"
+        self.run_cmd("implement", FAKE_MODE="commit", SWARM="1", PROMPT_LOG=str(prompts))
+        text = prompts.read_text()
+        for name in ("smartclinic-plan-reviewer", "smartclinic-code-reviewer",
+                     "smartclinic-coverage-auditor", "smartclinic-devsecops"):
+            self.assertIn(name, text)
+        self.assertIn("Quality loop (mandatory)", text)
 
     def test_a_frontend_typecheck_miss_gets_four_repairs_then_opens_a_draft(self):
         log = self.repo.parent / "frontend-typecheck.log"

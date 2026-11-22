@@ -1570,7 +1570,15 @@ class IntegrationTests(unittest.TestCase):
         fake = FakeGh(diff="apps/api/src/A.java\ndb/migrations/V4__x.sql\n")
         with mock.patch.object(swarm, "gh", fake):
             self.assertEqual(swarm.guard(9), [])
-        self.assertEqual(fake.calls, [("pr", "diff", "9", "--name-only")])
+        self.assertEqual(fake.calls, [("pr", "diff", "9", "--name-only"),
+                                      ("pr", "view", "9", "--json", "additions,deletions")])
+
+    def test_pr_line_limit_is_enforced(self):
+        fake = FakeGh(diff="apps/api/src/A.java\n",
+                      pr_view={"additions": swarm.MAX_PR_LINES, "deletions": 1})
+        with mock.patch.object(swarm, "gh", fake):
+            self.assertEqual(swarm.guard(9), ["apps/api/src/A.java"])
+        self.assertTrue(fake.said("labels[]=needs-human"))
 
     def test_guard_blocks_new_module_check_scripts_for_a_human(self):
         # The merge gate itself is protected, including module check.sh files:
