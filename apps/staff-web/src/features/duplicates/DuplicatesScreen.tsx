@@ -1,5 +1,6 @@
 /** Presentational components for the duplicate review worklist and detail. */
 
+import type { ReactElement } from 'react';
 import type { Locale } from '../../i18n/messages';
 import { Button } from '../../components/Button';
 import { Form } from '../../components/Form';
@@ -8,6 +9,7 @@ import { MixedScriptText } from '../../components/MixedScriptText';
 import { StateView } from '../../components/StateViews';
 import type { TransportError } from '../../api/transport';
 import { useTheme } from '../../theme/ThemeProvider';
+import { useBreakpoint } from '../../theme/useBreakpoint';
 import type {
   ApprovalFormErrors,
   ConsolidationWire,
@@ -25,6 +27,41 @@ import {
   duplicatesText,
 } from './messages';
 
+/**
+ * Place a captioned table in the shared labelled scroll region on compact
+ * viewports and leave it in the normal flow from medium upward. The table,
+ * caption and headers are unchanged, so no clinical column disappears and the
+ * accessibility tree keeps the same names at every width (WEB-07, UX-01).
+ */
+function ResponsiveTableRegion({
+  compact,
+  label,
+  children,
+}: {
+  compact: boolean;
+  label: string;
+  children: ReactElement;
+}) {
+  if (compact) {
+    return (
+      <div className="table-region" role="region" aria-label={label} tabIndex={0}>
+        {children}
+      </div>
+    );
+  }
+  return children;
+}
+
+/** Logical wrapping for a clinical table cell using the active theme border. */
+function cellStyle(border: string) {
+  return {
+    border: `1px solid ${border}`,
+    minInlineSize: 0,
+    overflowWrap: 'anywhere',
+    whiteSpace: 'normal',
+  } as const;
+}
+
 /** Props for the worklist table. */
 export interface WorklistScreenProps {
   pairs: readonly DuplicatePairWire[];
@@ -35,51 +72,60 @@ export interface WorklistScreenProps {
 /** Render the same-tenant duplicate pairs as an accessible worklist table. */
 export function WorklistScreen({ pairs, locale, onSelect }: WorklistScreenProps) {
   const { tokens } = useTheme();
-  return (
-    <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+  const breakpoint = useBreakpoint();
+  // The .touch class owns both target floors; an inline min-height would
+  // outrank its 44px coarse-pointer rule and shrink the row action on phones.
+  const caption = duplicatesText(locale, 'worklistCaption');
+  const cell = cellStyle(tokens.border);
+  const table = (
+    <table data-breakpoint={breakpoint} style={{ borderCollapse: 'collapse', width: '100%' }}>
       <caption style={{ textAlign: 'start', paddingBlock: tokens.spacing.sm }}>
-        {duplicatesText(locale, 'worklistCaption')}
+        {caption}
       </caption>
       <thead>
         <tr>
-          <th scope="col">{duplicatesText(locale, 'colSurvivor')}</th>
-          <th scope="col">{duplicatesText(locale, 'colDuplicate')}</th>
-          <th scope="col">{duplicatesText(locale, 'colAction')}</th>
+          <th scope="col" style={cell}>{duplicatesText(locale, 'colSurvivor')}</th>
+          <th scope="col" style={cell}>{duplicatesText(locale, 'colDuplicate')}</th>
+          <th scope="col" style={cell}>{duplicatesText(locale, 'colAction')}</th>
         </tr>
       </thead>
       <tbody>
         {pairs.map((pair) => (
           <tr key={`${pair.survivorId}:${pair.duplicateId}`}>
-            <td>
+            <td style={cell}>
               <MixedScriptText
                 text={pair.survivorName}
                 lang={languageForName(pair.survivorName)}
               />
               <code dir="ltr"> {pair.survivorId}</code>
             </td>
-            <td>
+            <td style={cell}>
               <MixedScriptText
                 text={pair.duplicateName}
                 lang={languageForName(pair.duplicateName)}
               />
               <code dir="ltr"> {pair.duplicateId}</code>
             </td>
-            <td>
+            <td style={cell}>
               <button
                 type="button"
+                className="touch"
                 onClick={() => onSelect(pair)}
                 aria-label={duplicatesMessage(locale, 'reviewActionNamed', {
                   survivor: pair.survivorId,
                   duplicate: pair.duplicateId,
                 })}
                 style={{
-                  minHeight: '32px',
-                  padding: `${tokens.spacing.sm} ${tokens.spacing.md}`,
+                  paddingBlock: tokens.spacing.sm,
+                  paddingInline: tokens.spacing.md,
                   border: `1px solid ${tokens.border}`,
                   borderRadius: tokens.spacing.sm,
                   background: tokens.accent,
                   color: tokens.background,
                   cursor: 'pointer',
+                  overflowWrap: 'anywhere',
+                  whiteSpace: 'normal',
+                  textAlign: 'start',
                 }}
               >
                 {duplicatesText(locale, 'reviewAction')}
@@ -89,6 +135,11 @@ export function WorklistScreen({ pairs, locale, onSelect }: WorklistScreenProps)
         ))}
       </tbody>
     </table>
+  );
+  return (
+    <ResponsiveTableRegion compact={breakpoint === 'compact'} label={caption}>
+      {table}
+    </ResponsiveTableRegion>
   );
 }
 
@@ -108,10 +159,12 @@ function IdentityCard({
   return (
     <section
       aria-label={title}
+      className="stack"
       style={{
         border: `1px solid ${tokens.border}`,
         padding: tokens.spacing.md,
-        flex: 1,
+        gap: tokens.spacing.sm,
+        minInlineSize: 0,
       }}
     >
       <h3>{title}</h3>
@@ -121,7 +174,7 @@ function IdentityCard({
           lang={languageForName(patient.displayName)}
         />
       </p>
-      <dl>
+      <dl className="stack" style={{ gap: tokens.spacing.sm, margin: 0 }}>
         <dt>{duplicatesText(locale, 'reviewId')}</dt>
         <dd>
           <code dir="ltr">{patient.id}</code>
@@ -149,11 +202,22 @@ export interface ReviewScreenProps {
 /** Render both identities, conflicting demographics, dependencies and the dry run. */
 export function ReviewScreen({ detail, locale }: ReviewScreenProps) {
   const { tokens } = useTheme();
+  const breakpoint = useBreakpoint();
+  const compact = breakpoint === 'compact';
+  const cell = cellStyle(tokens.border);
+  const conflictsTitle = duplicatesText(locale, 'conflictsTitle');
   return (
-    <div style={{ display: 'grid', gap: tokens.spacing.lg }}>
+    <div data-breakpoint={breakpoint} style={{ display: 'grid', gap: tokens.spacing.lg }}>
       <section aria-label={duplicatesText(locale, 'identitiesTitle')}>
         <h3>{duplicatesText(locale, 'identitiesTitle')}</h3>
-        <div style={{ display: 'flex', gap: tokens.spacing.md }}>
+        {/*
+          .stack is one column on phones; .grid-2 becomes two columns from the
+          768px breakpoint. Both identities keep the same DOM order and labels.
+        */}
+        <div
+          className={compact ? 'stack' : 'grid-2'}
+          data-layout={compact ? 'stacked' : 'side-by-side'}
+        >
           <IdentityCard
             title={duplicatesText(locale, 'survivor')}
             id={detail.survivor.id}
@@ -168,42 +232,42 @@ export function ReviewScreen({ detail, locale }: ReviewScreenProps) {
           />
         </div>
       </section>
-      <section aria-label={duplicatesText(locale, 'conflictsTitle')}>
-        <h3>{duplicatesText(locale, 'conflictsTitle')}</h3>
+      <section aria-label={conflictsTitle}>
+        <h3>{conflictsTitle}</h3>
         {detail.conflicts.length === 0 ? (
           <p>{duplicatesText(locale, 'noConflicts')}</p>
         ) : (
-          <table style={{ borderCollapse: 'collapse', width: '100%' }}>
-            <caption style={{ textAlign: 'start' }}>
-              {duplicatesText(locale, 'conflictsTitle')}
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col">{duplicatesText(locale, 'colField')}</th>
-                <th scope="col">{duplicatesText(locale, 'colSurvivorValue')}</th>
-                <th scope="col">{duplicatesText(locale, 'colDuplicateValue')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {detail.conflicts.map((conflict) => (
-                <tr key={conflict.field}>
-                  <th scope="row">{conflict.field}</th>
-                  <td>
-                    <MixedScriptText
-                      text={conflict.survivorValue}
-                      lang={languageForName(conflict.survivorValue)}
-                    />
-                  </td>
-                  <td>
-                    <MixedScriptText
-                      text={conflict.duplicateValue}
-                      lang={languageForName(conflict.duplicateValue)}
-                    />
-                  </td>
+          <ResponsiveTableRegion compact={compact} label={conflictsTitle}>
+            <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+              <caption style={{ textAlign: 'start' }}>{conflictsTitle}</caption>
+              <thead>
+                <tr>
+                  <th scope="col" style={cell}>{duplicatesText(locale, 'colField')}</th>
+                  <th scope="col" style={cell}>{duplicatesText(locale, 'colSurvivorValue')}</th>
+                  <th scope="col" style={cell}>{duplicatesText(locale, 'colDuplicateValue')}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {detail.conflicts.map((conflict) => (
+                  <tr key={conflict.field}>
+                    <th scope="row" style={cell}>{conflict.field}</th>
+                    <td style={cell}>
+                      <MixedScriptText
+                        text={conflict.survivorValue}
+                        lang={languageForName(conflict.survivorValue)}
+                      />
+                    </td>
+                    <td style={cell}>
+                      <MixedScriptText
+                        text={conflict.duplicateValue}
+                        lang={languageForName(conflict.duplicateValue)}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </ResponsiveTableRegion>
         )}
       </section>
       <section aria-label={duplicatesText(locale, 'dependenciesTitle')}>
@@ -211,7 +275,7 @@ export function ReviewScreen({ detail, locale }: ReviewScreenProps) {
         {detail.dependencies.length === 0 ? (
           <p>{duplicatesText(locale, 'noDependencies')}</p>
         ) : (
-          <ul>
+          <ul className="stack" style={{ gap: tokens.spacing.sm }}>
             {detail.dependencies.map((dependency) => (
               <li key={dependency.id}>
                 {duplicatesText(locale, dependencyKindKey(dependency.kind))}:{' '}
@@ -224,7 +288,17 @@ export function ReviewScreen({ detail, locale }: ReviewScreenProps) {
       </section>
       <section aria-label={duplicatesText(locale, 'dryRunTitle')}>
         <h3>{duplicatesText(locale, 'dryRunTitle')}</h3>
-        <pre>{detail.dryRun}</pre>
+        {/* A <pre> does not wrap by default; let the dry run reflow on phones. */}
+        <pre
+          style={{
+            margin: 0,
+            minInlineSize: 0,
+            overflowWrap: 'anywhere',
+            whiteSpace: 'pre-wrap',
+          }}
+        >
+          {detail.dryRun}
+        </pre>
       </section>
     </div>
   );
@@ -270,9 +344,14 @@ export function ApprovalPanel({
   onApprove,
 }: ApprovalPanelProps) {
   const { tokens } = useTheme();
+  const breakpoint = useBreakpoint();
   const references = identifierReferences(detail);
   return (
-    <section aria-label={duplicatesText(locale, 'approvalTitle')} style={{ display: 'grid', gap: tokens.spacing.md }}>
+    <section
+      aria-label={duplicatesText(locale, 'approvalTitle')}
+      data-breakpoint={breakpoint}
+      style={{ display: 'grid', gap: tokens.spacing.md }}
+    >
       <h3>{duplicatesText(locale, 'approvalTitle')}</h3>
       {openError !== undefined && StateView.forTransportError(openError)}
       {review === null ? (
@@ -312,10 +391,11 @@ export function ApprovalPanel({
               <legend>{duplicatesText(locale, 'confirmTitle')}</legend>
               <p>{duplicatesText(locale, 'confirmHint')}</p>
               {references.map((reference) => (
-                <label key={reference} htmlFor={`confirm-${reference}`} style={{ display: 'block' }}>
+                <label key={reference} htmlFor={`confirm-${reference}`} className="cluster">
                   <input
                     id={`confirm-${reference}`}
                     type="checkbox"
+                    className="touch"
                     checked={confirmed.includes(reference)}
                     onChange={() => onToggleReference(reference)}
                   />{' '}

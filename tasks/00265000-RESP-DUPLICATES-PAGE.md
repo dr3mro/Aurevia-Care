@@ -1,5 +1,5 @@
-- [-] RESP-DUPLICATES-PAGE · Staff web: responsive `DuplicatesPage` (features-duplicates)
-  - agent: swarm-9
+- [x] RESP-DUPLICATES-PAGE · Staff web: responsive `DuplicatesPage` (features-duplicates)
+  - pr: #777
   - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/duplicates/DuplicatesPage.tsx, apps/staff-web/tests/responsive/features-duplicates/DuplicatesPage.responsive.test.tsx

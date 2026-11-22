@@ -1,5 +1,5 @@
-- [-] RESP-LONGITUDINAL-CHART · Staff web: responsive `LongitudinalChart` (features-chart)
-  - agent: swarm-2
+- [x] RESP-LONGITUDINAL-CHART · Staff web: responsive `LongitudinalChart` (features-chart)
+  - pr: #760
   - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/chart/LongitudinalChart.tsx, apps/staff-web/tests/responsive/features-chart/LongitudinalChart.responsive.test.tsx
