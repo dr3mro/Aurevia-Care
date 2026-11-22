@@ -1,4 +1,6 @@
-- [ ] RESP-STATE-BADGE · Staff web: responsive `StateBadge` (features-admin)
+- [-] RESP-STATE-BADGE · Staff web: responsive `StateBadge` (features-admin)
+  - agent: swarm-6
+  - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/admin/StateBadge.tsx, apps/staff-web/tests/responsive/features-admin/StateBadge.responsive.test.tsx
   - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
