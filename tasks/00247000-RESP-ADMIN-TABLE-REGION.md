@@ -1,4 +1,6 @@
-- [ ] RESP-ADMIN-TABLE-REGION · Staff web: responsive `AdminTableRegion` (features-admin)
+- [-] RESP-ADMIN-TABLE-REGION · Staff web: responsive `AdminTableRegion` (features-admin)
+  - agent: swarm-10
+  - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/admin/AdminTableRegion.tsx, apps/staff-web/tests/responsive/features-admin/AdminTableRegion.responsive.test.tsx
   - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
