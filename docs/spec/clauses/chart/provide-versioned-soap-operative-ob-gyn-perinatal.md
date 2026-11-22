@@ -17,6 +17,11 @@ JDBC store and the tenant context bound as the HTTP layer binds it. Each test
 uses its own pair of synthetic organizations. No `@Disabled` test and no
 patient data.
 
+- `theDurableBaselineCatalogProvidesEveryFamily` — reads the V87
+  `current_clinical_template_baseline` view on real PostgreSQL and asserts one
+  row per family whose fields equal the approved Java baseline, plus both
+  referenced site dictionaries; guards against a durable catalog that drifted
+  from the definitions the other tests use.
 - `everyFamilyProvidesAnApprovedVersionedTemplate` — for all five
   `TemplateKind` values (SOAP, OPERATIVE, OBGYN, PERINATAL,
   PEDIATRIC_DEVELOPMENT) a governance-defined version becomes the effective
@@ -55,7 +60,7 @@ is a separate gap from this clause and is recorded in the task notes.
 
 Verified locally:
 `SMARTCLINIC_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=ProvideVersionedSoapOperativeObGynPerinatalTest test`
-— `Tests run: 5, Failures: 0, Errors: 0, Skipped: 0`.
+— `Tests run: 6, Failures: 0, Errors: 0, Skipped: 0`.
 
 ## Gap
 

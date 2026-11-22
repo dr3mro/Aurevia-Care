@@ -6,8 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -38,6 +40,9 @@ import com.aurevia.smartclinic.clinical.templates.TemplateService;
 import com.aurevia.smartclinic.clinical.templates.TemplateVersion;
 import com.aurevia.smartclinic.tenant.TenantContext;
 
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
+
 /**
  * CLN-04 clause 1 acceptance: the chart can provide all five versioned clinical
  * note template families — SOAP, operative, OB/GYN, perinatal and pediatric
@@ -67,6 +72,10 @@ class ProvideVersionedSoapOperativeObGynPerinatalTest {
     private static final Map<String, List<String>> SITE_DICTIONARIES = Map.of(
             "obstetric_history", List.of("G0P0", "G1P0", "G2P0"),
             "milestone_domain", List.of("gross_motor", "fine_motor", "language"));
+
+    private static final ObjectMapper JSON = new ObjectMapper();
+    private static final TypeReference<List<FieldDefinition>> FIELDS = new TypeReference<>() { };
+    private static final TypeReference<Map<String, List<String>>> DICTIONARIES = new TypeReference<>() { };
 
     @Autowired
     TemplateService templates;
@@ -179,6 +188,42 @@ class ProvideVersionedSoapOperativeObGynPerinatalTest {
             templates.approveVersion(governorA, kind, created.version());
             return created.version();
         });
+    }
+
+    /**
+     * The durable V87 catalog really ships one approved baseline per family.
+     * Without this assertion the Java baseline could drift from the persisted
+     * governance catalog and the other tests would still pass.
+     *
+     * @throws Exception when the catalog cannot be read or parsed
+     */
+    @Test
+    void theDurableBaselineCatalogProvidesEveryFamily() throws Exception {
+        Map<TemplateKind, List<FieldDefinition>> catalogFields = new HashMap<>();
+        Map<String, List<String>> catalogDictionaries = new HashMap<>();
+        try (Connection connection = DriverManager.getConnection(URL, "smartclinic_app", "");
+             Statement statement = connection.createStatement();
+             ResultSet rows = statement.executeQuery(
+                     "SELECT kind, fields::text, dictionaries::text "
+                             + "FROM public.current_clinical_template_baseline")) {
+            while (rows.next()) {
+                TemplateKind kind = TemplateKind.valueOf(rows.getString("kind"));
+                assertTrue(catalogFields.put(kind,
+                        JSON.readValue(rows.getString("fields"), FIELDS)) == null,
+                        "duplicate durable baseline for " + kind);
+                catalogDictionaries.putAll(JSON.readValue(rows.getString("dictionaries"), DICTIONARIES));
+            }
+        }
+        assertEquals(TemplateKind.values().length, catalogFields.size(),
+                "the durable catalog must provide all five families");
+        for (TemplateKind kind : TemplateKind.values()) {
+            assertEquals(BaselineTemplates.fieldsFor(kind), catalogFields.get(kind),
+                    kind + " durable fields must match the approved baseline");
+        }
+        for (String key : SITE_DICTIONARIES.keySet()) {
+            assertTrue(catalogDictionaries.containsKey(key) && !catalogDictionaries.get(key).isEmpty(),
+                    "the durable catalog must ship the " + key + " site dictionary");
+        }
     }
 
     /** Every family exposes an approved version with its exact baseline fields. */
