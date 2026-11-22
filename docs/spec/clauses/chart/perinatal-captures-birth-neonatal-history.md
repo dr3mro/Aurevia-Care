@@ -23,12 +23,16 @@ Enabled tests that prove the rule:
   governance approves the synthetic baseline, the effective perinatal version
   contains exactly two required `FREE_TEXT` fields, `birthHistory` and
   `neonatalHistory`, each with an `en` language tag (rule met at the template layer).
-- `clinicianSavesBothHistoriesAndReloadsTheirFrozenMeanings` — a full perinatal
-  note validates, saves and reloads with both histories and the exact field
-  meanings it was saved with (rule met at the note layer).
+- `clinicianSavesBothHistoriesAndReloadsTheirFieldMeanings` — a full perinatal
+  note validates, saves and reloads with both histories and the field meanings
+  recorded at save time (rule met at the note layer). Historical-version
+  resilience is clause 7 and is not claimed here.
 - `perinatalNoteMissingNeonatalHistoryIsRefused` (negative) — a note carrying only
   the birth history is reported with `missing:neonatalHistory` and cannot be saved
   (HTTP-style 422 at the domain boundary).
+- `perinatalNoteMissingBirthHistoryIsRefused` (negative) — a note carrying only
+  the neonatal history is reported with `missing:birthHistory` and cannot be saved.
+  Together these two tests prove that *both* histories are required.
 - `perinatalNoteWithBlankNeonatalHistoryIsRefused` (negative) — a blank neonatal
   history is reported with `blank:neonatalHistory` and cannot be saved.
 - `nonClinicianCannotSavePerinatalHistory` (negative) — a tenant administrator
@@ -55,10 +59,11 @@ Production classes and files exercised by the enabled request path:
   point for `defineVersion`, `approveVersion`, `validate`, `saveNote` and
   `savedNote`, including role gating and the required-field, blank-value and
   frozen-snapshot rules.
-- `com.aurevia.smartclinic.clinical.templates.TemplateStore` with the in-test
-  `InMemoryTemplateStore` test double; the durable adapter is
-  `com.aurevia.smartclinic.clinical.templates.JdbcTemplateStore` over
-  `db/migrations/V80__template_store.sql` (tenant-owned, forced-RLS tables).
+- `com.aurevia.smartclinic.clinical.templates.TemplateStore`, instantiated with the
+  synthetic `com.aurevia.smartclinic.clinical.templates.InMemoryTemplateStore` adapter
+  that currently lives under `src/main` (a pre-existing condition, unchanged here).
+  The durable adapter is `com.aurevia.smartclinic.clinical.templates.JdbcTemplateStore`
+  over `db/migrations/V80__template_store.sql` (tenant-owned, forced-RLS tables).
 
 The production migrations `V80__template_store.sql` and
 `V87__baseline_templates.sql`, and the `JdbcTemplateStore` adapter, were surveyed

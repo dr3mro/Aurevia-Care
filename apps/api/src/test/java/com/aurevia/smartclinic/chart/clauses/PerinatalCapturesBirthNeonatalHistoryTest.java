@@ -99,7 +99,7 @@ class PerinatalCapturesBirthNeonatalHistoryTest {
     }
 
     @Test
-    void clinicianSavesBothHistoriesAndReloadsTheirFrozenMeanings() {
+    void clinicianSavesBothHistoriesAndReloadsTheirFieldMeanings() {
         approvePerinatalBaseline();
         TemplateNoteRevision authored = note("term vaginal birth", "well newborn, Apgar 9 and 9");
 
@@ -138,6 +138,24 @@ class PerinatalCapturesBirthNeonatalHistoryTest {
                 () -> service.saveNote(clinician, "PERINATAL-PARTIAL", partial));
         assertEquals(422, denied.status());
         assertTrue(store.noteRevision(ORG, "PERINATAL-PARTIAL").isEmpty(),
+                "a refused note must never be saved");
+    }
+
+    @Test
+    void perinatalNoteMissingBirthHistoryIsRefused() {
+        approvePerinatalBaseline();
+        TemplateNoteRevision partial = new TemplateNoteRevision(TemplateKind.PERINATAL, 1, PATIENT, "clin-a",
+                List.of(new FieldValue("neonatalHistory", "well newborn", "en")));
+
+        ValidationReport report = service.validate(clinician, partial);
+        assertFalse(report.valid(), "a note with only the neonatal history must be refused");
+        assertTrue(report.violations().contains("missing:birthHistory"),
+                "the missing birth history must be named: " + report.violations());
+
+        ApiException denied = assertThrows(ApiException.class,
+                () -> service.saveNote(clinician, "PERINATAL-NO-BIRTH", partial));
+        assertEquals(422, denied.status());
+        assertTrue(store.noteRevision(ORG, "PERINATAL-NO-BIRTH").isEmpty(),
                 "a refused note must never be saved");
     }
 
