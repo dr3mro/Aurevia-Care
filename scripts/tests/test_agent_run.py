@@ -260,13 +260,13 @@ class AgentRunTests(unittest.TestCase):
         self.assertEqual(self.outputs()["checks"], "failed")
         self.assertEqual(len(log.read_text().split()), 3)
 
-    def test_a_frontend_typecheck_miss_gets_two_repairs_then_opens_a_draft(self):
+    def test_a_frontend_typecheck_miss_gets_four_repairs_then_opens_a_draft(self):
         log = self.repo.parent / "frontend-typecheck.log"
         self.run_cmd("implement", FAKE_MODE="commit", FRONTEND_TYPECHECK_EXIT="1",
                      FRONTEND_TYPECHECK_LOG=str(log))
         self.assertEqual(self.outputs()["checks"], "failed")
-        # Initial failure + two repair re-runs = three invocations.
-        self.assertEqual(len(log.read_text().split()), 3)
+        # Initial failure + four repair re-runs = five invocations.
+        self.assertEqual(len(log.read_text().split()), 5)
         # Reset to main so the second run actually changes files and triggers the gate.
         self.git("checkout", "-q", "main")
         self.git("branch", "-D", "opencode/issue-5-9")

@@ -2378,7 +2378,21 @@ class GitTests(unittest.TestCase):
         self.assertTrue(self.publish_fix("passed").said("pr", "ready", "193"))
 
     def test_a_fix_whose_checks_failed_stays_a_draft(self):
-        self.assertFalse(self.publish_fix("failed").said("pr", "ready"))
+        with mock.patch.object(swarm, "fail"):
+            self.assertFalse(self.publish_fix("failed").said("pr", "ready"))
+
+    def test_a_clean_fix_clears_needs_fix_so_the_integrator_retests_it(self):
+        fake = self.publish_fix("passed")
+        self.assertTrue(any(call[:3] == ("api", "--method", "DELETE") and call[3].endswith("/issues/193/labels/needs-fix")
+                            for call in fake.calls))
+
+    def test_a_fix_whose_checks_failed_goes_to_the_debugger_not_back_to_needs_fix(self):
+        with mock.patch.object(swarm, "fail") as failed:
+            fake = self.publish_fix("failed")
+        failed.assert_called_once()
+        self.assertEqual(failed.call_args.args[0], "193")
+        self.assertIn("local checks did not pass", failed.call_args.args[1])
+        self.assertFalse(any(call[:3] == ("api", "--method", "DELETE") for call in fake.calls))
 
     def test_a_story_push_failure_is_still_an_error(self):
         out = self.worker_dir()
