@@ -60,7 +60,6 @@ import static com.aurevia.smartclinic.acceptance.scenarios.ScenarioSupport.clear
  * radiology. Neither unit can read the other's thread or attachment. All
  * participants and documents are synthetic.</p>
  */
-@SuppressWarnings("unchecked")
 class PatientContactsTwoUnitsScenarioAcceptanceTest {
 
     private static final String LAB_UNIT = "dddddddd-dddd-dddd-dddd-dddddddddddd";
