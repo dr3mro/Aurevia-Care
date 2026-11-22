@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { send } from '../../../src/api/transport';
 import type * as TransportModule from '../../../src/api/transport';
@@ -148,7 +148,10 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
       expect(header?.classList.contains('stack')).toBe(true);
 
       // The ApiPage region owns the `.page` safe-area/reading-width class.
-      const region = screen.getByRole('region', { name: 'Duplicate review worklist' }) as HTMLElement;
+      const region = screen.getByRole('region', { name: 'Duplicate patient review' }) as HTMLElement;
+      if (breakpoint === 'compact') {
+        expect(within(region).getByRole('region', { name: 'Duplicate review worklist' })).toBeTruthy();
+      }
       expect(region.classList.contains('page')).toBe(true);
       expect(region.getAttribute('data-breakpoint')).toBe(breakpoint);
       expect(region.style.display).not.toBe('none');
