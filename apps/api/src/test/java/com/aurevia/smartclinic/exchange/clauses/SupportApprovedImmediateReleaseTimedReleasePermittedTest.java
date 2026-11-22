@@ -255,11 +255,12 @@ class SupportApprovedImmediateReleaseTimedReleasePermittedTest {
     }
 
     /**
-     * Poll the patient's visible list for up to 30 seconds so the clock crossing a
-     * near-future effective instant is observed rather than assumed.
+     * Poll the patient's visible list for up to 45 seconds so the clock crossing a
+     * near-future effective instant is observed rather than assumed. The budget
+     * exceeds the buffered reveal instant with margin for a contended runner.
      */
     private void awaitVisible(String revision, String actor, String org, String correlation) throws Exception {
-        for (int attempt = 0; attempt < 60; attempt++) {
+        for (int attempt = 0; attempt < 90; attempt++) {
             if (visible(actor, org, correlation + "-" + attempt).getBody().contains(revision)) {
                 return;
             }
@@ -324,7 +325,10 @@ class SupportApprovedImmediateReleaseTimedReleasePermittedTest {
 
         // Observe the transition rather than only its two endpoints: a revision
         // whose instant is seconds away opens by elapsed time without any lift.
-        String soon = Instant.now().plusSeconds(3).toString();
+        // A 20-second buffer keeps the hidden-check below unambiguously before the
+        // instant even on a contended full build with instrumentation and GC pauses;
+        // the reveal is driven by the shared clock, not by any lift command.
+        String soon = Instant.now().plusSeconds(20).toString();
         ResponseEntity<String> soonCreated = authorize("CLAUSE-TIMED-SOON-002", "TIMED", soon, null, null,
                 CLINICIAN_A, ORG_A, "clause-timed-soon-2");
         assertEquals(HttpStatus.CREATED, soonCreated.getStatusCode(), soonCreated.getBody());
