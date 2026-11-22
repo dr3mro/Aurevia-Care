@@ -49,6 +49,7 @@ These failures are environmental in a cloud worker, not defects of the change. C
 
 - `opencode.json is stale: run scripts/gen-opencode.py` from `check-pack.py`, `worker-check.sh` or `scripts/check.sh`: `agent-run.sh` installs the CI runtime profile over the worktree file under `skip-worktree` (OPS-CW-003-01). Verify with `git ls-files -v opencode.json` (`S`) and `git show HEAD:opencode.json` — the committed local profile is generated correctly. The integrator owns the full gate.
 - Python tooling tests failing on `No module named 'yaml'` or git/gh sandbox fixtures, and OWASP failing on NVD status 524 / without `NVD_API_KEY`, are worker-image limits; the integrator tooling has PyYAML and cached NVD data.
+- Verification-command traps that gave a false green in cloud workers (tool evidence): `mvn -Pno-security,fast -Dgroups=integration` does **not** run integration tests, because the `fast` profile sets `excludedGroups=integration` in `apps/api/pom.xml` and that wins over `-Dgroups`; use `mvn -Pno-security -Dgroups=integration` and confirm the Surefire report count before trusting the result. A bare `spotbugs:check` is vacuously green without compiled classes; compile first. `scripts/check.sh` delegates to `apps/api/check.sh` (full `mvn verify`), so a swarm worker must not run it — run targeted `-Dtest=...` suites plus the individual policy scripts and leave the full gate to the integrator.
 
 ## Engineering quality bar
 
