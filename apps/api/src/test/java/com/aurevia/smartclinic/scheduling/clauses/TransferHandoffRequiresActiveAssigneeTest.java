@@ -125,6 +125,7 @@ class TransferHandoffRequiresActiveAssigneeTest {
         assertEquals(TARGET, result.assigneeSubject());
         assertEquals(NOW, result.assignedAt());
         assertEquals(2, result.version());
+        verify(repository).updateItem(ITEM, 1, TARGET, NOW, 0);
         org.mockito.ArgumentCaptor<HandoffEvent> captor =
                 org.mockito.ArgumentCaptor.forClass(HandoffEvent.class);
         verify(repository).insertHandoff(captor.capture());
