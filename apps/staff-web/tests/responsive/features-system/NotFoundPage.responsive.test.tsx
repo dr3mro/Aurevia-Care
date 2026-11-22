@@ -44,7 +44,7 @@ function renderNotice(locale: Locale = 'en') {
 /** The responsive page utility is the ancestor that carries `page` and the band. */
 function noticePage(): HTMLElement {
   const heading = screen.getByRole('heading', { level: 1 });
-  const page = heading.closest('.page');
+  const page = heading.closest('.page')?.parentElement?.closest('.page');
   if (!page) {
     throw new Error('not-found notice is not inside a responsive page wrapper');
   }

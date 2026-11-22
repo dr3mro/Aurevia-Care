@@ -28,9 +28,8 @@ class OffboardingCommandTest {
     private static final Instant NOW = Instant.parse("2026-06-01T00:00:00Z");
     private static final Clock CLOCK = Clock.fixed(NOW, ZoneOffset.UTC);
     private static final int REVIEW_DAYS = 30;
-    /** Synthetic, non-sensitive provenance required by the current export contract. */
     private static final ExportProvenance PROVENANCE =
-            new ExportProvenance("export-source-1", "rev-1", "offboarding");
+            new ExportProvenance("synthetic-source", "revision-1", "offboarding");
 
     private final OffboardingCommand command = new OffboardingCommand(CLOCK);
 
