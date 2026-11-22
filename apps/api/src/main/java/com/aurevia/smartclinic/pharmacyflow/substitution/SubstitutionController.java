@@ -2,6 +2,7 @@ package com.aurevia.smartclinic.pharmacyflow.substitution;
 
 import java.util.Set;
 
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -33,16 +34,20 @@ public final class SubstitutionController {
 
     private final SubstitutionService service;
     private final StaffRepository staff;
+    private final TransactionTemplate transactions;
 
     /**
      * Create the route over the injected substitution kernel.
      *
-     * @param service substitution domain service
-     * @param staff   fresh membership and role source
+     * @param service      substitution domain service
+     * @param staff        fresh membership and role source
+     * @param transactions tenant-guarded template for the role fold
      */
-    public SubstitutionController(SubstitutionService service, StaffRepository staff) {
+    public SubstitutionController(SubstitutionService service, StaffRepository staff,
+                                   TransactionTemplate transactions) {
         this.service = service;
         this.staff = staff;
+        this.transactions = transactions;
     }
 
     /**
@@ -121,7 +126,9 @@ public final class SubstitutionController {
     }
 
     private Set<String> activeRoles(TenantContext context) {
-        return Set.copyOf(staff.activeRoles(context.subject()));
+        // The authoritative role fold is RLS-bounded, so it needs the tenant GUC
+        // that the guarded transaction binds before the query runs.
+        return Set.copyOf(transactions.execute(status -> staff.activeRoles(context.subject())));
     }
 
     private static TenantContext context() {
