@@ -216,6 +216,19 @@ public final class ExportModel {
                             String checksum, String createdAt, String expiresAt) {
 
         /**
+         * Report whether the durable row has already been transitioned to EXPIRED.
+         *
+         * <p>The lifecycle has only two states, so this also identifies the retry
+         * case in which an earlier expiry marked the row but was interrupted before
+         * removing the manifest object from the private store.</p>
+         *
+         * @return {@code true} when the job status is EXPIRED
+         */
+        public boolean isExpired() {
+            return "EXPIRED".equals(status);
+        }
+
+        /**
          * Decide whether the artifact must no longer be disclosed.
          *
          * <p>An explicit expiry ends disclosure at once; the retention instant is
@@ -227,7 +240,7 @@ public final class ExportModel {
          * @return {@code true} when the job was expired or its retention has passed
          */
         public boolean expired(Instant now) {
-            return "EXPIRED".equals(status) || !now.isBefore(Instant.parse(expiresAt));
+            return isExpired() || !now.isBefore(Instant.parse(expiresAt));
         }
     }
 

@@ -309,4 +309,26 @@ class TenantExportServiceTest {
         assertTrue(objects.getVerified(
                 new ObjectKey(ORG, job.objectId(), job.objectVersion()), job.checksum()).isPresent());
     }
+
+    @Test
+    void retryAfterAnInterruptedTransitionRemovesTheOrphanedObject() {
+        ExportJob job = startAndCaptureJob();
+        ExportJob expiredJob = new ExportJob(job.id(), "EXPIRED", job.objectId(),
+                job.objectVersion(), job.checksum(), job.createdAt(), job.expiresAt());
+        when(store.find(job.id())).thenReturn(Optional.of(expiredJob));
+        when(store.markExpired(job.id())).thenReturn(false);
+        // The durable row was already EXPIRED but an earlier expire() was interrupted
+        // before removing the object. markExpired() reports false on a retry because
+        // the row is no longer COMPLETE; that is the retry case, not a conflict. The
+        // manifest still holds provenance and audit history, so it must be removed.
+        assertTrue(objects.getVerified(
+                new ObjectKey(ORG, job.objectId(), job.objectVersion()), job.checksum()).isPresent());
+        service.expire(job.id());
+        assertTrue(objects.getVerified(
+                new ObjectKey(ORG, job.objectId(), job.objectVersion()), job.checksum()).isEmpty(),
+                "an already-EXPIRED job must still have its orphaned object removed on retry");
+        verify(store).markExpired(job.id());
+        verify(audit).append(any(), eq("TENANT_EXPORT"), eq("EXPORT_EXPIRE"), eq("EXPORT"), eq("TENANT_EXPORT"),
+                eq(job.id()), eq("SUCCESS"));
+    }
 }
