@@ -28,6 +28,13 @@ public final class MessagingGovernanceInputs {
     private static final Set<String> EXPORT_SCOPES = Set.of(
             "conversation", "message", "instruction", "attachment", "report", "audit");
 
+    /** Allowlisted, non-sensitive reasons for producing a copy. */
+    private static final Set<String> EXPORT_PURPOSES = Set.of(
+            "record_access", "legal_review", "dispute", "care_continuity", "regulatory");
+
+    /** A revision is a bounded identifier token, never free clinical text. */
+    private static final Pattern REVISION_PATTERN = Pattern.compile("[A-Za-z0-9._:-]{1,64}");
+
     /**
      * Actions the generic audit recorder may legitimately record. Governance
      * commands (holds, exports, chart links, copy requests, retention, audit
@@ -146,6 +153,42 @@ public final class MessagingGovernanceInputs {
             throw new ApiException(422, "INVALID_SCOPE", "scope must be an allowed resource family");
         }
         return scope;
+    }
+
+    /**
+     * Validate an export purpose against the allowlisted non-sensitive codes.
+     *
+     * <p>A free-text purpose could carry patient identifiers into an immutable
+     * governance record, so only approved codes are accepted.</p>
+     *
+     * @param value supplied purpose code
+     * @return the validated code
+     * @throws ApiException when the code is absent, blank or not allowlisted
+     */
+    public static String exportPurpose(String value) {
+        String purpose = text(value, "purpose", MAX_SCOPE_LENGTH);
+        if (!EXPORT_PURPOSES.contains(purpose)) {
+            throw new ApiException(422, "INVALID_PURPOSE", "purpose must be an allowed code");
+        }
+        return purpose;
+    }
+
+    /**
+     * Validate a bounded source revision token.
+     *
+     * <p>Revisions are opaque identifiers, not descriptions; the character set
+     * keeps clinical free text out of the export provenance record.</p>
+     *
+     * @param value supplied revision token
+     * @return the validated token
+     * @throws ApiException when the token is blank or has disallowed characters
+     */
+    public static String exportRevision(String value) {
+        String revision = text(value, "sourceRevision", MAX_SCOPE_LENGTH);
+        if (!REVISION_PATTERN.matcher(revision).matches()) {
+            throw new ApiException(422, "INVALID_SOURCEREVISION", "sourceRevision has invalid characters");
+        }
+        return revision;
     }
 
     /**

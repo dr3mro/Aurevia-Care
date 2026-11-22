@@ -5,7 +5,7 @@ import { useApi } from '../../api/useApi';
 import { Button } from '../../components/Button';
 import { EmptyState, LoadingState, StateView } from '../../components/StateViews';
 import { useI18n } from '../../i18n/I18nProvider';
-import { useTheme } from '../../theme/ThemeProvider';
+import { useBreakpoint } from '../../theme/useBreakpoint';
 import type { BookingInput } from './BookingForm';
 import { SchedulingScreen } from './SchedulingScreen';
 import { book, checkIn, listAppointments, rangeWindow, toAppointment } from './api';
@@ -38,11 +38,18 @@ function toTransportError(failure: unknown): TransportError {
  * Load one day or week of appointments from the real API, page through the
  * cursor, and dispatch commands through callbacks on the presentational screen.
  * A failed command is shown above the screen so the booking draft is retained.
+ *
+ * The root uses the shared `page` utility rather than a local grid: it owns the
+ * single-column track that stacks on a phone, the centred reading width and the
+ * logical safe-area padding that mirrors under right-to-left (WEB-07, UX-01).
+ * The breakpoint hook exposes the active band for structure checks in jsdom,
+ * where media queries cannot be evaluated; width changes layout only, never
+ * authorization, data or the command flow.
  */
 export function SchedulingPage({ anchorCivilDate }: SchedulingPageProps) {
   const organizationId = useActiveOrganization();
   const { locale } = useI18n();
-  const { tokens } = useTheme();
+  const breakpoint = useBreakpoint();
   const anchor = anchorCivilDate ?? new Date().toISOString().slice(0, 10);
   const [range, setRange] = useState<WorklistRange>('day');
   const [cursor, setCursor] = useState<string | undefined>(undefined);
@@ -133,10 +140,21 @@ export function SchedulingPage({ anchorCivilDate }: SchedulingPageProps) {
     setCursor(nextCursor);
   }
 
+  // The page utility caps prose at the reading width, but the worklist is a
+  // table and must use the full available inline space. responsive.css has no
+  // wide-page class, so undo the cap with a logical inline style rather than
+  // editing the shared stylesheet.
   return (
-    <div style={{ display: 'grid', gap: tokens.spacing.lg }}>
+    <div
+      className="page"
+      data-scheduling-page
+      data-breakpoint={breakpoint}
+      style={{ maxInlineSize: 'none' }}
+    >
       {commandError !== undefined && (
-        <div data-testid="scheduling-command-error">{StateView.forTransportError(commandError)}</div>
+        <div data-testid="scheduling-command-error">
+          {StateView.forTransportError(commandError)}
+        </div>
       )}
       {result.status === 'loading' && loaded.length === 0 ? (
         <LoadingState />
