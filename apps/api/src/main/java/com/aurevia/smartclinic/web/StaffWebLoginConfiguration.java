@@ -50,6 +50,10 @@ import jakarta.servlet.http.HttpServletResponse;
  * therefore reach this higher-priority chain first (WEB-05). The
  * {@code GET /health/metrics} scrape is permitted here too but is gated by source
  * address in {@link com.aurevia.smartclinic.web.MetricsController} (WEB-06).</p>
+ *
+ * <p>The exact {@code GET /api/v1/openapi.yaml} document is permitted here as
+ * well: an anonymous browser client reaches this chain first, and the document
+ * is static API documentation with no tenant or patient data (section 7).</p>
  */
 @Configuration
 @Profile("!synthetic-auth")
@@ -140,7 +144,9 @@ public class StaffWebLoginConfiguration {
                 .authorizeHttpRequests(authorize -> authorize
                         // WEB-05/WEB-06: probes carry no bearer header, so they meet this chain
                         // first; permit exact paths so they never reach the login entry point.
-                        .requestMatchers(HttpMethod.GET, "/health/live", "/health/ready", "/health/metrics").permitAll()
+                        // Section 7: the static OpenAPI document is public too.
+                        .requestMatchers(HttpMethod.GET, "/health/live", "/health/ready", "/health/metrics",
+                                "/api/v1/openapi.yaml").permitAll()
                         .anyRequest().authenticated())
                 .oauth2Login(withDefaults())
                 .logout(logout -> logout

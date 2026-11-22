@@ -9,7 +9,7 @@ import { MixedScriptText } from '../../components/MixedScriptText';
 import { StateView } from '../../components/StateViews';
 import { useI18n } from '../../i18n/I18nProvider';
 import type { Locale } from '../../i18n/messages';
-import { useTheme } from '../../theme/ThemeProvider';
+import { useBreakpoint } from '../../theme/useBreakpoint';
 import { AdminTableRegion } from './AdminTableRegion';
 import {
   asAdminTransportError,
@@ -64,9 +64,18 @@ interface FacilitiesListProps {
   reloadToken: number;
 }
 
-/** Render the facility table through `ApiPage` and append each resolved page. */
+/**
+ * Render the facility table through `ApiPage` and append each resolved page.
+ *
+ * The table keeps its real `table`, `caption` and `th scope` semantics at every
+ * width; the caller-owned `AdminTableRegion` supplies the labelled, keyboard
+ * scroll region on phones, so no clinical column is hidden. Logical inline
+ * properties let long English and Arabic values wrap without a page-level
+ * horizontal scroll. The active band is exposed as `data-breakpoint` because
+ * jsdom cannot evaluate the real media queries (WEB-07, UX-01).
+ */
 function FacilitiesList({ organizationId, locale, reloadToken }: FacilitiesListProps) {
-  const { tokens } = useTheme();
+  const breakpoint = useBreakpoint();
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [accumulated, setAccumulated] = useState<readonly FacilityResponse[]>([]);
 
@@ -96,8 +105,11 @@ function FacilitiesList({ organizationId, locale, reloadToken }: FacilitiesListP
           <>
             <PageSink page={page} onPage={append} />
             <AdminTableRegion label={adminText(locale, 'facilities')}>
-              <table style={{ borderCollapse: 'collapse', width: '100%' }}>
-                <caption style={{ textAlign: 'start', paddingBlock: tokens.spacing.sm }}>
+              <table
+                data-breakpoint={breakpoint}
+                style={{ borderCollapse: 'collapse', inlineSize: '100%' }}
+              >
+                <caption style={{ textAlign: 'start' }}>
                   {adminText(locale, 'facilities')}
                 </caption>
                 <thead>
@@ -134,10 +146,20 @@ function FacilitiesList({ organizationId, locale, reloadToken }: FacilitiesListP
   );
 }
 
-/** Form, command handling and live list for one active organization. */
+/**
+ * Form, command handling and live list for one active organization.
+ *
+ * The whole page is one logical `.page` grid so it occupies a single full-width
+ * column on phones and centres to the shared reading width on larger viewports;
+ * the form and its fields use the shared `.stack` / `.grid-2` utilities so they
+ * stack on phones and sit side by side from the medium band up. Direction stays
+ * with the document — no subtree overrides it, so the same markup mirrors under
+ * right-to-left. The active band is exposed as `data-breakpoint` because jsdom
+ * cannot evaluate the real media queries (WEB-07, UX-01).
+ */
 function FacilitiesContent({ organizationId }: FacilitiesContentProps) {
   const { locale } = useI18n();
-  const { tokens } = useTheme();
+  const breakpoint = useBreakpoint();
   const [draft, setDraft] = useState(EMPTY_DRAFT);
   const [fieldErrors, setFieldErrors] = useState<ReturnType<typeof validateFacility>>({});
   const [commandError, setCommandError] = useState<TransportError | undefined>(undefined);
@@ -177,8 +199,8 @@ function FacilitiesContent({ organizationId }: FacilitiesContentProps) {
   const nameError = fieldErrors.name === undefined ? undefined : adminText(locale, fieldErrors.name);
 
   return (
-    <div style={{ display: 'grid', gap: tokens.spacing.lg }}>
-      <section aria-label={adminText(locale, 'createFacility')} style={{ display: 'grid', gap: tokens.spacing.md }}>
+    <div className="page" data-breakpoint={breakpoint}>
+      <section aria-label={adminText(locale, 'createFacility')} className="stack">
         <h2>{adminText(locale, 'facilities')}</h2>
         <p>{adminText(locale, 'facilitiesIntro')}</p>
         <FieldErrorSummary
@@ -190,7 +212,7 @@ function FacilitiesContent({ organizationId }: FacilitiesContentProps) {
           submitLabel={adminText(locale, 'createFacility')}
           onSubmit={handleSubmit}
         >
-          <div style={{ display: 'grid', gap: tokens.spacing.md }}>
+          <div className={breakpoint === 'compact' ? 'stack' : 'grid-2'}>
             <FormField
               id="facility-code"
               label={adminText(locale, 'facilityCode')}
