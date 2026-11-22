@@ -1,4 +1,7 @@
-- [ ] RESP-NOTE-EDITOR · Staff web: responsive `NoteEditor` (features-chart)
+- [x] RESP-NOTE-EDITOR · Staff web: responsive `NoteEditor` (features-chart)
+  - pr: #771
+  - evidence: PR #771; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/RESP-NOTE-EDITOR.md; simulated review only
+  - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/chart/NoteEditor.tsx, apps/staff-web/tests/responsive/features-chart/NoteEditor.responsive.test.tsx
   - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS

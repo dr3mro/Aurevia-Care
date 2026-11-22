@@ -1,4 +1,7 @@
-- [ ] RESP-STATE-BADGE · Staff web: responsive `StateBadge` (features-admin)
+- [x] RESP-STATE-BADGE · Staff web: responsive `StateBadge` (features-admin)
+  - pr: #752
+  - evidence: PR #752; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/RESP-STATE-BADGE.md; simulated review only
+  - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/admin/StateBadge.tsx, apps/staff-web/tests/responsive/features-admin/StateBadge.responsive.test.tsx
   - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS

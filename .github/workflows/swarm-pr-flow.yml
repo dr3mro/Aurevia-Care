@@ -17,7 +17,7 @@ on:
     workflows: [Delivery]
     types: [completed]
   schedule:
-    - cron: '*/10 * * * *'
+    - cron: '*/20 * * * *'
   workflow_dispatch:
 permissions:
   contents: read
@@ -53,5 +53,5 @@ jobs:
             docs/archive/TODO-DONE.md
       - name: Move every open swarm pull request to its next step
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
         run: python3 -I scripts/swarm.py pr-flow
