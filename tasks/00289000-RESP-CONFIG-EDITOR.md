@@ -1,5 +1,6 @@
-- [ ] RESP-CONFIG-EDITOR · Staff web: responsive `ConfigEditor` (features-admin)
-  - attempts: 1
+- [-] RESP-CONFIG-EDITOR · Staff web: responsive `ConfigEditor` (features-admin)
+  - agent: swarm-9
+  - attempts: 3
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/admin/ConfigEditor.tsx, apps/staff-web/tests/responsive/features-admin/ConfigEditor.responsive.test.tsx
   - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
