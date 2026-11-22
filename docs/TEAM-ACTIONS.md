@@ -20,7 +20,7 @@ Follow the setup in [SWARM.md](SWARM.md#setup): run **Agent image** once, save `
 |---|---|
 | Every hour at :07 | `swarm.yml` safety-net wave, when work is waiting and no wave runs |
 | Every hour at :37 | `swarm-issue-monitor.yml`: issues no worker was assigned |
-| Every 15 minutes, and when a watched workflow finishes | `swarm-watchdog.yml`: failure and stall issues, closing finished ones |
+| Every 15 minutes, and when a watched workflow finishes | `swarm-watchdog.yml`: failure and stall issues, closing finished ones, and starting a wave when none has run for 30 minutes while work waits |
 | 05:10 daily | `daily-notes.yml`: reconcile yesterday's worker notes |
 | 06:00 (summer) or 07:00 (winter) daily | `swarm-issue-monitor.yml`: 2:00 AM New York pass over issues with no progress for 24 hours |
 | 07:17 daily | `daily-audit.yml` |

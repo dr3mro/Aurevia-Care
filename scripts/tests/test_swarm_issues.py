@@ -396,6 +396,19 @@ class WatchdogTests(unittest.TestCase):
         self.assertIn("needs-human", args)
         self.assertIn("CW-001", args[args.index("--body") + 1])
 
+    def test_the_watchdog_starts_a_wave_when_none_has_run_for_half_an_hour(self):
+        fake = self.run_dog([self.run_at(45)])
+        self.assertTrue(fake.said("--ref", "main", "swarm.yml"))
+        self.assertFalse(fake.said("issue", "create"))
+
+    def test_the_watchdog_leaves_a_recent_wave_a_running_wave_and_an_empty_queue_alone(self):
+        Path("TODO.md").write_text("# TODO\n\n## Tasks\n")
+        for runs, todo in (([self.run_at(10)], TODO), ([self.run_at(300, "in_progress")], TODO),
+                           ([self.run_at(300)], "# TODO\n\n## Tasks\n")):
+            with self.subTest(runs=runs[0]["status"], todo=len(todo)):
+                Path("TODO.md").write_text(todo)
+                self.assertFalse(self.run_dog(runs).said("--ref"))
+
     def test_a_recent_wave_is_not_a_stall(self):
         fake = self.run_dog([self.run_at(20)])
         self.assertFalse(fake.said("issue", "create"))

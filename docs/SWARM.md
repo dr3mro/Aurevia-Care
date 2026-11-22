@@ -30,7 +30,7 @@ Every problem the swarm cannot solve in the moment becomes a GitHub issue, writt
 | Issue | Opened by | Label | Closed when |
 |---|---|---|---|
 | A workflow run failed | `swarm-watchdog.yml`, when Delivery, Agent swarm, the slot images, the daily audit, the issue monitor or the daily notes finish red (a transient runner error is retried once first) | `ci-failure` (plus `needs-human` for a credential or quota problem) | the next run of that workflow is green |
-| The swarm stalled | the watchdog every 15 minutes: no wave for 60 minutes while work is waiting | `stalled`, `needs-human` | waves run again |
+| The swarm stalled | the watchdog every 15 minutes: it starts a wave itself once none has run for 30 minutes while work is waiting (the hourly schedule is often delayed or dropped); the issue opens only when no wave has appeared after 60 minutes | `stalled`, `needs-human` | waves run again |
 | A worker stopped before finishing | the publish job, with the worker's own "Why this is not finished" and its check log | `worker-handoff`, `agent-fixable` | the task is done or its PR is merged or closed |
 | A pull request will not merge by itself | the integrator: fix attempts used up, too many files, or protected files (the last only while the kill switch is off) | `needs-human` or `needs-review` | the PR is merged or closed |
 | Protected files merged with the kill switch on | `guard()` / `report_protected_merge()` in `scripts/swarm.py`; one issue per PR revision | `protected-change` (non-blocking; no `needs-human`/`needs-review`) | the owner reads and closes the issue; see [Kill switch](#kill-switch) |

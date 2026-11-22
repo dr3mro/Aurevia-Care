@@ -202,6 +202,9 @@ def repo_slug():
 # ---------------------------------------------------------------------------
 ISSUE_BODY_LIMIT = 60000
 STALL_MINUTES = 60
+# The watchdog starts a wave itself once none has run for this long while work waits: the hourly
+# schedule is only a hint to GitHub and is often delayed or dropped.
+START_IDLE_MINUTES = 30
 SECRET = re.compile(r"(gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_-]{20,})")
 TRANSIENT = re.compile(
     r"ECONNRESET|ETIMEDOUT|Connection reset|connection timed out|TLS handshake timeout|"
@@ -572,9 +575,9 @@ def run_event(run_id):
     return f"issue {number or 'not written'}"
 
 
-def stall_status():
-    """(stalled, facts): stalled means no wave running or queued for STALL_MINUTES while
-    work is waiting."""
+def swarm_idle():
+    """(active, work, idle, facts): waves running or queued, whether work is waiting (a ready task
+    or a red main) and the minutes since the last wave started."""
     runs = gh_json("run", "list", "--workflow", "swarm.yml", "--limit", "30",
                    "--json", "status,conclusion,createdAt,url") or []
     active = [r for r in runs if r["status"] in BUILD_PENDING]
@@ -591,7 +594,7 @@ def stall_status():
     facts = (f"{len(active)} wave(s) running or queued; the last wave started {idle} minutes ago. Ready now: "
              f"{', '.join(t['id'] for t in ready) or 'nothing'}. Main red: {'yes' if red else 'no'}. "
              f"Last runs: {', '.join(recent) or 'none'}.")
-    return (not active and work and idle >= STALL_MINUTES), facts
+    return active, work, idle, facts
 
 
 def sync_issues():
@@ -625,9 +628,15 @@ def sync_issues():
 
 
 def watchdog():
-    """Open or update the stall issue, or close it once waves run again; sync other issues."""
-    stalled, facts = stall_status()
-    if stalled:
+    """Start a wave that nothing else started, open or update the stall issue when that did not
+    help, or close it once waves run again; sync other issues."""
+    active, work, idle, facts = swarm_idle()
+    if not active and work and idle >= START_IDLE_MINUTES:
+        # Nothing runs, so no worker's last job will start the next wave and the hourly schedule
+        # did not either. A dispatch is the only thing left that can.
+        gh("workflow", "run", "swarm.yml", "--ref", "main", check=False)
+        print(f"No wave for {idle} minutes while work waits; started one.")
+    if not active and work and idle >= STALL_MINUTES:
         number = record_issue("stall", ["swarm"], "Swarm stalled: no wave is running",
                               f"{facts}\n\nThe hourly schedule or a push to TODO.md should have started a wave. "
                               "Check the latest Agent swarm run and the plan job's log.",
