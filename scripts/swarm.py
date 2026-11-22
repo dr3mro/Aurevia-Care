@@ -2582,7 +2582,14 @@ def only_worker_failures(run):
 
 def repair_task(run_id):
     """Build the worker task that repairs a failed run on main."""
-    run = gh_json("run", "view", str(run_id), "--json", "name,headBranch,headSha,conclusion,url,jobs")
+    try:
+        run = gh_json("run", "view", str(run_id), "--json", "name,headBranch,headSha,conclusion,url,jobs")
+    except subprocess.CalledProcessError as error:
+        text = f"{error.stderr}{error.stdout}"
+        if "404" in text or "Not Found" in text:
+            print(f"run {run_id} no longer exists; nothing to repair")
+            return None
+        raise
     if run["headBranch"] != "main" or run["conclusion"] != "failure":
         return None
     if only_worker_failures(run):
