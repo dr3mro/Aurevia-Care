@@ -1873,10 +1873,20 @@ class PrFlowTests(unittest.TestCase):
         self.assertFalse(fake.said("swarm-debugger.yml"))
 
     def test_needs_fix_starts_one_wave_unless_one_waits(self):
-        acted, fake, _, _ = self.run_flow([self.pr(7, ("needs-fix",))])
+        acted, fake, _, _ = self.run_flow([self.pr(7, ("needs-fix",))], state="missing")
         self.assertTrue(fake.said("swarm.yml"))
-        _, fake, _, _ = self.run_flow([self.pr(7, ("needs-fix",))], waiting=1)
+        _, fake, _, _ = self.run_flow([self.pr(7, ("needs-fix",))], state="missing", waiting=1)
         self.assertFalse(fake.said("swarm.yml"))
+
+    def test_needs_fix_is_cleared_when_delivery_already_passed(self):
+        acted, fake, _, _ = self.run_flow([self.pr(7, ("needs-fix",))], state="passed")
+        self.assertIn((7, "needs-fix cleared: delivery already passed"), acted)
+        self.assertFalse(fake.said("swarm.yml"))
+
+    def test_main_is_red_survives_a_gh_failure(self):
+        err = swarm.subprocess.CalledProcessError(1, ("run", "list"))
+        with mock.patch.object(swarm, "gh_json", side_effect=err):
+            self.assertFalse(swarm.main_is_red())
 
     def test_missing_delivery_requests_one_run_per_head(self):
         acted, fake, _, _ = self.run_flow([self.pr(7)], state="missing")

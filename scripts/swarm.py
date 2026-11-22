@@ -2455,8 +2455,14 @@ def fail(pr, reason, log_text="", simple=False):
 
 def main_is_red(workflow="delivery.yml"):
     """True when the newest finished run of the delivery workflow on main failed."""
-    runs = gh_json("run", "list", "--workflow", workflow, "--branch", "main", "--status", "completed",
-                   "--limit", "1", "--json", "conclusion") or []
+    try:
+        runs = gh_json("run", "list", "--workflow", workflow, "--branch", "main", "--status", "completed",
+                       "--limit", "1", "--json", "conclusion") or []
+    except subprocess.CalledProcessError as exc:
+        # A rate limit or API hiccup must not crash the whole flow pass: treat main as not red
+        # and let the next scheduled pass look again.
+        print(f"main_is_red: gh failed ({exc.returncode}); assuming main is not red", file=sys.stderr)
+        return False
     return bool(runs) and runs[0]["conclusion"] == "failure"
 
 
