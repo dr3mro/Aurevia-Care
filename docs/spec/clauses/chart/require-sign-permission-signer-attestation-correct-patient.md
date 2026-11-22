@@ -29,18 +29,21 @@ a fixed clock and a synthetic `TenantContext`; no real patient data and no new d
 - `signDeniesAMemberWhoseMembershipIsInactive` — negative proof of sign permission at the identity
   boundary: an inactive membership is refused with 403 `FORBIDDEN` and audited `DENIED`.
 - `signRefusesABlankOrMissingSignerAttestation` — negative proof of signer attestation: both blank
-  and absent attestation are refused with 422 and nothing is appended.
+  and absent attestation are refused with 422 `INVALID_ATTESTATION` and nothing is appended. Patient
+  context is deliberately satisfied so the failure cannot come from a different guard.
 - `signRefusesAPatientOutsideTheActiveOrganization` — negative proof of patient context: a patient
   that is not in the active organization is refused with 422 `INVALID_PATIENT_CONTEXT`, nothing is
   appended and the attempt is audited `CONFLICT`.
 - `signRefusesADraftVersionTheCallerDidNotRead` — negative proof of draft version: a stale
   version (stored 3, caller sent 1) is refused with 412 `STALE_VERSION` and nothing is appended.
 - `signRefusesADraftWithMissingRequiredFields` — negative proof of required fields: a draft whose
-  content is blank is refused with 422 before any append.
+  content is blank is refused with 422 `INVALID_CONTENT` before any append, with patient context
+  satisfied so the failure is attributable to the field check.
 
-Production classes exercised through the normal command entry point
-(`ClinicalNoteController.sign` binds `POST /api/v1/clinical-notes/{id}/sign` and delegates to
-`ClinicalNoteService.sign`, which owns every invariant of this clause):
+Production classes exercised. `ClinicalNoteController.sign` binds the normal HTTP entry point
+`POST /api/v1/clinical-notes/{id}/sign` and delegates to `ClinicalNoteService.sign`, which owns every
+invariant of this clause; the clause test calls the service directly at the mocked repository
+boundary, while the unchanged `ClinicalNoteRevisionIntegrationTest` proves the HTTP entry point:
 
 - `com.aurevia.smartclinic.clinical.notes.ClinicalNoteService` — `sign` re-checks active membership
   and the `SIGN` action permission, locks the note, loads the head, requires the caller's version

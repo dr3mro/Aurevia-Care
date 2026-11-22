@@ -181,11 +181,18 @@ class RequireSignPermissionSignerAttestationCorrectPatientTest {
     void signRefusesABlankOrMissingSignerAttestation() {
         authorized("clinician");
         when(repository.current(NOTE)).thenReturn(Optional.of(draft()));
+        // Patient context is satisfied so a relaxed attestation rule cannot
+        // produce a different 422 downstream and keep this test green.
+        when(repository.patientExists(PATIENT)).thenReturn(true);
 
-        assertEquals(422, assertThrows(ApiException.class,
-                () -> service.sign(NOTE, 1, "  ")).status());
-        assertEquals(422, assertThrows(ApiException.class,
-                () -> service.sign(NOTE, 1, null)).status());
+        ApiException blank = assertThrows(ApiException.class,
+                () -> service.sign(NOTE, 1, "  "));
+        assertEquals(422, blank.status());
+        assertEquals("INVALID_ATTESTATION", blank.code());
+        ApiException missing = assertThrows(ApiException.class,
+                () -> service.sign(NOTE, 1, null));
+        assertEquals(422, missing.status());
+        assertEquals("INVALID_ATTESTATION", missing.code());
         verify(repository, never()).insert(any(), any(), any());
     }
 
@@ -227,11 +234,15 @@ class RequireSignPermissionSignerAttestationCorrectPatientTest {
     void signRefusesADraftWithMissingRequiredFields() {
         authorized("clinician");
         when(repository.current(NOTE)).thenReturn(Optional.of(draftMissingRequiredField()));
+        // Keep patient context valid: the failure must come from the required
+        // content check, not from an unrelated downstream guard.
+        when(repository.patientExists(PATIENT)).thenReturn(true);
 
         ApiException failure = assertThrows(ApiException.class,
                 () -> service.sign(NOTE, 1, "attested"));
 
         assertEquals(422, failure.status());
+        assertEquals("INVALID_CONTENT", failure.code());
         verify(repository, never()).insert(any(), any(), any());
     }
 
