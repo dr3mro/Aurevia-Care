@@ -2558,6 +2558,32 @@ def delivery_runs(head):
     return runs
 
 
+DELIVERY_LISTING_LIMIT = 100
+
+
+def delivery_listing():
+    """One call listing the newest Delivery runs of every branch, shared by a whole pr-flow pass."""
+    runs = gh_json("run", "list", "--workflow", "Delivery", "--limit", str(DELIVERY_LISTING_LIMIT),
+                   "--json", "databaseId,headSha,status,conclusion")
+    return runs if isinstance(runs, list) else []
+
+
+def delivery_runs_from(listing, head):
+    """Runs for one head taken from a shared listing, so a pass costs one call, not two per PR.
+
+    Jobs are read only for a run that has not finished, the one case where an environment
+    gate shows at job level. A head absent from a full listing may just be older than the
+    window, so only then is it looked up on its own.
+    """
+    runs = [r for r in listing if isinstance(r, dict) and (r.get("headSha") or "") == head]
+    if not runs and len(listing) >= DELIVERY_LISTING_LIMIT:
+        return delivery_runs(head)
+    if runs and runs[0].get("databaseId") and runs[0].get("status") != "completed":
+        jobs = gh_json("run", "view", str(runs[0]["databaseId"]), "--json", "jobs") or {}
+        runs[0]["jobs"] = jobs.get("jobs") or []
+    return runs
+
+
 def delivery_gate(pr, head=None, runs=None):
     """Apply the integrator's Delivery policy to one pull request.
 
@@ -3027,6 +3053,11 @@ def pr_flow(now=None):
     prs = gh_json("pr", "list", "--state", "open", "--label", "swarm", "--limit", "100",
                   "--json", "number,title,labels,isCrossRepository,isDraft,headRefOid,updatedAt") or []
     red = main_is_red()
+    try:
+        listing = delivery_listing()
+    except subprocess.CalledProcessError as exc:
+        print(f"pr-flow: delivery listing failed ({exc.returncode}); retry next pass", file=sys.stderr)
+        return []
     acted, ready, wants_debugger, wants_wave = [], [], False, False
     for item in sorted(prs, key=lambda p: p["number"]):
         pr, labels = item["number"], label_names(item)
@@ -3042,7 +3073,7 @@ def pr_flow(now=None):
             # integrator can pick it up without spawning another redundant fix worker.
             head = item.get("headRefOid", "")
             try:
-                delivered = bool(head) and delivery_state(delivery_runs(head), head) == "passed"
+                delivered = bool(head) and delivery_state(delivery_runs_from(listing, head), head) == "passed"
             except subprocess.CalledProcessError as exc:
                 # Rate limit or API hiccup: leave this PR for the next pass, no wave on a guess.
                 print(f"#{pr}: delivery lookup failed ({exc.returncode}); retry next pass", file=sys.stderr)
@@ -3062,7 +3093,7 @@ def pr_flow(now=None):
                 acted.append((pr, "draft sent to fix"))
             continue
         head = item.get("headRefOid", "")
-        state = delivery_state(delivery_runs(head), head)
+        state = delivery_state(delivery_runs_from(listing, head), head)
         if state == "failed":
             fail(pr, "Delivery failed on the current head")
             acted.append((pr, "delivery failed, sent to debugger"))

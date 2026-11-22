@@ -1832,6 +1832,7 @@ class PrFlowTests(unittest.TestCase):
         with mock.patch.object(swarm, "gh", fake), \
              mock.patch.object(swarm, "gh_json", lambda *a: prs if a[:2] == ("pr", "list") else {"headRefName": "swarm/CW-001-1"}), \
              mock.patch.object(swarm, "main_is_red", return_value=red), \
+             mock.patch.object(swarm, "delivery_listing", return_value=[]), \
              mock.patch.object(swarm, "delivery_runs", return_value=[]), \
              mock.patch.object(swarm, "delivery_state", return_value=state), \
              mock.patch.object(swarm, "delivery_requested", return_value=requested), \
@@ -1885,7 +1886,8 @@ class PrFlowTests(unittest.TestCase):
 
     def test_needs_fix_survives_a_delivery_lookup_failure(self):
         err = swarm.subprocess.CalledProcessError(1, ("run", "list"))
-        with mock.patch.object(swarm, "delivery_runs", side_effect=err):
+        with mock.patch.object(swarm, "delivery_runs", side_effect=err), \
+             mock.patch.object(swarm, "delivery_listing", return_value=[{"headSha": "x"}] * 100):
             fake = FakeGh()
             with mock.patch.object(swarm, "gh", fake), \
                  mock.patch.object(swarm, "gh_json", lambda *a: [self.pr(7, ("needs-fix",))]), \
@@ -1894,6 +1896,24 @@ class PrFlowTests(unittest.TestCase):
                 acted = swarm.pr_flow(self.NOW)
         self.assertEqual(acted, [])
         self.assertFalse(fake.said("swarm.yml"))
+
+    def test_a_pass_lists_delivery_runs_once_for_all_pull_requests(self):
+        listing = [{"databaseId": 1, "headSha": "a", "status": "completed", "conclusion": "success"},
+                   {"databaseId": 2, "headSha": "b", "status": "completed", "conclusion": "failure"}]
+        calls = []
+        with mock.patch.object(swarm, "gh_json", lambda *a: calls.append(a)):
+            with mock.patch.object(swarm, "gh_json", lambda *a: calls.append(a) or []):
+                self.assertEqual(swarm.delivery_runs_from(listing, "a"), [listing[0]])
+                self.assertEqual(swarm.delivery_runs_from(listing, "b"), [listing[1]])
+        self.assertEqual(calls, [])
+
+    def test_unfinished_run_reads_jobs_and_old_heads_fall_back_when_listing_is_full(self):
+        running = [{"databaseId": 9, "headSha": "a", "status": "in_progress", "conclusion": None}]
+        with mock.patch.object(swarm, "gh_json", return_value={"jobs": [{"status": "waiting"}]}):
+            self.assertEqual(swarm.delivery_runs_from(running, "a")[0]["jobs"], [{"status": "waiting"}])
+        with mock.patch.object(swarm, "delivery_runs", return_value=["old"]) as single:
+            self.assertEqual(swarm.delivery_runs_from([{"headSha": "z"}] * 100, "a"), ["old"])
+            single.assert_called_once_with("a")
 
     def test_main_is_red_survives_a_gh_failure(self):
         err = swarm.subprocess.CalledProcessError(1, ("run", "list"))
