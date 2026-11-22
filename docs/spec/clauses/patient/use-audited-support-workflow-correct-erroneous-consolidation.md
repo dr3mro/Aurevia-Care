@@ -77,15 +77,25 @@ with neighbouring identity code in `patient/identity/` (`IdentityProofingService
 HTTP-level acceptance already exists in
 `apps/api/src/test/java/com/aurevia/smartclinic/it/patientidentity/ConsolidationIsolationTest.java`
 (`correctionReversesVisibilityAndAuditsAndHistoryIsImmutable`) and
-`ConsolidationServiceTest` covers the unit branches of `correct`. The public route is
-declared in `contracts/openapi.yaml`; the append-only association and consolidation
-tables are created by Flyway migrations under `db/migrations`. None of these files
-was modified by this proof-only task.
+`ConsolidationServiceTest` covers the unit branches of `correct`. The append-only
+association and consolidation tables are created by Flyway migration
+`db/migrations/V9__duplicate_review_consolidation.sql`. None of these files was
+modified by this proof-only task.
 
 ## Gap
 
-None.
+The clause's behavior is implemented and proven by active tests, but its public
+route is not yet in the API contract:
+`POST /api/v1/duplicate-reviews/{reviewId}/correct` is listed in
+`contracts/openapi/missing-routes.txt` (line 202), the baseline of Spring routes
+not yet documented in `contracts/openapi.yaml`; a grep of `contracts/openapi.yaml`
+finds no `duplicate-reviews` path. Closing this contracts gap needs one separate
+cross-boundary task: add the path, request and response schemas to
+`contracts/openapi.yaml`, remove its `missing-routes.txt` line and regenerate the
+staff-web OpenAPI types. That is outside this proof-only task's scope; the route
+itself works end to end against a real database in `ConsolidationIsolationTest`.
 
-The clause is implemented and proven by active tests at the HTTP entry point and by
-the real-database integration suite. This task added proof only; it did not change
-production code, an existing test, the OpenAPI contract or a migration.
+No behavioral gap was found: the support workflow, role boundary, version
+precondition, append-only history and audit events are all implemented and proven.
+This task added proof only; it did not change production code, an existing test,
+the OpenAPI contract or a migration.

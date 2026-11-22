@@ -151,6 +151,7 @@ class UseAuditedSupportWorkflowCorrectErroneousConsolidationTest {
 
     @Test
     void correctionViaApiDeniesNonAdminRolesAndAuditsTheRefusal() throws Exception {
+        when(repository.activeRoles("auditor-a")).thenReturn(List.of("privacy_auditor"));
         when(repository.findCurrentConsolidation(REVIEW)).thenReturn(Optional.of(consolidated()));
 
         // privacy_auditor may review and approve but may not correct; reception may do neither.
