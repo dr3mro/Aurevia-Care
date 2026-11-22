@@ -21,7 +21,7 @@ Rules for the person performing it:
 ## Apply order and dependencies
 
 1. **Confirm the six merges are on `main` with green Delivery checks on their own SHAs:** WQUALITY-01 (`#673`), WQUALITY-02 (`#816`), WQUALITY-03 (`#403`), WQUALITY-04 (`#383`), WQUALITY-05 (`#412`), WQUALITY-06 (`#667`). WQUALITY-02 depends on WQUALITY-01 (`delivery_state`); confirm WQUALITY-01's function is present before testing draft recovery. No further apply step is needed.
-2. **Rebuild the worker tooling before trusting any worker-run evidence.** Run `Agent image` (`.github/workflows/agent-image.yml`) on the final `main` SHA, then `Swarm slot images` (`.github/workflows/swarm-images.yml`) so every slot carries the pinned image. Record the one digest `Agent image` publishes in `published-image.txt`; `Swarm slot images` pushes mutable `:latest` tags and publishes no digest. This is the pending item in the OPS-WORKER-QUALITY audit entry: until it is done, a worker may run older tooling even though the scripts in the checkout are current.
+2. **Rebuild the worker tooling before trusting any worker-run evidence.** Run `Agent image` (`.github/workflows/agent-image.yml`) on the final `main` SHA, then `Swarm slot images` (`.github/workflows/swarm-images.yml`) so every slot is rebuilt from the freshly published base. Record the one digest `Agent image` publishes in `published-image.txt`; `Swarm slot images` pushes mutable `:latest` tags and publishes no digest. This is the pending item in the OPS-WORKER-QUALITY audit entry: until it is done, a worker may run older tooling even though the scripts in the checkout are current.
 3. **Verify the queue-level changes first** (WQUALITY-01 integrator classification, WQUALITY-02 draft recovery), because they decide which synthetic pull requests reach the worker and integrator gates. Then verify the gate-level changes (WQUALITY-03, WQUALITY-04, WQUALITY-05, WQUALITY-06).
 4. **Finish with one clean `Delivery` run on the final `main` commit** and record its run URL and SHA in the result table.
 
@@ -66,7 +66,7 @@ Rules for the person performing it:
 ### WQUALITY-04 — frontend dependency scanning in the frontend check
 
 - [ ] **Merged script change.** Source: `scripts/frontend-check.sh`, `scripts/tests/test_frontend_check.py`, PR `#383`, note `.agent/pr-notes/WQUALITY-04-20261121-153622.md`. Requirement WEB-12.
-  **Apply.** No apply step. Confirm `scripts/check.sh:23`, `scripts/worker-check.sh` and `delivery.yml:76` all call `scripts/frontend-check.sh`.
+  **Apply.** No apply step. Confirm `scripts/check.sh:24`, `scripts/worker-check.sh:11` and `.github/workflows/delivery.yml:79` all call `scripts/frontend-check.sh`.
   **Workflow on GitHub.** `Delivery` → job `Frontend standards` on the exact SHA, and `Swarm worker run` → `worker-check.sh` for the synthetic PR.
   **Draft that fails a check.** Open a synthetic PR that adds a high or critical production dependency to either frontend module. Observation that proves it: `npm audit --omit=dev --audit-level=high` is non-zero, the step reports the finding and `Frontend standards` is red, so the PR is not mergeable.
   **Draft that passes.** Use dependencies with no high or critical production findings; moderate findings are allowed. Observation that proves it: `Frontend standards` is green and both modules are audited with the required flags.
