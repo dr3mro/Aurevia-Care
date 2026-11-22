@@ -3724,6 +3724,13 @@ export interface operations {
             409: components["responses"]["StateConflict"];
             412: components["responses"]["StaleVersion"];
             422: components["responses"]["InvalidRequest"];
+            /** @description If-Match precondition required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     assignConversation: {
@@ -3766,6 +3773,13 @@ export interface operations {
             409: components["responses"]["StateConflict"];
             412: components["responses"]["StaleVersion"];
             422: components["responses"]["InvalidRequest"];
+            /** @description If-Match precondition required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     transferConversation: {
@@ -3808,6 +3822,13 @@ export interface operations {
             409: components["responses"]["StateConflict"];
             412: components["responses"]["StaleVersion"];
             422: components["responses"]["InvalidRequest"];
+            /** @description If-Match precondition required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     resolveConversation: {
@@ -3850,6 +3871,13 @@ export interface operations {
             409: components["responses"]["StateConflict"];
             412: components["responses"]["StaleVersion"];
             422: components["responses"]["InvalidRequest"];
+            /** @description If-Match precondition required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     closeConversation: {
@@ -3892,6 +3920,13 @@ export interface operations {
             409: components["responses"]["StateConflict"];
             412: components["responses"]["StaleVersion"];
             422: components["responses"]["InvalidRequest"];
+            /** @description If-Match precondition required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     markConversationRead: {
@@ -3930,6 +3965,13 @@ export interface operations {
             409: components["responses"]["StateConflict"];
             412: components["responses"]["StaleVersion"];
             422: components["responses"]["InvalidRequest"];
+            /** @description If-Match precondition required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     openInstantDirectConversation: {
@@ -4051,8 +4093,8 @@ export interface operations {
                 "X-Active-Organization": components["parameters"]["ActiveOrganization"];
                 /** @description Generated and echoed when absent. */
                 "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
-                /** @description Opaque key that makes a retried placement produce a single order. */
-                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
             };
             path: {
                 /** @description Tenant-local conversation identifier */
@@ -4324,6 +4366,13 @@ export interface operations {
             404: components["responses"]["ResourceNotFound"];
             412: components["responses"]["StaleVersion"];
             422: components["responses"]["InvalidRequest"];
+            /** @description If-Match precondition required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     sendMailDraft: {

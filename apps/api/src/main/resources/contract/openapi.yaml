@@ -843,6 +843,7 @@ paths:
         '409': { $ref: '#/components/responses/StateConflict' }
         '412': { $ref: '#/components/responses/StaleVersion' }
         '422': { $ref: '#/components/responses/InvalidRequest' }
+        '428': { description: If-Match precondition required }
   /api/v1/conversations/{id}/assign:
     post:
       operationId: assignConversation
@@ -871,6 +872,7 @@ paths:
         '409': { $ref: '#/components/responses/StateConflict' }
         '412': { $ref: '#/components/responses/StaleVersion' }
         '422': { $ref: '#/components/responses/InvalidRequest' }
+        '428': { description: If-Match precondition required }
   /api/v1/conversations/{id}/transfer:
     post:
       operationId: transferConversation
@@ -899,6 +901,7 @@ paths:
         '409': { $ref: '#/components/responses/StateConflict' }
         '412': { $ref: '#/components/responses/StaleVersion' }
         '422': { $ref: '#/components/responses/InvalidRequest' }
+        '428': { description: If-Match precondition required }
   /api/v1/conversations/{id}/resolve:
     post:
       operationId: resolveConversation
@@ -927,6 +930,7 @@ paths:
         '409': { $ref: '#/components/responses/StateConflict' }
         '412': { $ref: '#/components/responses/StaleVersion' }
         '422': { $ref: '#/components/responses/InvalidRequest' }
+        '428': { description: If-Match precondition required }
   /api/v1/conversations/{id}/close:
     post:
       operationId: closeConversation
@@ -955,6 +959,7 @@ paths:
         '409': { $ref: '#/components/responses/StateConflict' }
         '412': { $ref: '#/components/responses/StaleVersion' }
         '422': { $ref: '#/components/responses/InvalidRequest' }
+        '428': { description: If-Match precondition required }
   /api/v1/conversations/{id}/read:
     post:
       operationId: markConversationRead
@@ -978,6 +983,7 @@ paths:
         '409': { $ref: '#/components/responses/StateConflict' }
         '412': { $ref: '#/components/responses/StaleVersion' }
         '422': { $ref: '#/components/responses/InvalidRequest' }
+        '428': { description: If-Match precondition required }
   /api/v1/staff/instant/direct:
     post:
       operationId: openInstantDirectConversation
@@ -1061,7 +1067,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/ActiveOrganization'
         - $ref: '#/components/parameters/CorrelationId'
-        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/RetryKey'
         - { name: conversationId, in: path, required: true, description: Tenant-local conversation identifier, schema: { type: string } }
         - { name: subject, in: path, required: true, description: Tenant-local staff subject, schema: { type: string } }
         - { name: facilityId, in: query, required: true, description: Facility the conversation must belong to, schema: { type: string } }
@@ -1231,6 +1237,7 @@ paths:
         '404': { $ref: '#/components/responses/ResourceNotFound' }
         '412': { $ref: '#/components/responses/StaleVersion' }
         '422': { $ref: '#/components/responses/InvalidRequest' }
+        '428': { description: If-Match precondition required }
   /api/v1/staff/mail/drafts/{id}/send:
     post:
       operationId: sendMailDraft
