@@ -66,7 +66,7 @@ function DuplicatesContent({
       {selected === null ? (
         <ApiPage
           resource={{
-            label: duplicatesText(locale, 'worklistCaption'),
+            label: duplicatesText(locale, 'title'),
             load: () => listDuplicateReviews(organizationId),
             deps: [organizationId, reloadToken],
           }}
