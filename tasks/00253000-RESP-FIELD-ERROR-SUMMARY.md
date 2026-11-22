@@ -1,5 +1,5 @@
-- [-] RESP-FIELD-ERROR-SUMMARY · Staff web: responsive `FieldErrorSummary` (features-admin)
-  - agent: swarm-10
+- [x] RESP-FIELD-ERROR-SUMMARY · Staff web: responsive `FieldErrorSummary` (features-admin)
+  - pr: #734
   - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/admin/FieldErrorSummary.tsx, apps/staff-web/tests/responsive/features-admin/FieldErrorSummary.responsive.test.tsx
