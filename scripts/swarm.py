@@ -2700,6 +2700,7 @@ def send_to_debugger(pr, reason, detail="", log_text=""):
 
 DEBUG_REPORT = "debug-report.md"
 DEBUG_MARK = "<!-- swarm-debug-report -->"
+DEBUG_RETRY_MARK = "<!-- swarm-debug-retry"
 
 
 def debug_select():
@@ -2774,6 +2775,18 @@ def debug_publish(pr, directory):
     if info.get("state") != "OPEN" or "needs-debug" not in label_names(info):
         return "skipped"
     report = read(Path(directory) / DEBUG_REPORT, "").strip()
+    round_number = debug_rounds(label_names(info)) + 1
+    if not report:
+        # No report at all means the run itself broke (runner, image, model), not that the bug is
+        # beyond the debugger. Try once more in this round before a person is asked.
+        marker = f"{DEBUG_RETRY_MARK} {round_number} -->"
+        comments = gh_json("api", f"repos/{repo_slug()}/issues/{pr}/comments?per_page=100") or []
+        if not any(marker in (c.get("body") or "") for c in comments if trusted_author(c)):
+            gh("pr", "comment", str(pr), "--body",
+               f"{marker}\nThe debugger run ended without a report (a runner or model problem, not a "
+               f"finding). Trying once more. {run_url()}")
+            gh("workflow", "run", "swarm-debugger.yml", "--ref", "main", check=False)
+            return "retry"
     found = re.search(r"^\s*root cause found:\s*yes\b", report, re.I | re.M) \
         and notes_section(report, "Fix plan")
     remove_label(pr, "needs-debug")
@@ -2785,7 +2798,6 @@ def debug_publish(pr, directory):
         report_pr_stuck(pr, "the debugger found no fixable cause",
                         clean(report, 4000, 120) if report else "The debugger wrote no report.")
         return "human"
-    round_number = debug_rounds(label_names(info)) + 1
     add_labels(pr, f"debug-{round_number}", "needs-fix")
     again = ("the debugger looks again" if round_number < MAX_DEBUG_ROUNDS else "a person must take over")
     gh("pr", "comment", str(pr), "--body",

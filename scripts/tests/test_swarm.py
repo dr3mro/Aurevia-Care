@@ -1134,7 +1134,7 @@ class DebuggerTests(unittest.TestCase):
 
     def test_no_cause_no_fix_plan_or_no_report_needs_a_person(self):
         no_plan = "Root cause found: yes\n## Root cause\nunknown\n"
-        for report in ("Root cause found: no\n## Root cause\nthe runner has no database\n", no_plan, None):
+        for report in ("Root cause found: no\n## Root cause\nthe runner has no database\n", no_plan):
             with self.subTest(report=report):
                 outcome, fake, stuck = self.publish(report)
                 self.assertEqual(outcome, "human")
@@ -1143,6 +1143,33 @@ class DebuggerTests(unittest.TestCase):
                 self.assertTrue(self.removed(fake, "needs-debug"))
                 self.assertFalse(fake.said("workflow"))
                 stuck.assert_called_once()
+
+    def test_a_run_that_wrote_no_report_is_retried_once_per_round_then_needs_a_person(self):
+        class Comments(FakeGh):
+            def __init__(self, comments, **kw):
+                super().__init__(**kw)
+                self.comments = comments
+
+            def __call__(self, *args, check=True):
+                if args[0] == "api":
+                    self.calls.append(args)
+                    return json.dumps(self.comments)
+                return super().__call__(*args, check=check)
+
+        marker = f"{swarm.DEBUG_RETRY_MARK} 2 -->"
+        view = {"state": "OPEN", "labels": labels("swarm", "needs-debug", "debug-1")}
+        bot = {"user": {"login": "github-actions[bot]"}, "body": marker}
+        stranger = {"user": {"login": "someone"}, "author_association": "NONE", "body": marker}
+        for comments, expected in (([], "retry"), ([stranger], "retry"), ([bot], "human")):
+            with self.subTest(expected=expected):
+                fake = Comments(comments, pr_view=view)
+                with tempfile.TemporaryDirectory() as tmp, mock.patch.object(swarm, "gh", fake), \
+                        mock.patch.object(swarm, "gh_json", side_effect=lambda *a: json.loads(fake(*a))), \
+                        mock.patch.object(swarm, "report_pr_stuck"):
+                    self.assertEqual(swarm.debug_publish(9, tmp), expected)
+                self.assertEqual(fake.said("--ref", "swarm-debugger.yml"), expected == "retry")
+                self.assertEqual(self.removed(fake, "needs-debug"), expected == "human")
+                self.assertEqual(any(marker in arg for call in fake.calls for arg in call), expected == "retry")
 
     def test_a_pull_request_no_longer_waiting_for_the_debugger_is_left_alone(self):
         for existing, state in ((("swarm", "needs-human"), "OPEN"), (("swarm", "needs-debug"), "CLOSED")):
