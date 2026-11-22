@@ -6,7 +6,7 @@ import { Form } from '../../components/Form';
 import { FormField } from '../../components/FormField';
 import { useI18n } from '../../i18n/I18nProvider';
 import type { Locale } from '../../i18n/messages';
-import { useTheme } from '../../theme/ThemeProvider';
+import { useBreakpoint } from '../../theme/useBreakpoint';
 import {
   auditEventsFromPage,
   isValidUtcInstant,
@@ -41,12 +41,12 @@ interface AuditEmptyProps {
 
 /** A clear empty state that explains the filters and offers the next action. */
 function AuditEmpty({ locale, onClear }: AuditEmptyProps) {
-  const { tokens } = useTheme();
   return (
     <section
       role="status"
       aria-label={adminText(locale, 'auditNoEvents')}
-      style={{ display: 'grid', gap: tokens.spacing.md }}
+      className="stack"
+      data-audit-part="empty"
     >
       <h3>{adminText(locale, 'auditNoEvents')}</h3>
       <p>{adminText(locale, 'auditNoEventsHint')}</p>
@@ -55,10 +55,18 @@ function AuditEmpty({ locale, onClear }: AuditEmptyProps) {
   );
 }
 
-/** Filter form, cursor paging and tenant-scoped audit events for one organization. */
+/**
+ * Filter form, cursor paging and tenant-scoped audit events for one organization.
+ *
+ * Width is presentation only: the page grid keeps logical safe-area padding,
+ * the filter fields stack on a phone and use two columns from medium upward,
+ * and every audit value stays in the tree with wrapping room. No field or
+ * column is hidden, so keyboard order and the tenant boundary are unchanged
+ * across breakpoints (WEB-07, UX-01).
+ */
 function AuditContent({ organizationId }: AuditContentProps) {
   const { locale } = useI18n();
-  const { tokens } = useTheme();
+  const breakpoint = useBreakpoint();
   const [form, setForm] = useState(EMPTY_FORM);
   const [applied, setApplied] = useState<AuditFilters>({});
   const [filterErrors, setFilterErrors] = useState<FilterErrors>({});
@@ -124,9 +132,18 @@ function AuditContent({ organizationId }: AuditContentProps) {
   const fromError = filterErrors.from === undefined ? undefined : adminText(locale, filterErrors.from);
   const toError = filterErrors.to === undefined ? undefined : adminText(locale, filterErrors.to);
 
+  // The grid stacks on a phone and gains a second column from the medium
+  // breakpoint; the flag is exposed for jsdom, which cannot evaluate media
+  // queries. Layout never hides a filter or an audit value.
+  const fieldsLayout = breakpoint === 'compact' ? 'stacked' : 'two-column';
+
   return (
-    <div style={{ display: 'grid', gap: tokens.spacing.lg }}>
-      <section aria-label={adminText(locale, 'auditFilters')} style={{ display: 'grid', gap: tokens.spacing.md }}>
+    <div className="page" data-audit-page="root" data-breakpoint={breakpoint}>
+      <section
+        aria-label={adminText(locale, 'auditFilters')}
+        className="stack"
+        data-audit-part="filters"
+      >
         <h2>{adminText(locale, 'auditPageTitle')}</h2>
         <FieldErrorSummary title={adminText(locale, 'errorSummary')} errors={errorLinks} />
         <Form
@@ -134,7 +151,11 @@ function AuditContent({ organizationId }: AuditContentProps) {
           submitLabel={adminText(locale, 'auditApplyFilters')}
           onSubmit={applyFilters}
         >
-          <div style={{ display: 'grid', gap: tokens.spacing.md }}>
+          <div
+            className="grid-2"
+            data-audit-part="filter-fields"
+            data-audit-fields={fieldsLayout}
+          >
             <FormField
               id="audit-action"
               label={adminText(locale, 'auditActionFilter')}
@@ -177,9 +198,11 @@ function AuditContent({ organizationId }: AuditContentProps) {
             />
           </div>
         </Form>
-        <Button variant="secondary" onClick={clearFilters}>
-          {adminText(locale, 'auditClearFilters')}
-        </Button>
+        <div className="cluster" data-audit-part="filter-actions">
+          <Button variant="secondary" onClick={clearFilters}>
+            {adminText(locale, 'auditClearFilters')}
+          </Button>
+        </div>
       </section>
 
       <ApiPage
@@ -196,7 +219,7 @@ function AuditContent({ organizationId }: AuditContentProps) {
         {(page) => {
           const next = page.nextCursor;
           return (
-            <>
+            <div className="stack" data-audit-part="events">
               <PageSink page={page} onPage={append} />
               <p>
                 {adminMessage(locale, 'auditFacilityZone', { zone: syntheticTimeZone })}
@@ -212,11 +235,13 @@ function AuditContent({ organizationId }: AuditContentProps) {
                     timeZone={syntheticTimeZone}
                   />
                   {next !== null && next !== undefined ? (
-                    <Button onClick={() => setCursor(next)}>{adminText(locale, 'loadMore')}</Button>
+                    <div className="cluster" data-audit-part="paging">
+                      <Button onClick={() => setCursor(next)}>{adminText(locale, 'loadMore')}</Button>
+                    </div>
                   ) : null}
                 </>
               )}
-            </>
+            </div>
           );
         }}
       </ApiPage>
