@@ -10,7 +10,7 @@ name: Swarm watchdog
 # above are the primary trigger. SWARM_ISSUES=off (repository variable) silences it.
 on:
   workflow_run:
-    workflows: [Delivery, Agent swarm, Swarm slot images, Daily audit, Swarm issue monitor, Daily notes]
+    workflows: [Delivery, Agent swarm, Swarm slot images, Daily audit, Daily QA review, Daily DevSecOps review, Swarm issue monitor, Swarm PR flow, Daily notes]
     types: [completed]
   schedule:
     - cron: '*/15 * * * *'
