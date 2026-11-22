@@ -57,7 +57,8 @@ class MailControllerHttpTest {
         holders = new HashMap<>();
         RecipientDirectory directory = (organizationId, facilityId, role) ->
                 holders.getOrDefault(role, List.of());
-        service = new MailService(Clock.fixed(Instant.parse("2026-11-21T10:00:00Z"), ZoneOffset.UTC), directory);
+        service = new MailService(Clock.fixed(Instant.parse("2026-11-21T10:00:00Z"), ZoneOffset.UTC), directory,
+                new InMemoryMailStore());
         controller = new MailController(service);
         mapper = new ObjectMapper();
         MockEnvironment environment = new MockEnvironment();
