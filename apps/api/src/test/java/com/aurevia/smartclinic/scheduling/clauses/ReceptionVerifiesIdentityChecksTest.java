@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -126,8 +127,10 @@ class ReceptionVerifiesIdentityChecksTest {
         verify(repository).insertVerification(eq(verification.id()), eq(APPOINTMENT), eq(PATIENT),
                 eq(FACILITY_ID), eq("two_identifiers"), eq(List.of("MRN", "DOB")), eq(null), eq(null));
         verify(audit).append(any(), eq("IDENTITY_VERIFY"), eq("IDENTITY_VERIFY"),
-                eq("WORKLIST_ITEM"), anyString(), eq(APPOINTMENT), eq("SUCCESS"));
+                eq("WORKLIST_ITEM"), eq("CHECK_IN_WORKLIST"), eq(APPOINTMENT), eq("SUCCESS"));
 
+        // verify() persisted this record; model its committed effect on the next command.
+        // The real persistence-to-check-in chain is exercised by CheckInWorklistIntegrationTest.
         when(repository.hasVerification(APPOINTMENT)).thenReturn(true);
         when(appointments.checkIn(APPOINTMENT, 1)).thenReturn(
                 appointment(AppointmentState.CHECKED_IN));
@@ -145,7 +148,7 @@ class ReceptionVerifiesIdentityChecksTest {
         assertEquals(NOW, arrival.startsAt());
         verify(appointments).checkIn(APPOINTMENT, 1);
         verify(audit).append(any(), eq("VERIFIED_CHECK_IN"), eq("VERIFIED_CHECK_IN"),
-                eq("WORKLIST_ITEM"), anyString(), eq(APPOINTMENT), eq("SUCCESS"));
+                eq("WORKLIST_ITEM"), eq("CHECK_IN_WORKLIST"), eq(APPOINTMENT), eq("SUCCESS"));
     }
 
     @Test
@@ -170,10 +173,12 @@ class ReceptionVerifiesIdentityChecksTest {
 
         assertEquals(403, denial.status());
         assertEquals("FORBIDDEN", denial.code());
+        // The alternate fields are null for two_identifiers, so anyString() would
+        // not match them; nullable() closes that gap on the denied path.
         verify(repository, never()).insertVerification(anyString(), anyString(), anyString(),
-                anyString(), anyString(), any(), anyString(), anyString());
+                anyString(), anyString(), any(), nullable(String.class), nullable(String.class));
         verify(audit).append(any(), eq("IDENTITY_VERIFY"), eq("IDENTITY_VERIFY"),
-                eq("WORKLIST_ITEM"), anyString(), eq(APPOINTMENT), eq("DENIED"));
+                eq("WORKLIST_ITEM"), eq("CHECK_IN_WORKLIST"), eq(APPOINTMENT), eq("DENIED"));
     }
 
     @Test
@@ -187,10 +192,12 @@ class ReceptionVerifiesIdentityChecksTest {
 
         assertEquals(403, denial.status());
         assertEquals("FORBIDDEN", denial.code());
+        // The alternate fields are null for two_identifiers, so anyString() would
+        // not match them; nullable() closes that gap on the denied path.
         verify(repository, never()).insertVerification(anyString(), anyString(), anyString(),
-                anyString(), anyString(), any(), anyString(), anyString());
+                anyString(), anyString(), any(), nullable(String.class), nullable(String.class));
         verify(audit).append(any(), eq("IDENTITY_VERIFY"), eq("IDENTITY_VERIFY"),
-                eq("WORKLIST_ITEM"), anyString(), eq(APPOINTMENT), eq("DENIED"));
+                eq("WORKLIST_ITEM"), eq("CHECK_IN_WORKLIST"), eq(APPOINTMENT), eq("DENIED"));
     }
 
     @Test

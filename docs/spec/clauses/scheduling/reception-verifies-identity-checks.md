@@ -33,6 +33,13 @@ All five tests are active (none are disabled) and use synthetic data only.
 - `checkInRefusesStaleAppointmentVersion` — negative proof of the optimistic-lock guard. A
   stale `If-Match` version yields HTTP 412 `STALE_VERSION` and no worklist entry is inserted.
 
+This class is clause-focused service-level evidence. The end-to-end HTTP proof that both
+routes persist to PostgreSQL is the existing
+`com.aurevia.smartclinic.it.schedulingcheckin.CheckInWorklistIntegrationTest`, which posts to
+`POST /api/v1/clinic/verifications` and `POST /api/v1/clinic/appointments/{id}/check-in` against
+the real controller and store. The thin controller delegation is covered separately by
+`it.schedulingcheckin.ClinicControllerTest`.
+
 Production classes exercised through the normal command entry point
 (`CheckInService.verify` and `CheckInService.checkIn`):
 
@@ -50,14 +57,16 @@ Production classes exercised through the normal command entry point
   of the `booked → checked_in` state machine and version.
 - `com.aurevia.smartclinic.scheduling.checkin.ClinicController` — the thin HTTP adapter that
   exposes both commands as `POST /api/v1/clinic/verifications` and
-  `POST /api/v1/clinic/appointments/{id}/check-in`; its delegation is covered by the existing
-  `it.schedulingcheckin.ClinicControllerTest`.
+  `POST /api/v1/clinic/appointments/{id}/check-in`; its delegation is covered by
+  `it.schedulingcheckin.ClinicControllerTest` and its real HTTP persistence by
+  `it.schedulingcheckin.CheckInWorklistIntegrationTest`.
 
 Neighbouring implementations observed in the source survey (not changed by this task): the
 `WorklistRepository` JDBC store under `scheduling/checkin`, the CLN-02 routes in
 `ClinicController`, the existing unit proof in `it.schedulingcheckin.CheckInServiceTest` and
-`it.schedulingcheckin.ClinicControllerTest`, and the scheduling worklist tables in the Flyway
-migrations under `db/migrations`.
+`it.schedulingcheckin.ClinicControllerTest`, the real-PostgreSQL HTTP proof in
+`it.schedulingcheckin.CheckInWorklistIntegrationTest`, and the scheduling worklist tables in the
+Flyway migrations under `db/migrations`.
 
 ## Gap
 
