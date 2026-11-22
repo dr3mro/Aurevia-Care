@@ -123,6 +123,29 @@ function assertFullTable(name: string, expectedHeaders: number): void {
   }
 }
 
+function assertVitalsCards(locale: 'en' | 'ar'): void {
+  const list = screen.getByRole('list', { name: chartText(locale, 'vitals') });
+  for (const item of within(list).getAllByRole('listitem')) {
+    expect([...item.querySelectorAll('dt')].map((label) => label.textContent)).toEqual(
+      (['kind', 'measurement', 'measuredAt'] as const).map((key) => chartText(locale, key)),
+    );
+    expect(item.querySelector('time')?.dateTime).toBeTruthy();
+  }
+}
+
+function assertDocumentCards(locale: 'en' | 'ar'): void {
+  const list = screen.getByRole('list', { name: chartText(locale, 'documentList') });
+  for (const item of within(list).getAllByRole('listitem')) {
+    expect(within(item).getByRole('heading', { level: 4 })).toBeTruthy();
+    expect([...item.querySelectorAll('dt')].map((label) => label.textContent)).toEqual(
+      (['documentKind', 'documentVersion', 'documentLanguage', 'documentChecksum', 'documentLinkedTo', 'documentRotation', 'documentStatus'] as const)
+        .map((key) => chartText(locale, key)),
+    );
+    expect(within(item).getByRole('button', { name: chartText(locale, 'rotate') })).toBeTruthy();
+    expect(within(item).getByRole('button', { name: chartText(locale, 'void') })).toBeTruthy();
+  }
+}
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });
@@ -151,10 +174,16 @@ describe('responsive ChartScreen (WEB-07, UX-01)', () => {
         screen.getByRole('heading', { level: 2, name: chartText('en', 'chart') }),
       ).toBeTruthy();
       expect(screen.getByRole('status', { name: chartText('en', 'status') })).toBeTruthy();
-      for (const key of ['problems', 'allergies', 'medications', 'vitals'] as const) {
-        assertFullTable(chartText('en', key), key === 'vitals' ? 3 : 8);
+      for (const key of ['problems', 'allergies', 'medications'] as const) {
+        assertFullTable(chartText('en', key), 8);
       }
-      assertFullTable(chartText('en', 'documentList'), 9);
+      if (band === 'compact') {
+        assertVitalsCards('en');
+        assertDocumentCards('en');
+      } else {
+        assertFullTable(chartText('en', 'vitals'), 3);
+        assertFullTable(chartText('en', 'documentList'), 9);
+      }
 
       assertLogicalStyles(region);
     },
@@ -179,10 +208,10 @@ describe('responsive ChartScreen (WEB-07, UX-01)', () => {
       expect(scroller.style.minInlineSize).toBe('0px');
       expect(scroller.style.overflowWrap).toBe('anywhere');
     }
-    expect(longitudinal.contains(screen.getByRole('table', { name: chartText('en', 'vitals') }))).toBe(
+    expect(longitudinal.contains(screen.getByRole('list', { name: chartText('en', 'vitals') }))).toBe(
       true,
     );
-    expect(documents.contains(screen.getByRole('table', { name: chartText('en', 'documentList') }))).toBe(
+    expect(documents.contains(screen.getByRole('list', { name: chartText('en', 'documentList') }))).toBe(
       true,
     );
     expect(note.contains(screen.getByRole('textbox', { name: chartText('en', 'plan') }))).toBe(true);
@@ -195,7 +224,12 @@ describe('responsive ChartScreen (WEB-07, UX-01)', () => {
     const documentsIndex = focusables.indexOf(documents);
     expect(focusables[0]).toBe(longitudinal);
     expect(documentsIndex).toBeGreaterThan(0);
-    expect(focusables.slice(1, documentsIndex).map((element) => element.tagName)).toEqual([
+    const beforeDocuments = focusables.slice(1, documentsIndex);
+    const tableScrollers = beforeDocuments.filter((element) => longitudinal.contains(element));
+    expect(tableScrollers.map((element) => element.getAttribute('aria-label'))).toEqual(
+      (['problems', 'allergies', 'medications'] as const).map((key) => chartText('en', key)),
+    );
+    expect(beforeDocuments.slice(tableScrollers.length).map((element) => element.tagName)).toEqual([
       'TEXTAREA',
       'TEXTAREA',
       'TEXTAREA',
@@ -262,9 +296,11 @@ describe('responsive ChartScreen (WEB-07, UX-01)', () => {
     for (const key of ['subjective', 'objective', 'assessment', 'plan'] as const) {
       expect(screen.getByRole('textbox', { name: chartText('ar', key) })).toBeTruthy();
     }
-    for (const key of ['problems', 'allergies', 'medications', 'vitals', 'documentList'] as const) {
-      assertFullTable(chartText('ar', key), key === 'vitals' ? 3 : key === 'documentList' ? 9 : 8);
+    for (const key of ['problems', 'allergies', 'medications'] as const) {
+      assertFullTable(chartText('ar', key), 8);
     }
+    assertVitalsCards('ar');
+    assertDocumentCards('ar');
     expect(name.textContent).toBe('ليلى تجريبية');
     assertLogicalStyles(region);
   });

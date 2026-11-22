@@ -247,7 +247,17 @@
         },
         {
           "action": "subagent",
+          "resource": "smartclinic-code-reviewer",
+          "effect": "allow"
+        },
+        {
+          "action": "subagent",
           "resource": "smartclinic-context-optimizer",
+          "effect": "allow"
+        },
+        {
+          "action": "subagent",
+          "resource": "smartclinic-coverage-auditor",
           "effect": "allow"
         },
         {
@@ -293,6 +303,11 @@
         {
           "action": "subagent",
           "resource": "smartclinic-physician-reviewer",
+          "effect": "allow"
+        },
+        {
+          "action": "subagent",
+          "resource": "smartclinic-plan-reviewer",
           "effect": "allow"
         },
         {
@@ -461,7 +476,95 @@
         }
       ]
     },
+    "smartclinic-code-reviewer": {
+      "permissions": [
+        {
+          "action": "*",
+          "resource": "*",
+          "effect": "deny"
+        },
+        {
+          "action": "read",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "read",
+          "resource": "*.env",
+          "effect": "deny"
+        },
+        {
+          "action": "read",
+          "resource": "*.env.*",
+          "effect": "deny"
+        },
+        {
+          "action": "read",
+          "resource": "*.env.example",
+          "effect": "allow"
+        },
+        {
+          "action": "glob",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "grep",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "skill",
+          "resource": "*",
+          "effect": "allow"
+        }
+      ]
+    },
     "smartclinic-context-optimizer": {
+      "permissions": [
+        {
+          "action": "*",
+          "resource": "*",
+          "effect": "deny"
+        },
+        {
+          "action": "read",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "read",
+          "resource": "*.env",
+          "effect": "deny"
+        },
+        {
+          "action": "read",
+          "resource": "*.env.*",
+          "effect": "deny"
+        },
+        {
+          "action": "read",
+          "resource": "*.env.example",
+          "effect": "allow"
+        },
+        {
+          "action": "glob",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "grep",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "skill",
+          "resource": "*",
+          "effect": "allow"
+        }
+      ]
+    },
+    "smartclinic-coverage-auditor": {
       "permissions": [
         {
           "action": "*",
@@ -858,6 +961,50 @@
       ]
     },
     "smartclinic-physician-reviewer": {
+      "permissions": [
+        {
+          "action": "*",
+          "resource": "*",
+          "effect": "deny"
+        },
+        {
+          "action": "read",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "read",
+          "resource": "*.env",
+          "effect": "deny"
+        },
+        {
+          "action": "read",
+          "resource": "*.env.*",
+          "effect": "deny"
+        },
+        {
+          "action": "read",
+          "resource": "*.env.example",
+          "effect": "allow"
+        },
+        {
+          "action": "glob",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "grep",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "skill",
+          "resource": "*",
+          "effect": "allow"
+        }
+      ]
+    },
+    "smartclinic-plan-reviewer": {
       "permissions": [
         {
           "action": "*",
