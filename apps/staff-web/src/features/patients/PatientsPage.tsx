@@ -198,6 +198,7 @@ function PatientsContent({ organizationId }: PatientsContentProps) {
             <PatientsScreen
               patients={rows.map((row) => toPatient(row, organizationId))}
               locale={locale}
+              embeddedInScrollRegion={breakpoint === 'compact'}
             />
           );
           // On a phone the table lives in a labelled, keyboard-scrollable region

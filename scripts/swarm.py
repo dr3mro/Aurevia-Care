@@ -29,6 +29,8 @@ MAX_DEBUG_ROUNDS = 3
 # One story per worker PR: a batch this large cannot be reviewed or verified
 # as a single bounded change, and it was the source of the G1 quality failures.
 MAX_PR_FILES = 50
+# Added plus removed lines an automatic merge accepts; a larger change cannot be reviewed well.
+MAX_PR_LINES = int(os.environ.get("SWARM_MAX_PR_LINES") or 5000)
 # A task a swarm worker has taken this many times without finishing waits for a person.
 MAX_ATTEMPTS = 5
 BODY_LIMIT = 8000
@@ -3324,6 +3326,17 @@ def guard(pr, repair=False):
         report_pr_stuck(pr, "too many files",
                         f"It changes {len(files)} files and the limit for an automatic merge is "
                         f"{MAX_PR_FILES}. Split it into one bounded story per pull request.")
+        return files
+    size = json.loads(gh("pr", "view", str(pr), "--json", "additions,deletions") or "{}")
+    lines = size.get("additions", 0) + size.get("deletions", 0)
+    if lines > MAX_PR_LINES:
+        add_labels(pr, "needs-human")
+        gh("pr", "comment", str(pr), "--body",
+           f"{MARK}\nThis pull request changes {lines} lines; the limit is {MAX_PR_LINES}. "
+           "Split it into smaller stories. A person must decide how to split it.")
+        report_pr_stuck(pr, "too many lines",
+                        f"It changes {lines} lines and the limit for an automatic merge is "
+                        f"{MAX_PR_LINES}. Split it into smaller stories.")
         return files
     return []
 
