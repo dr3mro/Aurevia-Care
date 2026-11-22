@@ -202,6 +202,7 @@ jobs:
               docker pull --platform "linux/$arch" "$child"
               test "$(docker image inspect "$child" --format '{{.Id}}')" = "$(docker image inspect smartclinic:test --format '{{.Id}}')"
             else
+              docker tag smartclinic:test "$child"
               docker push "$child"
             fi
             refs+=("$(docker image inspect "$child" --format '{{index .RepoDigests 0}}')")
