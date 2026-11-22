@@ -23,6 +23,19 @@ exactly as the earlier debugger report concluded.
 
 No other requirement IDs touched.
 
+## Acceptance mapping
+
+| Story acceptance point | Implementation (commit `68556991`) | Test evidence in this pass |
+|---|---|---|
+| 320/360/390/768/820/1024/1280 px → compact/medium/expanded | root `useBreakpoint()` → `data-breakpoint`; existing `breakpoints.ts` thresholds | "resolves %ipx to the correct layout band" (`it.each`, 7 widths) + per-band root assertion |
+| LTR and RTL at every band | document `dir`/`lang`; no subtree `direction` override; `<bdi dir="auto">` | "mirrors the whole preview with Arabic labels …" (3 bands) |
+| No horizontal page scroll; columns stack; safe-area insets | existing `page` class (single `minmax(0,1fr)` column, logical safe-area padding) | `classList.contains('page')` + authored inline-style regex (physical props forbidden) |
+| Long English/Arabic text wraps; 200 % zoom readable | existing `MixedScriptText` + wrapping cells/buttons | `bdi` dir/lang/`overflowWrap:anywhere`, no `nowrap` or fixed block size |
+| Coarse pointers 44×44; inputs 16 px | existing `.touch` + `@media (pointer: coarse)`, `.field` 16 px | `.touch`/`.field` classes + `data-coarse-pointer` per band (painted pixels are Playwright evidence) |
+| Logical properties only; no hidden clinical column | no new CSS; `page` class + logical inline styles | inline-style regex; full `<th scope="col">` set; no `.hide-compact`/`.only-compact` |
+| Preview shows every component at the three width classes | all children render at each band with their own band structure | compact labelled `role=region` vs plain table; form/input/dialog/`bdi` `data-breakpoint`; dialog `sheet` vs `centered` |
+| Labels, roles, keyboard order unchanged; existing tests pass | no text/API/export change | `getByRole`/`getByLabelText` + focusable-order array per band; `AppShell.test.tsx`; full suite green |
+
 ## Risk class
 
 Routine (contained staff-web presentation change to one component plus one new
