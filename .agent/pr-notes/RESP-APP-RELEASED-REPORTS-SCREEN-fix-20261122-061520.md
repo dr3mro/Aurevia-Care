@@ -199,6 +199,24 @@ remains a separate launch gate and is not claimed here.
    this worker did not touch them.
 6. No requirement-ID-named folder, new migration, new dependency or scope
    expansion was introduced.
+7. **Advisory `smartclinic-senior-mobile` review (read-only, no edits): no
+   material gap.** The reviewer confirmed touch targets (`MIN_PANE_WIDTH=48`,
+   screen:36,110-111, test:166-170), direction-aware safe-area padding
+   (screen:96-97, test:179-182,221-222), RTL row direction (screen:23-24,137,
+   test:223), 200% reflow (screen:104-105,220, test:95-107,176), exact
+   accessibility-label/focus order (test:185-200), presentational/no-cache
+   boundary (screen:42-72), clean types under `exactOptionalPropertyTypes`
+   (screen:98,194) and that the key-omission fix (test:236) is correct. They
+   found no new integrator-gate risk: the `SafeAreaInsetsContext` fallback
+   (screen:86) is covered in aggregate by `patientPages.tablet.test.tsx:31-33`,
+   with no `.skip` or ignore pragma in scope. Two minor **non-blocking**
+   observations, deliberately not changed to keep this fix minimal: no `rowGap`
+   on `panesStyle` (screen:102-106) so vertically wrapped panes sit flush —
+   each pane still has `minHeight: 48`, so this is cosmetic, not a clipped-text
+   or touch-target violation; and the RTL test asserts `toContain` rather than
+   the full label order (test:228), while the exact order is already asserted
+   by the 9-case matrix (test:185-200). Evidence source: specialist reviewer
+   report (advisory), not a tool or human-participant check.
 
 ## Lessons for workers
 
