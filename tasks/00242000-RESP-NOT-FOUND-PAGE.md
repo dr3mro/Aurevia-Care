@@ -1,5 +1,4 @@
-- [-] RESP-NOT-FOUND-PAGE · Staff web: responsive `NotFoundPage` (app)
-  - agent: swarm-5
+- [ ] RESP-NOT-FOUND-PAGE · Staff web: responsive `NotFoundPage` (app)
   - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/app/NotFoundPage.tsx, apps/staff-web/tests/responsive/app/NotFoundPage.responsive.test.tsx
