@@ -12,19 +12,23 @@ Proven by tests
 
 Test class: `com.aurevia.smartclinic.chart.clauses.EnteredErrorPreservesPriorRevisionRecordsActorTest`
 (path: `apps/api/src/test/java/com/aurevia/smartclinic/chart/clauses/EnteredErrorPreservesPriorRevisionRecordsActorTest.java`).
-All six tests are active (none disabled), use only synthetic fixtures and drive the real HTTP
+All seven tests are active (none disabled), use only synthetic fixtures and drive the real HTTP
 entry point against a freshly migrated database. The test class is tagged `integration` and
 uses its own database `smartclinic_chart_clause05_it`, following the neighbouring
 `com.aurevia.smartclinic.it.clinical.ClinicalNoteRevisionIntegrationTest` fixtures and setup.
 
 - `enteredInErrorAppendsASupersedingRevisionAndRecordsActorReasonAndRecipients` — positive proof.
-  After a synthetic note is signed at version 2, `POST /api/v1/clinical-notes/{id}/entered-in-error`
-  with `If-Match: "2"`, reason `wrong patient` and recipients `["lab-a","clinic-b"]` returns
-  HTTP 200 with state `entered_in_error`, version 3, `supersedesVersion=2`, `enteredErrorReason`,
-  `enteredErrorActor=clinician-a`, both recipient identifiers and the unchanged content and
-  checksum. `GET /api/v1/clinical-notes/{id}` still shows the `signed` original, and a direct
-  query of the revision ledger confirms the draft and signed rows are untouched while the
-  new row carries the actor, reason and recipients.
+  After a synthetic note is created and signed by `clinician-a` at version 2, a *different*
+  organization-A clinician (`clinician-c`) posts
+  `POST /api/v1/clinical-notes/{id}/entered-in-error` with `If-Match: "2"`, reason
+  `wrong patient` and recipients `["lab-a","clinic-b"]`. It returns HTTP 200 with state
+  `entered_in_error`, version 3, `supersedesVersion=2`, `enteredErrorReason`,
+  `enteredErrorActor=clinician-c`, both recipient identifiers and the unchanged content and
+  checksum. Using a distinct actor proves the row records the current request identity
+  rather than copying the prior signer. `GET /api/v1/clinical-notes/{id}` still shows the
+  `signed` original, and a direct query of the revision ledger confirms the draft and
+  signed rows are untouched (the signed row has no error reason or actor) while the new
+  row carries the actor, reason and recipients.
 - `enteredInErrorRefusesAnUnsignedDraft` — negative proof of the forbidden state. A draft
   (version 1) is refused with HTTP 409 `INVALID_TRANSITION` and no revision is appended.
 - `enteredInErrorRefusesAStaleVersion` — negative proof of the version precondition. A stale
@@ -32,9 +36,14 @@ uses its own database `smartclinic_chart_clause05_it`, following the neighbourin
 - `enteredInErrorRefusesABlankReason` — negative proof of missing input. A blank reason is
   refused with HTTP 422 before any write.
 - `enteredInErrorRefusesAReceptionRole` — negative proof of the wrong role. A `reception`
-  subject with active membership is refused with HTTP 403 `FORBIDDEN`.
+  subject with active membership is refused with HTTP 403 `FORBIDDEN`, and the history view
+  confirms no revision was appended.
 - `enteredInErrorRefusesAnotherTenant` — negative proof of tenant isolation. The note id from
-  organization A is concealed from organization B with HTTP 404 `NOT_FOUND`.
+  organization A is concealed from organization B with HTTP 404 `NOT_FOUND`, with no revision
+  appended.
+- `enteredInErrorRefusesMalformedRecipients` — negative proof of the recipient boundary. A
+  non-array `affectedRecipients` value is refused with HTTP 422 `INVALID_RECIPIENTS` before
+  any revision is appended.
 
 Production classes exercised through the normal HTTP entry point:
 

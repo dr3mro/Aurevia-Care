@@ -36,6 +36,8 @@ import org.springframework.web.client.RestClient;
  * not alter) the prior signed revision, and must record the actor, the reason and
  * the affected recipients. The actor is stamped by the database from the
  * request's transaction-local identity, never accepted from the request body.
+ * The positive test signs as one clinician and records the error as a second,
+ * distinct clinician, so a row that merely copied the signer's identity fails.
  *
  * <p>Every fixture is synthetic. This class proves only this clause; the wider
  * draft-to-sign and amendment lifecycle is covered by its owning tests.</p>
@@ -80,6 +82,7 @@ class EnteredErrorPreservesPriorRevisionRecordsActorTest {
         try (Connection connection = DriverManager.getConnection(URL, "smartclinic_migrate", "");
              Statement statement = connection.createStatement()) {
             seed(statement, ORG_A, "clinician-a", "clinician", PATIENT);
+            seed(statement, ORG_A, "clinician-c", "clinician", null);
             seed(statement, ORG_A, "clerk-a", "reception", null);
             seed(statement, ORG_B, "clinician-b", "clinician", PATIENT);
         }
@@ -259,7 +262,7 @@ class EnteredErrorPreservesPriorRevisionRecordsActorTest {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
             statement.execute("SET app.actor = 'clinician-a'");
             try (ResultSet rows = statement.executeQuery(
-                    "SELECT version, state, supersedes_version, entered_error_reason, "
+                    "SELECT version, state, data_entry_subject, supersedes_version, entered_error_reason, "
                             + "entered_error_actor, affected_recipients::text FROM public.clinical_note_revision "
                             + "WHERE id = '" + id + "' ORDER BY version")) {
                 assertTrue(rows.next(), "the draft revision must remain");
@@ -268,15 +271,18 @@ class EnteredErrorPreservesPriorRevisionRecordsActorTest {
                 assertTrue(rows.next(), "the signed revision must remain");
                 assertEquals(2, rows.getInt("version"));
                 assertEquals("signed", rows.getString("state"));
+                assertEquals("clinician-a", rows.getString("data_entry_subject"));
                 assertNull(rows.getString("entered_error_reason"),
                         "the prior signed revision must not be edited");
                 assertNull(rows.getString("entered_error_actor"));
                 assertTrue(rows.next(), "an entered-in-error revision must be appended");
                 assertEquals(3, rows.getInt("version"));
                 assertEquals("entered_in_error", rows.getString("state"));
+                assertEquals("clinician-c", rows.getString("data_entry_subject"));
                 assertEquals(2, rows.getInt("supersedes_version"));
                 assertEquals("wrong patient", rows.getString("entered_error_reason"));
-                assertEquals("clinician-a", rows.getString("entered_error_actor"));
+                assertEquals("clinician-c", rows.getString("entered_error_actor"),
+                        "the actor is the current request subject, not the prior signer");
                 assertTrue(rows.getString("affected_recipients").contains("lab-a"));
                 assertTrue(rows.getString("affected_recipients").contains("clinic-b"));
                 assertFalse(rows.next(), "only three revisions should exist");
@@ -286,7 +292,8 @@ class EnteredErrorPreservesPriorRevisionRecordsActorTest {
 
     /**
      * Positive proof: the signed revision survives unchanged while a new
-     * entered-in-error revision records the actor, reason and recipients.
+     * entered-in-error revision, recorded by a clinician other than the signer,
+     * carries that actor, the reason and the recipients.
      *
      * @throws Exception when the stored-chain assertion fails
      */
@@ -297,13 +304,13 @@ class EnteredErrorPreservesPriorRevisionRecordsActorTest {
                 + "\"affectedRecipients\":\"[\\\"lab-a\\\",\\\"clinic-b\\\"]\"}";
         ResponseEntity<String> result = request(HttpMethod.POST,
                 "/api/v1/clinical-notes/" + id + "/entered-in-error",
-                body, "clinician-a", ORG_A, "\"2\"");
+                body, "clinician-c", ORG_A, "\"2\"");
         assertEquals(HttpStatus.OK, result.getStatusCode(), result.getBody());
         assertEquals("entered_in_error", field(result.getBody(), "state"));
         assertEquals("3", field(result.getBody(), "version"));
         assertEquals("2", field(result.getBody(), "supersedesVersion"));
         assertEquals("wrong patient", field(result.getBody(), "enteredErrorReason"));
-        assertEquals("clinician-a", field(result.getBody(), "enteredErrorActor"));
+        assertEquals("clinician-c", field(result.getBody(), "enteredErrorActor"));
         assertTrue(result.getBody().contains("lab-a"));
         assertTrue(result.getBody().contains("clinic-b"));
         // The content and its checksum are carried forward, not rewritten.
@@ -381,6 +388,10 @@ class EnteredErrorPreservesPriorRevisionRecordsActorTest {
                 "clerk-a", ORG_A, "\"2\"");
         assertEquals(HttpStatus.FORBIDDEN, refused.getStatusCode(), refused.getBody());
         assertEquals("FORBIDDEN", field(refused.getBody(), "code"));
+        ResponseEntity<String> view = request(HttpMethod.GET,
+                "/api/v1/clinical-notes/" + id, null, "clinician-a", ORG_A);
+        assertFalse(view.getBody().contains("entered_in_error"),
+                "a denied command must not append a revision");
     }
 
     /**
@@ -395,5 +406,26 @@ class EnteredErrorPreservesPriorRevisionRecordsActorTest {
                 "clinician-b", ORG_B, "\"2\"");
         assertEquals(HttpStatus.NOT_FOUND, refused.getStatusCode(), refused.getBody());
         assertEquals("NOT_FOUND", field(refused.getBody(), "code"));
+        ResponseEntity<String> view = request(HttpMethod.GET,
+                "/api/v1/clinical-notes/" + id, null, "clinician-a", ORG_A);
+        assertFalse(view.getBody().contains("entered_in_error"),
+                "a concealed cross-tenant command must not append a revision");
+    }
+
+    /**
+     * Negative proof: recipients must be a bounded JSON array before a revision is appended.
+     */
+    @Test
+    void enteredInErrorRefusesMalformedRecipients() {
+        String id = signedNoteId();
+        ResponseEntity<String> refused = request(HttpMethod.POST,
+                "/api/v1/clinical-notes/" + id + "/entered-in-error",
+                "{\"reason\":\"wrong patient\",\"affectedRecipients\":\"{\\\"a\\\":1}\"}",
+                "clinician-a", ORG_A, "\"2\"");
+        assertEquals(422, refused.getStatusCode().value(), refused.getBody());
+        assertEquals("INVALID_RECIPIENTS", field(refused.getBody(), "code"));
+        ResponseEntity<String> view = request(HttpMethod.GET,
+                "/api/v1/clinical-notes/" + id, null, "clinician-a", ORG_A);
+        assertFalse(view.getBody().contains("entered_in_error"));
     }
 }
