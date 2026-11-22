@@ -113,7 +113,12 @@ jobs:
         env:
           OPENCODE_API_KEY: ${{ secrets[format('OPENCODE_API_KEY_{0}', matrix.slot)] || secrets.OPENCODE_API_KEY }}
           AGENT_TIMEOUT: 130m
-        run: scripts/agent-run.sh debug
+        run: |
+          # Keep the PR checkout for diagnosis. Older PRs may predate the debug command.
+          runner=$(mktemp)
+          trap 'rm -f "$runner"' EXIT
+          git show "$GITHUB_SHA:scripts/agent-run.sh" > "$runner"
+          bash "$runner" debug
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: always()
         with:

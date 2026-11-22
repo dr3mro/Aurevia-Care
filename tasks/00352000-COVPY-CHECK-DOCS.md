@@ -1,5 +1,5 @@
-- [-] COVPY-CHECK-DOCS · Script tests: reach 100% line and branch coverage of `scripts/check-docs.py`
-  - agent: swarm-6
+- [x] COVPY-CHECK-DOCS · Script tests: reach 100% line and branch coverage of `scripts/check-docs.py`
+  - pr: #666
   - attempts: 1
   - requirements: OPS-06
   - scope: scripts/tests/test_check_docs_coverage.py

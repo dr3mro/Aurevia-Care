@@ -13,8 +13,12 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.aurevia.smartclinic.api.ApiException;
+import com.aurevia.smartclinic.audit.AuditAppender;
 import com.aurevia.smartclinic.authz.specialty.SpecialtyRoles;
 import com.aurevia.smartclinic.pharmacyflow.substitution.SubstitutionCommands.DecideCommand;
 import com.aurevia.smartclinic.pharmacyflow.substitution.SubstitutionCommands.ProposeCommand;
@@ -31,12 +35,23 @@ class SubstitutionServiceTest {
     private static final Set<String> CLINICIAN_ROLES = Set.of(SpecialtyRoles.CLINICIAN);
 
     private FakeSubstitutionCatalog catalog;
+    private FakeSubstitutionStore store;
+    private FakeSubstitutionApplication application;
     private SubstitutionService service;
 
     @BeforeEach
     void setUp() {
         catalog = new FakeSubstitutionCatalog();
-        service = new SubstitutionService(Clock.fixed(SubstitutionFixtures.AT, ZoneOffset.UTC), catalog);
+        store = new FakeSubstitutionStore();
+        application = new FakeSubstitutionApplication();
+        TransactionTemplate transactions = org.mockito.Mockito.mock(TransactionTemplate.class);
+        org.mockito.Mockito.when(transactions.execute(org.mockito.ArgumentMatchers.any(TransactionCallback.class)))
+                .thenAnswer(invocation -> {
+                    TransactionCallback<?> callback = invocation.getArgument(0);
+                    return callback.doInTransaction(org.mockito.Mockito.mock(TransactionStatus.class));
+                });
+        service = new SubstitutionService(Clock.fixed(SubstitutionFixtures.AT, ZoneOffset.UTC), catalog,
+                store, application, transactions, org.mockito.Mockito.mock(AuditAppender.class));
     }
 
     private ProposalView propose(String proposedId, String reason, String subject, Set<String> roles,
@@ -409,6 +424,96 @@ class SubstitutionServiceTest {
                 SubstitutionFixtures.PHARMACIST, PHARMACY_ROLES));
         assertThrows(ApiException.class, () -> service.view(SubstitutionFixtures.ORG, id,
                 "  ", PHARMACY_ROLES));
+    }
+
+    @Test
+    void approvalAppliesTheSignedReplacementToTheAuthoritativePrescription() {
+        String id = newProposalId();
+        service.decide(approve(id, 1, SubstitutionFixtures.PRESCRIBER, CLINICIAN_ROLES, "apply-approve"));
+
+        assertEquals(1, application.calls());
+        assertEquals(SubstitutionFixtures.ALTERNATIVE_ID, application.lastReplacement().entryId());
+    }
+
+    @Test
+    void declineNeverAppliesAPrescriptionChange() {
+        String id = newProposalId();
+        service.decide(decline(id, 1, "not now", "apply-decline"));
+
+        assertEquals(0, application.calls());
+        assertEquals(State.DECLINED, store.findProposal(SubstitutionFixtures.ORG, id).state());
+    }
+
+    @Test
+    void aFailedApplicationPreventsTheDecisionFromBeingClosed() {
+        String id = newProposalId();
+        application.failWith(new ApiException(422, "NO_ENTITLEMENT", "the prescriber is not entitled"));
+        ApiException failure = assertThrows(ApiException.class,
+                () -> service.decide(approve(id, 1, SubstitutionFixtures.PRESCRIBER, CLINICIAN_ROLES,
+                        "apply-failure")));
+
+        assertEquals("NO_ENTITLEMENT", failure.code());
+        assertEquals(0, application.calls());
+        assertEquals(State.PENDING, store.findProposal(SubstitutionFixtures.ORG, id).state());
+        assertNull(store.findRevision(SubstitutionFixtures.ORG, id));
+    }
+
+    @Test
+    void anIdempotencyClaimWithoutAWinnerFailsClosed() {
+        String id = newProposalId();
+        String composedKey = SubstitutionFixtures.ORG + "|" + id + "|" + SubstitutionFixtures.PRESCRIBER
+                + "|approve|orphan-claim";
+        store.claim(SubstitutionFixtures.ORG, "approve", composedKey, "missing-proposal");
+
+        ApiException failure = assertThrows(ApiException.class,
+                () -> service.decide(new DecideCommand(SubstitutionFixtures.ORG,
+                        SubstitutionFixtures.PRESCRIBER, CLINICIAN_ROLES, id, 1, true,
+                        SubstitutionFixtures.ATTESTATION, null, "orphan-claim")));
+        assertEquals(409, failure.status());
+        assertEquals("DECISION_CONFLICT", failure.code());
+    }
+
+    @Test
+    void aReplayWithoutARecordedWinnerFailsClosed() {
+        FakeSubstitutionStore inconsistent = new FakeSubstitutionStore() {
+            private boolean firstClaim = true;
+
+            @Override
+            public boolean claim(String organizationId, String command, String idempotencyKey, String proposalId) {
+                if (firstClaim) {
+                    firstClaim = false;
+                    return true;
+                }
+                return false;
+            }
+
+            @Override
+            public String findReplayProposalId(String organizationId, String command, String idempotencyKey) {
+                return null;
+            }
+        };
+        org.springframework.transaction.support.TransactionTemplate transactions =
+                org.mockito.Mockito.mock(org.springframework.transaction.support.TransactionTemplate.class);
+        org.mockito.Mockito.when(transactions.execute(
+                org.mockito.ArgumentMatchers.any(org.springframework.transaction.support.TransactionCallback.class)))
+                .thenAnswer(invocation -> {
+                    org.springframework.transaction.support.TransactionCallback<?> callback =
+                            invocation.getArgument(0);
+                    return callback.doInTransaction(
+                            org.mockito.Mockito.mock(org.springframework.transaction.TransactionStatus.class));
+                });
+        SubstitutionService inconsistentService = new SubstitutionService(
+                Clock.fixed(SubstitutionFixtures.AT, ZoneOffset.UTC), catalog, inconsistent, application,
+                transactions, org.mockito.Mockito.mock(AuditAppender.class));
+        ProposalView pending = inconsistentService.propose(new ProposeCommand(SubstitutionFixtures.ORG,
+                SubstitutionFixtures.PHARMACIST, PHARMACY_ROLES, SubstitutionFixtures.PRESCRIPTION,
+                SubstitutionFixtures.ORIGINAL_ID, SubstitutionFixtures.ALTERNATIVE_ID, "stock", null, null,
+                "missing-winner"));
+
+        ApiException failure = assertThrows(ApiException.class, () -> inconsistentService.decide(
+                approve(pending.proposal().id(), 1, SubstitutionFixtures.PRESCRIBER, CLINICIAN_ROLES,
+                        "approve-no-winner")));
+        assertEquals("DECISION_CONFLICT", failure.code());
     }
 
     @Test

@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 
 import com.aurevia.smartclinic.prescription.PrescriptionRepository;
 
@@ -34,7 +35,7 @@ class JdbcSubstitutionStoreTest {
             TransactionCallback<?> callback = invocation.getArgument(0);
             return callback.doInTransaction(status);
         });
-        catalog = new JdbcSubstitutionStore(repository, transactions);
+        catalog = new JdbcSubstitutionStore(repository, transactions, mock(NamedParameterJdbcTemplate.class));
     }
 
     @Test

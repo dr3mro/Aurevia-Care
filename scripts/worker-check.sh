@@ -34,9 +34,25 @@ fi
 # Only the suites that need PostgreSQL; the unit tests already ran above. Maven
 # failures are judged by scripts/worker_gate.py, which ignores integration suites
 # that were already red on main and unrelated to this change (repair tasks are strict).
+#
+# Surefire 3.2.5 has no command-line property for reportsDirectory, so isolate
+# this invocation instead: drop the shared report files, let Maven write a fresh
+# set, copy that set into a private directory and give that directory to the
+# report reader. Otherwise failing XML left by an earlier run can decide a
+# later verdict, including on a compile or setup failure that wrote no reports.
+reports_dir="$(mktemp -d)"
+# The path comes from mktemp, so this cleanup cannot follow a user-supplied path.
+trap 'rm -rf -- "$reports_dir"' EXIT
+shared_reports="$PWD/apps/api/target/surefire-reports"
+if [[ -d "$shared_reports" ]]; then
+  find "$shared_reports" -maxdepth 1 -type f -name 'TEST-*.xml' -delete
+fi
 mvn_status=0
 mvn -q -B -f apps/api/pom.xml -Pno-security -Dgroups=integration test || mvn_status=$?
-python3 -I scripts/worker_gate.py "$mvn_status"
+if [[ -d "$shared_reports" ]] && compgen -G "$shared_reports/TEST-*.xml" > /dev/null; then
+  cp -- "$shared_reports"/TEST-*.xml "$reports_dir/"
+fi
+python3 -I scripts/worker_gate.py "$mvn_status" "$reports_dir"
 bash db/check.sh
 
 printf 'worker check: quick gate, frontend standards, integration tests and database policy passed\n'

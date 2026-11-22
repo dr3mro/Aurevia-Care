@@ -1,5 +1,5 @@
-- [-] COVPY-CHECK-PACK · Script tests: reach 100% line and branch coverage of `scripts/check-pack.py`
-  - agent: swarm-7
+- [x] COVPY-CHECK-PACK · Script tests: reach 100% line and branch coverage of `scripts/check-pack.py`
+  - pr: #668
   - attempts: 1
   - requirements: OPS-06
   - scope: scripts/tests/test_check_pack_coverage.py
