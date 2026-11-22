@@ -33,19 +33,18 @@ Active tests, all against the built kernel only:
   with 422 `REASON_REQUIRED`, and no action is appended (negative: missing
   input, proving the "with reason" qualifier is enforced).
 
-The following complete tests are present but `@Disabled` with the reason
-`GAP: no authorized operator command boundary, no retry or escalate action, no HTTP route, no persistence or audit for ADM-02 queues`.
-They prove nothing today and are left for a later task to enable:
+The operator command boundary is not built, so this change carries no HTTP-level
+test and no skipped test: a test that cannot reach a route, service or audit row
+would prove nothing. The cases a later task must make executable are specified
+under `## Gap` below:
 
-- `authorizedOperatorAssignsResolvesRetriesAndEscalatesWithReason` — intends to
-  call the authorized operator commands over HTTP and assert that each of
-  assign, resolve, retry and escalate requires a reason and commits a
-  reason-bearing action plus an audit row.
-- `operatorFromAnotherTenantOrWithoutTheOperatorRoleIsRefused` — intends to
-  assert that a caller from another tenant, a caller without the operator role
-  and a reasonless command are refused at that boundary.
-- `staleVersionActionIsRefused` — intends to assert that an outdated version
-  is refused with 409 and that the current version still succeeds.
+- Every command (assign, resolve, retry and escalate) must require a reason and
+  commit a reason-bearing action plus an audit row, with an idempotency replay
+  appending no second action.
+- A caller from another tenant, a caller without the operator role and a
+  reasonless command must be refused at the boundary.
+- An outdated version must be refused with 409 while the current version still
+  succeeds.
 
 Production classes surveyed and exercised by the active tests:
 
@@ -84,8 +83,7 @@ escalate refers to that staff-web UI calling those other-domain endpoints; it
 is not API proof for this clause.
 
 Verified locally: `mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=AuthorizedOperatorsAssignResolveRetryEscalateReasonTest test`
-— `Tests run: 6, Failures: 0, Errors: 0, Skipped: 3` (the three skips are the
-GAP tests above).
+— `Tests run: 3, Failures: 0, Errors: 0, Skipped: 0`.
 
 ## Gap
 
@@ -104,9 +102,9 @@ action or audit store. Closing that gap needs **two** bounded tasks:
 2. An API task: an injected operator command service enforcing role, tenant,
    reason and version inside the tenant-guarded transaction, adding `retry` and
    `escalate` to `OperationalWorkState`/`QueueAction`, a thin controller with
-   the four command routes, HTTP-level integration tests, the OpenAPI entries
-   with tags and `Idempotency-Key` headers, and the regenerated client. This
-   task enables the three disabled tests above.
+   the four command routes, HTTP-level integration tests for the three cases
+   listed under `## Evidence`, the OpenAPI entries with tags and
+   `Idempotency-Key` headers, and the regenerated client.
 
 Separately, five of the seven ADM-02 queue derivations (unreconciled reports,
 unacknowledged critical findings, rejected exchanges, document failures and
