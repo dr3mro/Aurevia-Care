@@ -1,4 +1,6 @@
-- [ ] FIX-WORKER-REPORTS · Use fresh integration test reports for each swarm gate invocation
+- [x] FIX-WORKER-REPORTS · Use fresh integration test reports for each swarm gate invocation
+  - pr: #680
+  - evidence: PR #680; integrator ran scripts/repair-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/FIX-WORKER-REPORTS.md; simulated review only
   - attempts: 1
   - requirements: OPS-06
   - scope: scripts/worker-check.sh, scripts/worker_gate.py, scripts/tests
