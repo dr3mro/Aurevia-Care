@@ -1,5 +1,6 @@
-- [-] RESP-CHART-PAGE · Staff web: responsive `ChartPage` (features-chart)
-  - agent: swarm-7
+- [x] RESP-CHART-PAGE · Staff web: responsive `ChartPage` (features-chart)
+  - pr: #754
+  - evidence: PR #754; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/RESP-CHART-PAGE.md; simulated review only
   - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/chart/ChartPage.tsx, apps/staff-web/tests/responsive/features-chart/ChartPage.responsive.test.tsx
