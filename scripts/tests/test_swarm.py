@@ -1977,7 +1977,7 @@ class PrFlowTests(unittest.TestCase):
             swarm.main(["pr-flow"])
         flow.assert_called_once()
         text = (ROOT / ".github/workflows/swarm-pr-flow.yml").read_text()
-        for needle in ("cron: '*/10 * * * *'", "workflows: [Delivery]", "scripts/swarm.py pr-flow",
+        for needle in ("cron: '*/20 * * * *'", "workflows: [Delivery]", "scripts/swarm.py pr-flow",
                        "pull-requests: write", "actions: write"):
             self.assertIn(needle, text)
         self.assertNotIn("agent-run.sh", text)
