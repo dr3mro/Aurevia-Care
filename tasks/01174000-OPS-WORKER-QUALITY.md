@@ -1,4 +1,6 @@
 - [ ] OPS-WORKER-QUALITY · Catch story-policy conflicts and frontend failures before swarm PRs reach Delivery (OPS-06).
+  - requirements: OPS-06
+  - scope: docs/WORKFLOW.md, docs/operations/workflow-changes
   - evidence: Issue #231 follow-up (tool evidence). Full worker gate artifacts and historical synthetic runs confirmed fixture environment leakage and missing PyYAML. The local patch isolates the fixture, provisions isolated Python imports in the base image and hosted runner setup, and scopes the fast-tier assertion to Surefire. `python3 -I -m unittest discover -s scripts/tests -q` passed 424 tests in a scoped snapshot under normal, story and fix settings. Bundled synthetic worker results produced a ready PR with no handoff on pass and a draft with a handoff on failure in mocked publication. `actionlint`, ShellCheck, and `scripts/docs.sh` passed. Actual worker-image and hosted-runner verification are pending. No GitHub changes were authorized.
   - evidence: Local regression fixtures use READY-07’s class requirement and READY-47’s strict type-check failure. Worker and Delivery share the frontend command. The integrator checks ordinary PRs for current-head Delivery evidence, with the existing merge gate for documentation and the dedicated repair tier. Live verification remains pending. No commit or push was authorized.
   - details:

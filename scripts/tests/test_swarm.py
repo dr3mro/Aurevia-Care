@@ -1610,6 +1610,233 @@ class AuditTests(unittest.TestCase):
         self.assertNotIn("contents: write", audit)
 
 
+class DailyReviewTests(unittest.TestCase):
+    """The QA and DevSecOps reviewers share the audit's validation but keep their own ids and cap."""
+    TODO = AuditTests.TODO
+
+    def findings(self, tmp, data):
+        path = Path(tmp, "daily.json")
+        path.write_text(json.dumps(data))
+        return str(path)
+
+    def test_tasks_get_the_role_prefix_and_source(self):
+        task = {"title": "Cover the refund replay failure path", "scope": ["apps/api/src/test"],
+                "details": "No test replays a refund twice."}
+        with tempfile.TemporaryDirectory() as tmp:
+            todo = Path(tmp, "TODO.md")
+            todo.write_text(self.TODO)
+            with mock.patch.object(swarm, "record_issue", return_value=""), \
+                 mock.patch.object(swarm, "git"), mock.patch.object(swarm, "authed_git"):
+                result = swarm.daily_publish("qa", self.findings(tmp, {"tasks": [task]}), str(todo))
+            text = todo.read_text()
+            self.assertEqual(result["tasks"], 1)
+            self.assertRegex(text, r"- \[ \] QAD-\d{8}-01 · Cover the refund replay failure path")
+            self.assertIn("Found by the daily QA review.", text)
+            self.assertNotIn("AUD-", text.split("## Audit findings")[-1])
+
+    def test_each_role_has_its_own_open_cap(self):
+        entries = "\n".join(f"- [ ] QAD-20260101-{n:02d} · open qa task number {n}\n  - scope: apps/{n}\n"
+                            for n in range(1, 26))
+        task = {"title": "A security review task for the pipeline", "scope": ["infra"], "details": "d"}
+        with tempfile.TemporaryDirectory() as tmp:
+            todo = Path(tmp, "TODO.md")
+            todo.write_text(self.TODO + "\n" + entries)
+            with mock.patch.object(swarm, "record_issue", return_value=""), \
+                 mock.patch.object(swarm, "git"), mock.patch.object(swarm, "authed_git"):
+                qa = swarm.daily_publish("qa", self.findings(tmp, {"tasks": [task]}), str(todo))
+                dso = swarm.daily_publish("devsecops", self.findings(tmp, {"tasks": [task]}), str(todo))
+            self.assertEqual((qa["tasks"], dso["tasks"]), (0, 1))
+            self.assertIn("DSO-", todo.read_text())
+
+    def test_suggestions_go_to_one_issue_and_are_never_applied(self):
+        data = {"summary": "s", "tasks": [],
+                "agents": [{"agent": "smartclinic-test-engineer", "problem": "skips failure paths", "change": "add a rule"}],
+                "workflow": [{"title": "Slow gate", "evidence": "40 minutes", "change": "split it"}]}
+        with tempfile.TemporaryDirectory() as tmp:
+            todo = Path(tmp, "TODO.md")
+            todo.write_text(self.TODO)
+            with mock.patch.object(swarm, "record_issue", return_value="77") as record:
+                result = swarm.daily_publish("devsecops", self.findings(tmp, data), str(todo))
+            self.assertEqual(result, {"tasks": 0, "issue": "77"})
+            self.assertEqual(todo.read_text(), self.TODO)
+            kind, _, title, body = record.call_args.args[:4]
+            self.assertEqual(kind, "daily-devsecops")
+            self.assertIn("DevSecOps", title)
+            self.assertIn("smartclinic-test-engineer", body)
+            self.assertIn("Nothing here was applied", body)
+
+    def test_nothing_to_suggest_opens_no_issue_and_bad_json_changes_nothing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            todo = Path(tmp, "TODO.md")
+            todo.write_text(self.TODO)
+            with mock.patch.object(swarm, "record_issue") as record:
+                swarm.daily_publish("qa", self.findings(tmp, {"summary": "ok", "tasks": []}), str(todo))
+                Path(tmp, "bad.json").write_text("{nope")
+                self.assertEqual(swarm.daily_publish("qa", str(Path(tmp, "bad.json")), str(todo)),
+                                 {"tasks": 0, "issue": ""})
+                self.assertEqual(swarm.daily_publish("qa", self.findings(tmp, ["x"]), str(todo))["issue"], "")
+            record.assert_not_called()
+            self.assertEqual(todo.read_text(), self.TODO)
+
+    def test_cli_publishes_a_review(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            todo = Path(tmp, "TODO.md")
+            todo.write_text(self.TODO)
+            path = self.findings(tmp, {"tasks": []})
+            with mock.patch.object(swarm, "daily_publish") as publish:
+                swarm.main(["daily-publish", "--role", "qa", "--findings", path, "--file", str(todo)])
+            publish.assert_called_once_with("qa", path, str(todo))
+
+    def test_workflows_keep_the_reviewer_read_only_and_tokenless(self):
+        for role, cron, slot in (("qa", "43 8 * * *", "3"), ("devsecops", "29 9 * * *", "5")):
+            text = (ROOT / f".github/workflows/daily-{role}.yml").read_text()
+            self.assertIn(f"cron: '{cron}'", text)
+            self.assertIn(f"scripts/agent-run.sh daily-{role}", text)
+            self.assertIn(f"swarm.py daily-publish --role {role}", text)
+            self.assertIn(f"-agent-{slot}:latest", text)
+            self.assertIn("DAILY_FOCUS: ${{ inputs.focus }}", text)
+            review = text.split("  review:")[1].split("  publish:")[0]
+            self.assertNotIn("GH_TOKEN", review)
+            self.assertNotIn("contents: write", review)
+            self.assertIn("issues: write", text.split("  publish:")[1])
+        watchdog = (ROOT / ".github/workflows/swarm-watchdog.yml").read_text()
+        self.assertIn("Daily QA review, Daily DevSecOps review", watchdog)
+
+    def test_prompts_are_read_only_and_keep_workflow_changes_with_people(self):
+        script = (ROOT / "scripts/agent-run.sh").read_text()
+        self.assertIn("This is READ-ONLY", script.split("daily_prompt() {")[1])
+        self.assertIn("Today's focus: $(daily_focus", script)
+        self.assertIn("smartclinic-qa-reviewer", script)
+        self.assertIn("smartclinic-devsecops", script)
+        self.assertIn("a person decides on them", script)
+        self.assertIn("daily-qa) cmd_daily qa", script)
+        self.assertIn("daily-devsecops) cmd_daily devsecops", script)
+
+
+class PrFlowTests(unittest.TestCase):
+    """The PR flow does the next step for each open swarm pull request without waiting for the integrator."""
+    NOW = datetime.datetime(2026, 11, 21, 12, 0, tzinfo=datetime.timezone.utc)
+
+    def pr(self, number, labels=(), draft=False, idle=30, title="CW-001: Staff", cross=False):
+        stamp = (self.NOW - datetime.timedelta(minutes=idle)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        return {"number": number, "title": title, "isDraft": draft, "isCrossRepository": cross,
+                "labels": [{"name": n} for n in ("swarm", *labels)], "headRefOid": f"sha{number}" * 4,
+                "updatedAt": stamp}
+
+    def run_flow(self, prs, state="passed", red=False, active=0, waiting=0, requested=False):
+        fake = FakeGh()
+        with mock.patch.object(swarm, "gh", fake), \
+             mock.patch.object(swarm, "gh_json", lambda *a: prs if a[:2] == ("pr", "list") else {"headRefName": "swarm/CW-001-1"}), \
+             mock.patch.object(swarm, "main_is_red", return_value=red), \
+             mock.patch.object(swarm, "delivery_runs", return_value=[]), \
+             mock.patch.object(swarm, "delivery_state", return_value=state), \
+             mock.patch.object(swarm, "delivery_requested", return_value=requested), \
+             mock.patch.object(swarm, "active_runs", return_value=active), \
+             mock.patch.object(swarm, "waiting_waves", return_value=waiting), \
+             mock.patch.object(swarm, "fail") as failed, \
+             mock.patch.object(swarm, "report_pr_stuck") as stuck:
+            acted = swarm.pr_flow(self.NOW)
+        return acted, fake, failed, stuck
+
+    def test_a_failed_delivery_goes_to_the_debugger_at_once(self):
+        acted, _, failed, _ = self.run_flow([self.pr(7)], state="failed")
+        failed.assert_called_once_with(7, "Delivery failed on the current head")
+        self.assertEqual(acted, [(7, "delivery failed, sent to debugger")])
+
+    def test_a_draft_nobody_took_goes_to_a_fix_worker_and_starts_a_wave(self):
+        acted, fake, failed, _ = self.run_flow([self.pr(7, draft=True)])
+        failed.assert_called_once()
+        self.assertTrue(failed.call_args.kwargs["simple"])
+        self.assertTrue(fake.said("workflow", "run", "swarm.yml"))
+        self.assertIn((7, "draft sent to fix"), acted)
+
+    def test_a_fresh_draft_is_left_alone(self):
+        acted, _, failed, _ = self.run_flow([self.pr(7, draft=True, idle=1)])
+        failed.assert_not_called()
+        self.assertEqual(acted, [])
+
+    def test_labelled_and_foreign_pull_requests_are_not_touched(self):
+        prs = [self.pr(1, ("needs-human",)), self.pr(2, ("needs-review",)), self.pr(3, cross=True)]
+        acted, fake, failed, _ = self.run_flow(prs, state="failed")
+        failed.assert_not_called()
+        self.assertEqual(acted, [])
+
+    def test_needs_debug_starts_the_debugger_only_when_none_runs(self):
+        acted, fake, _, _ = self.run_flow([self.pr(7, ("needs-debug",))])
+        self.assertTrue(fake.said("workflow", "run", "swarm-debugger.yml"))
+        self.assertEqual(acted, [("-", "debugger started")])
+        acted, fake, _, _ = self.run_flow([self.pr(7, ("needs-debug",))], active=1)
+        self.assertFalse(fake.said("swarm-debugger.yml"))
+
+    def test_needs_fix_starts_one_wave_unless_one_waits(self):
+        acted, fake, _, _ = self.run_flow([self.pr(7, ("needs-fix",))])
+        self.assertTrue(fake.said("swarm.yml"))
+        _, fake, _, _ = self.run_flow([self.pr(7, ("needs-fix",))], waiting=1)
+        self.assertFalse(fake.said("swarm.yml"))
+
+    def test_missing_delivery_requests_one_run_per_head(self):
+        acted, fake, _, _ = self.run_flow([self.pr(7)], state="missing")
+        self.assertTrue(fake.said("workflow", "run", "delivery.yml"))
+        self.assertEqual(acted, [(7, "delivery missing, run requested")])
+        _, fake, _, _ = self.run_flow([self.pr(7)], state="approval-required", requested=True)
+        self.assertFalse(fake.said("delivery.yml"))
+
+    def test_a_docs_only_pull_request_needs_no_delivery_run(self):
+        fake_diff = "docs/guide.md\nREADME.md\n"
+        with mock.patch.object(FakeGh, "__call__", autospec=True,
+                               side_effect=lambda self, *a, check=True: (self.calls.append(a), fake_diff if a[:2] == ("pr", "diff") else "")[1]):
+            acted, fake, _, _ = self.run_flow([self.pr(7)], state="missing")
+        self.assertFalse(fake.said("delivery.yml"))
+        self.assertEqual(acted, [("-", "integrator started for 1 ready pull request(s)")])
+
+    def test_a_green_pull_request_wakes_the_integrator_unless_it_runs(self):
+        acted, fake, _, _ = self.run_flow([self.pr(7), self.pr(8)])
+        self.assertTrue(fake.said("workflow", "run", "swarm-integrator.yml"))
+        self.assertEqual(acted, [("-", "integrator started for 2 ready pull request(s)")])
+        _, fake, _, _ = self.run_flow([self.pr(7)], active=1)
+        self.assertFalse(fake.said("swarm-integrator.yml"))
+
+    def test_while_main_is_red_only_repairs_count_as_ready(self):
+        _, fake, _, _ = self.run_flow([self.pr(7)], red=True)
+        self.assertFalse(fake.said("swarm-integrator.yml"))
+        _, fake, _, _ = self.run_flow([self.pr(9, title="FIX-123: Repair main")], red=True)
+        self.assertTrue(fake.said("swarm-integrator.yml"))
+
+    def test_pending_runs_wait_and_a_long_green_wait_raises_an_alert(self):
+        acted, fake, _, _ = self.run_flow([self.pr(7)], state="pending")
+        self.assertEqual(acted, [])
+        acted, _, _, stuck = self.run_flow([self.pr(7, idle=200)], active=1)
+        stuck.assert_called_once()
+        self.assertIn((7, "stuck alert"), acted)
+
+    def test_active_runs_counts_every_unfinished_state(self):
+        calls = []
+
+        def gh(*args, check=True):
+            calls.append(args)
+            return "11 12" if "queued" in args else ""
+        with mock.patch.object(swarm, "gh", gh):
+            self.assertEqual(swarm.active_runs("swarm-integrator.yml"), 2)
+        self.assertEqual(len(calls), len(swarm.ACTIVE_STATES))
+
+    def test_delivery_requested_only_matches_this_head(self):
+        comments = [{"body": "x\nDelivery is missing for sha777777777", "user": {"login": "github-actions[bot]"}}]
+        with mock.patch.object(swarm, "gh_json", return_value=comments), \
+             mock.patch.object(swarm, "repo_slug", return_value="o/r"):
+            self.assertTrue(swarm.delivery_requested(7, "sha777777777"))
+            self.assertFalse(swarm.delivery_requested(7, "other0000000"))
+
+    def test_the_cli_and_workflow(self):
+        with mock.patch.object(swarm, "pr_flow", return_value=[(7, "x")]) as flow:
+            swarm.main(["pr-flow"])
+        flow.assert_called_once()
+        text = (ROOT / ".github/workflows/swarm-pr-flow.yml").read_text()
+        for needle in ("cron: '*/10 * * * *'", "workflows: [Delivery]", "scripts/swarm.py pr-flow",
+                       "pull-requests: write", "actions: write"):
+            self.assertIn(needle, text)
+        self.assertNotIn("agent-run.sh", text)
+
+
 class ResolveConflictTests(unittest.TestCase):
     def view(self, comments=0, cross=False, branch="swarm/CW-001-1"):
         return {"headRefName": branch, "isCrossRepository": cross,
@@ -2035,6 +2262,19 @@ class GitTests(unittest.TestCase):
         with mock.patch.object(swarm, "gh", FakeGh(pr_view={".state": "OPEN"})), \
                 mock.patch.object(swarm, "authed_git", side_effect=push):
             swarm.publish(task, out)
+
+    def publish_fix(self, checks):
+        task = {**self.TASK, "kind": "fix", "number": 193, "branch": "swarm/CW-001-1"}
+        out, fake = self.worker_dir(checks=checks), FakeGh(pr_view={".state": "OPEN"})
+        with mock.patch.object(swarm, "gh", fake), mock.patch.object(swarm, "authed_git"):
+            swarm.publish(task, out)
+        return fake
+
+    def test_a_clean_fix_marks_the_draft_ready(self):
+        self.assertTrue(self.publish_fix("passed").said("pr", "ready", "193"))
+
+    def test_a_fix_whose_checks_failed_stays_a_draft(self):
+        self.assertFalse(self.publish_fix("failed").said("pr", "ready"))
 
     def test_a_story_push_failure_is_still_an_error(self):
         out = self.worker_dir()
