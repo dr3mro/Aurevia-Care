@@ -236,6 +236,7 @@ public class InstantMessagingService {
      */
     public List<UnreadView> unreadCounts(String facilityId) {
         TenantContext context = context();
+        requireActiveStaff(context.organizationId(), context.subject());
         String facility = requireSubject(facilityId, "facilityId");
         requireFacilityScope(context.organizationId(), context.subject(), facility);
         return store.conversationsForFacility(context.organizationId(), facility, context.subject())
@@ -254,6 +255,7 @@ public class InstantMessagingService {
      */
     public List<ConversationView> conversations(String facilityId) {
         TenantContext context = context();
+        requireActiveStaff(context.organizationId(), context.subject());
         String facility = requireSubject(facilityId, "facilityId");
         requireFacilityScope(context.organizationId(), context.subject(), facility);
         return store.conversationsForFacility(context.organizationId(), facility, context.subject())
@@ -281,6 +283,10 @@ public class InstantMessagingService {
 
     private Access requireAccess(String facilityId, String conversationId, boolean requireActive) {
         TenantContext context = context();
+        // A still-open participant row is not proof of a current staff role: a
+        // revoked membership must lose access on the next command, not when the
+        // conversation membership is eventually closed.
+        requireActiveStaff(context.organizationId(), context.subject());
         String facility = requireSubject(facilityId, "facilityId");
         String id = requireSubject(conversationId, "conversationId");
         StaffConversation conversation = store.conversation(context.organizationId(), id)

@@ -54,6 +54,8 @@ class InstantMessagingServiceTest {
     void setUp() {
         TenantContext.set(new TenantContext(ORG, ACTOR, "STAFF_MESSAGING", "correlation-1"));
         store = mock(InstantConversationStore.class);
+        // Default allow: individual tests override a subject to model a revoked role.
+        when(store.activeStaff(anyString(), anyString())).thenReturn(true);
         when(store.facilityWithinScope(anyString(), anyString(), anyString())).thenReturn(true);
         service = new InstantMessagingService(store, Clock.fixed(NOW, ZoneOffset.UTC));
     }
@@ -79,6 +81,33 @@ class InstantMessagingServiceTest {
     private ApiException failure(String facility) {
         return assertThrows(ApiException.class,
                 () -> service.send(new SendRequest(facility, CONVERSATION, "body"), "key-1"));
+    }
+
+    /**
+     * A subject whose staff role was revoked must not keep acting on a conversation
+     * whose participant row is still open — active staff status is re-checked on
+     * every command, not only when a conversation is first opened.
+     */
+    @Test
+    void aRevokedStaffMemberCannotKeepActingOnAnOpenConversation() {
+        when(store.activeStaff(ORG, ACTOR)).thenReturn(false);
+        when(store.conversation(ORG, CONVERSATION))
+                .thenReturn(Optional.of(conversation(FACILITY, ConversationKind.DIRECT)));
+        when(store.participants(ORG, CONVERSATION))
+                .thenReturn(List.of(participant(ACTOR, ParticipantRole.OWNER, null)));
+        when(store.sendMessage(anyString(), anyString(), anyString(), anyString(), anyString(), any()))
+                .thenReturn(message(1L, ACTOR));
+
+        assertEquals(403, failure(FACILITY).status());
+        verify(store, never()).sendMessage(anyString(), anyString(), anyString(), anyString(), anyString(), any());
+        assertEquals(403, assertThrows(ApiException.class,
+                () -> service.markRead(new MarkReadRequest(FACILITY, CONVERSATION, 1L))).status());
+        assertEquals(403, assertThrows(ApiException.class,
+                () -> service.messages(FACILITY, CONVERSATION)).status());
+        assertEquals(403, assertThrows(ApiException.class,
+                () -> service.unreadCounts(FACILITY)).status());
+        assertEquals(403, assertThrows(ApiException.class,
+                () -> service.conversations(FACILITY)).status());
     }
 
     @Test
