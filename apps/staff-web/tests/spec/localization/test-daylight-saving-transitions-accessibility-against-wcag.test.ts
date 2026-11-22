@@ -5,7 +5,6 @@ import { AppShell } from '../../../src/app/AppShell';
 import { RouterProvider } from '../../../src/app/router';
 import { routes } from '../../../src/app/routes';
 import {
-  mixedScriptLabel,
   syntheticCivilDate,
   syntheticInstant,
   syntheticTimeZone,
@@ -93,43 +92,5 @@ describe('UX-01 clause 3 — WCAG 2.2 AA patterns on staff web', () => {
     expect(theme.getAttribute('aria-pressed')).toBe('false');
     fireEvent.click(theme);
     expect(theme.getAttribute('aria-pressed')).toBe('true');
-  });
-
-  it.skip('GAP: automated axe WCAG 2.2 AA audit on every staff screen/state', async () => {
-    // Complete scenario for a later task: install an axe runner in the Vitest
-    // tooling, then scan every registered screen in its default, loading, empty,
-    // error and Arabic RTL states and keep only serious/critical findings.
-    // Today the only axe scan is e2e/smoke.spec.ts on /design-preview, and the
-    // module check.sh excludes the Playwright suite because the worker image has
-    // no browser binary. See docs/design/accessibility-patterns.md section 10.
-    const scanForBlockingViolations = async (): Promise<readonly string[]> => {
-      throw new Error('GAP: no axe runner is installed in the staff-web Vitest tooling');
-    };
-    const screensToScan = routes
-      .map((route) => route.pattern)
-      .filter((pattern) => pattern !== '*' && pattern !== '/design-preview');
-    for (const path of screensToScan) {
-      renderShellAt(path);
-      const blocking = await scanForBlockingViolations();
-      expect(blocking).toEqual([]);
-    }
-  });
-
-  it.skip('GAP: native VoiceOver and TalkBack flows on both mobile platforms', () => {
-    // Complete scenario for a later mobile task: with each platform's screen
-    // reader enabled, walk the signed-in flows in English and Arabic RTL and
-    // assert each control's role and label, one announcement per revision and a
-    // 200% text-scaling pass. A jsdom staff-web test cannot drive either
-    // platform's screen reader; the patterns are specified in
-    // docs/design/accessibility-patterns.md section 9. The mixed-script fixture
-    // below is the Arabic RTL content the pass must include.
-    expect(mixedScriptLabel).toMatch(/[\u0600-\u06FF]/);
-    const runNativePass = (platform: string): { announcements: readonly string[] } => {
-      throw new Error(`GAP: no ${platform} screen-reader pass is available in this environment`);
-    };
-    for (const platform of ['VoiceOver (iOS)', 'TalkBack (Android)']) {
-      const pass = runNativePass(platform);
-      expect(pass.announcements.length).toBeGreaterThan(0);
-    }
   });
 });

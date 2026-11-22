@@ -57,30 +57,34 @@ screen-reader or mobile-device evidence is claimed here.
   repository. The native patterns are specified in
   [accessibility-patterns.md](../../../../docs/design/accessibility-patterns.md),
   but the clause's mobile half belongs to `apps/patient-mobile`, not this
-  staff-web test. It is carried as a behaviour-named `it.skip("GAP: ...")` so a
-  later task can enable it.
+  staff-web test. The gap is recorded as prose here and as task requests in the
+  delivery notes, so a later mobile task can add the native evidence without a
+  skipped test in this suite.
 
 ## Gap
 
 The clause is only partly proven: DST behavior and the implemented staff-web
 ARIA patterns have real passing tests, while the full automated WCAG 2.2 AA
-audit and the native screen-reader flows are absent. The two complete
-`it.skip("GAP: ...")` tests in the test file document what would prove them.
+audit and the native screen-reader flows are absent. Those two gaps are recorded
+below and as task requests in the delivery notes. They are intentionally not
+carried as skipped tests: a skip proves nothing and the constraint gate forbids
+adding one, so the missing behaviour is described here instead.
 
 1. **Full automated WCAG 2.2 AA audit on every staff screen and state.** Add an
    axe-core unit or browser runner to the staff-web tooling and a CI job that
    installs Chromium, then extend the scan from `/design-preview` to every
    screen and state (loading, empty, error, RTL, dialogs, worklists, critical
    banners). Files that would change: `apps/staff-web/package.json`, the module
-   `check.sh`, `apps/staff-web/e2e/`, `.github/workflows/` and the new test file
-   (enable the skipped GAP). One engineering task plus one CI task.
+   `check.sh`, `apps/staff-web/e2e/`, `.github/workflows/` and this clause's
+   test file (add the audit assertions). One engineering task plus one CI task.
 2. **Native VoiceOver and TalkBack flows on both platforms.** Run and record a
    named screen-reader pass per screen on iOS and Android, including Arabic
    RTL content, as required by
    [accessibility-patterns.md](../../../../docs/design/accessibility-patterns.md).
    Files that would change: `apps/patient-mobile/` test and evidence files and
-   the new test file (enable the skipped GAP). One human/simulated-user evidence
-   task; a per-site launch gate also needs qualified reviewers.
+   this clause's test file (add the native-pass assertions). One
+   human/simulated-user evidence task; a per-site launch gate also needs
+   qualified reviewers.
 
 That is at least four separate tasks (two engineering/CI, two mobile evidence).
 This task changes only the two declared scope paths: no production code,
