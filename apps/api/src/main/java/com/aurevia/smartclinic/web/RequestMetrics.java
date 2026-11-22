@@ -1,7 +1,6 @@
 package com.aurevia.smartclinic.web;
 
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.LongAdder;
 
@@ -21,8 +20,13 @@ import org.springframework.stereotype.Component;
  * <p>The histogram uses a fixed, bounded set of upper bounds plus the mandatory
  * {@code +Inf} bucket. It is cumulative: an observation increments every bucket
  * whose bound is greater than or equal to its duration. The {@code +Inf} bucket
- * therefore always increments and always equals the request count, so a scrape
- * cannot report a histogram count that disagrees with the counter families.</p>
+ * therefore always increments. Count, sum and buckets are read from one holder,
+ * so the families describe the same series rather than three independently keyed maps.</p>
+ *
+ * <p>Count, sum and every bucket live in one holder that is published to the
+ * registry inside a single atomic {@code compute}, so a scrape never sees a
+ * holder without its sum and buckets. The adders are lock-free, so individual
+ * samples in one scrape may still straddle an in-flight observation.</p>
  */
 @Component
 public final class RequestMetrics {
@@ -49,12 +53,30 @@ public final class RequestMetrics {
             2_500_000_000L, 5_000_000_000L, 10_000_000_000L, Long.MAX_VALUE
     };
 
-    private final ConcurrentHashMap<String, LongAdder> requests = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, LongAdder> latencyNanos = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, LongAdder> durationBuckets = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Series> series = new ConcurrentHashMap<>();
+
+    /**
+     * Count, latency sum and cumulative buckets for one method/route/status series.
+     * All adders are created up front so a published holder is always complete.
+     */
+    private static final class Series {
+        private final LongAdder requests = new LongAdder();
+        private final LongAdder latencyNanos = new LongAdder();
+        private final LongAdder[] buckets = new LongAdder[BUCKET_LABELS.length];
+
+        private Series() {
+            for (int i = 0; i < buckets.length; i++) {
+                buckets[i] = new LongAdder();
+            }
+        }
+    }
 
     /**
      * Add one observation to the matching series.
+     *
+     * <p>The whole update happens inside one atomic map computation: the holder
+     * becomes visible to scrapes only after its count, sum and buckets have all
+     * been incremented, so no scrape can observe a half-written observation.</p>
      *
      * @param method       HTTP method from the servlet request
      * @param route        matched handler pattern, never the raw request path
@@ -63,13 +85,17 @@ public final class RequestMetrics {
      */
     public void record(String method, String route, int status, long elapsedNanos) {
         String key = method + '|' + route + '|' + (status / 100) + "xx";
-        requests.computeIfAbsent(key, ignored -> new LongAdder()).increment();
-        latencyNanos.computeIfAbsent(key, ignored -> new LongAdder()).add(elapsedNanos);
-        for (int i = 0; i < BUCKET_UPPER_BOUNDS_NANOS.length; i++) {
-            if (elapsedNanos <= BUCKET_UPPER_BOUNDS_NANOS[i]) {
-                durationBuckets.computeIfAbsent(key + '|' + i, ignored -> new LongAdder()).increment();
+        series.compute(key, (ignored, existing) -> {
+            Series current = existing == null ? new Series() : existing;
+            current.requests.increment();
+            current.latencyNanos.add(elapsedNanos);
+            for (int i = 0; i < BUCKET_UPPER_BOUNDS_NANOS.length; i++) {
+                if (elapsedNanos <= BUCKET_UPPER_BOUNDS_NANOS[i]) {
+                    current.buckets[i].increment();
+                }
             }
-        }
+            return current;
+        });
     }
 
     /**
@@ -87,12 +113,12 @@ public final class RequestMetrics {
         text.append("# HELP ").append(REQUESTS_METRIC)
                 .append(" Total HTTP requests by method, route and status class.\n");
         text.append("# TYPE ").append(REQUESTS_METRIC).append(" counter\n");
-        appendSeries(text, REQUESTS_METRIC, requests, false);
+        appendSeries(text, REQUESTS_METRIC, series, false);
         text.append("# HELP ").append(SECONDS_METRIC)
                 .append(" Sum of request latency in seconds by method, route and status class.\n");
         text.append("# TYPE ").append(SECONDS_METRIC).append(" counter\n");
-        appendSeries(text, SECONDS_METRIC, latencyNanos, true);
-        appendHistogram(text);
+        appendSeries(text, SECONDS_METRIC, series, true);
+        appendHistogram(text, series);
         return text.toString();
     }
 
@@ -105,46 +131,46 @@ public final class RequestMetrics {
      * @param seconds whether values are nanoseconds to be rendered as seconds
      */
     private static void appendSeries(StringBuilder text, String metric,
-            ConcurrentHashMap<String, LongAdder> values, boolean seconds) {
+            ConcurrentHashMap<String, Series> values, boolean seconds) {
         values.entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(entry -> {
-            String[] parts = entry.getKey().split("\\|", -1);
-            long total = entry.getValue().sum();
+            Series current = entry.getValue();
+            long total = seconds ? current.latencyNanos.sum() : current.requests.sum();
             String value = seconds ? Double.toString(total / NANOS_PER_SECOND) : Long.toString(total);
-            text.append(metric).append("{method=").append(label(parts[0]))
-                    .append(",route=").append(label(parts[1]))
-                    .append(",status=").append(label(parts[2])).append("} ")
+            String[] keyParts = entry.getKey().split("\\|", -1);
+            text.append(metric).append("{method=").append(label(keyParts[0]))
+                    .append(",route=").append(label(keyParts[1]))
+                    .append(",status=").append(label(keyParts[2])).append("} ")
                     .append(value).append('\n');
         });
     }
 
     /**
      * Append the duration histogram family, with cumulative buckets rendered in
-     * ascending bound order for each observed series.
+     * ascending bound order for each observed series. This is static so no lambda
+     * in this method captures the registry instance; SpotBugs would otherwise treat
+     * the injected registry stored by the metrics filter as an exposed mutable field.
      *
-     * @param text output buffer
+     * @param text   output buffer
+     * @param values series values keyed by {@code method|route|status}
      */
-    private void appendHistogram(StringBuilder text) {
+    private static void appendHistogram(StringBuilder text, ConcurrentHashMap<String, Series> values) {
         text.append("# HELP ").append(DURATION_METRIC)
                 .append(" Server-side request duration in seconds by method, route and status class.\n");
         text.append("# TYPE ").append(DURATION_METRIC).append(" histogram\n");
-        requests.entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(entry -> {
-            String key = entry.getKey();
-            String[] parts = key.split("\\|", -1);
-            String labels = "method=" + label(parts[0]) + ",route=" + label(parts[1])
-                    + ",status=" + label(parts[2]);
+        values.entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(entry -> {
+            Series current = entry.getValue();
+            String[] keyParts = entry.getKey().split("\\|", -1);
+            String labels = "method=" + label(keyParts[0]) + ",route=" + label(keyParts[1])
+                    + ",status=" + label(keyParts[2]);
             for (int i = 0; i < BUCKET_LABELS.length; i++) {
-                LongAdder bucket = durationBuckets.get(key + '|' + i);
-                long cumulative = bucket == null ? 0L : bucket.sum();
                 text.append(DURATION_METRIC).append("_bucket{").append(labels)
                         .append(",le=").append(label(BUCKET_LABELS[i])).append("} ")
-                        .append(cumulative).append('\n');
+                        .append(current.buckets[i].sum()).append('\n');
             }
-            long sumNanos = Objects.requireNonNull(latencyNanos.get(key),
-                    "latency series for a recorded request").sum();
             text.append(DURATION_METRIC).append("_sum{").append(labels).append("} ")
-                    .append(sumNanos / NANOS_PER_SECOND).append('\n');
+                    .append(current.latencyNanos.sum() / NANOS_PER_SECOND).append('\n');
             text.append(DURATION_METRIC).append("_count{").append(labels).append("} ")
-                    .append(entry.getValue().sum()).append('\n');
+                    .append(current.requests.sum()).append('\n');
         });
     }
 
