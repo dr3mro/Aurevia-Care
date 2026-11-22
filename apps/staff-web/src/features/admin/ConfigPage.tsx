@@ -10,6 +10,7 @@ import { StateView } from '../../components/StateViews';
 import { useI18n } from '../../i18n/I18nProvider';
 import type { Locale } from '../../i18n/messages';
 import { useTheme } from '../../theme/ThemeProvider';
+import { useBreakpoint, usePointerCoarse } from '../../theme/useBreakpoint';
 import { AdminTableRegion } from './AdminTableRegion';
 import {
   approveConfiguration,
@@ -135,10 +136,10 @@ function CatalogFamily({ family, organizationId, locale, reloadToken }: CatalogF
             <tbody>
               {entries.map((item) => (
                 <tr key={`${family}:${item.code ?? ''}:${item.version ?? 0}`}>
-                  <th scope="row">
+                  <th scope="row" style={{ minInlineSize: 0, overflowWrap: 'anywhere' }}>
                     <MixedScriptText text={item.code ?? ''} lang="en" />
                   </th>
-                  <td>
+                  <td style={{ minInlineSize: 0, overflowWrap: 'anywhere' }}>
                     <MixedScriptText text={item.value ?? ''} lang={locale} />
                   </td>
                   <td>{item.version ?? 0}</td>
@@ -243,7 +244,11 @@ function CatalogSection({
     errors.effectiveFrom === undefined ? undefined : adminText(locale, errors.effectiveFrom);
 
   return (
-    <section aria-label={adminText(locale, 'defineCatalogEntry')} style={{ display: 'grid', gap: tokens.spacing.md }}>
+    <section
+      aria-label={adminText(locale, 'defineCatalogEntry')}
+      className="stack"
+      style={{ gap: tokens.spacing.md }}
+    >
       <h3>{adminText(locale, 'defineCatalogEntry')}</h3>
       <FieldErrorSummary title={adminText(locale, 'errorSummary')} errors={errorLinks()} />
       <Form
@@ -251,7 +256,7 @@ function CatalogSection({
         submitLabel={adminText(locale, 'defineCatalogEntry')}
         onSubmit={handleSubmit}
       >
-        <div style={{ display: 'grid', gap: tokens.spacing.md }}>
+        <div className="grid-2" style={{ gap: tokens.spacing.md }}>
           <FormField
             id="catalog-code"
             label={adminText(locale, 'catalogCode')}
@@ -291,10 +296,22 @@ function CatalogSection({
   );
 }
 
-/** Lookup, definition, approval and catalog commands for one organization. */
+/**
+ * Lookup, definition, approval and catalog commands for one organization.
+ *
+ * Layout uses only the shared responsive classes: the `page` root caps the
+ * reading measure and maps the safe-area insets with logical padding, `stack`
+ * stacks each section and wraps long values, and `grid-2` puts the short catalog
+ * fields side by side from the medium band while leaving them stacked on phones.
+ * The resolved layout class and pointer type are exposed as data attributes so
+ * jsdom can assert the structure without evaluating media queries; direction is
+ * never set here, so the same DOM mirrors under right-to-left.
+ */
 function ConfigContent({ organizationId }: ConfigContentProps) {
   const { locale } = useI18n();
   const { tokens } = useTheme();
+  const breakpoint = useBreakpoint();
+  const coarsePointer = usePointerCoarse();
   const [lookup, setLookup] = useState(EMPTY_LOOKUP);
   const [lookupError, setLookupError] = useState<AdminMessageKey | undefined>(undefined);
   const [configKey, setConfigKey] = useState<string | undefined>(undefined);
@@ -402,8 +419,13 @@ function ConfigContent({ organizationId }: ConfigContentProps) {
   const familyMessage = familyError === undefined ? undefined : adminText(locale, familyError);
 
   return (
-    <div style={{ display: 'grid', gap: tokens.spacing.lg }}>
-      <section aria-label={adminText(locale, 'configLookup')} style={{ display: 'grid', gap: tokens.spacing.md }}>
+    <div
+      className="page"
+      data-breakpoint={breakpoint}
+      data-coarse-pointer={coarsePointer}
+      style={{ gap: tokens.spacing.lg }}
+    >
+      <section aria-label={adminText(locale, 'configLookup')} className="stack" style={{ gap: tokens.spacing.md }}>
         <h2>{adminText(locale, 'configPageTitle')}</h2>
         <p>{adminText(locale, 'configLookupIntro')}</p>
         <FieldErrorSummary title={adminText(locale, 'errorSummary')} errors={lookupLinks} />
@@ -412,16 +434,18 @@ function ConfigContent({ organizationId }: ConfigContentProps) {
           submitLabel={adminText(locale, 'configLookup')}
           onSubmit={handleLookup}
         >
-          <FormField
-            id="config-key"
-            label={adminText(locale, 'configurationKeyLookup')}
-            value={lookup}
-            onChange={(value) => {
-              setLookup(value);
-              setLookupError(undefined);
-            }}
-            {...(lookupMessage === undefined ? {} : { error: lookupMessage })}
-          />
+          <div className="stack" style={{ gap: tokens.spacing.md }}>
+            <FormField
+              id="config-key"
+              label={adminText(locale, 'configurationKeyLookup')}
+              value={lookup}
+              onChange={(value) => {
+                setLookup(value);
+                setLookupError(undefined);
+              }}
+              {...(lookupMessage === undefined ? {} : { error: lookupMessage })}
+            />
+          </div>
         </Form>
       </section>
 
@@ -439,7 +463,7 @@ function ConfigContent({ organizationId }: ConfigContentProps) {
             onPropose={(draft) => handlePropose(configKey, draft)}
             onApprove={openApproval}
           />
-          <section style={{ display: 'grid', gap: tokens.spacing.md }}>
+          <section className="stack" style={{ gap: tokens.spacing.md }}>
             <h3>{adminText(locale, 'catalogFamily')}</h3>
             <FieldErrorSummary title={adminText(locale, 'errorSummary')} errors={familyLinks} />
             <Form
@@ -447,16 +471,18 @@ function ConfigContent({ organizationId }: ConfigContentProps) {
               submitLabel={adminText(locale, 'catalogFamilyLookup')}
               onSubmit={handleFamilyLookup}
             >
-              <FormField
-                id="catalog-family"
-                label={adminText(locale, 'catalogFamily')}
-                value={family}
-                onChange={(value) => {
-                  setFamily(value);
-                  setFamilyError(undefined);
-                }}
-                {...(familyMessage === undefined ? {} : { error: familyMessage })}
-              />
+              <div className="stack" style={{ gap: tokens.spacing.md }}>
+                <FormField
+                  id="catalog-family"
+                  label={adminText(locale, 'catalogFamily')}
+                  value={family}
+                  onChange={(value) => {
+                    setFamily(value);
+                    setFamilyError(undefined);
+                  }}
+                  {...(familyMessage === undefined ? {} : { error: familyMessage })}
+                />
+              </div>
             </Form>
             {appliedFamily !== undefined ? (
               <CatalogSection
@@ -479,7 +505,8 @@ function ConfigContent({ organizationId }: ConfigContentProps) {
             key: configKey,
             version: String(approval.version),
           })}
-          style={{ display: 'grid', gap: tokens.spacing.md }}
+          className="stack"
+          style={{ gap: tokens.spacing.md }}
         >
           <h3>
             {adminMessage(locale, 'approveTitle', {
