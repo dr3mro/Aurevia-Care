@@ -1,4 +1,6 @@
-- [ ] RESP-STAFF-HISTORY-VIEW · Staff web: responsive `StaffHistoryView` (features-admin)
+- [-] RESP-STAFF-HISTORY-VIEW · Staff web: responsive `StaffHistoryView` (features-admin)
+  - agent: swarm-10
+  - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/admin/StaffHistoryView.tsx, apps/staff-web/tests/responsive/features-admin/StaffHistoryView.responsive.test.tsx
   - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
