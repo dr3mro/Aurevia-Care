@@ -23,7 +23,8 @@ function PatientOverviewContent({ organizationId, patientId }: PatientOverviewCo
     // A transparent `.stack` wrapper keeps the single content column and lets
     // long values wrap; `ApiPage` remains the only `.page` layout owner, so the
     // safe-area padding and reading-width cap are applied once, not twice. The
-    // resolved class is exposed for jsdom structure assertions. `overflow-wrap`
+    // resolved breakpoint is exposed as a data attribute for jsdom structure
+    // assertions. `overflow-wrap`
     // is inherited so long English and Arabic clinical values wrap instead of
     // forcing a horizontal scroll. No field is hidden and direction stays with
     // the document.

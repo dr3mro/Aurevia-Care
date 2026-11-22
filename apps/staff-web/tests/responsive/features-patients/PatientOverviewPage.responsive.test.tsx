@@ -172,7 +172,8 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
       expect(screen.getByRole('region', { name: 'Identity' })).toBeTruthy();
       expect(screen.getByRole('alert', { name: 'Likely duplicate records' })).toBeTruthy();
       expect(screen.getByRole('link', { name: 'Open chart' })).toBeTruthy();
-      // No clinical field is removed with display:none at a narrower width.
+      // Every clinical field remains present in the DOM at this width; real
+      // width-dependent visibility belongs to the Playwright projects.
       expect(screen.getByText('MRN-1001')).toBeTruthy();
       expect(screen.getByText('May 12, 1990')).toBeTruthy();
       expect(screen.getByText('ليلى حداد')).toBeTruthy();
