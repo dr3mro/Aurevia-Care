@@ -418,7 +418,51 @@ class LaunchTaskTests(unittest.TestCase):
         pr = {"number": 5, "title": "x", "headRefName": "opencode/A-1", "isCrossRepository": False,
               "labels": [{"name": "needs-debug"}], "comments": []}
         plan = swarm.plan_workers(10, self.SLOT, self.TEXT, [pr], focus="B-1")
-        self.assertEqual([t["id"] for t in plan], ["B-1"])
+        self.assertEqual(plan[0]["id"], "B-1")
+
+
+class PriorityTests(unittest.TestCase):
+    SLOT = [{"slot": n, "model": "m"} for n in range(1, 6)]
+
+    def setUp(self):
+        patch = mock.patch.object(swarm, "archived_done_ids", return_value=set())
+        patch.start()
+        self.addCleanup(patch.stop)
+
+    @staticmethod
+    def entry(task_id, title="t", scope="docs", **fields):
+        extra = "".join(f"  - {k}: {v}\n" for k, v in fields.items())
+        return f"- [ ] {task_id} · {title}\n  - scope: {scope}\n{extra}  - details:\n    do it\n"
+
+    def ids(self, text, **kw):
+        return [t["id"] for t in swarm.plan_workers(10, self.SLOT, text, [], **kw)]
+
+    def test_priority_comes_from_the_field_the_title_or_the_id(self):
+        def pri(task_id, title="t", **fields):
+            return swarm.priority_of(swarm.parse_tasks(self.entry(task_id, title, **fields))[0])
+        self.assertEqual(pri("A-1"), "normal")
+        self.assertEqual(pri("A-1", priority="high"), "high")
+        self.assertEqual(pri("A-1", "x (HIGH PRIORITY: red)"), "high")
+        for prefix in ("QAD", "DSO", "AUD"):
+            self.assertEqual(pri(f"{prefix}-20261121-01"), "low")
+        self.assertEqual(pri("AUD-1", priority="normal"), "normal")
+
+    def test_high_then_normal_then_low_with_file_order_inside_a_level(self):
+        text = (self.entry("L-1", "daily", "a", priority="low") + self.entry("N-1", "n", "b")
+                + self.entry("H-1", "h", "c", priority="high") + self.entry("N-2", "n", "d")
+                + self.entry("H-2", "h", "e", priority="high"))
+        self.assertEqual(self.ids(text), ["H-1", "H-2", "N-1", "N-2", "L-1"])
+
+    def test_daily_tasks_run_one_at_a_time(self):
+        text = (self.entry("QAD-1", "a", "a") + self.entry("DSO-1", "b", "b") + self.entry("AUD-1", "c", "c")
+                + self.entry("N-1", "n", "d"))
+        self.assertEqual(self.ids(text), ["N-1", "QAD-1"])
+        taken = text.replace("- [ ] QAD-1", "- [-] QAD-1")
+        self.assertEqual(self.ids(taken), ["N-1"])
+
+    def test_every_slot_is_filled_when_work_is_ready(self):
+        text = "".join(self.entry(f"N-{n}", "n", f"p{n}") for n in range(8))
+        self.assertEqual(len(self.ids(text)), 5)
 
 
 class WaitingWaveTests(unittest.TestCase):
@@ -517,29 +561,29 @@ class PlanTests(unittest.TestCase):
     def kinds(self, prs=(), live=(), **kw):
         return [t["kind"] for t in swarm.plan_workers(10, SLOTS, TASKS, list(prs), live=live, **kw)]
 
-    def test_no_new_story_starts_while_a_pull_request_waits_for_a_fix_or_the_debugger(self):
+    def test_fixes_come_first_and_stories_still_fill_the_idle_slots(self):
         for label in ("needs-fix", "needs-debug"):
             with self.subTest(label=label):
                 waiting = pr(9, "swarm/CW-002-4", "swarm", label, comments=[swarm.MARK + "\nBroke"])
-                self.assertNotIn("story", self.kinds([waiting], live=["CW-002"]))
-        parked = pr(9, "swarm/CW-002-4", "swarm", "needs-fix", "needs-human")
-        self.assertIn("story", self.kinds([parked]))
-        self.assertIn("story", self.kinds([pr(9, "swarm/CW-002-4", "swarm", "needs-debug", cross=True)]))
+                kinds = self.kinds([waiting], live=["CW-002"])
+                self.assertIn("story", kinds)
+                self.assertNotIn("fix", kinds)
+        waiting = pr(9, "swarm/CW-002-4", "swarm", "needs-fix", comments=[swarm.MARK + "\nBroke"])
+        self.assertEqual(self.kinds([dict(waiting, title="t")])[0], "fix")
 
     def test_repairs_and_fixes_use_every_slot_while_stories_wait(self):
         waiting = [dict(pr(n, f"swarm/CW-00{n}-4", "swarm", "needs-fix", comments=[swarm.MARK + "\nBroke"]),
                         title="t") for n in (1, 2, 6)]
         self.assertEqual(self.kinds(waiting), ["fix", "fix", "fix"])
 
-    def test_stories_stop_at_the_story_cap_and_the_wave_size(self):
-        busy = [f"T-{n}" for n in range(swarm.STORY_WORKER_CAP)]
-        self.assertEqual(self.kinds(live=busy), [])
-        self.assertEqual(self.kinds(live=busy[:-1]), ["story"])
+    def test_stories_fill_every_free_slot_up_to_the_wave_size(self):
+        busy = [f"T-{n}" for n in range(14)]
+        self.assertEqual(self.kinds(live=busy), ["story", "story", "story"])
         self.assertEqual(self.kinds(story_wave=2), ["story", "story"])
 
     def test_a_repair_is_not_held_back_by_the_story_cap(self):
         repair = {"kind": "story", "id": "FIX-9", "number": 0, "branch": "", "title": "r", "body": "b", "fix": ""}
-        full = [f"T-{n}" for n in range(swarm.STORY_WORKER_CAP)]
+        full = [f"T-{n}" for n in range(14)]
         plan = swarm.plan_workers(10, SLOTS, TASKS, [], repair, live=full, story_wave=0)
         self.assertEqual([t["id"] for t in plan], ["FIX-9"])
 

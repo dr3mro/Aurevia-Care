@@ -274,13 +274,28 @@ def parse_tasks(text):
         m = ENTRY.match(line)
         if m:
             cur = {"status": {" ": "todo", "-": "taken", "x": "done"}[m.group(1)], "id": m.group(2),
-                   "title": m.group(3), "agent": ""}
+                   "title": m.group(3), "agent": "", "priority": ""}
             tasks.append(cur)
         elif cur is not None and line.startswith("  - agent:"):
             cur["agent"] = line.split(":", 1)[1].strip()
+        elif cur is not None and line.startswith("  - priority:"):
+            cur["priority"] = line.split(":", 1)[1].strip().lower()
         elif cur is not None and line and not line.startswith(" "):
             cur = None
     return tasks
+
+
+LOW_PREFIXES = ("QAD-", "DSO-", "AUD-")  # same rule as priority_of in swarm.py
+PRIORITY_RANK = {"high": 0, "normal": 1, "low": 2}
+
+
+def priority_of(task):
+    value = task.get("priority", "")
+    if value in PRIORITY_RANK:
+        return value
+    if "HIGH PRIORITY" in task["title"]:
+        return "high"
+    return "low" if task["id"].startswith(LOW_PREFIXES) else "normal"
 
 
 WORKER_CAP = 20  # the most workers the swarm runs at once (MAX_ACTIVE_WORKERS in swarm.py)
@@ -696,13 +711,15 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False, loading=frozenset()):
     # pad every row and push the titles to the right edge, where they were cut off.
     ID_MAX = 20
     idw = min(max([len(t["id"]) for t in taken[:12]] or [8]), ID_MAX)
-    queue = [t for t in todo if t["status"] == "todo"]
+    queue = sorted((t for t in todo if t["status"] == "todo"), key=lambda t: PRIORITY_RANK[priority_of(t)])
+    mark = {"high": ("H", "b_red"), "low": ("L", "dim")}
     qw = min(max([len(t["id"]) for t in queue[:12]] or [8]), ID_MAX)
     right = [dict(title="Swarm Tasks Taken", total=len(taken), col="cyan", border="gray", prio=2,
                   items=[cells(iw, (">", "yellow", 1), (t["agent"] or "-", "magenta", 9), (t["id"], "b_cyan", idw), (t["title"], "", None))
                          for t in taken]),
              dict(title="Next Up", total=len(queue), col="blue", border="gray", prio=1,
-                  items=[cells(iw, ("-", "gray", 1), (t["id"], "b_cyan", qw), (t["title"], "", None)) for t in queue[:12]]),
+                  items=[cells(iw, mark.get(priority_of(t), ("-", "gray")) + (1,), (t["id"], "b_cyan", qw), (t["title"], "", None))
+                         for t in queue[:12]]),
              dict(title="Merged PRs 24h", total=len(merged_day), col="green", border="gray", prio=3,
                   items=[merged_row(p) for p in merged_day]),
              dict(title="Open PRs", total=len(prs), col="blue", border="gray", prio=0,
