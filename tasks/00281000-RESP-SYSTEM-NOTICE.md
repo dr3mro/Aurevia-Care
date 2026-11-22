@@ -1,5 +1,5 @@
-- [-] RESP-SYSTEM-NOTICE · Staff web: responsive `SystemNotice` (features-system)
-  - agent: swarm-10
+- [x] RESP-SYSTEM-NOTICE · Staff web: responsive `SystemNotice` (features-system)
+  - pr: #809
   - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/system/SystemNotice.tsx, apps/staff-web/tests/responsive/features-system/SystemNotice.responsive.test.tsx

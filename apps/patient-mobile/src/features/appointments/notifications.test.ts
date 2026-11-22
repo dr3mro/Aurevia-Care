@@ -4,6 +4,7 @@ import { buildGenericNotice, detailAfterAuth, GENERIC_NOTICE } from './notificat
 /** S-G3-01: generic push text and detail retrieval only after authentication (PAT-01, OPS-02). */
 const appointment: Appointment = {
   id: 'apt-1',
+  version: 3,
   patientId: 'patient-1',
   facilityCode: 'MAIN',
   facilityTimeZone: 'Asia/Riyadh',

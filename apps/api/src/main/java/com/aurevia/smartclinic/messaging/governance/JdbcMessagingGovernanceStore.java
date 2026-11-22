@@ -19,6 +19,7 @@ import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.Audit
 import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.AuditEvent;
 import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.ConnectionReference;
 import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.CopyRequest;
+import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.ExportProvenance;
 import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.ExportRecord;
 import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.LegalHold;
 import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.MessagingResource;
@@ -351,22 +352,28 @@ public class JdbcMessagingGovernanceStore implements MessagingGovernanceStore {
     public void putExport(String organizationId, ExportRecord export) {
         transactions.executeWithoutResult(status -> jdbc.update("""
                 INSERT INTO public.messaging_export
-                    (organization_id, id, scope, created_by, created_at, expires_at)
+                    (organization_id, id, scope, created_by, created_at, expires_at,
+                     source_reference, source_revision, export_purpose)
                 VALUES (CAST(:organizationId AS uuid), CAST(:id AS uuid), :scope, :createdBy,
-                        CAST(:createdAt AS timestamptz), CAST(:expiresAt AS timestamptz))
+                        CAST(:createdAt AS timestamptz), CAST(:expiresAt AS timestamptz),
+                        :sourceReference, :sourceRevision, :exportPurpose)
                 ON CONFLICT (organization_id, id) DO NOTHING
                 """, new MapSqlParameterSource().addValue("organizationId", organizationId)
                         .addValue("id", export.id())
                         .addValue("scope", export.scope())
                         .addValue("createdBy", export.createdBy())
                         .addValue("createdAt", dateTime(export.createdAt()))
-                        .addValue("expiresAt", dateTime(export.expiresAt()))));
+                        .addValue("expiresAt", dateTime(export.expiresAt()))
+                        .addValue("sourceReference", export.provenance().sourceReference())
+                        .addValue("sourceRevision", export.provenance().sourceRevision())
+                        .addValue("exportPurpose", export.provenance().purpose())));
     }
 
     @Override
     public Optional<ExportRecord> export(String organizationId, String exportId) {
         return transactions.execute(status -> jdbc.query("""
-                SELECT id::text, organization_id::text, scope, created_by, created_at, expires_at
+                SELECT id::text, organization_id::text, scope, created_by, created_at, expires_at,
+                       source_reference, source_revision, export_purpose
                   FROM public.messaging_export
                  WHERE organization_id = CAST(:organizationId AS uuid) AND id = CAST(:id AS uuid)
                 """, new MapSqlParameterSource().addValue("organizationId", organizationId)
@@ -487,7 +494,9 @@ public class JdbcMessagingGovernanceStore implements MessagingGovernanceStore {
     private static ExportRecord mapExport(ResultSet resultSet, int rowNumber) throws SQLException {
         return new ExportRecord(resultSet.getString("id"), resultSet.getString("organization_id"),
                 resultSet.getString("scope"), resultSet.getString("created_by"),
-                instant(resultSet, "created_at"), instant(resultSet, "expires_at"));
+                instant(resultSet, "created_at"), instant(resultSet, "expires_at"),
+                new ExportProvenance(resultSet.getString("source_reference"),
+                        resultSet.getString("source_revision"), resultSet.getString("export_purpose")));
     }
 
     private static CopyRequest mapCopy(ResultSet resultSet, int rowNumber) throws SQLException {
