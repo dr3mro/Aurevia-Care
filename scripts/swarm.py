@@ -999,7 +999,7 @@ def monitor_assign(directory, prs=(), nudge=(), exhausted=(), todo="TODO.md", tr
                               "A person must take over.")
     started = bool(ids or prs or nudge or reset)
     if started and waiting_waves() == 0:
-        gh("workflow", "run", "swarm.yml", "-f", "workers=10", check=False)
+        gh("workflow", "run", "swarm.yml", "-f", f"workers={STORY_WAVE_WORKERS}", check=False)
     return {"tasks": [n for n, _ in ids], "failed": failed, "unanswered": unanswered, "prs": [n for n, _ in prs],
             "nudged": list(nudge), "reset": [n for n, _ in reset], "closed": list(close),
             "exhausted": list(exhausted)}
@@ -1866,8 +1866,11 @@ def task_text(task):
     return clip(f"{head}\n\n{task['details']}")
 
 
-def plan_workers(max_workers, slots, text, open_prs, repair=None, live=()):
-    """Main repairs, then fixes, then ready tasks whose scope is free."""
+def plan_workers(max_workers, slots, text, open_prs, repair=None, live=(), story_wave=None):
+    """Main repairs, then fixes, then ready tasks whose scope is free.
+
+    Repairs and fixes may use every slot. Ordinary stories start only while no pull request waits
+    for a fix or the debugger, at most STORY_WORKER_CAP at once and `story_wave` per wave."""
     tasks = parse_tasks(text)
     by_id = {t["id"]: t for t in tasks}
     for t in tasks:
@@ -1892,6 +1895,9 @@ def plan_workers(max_workers, slots, text, open_prs, repair=None, live=()):
                          "branch": pr["headRefName"], "title": task["task"],
                          "body": task_text(task),
                          "fix": clip(notes[-1] if notes else "Integration failed.")})
+    failing = any({"needs-fix", "needs-debug"} & label_names(p) and "needs-human" not in label_names(p)
+                  and not p["isCrossRepository"] for p in open_prs)
+    ordinary, story_room = 0, max(0, STORY_WORKER_CAP - len(live))
     in_flight = {task_id_of(p["headRefName"]) for p in open_prs}
     done = {name for t in tasks if t["status"] == "done" for name in (t["id"], *t["aliases"])}
     done |= archived_done_ids()
@@ -1904,10 +1910,17 @@ def plan_workers(max_workers, slots, text, open_prs, repair=None, live=()):
             continue
         if any(overlaps(task["scope"], other) for other in busy):
             continue
+        if not is_repair_task(task):
+            if failing or ordinary >= story_room:
+                continue
+            ordinary += 1
         busy.append(task["scope"])
         plan.append({"kind": "story", "id": task["id"], "number": 0, "branch": "",
                      "title": task["task"], "body": task_text(task), "fix": ""})
-    chosen = plan[:max(0, min(max_workers, len(slots)))]
+    slots_left = max(0, min(max_workers, len(slots)))
+    urgent = [t for t in plan if t["kind"] == "fix" or is_repair_task(t)][:slots_left]
+    stories = [t for t in plan if t not in urgent and not (t["kind"] == "fix" or is_repair_task(t))]
+    chosen = urgent + stories[:max(0, min(slots_left - len(urgent), slots_left if story_wave is None else story_wave))]
     return [{**t, "slot": s["slot"], "model": s["model"]} for t, s in zip(chosen, slots)]
 
 
@@ -2342,7 +2355,7 @@ def fail(pr, reason, log_text="", simple=False):
         # One waiting wave already plans every sent-back pull request, so several fails
         # in one integration run must not each dispatch a wave of their own.
         if waiting_waves() == 0:
-            gh("workflow", "run", "swarm.yml", "-f", "workers=10", check=False)
+            gh("workflow", "run", "swarm.yml", "-f", f"workers={STORY_WAVE_WORKERS}", check=False)
         return True
     if rounds < MAX_DEBUG_ROUNDS:
         return send_to_debugger(pr, f"Integration failed: {reason}", detail, log_text)
@@ -2495,6 +2508,11 @@ def add_latest_repair_task(path="TODO.md"):
 
 
 MAX_ACTIVE_WORKERS = 20  # workers running at once across every wave
+# While everything is green, story workers get 14 of the 20 (two waves of 7); the other 6 stay free
+# for fixes, debugging and repairs. As soon as a pull request needs a fix or the debugger, or main
+# is red, no new story starts and all 20 go to those.
+STORY_WORKER_CAP = 14
+STORY_WAVE_WORKERS = 7
 
 
 WAITING_WAVE_MAX_AGE_MIN = 30
@@ -2537,6 +2555,27 @@ def live_workers():
         keys = {worker_task_id(n) or n for n in out.splitlines() if is_worker_job(n)}
         live.extend(sorted(keys))
     return live
+
+
+def top_up(finished_id):
+    """Start another wave as soon as a worker ends and there is room, instead of waiting for its
+    whole wave to finish.
+
+    A wave ends only when its slowest worker does, so the slots of the quick ones stayed idle for
+    hours. The planner still decides what runs: the combined worker cap, scopes, dependencies and
+    the budget gate all apply to the wave this starts. Returns True when a wave was started."""
+    live = [name for name in live_workers() if name != finished_id]
+    if len(live) >= MAX_ACTIVE_WORKERS or waiting_waves():
+        return False
+    prs = gh_json("pr", "list", "--state", "open", "--label", "swarm", "--limit", "100",
+                  "--json", "number,title,headRefName,isCrossRepository,labels,comments") or []
+    everything = gh_json("pr", "list", "--state", "all", "--label", "swarm", "--limit", "200",
+                         "--json", "number,headRefName,state,labels") or []
+    text = reclaim(todo_read(), everything, live)
+    if not plan_workers(1, [{"slot": 1, "model": ""}], text, prs, live=live):
+        return False
+    gh("workflow", "run", "swarm.yml", "--ref", "main", check=False)
+    return True
 
 
 def active_workers():
@@ -2816,7 +2855,7 @@ def debug_publish(pr, directory):
        f"{MARK}\n{DEBUG_MARK}\n**Debugger report, round {round_number} of {MAX_DEBUG_ROUNDS}.** A fix worker takes "
        f"it next; if the fix fails, {again}.\n\n{clip_to(clean(report, 7000, 300), 7000)}\n{run_url()}")
     if waiting_waves() == 0:
-        gh("workflow", "run", "swarm.yml", "-f", "workers=10", check=False)
+        gh("workflow", "run", "swarm.yml", "-f", f"workers={STORY_WAVE_WORKERS}", check=False)
     return "fix"
 
 
@@ -3250,6 +3289,8 @@ def main(argv=None):
     p.add_argument("--file", default="TODO.md")
     p = sub.add_parser("continue")
     p.add_argument("--file", default="TODO.md")
+    p = sub.add_parser("top-up")
+    p.add_argument("--id", required=True)
     p = sub.add_parser("add-audit-tasks")
     p.add_argument("--findings", required=True)
     p.add_argument("--file", default="TODO.md")
@@ -3315,8 +3356,8 @@ def main(argv=None):
         busy = len(live)
         room = max(0, MAX_ACTIVE_WORKERS - busy)
         print(f"{busy} worker(s) already running; room for {room} of {MAX_ACTIVE_WORKERS}.")
-        include = plan_workers(min(a.max, room), rotate_slots(load_slots(a.slots), busy),
-                               text, prs, repair, live)
+        include = plan_workers(room, rotate_slots(load_slots(a.slots), busy),
+                               text, prs, repair, live, story_wave=a.max)
         claims = {t["id"]: f"swarm-{t['slot']}" for t in include if t["kind"] == "story"}
 
         granted = set()
@@ -3376,6 +3417,8 @@ def main(argv=None):
         print("Starting the next wave." if go else "No further wave to start now.")
         if go:
             gh("workflow", "run", "swarm.yml", "--ref", "main", check=False)
+    elif a.cmd == "top-up":
+        print("Started another wave." if top_up(a.id) else "No room or no ready task.")
     elif a.cmd == "release":
         release(json.loads(a.task), a.result, a.commits)
     elif a.cmd == "publish":
