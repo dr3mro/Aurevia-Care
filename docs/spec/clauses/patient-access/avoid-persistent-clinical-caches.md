@@ -41,8 +41,10 @@ a `finally` block at sign-out, and `apps/patient-mobile/src/api/idleSession.ts` 
 idle deadline through `clearToken`, so both session-ending paths discard clinical memory.
 The `apps/patient-mobile/src/features/prescriptions/store.ts` and
 `apps/patient-mobile/src/features/handouts/store.ts` released-projection stores use the same
-shared in-memory clinical cache; `apps/patient-mobile/src/features/tracker/cache.ts` keeps
-its own process-local `TrackerCache` with the same clear-on-sign-out contract.
+shared in-memory clinical cache. `apps/patient-mobile/src/features/tracker/cache.ts` keeps its
+own process-local `TrackerCache` with a `clear()` method; no production sign-out handler calls
+it today (grep finds no caller outside its own tests). This does not affect the clause because
+the map is process-local and nothing is persisted.
 
 ## Gap
 
