@@ -465,6 +465,12 @@ class SmallHelperTests(unittest.TestCase):
 
 
 class TodoAndJobSummaryTests(unittest.TestCase):
+    def test_priority_order_and_markers_follow_swarm_rules(self):
+        tasks = monitor.parse_tasks("- [ ] A-1 · a\n- [ ] QAD-1 · daily\n- [ ] B-1 · b (HIGH PRIORITY: red)\n"
+                                    "- [ ] C-1 · c\n  - priority: low\n- [ ] D-1 · d\n  - priority: high\n")
+        got = {t["id"]: monitor.priority_of(t) for t in tasks}
+        self.assertEqual(got, {"A-1": "normal", "QAD-1": "low", "B-1": "high", "C-1": "low", "D-1": "high"})
+
     def test_parse_tasks_reads_status_title_and_agent(self):
         text = ("# TODO\n\n"
                 "- [ ] OPEN-1 · First task\n"
@@ -477,7 +483,7 @@ class TodoAndJobSummaryTests(unittest.TestCase):
         tasks = monitor.parse_tasks(text)
         self.assertEqual([t["id"] for t in tasks], ["OPEN-1", "TAKEN-2", "DONE-3"])
         self.assertEqual(tasks[0], {"status": "todo", "id": "OPEN-1", "title": "First task",
-                                    "agent": "swarm-1"})
+                                    "agent": "swarm-1", "priority": ""})
         self.assertEqual(tasks[1]["status"], "taken")
         self.assertEqual(tasks[2]["status"], "done")
         self.assertEqual(monitor.parse_tasks(None), [])
