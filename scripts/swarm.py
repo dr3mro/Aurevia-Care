@@ -3030,7 +3030,17 @@ def pr_flow(now=None):
             wants_debugger = True
             continue
         if "needs-fix" in labels:
-            wants_wave = True
+            # A fix worker may have pushed a clean branch but needs-fix was never cleared
+            # (old code, or the publish step ran before the new clearing logic). If Delivery
+            # already passed on the current head, the fix worked: clear the label so the
+            # integrator can pick it up without spawning another redundant fix worker.
+            head = item.get("headRefOid", "")
+            if head and delivery_state(delivery_runs(head), head) == "passed":
+                remove_label(pr, "needs-fix")
+                gh("pr", "ready", str(pr), check=False)
+                acted.append((pr, "needs-fix cleared: delivery already passed"))
+            else:
+                wants_wave = True
             continue
         idle = minutes_since(item["updatedAt"], now)
         if item["isDraft"]:
