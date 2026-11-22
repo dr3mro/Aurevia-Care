@@ -44,10 +44,10 @@ jest.mock('react-native-safe-area-context', () => {
   return { SafeAreaInsetsContext: react.createContext<EdgeInsets | null>(null) };
 });
 
-/** Render with a stable synthetic safe-area context; omit it to cover the fallback. */
 /** Rendered view returned by the module's async testing-library `render`. */
 type RenderedView = Awaited<ReturnType<typeof render>>;
 
+/** Render with a stable synthetic safe-area context; omit it to cover the fallback. */
 async function renderScreen(screen: ReactElement, withInsets = true): Promise<RenderedView> {
   return await render(
     withInsets ? (
