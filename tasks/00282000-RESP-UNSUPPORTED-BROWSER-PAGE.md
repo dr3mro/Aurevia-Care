@@ -1,5 +1,5 @@
-- [-] RESP-UNSUPPORTED-BROWSER-PAGE · Staff web: responsive `UnsupportedBrowserPage` (features-system)
-  - agent: swarm-9
+- [x] RESP-UNSUPPORTED-BROWSER-PAGE · Staff web: responsive `UnsupportedBrowserPage` (features-system)
+  - pr: #813
   - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/system/UnsupportedBrowserPage.tsx, apps/staff-web/tests/responsive/features-system/UnsupportedBrowserPage.responsive.test.tsx

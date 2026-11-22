@@ -1,5 +1,5 @@
-- [-] RESP-AUDIT-EVENT-LIST · Staff web: responsive `AuditEventList` (features-admin)
-  - agent: swarm-9
+- [x] RESP-AUDIT-EVENT-LIST · Staff web: responsive `AuditEventList` (features-admin)
+  - pr: #727
   - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/admin/AuditEventList.tsx, apps/staff-web/tests/responsive/features-admin/AuditEventList.responsive.test.tsx

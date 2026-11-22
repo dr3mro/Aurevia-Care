@@ -5,6 +5,7 @@ import { ApiPage } from '../../components/ApiPage';
 import { Button } from '../../components/Button';
 import { useI18n } from '../../i18n/I18nProvider';
 import { useTheme } from '../../theme/ThemeProvider';
+import { useBreakpoint } from '../../theme/useBreakpoint';
 import {
   approveConsolidation,
   asDuplicatesTransportError,
@@ -46,19 +47,26 @@ function DuplicatesContent({
 }) {
   const { locale } = useI18n();
   const { tokens } = useTheme();
+  // jsdom cannot evaluate media queries, so expose the resolved band as a data
+  // attribute. It is presentation metadata only: the same DOM and actions are
+  // rendered at every width (WEB-07, UX-01).
+  const breakpoint = useBreakpoint();
   const [selected, setSelected] = useState<DuplicatePairWire | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
 
+  // `.stack` is a padding-free logical column: the `ApiPage` sections below
+  // already own `.page` (safe-area padding and reading width), so nesting a
+  // second `.page` here would double the gutters on a narrow screen.
   return (
-    <div style={{ display: 'grid', gap: tokens.spacing.lg }}>
-      <header style={{ display: 'grid', gap: tokens.spacing.sm }}>
+    <div className="stack" data-breakpoint={breakpoint} style={{ gap: tokens.spacing.lg }}>
+      <header className="stack" style={{ gap: tokens.spacing.sm }}>
         <h2>{duplicatesText(locale, 'title')}</h2>
         <p>{duplicatesText(locale, 'syntheticNotice')}</p>
       </header>
       {selected === null ? (
         <ApiPage
           resource={{
-            label: duplicatesText(locale, 'worklistCaption'),
+            label: duplicatesText(locale, 'title'),
             load: () => listDuplicateReviews(organizationId),
             deps: [organizationId, reloadToken],
           }}
@@ -69,7 +77,7 @@ function DuplicatesContent({
           )}
         </ApiPage>
       ) : (
-        <div style={{ display: 'grid', gap: tokens.spacing.md }}>
+        <div className="stack" style={{ gap: tokens.spacing.md }}>
           <div>
             <Button variant="secondary" onClick={() => setSelected(null)}>
               {duplicatesText(locale, 'back')}
@@ -136,6 +144,7 @@ function ReviewWorkflow({
 }) {
   const { locale } = useI18n();
   const { tokens } = useTheme();
+  const breakpoint = useBreakpoint();
   const [review, setReview] = useState<ReviewWire | null>(detail.review);
   const [openError, setOpenError] = useState<TransportError | undefined>(undefined);
   const [reason, setReason] = useState('');
@@ -213,7 +222,7 @@ function ReviewWorkflow({
   }
 
   return (
-    <div style={{ display: 'grid', gap: tokens.spacing.lg }}>
+    <div className="stack" data-breakpoint={breakpoint} style={{ gap: tokens.spacing.lg }}>
       <ReviewScreen detail={detail} locale={locale} />
       <ApprovalPanel
         locale={locale}
