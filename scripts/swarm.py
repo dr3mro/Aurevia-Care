@@ -1284,9 +1284,9 @@ def failure_report(directory):
         return "**Why:** no check log was kept, see the worker run.\n\n"
     preferred = [line for line in log.splitlines()
                  if re.search(r"error TS|frontend (typecheck|standards)|typecheck|"
-                              r"FAIL |eslint|Coverage|still failing after two repair",
+                              r"FAIL |eslint|Coverage|Cannot find|has no exported|still failing after",
                               line, re.I)]
-    chosen = preferred[-40:] if preferred else log.splitlines()[-60:]
+    chosen = preferred[-60:] if preferred else log.splitlines()[-80:]
     tail = "\n".join(chosen)[-3000:].replace("```", "'''")
     label = "TypeScript/frontend and gate lines" if preferred else "end of the local check log"
     return f"**Why it failed** ({label}):\n\n```text\n{tail}\n```\n\n"
@@ -2122,6 +2122,15 @@ def publish(task, directory):
             # a draft, so a clean fix must hand the pull request back by marking it ready.
             if not incomplete:
                 gh("pr", "ready", pr, check=False)
+                # The fix is pushed: hand the pull request back to the integrator. While `needs-fix`
+                # stays, the integrator skips it and the planner starts another fix worker on it,
+                # so fix after fix piled up and nothing ever merged.
+                remove_label(pr, "needs-fix")
+            else:
+                # The worker's own checks failed: the debugger looks again (bounded rounds, then a
+                # person) instead of another blind fix on the same label.
+                fail(pr, f"Fix worker {task['slot']} pushed a change whose local checks did not pass "
+                         f"(result: {result}, checks: {checks}, merge: {merged})")
     elif commits > 0:
         # The bundle step failed (it runs with `|| true`): the commits exist only in the
         # worker's artifact and would otherwise be dropped without a trace.
