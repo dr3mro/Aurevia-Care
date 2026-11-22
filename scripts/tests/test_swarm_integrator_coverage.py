@@ -25,8 +25,9 @@ swarm = load("swarm")
 class FakeGh:
     """Record gh calls and answer the listing and view queries from canned data.
 
-    ``pr_view`` maps a ``--jq`` expression to the value returned for it; ``state``
-    is returned for a fix worker's ``pr view --json state`` probe.
+    ``pr_view`` maps a ``--jq`` expression to the value returned for it. A fix
+    worker's state probe uses ``--jq .state``, so ``".state"`` is its key; the
+    number lookup of a created pull request uses ``".number"``.
     """
 
     def __init__(self, pr_view=None, create_result=""):
@@ -36,10 +37,11 @@ class FakeGh:
 
     def __call__(self, *args, check=True):
         self.calls.append(args)
-        if args[:2] == ("pr", "view") and "--jq" in args:
-            return str(self.pr_view.get(args[args.index("--jq") + 1], "7"))
-        if args[:2] == ("pr", "view") and "--json" in args and "state" in args:
-            return str(self.pr_view.get("state", "OPEN"))
+        if args[:2] == ("pr", "view"):
+            if "--jq" in args:
+                key = args[args.index("--jq") + 1]
+                return str(self.pr_view.get(key, "OPEN" if key == ".state" else "7"))
+            return str(self.pr_view.get(".state", "OPEN"))
         if args[:2] == ("pr", "create"):
             return self.create_result
         return ""
@@ -55,7 +57,7 @@ def scratch():
     return root
 
 
-def worker_bundle(root, task_id, branch, result="ok", checks="passed", merge="skipped"):
+def worker_bundle(root, branch, result="ok", checks="passed", merge="skipped"):
     """A synthetic worker artifact directory with a bundle and its status files."""
     work = root / "work"
     work.mkdir(parents=True, exist_ok=True)
@@ -102,7 +104,7 @@ class PublishGuardTest(unittest.TestCase):
     def test_repair_pull_request_explains_the_automatic_merge(self):
         root = scratch()
         self.addCleanup(shutil.rmtree, root)
-        work = worker_bundle(root, "FIX-100", "swarm/FIX-100-1")
+        work = worker_bundle(root, "swarm/FIX-100-1")
         git, _ = publish_git()
         fake = FakeGh()
         task = {"kind": "story", "id": "FIX-100", "number": 0, "slot": 3,
@@ -121,9 +123,9 @@ class PublishGuardTest(unittest.TestCase):
     def test_a_fix_with_workflow_changes_does_not_release_a_claim(self):
         root = scratch()
         self.addCleanup(shutil.rmtree, root)
-        work = worker_bundle(root, "CW-001", "swarm/CW-001-1")
+        work = worker_bundle(root, "swarm/CW-001-1")
         git, _ = publish_git(".github/workflows/x.yml")
-        fake = FakeGh(pr_view={"state": "OPEN"})
+        fake = FakeGh(pr_view={".state": "OPEN"})
         task = {"kind": "fix", "id": "CW-001", "number": 193, "slot": 2,
                 "branch": "swarm/CW-001-1", "title": "Fix"}
         authed = mock.Mock(return_value="")
@@ -134,6 +136,7 @@ class PublishGuardTest(unittest.TestCase):
                 mock.patch.object(swarm, "task_field", return_value=""), \
                 mock.patch.object(swarm, "note_worker_outcome"), \
                 mock.patch.object(swarm, "release_claim") as released, \
+                mock.patch.dict(os.environ, {"SWARM_WORKFLOW_PUSH": ""}), \
                 contextlib.redirect_stderr(err):
             swarm.publish(task, work)
         released.assert_not_called()
@@ -152,14 +155,12 @@ class NotesClockTest(unittest.TestCase):
     def test_an_unreadable_tracked_note_is_skipped(self):
         root = scratch()
         self.addCleanup(shutil.rmtree, root)
-        (root / "good.md").write_text("see pr-notes/KEEP.md")
-        cwd = os.getcwd()
-        os.chdir(root)
-        try:
-            with mock.patch.object(swarm, "git", return_value="good.md\nmissing.md\n"):
-                self.assertEqual(swarm.referenced_notes(), {"KEEP.md"})
-        finally:
-            os.chdir(cwd)
+        good = root / "good.md"
+        good.write_text("see pr-notes/KEEP.md")
+        listed = f"{good}\n{root / 'missing.md'}\n"
+        # Absolute fixture paths keep this test independent of the process cwd.
+        with mock.patch.object(swarm, "git", return_value=listed):
+            self.assertEqual(swarm.referenced_notes(), {"KEEP.md"})
 
     def test_a_day_with_no_files_left_ends_collection(self):
         root = scratch()
@@ -209,13 +210,15 @@ class PushMainTest(unittest.TestCase):
 
     def test_a_push_race_is_retried_on_a_fresh_main(self):
         error = subprocess.CalledProcessError(1, "push")
-        pushes = []
+        pushes, fetches = [], []
 
         def authed(*args, **kwargs):
             if args[:2] == ("push", "origin"):
                 pushes.append(args)
                 if len(pushes) == 1:
                     raise error
+            elif args[:2] == ("fetch", "origin"):
+                fetches.append(args)
             return ""
 
         with mock.patch.object(swarm, "git", self.git), \
@@ -225,7 +228,7 @@ class PushMainTest(unittest.TestCase):
             self.assertTrue(swarm.push_main("m", lambda: True, attempts=2))
         self.assertEqual(len(pushes), 2)
         slept.assert_called_once()
-        self.assertIn(("fetch", "origin", "main"), [c for c in self.calls] + [("fetch", "origin", "main")])
+        self.assertEqual(fetches, [("fetch", "origin", "main")])
         self.assertIn(("reset", "-q", "--hard", "origin/main"), self.calls)
 
     def test_a_push_failure_on_the_last_attempt_is_raised(self):
@@ -300,17 +303,16 @@ class RulesPullRequestTest(unittest.TestCase):
             self.patch.unlink()
         elif patch_text is not None:
             self.patch.write_text(patch_text)
-        fake = FakeGh()
         with mock.patch.object(swarm, "authed_git", mock.Mock(return_value="")) as authed, \
                 mock.patch.object(swarm, "git", mock.Mock(return_value="")) as git, \
                 mock.patch.object(swarm.subprocess, "run",
                                   return_value=mock.Mock(returncode=returncode, stderr="docs failed")), \
-                mock.patch.object(swarm, "gh", return_value=gh_result), \
+                mock.patch.object(swarm, "gh", return_value=gh_result) as gh, \
                 mock.patch.object(swarm, "add_labels") as labeled:
             err = io.StringIO()
             with contextlib.redirect_stderr(err):
                 result = swarm.open_rules_pr("2026-11-19", str(self.patch))
-        return result, authed, git, fake, labeled, err.getvalue()
+        return result, authed, git, gh, labeled, err.getvalue()
 
     def test_a_missing_or_empty_patch_is_dropped(self):
         self.assertEqual(self.open(exists=False)[0], "")

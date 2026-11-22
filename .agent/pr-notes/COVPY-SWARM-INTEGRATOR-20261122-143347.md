@@ -29,7 +29,10 @@ Routine (test-only change to a CI script's coverage; no runtime behaviour change
 ## Review owner
 
 `smartclinic-senior-python` (bounded read-only review of the new test file, routed per
-AGENTS.md and TODO.md "Instructions for every agent", step 2).
+AGENTS.md and TODO.md "Instructions for every agent", step 2). The review returned one
+substantive defect and four hardening findings; all five were addressed in a second tested
+commit. Evidence source: specialist (simulated/static) review; the reviewer explicitly did
+not re-run the suite and inferred the coverage numbers from this worker's tool evidence.
 
 ## Data changes
 
@@ -87,6 +90,13 @@ Commands run (tool evidence, final lines):
 - `bash scripts/coverage-check.sh origin/main` → `coverage check: passed`, `COVERAGE_CHECK_EXIT=0`
   (the change touches only `scripts/tests`, so no Java/frontend gate applies).
 - `python3 -I scripts/check-names.py` → exit 0; `python3 -I scripts/check-docs.py` → exit 0.
+- After the senior-python review fixes: `python3 -I -m unittest discover -s scripts/tests -p
+  'test_swarm_integrator_coverage.py'` → `Ran 21 tests in 0.017s` / `OK`;
+  `python3 -I -m unittest discover -s scripts/tests -p 'test_swarm*.py'` → `SWARM_EXIT=0`;
+  a fresh `COVERAGE_FILE=/tmp/opencode/fix.coverage python3 -m coverage run --branch --source=scripts
+  -m unittest discover -s scripts/tests` → `scripts/swarm.py 2419 104 938 47 95%`, with
+  `missing lines 1850-2450: []` and `missing branches 1850-2450: []` from the JSON filter.
+  The coverage run's exit 1 is the same eight documented worker-image false positives.
 - `scripts/check.sh` was deliberately not run: it delegates to `apps/api/check.sh` (full
   `mvn verify`, over ten minutes) and AGENTS.md forbids a swarm worker from running it. The
   integrator and Delivery own that gate.
@@ -151,6 +161,17 @@ cross-organization sharing, patient association, prescribing or critical result 
 - `.coverage` is a tracked file. The coverage runs modified it; it was restored byte-for-byte
   from HEAD with `git show HEAD:.coverage > .coverage` so the commit contains only scoped work.
 - No defect in the script under test was found; nothing needed a `task-requests` block.
+- Senior-python review disposition (specialist, simulated/static; no file was edited by the
+  reviewer): (1) medium — the push-race test had a tautological `assertIn` that appended the
+  expected value to the searched list; fixed by recording `authed_git("fetch", ...)` calls and
+  asserting the exact fetch arguments. (2) low/medium — `FakeGh` looked up the fix worker's
+  state probe under `"state"` while the probe uses `--jq .state`, so the canned `"OPEN"` value
+  was dead; the fake now resolves `.state` and the fixture uses that key. (3) low — the
+  workflow-push guard relied on ambient scrubbing; the test now pins
+  `SWARM_WORKFLOW_PUSH=""` locally. (4) low — an `os.chdir` in the unreadable-note test was
+  replaced with absolute fixture paths, so the process cwd is untouched. (5) cosmetic —
+  removed the unused `task_id` parameter and replaced the discarded `FakeGh` with the actual
+  patched `gh` mock. All fixes are covered by the same 21 tests and re-verified above.
 
 ## Lessons for workers
 
