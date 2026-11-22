@@ -92,6 +92,39 @@ test('synthetic pharmacy journey: prescribe, clarify, substitute, accept and dis
       await expect(pharmacy.page.getByTestId('accepted-flag')).toContainText('Accepted: No');
       await expect(pharmacy.page.getByTestId('dispensed-flag')).toContainText('Dispensed: No');
       await expect(pharmacy.page.getByText('delivery_confirmed')).toBeVisible();
+      await expect(pharmacy.page.getByText('submission-synthetic-001')).toBeVisible();
+    });
+
+    await test.step('a wrong prescription id is refused without mutating shared state', async () => {
+      // A wrong id must be refused at every read and command boundary before any
+      // fact is appended (WEB-09 error state). These are raw browser requests:
+      // the screens only ever address the one routed id.
+      const eventCount = api.store.events.length;
+      const missing = await pharmacy.page.evaluate(async () => {
+        const inbox = await fetch('/api/v1/pharmacy/inbox/rx-unknown');
+        const status = await fetch('/api/v1/pharmacy/status/rx-unknown');
+        const command = await fetch('/api/v1/pharmacy/status/rx-unknown/accept', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-XSRF-TOKEN': 'synthetic-csrf-token',
+          },
+          body: '{}',
+        });
+        return {
+          inbox: { status: inbox.status, body: (await inbox.json()) as { code: string } },
+          status: { status: status.status, body: (await status.json()) as { code: string } },
+          command: { status: command.status, body: (await command.json()) as { code: string } },
+        };
+      });
+      expect(missing.inbox.status).toBe(404);
+      expect(missing.inbox.body.code).toBe('NOT_FOUND');
+      expect(missing.status.status).toBe(404);
+      expect(missing.status.body.code).toBe('NOT_FOUND');
+      expect(missing.command.status).toBe(404);
+      expect(missing.command.body.code).toBe('NOT_FOUND');
+      expect(api.store.events.length).toBe(eventCount);
+      await expect(pharmacy.page.getByTestId('accepted-flag')).toContainText('Accepted: No');
     });
 
     await test.step('the pharmacy asks a question and the prescriber answers it', async () => {
