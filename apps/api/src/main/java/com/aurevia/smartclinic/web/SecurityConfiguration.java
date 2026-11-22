@@ -42,6 +42,11 @@ import jakarta.servlet.http.HttpServletRequest;
  * additionally fails startup without an audience and rejects tokens that do not
  * carry the configured audience, while keeping the issuer and timestamp checks
  * (WEB-03, WEB-05).</p>
+ *
+ * <p>The exact {@code GET /api/v1/openapi.yaml} contract document is also
+ * public: it is static API documentation with no tenant or patient data, so it
+ * needs no token. It still passes the tenant interceptor's rate limiter and the
+ * browser-defence headers filter (section 7).</p>
  */
 @Configuration
 @EnableWebSecurity
@@ -110,7 +115,9 @@ public class SecurityConfiguration {
                 .csrf(csrf -> csrf.ignoringRequestMatchers(SecurityConfiguration::isBearerRequest))
                 .authorizeHttpRequests(authorize -> authorize
                         // WEB-05/WEB-06: exact unauthenticated routes only; never a /health/** wildcard.
-                        .requestMatchers(HttpMethod.GET, "/health/live", "/health/ready", "/health/metrics").permitAll()
+                        // Section 7: the static OpenAPI document is public API documentation.
+                        .requestMatchers(HttpMethod.GET, "/health/live", "/health/ready", "/health/metrics",
+                                "/api/v1/openapi.yaml").permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.decoder(
                         withClaimValidation(jwtDecoder, issuerUri, audience))))

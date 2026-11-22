@@ -1,5 +1,5 @@
-- [-] RESP-PATIENT-OVERVIEW-PAGE · Staff web: responsive `PatientOverviewPage` (features-patients)
-  - agent: swarm-10
+- [x] RESP-PATIENT-OVERVIEW-PAGE · Staff web: responsive `PatientOverviewPage` (features-patients)
+  - pr: #784
   - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/patients/PatientOverviewPage.tsx, apps/staff-web/tests/responsive/features-patients/PatientOverviewPage.responsive.test.tsx

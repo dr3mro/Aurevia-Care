@@ -17,9 +17,28 @@ function recorder(): { fn: (id: string) => void; calls: string[] } {
   };
 }
 
+/** Confirm now receives the whole read row so the page can echo its version. */
+function confirmRecorder(): {
+  fn: (row: AppointmentView) => void;
+  calls: string[];
+  rows: AppointmentView[];
+} {
+  const calls: string[] = [];
+  const rows: AppointmentView[] = [];
+  return {
+    fn: (row: AppointmentView) => {
+      calls.push(row.id);
+      rows.push(row);
+    },
+    calls,
+    rows,
+  };
+}
+
 const pending: AppointmentView = {
   key: 'org-a\u0000apt-1',
   id: 'apt-1',
+  version: 3,
   timeZone: 'Asia/Riyadh',
   localStart: '10:00',
   status: 'booked',
@@ -42,7 +61,7 @@ describe('AppointmentListScreen', () => {
         notice={notice}
         patientId="patient-1"
         devices={[]}
-        onConfirm={recorder().fn}
+        onConfirm={confirmRecorder().fn}
         onOpenDetails={recorder().fn}
         onRevokeDevice={recorder().fn}
       />,
@@ -53,7 +72,7 @@ describe('AppointmentListScreen', () => {
   });
 
   it('renders status and facility time zone and only confirms an eligible visit', async () => {
-    const confirm = recorder();
+    const confirm = confirmRecorder();
     const details = recorder();
     const view = await render(
       <AppointmentListScreen
@@ -70,9 +89,55 @@ describe('AppointmentListScreen', () => {
     expect(view.getByTestId('time-apt-1').props.children).toContain('Asia/Riyadh');
     await fireEvent.press(view.getByTestId('confirm-apt-1'));
     expect(confirm.calls).toEqual(['apt-1']);
+    expect(confirm.rows[0]?.version).toBe(3);
     await fireEvent.press(view.getByTestId('details-apt-1'));
     expect(details.calls).toEqual(['apt-1']);
     expect(view.queryByTestId('confirmed-apt-1')).toBeNull();
+  });
+
+  it('passes the read version to the command and disables the control while it is pending', async () => {
+    const confirm = confirmRecorder();
+    const view = await render(
+      <AppointmentListScreen
+        appointments={[pending]}
+        notice={notice}
+        patientId="patient-1"
+        devices={[]}
+        onConfirm={confirm.fn}
+        pendingAppointmentId="apt-1"
+        onOpenDetails={recorder().fn}
+        onRevokeDevice={recorder().fn}
+      />,
+    );
+    const control = view.getByTestId('confirm-apt-1');
+    expect(control.props.accessibilityState).toEqual({ disabled: true });
+    await fireEvent.press(control);
+    expect(confirm.calls).toEqual([]);
+  });
+
+  it('disables every confirm control while any appointment command is in flight', async () => {
+    const confirm = confirmRecorder();
+    const second: AppointmentView = {
+      ...pending,
+      key: 'org-a\u0000apt-2',
+      id: 'apt-2',
+    };
+    const view = await render(
+      <AppointmentListScreen
+        appointments={[pending, second]}
+        notice={notice}
+        patientId="patient-1"
+        devices={[]}
+        onConfirm={confirm.fn}
+        pendingAppointmentId="apt-1"
+        onOpenDetails={recorder().fn}
+        onRevokeDevice={recorder().fn}
+      />,
+    );
+    expect(view.getByTestId('confirm-apt-1').props.accessibilityState).toEqual({ disabled: true });
+    expect(view.getByTestId('confirm-apt-2').props.accessibilityState).toEqual({ disabled: true });
+    await fireEvent.press(view.getByTestId('confirm-apt-2'));
+    expect(confirm.calls).toEqual([]);
   });
 
   it('shows a confirmed visit without a confirmation action', async () => {
@@ -87,7 +152,7 @@ describe('AppointmentListScreen', () => {
         notice={notice}
         patientId="patient-1"
         devices={[]}
-        onConfirm={recorder().fn}
+        onConfirm={confirmRecorder().fn}
         onOpenDetails={recorder().fn}
         onRevokeDevice={recorder().fn}
       />,
@@ -108,7 +173,7 @@ describe('AppointmentListScreen', () => {
         notice={notice}
         patientId="patient-1"
         devices={[]}
-        onConfirm={recorder().fn}
+        onConfirm={confirmRecorder().fn}
         onOpenDetails={recorder().fn}
         onRevokeDevice={recorder().fn}
       />,
@@ -125,7 +190,7 @@ describe('AppointmentListScreen', () => {
         notice={notice}
         patientId="patient-1"
         devices={[activeDevice, { ...activeDevice, id: 'dev-2', state: 'revoked' }]}
-        onConfirm={recorder().fn}
+        onConfirm={confirmRecorder().fn}
         onOpenDetails={recorder().fn}
         onRevokeDevice={revoke.fn}
       />,
@@ -144,7 +209,7 @@ describe('AppointmentListScreen', () => {
         notice={notice}
         patientId="patient-1"
         devices={[activeDevice, foreign]}
-        onConfirm={recorder().fn}
+        onConfirm={confirmRecorder().fn}
         onOpenDetails={recorder().fn}
         onRevokeDevice={revoke.fn}
       />,
@@ -172,7 +237,7 @@ describe('AppointmentListScreen approved design (BUILD-71, PAT-01, UX-01)', () =
         notice={notice}
         patientId="patient-1"
         devices={[activeDevice]}
-        onConfirm={recorder().fn}
+        onConfirm={confirmRecorder().fn}
         onOpenDetails={recorder().fn}
         onRevokeDevice={recorder().fn}
       />,
@@ -199,7 +264,7 @@ describe('AppointmentListScreen approved design (BUILD-71, PAT-01, UX-01)', () =
         notice={notice}
         patientId="patient-1"
         devices={[]}
-        onConfirm={recorder().fn}
+        onConfirm={confirmRecorder().fn}
         onOpenDetails={recorder().fn}
         onRevokeDevice={recorder().fn}
       />,
@@ -216,7 +281,7 @@ describe('AppointmentListScreen approved design (BUILD-71, PAT-01, UX-01)', () =
         notice={notice}
         patientId="patient-1"
         devices={[]}
-        onConfirm={recorder().fn}
+        onConfirm={confirmRecorder().fn}
         onOpenDetails={recorder().fn}
         onRevokeDevice={recorder().fn}
         locale="ar"

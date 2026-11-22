@@ -1,5 +1,5 @@
-- [-] RESP-ENTERED-IN-ERROR-BANNER · Staff web: responsive `EnteredInErrorBanner` (features-chart)
-  - agent: swarm-1
+- [x] RESP-ENTERED-IN-ERROR-BANNER · Staff web: responsive `EnteredInErrorBanner` (features-chart)
+  - pr: #773
   - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/chart/EnteredInErrorBanner.tsx, apps/staff-web/tests/responsive/features-chart/EnteredInErrorBanner.responsive.test.tsx

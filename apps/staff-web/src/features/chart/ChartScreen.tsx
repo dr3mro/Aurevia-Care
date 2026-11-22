@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useI18n } from '../../i18n/I18nProvider';
-import { useTheme } from '../../theme/ThemeProvider';
+import type { Breakpoint } from '../../theme/breakpoints';
+import { useBreakpoint } from '../../theme/useBreakpoint';
 import type { NoteRevision, SoapContent } from './domain';
 import {
   chartsForTenant,
@@ -33,6 +34,18 @@ export interface ChartScreenProps {
   organizationId: string;
 }
 
+/**
+ * Presentation-only layout of the two composed chart regions. A phone stacks
+ * the chart summary above the note editor; wider bands place them side by side.
+ * The class names come from the responsive stylesheet, so one DOM mirrors under
+ * right-to-left without a direction override (WEB-07, UX-01).
+ */
+const CHART_LAYOUT: Record<Breakpoint, { className: string; columns: string }> = {
+  compact: { className: 'stack', columns: 'single-column' },
+  medium: { className: 'grid-2', columns: 'two-column' },
+  expanded: { className: 'grid-2', columns: 'two-column' },
+};
+
 /** Mutable screen state that belongs entirely to one active tenant. */
 interface TenantChartState {
   organizationId: string;
@@ -64,7 +77,7 @@ function tenantState(charts: readonly Chart[], organizationId: string): TenantCh
  */
 export function ChartScreen({ charts, organizationId }: ChartScreenProps) {
   const { locale } = useI18n();
-  const { tokens } = useTheme();
+  const breakpoint = useBreakpoint();
   const chart = chartsForTenant(charts, organizationId)[0];
   const [state, setState] = useState<TenantChartState>(() => tenantState(charts, organizationId));
 
@@ -76,7 +89,12 @@ export function ChartScreen({ charts, organizationId }: ChartScreenProps) {
 
   if (!chart) {
     return (
-      <section aria-label={chartText(locale, 'chart')} style={{ display: 'grid', gap: tokens.spacing.lg }}>
+      <section
+        className="page"
+        data-breakpoint={breakpoint}
+        data-layout="single-column"
+        aria-label={chartText(locale, 'chart')}
+      >
         <h2>{chartText(locale, 'chart')}</h2>
         <p>{chartText(locale, 'noChart')}</p>
       </section>
@@ -85,6 +103,7 @@ export function ChartScreen({ charts, organizationId }: ChartScreenProps) {
 
   const activeChart: Chart = chart;
   const revision = currentRevision(revisions);
+  const layout = CHART_LAYOUT[breakpoint];
 
   function handleContentChange(current: NoteRevision, field: keyof SoapContent, value: string) {
     setState((currentState) => ({
@@ -189,10 +208,7 @@ export function ChartScreen({ charts, organizationId }: ChartScreenProps) {
   }
 
   return (
-    <section
-      aria-label={chartText(locale, 'chart')}
-      style={{ display: 'grid', gap: tokens.spacing.lg }}
-    >
+    <section className="page" data-breakpoint={breakpoint} aria-label={chartText(locale, 'chart')}>
       <h2>{chartText(locale, 'chart')}</h2>
       <p>{chartText(locale, 'syntheticNotice')}</p>
       {error ? (
@@ -203,27 +219,54 @@ export function ChartScreen({ charts, organizationId }: ChartScreenProps) {
       <p role="status" data-testid="chart-status" aria-label={chartText(locale, 'status')}>
         {announcement}
       </p>
-      <LongitudinalChart chart={chart} locale={locale} />
-      {revision ? (
-        <NoteEditor
-          key={revision.id}
-          revision={revision}
-          history={revisions.filter((item) => item.id !== revision.id)}
+      <div className={layout.className} data-part="chart-content" data-layout={layout.columns}>
+        {/*
+         * The wide clinical tables stay real tables with every column; a
+         * labelled, keyboard-scrollable region contains the overflow so a
+         * narrow viewport never scrolls the whole page sideways (WCAG 1.4.10).
+         */}
+        <div
+          className="table-region"
+          data-part="longitudinal"
+          role="region"
+          aria-label={chartText(locale, 'longitudinalChart')}
+          tabIndex={0}
+          style={{ minInlineSize: '0px', overflowWrap: 'anywhere' }}
+        >
+          <LongitudinalChart chart={chart} locale={locale} />
+        </div>
+        <div data-part="note" style={{ minInlineSize: '0px', overflowWrap: 'anywhere' }}>
+          {revision ? (
+            <NoteEditor
+              key={revision.id}
+              revision={revision}
+              history={revisions.filter((item) => item.id !== revision.id)}
+              locale={locale}
+              onContentChange={(field, value) => handleContentChange(revision, field, value)}
+              onSign={() => handleSign(revision)}
+              onAmend={() => handleAmend(revision)}
+              onMarkEnteredInError={() => handleMarkEnteredInError(revision)}
+            />
+          ) : (
+            <p>{chartText(locale, 'noRevisions')}</p>
+          )}
+        </div>
+      </div>
+      <div
+        className="table-region"
+        data-part="documents"
+        role="region"
+        aria-label={chartText(locale, 'documentList')}
+        tabIndex={0}
+        style={{ minInlineSize: '0px', overflowWrap: 'anywhere' }}
+      >
+        <DocumentList
+          documents={documents}
           locale={locale}
-          onContentChange={(field, value) => handleContentChange(revision, field, value)}
-          onSign={() => handleSign(revision)}
-          onAmend={() => handleAmend(revision)}
-          onMarkEnteredInError={() => handleMarkEnteredInError(revision)}
+          onVoid={handleVoid}
+          onRotate={handleRotate}
         />
-      ) : (
-        <p>{chartText(locale, 'noRevisions')}</p>
-      )}
-      <DocumentList
-        documents={documents}
-        locale={locale}
-        onVoid={handleVoid}
-        onRotate={handleRotate}
-      />
+      </div>
     </section>
   );
 }

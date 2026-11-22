@@ -9,7 +9,7 @@ import { MixedScriptText } from '../../components/MixedScriptText';
 import { StateView } from '../../components/StateViews';
 import { useI18n } from '../../i18n/I18nProvider';
 import { patientsMessage, patientsText } from './messages';
-import { useTheme } from '../../theme/ThemeProvider';
+import { useBreakpoint } from '../../theme/useBreakpoint';
 import {
   asPatientsTransportError,
   registerPatient,
@@ -41,7 +41,10 @@ interface PatientsContentProps {
 /** Form, commands and results for one active organization. */
 function PatientsContent({ organizationId }: PatientsContentProps) {
   const { locale } = useI18n();
-  const { tokens } = useTheme();
+  // Width is presentation only: it changes how the page is arranged, never the
+  // data, the actions or what the server authorizes (WEB-07, UX-01).
+  const breakpoint = useBreakpoint();
+  const resultsCaption = patientsText(locale, 'resultsCaption');
   const [searchInput, setSearchInput] = useState('');
   const [searchIssue, setSearchIssue] = useState<SearchErrorKey | undefined>(undefined);
   const [submitted, setSubmitted] = useState<string | undefined>(undefined);
@@ -122,26 +125,37 @@ function PatientsContent({ organizationId }: PatientsContentProps) {
   const searchErrorText = searchIssue === undefined ? undefined : patientsText(locale, searchIssue);
 
   return (
-    <div style={{ display: 'grid', gap: tokens.spacing.lg }}>
-      <header style={{ display: 'grid', gap: tokens.spacing.sm }}>
+    <div className="page" data-part="patients-page" data-breakpoint={breakpoint}>
+      <header className="stack" data-part="header">
         <h2>{patientsText(locale, 'patients')}</h2>
         <p>{patientsText(locale, 'syntheticNotice')}</p>
       </header>
-      <Form
-        label={patientsText(locale, 'searchLabel')}
-        submitLabel={patientsText(locale, 'search')}
-        onSubmit={handleSearch}
+      {/*
+        Search and register stack on a phone and sit side by side from medium.
+        Both classes are from the shared stylesheet, so spacing and direction are
+        logical and no field or action is removed at a breakpoint.
+      */}
+      <div
+        className={breakpoint === 'compact' ? 'stack' : 'grid-2'}
+        data-part="toolbar"
+        data-layout={breakpoint === 'compact' ? 'stacked' : 'side-by-side'}
       >
-        <FormField
-          id="patient-search"
+        <Form
           label={patientsText(locale, 'searchLabel')}
-          value={searchInput}
-          onChange={setSearchInput}
-          {...(searchErrorText === undefined ? {} : { error: searchErrorText })}
-        />
-      </Form>
-      <div>
-        <Button onClick={handleOpenRegister}>{patientsText(locale, 'register')}</Button>
+          submitLabel={patientsText(locale, 'search')}
+          onSubmit={handleSearch}
+        >
+          <FormField
+            id="patient-search"
+            label={patientsText(locale, 'searchLabel')}
+            value={searchInput}
+            onChange={setSearchInput}
+            {...(searchErrorText === undefined ? {} : { error: searchErrorText })}
+          />
+        </Form>
+        <div>
+          <Button onClick={handleOpenRegister}>{patientsText(locale, 'register')}</Button>
+        </div>
       </div>
       <p role="status" data-testid="patients-registration-status">
         <MixedScriptText
@@ -168,7 +182,7 @@ function PatientsContent({ organizationId }: PatientsContentProps) {
       )}
       <ApiPage
         resource={{
-          label: patientsText(locale, 'resultsCaption'),
+          label: resultsCaption,
           // No search has been submitted yet: resolve an empty list locally so
           // no request is sent and no result is written to browser storage.
           load: () =>
@@ -179,12 +193,33 @@ function PatientsContent({ organizationId }: PatientsContentProps) {
         }}
         isEmpty={(rows) => rows.length === 0}
       >
-        {(rows) => (
-          <PatientsScreen
-            patients={rows.map((row) => toPatient(row, organizationId))}
-            locale={locale}
-          />
-        )}
+        {(rows) => {
+          const results = (
+            <PatientsScreen
+              patients={rows.map((row) => toPatient(row, organizationId))}
+              locale={locale}
+            />
+          );
+          // On a phone the table lives in a labelled, keyboard-scrollable region
+          // so every clinical column stays reachable without a page-level
+          // horizontal scroll. Wider layouts show the same table in view.
+          return breakpoint === 'compact' ? (
+            <div
+              className="table-region"
+              role="region"
+              aria-label={resultsCaption}
+              tabIndex={0}
+              data-part="results"
+              data-layout="scroll-region"
+            >
+              {results}
+            </div>
+          ) : (
+            <div data-part="results" data-layout="table">
+              {results}
+            </div>
+          );
+        }}
       </ApiPage>
     </div>
   );
