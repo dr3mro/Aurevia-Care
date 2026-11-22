@@ -29,7 +29,7 @@ class OffboardingCommandTest {
     private static final Clock CLOCK = Clock.fixed(NOW, ZoneOffset.UTC);
     private static final int REVIEW_DAYS = 30;
     private static final ExportProvenance PROVENANCE =
-            new ExportProvenance("tenant-archive", "rev-1", "offboarding");
+            new ExportProvenance("synthetic-source", "revision-1", "offboarding");
 
     private final OffboardingCommand command = new OffboardingCommand(CLOCK);
 
