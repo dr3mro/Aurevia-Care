@@ -103,7 +103,7 @@ Rules for the person performing it:
 
   **Green looks like.** Both jobs green; the `developer-reference` artifact is uploaded.
 
-  **Proving log line.** `Developer reference` finishes with an uploaded `developer-reference` artifact containing `index.html`; `Policy and tooling` has no `check-docs:` error. The guide documents `MAX_ATTEMPTS = 5`, `MAX_PR_FILES = 30`, the `repair-gate.sh` path for repairs, `SWARM_ALLOW_PROTECTED` and the `protected-change` oversight issue.
+  **Proving log line.** `Developer reference` finishes with an uploaded `developer-reference` artifact containing `index.html`; `Policy and tooling` has no `check-docs:` error. The guide states the 5-attempt and 30-file limits in prose (the code constants are `MAX_ATTEMPTS` and `MAX_PR_FILES`), the `repair-gate.sh` path for repairs, `SWARM_ALLOW_PROTECTED` and the `protected-change` oversight issue.
 
   **Negative control.** A stale number or an absolute protected-file claim in either document is caught by reading the source lines cited in [the WFAUDIT-08 notes](../../../.agent/pr-notes/WFAUDIT-08-20261121-153634.md) (notes are not themselves checked by CI; this is a person review).
 
@@ -171,9 +171,9 @@ Rules for the person performing it:
 
   **Workflow on GitHub.** Open a pull request and confirm every required check on the exact SHA is green, then from a green default-branch commit create and push an authorized annotated pre-release tag such as `v0.1.0-rc.<n>`. Watch both `Delivery` and `Release app image` for that tag.
 
-  **Green looks like.** `Delivery` → `verify (amd64)` and `verify (arm64)` succeed and upload `smoke-tested-image-*`; `Delivery` → `release` succeeds; the multi-architecture manifest lists `linux/amd64` and `linux/arm64`. A re-run of the same tag's `Delivery` workflow also succeeds and produces the same manifest digest.
+  **Green looks like.** `Delivery` → the `verify` job's two matrix legs (`Verify and smoke image (amd64)` and `Verify and smoke image (arm64)`) succeed and upload `smoke-tested-image-*`; `Delivery` → `release` succeeds; the multi-architecture manifest lists `linux/amd64` and `linux/arm64`. A re-run of the same tag's `Delivery` workflow also succeeds and produces the same manifest digest.
 
-  **Proving log line.** In `release`: no `An image does not exist locally with the tag`, no `.Id` mismatch, no `refusing to overwrite`; the log ends with a `Smoke-tested image:` digest line and `gh release create ... --prerelease`. `docker buildx imagetools inspect ghcr.io/<owner>/<repo>:latest` must not resolve to the pre-release.
+  **Proving log line.** In `release`: no `An image does not exist locally with the tag`, no `.Id` mismatch, no `refusing to overwrite`; the step writes `Smoke-tested image: <digest>` to `release-notes.md` (it is not printed to the log) and runs `gh release create ... --prerelease`, so confirm the digest in the GitHub release notes and the pre-release marker on the release. `docker buildx imagetools inspect ghcr.io/<owner>/<repo>:latest` must not resolve to the pre-release.
 
   **Negative control.** A same version tag with a different revision fails before any registry write (dry-run scenario D in the source document); a push with no recorded `RepoDigest` fails closed with `no registry digest for <child>`; a transient pull failure for an already published child fails closed with `cannot pull existing <child>; refusing to overwrite`.
 
@@ -213,7 +213,7 @@ Rules for the person performing it:
 
   **Workflow on GitHub.** Three dispatches with synthetic inputs:
 
-  1. `Agent swarm` (or a direct dispatch of `Swarm worker run`) with one harmless documentation task.
+  1. `Agent swarm` with `workers=1` and one harmless documentation task. `Swarm worker run` is reusable (`workflow_call`) and has no `workflow_dispatch` trigger, so it must be reached through `Agent swarm`.
   2. `Swarm integrator` with one ready synthetic pull request.
   3. `Fix PR gate` — open a synthetic fix pull request (`FIX-` title or `autofix` label); this workflow is pull-request-event only, so it cannot be dispatched by hand.
 
