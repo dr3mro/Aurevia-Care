@@ -59,6 +59,39 @@ the owner to complete.
   authorization tied to an immutable revision and policy version. The market rules
   that activate these controls must be approved by a person.
 
+## Policy pack sections — owner, evidence and status
+
+Every topic the specification assigns to OPS-01 and PRD-05 is listed below. No row
+is `approved`: this repository holds synthetic engineering evidence only. `open`
+means the decision or its signed evidence is not yet complete; `blocked` means the
+row cannot proceed until a named prerequisite (a market or region decision, a
+cloud account, a signed contract or a sibling decision pack) is met. Owner roles
+are the accountable roles of section 10 of the
+[specification](../../SMARTCLINIC_V1_SPEC.md); where section 10 has no exact row
+for a sub-topic, the nearest accountable role is shown for the owner to confirm.
+"Evidence location" is where the signed artifact belongs; a repository path is
+given only when the repository can hold the evidence today.
+
+| Section | Spec basis | Accountable owner role | Evidence location | Status |
+|---|---|---|---|---|
+| Hosting region and data residency | OPS-01, PRD-05 | Product owner and privacy lead | Signed data handling map (below) and cloud region attestation; Evidence checklist items 2-3 | blocked — no region or cloud account selected |
+| Launch jurisdiction and applicable law | OPS-01, PRD-05 | Product owner and privacy lead | Jurisdictional legal review and applicable-law record; Evidence checklist item 5 | open |
+| Jurisdiction-specific requirements and owners | OPS-01 | Product owner and privacy lead | Requirements-and-owners register with effective dates and review cycle; Evidence checklist item 6 | open |
+| Scope of pilot | PRD-05, section 10 | Product owner and privacy lead | Approved pilot scope and per-site approval (S-G5-12); Evidence checklist item 4 | open |
+| One market per production deployment | PRD-05 | Product owner and privacy lead with engineering | Deployment configuration binding market and region; NO TASK exists; `infra/DEPLOYMENT.md` would record it | blocked — depends on the market and region decision |
+| Retention schedule by record class | OPS-01, OPS-07 | Privacy lead with engineering | Approved retention schedule and configured log/metric retention period (WEB-06); Evidence checklist item 7 | open |
+| Legal hold rules and named authority | OPS-01, OPS-07 | Privacy lead | Named hold authority and hold placement/lift authorization record; Evidence checklist item 8 | open |
+| Patient release rules | OPS-01, XCH-06 | Privacy lead and clinical safety lead | Approved release rules with policy version and withdrawal handling (S-G5-03); Evidence checklist item 10 | open |
+| Incident notification | OPS-01 | Privacy lead and operations | Incident response and notification runbook with named owners, timeframes and external parties; Evidence checklist item 12 | open |
+| Supplier obligations | OPS-01 | Integration lead and partner owner with privacy lead | Supplier register with executed agreements, audit rights and credential inventory (S-G5-04); Evidence checklist item 13 | open |
+| Prescribing constraints | OPS-01, RX-02 | Clinical safety lead and site medical director | Approved prescribing channel decision and market entitlement record; RX-01/RX-02 evidence; Evidence checklist item 14 | open |
+| U.S. launch HIPAA risk analysis, agreements and vendor scope (conditional) | OPS-01 | Privacy lead | Signed security risk analysis, executed agreements and vendor scope inventory; Evidence checklist items 15-17 | open — applies only if the launch is in the U.S. where HIPAA applies |
+| Data handling map | OPS-01, PRD-05 | Product owner and privacy lead | Signed data handling map; the template below plus the [personal data inventory](../security/data-inventory.md) | open |
+
+Adjacent section 10 decisions (clinical templates and result escalation, interface
+contracts, capacity and recovery targets, and release approval) are prepared in the
+sibling launch packs; they are not filled in here.
+
 ## Options
 
 The rows below are neutral archetypes for the owner to consider or reject. None is
@@ -79,6 +112,37 @@ evidence that would be required if it were selected.
 | Prescribing under an approved market channel or locally approved printable prescription | Market entitlement checked, prescriber attestation recorded, the actual channel recorded, and no controlled electronic prescribing. | An unentitled prescriber or unapproved channel; ambiguous transmission retried into a duplicate; printable prescription used outside the approved market. | Approved prescribing channel decision; market entitlement and attestation evidence; RX-01/RX-02 tests; clinical safety lead and site medical director sign-off. |
 | A U.S. launch where HIPAA applies, with a completed security risk analysis and required agreements | A documented risk analysis, required agreements (including business-associate agreements where applicable), and a defined vendor scope before ePHI is handled. | Risk analysis or agreements incomplete or stale; vendor scope that omits a processor; ePHI handled before the gate is met. | Signed risk analysis; executed agreements; vendor scope inventory; privacy lead review; evidence that no ePHI was handled before approval. |
 | A non-U.S. launch under another applicable regime | The market's own law, regulator and cross-border transfer rules determine residency, retention, release and notification duties. | Assuming a U.S. framework applies; unaddressed local residency or transfer restrictions; an unnamed regulator or notification duty. | Local legal review; jurisdiction-specific requirements and named owners; data handling map; signed market policy pack. |
+
+## Data handling map — template for owner completion
+
+This is the data handling map the accountable roles must sign with the policy pack.
+It is a blank template, not a completed map: every "owner to enter" cell is a named
+open item. No real region, processor, contract, date or retention period is invented
+here. The data classes are drawn from the
+[personal data inventory](../security/data-inventory.md), which lists the exact
+tables, role keys and audit events; the inventory itself makes no legal
+determination and sets no periods. A signed version of this table, with the evidence
+listed in the [Evidence checklist](#evidence-checklist), is the artifact owed under
+section 10 of the specification.
+
+| Data class | Synthetic example source | Location and region | Processors or custodians | Retention and hold class | Accountable owner role | Status |
+|---|---|---|---|---|---|---|
+| Patient identity and contacts | `patient_record` fixture | owner to enter approved region | care organization (controller); no processor named | chart class, period owner to approve | Product owner and privacy lead | open |
+| Clinical chart and signed revisions | `clinical_note_revision` fixture | owner to enter approved region | care organization | chart class plus legal hold | Clinical safety lead and site medical director | open |
+| Documents and rendered PDFs | `document_association`, `rendered_document` fixtures | owner to enter object-store region | object storage processor to be named | document class, period owner to approve | Integration lead and partner owner | open |
+| Orders, results and critical results | `exchange_order`, `xch04_report_revision` fixtures | owner to enter approved region | partner lab and PACS processors to be named | result class, period owner to approve | Clinical safety lead and site medical director | open |
+| Released reports and release events | `patient_release`, `release_event` fixtures | owner to enter approved region | care organization | release class, period owner to approve | Privacy lead and clinical safety lead | open |
+| Prescriptions | `rx02_prescription` fixture | owner to enter approved region | pharmacy channel to be approved | prescription class, period owner to approve | Clinical safety lead and site medical director | open |
+| Patient messages and attachments | `conversation_message`, `attachment` fixtures | owner to enter approved region | messaging processor to be named | messaging policy; only synthetic V62 enforcement exists today | Privacy lead | open |
+| Self-pay finance | `finance_invoice` fixture | owner to enter approved region | payment processor to be named, none configured | finance class, period owner to approve | Engineering and operations | open |
+| Audit and delivery ledgers | `audit_event`, `delivery_audit` fixtures | owner to enter approved region | care organization | audit period to be approved under WEB-06 | Privacy lead | open |
+| Logs and metrics | structured logs and metrics fixtures | owner to enter approved region | observability provider to be named | period to be approved under WEB-06 | Engineering and operations | open |
+| Backups and replicas | database, object and IdP backup fixtures | owner to enter region; must stay inside the jurisdiction | cloud provider to be named | backup expiry and legal-hold interaction to be decided | Engineering and operations | open |
+
+For each row the owner must also record the cross-border transfer rule, who may
+access the data from outside the authorized region, and the clock that starts and
+stops retention. Those fields are intentionally left blank: they are jurisdiction
+and contract decisions, not engineering facts this repository can supply.
 
 ## What the repository already supports
 
@@ -162,10 +226,11 @@ which is not a market pack.
 | Per-site launch approvals and final G5 acceptance | S-G5-12, GATE-PACK-G5 |
 | Recipient retention applied under law and policy | SPEC-XCH-03-C05 |
 
-The clause-notes directory `docs/spec/clauses` now exists, but the OPS-01, PRD-05,
-RX-02 and XCH-03 clause notes referenced by several of the tasks above are not present
-in the repository at the time of writing; those tasks remain open. No market value was
-inferred from the product clause notes that do exist.
+The clause-notes directory `docs/spec/clauses` now holds the PRD-05 clause notes,
+including the [one-market-per-deployment note](../spec/clauses/product/market-production-deployment-market-specific-policy-pack.md).
+The OPS-01, RX-02 and XCH-03 clause notes referenced by several of the tasks above
+are still not present; those tasks remain open. No market value was inferred from the
+clause notes that do exist.
 
 ## Questions for the owner
 
