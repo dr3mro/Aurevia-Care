@@ -69,7 +69,7 @@ const ARABIC_DETAIL: EnteredInError = {
 
 /** Render the banner inside the real providers at a given locale and band. */
 function renderBanner(locale: Locale, layout: Layout, detail: EnteredInError = ENGLISH_DETAIL) {
-  installMatchMedia(VIEWPORTS[layout] ?? VIEWPORTS.compact);
+  installMatchMedia(VIEWPORTS[layout]);
   return render(
     <ThemeProvider>
       <I18nProvider initialLocale={locale}>
@@ -122,10 +122,13 @@ describe('responsive EnteredInErrorBanner (WEB-07, UX-01)', () => {
       expect(time?.getAttribute('datetime')).toBe(ENGLISH_DETAIL.recordedAt);
       expect(definitions[3]?.textContent).toBe(time?.textContent);
 
-      // No clinical field is hidden and every value keeps its full text.
+      // No clinical field is hidden, inline or by a stylesheet hide utility
+      // (jsdom does not load responsive.css, so assert the classes directly).
       for (const element of [alert, ...Array.from(alert.querySelectorAll('*'))]) {
         expect((element as HTMLElement).style.display).not.toBe('none');
       }
+      expect(alert.querySelector('.hide-compact')).toBeNull();
+      expect(alert.querySelector('.only-compact')).toBeNull();
       expect(alert.textContent).toContain(ENGLISH_DETAIL.reason);
       expect(alert.textContent).toContain(ENGLISH_DETAIL.actor);
       unmount();
@@ -139,7 +142,8 @@ describe('responsive EnteredInErrorBanner (WEB-07, UX-01)', () => {
       expect(alert.style.overflowWrap).toBe('anywhere');
       expect(alert.style.whiteSpace).toBe('normal');
       expect(alert.style.textAlign).toBe('start');
-      expect(alert.style.minInlineSize).toBe('0');
+      // Assert the serialized declaration, not a cssstyle-normalized value.
+      expect(style).toMatch(/min-inline-size:\s*0(?:px)?/);
       // Safe-area padding comes from the `page` class, never a physical side.
       expect(alert.style.paddingLeft).toBe('');
       expect(alert.style.paddingRight).toBe('');

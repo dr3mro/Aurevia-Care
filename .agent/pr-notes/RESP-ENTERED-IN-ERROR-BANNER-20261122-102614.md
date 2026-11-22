@@ -55,6 +55,7 @@ Entry point to test trace: `EnteredInErrorBanner` is rendered by `apps/staff-web
   > tsc --noEmit -p tsconfig.json
   ```
   No `error TS…` output. Lint (`npm run lint`) exit 0. `gen:api:check`, `npm run build` and `scripts/check-bundle-size.mjs` all passed inside the full module gate.
+- Post-review re-verification: applied the three specialist findings below, then re-ran `cd apps/staff-web && npx vitest run tests/responsive/features-chart/EnteredInErrorBanner.responsive.test.tsx src/features/chart/components.test.tsx` → `Test Files 2 passed (2)` / `Tests 29 passed (29)`, and the full `bash apps/staff-web/check.sh` again → exit 0, `Test Files 159 passed (159)` / `Tests 1903 passed (1903)` with the same 100% coverage numbers.
 - `python3 -I scripts/check-names.py` → exit 0; `git diff --check` → exit 0.
 - `git merge --no-edit origin/main` → `Already up to date.` (run at start and again before finishing; no conflict markers in the changed files).
 - `bash scripts/check.sh` → exit 1 at `check-pack: opencode.json is stale: run scripts/gen-opencode.py`. Confirmed once as the documented worker-image false positive (AGENTS.md / OPS-CW-003-01): `git ls-files -v opencode.json` → `S` (skip-worktree); the committed local profile matches `gen_opencode.render(...)` exactly, while the worktree file is the CI runtime profile. The committed file was not edited. `python3 -I scripts/gen-opencode.py --check-runtime` → exit 0.
@@ -74,11 +75,12 @@ Presentation-only staff-web change; no signed data, release, prescribing, tenant
 ## Findings
 
 - Unrelated to this change: `main` at `HEAD 8c8b589` contains committed Git conflict markers in three API files — `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7ParseException.java`, `Hl7Parser.java` and `Hl7Segment.java` — e.g. `<<<<<<< HEAD` / `>>>>>>> origin/swarm/BUILD-37-469`. Verified with `git grep -nE '^(<<<<<<<|>>>>>>>) '` and `git show HEAD:…/Hl7Parser.java`. These are outside this task's scope and were not touched; the integrator/owner should repair them before relying on a Java build.
-- No defect was found in the changed component; no task outside the two scoped files is needed.
+- Bounded read-only Senior React review (`smartclinic-senior-react`) found no blocking issue in the production component. It reported three test-only findings, all applied: (1) replaced the brittle `alert.style.minInlineSize === '0'` read with a serialized `min-inline-size:\s*0(?:px)?` assertion; (2) removed the unreachable `?? VIEWPORTS.compact` fallback in `renderBanner`; (3) hardened the "no hidden field" check by asserting no `.hide-compact` or `.only-compact` element at every band. The reviewer could not execute commands in its sandbox; all checks were run by this worker before and after the fixes. No task outside the two scoped files is needed.
 
 ## Lessons for workers
 
 - `responsive.css` has no dedicated banner/clinical-value class and no `.page > *` wrapping rule (only `.grid-2 > *` sets `min-inline-size: 0; overflow-wrap: anywhere`). Per the story rule, the stylesheet was not edited: wrapping uses logical inline styles (`overflowWrap`, `whiteSpace`, `minInlineSize`). A future responsive story could add a documented `.clinical-value` utility.
 - Do not add an inline `padding` shorthand to an element that opts into the `page` utility: it silently overrides the safe-area-aware logical padding the class provides. Delegate spacing to the class.
-- In jsdom, inline `minInlineSize: 0` is serialized as `'0'`, not `'0px'`; `getAllByRole('term')` / `('definition')` work for `<dt>` / `<dd>`.
+- In jsdom, inline `minInlineSize: 0` is serialized as `'0'`, not `'0px'` — and cssstyle normalization varies, so assert the serialized style declaration with a permissive `0(?:px)?` pattern instead of pinning a property value. `getAllByRole('term')` / `('definition')` work for `<dt>` / `<dd>`.
+- A `Record<Layout, …>` lookup is always defined for a `Layout` key: do not add a `?? fallback` that can never run, even in tests.
 - In this worker image, `scripts/check.sh` always stops at the check-pack staleness caused by the skip-worktree CI `opencode.json`, and `scripts/python-coverage.sh` lacks the `coverage` module plus fails check-pack/worker-gate sandbox tests. Confirm once, run the other stages individually and do not edit protected files.
