@@ -5,6 +5,7 @@ import { Form } from '../../components/Form';
 import { FormField } from '../../components/FormField';
 import { Button } from '../../components/Button';
 import { useTheme } from '../../theme/ThemeProvider';
+import { useBreakpoint, usePointerCoarse } from '../../theme/useBreakpoint';
 import type {
   RegistrationDraft,
   RegistrationField,
@@ -82,6 +83,14 @@ export function registrationErrorLinks(
 /**
  * Patient registration form. It never calls the network; the owning page
  * translates submissions into commands and maps server codes back to fields.
+ *
+ * Layout is presentation only: the root uses the responsive `page` class so a
+ * long identity can wrap inside the reading width and safe-area insets are
+ * respected. Fields are grouped into named sections using the shared `grid-2`
+ * class, which stacks on phones and becomes two columns from medium upward
+ * without adding a stylesheet rule. No field is hidden and no direction is set
+ * on a subtree, so the same DOM and focus order mirror under right-to-left
+ * (WEB-07, UX-01).
  */
 export function RegisterPatientForm({
   locale,
@@ -92,31 +101,47 @@ export function RegisterPatientForm({
   onCancel,
 }: RegisterPatientFormProps) {
   const { tokens } = useTheme();
+  const breakpoint = useBreakpoint();
+  const coarsePointer = usePointerCoarse();
   const displayNameError = errorText('displayName', errors, locale);
   const mrnError = errorText('mrn', errors, locale);
   const issuerError = errorText('issuer', errors, locale);
   const dobError = errorText('dob', errors, locale);
   const reasonError = errorText('dobUnknownReason', errors, locale);
   const languageError = errorText('language', errors, locale);
+  const sectionLayout = breakpoint === 'compact' ? 'single-column' : 'two-column';
 
   return (
     <section
       role="dialog"
       aria-label={patientsText(locale, 'registerTitle')}
-      style={{ display: 'grid', gap: tokens.spacing.md }}
+      className="page"
+      data-breakpoint={breakpoint}
+      data-coarse-pointer={coarsePointer}
+      style={{ gap: tokens.spacing.md }}
     >
       <h3>{patientsText(locale, 'registerTitle')}</h3>
       <p>{patientsText(locale, 'registerIntro')}</p>
-      <FieldErrorSummary
-        title={patientsText(locale, 'errorSummary')}
-        errors={registrationErrorLinks(errors, locale)}
-      />
+      {/* The validation summary sits above the form so it precedes the submit
+          bar in the DOM and in the keyboard order at every breakpoint. */}
+      <div data-part="warning">
+        <FieldErrorSummary
+          title={patientsText(locale, 'errorSummary')}
+          errors={registrationErrorLinks(errors, locale)}
+        />
+      </div>
       <Form
         label={patientsText(locale, 'registerTitle')}
         submitLabel={patientsText(locale, 'registerSubmit')}
         onSubmit={onSubmit}
       >
-        <div style={{ display: 'grid', gap: tokens.spacing.md }}>
+        <div
+          role="group"
+          aria-label={patientsText(locale, 'identity')}
+          className="grid-2"
+          data-part="section"
+          data-layout={sectionLayout}
+        >
           <FormField
             id={FIELD_IDS.displayName}
             label={patientsText(locale, 'fieldDisplayName')}
@@ -138,6 +163,14 @@ export function RegisterPatientForm({
             onChange={(value) => onFieldChange('issuer', value)}
             {...(issuerError === undefined ? {} : { error: issuerError })}
           />
+        </div>
+        <div
+          role="group"
+          aria-label={patientsText(locale, 'dob')}
+          className="grid-2"
+          data-part="section"
+          data-layout={sectionLayout}
+        >
           <FormField
             id={FIELD_IDS.dob}
             label={patientsText(locale, 'fieldDob')}
@@ -152,6 +185,16 @@ export function RegisterPatientForm({
             onChange={(value) => onFieldChange('dobUnknownReason', value)}
             {...(reasonError === undefined ? {} : { error: reasonError })}
           />
+        </div>
+        {/* Sections follow the original field order so the summary links and
+            the tab sequence still agree after the responsive regrouping. */}
+        <div
+          role="group"
+          aria-label={patientsText(locale, 'language')}
+          className="grid-2"
+          data-part="section"
+          data-layout={sectionLayout}
+        >
           <FormField
             id={FIELD_IDS.language}
             label={patientsText(locale, 'fieldLanguage')}
@@ -161,9 +204,11 @@ export function RegisterPatientForm({
           />
         </div>
       </Form>
-      <Button variant="secondary" onClick={onCancel}>
-        {patientsText(locale, 'cancel')}
-      </Button>
+      <div className="cluster" data-part="cancel">
+        <Button variant="secondary" onClick={onCancel}>
+          {patientsText(locale, 'cancel')}
+        </Button>
+      </div>
     </section>
   );
 }

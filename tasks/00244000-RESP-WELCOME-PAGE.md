@@ -1,5 +1,5 @@
-- [-] RESP-WELCOME-PAGE · Staff web: responsive `WelcomePage` (app)
-  - agent: swarm-7
+- [x] RESP-WELCOME-PAGE · Staff web: responsive `WelcomePage` (app)
+  - pr: #706
   - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/app/WelcomePage.tsx, apps/staff-web/tests/responsive/app/WelcomePage.responsive.test.tsx

@@ -2616,19 +2616,73 @@ def delivery_gate(pr, head=None, runs=None):
     return "request"
 
 
+# Decision returned by draft_recovery for one draft pull request.
+DRAFT_RECOVER = "recover"   # Delivery passed on the current head: undraft and queue it.
+DRAFT_FIX = "fix"           # Checks still failed: send it to a fix worker.
+DRAFT_LEAVE = "leave"       # A person owns it (reconciler, blocked, or still waiting).
+# Title of the reconciler's instruction-document draft, which a person must review.
+RECONCILER_TITLE = "instruction updates for review"
+
+
+def draft_recovery(pr_info, runs=None):
+    """Decide what the integrator's plan step should do with one open swarm draft.
+
+    ``pr_info`` is a ``gh pr list`` record (``number``, ``title``, ``labels``,
+    ``isDraft``, ``headRefOid``). ``runs`` may carry a caller's shared Delivery
+    listing; when omitted the runs for this head are fetched. Only Delivery
+    evidence for the current head counts, through :func:`delivery_state`.
+
+    Returns ``recover`` when an ordinary story draft has Delivery ``passed`` and no
+    ``needs-fix``/``needs-human`` label -- it is ready for review and can be queued.
+    A draft whose checks still fail returns ``fix`` so one fix worker is sent for
+    that head; the existing fix/debugger escalation ends in ``needs-human``.
+    Reconciler instruction drafts, repair drafts, blocked drafts and drafts still
+    waiting for Delivery return ``leave`` and stay drafts for a person.
+    """
+    labels = label_names(pr_info)
+    if {"needs-fix", "needs-human"} & labels:
+        return DRAFT_LEAVE
+    title = pr_info.get("title", "")
+    if RECONCILER_TITLE in title or "autofix" in labels or title.startswith(REPAIR_PREFIXES):
+        return DRAFT_LEAVE
+    head = pr_info.get("headRefOid", "")
+    state = delivery_state(delivery_runs(head) if runs is None else runs, head)
+    if state == "passed":
+        return DRAFT_RECOVER
+    if state == "failed":
+        return DRAFT_FIX
+    return DRAFT_LEAVE
+
+
 def plan_integration(red=False):
     """Pull requests ready to integrate, oldest first. While main is red only
     repair pull requests (FIX-, DLV-) may merge, so ordinary work is not blamed for it.
 
-    Drafts are excluded explicitly: a worker that failed local checks (including
-    typecheck) opens a draft, and that work must not merge until a fix pass undrafts it."""
+    A draft whose Delivery already passed is marked ready for review by
+    :func:`draft_recovery` and queued; one whose checks still fail goes to a fix
+    worker. Reconciler instruction drafts and blocked drafts stay drafts for a
+    person and are never queued."""
     prs = gh_json("pr", "list", "--state", "open", "--label", "swarm", "--limit", "50",
                   "--json", "number,title,labels,isCrossRepository,isDraft")
     blocked = {"needs-fix", "needs-human", "needs-debug"}
-    return [p["number"] for p in sorted(prs, key=lambda p: p["number"])
-            if not p["isCrossRepository"] and not p.get("isDraft")
-            and not blocked & label_names(p)
-            and (not red or p.get("title", "").startswith(REPAIR_PREFIXES))]
+    queue = []
+    for p in sorted(prs, key=lambda p: p["number"]):
+        number = p["number"]
+        if p["isCrossRepository"] or blocked & label_names(p):
+            continue
+        if p.get("isDraft"):
+            decision = draft_recovery(p)
+            if decision == DRAFT_RECOVER:
+                gh("pr", "ready", str(number), check=False)
+            elif decision == DRAFT_FIX:
+                fail(number, "Draft pull request: local checks failed", simple=True)
+                continue
+            else:
+                continue
+        if red and not p.get("title", "").startswith(REPAIR_PREFIXES):
+            continue
+        queue.append(number)
+    return queue
 
 
 def only_worker_failures(run):
