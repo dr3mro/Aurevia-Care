@@ -4,6 +4,7 @@
 # Generated from Spring RequestMappingHandlerMapping; verified by OpenApiRouteParityTest.
 ANY /error
 DELETE /api/v1/patient/appointments/devices/{}
+DELETE /api/v1/staff/instant/{}/participants/{}
 GET /api/v1/access/emergency/active
 GET /api/v1/access/emergency/review-queue
 GET /api/v1/appointments/{}
@@ -105,6 +106,9 @@ GET /api/v1/specialty/attestations
 GET /api/v1/specialty/attestations/{}
 GET /api/v1/specialty/permissions
 GET /api/v1/staff-invitations/pending
+GET /api/v1/staff/instant/conversations
+GET /api/v1/staff/instant/unread
+GET /api/v1/staff/instant/{}/messages
 GET /api/v1/staff/mail/folders/{}
 GET /api/v1/staff/mail/messages/{}
 GET /api/v1/staff/mail/threads
@@ -312,6 +316,11 @@ POST /api/v1/specialty/attestations
 POST /api/v1/staff-invitations
 POST /api/v1/staff-invitations/accept
 POST /api/v1/staff-invitations/{}/revoke
+POST /api/v1/staff/instant/direct
+POST /api/v1/staff/instant/groups
+POST /api/v1/staff/instant/participants
+POST /api/v1/staff/instant/read
+POST /api/v1/staff/instant/{}/messages
 POST /api/v1/staff/mail/drafts
 POST /api/v1/staff/mail/drafts/{}/send
 POST /api/v1/staff/mail/messages/{}/flag

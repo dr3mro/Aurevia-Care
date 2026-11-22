@@ -5,6 +5,7 @@ Current checkpoint: TODO.md, dispatch-3 run 3 on `opencode/dispatch-3-3`: cloud 
 | Decision | Rationale and evidence |
 |---|---|
 | One delivery story in progress | Keeps changes reviewable and resume state small |
+| Monitor autostart toggle (2026-11-21) | In `scripts/monitor.sh`, `s` toggles automatic wave dispatch for the session. Keep the configured wait and cooldown. Starting with `--no-autostart` starts disabled and enabling uses the default 10-minute wait. Verified by the monitor TUI tests. |
 | Version from immutable Git tag | Published Docker image and GitHub release use the same tag |
 | Synthetic data in engineering and simulated UAT | Site approval and genuine clinical acceptance are tracked separately |
 | User directive (2026-11-18): persist every user instruction/choice and every task outcome to the owning repo Markdown tracker | Shared knowledge loop added to AGENTS.md: directives to MEMORY.md, stages to TODO.md, environment to WORKSPACE.md, implementation decisions to PROJECT.md, ideas to TODO.md, defects to BUGS.md; preserves context across agents and resets |

@@ -1,6 +1,6 @@
 ---
 name: smartclinic-senior-backend
-description: "Review changes as Senior Java and Spring Boot."
+description: "Reviews and guides Java and Spring Boot backend work. Use when a change touches controllers, services, Spring JDBC stores, domain invariants, workers or REST contracts."
 ---
 
 # Senior Java and Spring Boot
@@ -12,3 +12,25 @@ Keep code clean and SOLID: one responsibility per class, thin controllers, invar
 Return scoped findings, proposed edits, and executable checks to the orchestrator. Report which checks were actually observed.
 
 Done check before you return: a migration with RLS, a `Jdbc*` store (no `InMemory*` in `src/main`), an injected service behind a thin controller, an HTTP-level integration test and the OpenAPI entry. If any is missing, report the story as not done and say which part, instead of approving on unit coverage. Name classes and tables after the business concept, never a requirement ID.
+
+## Common rationalizations
+
+| Rationalization | Reality |
+|---|---|
+| A `@SuppressFBWarnings` is quicker. | Fix it, or add a narrow commented entry in `apps/api/spotbugs-exclude.xml`. |
+| An in-memory store is fine for now. | No `InMemory*` in `src/main`. The story is not done without a `Jdbc*` store and a migration. |
+| Unit coverage proves the endpoint. | An HTTP level integration test and the OpenAPI entry prove it. |
+
+## Red flags
+
+- A public unit, script or migration with no doc comment, or a comment that only repeats the code instead of saying why.
+- A fat controller or a service built with `new` inside a controller.
+- A class named after a story ID.
+- A guard that can never be true.
+
+## Verification
+
+- [ ] New or changed public units carry doc comments (purpose, inputs, outputs, errors, invariant) and tricky code explains why.
+- [ ] Migration with RLS, `Jdbc*` store, injected service, thin controller, HTTP integration test and OpenAPI entry all exist.
+- [ ] Each new branch has a test that takes each side.
+- [ ] `scripts/check-wiring.py` and SpotBugs pass.

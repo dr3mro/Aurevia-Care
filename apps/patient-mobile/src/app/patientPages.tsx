@@ -3,16 +3,22 @@
  *
  * Each page is a thin container: it binds one transport loader to the shared
  * resource states and passes validated projections to the existing
- * presentational screen. Commands remain no-op placeholders; this story only
- * replaces placeholder reads with authenticated API reads.
+ * presentational screen. Commands remain no-op placeholders. A shared layout
+ * frame keeps each page readable on compact, large and right-to-left windows
+ * without changing data, commands or exported names.
  */
 import { useCallback, useMemo } from 'react';
+import type { ReactNode } from 'react';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import * as SafeArea from 'react-native-safe-area-context';
 
 import type { Transport } from '../api/transport';
 import { AppointmentListScreen } from '../features/appointments/AppointmentListScreen';
 import { ConversationInbox } from '../features/conversations/ConversationInbox';
 import { ReleasedReportsScreen } from '../features/reports/ReleasedReportsScreen';
 
+import type { WindowClass, WindowLayout } from './layout/useWindowClass';
+import { windowClassFor } from './layout/useWindowClass';
 import { appText, type Locale } from './messages';
 import { PatientResource } from './PatientResource';
 import {
@@ -50,6 +56,92 @@ function isEmptyInbox(data: ConversationInboxData): boolean {
   return data.conversations.length === 0;
 }
 
+/** Safe-area inset shape shared with the window-layout hook. */
+type Insets = WindowLayout['insets'];
+
+/** Zero insets for headless renderers that expose no safe-area hook. */
+const NO_INSETS: Insets = { top: 0, right: 0, bottom: 0, left: 0 };
+
+/**
+ * Read the safe-area insets from the platform hook. The repository's headless
+ * Jest setup maps the library to a default-only mock without a named hook, so
+ * resolve the binding once and fall back to zero insets there; on a device the
+ * platform hook is always present.
+ */
+const readInsets = SafeArea.useSafeAreaInsets ?? ((): Insets => NO_INSETS);
+
+/**
+ * Resolve the responsive inputs for one page from the current window. The
+ * breakpoint rule is shared with `windowClassFor`, so rotation and
+ * split-screen classify a window exactly as they do elsewhere in the app.
+ */
+function usePageLayout(): { windowClass: WindowClass; insets: Insets } {
+  const { width } = useWindowDimensions();
+  return { windowClass: windowClassFor(width), insets: readInsets() };
+}
+
+/** Maximum inline width of the centred content column on large windows. */
+const READING_MAX_WIDTH = 1120;
+
+/** Inputs to the shared responsive frame around each data-backed tab. */
+interface PatientPageFrameProps {
+  /** Stable identifier used to expose the frame structure to tests. */
+  readonly pageId: string;
+  /** Active display locale; Arabic mirrors the two-pane order. */
+  readonly locale: Locale;
+  /** The existing page content, rendered without modification. */
+  readonly children: ReactNode;
+}
+
+/**
+ * Presentational layout frame for the three data-backed patient tabs
+ * (PAT-01, PAT-02, UX-01).
+ *
+ * It follows the window class from the shared `windowClassFor` rule, so
+ * rotation, split-screen and Slide Over reuse one classification. Physical
+ * safe-area insets are mapped to logical padding (swapped under RTL), wide
+ * windows get a centred maximum-width column and a list/detail two-pane row,
+ * and no fixed height or line clamp is applied so text can scale to 200%. The
+ * frame holds no clinical data, issues no request and adds no accessible
+ * control: the wrapped screen keeps its focus order and screen-reader labels.
+ *
+ * @param props page identifier, locale and existing page content
+ * @returns the framed page
+ */
+function PatientPageFrame({ pageId, locale, children }: PatientPageFrameProps): React.JSX.Element {
+  const { windowClass, insets } = usePageLayout();
+  const large = windowClass === 'large';
+  const rtl = locale === 'ar';
+  return (
+    <View
+      testID={`${pageId}-frame`}
+      style={[
+        styles.frame,
+        {
+          paddingTop: insets.top,
+          paddingBottom: insets.bottom,
+          paddingStart: rtl ? insets.right : insets.left,
+          paddingEnd: rtl ? insets.left : insets.right,
+        },
+      ]}>
+      <View testID={`${pageId}-column`} style={large ? styles.columnLarge : styles.column}>
+        {large ? (
+          <View testID={`${pageId}-panes`} style={rtl ? styles.panesRtl : styles.panes}>
+            <View testID={`${pageId}-list-pane`} style={styles.pane}>
+              {children}
+            </View>
+            <View testID={`${pageId}-detail-pane`} style={styles.pane} />
+          </View>
+        ) : (
+          <View testID={`${pageId}-list-pane`} style={styles.pane}>
+            {children}
+          </View>
+        )}
+      </View>
+    </View>
+  );
+}
+
 /** Appointments tab: patient endpoint, facility zone and confirmation state. */
 export function AppointmentListPage({
   transport,
@@ -64,24 +156,26 @@ export function AppointmentListPage({
     [transport, patientId, organizationId],
   );
   return (
-    <PatientResource
-      load={load}
-      isEmpty={isEmptyRows}
-      emptyMessage={appText(locale, 'emptyAppointments')}
-      messages={messages}
-      onSessionExpired={onSessionExpired}>
-      {(appointments) => (
-        <AppointmentListScreen
-          appointments={appointments}
-          notice={placeholderNotice()}
-          patientId={patientId}
-          devices={placeholderDevices()}
-          onConfirm={placeholderAction}
-          onOpenDetails={placeholderAction}
-          onRevokeDevice={placeholderAction}
-        />
-      )}
-    </PatientResource>
+    <PatientPageFrame pageId="appointments" locale={locale}>
+      <PatientResource
+        load={load}
+        isEmpty={isEmptyRows}
+        emptyMessage={appText(locale, 'emptyAppointments')}
+        messages={messages}
+        onSessionExpired={onSessionExpired}>
+        {(appointments) => (
+          <AppointmentListScreen
+            appointments={appointments}
+            notice={placeholderNotice()}
+            patientId={patientId}
+            devices={placeholderDevices()}
+            onConfirm={placeholderAction}
+            onOpenDetails={placeholderAction}
+            onRevokeDevice={placeholderAction}
+          />
+        )}
+      </PatientResource>
+    </PatientPageFrame>
   );
 }
 
@@ -94,16 +188,18 @@ export function ReleasedReportsPage({
   const messages = useMemo(() => screenMessages(locale), [locale]);
   const load = useCallback(() => loadReports(transport), [transport]);
   return (
-    <PatientResource
-      load={load}
-      isEmpty={isEmptyRows}
-      emptyMessage={appText(locale, 'emptyReports')}
-      messages={messages}
-      onSessionExpired={onSessionExpired}>
-      {(reports) => (
-        <ReleasedReportsScreen reports={reports} error={null} onDownload={placeholderAction} />
-      )}
-    </PatientResource>
+    <PatientPageFrame pageId="reports" locale={locale}>
+      <PatientResource
+        load={load}
+        isEmpty={isEmptyRows}
+        emptyMessage={appText(locale, 'emptyReports')}
+        messages={messages}
+        onSessionExpired={onSessionExpired}>
+        {(reports) => (
+          <ReleasedReportsScreen reports={reports} error={null} onDownload={placeholderAction} />
+        )}
+      </PatientResource>
+    </PatientPageFrame>
   );
 }
 
@@ -120,19 +216,32 @@ export function ConversationInboxPage({
     [transport, organizationId],
   );
   return (
-    <PatientResource
-      load={load}
-      isEmpty={isEmptyInbox}
-      emptyMessage={appText(locale, 'emptyConversations')}
-      messages={messages}
-      onSessionExpired={onSessionExpired}>
-      {(inbox) => (
-        <ConversationInbox
-          conversations={inbox.conversations}
-          unreadByConversation={inbox.unreadByConversation}
-          onOpen={placeholderAction}
-        />
-      )}
-    </PatientResource>
+    <PatientPageFrame pageId="conversations" locale={locale}>
+      <PatientResource
+        load={load}
+        isEmpty={isEmptyInbox}
+        emptyMessage={appText(locale, 'emptyConversations')}
+        messages={messages}
+        onSessionExpired={onSessionExpired}>
+        {(inbox) => (
+          <ConversationInbox
+            conversations={inbox.conversations}
+            unreadByConversation={inbox.unreadByConversation}
+            onOpen={placeholderAction}
+          />
+        )}
+      </PatientResource>
+    </PatientPageFrame>
   );
 }
+
+const styles = StyleSheet.create({
+  frame: { flex: 1 },
+  column: { flex: 1, width: '100%' },
+  columnLarge: { flex: 1, width: '100%', maxWidth: READING_MAX_WIDTH, alignSelf: 'center' },
+  // Direction is authoritative: the app also forces native RTL globally, so an
+  // extra row-reverse here would flip the panes back into the wrong order.
+  panes: { flex: 1, flexDirection: 'row', direction: 'ltr' },
+  panesRtl: { flex: 1, flexDirection: 'row', direction: 'rtl' },
+  pane: { flex: 1, minWidth: 0 },
+});

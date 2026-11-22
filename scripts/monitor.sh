@@ -4,9 +4,11 @@
 # flicker until you press any key.
 # Left: in-progress runs, recent runs, failures (24h). Right: merged PRs (24h), open PRs, issues.
 # Data is fetched in parallel by a background thread; the screen keeps the last good data
-# while a refresh runs. Keys: q quit, r refresh now; any key silences the alarm.
+# while a refresh runs. Keys: q quit, r refresh now, m mute, s toggle auto-start.
+# Any key silences an active alarm before handling other controls.
 # If no Agent swarm run is queued or running while TODO.md still has open tasks, it starts a wave
-# (gh workflow run swarm.yml), at most once per --autostart-wait minutes. --no-autostart turns that off.
+# (gh workflow run swarm.yml), at most once per --autostart-wait minutes.
+# --no-autostart starts with auto-start off; pressing s then uses the default 10-minute wait.
 # Usage:  bash monitor [--once] [--interval SECONDS] [--recent N] [--autostart-wait MINUTES] [--no-autostart]
 set -u
 
@@ -21,7 +23,11 @@ while [[ $# -gt 0 ]]; do
     --recent) RECENT="$2"; shift 2 ;;
     --autostart-wait) AUTOSTART="$2"; shift 2 ;;
     --no-autostart) AUTOSTART=0; shift ;;
-    -h|--help) echo "Usage: bash monitor [--once] [--interval SECONDS] [--recent N] [--autostart-wait MINUTES] [--no-autostart]"; exit 0 ;;
+    -h|--help)
+      echo "Usage: bash scripts/monitor.sh [--once] [--interval SECONDS] [--recent N] [--autostart-wait MINUTES] [--no-autostart]"
+      echo "Interactive keys: q quit, r refresh, m mute, s toggle auto-start."
+      exit 0
+      ;;
     *) echo "Unknown arg: $1" >&2; exit 2 ;;
   esac
 done

@@ -31,6 +31,20 @@ ROLE_AGENTS = {
 }
 
 
+# A skill description is what an agent reads to decide whether to load the skill, so it must say
+# when to use it, and it must fit the limit of the skill format.
+SKILL_DESCRIPTION_LIMIT = 1024
+PROCESS_SECTIONS = ("Common rationalizations", "Red flags", "Verification")
+# Skills that play a simulated user or plan and track work have no engineering process to
+# check; every other skill must carry the process sections.
+NO_PROCESS_SECTIONS = {
+    "smartclinic-clinic-assistant", "smartclinic-laboratory-user", "smartclinic-patient-user",
+    "smartclinic-pharmacy-user", "smartclinic-physical-therapy-user", "smartclinic-radiology-user",
+    "smartclinic-product-manager", "smartclinic-product-owner", "smartclinic-scrum-master",
+    "smartclinic-system-designer", "smartclinic-memory-manager", "smartclinic-context-optimizer",
+}
+
+
 def frontmatter(text):
     """Return the simple key/value pairs of a leading YAML block, or None."""
     match = FRONTMATTER.match(text)
@@ -139,6 +153,18 @@ def check(root=ROOT):
             errors.append(f"skill {name}: directory must be kebab-case")
         if meta is None or meta.get("name") != name or not meta.get("description"):
             errors.append(f"skill {name}: frontmatter needs matching name and description")
+    for name, text in sorted(skills.items()):
+        meta = frontmatter(text) or {}
+        description = meta.get("description", "")
+        if description and "Use when" not in description:
+            errors.append(f"skill {name}: the description must say when to use it (\"Use when ...\")")
+        if len(description) > SKILL_DESCRIPTION_LIMIT:
+            errors.append(f"skill {name}: the description is over {SKILL_DESCRIPTION_LIMIT} characters")
+        if name in NO_PROCESS_SECTIONS:
+            continue
+        for heading in PROCESS_SECTIONS:
+            if not re.search(rf"(?mi)^##\s+{re.escape(heading)}\s*$", text):
+                errors.append(f"skill {name}: missing the section \"## {heading}\"")
     if specialists | {"smartclinic-delivery"} != set(skills):
         errors.append("skills differ from specialists plus smartclinic-delivery: "
                       f"{sorted((specialists | {'smartclinic-delivery'}) ^ set(skills))}")

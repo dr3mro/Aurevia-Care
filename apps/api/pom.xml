@@ -23,6 +23,8 @@
          a local JDK 27 can still build with the release flag set to 21. -->
     <maven.compiler.release>21</maven.compiler.release>
     <postgresql.version>42.7.14</postgresql.version>
+    <!-- Pinned AWS SDK for Java v2 used by the managed S3 object-store adapter (ARC-06). -->
+    <aws.sdk.version>2.31.67</aws.sdk.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <jacoco.version>0.8.16</jacoco.version>
     <owasp.version>12.1.0</owasp.version>
@@ -31,6 +33,19 @@
     <spotbugs.skip>true</spotbugs.skip>
     <pitest.threshold>65</pitest.threshold>
   </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <!-- One pinned version for every AWS SDK module, including transitives (ARC-06). -->
+      <dependency>
+        <groupId>software.amazon.awssdk</groupId>
+        <artifactId>bom</artifactId>
+        <version>${aws.sdk.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
 
   <dependencies>
     <dependency>
@@ -77,6 +92,10 @@
       <artifactId>spotbugs-annotations</artifactId>
       <version>4.8.6</version>
       <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>s3</artifactId>
     </dependency>
   </dependencies>
 

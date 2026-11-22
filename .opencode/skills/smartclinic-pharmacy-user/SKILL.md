@@ -1,6 +1,6 @@
 ---
 name: smartclinic-pharmacy-user
-description: "Exercise the pharmacy workflow as a simulated user."
+description: "Exercises the pharmacy workflow as a simulated user. Use when a slice affects prescriptions, substitutions or dispensing and needs a synthetic walkthrough."
 ---
 
 # Pharmacy User

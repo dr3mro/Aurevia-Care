@@ -1,5 +1,5 @@
-- [-] RESP-APP-APPOINTMENT-LIST-SCREEN · Patient app: tablet, landscape and large-text layout for `AppointmentListScreen` (appointments)
-  - agent: swarm-7
+- [x] RESP-APP-APPOINTMENT-LIST-SCREEN · Patient app: tablet, landscape and large-text layout for `AppointmentListScreen` (appointments)
+  - pr: #640
   - attempts: 1
   - requirements: PAT-01, PAT-02, UX-01
   - scope: apps/patient-mobile/src/features/appointments/AppointmentListScreen.tsx, apps/patient-mobile/src/features/appointments/AppointmentListScreen.tablet.test.tsx

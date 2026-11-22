@@ -1,4 +1,6 @@
-- [ ] RESP-APP-README · Patient app README: tablets, landscape and how to test them
+- [x] RESP-APP-README · Patient app README: tablets, landscape and how to test them
+  - pr: #648
+  - attempts: 1
   - requirements: PAT-01, PAT-02, UX-01
   - scope: apps/patient-mobile/README.md
   - depends: RESP-APP-LAYOUT-HOOK

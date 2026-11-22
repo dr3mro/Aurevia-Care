@@ -1,6 +1,6 @@
 ---
 name: "smartclinic-context-optimizer"
-description: "Identify the next bounded repository context and authoritative evidence."
+description: "Identifies the next bounded repository context and the authoritative evidence for it. Use when a task is large or unclear and the agent needs to decide which files and requirement IDs to read first."
 ---
 
 # Context Optimizer

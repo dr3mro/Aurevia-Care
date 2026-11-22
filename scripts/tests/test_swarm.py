@@ -118,6 +118,29 @@ def pr(number, branch, *names, cross=False, comments=()):
 
 
 class ConcurrentWaveTests(unittest.TestCase):
+    def top_up(self, live=(), waiting=0, ready=True):
+        fake = FakeGh()
+        with mock.patch.object(swarm, "gh", fake), mock.patch.object(swarm, "gh_json", return_value=[]), \
+                mock.patch.object(swarm, "live_workers", return_value=list(live)), \
+                mock.patch.object(swarm, "waiting_waves", return_value=waiting), \
+                mock.patch.object(swarm, "todo_read", return_value=""), \
+                mock.patch.object(swarm, "reclaim", return_value=""), \
+                mock.patch.object(swarm, "plan_workers", return_value=[{"id": "A"}] if ready else []):
+            return swarm.top_up("A-1"), fake
+
+    def test_a_finished_worker_with_room_and_a_ready_task_starts_the_next_wave(self):
+        started, fake = self.top_up(live=["B-1", "A-1"])
+        self.assertTrue(started)
+        self.assertTrue(fake.said("--ref", "swarm.yml"))
+
+    def test_no_next_wave_without_room_a_waiting_wave_or_a_ready_task(self):
+        full = [f"T-{n}" for n in range(swarm.MAX_ACTIVE_WORKERS)]
+        for kwargs in ({"live": full}, {"waiting": 1}, {"ready": False}):
+            with self.subTest(kwargs=kwargs):
+                started, fake = self.top_up(**kwargs)
+                self.assertFalse(started)
+                self.assertFalse(fake.said("--ref", "swarm.yml"))
+
     def test_combined_worker_cap_is_twenty(self):
         self.assertEqual(swarm.MAX_ACTIVE_WORKERS, 20)
 
@@ -450,6 +473,35 @@ class PlanTests(unittest.TestCase):
         ids = [t["id"] for t in self.plan([pr(7, "swarm/CW-001-4")])]
         self.assertEqual(ids, ["CW-002", "CW-006"])
 
+    def kinds(self, prs=(), live=(), **kw):
+        return [t["kind"] for t in swarm.plan_workers(10, SLOTS, TASKS, list(prs), live=live, **kw)]
+
+    def test_no_new_story_starts_while_a_pull_request_waits_for_a_fix_or_the_debugger(self):
+        for label in ("needs-fix", "needs-debug"):
+            with self.subTest(label=label):
+                waiting = pr(9, "swarm/CW-002-4", "swarm", label, comments=[swarm.MARK + "\nBroke"])
+                self.assertNotIn("story", self.kinds([waiting], live=["CW-002"]))
+        parked = pr(9, "swarm/CW-002-4", "swarm", "needs-fix", "needs-human")
+        self.assertIn("story", self.kinds([parked]))
+        self.assertIn("story", self.kinds([pr(9, "swarm/CW-002-4", "swarm", "needs-debug", cross=True)]))
+
+    def test_repairs_and_fixes_use_every_slot_while_stories_wait(self):
+        waiting = [dict(pr(n, f"swarm/CW-00{n}-4", "swarm", "needs-fix", comments=[swarm.MARK + "\nBroke"]),
+                        title="t") for n in (1, 2, 6)]
+        self.assertEqual(self.kinds(waiting), ["fix", "fix", "fix"])
+
+    def test_stories_stop_at_the_story_cap_and_the_wave_size(self):
+        busy = [f"T-{n}" for n in range(swarm.STORY_WORKER_CAP)]
+        self.assertEqual(self.kinds(live=busy), [])
+        self.assertEqual(self.kinds(live=busy[:-1]), ["story"])
+        self.assertEqual(self.kinds(story_wave=2), ["story", "story"])
+
+    def test_a_repair_is_not_held_back_by_the_story_cap(self):
+        repair = {"kind": "story", "id": "FIX-9", "number": 0, "branch": "", "title": "r", "body": "b", "fix": ""}
+        full = [f"T-{n}" for n in range(swarm.STORY_WORKER_CAP)]
+        plan = swarm.plan_workers(10, SLOTS, TASKS, [], repair, live=full, story_wave=0)
+        self.assertEqual([t["id"] for t in plan], ["FIX-9"])
+
     def test_a_pull_request_already_being_fixed_gets_no_second_fix_worker(self):
         prs = [pr(9, "swarm/CW-002-4", "swarm", "needs-fix", comments=[swarm.MARK + "\nBroke"])]
         plan = swarm.plan_workers(10, SLOTS, TASKS, prs, live=["CW-002"])
@@ -620,6 +672,25 @@ class PlanTests(unittest.TestCase):
             self.assertEqual(swarm.gh("pr", "create"), "ok")
         self.assertEqual(run.call_count, 2)
 
+    def test_gh_retries_rate_limits_and_dropped_connections(self):
+        for message in ("HTTP 500: Internal Server Error", "You have exceeded a secondary rate limit",
+                        "read tcp: connection reset by peer", "net/http: TLS handshake timeout",
+                        "Get https://api.github.com: unexpected EOF"):
+            with self.subTest(message=message):
+                responses = [subprocess.CompletedProcess([], 1, "", message),
+                             subprocess.CompletedProcess([], 0, "ok", "")]
+                with mock.patch.object(swarm.subprocess, "run", side_effect=responses) as run, \
+                     mock.patch.object(swarm.time, "sleep"):
+                    self.assertEqual(swarm.gh("pr", "view"), "ok")
+                self.assertEqual(run.call_count, 2)
+
+    def test_gh_gives_up_after_four_transient_failures(self):
+        failed = subprocess.CompletedProcess([], 1, "", "HTTP 503: Service Unavailable")
+        with mock.patch.object(swarm.subprocess, "run", return_value=failed) as run, \
+             mock.patch.object(swarm.time, "sleep"), self.assertRaises(subprocess.CalledProcessError):
+            swarm.gh("pr", "view")
+        self.assertEqual(run.call_count, 4)
+
     def test_gh_does_not_retry_permanent_errors(self):
         with mock.patch.object(swarm.subprocess, "run",
                                return_value=subprocess.CompletedProcess(
@@ -786,8 +857,8 @@ class PlanTests(unittest.TestCase):
 
     def test_wave_runs_ten_workers_and_each_publishes_on_its_own(self):
         text = (ROOT / ".github/workflows/swarm.yml").read_text()
-        self.assertIn("default: '10'", text)
-        self.assertIn("inputs.workers || '10'", text)
+        self.assertIn("default: '7'", text)
+        self.assertIn("inputs.workers || '7'", text)
         self.assertIn("max-parallel: 10", text)
         # Each worker is a reusable-workflow call, so its publish job needs only its
         # own work job and never waits for the slowest worker of the wave.
@@ -868,8 +939,8 @@ class ReleaseTests(unittest.TestCase):
         self.assertTrue(sent.said("workflow", "run", "swarm-debugger.yml"))
         self.assertFalse(sent.said("labels[]=needs-human"))
 
-    def test_a_fix_worker_that_fails_after_the_debugger_report_needs_a_person(self):
-        fake = FakeGh(pr_view={"labels": labels("swarm", "debugged")})
+    def test_a_fix_worker_that_fails_after_the_last_debugger_round_needs_a_person(self):
+        fake = FakeGh(pr_view={"labels": labels("swarm", "debug-1", "debug-2", "debug-3")})
         with mock.patch.object(swarm, "gh", fake):
             swarm.release(self.fix, "failed", 0)
         self.assertTrue(fake.said("labels[]=needs-human"))
@@ -892,45 +963,56 @@ class TaskFieldTests(unittest.TestCase):
 
 
 class FailTests(unittest.TestCase):
-    def fail(self, existing):
+    def fail(self, existing, **kwargs):
         fake = FakeGh(pr_view={"labels": labels("swarm", *existing)})
         with mock.patch.object(swarm, "gh", fake):
-            more = swarm.fail(9, "Integration failed", "line\n```evil\n" * 3)
+            more = swarm.fail(9, "Integration failed", "line\n```evil\n" * 3, **kwargs)
         return more, fake
 
-    def test_first_failure_asks_for_a_fix_and_dispatches_a_worker(self):
+    def test_a_failure_goes_to_the_debugger_first(self):
         more, fake = self.fail([])
-        self.assertTrue(more)
-        self.assertTrue(fake.said("labels[]=needs-fix") and fake.said("labels[]=fix-1"))
-        self.assertTrue(fake.said("workflow", "run", "swarm.yml"))
-        comment = [c for c in fake.calls if c[:2] == ("pr", "comment")][0][-1]
-        self.assertIn(swarm.MARK, comment)
-        self.assertNotIn("```evil", comment)
-
-    def test_a_waiting_wave_means_no_second_dispatch(self):
-        fake = FakeGh(pr_view={"labels": labels("swarm")})
-        with mock.patch.object(swarm, "gh", fake), mock.patch.object(swarm, "waiting_waves", return_value=1):
-            more = swarm.fail(9, "Integration failed")
-        self.assertTrue(more)
-        self.assertFalse(fake.said("workflow", "run", "swarm.yml"))
-
-    def test_attempts_are_counted_and_capped(self):
-        self.assertTrue(self.fail(["fix-1"])[1].said("labels[]=fix-2"))
-        more, fake = self.fail(["fix-1", "fix-2", "fix-3"])
         self.assertFalse(more)
         self.assertTrue(fake.said("labels[]=needs-debug"))
-        self.assertFalse(fake.said("labels[]=needs-human"))
+        self.assertFalse(fake.said("labels[]=needs-fix") or fake.said("labels[]=fix-1"))
         self.assertTrue(fake.said("workflow", "run", "swarm-debugger.yml"))
         self.assertFalse(fake.said("workflow", "run", "swarm.yml"))
+        comment = [c for c in fake.calls if c[:2] == ("pr", "comment")][0][-1]
+        self.assertIn(swarm.MARK, comment)
+        self.assertIn("3 rounds", comment)
+        self.assertNotIn("```evil", comment)
 
-    def test_a_failure_after_the_debugger_report_needs_a_person(self):
-        more, fake = self.fail(["debugged"])
+    def test_every_round_goes_back_to_the_debugger_until_the_third_fix_fails(self):
+        for existing in (["debug-1"], ["debug-1", "debug-2"]):
+            more, fake = self.fail(existing)
+            self.assertFalse(more)
+            self.assertTrue(fake.said("labels[]=needs-debug"), existing)
+            self.assertFalse(fake.said("labels[]=needs-human"))
+        more, fake = self.fail(["debug-1", "debug-2", "debug-3"])
         self.assertFalse(more)
         self.assertTrue(fake.said("labels[]=needs-human"))
         self.assertFalse(fake.said("labels[]=needs-debug"))
         self.assertFalse(fake.said("workflow"))
         comment = [c for c in fake.calls if c[:2] == ("pr", "comment")][0][-1]
-        self.assertIn("debugger's report", comment)
+        self.assertIn("3 debugger rounds", comment)
+
+    def test_a_failure_the_reason_explains_goes_to_a_fix_worker_first(self):
+        more, fake = self.fail([], simple=True)
+        self.assertTrue(more)
+        self.assertTrue(fake.said("labels[]=needs-fix") and fake.said("labels[]=fix-1"))
+        self.assertTrue(fake.said("workflow", "run", "swarm.yml"))
+        self.assertFalse(fake.said("labels[]=needs-debug"))
+        fake = FakeGh(pr_view={"labels": labels("swarm")})
+        with mock.patch.object(swarm, "gh", fake), mock.patch.object(swarm, "waiting_waves", return_value=1):
+            self.assertTrue(swarm.fail(9, "Integration failed", simple=True))
+        self.assertFalse(fake.said("workflow", "run", "swarm.yml"))
+
+    def test_simple_failures_use_up_their_fix_attempts_then_the_debugger(self):
+        self.assertTrue(self.fail(["fix-1"], simple=True)[1].said("labels[]=fix-2"))
+        more, fake = self.fail(["fix-1", "fix-2", "fix-3"], simple=True)
+        self.assertFalse(more)
+        self.assertTrue(fake.said("labels[]=needs-debug"))
+        more, fake = self.fail(["debug-1"], simple=True)
+        self.assertTrue(fake.said("labels[]=needs-debug"))
 
 
 class StrategistTests(unittest.TestCase):
@@ -1039,15 +1121,26 @@ class DebuggerWorkflowTests(unittest.TestCase):
         jobs = self.workflow()["jobs"]
         self.assertEqual(list(jobs), ["select", "debug", "publish"])
         agent = [st for st in jobs["debug"]["steps"] if st.get("id") == "debug"][0]
-        self.assertEqual(agent["run"], "scripts/agent-run.sh debug")
         self.assertNotIn("GH_TOKEN", agent["env"])
         self.assertIn("no GitHub token", agent["name"])
         self.assertEqual(jobs["debug"]["permissions"].get("contents"), "read")
         publish = jobs["publish"]
         self.assertEqual(publish["needs"], ["select", "debug"])
+        self.assertEqual(publish["strategy"]["max-parallel"], 1)
+        self.assertEqual(jobs["debug"]["strategy"]["max-parallel"], swarm.DEBUG_PARALLEL)
         checkout = publish["steps"][0]["with"]
         self.assertEqual(checkout["ref"], "${{ github.event.repository.default_branch }}")
         self.assertIn("debug-publish", publish["steps"][-1]["run"])
+
+    def test_the_debugger_uses_the_workflow_revision_on_an_older_pr_checkout(self):
+        steps = self.workflow()["jobs"]["debug"]["steps"]
+        self.assertEqual(steps[0]["with"]["ref"], "${{ matrix.branch }}")
+        self.assertEqual(steps[0]["with"]["fetch-depth"], 0)
+        agent = next(step for step in steps if step.get("id") == "debug")
+        command = agent["run"]
+        self.assertIn('git show "$GITHUB_SHA:scripts/agent-run.sh" > "$runner"', command)
+        self.assertIn('bash "$runner" debug', command)
+        self.assertNotIn("git checkout", command)
 
     def test_it_runs_on_dispatch_and_hourly_and_only_when_a_pull_request_waits(self):
         config = self.workflow()
@@ -1056,6 +1149,7 @@ class DebuggerWorkflowTests(unittest.TestCase):
         self.assertEqual(len(triggers["schedule"]), 1)
         self.assertIn("count != '0'", config["jobs"]["debug"]["if"])
         self.assertIn("count != '0'", config["jobs"]["publish"]["if"])
+        self.assertEqual(len(swarm.DEBUG_SLOTS), swarm.DEBUG_PARALLEL)
 
     def test_fix_workers_read_the_pull_request_comments_the_debugger_writes(self):
         text = (ROOT / ".github/workflows/swarm-worker.yml").read_text(encoding="utf-8")
@@ -1083,11 +1177,10 @@ class DebuggerTests(unittest.TestCase):
         return outcome, fake, stuck
 
     def test_a_report_with_a_cause_and_a_fix_plan_goes_to_a_fix_worker(self):
-        outcome, fake, stuck = self.publish(self.REPORT, ("swarm", "needs-debug", "fix-1", "fix-2", "fix-3"))
+        outcome, fake, stuck = self.publish(self.REPORT, ("swarm", "needs-debug", "debug-1"))
         self.assertEqual(outcome, "fix")
-        self.assertTrue(fake.said("labels[]=debugged") and fake.said("labels[]=needs-fix"))
-        for name in ("needs-debug", "fix-1", "fix-2", "fix-3"):
-            self.assertTrue(self.removed(fake, name), name)
+        self.assertTrue(fake.said("labels[]=debug-2") and fake.said("labels[]=needs-fix"))
+        self.assertTrue(self.removed(fake, "needs-debug"))
         comment = [c for c in fake.calls if c[:2] == ("pr", "comment")][0][-1]
         self.assertIn(swarm.MARK, comment)
         self.assertIn(swarm.DEBUG_MARK, comment)
@@ -1105,15 +1198,42 @@ class DebuggerTests(unittest.TestCase):
 
     def test_no_cause_no_fix_plan_or_no_report_needs_a_person(self):
         no_plan = "Root cause found: yes\n## Root cause\nunknown\n"
-        for report in ("Root cause found: no\n## Root cause\nthe runner has no database\n", no_plan, None):
+        for report in ("Root cause found: no\n## Root cause\nthe runner has no database\n", no_plan):
             with self.subTest(report=report):
                 outcome, fake, stuck = self.publish(report)
                 self.assertEqual(outcome, "human")
                 self.assertTrue(fake.said("labels[]=needs-human"))
-                self.assertFalse(fake.said("labels[]=needs-fix") or fake.said("labels[]=debugged"))
+                self.assertFalse(fake.said("labels[]=needs-fix") or fake.said("labels[]=debug-1"))
                 self.assertTrue(self.removed(fake, "needs-debug"))
                 self.assertFalse(fake.said("workflow"))
                 stuck.assert_called_once()
+
+    def test_a_run_that_wrote_no_report_is_retried_once_per_round_then_needs_a_person(self):
+        class Comments(FakeGh):
+            def __init__(self, comments, **kw):
+                super().__init__(**kw)
+                self.comments = comments
+
+            def __call__(self, *args, check=True):
+                if args[0] == "api":
+                    self.calls.append(args)
+                    return json.dumps(self.comments)
+                return super().__call__(*args, check=check)
+
+        marker = f"{swarm.DEBUG_RETRY_MARK} 2 -->"
+        view = {"state": "OPEN", "labels": labels("swarm", "needs-debug", "debug-1")}
+        bot = {"user": {"login": "github-actions[bot]"}, "body": marker}
+        stranger = {"user": {"login": "someone"}, "author_association": "NONE", "body": marker}
+        for comments, expected in (([], "retry"), ([stranger], "retry"), ([bot], "human")):
+            with self.subTest(expected=expected):
+                fake = Comments(comments, pr_view=view)
+                with tempfile.TemporaryDirectory() as tmp, mock.patch.object(swarm, "gh", fake), \
+                        mock.patch.object(swarm, "gh_json", side_effect=lambda *a: json.loads(fake(*a))), \
+                        mock.patch.object(swarm, "report_pr_stuck"):
+                    self.assertEqual(swarm.debug_publish(9, tmp), expected)
+                self.assertEqual(fake.said("--ref", "swarm-debugger.yml"), expected == "retry")
+                self.assertEqual(self.removed(fake, "needs-debug"), expected == "human")
+                self.assertEqual(any(marker in arg for call in fake.calls for arg in call), expected == "retry")
 
     def test_a_pull_request_no_longer_waiting_for_the_debugger_is_left_alone(self):
         for existing, state in ((("swarm", "needs-human"), "OPEN"), (("swarm", "needs-debug"), "CLOSED")):
@@ -1130,20 +1250,28 @@ class DebuggerTests(unittest.TestCase):
                pr(6, "feature/by-hand", "swarm", "needs-debug")]
         with tempfile.TemporaryDirectory() as tmp, mock.patch.object(swarm, "gh", FakeGh(prs=prs)), \
                 mock.patch.dict(os.environ, {"GITHUB_OUTPUT": str(Path(tmp) / "out")}):
-            self.assertEqual(swarm.debug_select(), 8)
+            self.assertEqual(swarm.debug_select(), [8, 12])
             written = (Path(tmp) / "out").read_text()
-        self.assertIn("pr=8\n", written)
-        self.assertIn("branch=swarm/CW-001-4\n", written)
-        self.assertIn("task=CW-001\n", written)
+        matrix = json.loads(re.search(r"matrix=(.*)\n", written).group(1))["include"]
+        self.assertEqual(matrix, [
+            {"pr": 8, "branch": "swarm/CW-001-4", "task": "CW-001", "round": 1, "slot": 3},
+            {"pr": 12, "branch": "swarm/CW-002-5", "task": "CW-002", "round": 1, "slot": 6}])
         self.assertIn("count=2\n", written)
+
+    def test_select_takes_at_most_one_pull_request_per_debugger_slot(self):
+        prs = [pr(n, f"swarm/CW-{n:03d}-4", "swarm", "needs-debug") for n in range(1, 8)]
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(swarm, "gh", FakeGh(prs=prs)), \
+                mock.patch.dict(os.environ, {"GITHUB_OUTPUT": str(Path(tmp) / "out")}):
+            self.assertEqual(swarm.debug_select(), [1, 2, 3, 4])
+            self.assertIn("count=4\n", (Path(tmp) / "out").read_text())
 
     def test_select_with_nothing_waiting_reports_zero(self):
         with tempfile.TemporaryDirectory() as tmp, mock.patch.object(swarm, "gh", FakeGh(prs=[])), \
                 mock.patch.dict(os.environ, {"GITHUB_OUTPUT": str(Path(tmp) / "out")}):
-            self.assertEqual(swarm.debug_select(), "")
+            self.assertEqual(swarm.debug_select(), [])
             written = (Path(tmp) / "out").read_text()
         self.assertIn("count=0\n", written)
-        self.assertIn("pr=\n", written)
+        self.assertIn('matrix={"include":[]}\n', written)
 
     def test_pr_context_keeps_only_trusted_comments_with_the_marker(self):
         comments = [{"body": f"{swarm.MARK}\nIntegration failed", "user": {"login": "github-actions[bot]"}},
@@ -1179,9 +1307,58 @@ class DebuggerTests(unittest.TestCase):
         self.assertIn("2 comment(s) written to ctx.md", out.getvalue())
         self.assertIn("fix", out.getvalue())
 
+    def history(self, comments, body="First worker notes", **limits):
+        class Gh(FakeGh):
+            def __call__(self, *args, check=True):
+                self.calls.append(args)
+                if args[0] == "api":
+                    return json.dumps(comments)
+                if args[:2] == ("pr", "view"):
+                    return json.dumps({"body": body})
+                return ""
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(swarm, "gh", Gh()), \
+                mock.patch.multiple(swarm, **(limits or {"PR_HISTORY_LIMIT": swarm.PR_HISTORY_LIMIT})):
+            out = Path(tmp) / "history.md"
+            count = swarm.pr_context(9, str(out))
+            return count, out.read_text() if out.exists() else ""
+
+    def comment(self, body, when="2026-11-21T10:00:00Z"):
+        return {"body": body, "created_at": when, "user": {"login": "github-actions[bot]"}}
+
+    def test_the_history_lists_every_step_oldest_first_with_the_first_workers_notes(self):
+        comments = [self.comment(f"{swarm.MARK}\nIntegration failed: gate\nERROR in FooTest", "2026-11-21T10:00:00Z"),
+                    self.comment(f"{swarm.MARK}\n{swarm.DEBUG_MARK}\n**Debugger report, round 1 of 3.** cause A", "2026-11-21T11:00:00Z"),
+                    self.comment("Worker 3 ended with 'timeout' and pushed nothing.", "2026-11-21T12:00:00Z"),
+                    self.comment(f"{swarm.RESOLVE_MARK}\nresolver noise"),
+                    {"body": f"{swarm.MARK}\nstranger", "user": {"login": "x"}, "author_association": "NONE"}]
+        count, text = self.history(comments)
+        self.assertEqual(count, 3)
+        self.assertIn("First worker notes", text)
+        self.assertLess(text.index("Step 1: integrator"), text.index("Step 2: debugger report"))
+        self.assertLess(text.index("Step 2: debugger report"), text.index("Step 3: fix worker"))
+        self.assertIn("ERROR in FooTest", text)
+        self.assertNotIn("resolver noise", text)
+        self.assertNotIn("stranger", text)
+
+    def test_older_steps_are_shortened_and_the_oldest_go_when_the_history_is_too_long(self):
+        comments = [self.comment(f"{swarm.MARK}\n" + "x" * 400 + f" step{n}") for n in range(6)]
+        count, text = self.history(comments, PR_HISTORY_OLD=50, PR_HISTORY_RECENT=300, PR_HISTORY_LIMIT=700)
+        self.assertLess(count, 6)
+        self.assertIn("older step(s) left out", text)
+        self.assertIn("step5", text)  # a log's end is kept: that is where the error is
+        self.assertNotIn("step0", text)
+
+    def test_a_pull_request_with_no_history_writes_nothing(self):
+        count, text = self.history([], body="")
+        self.assertEqual((count, text), (0, ""))
+        count, text = self.history([], body="Only the notes")
+        self.assertEqual(count, 0)
+        self.assertIn("Only the notes", text)
+
     def test_labels_exist_and_the_debugger_is_budgeted(self):
         self.assertIn("needs-debug", swarm.LABELS)
-        self.assertIn("debugged", swarm.LABELS)
+        for name in ("debug-1", "debug-2", "debug-3"):
+            self.assertIn(name, swarm.LABELS)
         self.assertIn("swarm-debugger.yml", swarm.BUDGET_WORKFLOWS)
 
     def test_the_integration_queue_waits_for_the_debugger(self):
@@ -1463,6 +1640,19 @@ class ResolveConflictTests(unittest.TestCase):
             swarm.integrate_batch([5])
         self.assertTrue(failed.called)
         emitted.assert_any_call("conflicted", "[]")
+
+    def test_a_branch_that_moved_after_planning_is_retested_without_the_debugger(self):
+        fake = FakeGh(pr_view={"headRefOid": "new-sha"})
+        with mock.patch.object(swarm, "gh", fake), \
+             mock.patch.object(swarm, "guard", return_value=[]), \
+             mock.patch.object(swarm, "is_repair", return_value=False), \
+             mock.patch.object(swarm, "merge_local", return_value=("old-sha", "CW-001", [])), \
+             mock.patch.object(swarm, "git") as local, \
+             mock.patch.object(swarm, "fail") as failed, \
+             mock.patch.object(swarm, "emit"):
+            swarm.integrate_batch([5])
+        failed.assert_called_once_with(5, "the branch changed after planning; it will be retested", simple=True)
+        self.assertTrue(any(c.args[:2] == ("merge", "--abort") for c in local.call_args_list))
 
     def results(self, tmp, **outcomes):
         for pr, outcome in outcomes.items():

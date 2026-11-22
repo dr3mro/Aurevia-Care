@@ -410,6 +410,41 @@ class AlarmTests(TuiCase):
         self.assertEqual(screen.text().count("NEW FAILED RUN"), 1)
         self.assertEqual(self.beep_mock.call_count, 1)
 
+    def test_m_mutes_the_beep_but_not_the_alarm_and_unmutes_again(self):
+        fail = lambda n: (lambda: (self.advance(10), self.arrive(self.payload(runs=[self.failed(n)]))), -1)
+        steps = [
+            (lambda: self.arrive(self.payload()), -1),
+            (None, ord("m")),  # muted before any failure
+            fail(1),
+            (None, ord("x")),  # any key silences the alarm
+            (None, ord("M")),  # unmuted again
+            fail(2),
+            (None, ord("q")),
+        ]
+        screen = self.run_tui(steps)
+        self.assertIn("NEW FAILED RUN", screen.text())
+        self.assertIn("m mute", screen.text())
+        self.assertEqual(self.beep_mock.call_count, 1)  # only the second failure beeped
+
+    def test_the_footer_and_alarm_say_when_muted(self):
+        steps = [
+            (lambda: self.arrive(self.payload()), -1),
+            (None, ord("m")),
+            (None, -1),
+            (None, ord("q")),
+        ]
+        self.run_tui(steps)
+        self.assertIn("m unmute (MUTED)", self.screen.text())
+        steps = [
+            (lambda: self.arrive(self.payload()), -1),
+            (None, ord("m")),
+            (lambda: (self.advance(10), self.arrive(self.payload(runs=[self.failed(1)]))), -1),
+            (None, ord("q")),
+        ]
+        self.run_tui(steps)
+        self.assertIn("(muted)", self.screen.text())
+        self.assertEqual(self.beep_mock.call_count, 0)
+
     def test_multiple_fresh_failures_are_grouped_and_beeped_every_five_seconds(self):
         runs = [self.failed(1), self.failed(2)]
         steps = [
@@ -454,6 +489,31 @@ class AutostartTests(TuiCase):
         return self.payload(runs=[{"workflowName": "Delivery", "status": "completed",
                                    "conclusion": "success"}],
                             todo="- [ ] X-1 · work")
+
+    def test_s_disables_autostart_before_the_first_refresh(self):
+        self.m.AUTOSTART = 7
+        with mock.patch.object(self.m, "start_swarm") as start:
+            self.run_tui([(None, ord("s")), (lambda: self.arrive(self.idle_payload()), -1),
+                          (None, ord("q"))])
+        start.assert_not_called()
+        self.assertIn("s auto-start off", self.screen.text())
+
+    def test_s_enables_autostart_with_the_default_wait_when_started_off(self):
+        with mock.patch.object(self.m, "start_swarm", return_value="") as start:
+            self.run_tui([(None, ord("S")), (lambda: self.arrive(self.idle_payload()), -1),
+                          (None, ord("q"))], size=(24, 150))
+        start.assert_called_once_with()
+        self.assertIn("s auto-start on (10m)", self.screen.text())
+
+    def test_toggling_preserves_the_wait_and_last_launch_time(self):
+        self.m.AUTOSTART = 7
+        with mock.patch.object(self.m, "start_swarm", return_value="") as start:
+            self.run_tui([(lambda: self.arrive(self.idle_payload()), -1), (None, ord("s")),
+                          (None, ord("s")), (lambda: self.advance(30), -1),
+                          (lambda: self.arrive(self.idle_payload()), -1), (None, ord("q"))],
+                         size=(24, 150))
+        start.assert_called_once_with()
+        self.assertIn("s auto-start on (7m)", self.screen.text())
 
     def test_a_wave_starts_when_swarm_is_idle_and_the_wait_has_elapsed(self):
         self.m.AUTOSTART = 10

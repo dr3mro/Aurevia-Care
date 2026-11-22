@@ -1,6 +1,6 @@
 ---
 name: smartclinic-laboratory-user
-description: "Exercise lab collection and verification as a simulated user."
+description: "Exercises lab collection and verification as a simulated user. Use when a slice affects specimens, collection, results or lab verification and needs a synthetic walkthrough."
 ---
 
 # Laboratory User

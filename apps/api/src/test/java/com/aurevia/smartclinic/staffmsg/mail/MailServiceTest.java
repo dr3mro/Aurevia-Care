@@ -54,7 +54,7 @@ class MailServiceTest {
     @BeforeEach
     void setUp() {
         directory = new MutableDirectory();
-        service = new MailService(Clock.fixed(NOW, ZoneOffset.UTC), directory);
+        service = new MailService(Clock.fixed(NOW, ZoneOffset.UTC), directory, new InMemoryMailStore());
     }
 
     @Test
@@ -309,7 +309,7 @@ class MailServiceTest {
                 .thenReturn(List.of(new StaffRow(new StaffMember("nurse-b", "B", "active",
                         List.of("nurse")), "id-b")));
         MailService production = new MailService(Clock.fixed(NOW, ZoneOffset.UTC), staff,
-                guardedTransactions());
+                guardedTransactions(), new InMemoryMailStore());
         assertNotNull(production);
 
         DraftView draft = production.createDraft(new CreateDraftCommand(ORG, FACILITY, "nurse-a",
