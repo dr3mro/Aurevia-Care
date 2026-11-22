@@ -113,7 +113,7 @@ With the switch on, a pull request that touches protected files is **not** label
 
 - the full `scripts/check.sh` gate still runs on the merge result (a repair still uses `scripts/repair-gate.sh`), and Delivery still re-verifies the pushed commit on `main`;
 - the shared-tracker rule still fails a PR that edits `TODO.md`, `MEMORY.md`, `WORKSPACE.md`, `BUGS.md`, `PROJECT.md` or `docs/swarm/*`;
-- the 30-file limit still sends a larger PR to `needs-human`;
+- the 50-file limit still sends a larger PR to `needs-human`;
 - the branch must still match what was tested, and `.github/workflows/*` pushes still need `SWARM_TOKEN` with workflow scope (`SWARM_WORKFLOW_PUSH`) — the switch does not grant that permission.
 
 Repairs already bypass the protected-file rule without the switch; the switch additionally lifts the gate-config check that would otherwise still block a repair. Module `check.sh` files are protected either way.

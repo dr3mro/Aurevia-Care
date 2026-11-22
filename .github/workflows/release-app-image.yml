@@ -53,7 +53,7 @@ jobs:
         if: github.ref_type == 'tag'
         env:
           VERSION: ${{ steps.version.outputs.value }}
-          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           image="ghcr.io/${GITHUB_REPOSITORY,,}-app"
           printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
@@ -78,7 +78,7 @@ jobs:
       - name: Create the manifest
         env:
           VERSION: ${{ steps.version.outputs.value }}
-          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           image="ghcr.io/${GITHUB_REPOSITORY,,}-app"
           printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
