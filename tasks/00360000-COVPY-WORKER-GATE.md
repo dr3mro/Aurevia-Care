@@ -1,4 +1,6 @@
-- [ ] COVPY-WORKER-GATE · Script tests: reach 100% line and branch coverage of `scripts/worker_gate.py`
+- [-] COVPY-WORKER-GATE · Script tests: reach 100% line and branch coverage of `scripts/worker_gate.py`
+  - agent: swarm-9
+  - attempts: 1
   - requirements: OPS-06
   - scope: scripts/tests/test_worker_gate_coverage.py
   - depends: WQUALITY-03
