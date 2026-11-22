@@ -1,4 +1,6 @@
-- [ ] RESP-ADMIN-SCREEN · Staff web: responsive `AdminScreen` (features-admin)
+- [-] RESP-ADMIN-SCREEN · Staff web: responsive `AdminScreen` (features-admin)
+  - agent: swarm-9
+  - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/admin/AdminScreen.tsx, apps/staff-web/tests/responsive/features-admin/AdminScreen.responsive.test.tsx
   - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS

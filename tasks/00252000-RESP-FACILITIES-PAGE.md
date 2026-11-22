@@ -1,4 +1,6 @@
-- [ ] RESP-FACILITIES-PAGE · Staff web: responsive `FacilitiesPage` (features-admin)
+- [-] RESP-FACILITIES-PAGE · Staff web: responsive `FacilitiesPage` (features-admin)
+  - agent: swarm-10
+  - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/admin/FacilitiesPage.tsx, apps/staff-web/tests/responsive/features-admin/FacilitiesPage.responsive.test.tsx
   - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS

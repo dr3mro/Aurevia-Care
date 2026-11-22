@@ -1,4 +1,6 @@
-- [ ] RESP-SIGN-IN-PLACEHOLDER · Staff web: responsive `SignInPlaceholder` (app)
+- [-] RESP-SIGN-IN-PLACEHOLDER · Staff web: responsive `SignInPlaceholder` (app)
+  - agent: swarm-6
+  - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/app/SignInPlaceholder.tsx, apps/staff-web/tests/responsive/app/SignInPlaceholder.responsive.test.tsx
   - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
