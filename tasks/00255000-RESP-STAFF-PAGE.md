@@ -1,4 +1,6 @@
-- [ ] RESP-STAFF-PAGE · Staff web: responsive `StaffPage` (features-admin)
+- [-] RESP-STAFF-PAGE · Staff web: responsive `StaffPage` (features-admin)
+  - agent: swarm-5
+  - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/admin/StaffPage.tsx, apps/staff-web/tests/responsive/features-admin/StaffPage.responsive.test.tsx
   - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
