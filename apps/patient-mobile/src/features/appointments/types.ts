@@ -30,6 +30,12 @@ export const CONFIRMABLE_STATUSES: readonly AppointmentStatus[] = ['booked'];
 /** The appointment fields a verified patient may see. */
 export interface Appointment {
   readonly id: LocalId;
+  /**
+   * Optimistic-lock version read from the server projection. Confirmation must
+   * echo this exact value as `expectedVersion`; a later revision is rejected,
+   * so a stale screen can never overwrite a newer state (PAT-01).
+   */
+  readonly version: number;
   readonly patientId: LocalId;
   readonly facilityCode: LocalId;
   readonly facilityTimeZone: string;
