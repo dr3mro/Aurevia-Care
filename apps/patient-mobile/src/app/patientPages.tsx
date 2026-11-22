@@ -14,7 +14,9 @@ import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import * as SafeArea from 'react-native-safe-area-context';
 
 import type { Transport } from '../api/transport';
+import { AppointmentDetail } from '../features/appointments/AppointmentDetail';
 import { AppointmentListScreen } from '../features/appointments/AppointmentListScreen';
+import { DeviceRevocationConfirm } from '../features/appointments/DeviceRevocationConfirm';
 import type { AppointmentView } from '../features/appointments/appointments';
 import { confirmedAppointmentView } from '../features/appointments/appointments';
 import {
@@ -22,6 +24,15 @@ import {
   confirmAppointment,
   releasePendingCommand,
 } from '../features/appointments/confirmClient';
+import { createDeviceWriteClient, revokeDevice } from '../features/appointments/deviceClient';
+import type { DeviceWriteClient } from '../features/appointments/deviceClient';
+import {
+  devicesForPatient,
+  findEligibleDevice,
+  refreshVisibleDevices,
+} from '../features/appointments/devices';
+import { screenText } from '../features/appointments/patientDesign';
+import type { DeviceToken } from '../features/appointments/types';
 import { ConversationInbox } from '../features/conversations/ConversationInbox';
 import { ReleasedReportsScreen } from '../features/reports/ReleasedReportsScreen';
 
@@ -34,8 +45,8 @@ import {
   loadAppointments,
   loadConversations,
   loadReports,
+  PATIENT_API_BASE_URL,
   placeholderAction,
-  placeholderDevices,
   placeholderNotice,
 } from './providers';
 import type { ConversationInboxData } from './providers';
@@ -53,6 +64,24 @@ export interface PatientPageProps {
   readonly patientId: string;
   /** Clears the credential and leaves the signed-in shell on a 401. */
   readonly onSessionExpired: () => void;
+}
+
+/** Optional seams for the appointments tab's device commands. */
+export interface AppointmentListPageProps extends PatientPageProps {
+  /**
+   * Authenticated device write port. A real DELETE client is built from the
+   * configured API origin when the host does not inject one; tests inject a
+   * synthetic port so no request leaves the harness.
+   */
+  readonly deviceClient?: DeviceWriteClient;
+  /**
+   * Tenant-scoped flat device seed supplied by the signed-in host. No server
+   * device-list route exists in V1, so the host owns the registry and this page
+   * only derives the devices eligible for its verified patient. It is read when
+   * the tab mounts; changing the registry requires a remount, which keeps the
+   * refresh path a single deterministic projection rather than an extra effect.
+   */
+  readonly initialDevices?: readonly DeviceToken[];
 }
 
 /** Stable emptiness test for a loaded list. */
@@ -158,7 +187,9 @@ export function AppointmentListPage({
   organizationId,
   patientId,
   onSessionExpired,
-}: PatientPageProps): React.JSX.Element {
+  deviceClient,
+  initialDevices,
+}: AppointmentListPageProps): React.JSX.Element {
   const messages = useMemo(() => screenMessages(locale), [locale]);
   const formatter = useMemo(() => facilityZoneFormatter(), []);
   /** Server-confirmed revisions by tenant row key, applied over the loaded list. */
@@ -169,6 +200,28 @@ export function AppointmentListPage({
   const [reloadCount, setReloadCount] = useState(0);
   /** Synchronous guard: React state updates alone would allow a fast double press. */
   const pendingRef = useRef<string | null>(null);
+
+  /** The real write port is built once per locale; the host may inject a test one. */
+  const writeClient = useMemo(
+    () =>
+      deviceClient ??
+      createDeviceWriteClient({ baseUrl: PATIENT_API_BASE_URL, fetchImpl: fetch, language: locale }),
+    [deviceClient, locale],
+  );
+  /** Only the host's tenant-scoped, active devices of this patient are offered. */
+  const [devices, setDevices] = useState<readonly DeviceToken[]>(() =>
+    devicesForPatient(initialDevices ?? [], organizationId, patientId),
+  );
+  /** Appointment whose detail is open, or null while the list is shown. */
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  /** Device awaiting an explicit confirm/cancel choice. */
+  const [revocationId, setRevocationId] = useState<string | null>(null);
+  /** Device whose revocation write is in flight. */
+  const [deviceInFlightId, setDeviceInFlightId] = useState<string | null>(null);
+  /** Generic failure line; never a token, a response body or clinical detail. */
+  const [deviceError, setDeviceError] = useState<string | null>(null);
+  /** Synchronous guard so two presses in one turn cannot issue two DELETEs. */
+  const devicePendingRef = useRef<string | null>(null);
 
   const load = useCallback(
     () => loadAppointments(transport, patientId, organizationId),
@@ -222,6 +275,70 @@ export function AppointmentListPage({
     [transport, patientId, onSessionExpired, formatter],
   );
 
+  /** Open details for exactly the row whose control was pressed. */
+  const openDetails = useCallback((id: string) => setSelectedId(id), []);
+
+  /** Leave the detail without changing the loaded list or any command state. */
+  const closeDetails = useCallback(() => setSelectedId(null), []);
+
+  /**
+   * Resolve a pressed device id before offering a destructive command.
+   *
+   * A guessed, stale, foreign or revoked identifier opens no confirmation, so
+   * no request can be sent for a device outside this patient's active tenant.
+   */
+  const offerRevoke = useCallback(
+    (deviceId: string) => {
+      const device = findEligibleDevice(devices, organizationId, deviceId, patientId);
+      setRevocationId(device === undefined ? null : device.id);
+      setDeviceError(null);
+    },
+    [devices, organizationId, patientId],
+  );
+
+  /** Cancel keeps the device and sends no request. */
+  const cancelRevocation = useCallback(() => {
+    setRevocationId(null);
+    setDeviceError(null);
+  }, []);
+
+  /**
+   * Issue one revocation after the explicit Confirm press.
+   *
+   * A fast second press is dropped by the synchronous guard before any write.
+   * A success or an idempotent already-revoked reply refreshes the scoped
+   * devices; a 401 ends the session; every other failure keeps the device and
+   * shows one generic line so the patient can retry deliberately.
+   */
+  const revoke = useCallback(async (): Promise<void> => {
+    // The Confirm control is rendered only while a device is selected, so that
+    // selection is an invariant of this handler, not a reachable guard.
+    const deviceId = revocationId!;
+    if (!claimPendingCommand(devicePendingRef, deviceId)) {
+      return;
+    }
+    setDeviceInFlightId(deviceId);
+    try {
+      const result = await revokeDevice(writeClient, { deviceId, patientId });
+      if (result.kind === 'unauthenticated') {
+        onSessionExpired();
+        setRevocationId(null);
+        setDeviceError(null);
+      } else if (result.kind === 'revoked' || result.kind === 'alreadyRevoked') {
+        // No server device GET exists in V1: recompute eligibility from the
+        // host's scoped seed so the revoked device is no longer offered.
+        setDevices(refreshVisibleDevices(devices, organizationId, deviceId, patientId));
+        setRevocationId(null);
+        setDeviceError(null);
+      } else {
+        setDeviceError(screenText(locale, 'revokeError'));
+      }
+    } finally {
+      releasePendingCommand(devicePendingRef);
+      setDeviceInFlightId(null);
+    }
+  }, [revocationId, writeClient, patientId, onSessionExpired, devices, organizationId, locale]);
+
   return (
     <PatientPageFrame pageId="appointments" locale={locale}>
       <PatientResource
@@ -231,20 +348,58 @@ export function AppointmentListPage({
         emptyMessage={appText(locale, 'emptyAppointments')}
         messages={messages}
         onSessionExpired={onSessionExpired}>
-        {(appointments) => (
-          <AppointmentListScreen
-            appointments={appointments.map((row) => confirmedRows[row.key] ?? row)}
-            notice={placeholderNotice()}
-            patientId={patientId}
-            devices={placeholderDevices()}
-            onConfirm={(row) => {
-              void confirm(row);
-            }}
-            pendingAppointmentId={pendingId}
-            onOpenDetails={placeholderAction}
-            onRevokeDevice={placeholderAction}
-          />
-        )}
+        {(appointments) => {
+          const visible = appointments.map((row) => confirmedRows[row.key] ?? row);
+          const selected = visible.find((row) => row.id === selectedId);
+          const detail =
+            selected === undefined ? null : (
+              <AppointmentDetail
+                appointment={selected}
+                locale={locale}
+                backLabel={screenText(locale, 'back')}
+                onBack={closeDetails}
+              />
+            );
+          const confirmationStep =
+            revocationId === null ? null : (
+              <DeviceRevocationConfirm
+                deviceId={revocationId}
+                locale={locale}
+                title={screenText(locale, 'revokeConfirmTitle')}
+                body={screenText(locale, 'revokeConfirmBody')}
+                cancelLabel={screenText(locale, 'revokeCancel')}
+                confirmLabel={screenText(locale, 'revokeConfirm')}
+                errorMessage={deviceError}
+                pending={deviceInFlightId !== null}
+                onCancel={cancelRevocation}
+                onConfirm={() => {
+                  void revoke();
+                }}
+              />
+            );
+          return (
+            <AppointmentListScreen
+              appointments={visible}
+              notice={placeholderNotice()}
+              patientId={patientId}
+              devices={devices}
+              onConfirm={(row) => {
+                void confirm(row);
+              }}
+              pendingAppointmentId={pendingId}
+              onOpenDetails={openDetails}
+              onRevokeDevice={offerRevoke}
+              selectedAppointmentId={selectedId}
+              detailContent={
+                <>
+                  {detail}
+                  {confirmationStep}
+                </>
+              }
+              locale={locale}
+            />
+          );
+        }}
       </PatientResource>
     </PatientPageFrame>
   );

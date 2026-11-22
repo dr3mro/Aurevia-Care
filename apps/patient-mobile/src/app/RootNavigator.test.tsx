@@ -159,6 +159,18 @@ describe('four-tab navigation', () => {
     await waitFor(() => expect(view.getByTestId('appointment-list')).toBeTruthy());
   });
 
+  it('opens the selected appointment detail from the installed signed-in tab', async () => {
+    const view = await render(<RootNavigator locale="en" />);
+    await waitFor(() => expect(view.getByTestId('details-apt-1')).toBeTruthy());
+
+    await fireEvent.press(view.getByTestId('details-apt-1'));
+
+    expect(view.getByTestId('appointment-detail')).toBeTruthy();
+    expect(view.getByTestId('detail-status')).toHaveTextContent('booked');
+    await fireEvent.press(view.getByTestId('appointment-detail-back'));
+    expect(view.queryByTestId('appointment-detail')).toBeNull();
+  });
+
   it('renders each tab screen when that tab is pressed', async () => {
     const view = await render(<RootNavigator locale="en" />);
 
