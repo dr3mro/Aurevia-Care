@@ -1,4 +1,6 @@
-- [ ] RESP-CONFIG-PAGE · Staff web: responsive `ConfigPage` (features-admin)
+- [-] RESP-CONFIG-PAGE · Staff web: responsive `ConfigPage` (features-admin)
+  - agent: swarm-10
+  - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/admin/ConfigPage.tsx, apps/staff-web/tests/responsive/features-admin/ConfigPage.responsive.test.tsx
   - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
