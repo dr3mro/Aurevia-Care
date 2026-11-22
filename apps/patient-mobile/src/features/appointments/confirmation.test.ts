@@ -4,6 +4,7 @@ import { confirm, deriveConfirmation } from './confirmation';
 /** S-G3-01: confirmation eligibility, enablement and server-style timestamp (PAT-01). */
 const booked: Appointment = {
   id: 'apt-1',
+  version: 3,
   patientId: 'patient-1',
   facilityCode: 'MAIN',
   facilityTimeZone: 'Asia/Riyadh',
