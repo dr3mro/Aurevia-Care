@@ -1,4 +1,6 @@
-- [ ] RESP-NOTE-EDITOR · Staff web: responsive `NoteEditor` (features-chart)
+- [-] RESP-NOTE-EDITOR · Staff web: responsive `NoteEditor` (features-chart)
+  - agent: swarm-3
+  - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/chart/NoteEditor.tsx, apps/staff-web/tests/responsive/features-chart/NoteEditor.responsive.test.tsx
   - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
