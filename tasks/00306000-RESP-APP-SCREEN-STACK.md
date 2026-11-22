@@ -1,5 +1,5 @@
-- [-] RESP-APP-SCREEN-STACK · Patient app: tablet, landscape and large-text layout for `ScreenStack` (app)
-  - agent: swarm-10
+- [x] RESP-APP-SCREEN-STACK · Patient app: tablet, landscape and large-text layout for `ScreenStack` (app)
+  - pr: #610
   - attempts: 1
   - requirements: PAT-01, PAT-02, UX-01
   - scope: apps/patient-mobile/src/app/ScreenStack.tsx, apps/patient-mobile/src/app/ScreenStack.tablet.test.tsx

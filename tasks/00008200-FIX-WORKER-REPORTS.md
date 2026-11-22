@@ -1,5 +1,6 @@
-- [ ] FIX-WORKER-REPORTS · Use fresh integration test reports for each swarm gate invocation
-  - attempts: 0
+- [-] FIX-WORKER-REPORTS · Use fresh integration test reports for each swarm gate invocation
+  - agent: swarm-2
+  - attempts: 1
   - requirements: OPS-06
   - scope: scripts/worker-check.sh, scripts/worker_gate.py, scripts/tests
   - details:

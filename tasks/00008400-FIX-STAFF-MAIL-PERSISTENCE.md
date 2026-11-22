@@ -1,5 +1,6 @@
-- [ ] FIX-STAFF-MAIL-PERSISTENCE · Store staff mail state and retry keys durably
-  - attempts: 0
+- [-] FIX-STAFF-MAIL-PERSISTENCE · Store staff mail state and retry keys durably
+  - agent: swarm-3
+  - attempts: 1
   - requirements: MSG-02, ARC-02, ARC-07
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/staffmsg/mail, apps/api/src/test/java/com/aurevia/smartclinic/staffmsg/mail, db/migrations/V95__durable_staff_mail.sql
   - depends: SMSG-05
