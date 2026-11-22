@@ -29,10 +29,10 @@ or HTTP server. It proves only the two projections that exist today:
 - `aFullyStaffedRosterIsAbsentFromTheMissingCoverageQueue` (negative) — a roster with both
   owner and backup is absent, while a mixed-list control proves the query still returns a
   genuine gap.
-- `allSevenOperationalQueuesAreReachableOverHttpWithRoleAndTenantGuards` — complete but
-  `@Disabled("GAP: ...")`: it asserts all seven catalog queue keys over one HTTP aggregate,
-  a 403 for a role outside the operator allowlist, tenant isolation and an operator action
-  whose audit id is corroborated by an existing OPS-02 audit event. See Gap.
+
+The unbuilt part of the clause — the seven-queue HTTP aggregate, its durable store and the
+operator/audit command boundary — cannot be evidenced by a runnable test today and is
+recorded under Gap instead.
 
 Production classes and files exercised by these tests:
 
@@ -58,16 +58,15 @@ draft, approval and history operations and is unrelated to ADM-02 queues. Adjace
 controllers in other domains (exchange work items, delivery dead letters, overdue
 follow-ups) do not implement the seven catalog queues.
 
-Verified locally; the single skipped test is the intentionally disabled GAP test:
+Verified locally:
 
 ```
 SMARTCLINIC_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security \
   -Dtest=ProvideOperationalQueuesUnsignedEncountersUnreconciledReportsTest test
-Tests run: 6, Failures: 0, Errors: 0, Skipped: 1
+Tests run: 5, Failures: 0, Errors: 0, Skipped: 0
 ```
 
-The skipped test is the intentionally disabled GAP test; it contributes no coverage and is
-not counted as a passing proof. Only the five active tests produce evidence.
+All five tests are active and assert outcomes; none is skipped.
 
 ## Gap
 
@@ -95,8 +94,8 @@ Closing the Gap needs at least three separate, owner-approved tasks:
 3. **Action, audit and export boundary.** Add the three-role operator allowlist
    (`tenant_admin`, `privacy_auditor`, `operator`), revocation effective on the next
    action, required reasons, a corroborating OPS-02 `audit_id`, `retry`/`escalate` actions
-   and the explicit-scope bounded export envelope; then enable the disabled test with an
-   injected port and a seeded audit event. Site decisions on role mapping, retry scope and
+   and the explicit-scope bounded export envelope; then add an HTTP-level integration test
+   with an injected port and a seeded audit event. Site decisions on role mapping, retry scope and
    signing suppression run in parallel with these tasks.
 
 No production code, migration, contract or existing test was changed by this story.
