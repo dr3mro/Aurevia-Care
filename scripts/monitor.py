@@ -283,6 +283,28 @@ def parse_tasks(text):
     return tasks
 
 
+WORKER_CAP = 20  # the most workers the swarm runs at once (MAX_ACTIVE_WORKERS in swarm.py)
+WORKER_JOB = re.compile(r"^Swarm worker(?: \((?:story|fix), (?P<id>[A-Za-z0-9-]+),)?")
+
+
+def worker_counts(live, jobs):
+    """(running, queued) workers across the live Agent swarm runs.
+
+    A worker is one task: its Work and Publish jobs count once, as swarm.py's live_workers does.
+    Running means a job of the worker is in progress; queued means it has jobs but none running."""
+    running, queued = set(), set()
+    for run in live:
+        if run.get("workflowName") != "Agent swarm":
+            continue
+        for job in jobs.get(run.get("databaseId"), None) or []:
+            match = WORKER_JOB.match(job.get("name") or "")
+            if not match or job.get("status") == "completed":
+                continue
+            key = (run.get("databaseId"), match.group("id") or job.get("name"))
+            (running if job.get("status") == "in_progress" else queued).add(key)
+    return len(running), len(queued - running)
+
+
 def job_summary(jobs, now):
     """One short line about a live run's jobs: what runs, what waits, how many finished."""
     running = [j for j in jobs if j.get("status") == "in_progress"]
@@ -420,6 +442,7 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False, loading=frozenset()):
     n_done = sum(1 for t in todo if t["status"] == "done") + len(re.findall(r"^- \[x\] ", data.get("archive") or "", re.M))
     n_open = sum(1 for t in todo if t["status"] == "todo")
     taken = [t for t in todo if t["status"] == "taken"]
+    busy_workers, queued_workers = worker_counts(live, jobs)
     n_all = n_done + n_open + len(taken)
     hot = sum(1 for x in issues + prs for l in x.get("labels", []) if l["name"] == "needs-human")
     day_ok = (len(runs_day) - len(failed_day)) / len(runs_day) if runs_day else 1.0
@@ -429,7 +452,8 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False, loading=frozenset()):
     title = f" {data['repo'] or 'repo'}  ·  swarm monitor"
     top = [[(title + " " * max(W - 2 - len(title) - len(stamp) - 1, 1) + stamp + " ", "bar")]]
     cards = [("MAIN", f"{msym} {mstate}", "b_" + mcol, age(main["updatedAt"]) if main else "-"),
-             ("RUNNING", str(len(live)), "b_yellow" if live else "gray", "active runs"),
+             ("WORKERS", f"{busy_workers}/{WORKER_CAP}", "b_yellow" if busy_workers else "gray",
+              f"running, {queued_workers} queued" if queued_workers else "running"),
              ("MERGED 24h", str(len(merged_day)), "b_green" if merged_day else "gray", "pull requests"),
              ("FAILED 24h", str(len(failed_day)), "b_red" if failed_day else "b_green", f"of {len(runs_day)} runs"),
              ("CLOSED 24h", str(len(closed_day)), "b_yellow" if closed_day else "gray", "not merged"),
@@ -438,7 +462,7 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False, loading=frozenset()):
               f"+{churn.get('add', 0)} -{churn.get('del', 0)} {churn.get('files', 0)}f" if churn else "no data"),
              ("MEDIAN RUN", span(median), "b_cyan", f"{len(durs)} runs"),
              ("NEEDS HUMAN", str(hot), "b_red" if hot else "b_green", "issues, PRs")]
-    waits = {"MAIN": {"runs"}, "RUNNING": {"runs"}, "MERGED 24h": {"merged"}, "FAILED 24h": {"runs"}, "CLOSED 24h": {"closed"},
+    waits = {"MAIN": {"runs"}, "WORKERS": {"runs", "jobs"}, "MERGED 24h": {"merged"}, "FAILED 24h": {"runs"}, "CLOSED 24h": {"closed"},
              "COMMITS": {"total"}, "COMMITS LAST 24H": {"churn"}, "MEDIAN RUN": {"runs"}, "NEEDS HUMAN": {"issues", "prs"}}
     cards = [(c[0], "…", "gray", "loading") if waits.get(c[0], set()) & loading else c for c in cards]
 

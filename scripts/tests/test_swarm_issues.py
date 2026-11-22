@@ -1,4 +1,5 @@
 import json
+import subprocess
 import os
 import tempfile
 import unittest
@@ -313,6 +314,19 @@ class RunEventTests(unittest.TestCase):
               "headSha": "abcdef123", "event": "push", "attempt": 1,
               "jobs": [{"name": "Java", "conclusion": "failure",
                         "steps": [{"name": "Coverage", "conclusion": "failure"}]}]}
+
+    def test_a_run_github_no_longer_has_is_skipped_but_other_errors_are_not(self):
+        def gone(*args, check=True):
+            raise subprocess.CalledProcessError(
+                1, args, "", "gh run view 5: HTTP 404: Not Found (https://api.github.com/x/jobs)")
+        with mock.patch.object(swarm, "gh", gone):
+            self.assertIn("no longer exists", swarm.run_event(5))
+
+        def broken(*args, check=True):
+            raise subprocess.CalledProcessError(1, args, "", "HTTP 401: Bad credentials")
+        with mock.patch.object(swarm, "gh", broken):
+            with self.assertRaises(subprocess.CalledProcessError):
+                swarm.run_event(5)
 
     def test_pull_request_runs_are_ignored(self):
         result, fake = self.event({**self.FAILED, "event": "pull_request"})

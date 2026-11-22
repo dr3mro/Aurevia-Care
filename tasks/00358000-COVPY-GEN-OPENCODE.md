@@ -1,5 +1,5 @@
-- [-] COVPY-GEN-OPENCODE · Script tests: reach 100% line and branch coverage of `scripts/gen-opencode.py`
-  - agent: swarm-8
+- [x] COVPY-GEN-OPENCODE · Script tests: reach 100% line and branch coverage of `scripts/gen-opencode.py`
+  - pr: #671
   - attempts: 1
   - requirements: OPS-06
   - scope: scripts/tests/test_gen_opencode_coverage.py

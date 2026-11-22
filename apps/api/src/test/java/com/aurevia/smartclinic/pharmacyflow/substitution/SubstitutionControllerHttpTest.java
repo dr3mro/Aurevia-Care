@@ -21,6 +21,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.aurevia.smartclinic.api.ApiErrorHandler;
 import com.aurevia.smartclinic.authz.specialty.SpecialtyRoles;
@@ -56,9 +59,17 @@ class SubstitutionControllerHttpTest {
             }
             return List.of(SpecialtyRoles.RECEPTION);
         });
+        TransactionTemplate transactions = mock(TransactionTemplate.class);
+        when(transactions.execute(org.mockito.ArgumentMatchers.any(TransactionCallback.class)))
+                .thenAnswer(invocation -> {
+                    TransactionCallback<?> callback = invocation.getArgument(0);
+                    return callback.doInTransaction(mock(TransactionStatus.class));
+                });
         SubstitutionService service = new SubstitutionService(
-                Clock.fixed(SubstitutionFixtures.AT, ZoneOffset.UTC), catalog);
-        SubstitutionController controller = new SubstitutionController(service, staff);
+                Clock.fixed(SubstitutionFixtures.AT, ZoneOffset.UTC), catalog,
+                new FakeSubstitutionStore(), new FakeSubstitutionApplication(), transactions,
+                mock(com.aurevia.smartclinic.audit.AuditAppender.class));
+        SubstitutionController controller = new SubstitutionController(service, staff, transactions);
         MockEnvironment environment = new MockEnvironment();
         environment.setActiveProfiles("synthetic-auth");
         mvc = MockMvcBuilders.standaloneSetup(controller)

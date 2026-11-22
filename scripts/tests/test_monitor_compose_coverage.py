@@ -196,6 +196,29 @@ class ComposeTests(unittest.TestCase):
         self.assertIn("loading", titles(top))
 
     # -- live-run detail: task-id rows, generic rows, zero/many jobs, dividers -----
+    def test_the_workers_card_shows_running_over_the_cap(self):
+        runs = [run(1, status="in_progress", conclusion=None, workflow="Agent swarm"),
+                run(2, status="in_progress", conclusion=None, workflow="Delivery")]
+        live = lambda name, status="in_progress": job(name, status=status, conclusion=None)
+        jobs = {1: [live("Swarm worker (story, CW-001, 1) / Work the task"),
+                    live("Swarm worker (story, CW-001, 1) / Publish result", "queued"),
+                    live("Swarm worker (fix, FIX-9, 2) / Work the task"),
+                    live("Swarm worker (story, CW-003, 3) / Work the task", "queued"),
+                    live("Plan the wave"),
+                    job("Swarm worker (story, CW-004, 4) / Work the task")],
+                2: [live("Swarm worker (story, CW-005, 5) / Work the task")]}
+        self.assertEqual(monitor.worker_counts(runs, jobs), (2, 1))
+        top, _, _, _ = self.compose(data(runs=runs, jobs=jobs))
+        text = titles(top)
+        self.assertIn("WORKERS", text)
+        self.assertIn("2/20", text)
+        self.assertIn("running, 1 queued", text)
+
+    def test_no_live_workers_shows_zero_of_the_cap(self):
+        self.assertEqual(monitor.worker_counts([], {}), (0, 0))
+        self.assertEqual(monitor.worker_counts([run(1, status="in_progress", conclusion=None,
+                                                    workflow="Agent swarm")], {}), (0, 0))
+
     def test_live_runs_with_and_without_task_ids(self):
         runs = [
             run(1, status="in_progress", conclusion=None, workflow="Agent swarm",
