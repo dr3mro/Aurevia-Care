@@ -668,9 +668,12 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False, loading=frozenset()):
         return ([("+", "green"), (" ", ""), (f"#{p['number']}".ljust(5), "blue"), (" ", "")] + body
                 + [(" " * (room - used + 1), ""), (age(p["mergedAt"]).rjust(10), "dim")])
 
-    idw = max([len(t["id"]) for t in taken] or [8])
+    # The id column is as wide as the longest id on screen, at most ID_MAX: one very long id used to
+    # pad every row and push the titles to the right edge, where they were cut off.
+    ID_MAX = 20
+    idw = min(max([len(t["id"]) for t in taken[:12]] or [8]), ID_MAX)
     queue = [t for t in todo if t["status"] == "todo"]
-    qw = max([len(t["id"]) for t in queue[:12]] or [8])
+    qw = min(max([len(t["id"]) for t in queue[:12]] or [8]), ID_MAX)
     right = [dict(title="Swarm Tasks Taken", total=len(taken), col="cyan", border="gray", prio=2,
                   items=[cells(iw, (">", "yellow", 1), (t["agent"] or "-", "magenta", 9), (t["id"], "b_cyan", idw), (t["title"], "", None))
                          for t in taken]),
