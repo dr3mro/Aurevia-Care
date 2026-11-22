@@ -84,6 +84,11 @@ Vitest 5.1.1, Python 3.11.2; `node_modules` were already present.
    `python3 -I -m unittest discover -s scripts/tests -p 'test_worker_gate.py' -k 'integration_failure_still_fails_the_gate'`
    → `Ran 1 test`, `FAILED (errors=1)`, `FileNotFoundError: apps/api/target/surefire-reports`
    at `scripts/worker_gate.py:63`.
+7. End-of-run repository check (capped at 240 s to avoid the multi-minute Java
+   stages): `bash scripts/check.sh` → exit 1 at the first stage with the single
+   line `check-pack: opencode.json is stale: run scripts/gen-opencode.py`. This
+   is the documented CI-profile artifact of Finding 4; no later stage ran and
+   no file was changed by the check (`git status --short` empty after it).
 
 Entry-point-to-test trace: dev-only route `/design-preview` → lazy
 `createRoutes(includeDesignPreview)` in `src/app/routes.tsx` → `DesignPreview` →
@@ -156,7 +161,9 @@ simulated subagent only — synthetic review, not clinical or human acceptance.
    owner approval — not by this story worker.
 4. **Environment artifact — CI `opencode.json` (tool evidence).** The worktree
    file is the CI profile under `skip-worktree` (`git ls-files -v opencode.json`
-   → `S`), so `check-pack.py` would call it stale. HEAD truth
+   → `S`), so `check-pack.py` calls it stale: the executed
+   `bash scripts/check.sh` exited 1 at `check-pack: opencode.json is stale: run
+   scripts/gen-opencode.py`. HEAD truth
    (`git show HEAD:opencode.json`) is the correct generated local profile; the
    documented `OPS-CW-003-01` false positive. The file was not regenerated or
    committed.
