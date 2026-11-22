@@ -150,9 +150,18 @@ prescribing or critical results.
   `>>>>>>> origin/swarm/BUILD-37-469`. They predate this change and are outside
   this task's `scope`; left untouched for the integrator. A `git grep` check
   confirms these are the only markers and they are identical in `origin/main`.
-- No code change was needed in this fix pass: the first worker's test file is
-  correct and already reaches 100% of the assigned range. The fix is the clean
-  evidence and the correct notes path.
+- A bounded `smartclinic-senior-python` review found one weak assertion:
+  `test_a_reset_leaves_every_other_task_alone` seeded the "other" task `CW-002`
+  with `attempts: 0` and asserted it stayed `"0"`, which passes even if a reset
+  wrongly rewrote every task. Fixed in this pass by seeding `CW-002` with
+  `attempts: 7` and asserting it is still `"7"` after resetting `CW-001`. The
+  review confirmed no uncovered listed branch, no real data/network/PHI/token
+  use and no clean-CI failure; the redundant `slot_config` StopIteration test
+  was kept because it is the named test for branch `1062->-1062` in the
+  coverage table.
+- Apart from that strengthened assertion, no production change was needed: the
+  first worker's test file already reaches 100% of the assigned range. The fix
+  is the clean evidence, the corrected assertion and the required notes path.
 
 ## Lessons for workers
 

@@ -134,12 +134,12 @@ class MonitorAssignCoverageTests(unittest.TestCase):
         self.assertTrue(self.fake.said("issue", "comment", "5", "swarm-requeue"))
 
     def test_a_reset_leaves_every_other_task_alone(self):
-        self.todo.write_text(TODO + "\n- [ ] CW-002 · Other\n  - attempts: 0\n  - scope: apps/api/other\n")
+        self.todo.write_text(TODO + "\n- [ ] CW-002 · Other\n  - attempts: 7\n  - scope: apps/api/other\n")
         result = self.assign(reset=[(2, "CW-001")])
         tasks = {t["id"]: t for t in swarm.parse_tasks(self.todo.read_text())}
         self.assertEqual(result["reset"], [2])
         self.assertEqual(tasks["CW-001"]["attempts"], "0")
-        self.assertEqual(tasks["CW-002"]["attempts"], "0")
+        self.assertEqual(tasks["CW-002"]["attempts"], "7")
 
     def test_a_malformed_triage_answer_is_treated_as_unusable(self):
         # Untrusted worker output: invalid JSON is caught and refused, so the
