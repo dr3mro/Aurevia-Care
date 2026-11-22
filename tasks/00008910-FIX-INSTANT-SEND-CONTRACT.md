@@ -2,7 +2,7 @@
   - attempts: 0
   - requirements: MSG-02, ARC-07, WEB-05
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/staffmsg/instant, apps/api/src/test/java/com/aurevia/smartclinic/staffmsg/instant, contracts/openapi.yaml, apps/staff-web/src/api/generated/openapi.d.ts
-  - depends: FIX-OPENAPI-03
+  - depends: SMSG-03, FIX-OPENAPI-03
   - details:
     InstantMessagingController.send receives a conversation ID from the URL but delegates using only the ID in the request body. A routing mismatch can send a message to a different conversation the sender belongs to.
     Bind authorization and the write to the URL ID. Reject inconsistent IDs from existing clients, and document the request and error contract. Regenerate staff web types.
