@@ -10,6 +10,7 @@
 # Container (one image: staff web on 3000, API on 8080, PostgreSQL inside)
 #   build [tag]        Build the image from Dockerfile.app (default aurevia-app:latest).
 #   run [tag]          Create and start the container (pulls the image if it is missing).
+#                      A tag such as v0.0.2 selects that release of the image; a name with / or : is a full image.
 #   stop               Stop the container. With persistence the database is saved first.
 #   restart            Stop and start again.
 #   delete             Remove the container (asks first). Saved databases are kept.
@@ -203,7 +204,10 @@ cmd_build() {
 
 cmd_run() {
   pick_runtime
-  [[ -n "${1:-}" ]] && IMAGE=$1
+  if [[ -n "${1:-}" ]]; then
+    # `run v0.0.2` names a tag of the release image; a name with / or : is a full image.
+    case $1 in */*|*:*) IMAGE=$1 ;; *) IMAGE=${REMOTE_IMAGE%:*}:$1 ;; esac
+  fi
   if exists; then
     if running; then ok "already running: web http://127.0.0.1:$WEB_PORT"; return 0; fi
     warn "$NAME already exists; its image, ports and persistence setting are kept (use delete to change them)"

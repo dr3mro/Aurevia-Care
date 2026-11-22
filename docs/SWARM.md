@@ -23,6 +23,10 @@ Up to 10 OpenCode workers run in parallel on GitHub-hosted runners. An orchestra
 
 **Batching.** The integrator sets up Java/Maven once, merges every ready PR in one job, pushes once, and Delivery verifies the pushed commit on main. Each worker has its own publish job, so a PR opens as soon as its worker ends; the worker keeps no GitHub token and only the trusted publish job holds one.
 
+## Forcing a task
+
+To start one task now, run **Agent swarm** by hand (Actions, Run workflow) and put its id in `task` (for example `FIX-INSTANT-OPENAPI`), or run `gh workflow run swarm.yml --ref main -f task=<ID> -f now=true`. The plan job puts that task first, ignores its attempt limit and the "pull request waiting for a fix" gate, and starts it even when other waves are queued. It still refuses a task that is not open, has no scope, has unmet `depends`, or whose scope overlaps a running task.
+
 ## Issues and hand-off
 
 Every problem the swarm cannot solve in the moment becomes a GitHub issue, written only by trusted jobs (workers never hold a token). Each issue carries hidden markers (`swarm-fingerprint`, `swarm-task`, `swarm-pr`, `swarm-workflow`), so the same cause updates one issue instead of opening many. Only issues by the repository's own automation or by an owner, member or collaborator are read.
