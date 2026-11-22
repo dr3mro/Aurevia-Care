@@ -15,28 +15,11 @@ import { SystemNotice } from './SystemNotice';
  */
 export function SignedOutPage() {
   const breakpoint = useBreakpoint();
+  // Layout comes only from the shared classes: an inline declaration would
+  // outrank a future responsive.css rule at one of the breakpoints.
   return (
-    <div
-      className="page"
-      data-breakpoint={breakpoint}
-      style={{
-        display: 'grid',
-        placeItems: 'center',
-        minInlineSize: 0,
-        overflowWrap: 'anywhere',
-        whiteSpace: 'normal',
-        textAlign: 'start',
-      }}
-    >
-      <div
-        className="stack"
-        style={{
-          inlineSize: '100%',
-          minInlineSize: 0,
-          textAlign: 'start',
-          overflowWrap: 'anywhere',
-        }}
-      >
+    <div className="page" data-breakpoint={breakpoint}>
+      <div className="stack">
         <SystemNotice
           titleKey="signedOutTitle"
           detailKey="signedOutDetail"

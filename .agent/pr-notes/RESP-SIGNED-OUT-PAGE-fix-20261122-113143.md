@@ -5,17 +5,17 @@
 Fix pass on branch `swarm/RESP-SIGNED-OUT-PAGE-973`. The implementation from the
 first worker was already present and committed (`01bc3e5d` plus two
 `origin/main` merges). I re-verified it end to end rather than starting over,
-confirmed the red→green evidence independently, and produced this notes file at
-the path named in the fix-pass prompt. No production or test file needed a new
-edit: the scoped component and its new responsive test already satisfy the
-story and pass every gate.
+confirmed the red→green evidence independently, then applied three refinements
+from a bounded read-only `smartclinic-senior-react` review and re-verified the
+full gate.
 
 `SignedOutPage` wraps the shared `SystemNotice` in the existing `page` and
-`stack` utilities from `responsive.css`, exposes the resolved band as
-`data-breakpoint={useBreakpoint()}`, and uses only logical inline styles so the
+`stack` utilities from `responsive.css` and exposes the resolved band as
+`data-breakpoint={useBreakpoint()}`. Layout comes entirely from those classes —
+no inline declarations, so a future breakpoint rule cannot be shadowed and the
 same markup mirrors under right-to-left. Text, navigation (`navigate('/')`) and
 the exported name are unchanged. The new test drives three synthetic
-`matchMedia` bands plus an Arabic RTL case.
+`matchMedia` bands in English and in Arabic.
 
 ## Affected requirements
 
@@ -78,18 +78,20 @@ Dependency install (worker image had no `node_modules`):
 
 - `cd apps/staff-web && npm ci --no-audit --no-fund` — `added 486 packages in 4s`.
 
-Red first, re-confirmed independently in this pass: original `SignedOutPage.tsx`
-from `origin/main` copied over the component, then
+Red first, re-confirmed independently in this pass after the reviewer-driven
+refinement: original `SignedOutPage.tsx` from `origin/main` copied over the
+component, then
 `cd apps/staff-web && ./node_modules/.bin/vitest run tests/responsive/features-system/SignedOutPage.responsive.test.tsx --exclude 'e2e/**'`
-— `Test Files 1 failed (1)`, `Tests 7 failed | 6 passed (13)` (missing `.page`
+— `Test Files 1 failed (1)`, `Tests 9 failed | 6 passed (15)` (missing `.page`
 wrapper / `.stack`), proving the tests fail against the old markup. The fixed
-component was then restored and `git status --short` was clean again.
+component was then restored. (Before refinement the same check gave 7 failed /
+6 passed of 13.)
 
 Green, scoped:
 
 - `cd apps/staff-web && ./node_modules/.bin/vitest run tests/responsive/features-system/SignedOutPage.responsive.test.tsx tests/features/system/systemPages.test.tsx --exclude 'e2e/**'`
-  — `Test Files 2 passed (2)`, `Tests 42 passed (42)` (existing system-page
-  tests still pass).
+  — `Test Files 2 passed (2)`, `Tests 44 passed (44)` (15 responsive cases,
+  including Arabic at all three bands, plus the 29 existing system-page cases).
 
 Mandatory typecheck (explicit), no `error TS…`:
 
@@ -103,10 +105,11 @@ Full module gate:
 
 - `cd apps/staff-web && bash check.sh` — generated-client check, typecheck,
   lint, production build + WEB-08 gzip budget, and 100%-coverage unit tests.
-  Final lines: `Test Files 159 passed (159)`, `Tests 1904 passed (1904)`,
+  Final lines: `Test Files 159 passed (159)`, `Tests 1906 passed (1906)`,
   coverage `No files with missing coverage.` / `207 files fully covered.`,
-  `EXIT: 0`. (jsdom traces for expected provider/navigation errors in negative
-  tests appear in the output; the gate exited 0.)
+  `EXIT: 0`. A separate `npm run test:coverage` run confirmed the same counts.
+  (jsdom traces for expected provider/navigation errors in negative tests appear
+  in the output; the gate exited 0.)
 
 Entry point → test trace: route `/signed-out` renders `SignedOutPage`
 (`src/features/system/routes.ts`) → `useBreakpoint()` resolves the band →
@@ -137,10 +140,16 @@ new line is exercised by the new test file:
 
 | New line | Test that covers it |
 |---|---|
-| `import { useBreakpoint }` / `const breakpoint = useBreakpoint()` | "exposes the resolved breakpoint…" at compact, medium and expanded (asserts `data-breakpoint` equals the band) |
-| outer `<div className="page" data-breakpoint style={logical…}>` | "exposes the resolved breakpoint…" (class, `display`, `placeItems`, logical props, no physical props, not hidden) at all three bands and in RTL |
-| inner `<div className="stack" style={logical…}>` | "stacks the notice in DOM order…" (parent is the page wrapper, logical props, no `display: none`) at all three bands |
-| unchanged `SystemNotice` props and `onAction={() => navigate('/')}` | "keeps the English heading, detail and single primary action with roles", "keeps the single action in keyboard order and navigates home" at all three bands, plus the Arabic RTL case |
+| `import { useBreakpoint }` / `const breakpoint = useBreakpoint()` | "delegates layout to the page class…" at compact, medium and expanded, and the Arabic RTL case at each band (asserts `data-breakpoint` equals the band) |
+| outer `<div className="page" data-breakpoint={breakpoint}>` | "delegates layout to the page class…" (class membership, not hidden, no inline `style` attribute) at all three bands and in RTL |
+| inner `<div className="stack">` | "stacks the notice in DOM order…" (parent is the page wrapper, no inline `style` attribute) at all three bands |
+| unchanged `SystemNotice` props and `onAction={() => navigate('/')}` | "keeps the English heading, detail and single primary action with roles", "keeps the single action in keyboard order and navigates home" at all three bands, plus the Arabic RTL case at each band |
+
+The 44 px coarse-pointer floor and the iOS-safe 16 px field size are asserted by
+the pre-existing `tests/theme/responsiveStylesheet.test.ts` ("sizes
+coarse-pointer targets at 44px and keeps the iOS-safe field font"), which runs
+in the same full gate; this page's button carries the `touch` class and the
+stylesheet supplies the value. No inline size is added at this layer.
 
 No threshold, exclusion or test was weakened; no test skipped or disabled; no
 `any` or `@ts-ignore` added.
@@ -155,35 +164,50 @@ Arabic-clinician acceptance, which remains a separate launch gate.
 
 ## Findings
 
-- The first worker's implementation was complete and green; the only gap this
-  fix pass closes is the correctly named notes file and an independent
-  re-verification. No source change was necessary.
-- A local presentation wrapper was necessary because `SystemNotice` accepts no
-  `className`/`style`, and is shared with other system pages whose responsive
-  stories belong to other workers; editing it would exceed this task's scope.
-- `responsive.css` has no dedicated centred-notice/state-panel class, so the
-  story's prescribed fallback — logical inline styles — was used. Recorded as
-  a lesson below rather than editing the shared stylesheet.
+- The first worker's implementation was complete and green. This fix pass added
+  the correctly named notes file, an independent re-verification, and three
+  refinements requested by the advisory read-only `smartclinic-senior-react`
+  review (all applied and re-verified):
+  1. **Medium** — the page/stack wrappers carried redundant inline styles that
+     also introduced unrequested visual rules (`placeItems: center`,
+     `textAlign: start`) and would outrank future `responsive.css` rules.
+     Removed all inline declarations from the component; layout now comes from
+     the shared classes only, matching the `ApiPage` convention. The tests now
+     assert class membership, `data-breakpoint` and the absence of an inline
+     `style` attribute instead of inline CSS values.
+  2. **Low** — the test fixture's `coarse`/`portrait` states were dead: this page
+     calls only `useBreakpoint`. Removed them; the 44 px coarse rule is asserted
+     by the existing `tests/theme/responsiveStylesheet.test.ts`, which also runs
+     in the full gate.
+  3. **Low** — Arabic RTL was exercised only at the compact band. Parameterised
+     the RTL block over compact, medium and expanded (the responsive test file
+     now has 15 cases, up from 13).
+- A local presentation wrapper is still necessary because `SystemNotice`
+  accepts no `className`/`style` and is shared with other system pages whose
+  responsive stories belong to other workers; editing it would exceed scope.
 - Out of scope, observed while reconciling with `origin/main`: committed
   conflict markers remain in `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/`
   (`Hl7ParseException.java`, `Hl7Parser.java`, `Hl7Segment.java`). Not in this
   change and not edited; the integrator/owner should confirm or repair them.
-- An advisory read-only `smartclinic-senior-react` review was requested; no
-  actionable finding had been received at commit time. If the reviewer reports a
-  defect, it is addressed in a follow-up tested commit and appended here.
+- Reviewer evidence source: read-only subagent report from `smartclinic-senior-react`
+  (no files edited by the reviewer). All command results above are tool evidence
+  from this worker; no human participant or simulated-user evidence was claimed.
 
 ## Lessons for workers
 
 - For a system page that delegates to `SystemNotice`, wrap it in `page` + `stack`
-  with `data-breakpoint={useBreakpoint()}`; the shared notice and `Button`
-  (which owns `touch`, `data-breakpoint` and wrapping) do not need edits.
-- jsdom normalises a zero logical size to `'0'` (not `'0px'`); assert
-  `style.minInlineSize === '0'` when checking inline logical styles.
-- No centred-notice/state-panel class exists in `responsive.css`: use logical
-  inline styles and record the gap rather than editing the shared stylesheet.
-- `min-inline-size: 0` plus `overflow-wrap: anywhere` on the `stack` child is
-  what lets long English and Arabic strings wrap; pixel/zoom claims belong to
-  the Playwright tasks, not to jsdom.
+  with `data-breakpoint={useBreakpoint()}` and **no inline styles**; the shared
+  classes own layout, safe area and wrapping, and `Button` owns `touch`,
+  `data-breakpoint` and label wrapping. Inline declarations outrank any future
+  breakpoint rule in `responsive.css`.
+- Do not treat a fixture's `coarse`/`portrait` states as coverage when the
+  component does not call `usePointerCoarse`/`useOrientation`; the 44 px coarse
+  floor and 16 px field size belong to `responsiveStylesheet.test.ts`.
+- Assert absence of an inline `style` attribute on wrapper elements rather than
+  asserting individual CSS values: it is a stronger regression guard and avoids
+  coupling the view test to presentation details owned by the stylesheet.
+- Pixel, real-device and Arabic-clinician claims belong to the Playwright/launch
+  tasks, not to jsdom.
 - In a cloud worker with no `node_modules`, `npm ci` in `apps/staff-web` is
   quick (a few seconds) and lets the full `check.sh` run locally; do not skip
   the module gate because dependencies look absent.

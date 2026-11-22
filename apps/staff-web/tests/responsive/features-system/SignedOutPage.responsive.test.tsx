@@ -12,30 +12,25 @@ type Layout = 'compact' | 'medium' | 'expanded';
 interface ViewportState {
   medium: boolean;
   expanded: boolean;
-  coarse: boolean;
-  portrait: boolean;
 }
 
-/** The same width and pointer states used by the responsive Playwright matrix. */
+/** The width states used by the responsive Playwright matrix. */
 const VIEWPORTS: Record<Layout, ViewportState> = {
-  compact: { medium: false, expanded: false, coarse: true, portrait: true },
-  medium: { medium: true, expanded: false, coarse: true, portrait: false },
-  expanded: { medium: true, expanded: true, coarse: false, portrait: false },
+  compact: { medium: false, expanded: false },
+  medium: { medium: true, expanded: false },
+  expanded: { medium: true, expanded: true },
 };
-
-/** Physical properties are never set by a responsive component (design §6, §11). */
-const PHYSICAL_STYLE = /(?:padding|margin)-(?:left|right|top|bottom)\s*:|(?:^|;)\s*(?:left|right|top|bottom)\s*:/;
 
 /**
  * Install a deterministic matchMedia stand-in keyed by media query string, so
  * the real breakpoint hooks resolve at each synthetic width (jsdom has none).
+ * `SignedOutPage` reads only the width queries; the coarse-pointer 44px floor is
+ * owned by `.touch` in responsive.css and asserted by responsiveStylesheet.test.
  */
 function installMatchMedia(state: ViewportState): void {
   const answers: Record<string, boolean> = {
     [BREAKPOINT_MEDIA_QUERIES.medium]: state.medium,
     [BREAKPOINT_MEDIA_QUERIES.expanded]: state.expanded,
-    '(pointer: coarse)': state.coarse,
-    '(orientation: portrait)': state.portrait,
   };
   vi.stubGlobal(
     'matchMedia',
@@ -80,7 +75,7 @@ afterEach(() => {
 describe.each(['compact', 'medium', 'expanded'] as const)(
   'responsive SignedOutPage at %s width (WEB-07, UX-01)',
   (layout) => {
-    it('exposes the resolved breakpoint on a single logical page wrapper', () => {
+    it('delegates layout to the page class with the resolved breakpoint only', () => {
       installMatchMedia(VIEWPORTS[layout]);
       renderPage('en');
 
@@ -88,14 +83,8 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
       expect(page.getAttribute('data-breakpoint')).toBe(layout);
       expect(page.classList.contains('page')).toBe(true);
       expect(page.hidden).toBe(false);
-      expect(page.style.display).toBe('grid');
-      expect(page.style.placeItems).toBe('center');
-      expect(page.style.minInlineSize).toBe('0');
-      expect(page.style.overflowWrap).toBe('anywhere');
-      expect(page.style.whiteSpace).toBe('normal');
-      expect(page.style.textAlign).toBe('start');
-      expect(page.getAttribute('style')).not.toMatch(PHYSICAL_STYLE);
-      expect(page.style.display).not.toBe('none');
+      // No inline declarations: they would outrank a future stylesheet rule.
+      expect(page.hasAttribute('style')).toBe(false);
     });
 
     it('keeps the English heading, detail and single primary action with roles', () => {
@@ -117,16 +106,17 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
       expect(screen.getByRole('region', { name: 'You have signed out' })).toBeTruthy();
     });
 
-    it('stacks the notice in DOM order with a full-width logical touch target', () => {
+    it('stacks the notice in DOM order inside a class-only wrapper', () => {
       installMatchMedia(VIEWPORTS[layout]);
       renderPage('en');
 
       const stack = screen.getByRole('heading', { level: 1 }).closest('.stack');
       expect(stack).not.toBeNull();
       expect(stack?.parentElement).toBe(pageWrapper());
-      expect(stack?.getAttribute('style')).not.toMatch(PHYSICAL_STYLE);
-      expect(stack?.getAttribute('style')).not.toContain('display: none');
+      expect(stack?.hasAttribute('style')).toBe(false);
 
+      // Button owns its `touch` class and breakpoint; the stylesheet owns the
+      // 44px coarse-pointer floor, so no inline size may be introduced here.
       const button = screen.getByRole('button', { name: 'Sign in' }) as HTMLButtonElement;
       expect(button.tagName).toBe('BUTTON');
       expect(button.classList.contains('touch')).toBe(true);
@@ -135,7 +125,6 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
       expect(button.style.display).not.toBe('none');
       expect(button.style.textAlign).toBe('start');
       expect(button.style.overflowWrap).toBe('anywhere');
-      expect(button.getAttribute('style')).not.toMatch(PHYSICAL_STYLE);
     });
 
     it('keeps the single action in keyboard order and navigates home', () => {
@@ -153,26 +142,26 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
   },
 );
 
-describe('responsive SignedOutPage under right-to-left', () => {
-  it('mirrors the Arabic title, detail and action with logical properties only', () => {
-    installMatchMedia(VIEWPORTS.compact);
-    renderPage('ar');
+describe.each(['compact', 'medium', 'expanded'] as const)(
+  'responsive SignedOutPage under right-to-left at %s width (WEB-07, UX-01)',
+  (layout) => {
+    it('mirrors the Arabic title, detail and action with logical layout only', () => {
+      installMatchMedia(VIEWPORTS[layout]);
+      renderPage('ar');
 
-    expect(document.documentElement.dir).toBe('rtl');
-    expect(document.documentElement.lang).toBe('ar');
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('لقد سجّلت الخروج');
-    expect(screen.getByText('انتهت جلستك. سجّل الدخول مرة أخرى للمتابعة.')).toBeTruthy();
+      expect(document.documentElement.dir).toBe('rtl');
+      expect(document.documentElement.lang).toBe('ar');
+      expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('لقد سجّلت الخروج');
+      expect(screen.getByText('انتهت جلستك. سجّل الدخول مرة أخرى للمتابعة.')).toBeTruthy();
 
-    const button = screen.getByRole('button', { name: 'تسجيل الدخول' });
-    expect(button.getAttribute('data-breakpoint')).toBe('compact');
-    expect(button.classList.contains('touch')).toBe(true);
-    expect(button.getAttribute('style')).not.toMatch(PHYSICAL_STYLE);
-    expect(button.style.textAlign).toBe('start');
+      const button = screen.getByRole('button', { name: 'تسجيل الدخول' });
+      expect(button.getAttribute('data-breakpoint')).toBe(layout);
+      expect(button.classList.contains('touch')).toBe(true);
+      expect(button.style.textAlign).toBe('start');
 
-    const page = pageWrapper();
-    expect(page.getAttribute('data-breakpoint')).toBe('compact');
-    expect(page.getAttribute('style')).not.toMatch(PHYSICAL_STYLE);
-    expect(page.style.textAlign).toBe('start');
-    expect(page.style.overflowWrap).toBe('anywhere');
-  });
-});
+      const page = pageWrapper();
+      expect(page.getAttribute('data-breakpoint')).toBe(layout);
+      expect(page.hasAttribute('style')).toBe(false);
+    });
+  },
+);
