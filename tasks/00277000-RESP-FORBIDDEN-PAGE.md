@@ -1,4 +1,6 @@
-- [ ] RESP-FORBIDDEN-PAGE · Staff web: responsive `ForbiddenPage` (features-system)
+- [-] RESP-FORBIDDEN-PAGE · Staff web: responsive `ForbiddenPage` (features-system)
+  - agent: swarm-1
+  - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/system/ForbiddenPage.tsx, apps/staff-web/tests/responsive/features-system/ForbiddenPage.responsive.test.tsx
   - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
