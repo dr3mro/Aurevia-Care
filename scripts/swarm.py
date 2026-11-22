@@ -1917,11 +1917,13 @@ def task_text(task):
     return clip(f"{head}\n\n{task['details']}")
 
 
-def plan_workers(max_workers, slots, text, open_prs, repair=None, live=(), story_wave=None):
+def plan_workers(max_workers, slots, text, open_prs, repair=None, live=(), story_wave=None, focus=""):
     """Main repairs, then fixes, then ready tasks whose scope is free.
 
     Repairs and fixes may use every slot. Ordinary stories start only while no pull request waits
-    for a fix or the debugger, at most STORY_WORKER_CAP at once and `story_wave` per wave."""
+    for a fix or the debugger, at most STORY_WORKER_CAP at once and `story_wave` per wave.
+    `focus` is a task id a person asked to launch: it is planned first, ignores the attempt limit and
+    the waiting-pull-request gate, but still needs open status, a scope, met dependencies and a free scope."""
     tasks = parse_tasks(text)
     by_id = {t["id"]: t for t in tasks}
     for t in tasks:
@@ -1953,15 +1955,16 @@ def plan_workers(max_workers, slots, text, open_prs, repair=None, live=(), story
     done = {name for t in tasks if t["status"] == "done" for name in (t["id"], *t["aliases"])}
     done |= archived_done_ids()
     # Repairs of main come first: a red main blocks every other merge.
-    for task in sorted(tasks, key=lambda t: not is_repair_task(t)):
+    for task in sorted(tasks, key=lambda t: (focus not in (t["id"], *t["aliases"]), not is_repair_task(t))):
+        wanted = bool(focus) and focus in (task["id"], *task["aliases"])
         if task["status"] != "todo" or not task["scope"] or task["id"] in in_flight \
-                or attempts_of(task) >= MAX_ATTEMPTS:
+                or (attempts_of(task) >= MAX_ATTEMPTS and not wanted):
             continue
         if not set(task["depends"]) <= done:
             continue
         if any(overlaps(task["scope"], other) for other in busy):
             continue
-        if not is_repair_task(task):
+        if not is_repair_task(task) and not wanted:
             if failing or ordinary >= story_room:
                 continue
             ordinary += 1
@@ -1969,8 +1972,10 @@ def plan_workers(max_workers, slots, text, open_prs, repair=None, live=(), story
         plan.append({"kind": "story", "id": task["id"], "number": 0, "branch": "",
                      "title": task["task"], "body": task_text(task), "fix": ""})
     slots_left = max(0, min(max_workers, len(slots)))
-    urgent = [t for t in plan if t["kind"] == "fix" or is_repair_task(t)][:slots_left]
-    stories = [t for t in plan if t not in urgent and not (t["kind"] == "fix" or is_repair_task(t))]
+    def first(t):
+        return t["kind"] == "fix" or is_repair_task(t) or bool(focus) and t["id"] == focus
+    urgent = [t for t in plan if first(t)][:slots_left]
+    stories = [t for t in plan if t not in urgent and not first(t)]
     chosen = urgent + stories[:max(0, min(slots_left - len(urgent), slots_left if story_wave is None else story_wave))]
     return [{**t, "slot": s["slot"], "model": s["model"]} for t, s in zip(chosen, slots)]
 
@@ -3567,6 +3572,7 @@ def main(argv=None):
     p.add_argument("--slots", default=".github/swarm/slots.json")
     p.add_argument("--file", default="TODO.md")
     p.add_argument("--repair-run", default="")
+    p.add_argument("--task", default="")
     sub.add_parser("watchdog")
     sub.add_parser("pr-flow")
     sub.add_parser("debug-select")
@@ -3664,7 +3670,7 @@ def main(argv=None):
         room = max(0, MAX_ACTIVE_WORKERS - busy)
         print(f"{busy} worker(s) already running; room for {room} of {MAX_ACTIVE_WORKERS}.")
         include = plan_workers(room, rotate_slots(load_slots(a.slots), busy),
-                               text, prs, repair, live, story_wave=a.max)
+                               text, prs, repair, live, story_wave=a.max, focus=a.task)
         claims = {t["id"]: f"swarm-{t['slot']}" for t in include if t["kind"] == "story"}
 
         granted = set()

@@ -393,6 +393,34 @@ class RepairTaskTests(unittest.TestCase):
         self.assertEqual([t["id"] for t in plan], ["FIX-9"])
 
 
+class LaunchTaskTests(unittest.TestCase):
+    SLOT = [{"slot": n, "model": "m"} for n in range(1, 4)]
+    TEXT = ("- [ ] A-1 · first\n  - scope: apps/api\n  - details:\n    do it\n"
+            "- [ ] B-1 · second\n  - scope: docs\n  - attempts: 5\n  - details:\n    do it\n"
+            "- [ ] C-1 · third\n  - scope: apps/web\n  - depends: A-1\n  - details:\n    do it\n")
+
+    def setUp(self):
+        patch = mock.patch.object(swarm, "archived_done_ids", return_value=set())
+        patch.start()
+        self.addCleanup(patch.stop)
+
+    def plan(self, **kw):
+        return swarm.plan_workers(10, self.SLOT, self.TEXT, [], **kw)
+
+    def test_launched_task_is_planned_first_and_ignores_the_attempt_limit(self):
+        self.assertEqual([t["id"] for t in self.plan()], ["A-1"])
+        self.assertEqual(self.plan(focus="B-1")[0]["id"], "B-1")
+
+    def test_launched_task_still_waits_for_its_dependencies(self):
+        self.assertNotIn("C-1", [t["id"] for t in self.plan(focus="C-1")])
+
+    def test_launched_task_starts_even_while_a_pull_request_waits_for_a_fix(self):
+        pr = {"number": 5, "title": "x", "headRefName": "opencode/A-1", "isCrossRepository": False,
+              "labels": [{"name": "needs-debug"}], "comments": []}
+        plan = swarm.plan_workers(10, self.SLOT, self.TEXT, [pr], focus="B-1")
+        self.assertEqual([t["id"] for t in plan], ["B-1"])
+
+
 class WaitingWaveTests(unittest.TestCase):
     def stamps(self, *minutes_ago):
         now = datetime.datetime.now(datetime.timezone.utc)
