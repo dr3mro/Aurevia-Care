@@ -1,5 +1,5 @@
-- [-] RESP-SCHEDULING-SCREEN · Staff web: responsive `SchedulingScreen` (features-scheduling)
-  - agent: swarm-8
+- [x] RESP-SCHEDULING-SCREEN · Staff web: responsive `SchedulingScreen` (features-scheduling)
+  - pr: #799
   - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/scheduling/SchedulingScreen.tsx, apps/staff-web/tests/responsive/features-scheduling/SchedulingScreen.responsive.test.tsx

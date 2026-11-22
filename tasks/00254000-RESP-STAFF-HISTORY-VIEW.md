@@ -1,5 +1,5 @@
-- [-] RESP-STAFF-HISTORY-VIEW · Staff web: responsive `StaffHistoryView` (features-admin)
-  - agent: swarm-10
+- [x] RESP-STAFF-HISTORY-VIEW · Staff web: responsive `StaffHistoryView` (features-admin)
+  - pr: #736
   - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/admin/StaffHistoryView.tsx, apps/staff-web/tests/responsive/features-admin/StaffHistoryView.responsive.test.tsx
