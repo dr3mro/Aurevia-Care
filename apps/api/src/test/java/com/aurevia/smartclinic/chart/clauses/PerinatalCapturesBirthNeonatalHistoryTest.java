@@ -2,16 +2,13 @@ package com.aurevia.smartclinic.chart.clauses;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.springframework.web.client.RestClient;
 
 import com.aurevia.smartclinic.api.ApiException;
 import com.aurevia.smartclinic.clinical.templates.BaselineTemplates;
@@ -39,8 +36,8 @@ import com.aurevia.smartclinic.clinical.templates.ValidationReport;
  *
  * <p>The clause is only <em>partly</em> exposed as an API: there is no HTTP controller
  * or OpenAPI operation over {@link com.aurevia.smartclinic.clinical.templates.TemplateService},
- * so an end-to-end HTTP proof cannot be enabled yet. The disabled test at the bottom
- * records that missing surface for a later task; no production code is added here.</p>
+ * so an end-to-end HTTP proof cannot be written yet. That missing surface is recorded in
+ * the clause evidence document for a later task; no production code is added here.</p>
  */
 class PerinatalCapturesBirthNeonatalHistoryTest {
 
@@ -180,39 +177,6 @@ class PerinatalCapturesBirthNeonatalHistoryTest {
                 () -> service.saveNote(admin, "PERINATAL-ADMIN", authored));
         assertEquals(403, denied.status(), "only a clinician may author a perinatal note");
         assertTrue(store.noteRevision(ORG, "PERINATAL-ADMIN").isEmpty());
-    }
-
-    /**
-     * End-to-end API proof that cannot be enabled today. The rule has a domain
-     * service and a durable PostgreSQL store, but no HTTP controller and no OpenAPI
-     * operation expose it, so a client cannot capture a perinatal note through the
-     * normal API entry point. A later task adds a thin controller over the service
-     * and the contract entry, wires the server port, then removes {@code @Disabled}.
-     */
-    @Test
-    @Disabled("GAP: CLN-04 perinatal capture has no HTTP controller or OpenAPI entry; "
-            + "the rule is reachable only through the TemplateService domain entry point. "
-            + "No production code is added by this test.")
-    void perinatalHistoryCanBeCapturedThroughTheHttpApi() {
-        RestClient rest = RestClient.builder().baseUrl("http://localhost:8080").build();
-        String body = "{\"kind\":\"PERINATAL\",\"templateVersion\":1,\"patientId\":\"" + PATIENT + "\","
-                + "\"values\":["
-                + "{\"fieldKey\":\"birthHistory\",\"value\":\"term vaginal birth\",\"language\":\"en\"},"
-                + "{\"fieldKey\":\"neonatalHistory\",\"value\":\"well newborn\",\"language\":\"en\"}]}";
-
-        var created = rest.post().uri("/api/v1/clinical/templates/notes")
-                .header("X-Synthetic-Subject", "clin-a")
-                .header("X-Active-Organization", ORG)
-                .header("Content-Type", "application/json")
-                .body(body)
-                .retrieve()
-                .onStatus(status -> true, (request, response) -> { })
-                .toEntity(String.class);
-
-        assertEquals(201, created.getStatusCode().value(), created.getBody());
-        assertNotNull(created.getBody());
-        assertTrue(created.getBody().contains("birthHistory"), created.getBody());
-        assertTrue(created.getBody().contains("neonatalHistory"), created.getBody());
     }
 
     /** Return one frozen field definition by its stable key. */

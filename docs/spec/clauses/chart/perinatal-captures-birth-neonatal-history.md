@@ -38,12 +38,14 @@ Enabled tests that prove the rule:
 - `nonClinicianCannotSavePerinatalHistory` (negative) — a tenant administrator
   without the clinician role is refused (403) and nothing is saved.
 
-Disabled test recording the missing API surface:
+Missing API surface (recorded here rather than as a skipped test):
 
-- `perinatalHistoryCanBeCapturedThroughTheHttpApi` — `@Disabled("GAP: ...")`;
-  posts a perinatal note to `POST /api/v1/clinical/templates/notes` and asserts the
-  response carries both histories. Kept disabled so this test-only change stays
-  green; a later task enables it once the HTTP entry point exists.
+- An end-to-end HTTP test that posts a perinatal note to
+  `POST /api/v1/clinical/templates/notes` and asserts the response carries both
+  histories cannot be written yet because no controller, route or OpenAPI operation
+  exists. The gap and its enabling steps are recorded under `## Gap`. A skipped
+  test is deliberately not added: skipped tests fail the repository quality gate
+  (AGENTS.md, Coverage rules).
 
 Production classes and files exercised by the enabled request path:
 
@@ -76,7 +78,7 @@ integrator's database gate covers those migrations.
 The rule is implemented and durable at the domain and persistence layers, but it
 is not reachable through a normal API entry point: there is no HTTP controller over
 `TemplateService`, no `/api/v1/clinical/templates/**` route, and no matching entry
-in `contracts/openapi.yaml`. Consequently the end-to-end HTTP test is disabled and
+in `contracts/openapi.yaml`. Consequently no end-to-end HTTP test can be written and
 status is "Partly proven" rather than "Proven by tests".
 
 To close the gap:
@@ -88,10 +90,10 @@ To close the gap:
 2. Document those routes and schemas in `contracts/openapi.yaml` and regenerate the
    client types; wire the durable `JdbcTemplateStore` as the production
    `TemplateStore` bean through the tenant-guarded transaction manager.
-3. Enable `perinatalHistoryCanBeCapturedThroughTheHttpApi` (remove `@Disabled`),
-   wire a real server port and a synthetic-PostgreSQL fixture, and add the negative
-   HTTP cases (wrong role, other tenant, stale/unapproved version).
+3. Add the end-to-end `perinatalHistoryCanBeCapturedThroughTheHttpApi` test, wire a
+   real server port and a synthetic-PostgreSQL fixture, and add the negative HTTP
+   cases (wrong role, other tenant, stale/unapproved version).
 
 Estimate: two implementation tasks (controller + contract, and production store
-wiring) plus one test-enablement task. This task is test-only by scope and does not
-write production code, migrations, the contract or an existing test.
+wiring) plus one HTTP-test task. This task is test-only by scope and does not write
+production code, migrations, the contract or an existing test.
