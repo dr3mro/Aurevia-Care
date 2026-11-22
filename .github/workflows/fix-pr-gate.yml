@@ -95,7 +95,7 @@ jobs:
       issues: write
       actions: write
     env:
-      GH_TOKEN: ${{ github.token }}
+      GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
       PR: ${{ github.event.pull_request.number }}
       PASSED: ${{ needs.validate.outputs.passed }}
     steps:

@@ -1,5 +1,5 @@
-- [-] RESP-APP-RELEASED-REPORTS-SCREEN · Patient app: tablet, landscape and large-text layout for `ReleasedReportsScreen` (reports)
-  - agent: swarm-8
+- [x] RESP-APP-RELEASED-REPORTS-SCREEN · Patient app: tablet, landscape and large-text layout for `ReleasedReportsScreen` (reports)
+  - pr: #655
   - attempts: 1
   - requirements: PAT-01, PAT-02, UX-01
   - scope: apps/patient-mobile/src/features/reports/ReleasedReportsScreen.tsx, apps/patient-mobile/src/features/reports/ReleasedReportsScreen.tablet.test.tsx

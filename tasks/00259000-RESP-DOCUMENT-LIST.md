@@ -1,4 +1,7 @@
-- [ ] RESP-DOCUMENT-LIST · Staff web: responsive `DocumentList` (features-chart)
+- [x] RESP-DOCUMENT-LIST · Staff web: responsive `DocumentList` (features-chart)
+  - pr: #762
+  - evidence: PR #762; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/RESP-DOCUMENT-LIST.md; simulated review only
+  - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/chart/DocumentList.tsx, apps/staff-web/tests/responsive/features-chart/DocumentList.responsive.test.tsx
   - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS

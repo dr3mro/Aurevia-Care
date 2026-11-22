@@ -11,6 +11,7 @@ import { MixedScriptText } from '../../components/MixedScriptText';
 import { displayLocalName } from '../../i18n/format';
 import { useI18n } from '../../i18n/I18nProvider';
 import { useTheme } from '../../theme/ThemeProvider';
+import { useBreakpoint } from '../../theme/useBreakpoint';
 import {
   amendNote,
   getNote,
@@ -66,26 +67,46 @@ function ConfirmationDialog({
   children: ReactNode;
 }) {
   const { tokens } = useTheme();
+  const breakpoint = useBreakpoint();
+  const compact = breakpoint === 'compact';
   const closeRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     closeRef.current!.focus();
   }, []);
+
+  // responsive.css has no sticky action-row class, so the safe action stays
+  // reachable above the on-screen keyboard with logical inline properties. The
+  // logical inset and symmetric padding mirror under RTL without a second rule.
+  const stickyActions = compact
+    ? {
+        position: 'sticky' as const,
+        insetBlockEnd: '0px',
+        zIndex: 1,
+        background: tokens.background,
+        paddingBlock: tokens.spacing.sm,
+        borderBlockStart: `2px solid ${tokens.border}`,
+      }
+    : undefined;
+
   return (
     <section
       role="dialog"
       aria-labelledby="note-confirmation-title"
+      className="stack"
+      data-breakpoint={breakpoint}
+      data-note-confirmation-view={compact ? 'sheet-actions' : 'inline-actions'}
       style={{
-        display: 'grid',
-        gap: tokens.spacing.md,
         border: `2px solid ${tokens.border}`,
         padding: tokens.spacing.lg,
       }}
     >
       <h2 id="note-confirmation-title">{title}</h2>
-      <div>{children}</div>
-      <Button buttonRef={closeRef} variant="secondary" onClick={onClose}>
-        {closeLabel}
-      </Button>
+      <div className="stack">{children}</div>
+      <div data-note-confirm-actions={breakpoint} style={stickyActions}>
+        <Button buttonRef={closeRef} variant="secondary" onClick={onClose}>
+          {closeLabel}
+        </Button>
+      </div>
     </section>
   );
 }
@@ -97,11 +118,18 @@ function ConfirmationDialog({
  * save leaves the typed text intact and offers compare, reload and copy. Signing
  * and entered-in-error are irreversible, so each asks for explicit confirmation
  * that names the note and its effect.
+ *
+ * The `.page` grid and wrapping clusters keep every clinical field readable from
+ * 320 px upward under either direction; the save action and confirmation actions
+ * stick to the block end on phones so they stay reachable above the on-screen
+ * keyboard. Breakpoint changes reflow layout without remounting the editor, so
+ * typed work survives rotation (WEB-07, WEB-09, UX-01).
  */
 export function NotePage() {
   const organizationId = useActiveOrganization();
   const { locale } = useI18n();
   const { tokens } = useTheme();
+  const breakpoint = useBreakpoint();
   const { params } = useRoute();
   const patientId = params.id ?? '';
   const noteId = params.noteId ?? '';
@@ -267,14 +295,34 @@ export function NotePage() {
     locale,
   );
 
+  // The .page grid supplies logical safe-area padding and the 1200px reading
+  // cap. The patient identity is a wrapping cluster and the save action is a
+  // sticky bar on phones so it stays reachable above the on-screen keyboard
+  // (WEB-09); responsive.css has no sticky-action class, so use logical insets.
+  const stickySave = breakpoint === 'compact'
+    ? {
+        position: 'sticky' as const,
+        insetBlockEnd: '0px',
+        zIndex: 1,
+        background: tokens.background,
+        paddingBlock: tokens.spacing.sm,
+        borderBlockStart: `2px solid ${tokens.border}`,
+      }
+    : undefined;
+
   return (
-    <div style={{ display: 'grid', gap: tokens.spacing.lg }}>
+    <div
+      className="page"
+      data-breakpoint={breakpoint}
+      data-note-page-view={breakpoint === 'compact' ? 'sticky-save-action' : 'inline-save-action'}
+      style={{ color: tokens.foreground }}
+    >
       {result.status === 'error' ? (
         <div data-testid="note-page-load-error">{StateView.forTransportError(result.error)}</div>
       ) : null}
-      <header style={{ display: 'grid', gap: tokens.spacing.sm }}>
+      <header className="stack">
         <h2>{chartText(locale, 'clinicalNote')}</h2>
-        <p style={{ marginBlock: 0 }}>
+        <p className="cluster" style={{ marginBlock: 0, overflowWrap: 'anywhere' }}>
           <b>{chartText(locale, 'patient')}:</b>{' '}
           <MixedScriptText text={patientName} lang={locale} />
           {' · '}
@@ -311,12 +359,14 @@ export function NotePage() {
       ) : null}
       {copied ? <p>{chartText(locale, 'copiedNotice')}</p> : null}
       {comparing ? (
-        <section data-testid="note-compare" style={{ display: 'grid', gap: tokens.spacing.sm }}>
+        <section data-testid="note-compare" className="stack">
           <h3>{chartText(locale, 'compareTitle')}</h3>
           <b>{chartText(locale, 'serverContent')}</b>
-          <pre>{source!.content}</pre>
+          <pre style={{ overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>{source!.content}</pre>
           <b>{chartText(locale, 'yourContent')}</b>
-          <pre>{soapToContent(draft.content)}</pre>
+          <pre style={{ overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>
+            {soapToContent(draft.content)}
+          </pre>
         </section>
       ) : null}
 
@@ -338,9 +388,11 @@ export function NotePage() {
         onAmend={() => void handleAmend()}
         onMarkEnteredInError={() => setConfirm('entered-error')}
       />
-      <Button onClick={() => void handleSave()} disabled={!dirty}>
-        {chartText(locale, 'saveDraft')}
-      </Button>
+      <div data-note-save-bar={breakpoint} style={stickySave}>
+        <Button onClick={() => void handleSave()} disabled={!dirty}>
+          {chartText(locale, 'saveDraft')}
+        </Button>
+      </div>
 
       {confirm === 'sign' ? (
         <ConfirmationDialog
@@ -374,6 +426,7 @@ export function NotePage() {
           <label htmlFor="chart-enter-error-reason">{chartText(locale, 'enterErrorReason')}</label>
           <input
             id="chart-enter-error-reason"
+            className="field touch"
             value={reason}
             onChange={(event) => setReason(event.target.value)}
           />
