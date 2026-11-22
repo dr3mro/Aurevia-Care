@@ -1121,7 +1121,6 @@ class DebuggerWorkflowTests(unittest.TestCase):
         jobs = self.workflow()["jobs"]
         self.assertEqual(list(jobs), ["select", "debug", "publish"])
         agent = [st for st in jobs["debug"]["steps"] if st.get("id") == "debug"][0]
-        self.assertEqual(agent["run"], "scripts/agent-run.sh debug")
         self.assertNotIn("GH_TOKEN", agent["env"])
         self.assertIn("no GitHub token", agent["name"])
         self.assertEqual(jobs["debug"]["permissions"].get("contents"), "read")
@@ -1132,6 +1131,16 @@ class DebuggerWorkflowTests(unittest.TestCase):
         checkout = publish["steps"][0]["with"]
         self.assertEqual(checkout["ref"], "${{ github.event.repository.default_branch }}")
         self.assertIn("debug-publish", publish["steps"][-1]["run"])
+
+    def test_the_debugger_uses_the_workflow_revision_on_an_older_pr_checkout(self):
+        steps = self.workflow()["jobs"]["debug"]["steps"]
+        self.assertEqual(steps[0]["with"]["ref"], "${{ matrix.branch }}")
+        self.assertEqual(steps[0]["with"]["fetch-depth"], 0)
+        agent = next(step for step in steps if step.get("id") == "debug")
+        command = agent["run"]
+        self.assertIn('git show "$GITHUB_SHA:scripts/agent-run.sh" > "$runner"', command)
+        self.assertIn('bash "$runner" debug', command)
+        self.assertNotIn("git checkout", command)
 
     def test_it_runs_on_dispatch_and_hourly_and_only_when_a_pull_request_waits(self):
         config = self.workflow()

@@ -1,9 +1,7 @@
 package com.aurevia.smartclinic.staffmsg.mail;
 
 import java.time.Clock;
-import java.time.Instant;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -42,7 +40,9 @@ import com.aurevia.smartclinic.staffmsg.model.StaffMessagingContract.MailFolder;
  * send time and the concrete subjects are frozen on the published message, so a
  * later role change cannot silently redirect an already sent mail. Sending also
  * requires the sender to confirm the resolved recipient list, and there is no
- * blind-copy field anywhere in the API.</p>
+ * blind-copy field anywhere in the API. All state lives in the injected
+ * {@link com.aurevia.smartclinic.staffmsg.mail.MailStore}, so drafts, messages,
+ * folders and retry keys survive the loss of a service instance.</p>
  */
 @Service
 public final class MailService {
@@ -51,29 +51,32 @@ public final class MailService {
 
     private final Clock clock;
     private final RecipientDirectory directory;
-    private final Map<String, TenantState> tenants = new HashMap<>();
+    private final MailStore store;
 
     /**
-     * Create the service with the production staff directory.
+     * Create the service with the production directory and durable store.
      *
      * @param clock        application clock for server timestamps
      * @param staff        authoritative staff membership and role source
      * @param transactions tenant-guarded transaction template for role lookups
+     * @param store        durable mail persistence port
      */
     @Autowired
-    public MailService(Clock clock, StaffRepository staff, TransactionTemplate transactions) {
-        this(clock, new StaffRecipientDirectory(staff, transactions));
+    public MailService(Clock clock, StaffRepository staff, TransactionTemplate transactions, MailStore store) {
+        this(clock, new StaffRecipientDirectory(staff, transactions), store);
     }
 
     /**
-     * Create the service with an explicit recipient directory.
+     * Create the service with an explicit recipient directory and store.
      *
      * @param clock     application clock for server timestamps
      * @param directory role-holder resolver used when a message is sent
+     * @param store     mail persistence port
      */
-    public MailService(Clock clock, RecipientDirectory directory) {
+    public MailService(Clock clock, RecipientDirectory directory, MailStore store) {
         this.clock = clock;
         this.directory = directory;
+        this.store = store;
     }
 
     /**
@@ -83,7 +86,7 @@ public final class MailService {
      * @return the new draft
      * @throws ApiException on invalid input, including any attempt at blind copy
      */
-    public synchronized DraftView createDraft(CreateDraftCommand command) {
+    public DraftView createDraft(CreateDraftCommand command) {
         String organizationId = MailInputs.requireText(command.organizationId(),
                 "INVALID_ORGANIZATION", "active organization is required");
         MailInputs.requireText(command.actor(), "INVALID_ACTOR", "actor is required");
@@ -96,7 +99,7 @@ public final class MailService {
                 command.subject(), command.body(), MailInputs.orEmpty(command.to()),
                 MailInputs.orEmpty(command.cc()), MailInputs.orEmpty(command.attachmentDocumentIds()),
                 null, clock.instant());
-        state(organizationId).drafts.put(draft.id(), draft);
+        store.saveDraft(organizationId, draft);
         return draft;
     }
 
@@ -107,7 +110,7 @@ public final class MailService {
      * @return the advanced draft
      * @throws ApiException on invalid input, an invisible draft or a stale version
      */
-    public synchronized DraftView saveDraft(SaveDraftCommand command) {
+    public DraftView saveDraft(SaveDraftCommand command) {
         String organizationId = MailInputs.requireText(command.organizationId(),
                 "INVALID_ORGANIZATION", "active organization is required");
         String actor = MailInputs.requireText(command.actor(), "INVALID_ACTOR", "actor is required");
@@ -116,8 +119,7 @@ public final class MailService {
         if (command.bcc() != null && !command.bcc().isEmpty()) {
             throw new ApiException(422, "BLIND_COPY_NOT_ALLOWED", "blind copy is not available for staff mail");
         }
-        TenantState tenant = state(organizationId);
-        DraftView current = draft(tenant, command.draftId(), actor);
+        DraftView current = draft(organizationId, command.draftId(), actor);
         if (current.version() != expected) {
             throw new ApiException(412, "STALE_VERSION", "the mail draft changed since it was read");
         }
@@ -125,7 +127,7 @@ public final class MailService {
                 current.version() + 1, command.subject(), command.body(), MailInputs.orEmpty(command.to()),
                 MailInputs.orEmpty(command.cc()), MailInputs.orEmpty(command.attachmentDocumentIds()),
                 current.threadId(), clock.instant());
-        tenant.drafts.put(current.id(), updated);
+        store.saveDraft(organizationId, updated);
         return updated;
     }
 
@@ -139,20 +141,20 @@ public final class MailService {
      * @throws ApiException on invalid input, an invisible draft, a missing or
      *         mismatched confirmation, or a missing subject or recipient
      */
-    public synchronized MailView send(SendCommand command) {
+    public MailView send(SendCommand command) {
         String organizationId = MailInputs.requireText(command.organizationId(),
                 "INVALID_ORGANIZATION", "active organization is required");
         String actor = MailInputs.requireText(command.actor(), "INVALID_ACTOR", "actor is required");
         String clientMessageId = MailInputs.requireText(command.clientMessageId(),
                 "INVALID_IDEMPOTENCY_KEY", "an idempotency key is required");
-        TenantState tenant = state(organizationId);
-        String idempotency = idempotencyKey(organizationId, actor, clientMessageId);
-        String replay = tenant.sendIdempotency.get(idempotency);
-        if (replay != null) {
-            return new MailView(tenant.messages.get(replay), tenant.folders.getOrDefault(
-                    folderKey(replay, actor), MailFolder.SENT));
+        var replayed = store.replay(organizationId, actor, clientMessageId);
+        if (replayed.isPresent()) {
+            SentMail original = storedMessage(organizationId, replayed.get());
+            MailFolder placement = store.folders(organizationId, actor)
+                    .getOrDefault(replayed.get(), MailFolder.SENT);
+            return new MailView(original, placement);
         }
-        DraftView draft = draft(tenant, command.draftId(), actor);
+        DraftView draft = draft(organizationId, command.draftId(), actor);
         MailInputs.requireText(draft.subject(), "SUBJECT_REQUIRED", "a subject is required to send");
         List<Recipient> recipients = new ArrayList<>(draft.to());
         recipients.addAll(draft.cc());
@@ -172,14 +174,8 @@ public final class MailService {
         SentMail message = new SentMail(organizationId, id, draft.facilityId(), threadId, draft.subject(),
                 draft.body(), actor, SENDER_ROLE, clock.instant(), draft.to(), draft.cc(), expanded,
                 draft.attachmentDocumentIds(), List.of());
-        tenant.messages.put(id, message);
-        tenant.folders.put(folderKey(id, actor), MailFolder.SENT);
-        for (String recipient : expanded) {
-            tenant.folders.putIfAbsent(folderKey(id, recipient), MailFolder.INBOX);
-        }
-        tenant.drafts.remove(draft.id());
-        tenant.sendIdempotency.put(idempotency, id);
-        return new MailView(message, MailFolder.SENT);
+        String published = store.publish(organizationId, actor, clientMessageId, draft.id(), message, expanded);
+        return new MailView(storedMessage(organizationId, published), MailFolder.SENT);
     }
 
     /**
@@ -190,11 +186,11 @@ public final class MailService {
      * @return a draft in the same thread as the original
      * @throws ApiException on invalid input or an invisible message
      */
-    public synchronized DraftView reply(ReplyCommand command) {
+    public DraftView reply(ReplyCommand command) {
         String organizationId = MailInputs.requireText(command.organizationId(),
                 "INVALID_ORGANIZATION", "active organization is required");
         String actor = MailInputs.requireText(command.actor(), "INVALID_ACTOR", "actor is required");
-        SentMail original = visible(state(organizationId), command.messageId(), actor);
+        SentMail original = visible(organizationId, command.messageId(), actor);
         List<Recipient> recipients = new ArrayList<>();
         if (command.replyAll()) {
             List<String> participants = new ArrayList<>();
@@ -209,7 +205,7 @@ public final class MailService {
         DraftView draft = new DraftView(organizationId, MailInputs.newId(), original.facilityId(), actor, 1,
                 "Re: " + MailRules.normalizeSubject(original.subject()), command.body(), recipients,
                 List.of(), List.of(), original.threadId(), clock.instant());
-        state(organizationId).drafts.put(draft.id(), draft);
+        store.saveDraft(organizationId, draft);
         return draft;
     }
 
@@ -221,16 +217,16 @@ public final class MailService {
      * @return a draft carrying the original document links
      * @throws ApiException on invalid input or an invisible message
      */
-    public synchronized DraftView forward(ForwardCommand command) {
+    public DraftView forward(ForwardCommand command) {
         String organizationId = MailInputs.requireText(command.organizationId(),
                 "INVALID_ORGANIZATION", "active organization is required");
         String actor = MailInputs.requireText(command.actor(), "INVALID_ACTOR", "actor is required");
-        SentMail original = visible(state(organizationId), command.messageId(), actor);
+        SentMail original = visible(organizationId, command.messageId(), actor);
         DraftView draft = new DraftView(organizationId, MailInputs.newId(), original.facilityId(), actor, 1,
                 "Fwd: " + MailRules.normalizeSubject(original.subject()), command.body(),
                 MailInputs.orEmpty(command.to()), MailInputs.orEmpty(command.cc()),
                 original.attachmentDocumentIds(), original.threadId(), clock.instant());
-        state(organizationId).drafts.put(draft.id(), draft);
+        store.saveDraft(organizationId, draft);
         return draft;
     }
 
@@ -241,16 +237,15 @@ public final class MailService {
      * @return the message with the viewer's new folder
      * @throws ApiException on invalid input or an invisible message
      */
-    public synchronized MailView move(MoveCommand command) {
+    public MailView move(MoveCommand command) {
         String organizationId = MailInputs.requireText(command.organizationId(),
                 "INVALID_ORGANIZATION", "active organization is required");
         String actor = MailInputs.requireText(command.actor(), "INVALID_ACTOR", "actor is required");
         if (command.folder() == null) {
             throw new ApiException(422, "INVALID_FOLDER", "a target folder is required");
         }
-        TenantState tenant = state(organizationId);
-        SentMail message = visible(tenant, command.messageId(), actor);
-        tenant.folders.put(folderKey(message.id(), actor), command.folder());
+        SentMail message = visible(organizationId, command.messageId(), actor);
+        store.setFolder(organizationId, message.id(), actor, command.folder());
         return new MailView(message, command.folder());
     }
 
@@ -261,13 +256,12 @@ public final class MailService {
      * @return the message with its updated flags
      * @throws ApiException on invalid input or an invisible message
      */
-    public synchronized MailView flag(FlagCommand command) {
+    public MailView flag(FlagCommand command) {
         String organizationId = MailInputs.requireText(command.organizationId(),
                 "INVALID_ORGANIZATION", "active organization is required");
         String actor = MailInputs.requireText(command.actor(), "INVALID_ACTOR", "actor is required");
         String flag = MailInputs.requireText(command.flag(), "INVALID_FLAG", "a flag is required");
-        TenantState tenant = state(organizationId);
-        SentMail message = visible(tenant, command.messageId(), actor);
+        SentMail message = visible(organizationId, command.messageId(), actor);
         List<String> flags = new ArrayList<>(message.flags());
         if (command.enabled()) {
             if (!flags.contains(flag)) {
@@ -280,8 +274,8 @@ public final class MailService {
                 message.threadId(), message.subject(), message.body(), message.senderSubject(),
                 message.senderRole(), message.sentAt(), message.to(), message.cc(),
                 message.resolvedRecipients(), message.attachmentDocumentIds(), List.copyOf(flags));
-        tenant.messages.put(message.id(), updated);
-        return new MailView(updated, folderFor(tenant, message.id(), actor));
+        store.setFlags(organizationId, message.id(), flags);
+        return new MailView(updated, folderFor(organizationId, message.id(), actor));
     }
 
     /**
@@ -293,16 +287,16 @@ public final class MailService {
      * @return the visible messages placed in that folder by this person
      * @throws ApiException on invalid input
      */
-    public synchronized List<MailView> listFolder(String organizationId, String actor, MailFolder folder) {
+    public List<MailView> listFolder(String organizationId, String actor, MailFolder folder) {
         MailInputs.requireText(organizationId, "INVALID_ORGANIZATION", "active organization is required");
         MailInputs.requireText(actor, "INVALID_ACTOR", "actor is required");
         if (folder == null) {
             throw new ApiException(422, "INVALID_FOLDER", "a folder is required");
         }
-        TenantState tenant = state(organizationId);
+        Map<String, MailFolder> folders = store.folders(organizationId, actor);
         List<MailView> result = new ArrayList<>();
-        for (SentMail message : tenant.messages.values()) {
-            if (folder == tenant.folders.get(folderKey(message.id(), actor))) {
+        for (SentMail message : store.messages(organizationId)) {
+            if (folder == folders.get(message.id())) {
                 result.add(new MailView(message, folder));
             }
         }
@@ -317,17 +311,18 @@ public final class MailService {
      * @return threads ordered by first message, each with its shared subject
      * @throws ApiException on invalid input
      */
-    public synchronized List<ThreadView> listThreads(String organizationId, String actor) {
+    public List<ThreadView> listThreads(String organizationId, String actor) {
         MailInputs.requireText(organizationId, "INVALID_ORGANIZATION", "active organization is required");
         MailInputs.requireText(actor, "INVALID_ACTOR", "actor is required");
-        TenantState tenant = state(organizationId);
+        Map<String, MailFolder> folders = store.folders(organizationId, actor);
         Map<String, List<MailView>> grouped = new LinkedHashMap<>();
-        Map<String, String> references = new HashMap<>();
-        for (SentMail message : tenant.messages.values()) {
+        Map<String, String> references = new LinkedHashMap<>();
+        for (SentMail message : store.messages(organizationId)) {
             if (visibleTo(actor, message)) {
                 String key = MailRules.normalizeSubject(message.subject()) + "|" + message.threadId();
+                MailFolder placement = folders.getOrDefault(message.id(), MailFolder.INBOX);
                 grouped.computeIfAbsent(key, ignored -> new ArrayList<>())
-                        .add(new MailView(message, folderFor(tenant, message.id(), actor)));
+                        .add(new MailView(message, placement));
                 references.put(key, message.threadId());
             }
         }
@@ -349,12 +344,11 @@ public final class MailService {
      * @return the message with the reader's folder placement
      * @throws ApiException on invalid input or an invisible message
      */
-    public synchronized MailView view(String organizationId, String actor, String messageId) {
+    public MailView view(String organizationId, String actor, String messageId) {
         MailInputs.requireText(organizationId, "INVALID_ORGANIZATION", "active organization is required");
         MailInputs.requireText(actor, "INVALID_ACTOR", "actor is required");
-        TenantState tenant = state(organizationId);
-        SentMail message = visible(tenant, messageId, actor);
-        return new MailView(message, folderFor(tenant, messageId, actor));
+        SentMail message = visible(organizationId, messageId, actor);
+        return new MailView(message, folderFor(organizationId, messageId, actor));
     }
 
     private List<String> expand(String organizationId, DraftView draft, List<Recipient> recipients) {
@@ -369,17 +363,19 @@ public final class MailService {
         return List.copyOf(result);
     }
 
-    private static DraftView draft(TenantState tenant, String draftId, String actor) {
-        DraftView draft = tenant.drafts.get(draftId);
-        if (draft == null || !draft.ownerSubject().equals(actor)) {
-            throw new ApiException(404, "NOT_FOUND", "mail draft not found");
-        }
-        return draft;
+    private DraftView draft(String organizationId, String draftId, String actor) {
+        return store.draft(organizationId, draftId, actor)
+                .orElseThrow(() -> new ApiException(404, "NOT_FOUND", "mail draft not found"));
     }
 
-    private static SentMail visible(TenantState tenant, String messageId, String actor) {
-        SentMail message = tenant.messages.get(messageId);
-        if (message == null || !visibleTo(actor, message)) {
+    private SentMail storedMessage(String organizationId, String messageId) {
+        return store.message(organizationId, messageId)
+                .orElseThrow(() -> new ApiException(404, "NOT_FOUND", "mail message not found"));
+    }
+
+    private SentMail visible(String organizationId, String messageId, String actor) {
+        SentMail message = storedMessage(organizationId, messageId);
+        if (!visibleTo(actor, message)) {
             throw new ApiException(404, "NOT_FOUND", "mail message not found");
         }
         return message;
@@ -389,26 +385,7 @@ public final class MailService {
         return actor.equals(message.senderSubject()) || message.resolvedRecipients().contains(actor);
     }
 
-    private static MailFolder folderFor(TenantState tenant, String messageId, String actor) {
-        return tenant.folders.getOrDefault(folderKey(messageId, actor), MailFolder.INBOX);
-    }
-
-    private static String folderKey(String messageId, String actor) {
-        return messageId + "|" + actor;
-    }
-
-    private static String idempotencyKey(String organizationId, String actor, String clientMessageId) {
-        return organizationId + "|" + actor + "|" + clientMessageId;
-    }
-
-    private TenantState state(String organizationId) {
-        return tenants.computeIfAbsent(organizationId, ignored -> new TenantState());
-    }
-
-    private static final class TenantState {
-        private final Map<String, DraftView> drafts = new LinkedHashMap<>();
-        private final Map<String, SentMail> messages = new LinkedHashMap<>();
-        private final Map<String, MailFolder> folders = new HashMap<>();
-        private final Map<String, String> sendIdempotency = new HashMap<>();
+    private MailFolder folderFor(String organizationId, String messageId, String actor) {
+        return store.folders(organizationId, actor).getOrDefault(messageId, MailFolder.INBOX);
     }
 }

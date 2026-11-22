@@ -1,5 +1,5 @@
-- [-] RESP-APP-PATIENT-RESOURCE · Patient app: tablet, landscape and large-text layout for `PatientResource` (app)
-  - agent: swarm-8
+- [x] RESP-APP-PATIENT-RESOURCE · Patient app: tablet, landscape and large-text layout for `PatientResource` (app)
+  - pr: #609
   - attempts: 1
   - requirements: PAT-01, PAT-02, UX-01
   - scope: apps/patient-mobile/src/app/PatientResource.tsx, apps/patient-mobile/src/app/PatientResource.tablet.test.tsx
