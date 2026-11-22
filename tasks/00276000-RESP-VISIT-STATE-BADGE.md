@@ -1,5 +1,5 @@
-- [-] RESP-VISIT-STATE-BADGE · Staff web: responsive `VisitStateBadge` (features-scheduling)
-  - agent: swarm-10
+- [x] RESP-VISIT-STATE-BADGE · Staff web: responsive `VisitStateBadge` (features-scheduling)
+  - pr: #801
   - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/scheduling/VisitStateBadge.tsx, apps/staff-web/tests/responsive/features-scheduling/VisitStateBadge.responsive.test.tsx
