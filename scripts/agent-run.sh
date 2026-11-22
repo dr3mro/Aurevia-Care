@@ -242,19 +242,40 @@ $(tail -n 60 "$out/coverage.log")" "$out/coverage-fix-${attempt}.log" > /dev/nul
   fi
 
   # Frontend typecheck/lint gate: Delivery Frontend standards fails on one TS
-  # error. Jest green alone is not enough. Re-prompt up to twice with the TS tail.
+  # error. Jest green alone is not enough. Re-prompt up to four times with the TS tail.
   if [[ "$result" != rate_limited && "$result" != timeout ]]; then
     : > "$out/frontend-typecheck.log"
     attempt=0
     until bash scripts/frontend-typecheck-check.sh "$(cat "$out/base-sha")" > "$out/frontend-typecheck.log" 2>&1; do
       attempt=$((attempt + 1))
-      if [[ "$attempt" -gt 2 ]]; then
-        printf '%s\n' "frontend typecheck still failing after two repair attempts" >> "$out/frontend-typecheck.log"
+      if [[ "$attempt" -gt 4 ]]; then
+        printf '%s\n' "frontend typecheck still failing after four repair attempts" >> "$out/frontend-typecheck.log"
         break
       fi
       activate_ci_config
-      run_agent smartclinic-orchestrator "The frontend typecheck/lint gate failed, so this task is not complete (repair attempt ${attempt} of 2). Jest or Vitest passing is not enough. Fix every TypeScript error (error TS…) and lint failure in the apps you changed. For patient-mobile run bash apps/patient-mobile/check.sh; for staff-web run bash apps/staff-web/check.sh. Paste the typecheck final lines into ${notes_file} under Test evidence, then stop. Failure output (prefer error TS lines):
-$( { grep -E 'error TS|FAIL |eslint' "$out/frontend-typecheck.log" || true; tail -n 40 "$out/frontend-typecheck.log"; } | tail -n 60 )" "$out/frontend-typecheck-fix-${attempt}.log" > /dev/null
+      run_agent smartclinic-orchestrator "The frontend typecheck/lint gate FAILED — this task is NOT complete yet (repair attempt ${attempt} of 4).
+
+Step 1 — auto-fix lint (ESLint can fix many issues automatically):
+  cd apps/patient-mobile && npm ci --no-audit --no-fund && npx eslint . --fix
+  cd apps/staff-web && npm ci --no-audit --no-fund && npx eslint . --fix
+
+Step 2 — see what remains:
+  cd apps/patient-mobile && npm run typecheck 2>&1 | tail -60; npm run lint 2>&1 | tail -40
+  cd apps/staff-web && npm run typecheck 2>&1 | tail -60; npm run lint 2>&1 | tail -40
+
+Step 3 — fix every remaining error manually. Rules:
+- Never use 'any' or '@ts-ignore' — fix the type properly
+- Type every new parameter and return value explicitly
+- Imports must resolve — if a module is missing, install it or correct the path
+- Lint rules are enforced at max-warnings 0, so warnings count as failures
+
+Step 4 — confirm the gate passes, then stop:
+  bash scripts/frontend-typecheck-check.sh
+
+Paste the final output into ${notes_file} under Test evidence.
+
+Failure output from last run (run the commands above for the full current picture):
+$( { grep -E 'error TS|FAIL |eslint|Cannot find|has no exported' "$out/frontend-typecheck.log" || true; tail -n 50 "$out/frontend-typecheck.log"; } | tail -n 80 )" "$out/frontend-typecheck-fix-${attempt}.log" > /dev/null
       restore_config
       commit_agent_work
     done
@@ -276,7 +297,7 @@ $( { grep -E 'error TS|FAIL |eslint' "$out/frontend-typecheck.log" || true; tail
     if grep -q 'still failing after two repair' "$out/coverage.log" 2>/dev/null; then
       checks=failed; cat "$out/coverage.log" >> "$out/check.log"
     fi
-    if grep -q 'still failing after two repair' "$out/frontend-typecheck.log" 2>/dev/null; then
+    if grep -q 'still failing after four repair' "$out/frontend-typecheck.log" 2>/dev/null; then
       checks=failed; cat "$out/frontend-typecheck.log" >> "$out/check.log"
     fi
   fi

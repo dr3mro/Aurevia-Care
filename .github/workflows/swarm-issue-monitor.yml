@@ -59,7 +59,7 @@ jobs:
         run: echo "image=ghcr.io/${GITHUB_REPOSITORY,,}-agent-2:latest" >> "$GITHUB_OUTPUT"
       - id: pick
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
           EVENT_NAME: ${{ github.event_name }}
           SCHEDULE: ${{ github.event.schedule }}
           MODE: ${{ github.event_name == 'schedule' && (github.event.schedule == '*/10 * * * *' && 'now' || 'daily') || github.event_name == 'issues' && 'now' || inputs.mode }}
@@ -144,5 +144,5 @@ jobs:
         env:
           # The job's own token: it can push TODO.md (as the plan job does), write issues and
           # labels, and dispatch a wave. No dependency on SWARM_TOKEN's scopes.
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
         run: python3 -I scripts/swarm.py monitor-assign --selection monitor/selection.json --triage triage
