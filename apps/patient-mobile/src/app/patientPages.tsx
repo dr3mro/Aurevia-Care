@@ -3,17 +3,25 @@
  *
  * Each page is a thin container: it binds one transport loader to the shared
  * resource states and passes validated projections to the existing
- * presentational screen. Commands remain no-op placeholders. A shared layout
- * frame keeps each page readable on compact, large and right-to-left windows
- * without changing data, commands or exported names.
+ * presentational screen. Appointment confirmation is a real versioned command;
+ * the remaining commands stay no-op placeholders until their own stories.
+ * A shared layout frame keeps each page readable on compact, large and
+ * right-to-left windows without changing data or exported names.
  */
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import * as SafeArea from 'react-native-safe-area-context';
 
 import type { Transport } from '../api/transport';
 import { AppointmentListScreen } from '../features/appointments/AppointmentListScreen';
+import type { AppointmentView } from '../features/appointments/appointments';
+import { confirmedAppointmentView } from '../features/appointments/appointments';
+import {
+  claimPendingCommand,
+  confirmAppointment,
+  releasePendingCommand,
+} from '../features/appointments/confirmClient';
 import { ConversationInbox } from '../features/conversations/ConversationInbox';
 import { ReleasedReportsScreen } from '../features/reports/ReleasedReportsScreen';
 
@@ -22,6 +30,7 @@ import { windowClassFor } from './layout/useWindowClass';
 import { appText, type Locale } from './messages';
 import { PatientResource } from './PatientResource';
 import {
+  facilityZoneFormatter,
   loadAppointments,
   loadConversations,
   loadReports,
@@ -151,13 +160,72 @@ export function AppointmentListPage({
   onSessionExpired,
 }: PatientPageProps): React.JSX.Element {
   const messages = useMemo(() => screenMessages(locale), [locale]);
+  const formatter = useMemo(() => facilityZoneFormatter(), []);
+  /** Server-confirmed revisions by tenant row key, applied over the loaded list. */
+  const [confirmedRows, setConfirmedRows] = useState<Readonly<Record<string, AppointmentView>>>({});
+  /** Row whose command is in flight, exposed to the screen as a disabled control. */
+  const [pendingId, setPendingId] = useState<string | null>(null);
+  /** Bumped on a stale version to reissue the load with fresh server data. */
+  const [reloadCount, setReloadCount] = useState(0);
+  /** Synchronous guard: React state updates alone would allow a fast double press. */
+  const pendingRef = useRef<string | null>(null);
+
   const load = useCallback(
     () => loadAppointments(transport, patientId, organizationId),
     [transport, patientId, organizationId],
   );
+
+  /**
+   * Issue one versioned confirmation for the row that was displayed.
+   *
+   * A press while a command is in flight is dropped before any request or state
+   * change. The server instant becomes the displayed timestamp on success; a
+   * stale version or an already-confirmed row reloads the list instead of
+   * asserting a confirmation; a 401 ends the session; every other failure
+   * leaves the row untouched so the patient can retry.
+   */
+  const confirm = useCallback(
+    async (row: AppointmentView): Promise<void> => {
+      if (!claimPendingCommand(pendingRef, row.id)) {
+        return;
+      }
+      setPendingId(row.id);
+      try {
+        const result = await confirmAppointment(transport, {
+          appointmentId: row.id,
+          patientId,
+          expectedVersion: row.version,
+        });
+        if (result.kind === 'confirmed') {
+          setConfirmedRows((current) => ({
+            ...current,
+            [row.key]: confirmedAppointmentView(row, result.confirmedAt, result.version, formatter),
+          }));
+        } else if (result.kind === 'stale') {
+          setConfirmedRows({});
+          setReloadCount((value) => value + 1);
+        } else if (result.kind === 'unauthenticated') {
+          onSessionExpired();
+        } else if (result.error.code === 'NOT_CONFIRMABLE') {
+          // The server may have committed before its reply was lost. A retry
+          // with the old version then reports 422 NOT_CONFIRMABLE because the
+          // row is already confirmed; reload to show the server's truth rather
+          // than looping on a retry that can never succeed.
+          setConfirmedRows({});
+          setReloadCount((value) => value + 1);
+        }
+      } finally {
+        releasePendingCommand(pendingRef);
+        setPendingId(null);
+      }
+    },
+    [transport, patientId, onSessionExpired, formatter],
+  );
+
   return (
     <PatientPageFrame pageId="appointments" locale={locale}>
       <PatientResource
+        key={reloadCount}
         load={load}
         isEmpty={isEmptyRows}
         emptyMessage={appText(locale, 'emptyAppointments')}
@@ -165,11 +233,14 @@ export function AppointmentListPage({
         onSessionExpired={onSessionExpired}>
         {(appointments) => (
           <AppointmentListScreen
-            appointments={appointments}
+            appointments={appointments.map((row) => confirmedRows[row.key] ?? row)}
             notice={placeholderNotice()}
             patientId={patientId}
             devices={placeholderDevices()}
-            onConfirm={placeholderAction}
+            onConfirm={(row) => {
+              void confirm(row);
+            }}
+            pendingAppointmentId={pendingId}
             onOpenDetails={placeholderAction}
             onRevokeDevice={placeholderAction}
           />
