@@ -12,6 +12,13 @@ from helpers import ROOT
 FAKE_OPENCODE = """#!/usr/bin/env bash
 cp opencode.json "$SEEN"
 printf '%s\\n' "$*" >> "${PROMPT_LOG:-/dev/null}"
+case "$*" in *smartclinic-task-advisor*)
+  case "${BRIEF_MODE:-none}" in
+    good) printf 'chatter\\n<<<BRIEF\\nGoal: advised goal\\nBRIEF>>>\\n' ;;
+    rate) echo "Error: 429 rate limit exceeded"; exit 1 ;;
+  esac
+  exit 0 ;;
+esac
 case "$FAKE_MODE" in
   commit) echo work > feature.txt; git add feature.txt; git commit -qm feature; echo done ;;
   rate) echo "Error: 429 rate limit exceeded"; exit 1 ;;
@@ -43,6 +50,7 @@ class AgentRunTests(unittest.TestCase):
         (self.repo / "scripts").mkdir()
         (self.repo / ".github").mkdir()
         shutil.copy(ROOT / "scripts/agent-run.sh", self.repo / "scripts/agent-run.sh")
+        shutil.copy(ROOT / "scripts/route-task.py", self.repo / "scripts/route-task.py")
         (self.repo / "scripts/check.sh").write_text("#!/usr/bin/env bash\nexit ${CHECK_EXIT:-0}\n")
         (self.repo / "scripts/coverage-check.sh").write_text(
             "#!/usr/bin/env bash\necho x >> \"${COVERAGE_LOG:-/dev/null}\"\nexit ${COVERAGE_EXIT:-0}\n")
@@ -281,6 +289,37 @@ class AgentRunTests(unittest.TestCase):
         self.assertEqual(len(log.read_text().split()), 3)
         self.assertEqual(prompts.read_text().count("The quality gate failed"), 2)
         self.assertIn("## Review verdicts", prompts.read_text())
+
+    def brief_prompts(self, **env):
+        prompts = self.repo.parent / "prompts.log"
+        self.run_cmd("implement", FAKE_MODE="commit", SWARM="1", PROMPT_LOG=str(prompts), **env)
+        return prompts.read_text()
+
+    def test_the_worker_gets_the_senior_developer_brief(self):
+        text = self.brief_prompts(BRIEF_MODE="good", STORY_BODY="  - scope: apps/api\n")
+        self.assertIn("<<<BRIEF-FOR-WORKER", text)
+        self.assertIn("Goal: advised goal", text)
+        self.assertIn("## Routing", text)
+        self.assertIn("smartclinic-task-advisor", text)
+        self.assertNotIn("load the full project context", text)
+
+    def test_a_failed_advisor_falls_back_to_the_routing_block(self):
+        text = self.brief_prompts(BRIEF_MODE="rate")
+        self.assertIn("<<<BRIEF-FOR-WORKER", text)
+        self.assertIn("## Routing", text)
+        self.assertNotIn("Goal: advised goal", text)
+        self.assertEqual(self.outputs()["checks"], "passed")
+
+    def test_brief_off_skips_the_advisor(self):
+        text = self.brief_prompts(BRIEF="off")
+        self.assertNotIn("--agent smartclinic-task-advisor", text)
+        self.assertIn("## Routing", text)
+
+    def test_a_non_swarm_run_keeps_the_full_context_prompt(self):
+        prompts = self.repo.parent / "prompts.log"
+        self.run_cmd("implement", FAKE_MODE="commit", PROMPT_LOG=str(prompts))
+        self.assertIn("load the full project context", prompts.read_text())
+        self.assertNotIn("BRIEF-FOR-WORKER", prompts.read_text())
 
     def test_the_worker_prompt_asks_for_the_reviewers_and_their_verdicts(self):
         prompts = self.repo.parent / "prompts.log"

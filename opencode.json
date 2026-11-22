@@ -347,6 +347,11 @@
         },
         {
           "action": "subagent",
+          "resource": "smartclinic-task-advisor",
+          "effect": "allow"
+        },
+        {
+          "action": "subagent",
           "resource": "smartclinic-test-engineer",
           "effect": "allow"
         },
@@ -1781,6 +1786,50 @@
       ]
     },
     "smartclinic-system-designer": {
+      "permissions": [
+        {
+          "action": "*",
+          "resource": "*",
+          "effect": "deny"
+        },
+        {
+          "action": "read",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "read",
+          "resource": "*.env",
+          "effect": "deny"
+        },
+        {
+          "action": "read",
+          "resource": "*.env.*",
+          "effect": "deny"
+        },
+        {
+          "action": "read",
+          "resource": "*.env.example",
+          "effect": "allow"
+        },
+        {
+          "action": "glob",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "grep",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "skill",
+          "resource": "*",
+          "effect": "allow"
+        }
+      ]
+    },
+    "smartclinic-task-advisor": {
       "permissions": [
         {
           "action": "*",
