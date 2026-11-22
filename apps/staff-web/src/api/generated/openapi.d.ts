@@ -525,6 +525,603 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Open a verified patient conversation scoped to one care unit */
+        post: operations["openConversation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/conversations/inbox": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read the caller's patient inbox with derived unread counts */
+        get: operations["conversationInbox"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/conversations/work-queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read the role-scoped staff work queue */
+        get: operations["conversationWorkQueue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/conversations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read one conversation with its message and work-item trails */
+        get: operations["getConversation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/conversations/{id}/reply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post a reply to a conversation at an expected version */
+        post: operations["replyToConversation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/conversations/{id}/assign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Assign an open work item to a subject in the same care unit */
+        post: operations["assignConversation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/conversations/{id}/transfer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Transfer a work item inside the same care unit */
+        post: operations["transferConversation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/conversations/{id}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resolve a work item with a reason */
+        post: operations["resolveConversation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/conversations/{id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Close a thread and make it read-only */
+        post: operations["closeConversation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/conversations/{id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record that the caller viewed a thread at an expected version */
+        post: operations["markConversationRead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/instant/direct": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Open or find the direct conversation with one staff peer in a facility */
+        post: operations["openInstantDirectConversation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/instant/groups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a group conversation with a bounded set of initial members */
+        post: operations["createInstantGroup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/instant/participants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add an active staff participant to a group conversation */
+        post: operations["addInstantParticipant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/instant/{conversationId}/participants/{subject}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Close one participant's membership while keeping the conversation history */
+        delete: operations["removeInstantParticipant"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/instant/{conversationId}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List messages visible to the caller in one conversation */
+        get: operations["listInstantMessages"];
+        put?: never;
+        /** Publish one message, deduplicating retries by the client message key */
+        post: operations["sendInstantMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/instant/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Advance the caller's read cursor up to a message sequence */
+        post: operations["markInstantRead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/instant/unread": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List per-conversation unread counts for the caller in a facility */
+        get: operations["listInstantUnreadCounts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/instant/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the caller's conversations and unread counts in a facility */
+        get: operations["listInstantConversations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/mail/drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start a private version-one staff mail draft */
+        post: operations["createMailDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/mail/drafts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Save a new draft version at the version the caller last read */
+        put: operations["saveMailDraft"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/mail/drafts/{id}/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Publish a draft after confirming its resolved recipient list */
+        post: operations["sendMailDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/mail/messages/{id}/reply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a reply draft addressed to the original sender */
+        post: operations["replyToMail"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/mail/messages/{id}/reply-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a reply-all draft addressing every original participant */
+        post: operations["replyAllToMail"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/mail/messages/{id}/forward": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a forward draft keeping the original attachment links */
+        post: operations["forwardMail"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/mail/messages/{id}/move": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Move a message into the acting person's folder */
+        post: operations["moveMail"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/mail/messages/{id}/flag": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Set or clear one flag on a message */
+        post: operations["flagMail"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/mail/folders/{folder}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the acting person's messages in one mail folder */
+        get: operations["listMailFolder"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/mail/messages/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read one message visible to the acting person */
+        get: operations["getMailMessage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/mail/threads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the acting person's threads grouped by subject and reference */
+        get: operations["listMailThreads"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scheduling/visit-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Define a tenant-local visit type and its appointment duration */
+        post: operations["createVisitType"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scheduling/resources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the protected resources of one facility */
+        get: operations["listSchedulingResources"];
+        put?: never;
+        /** Define a protected clinician or room resource in a facility */
+        post: operations["createSchedulingResource"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scheduling/resources/{code}/availability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add one weekly availability window to a protected resource */
+        post: operations["addResourceAvailability"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/delivery/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read the tenant's append-only delivery audit trail */
+        get: operations["deliveryAuditTrail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/patient/access/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read the tenant's append-only patient-access audit trail */
+        get: operations["patientAccessAuditTrail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/messaging-governance/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read the tenant's append-only messaging-governance audit trail */
+        get: operations["messagingGovernanceAuditTrail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1014,10 +1611,377 @@ export interface components {
             recipients: string[];
             confirm: boolean;
         };
+        /** @description Current projection of one conversation; version is the compare-and-set token for its commands. */
+        ConversationRecord: {
+            id?: string;
+            version?: number;
+            patientId?: string;
+            patientSubject?: string;
+            /** @enum {string} */
+            unitKey?: "clinic" | "lab" | "radiology" | "pt" | "pharmacy";
+            connectionId?: string;
+            topic?: string | null;
+            /** @enum {string} */
+            state?: "awaiting_staff" | "awaiting_patient" | "resolved" | "closed";
+            assigneeSubject?: string | null;
+            patientReadSequence?: number;
+            staffReadSequence?: number;
+            /** Format: date-time */
+            createdAt?: string;
+        };
+        /** @description One immutable message in a conversation trail. */
+        ConversationMessage: {
+            id?: string;
+            conversationId?: string;
+            sequence?: number;
+            /** @enum {string} */
+            senderKind?: "patient" | "staff";
+            senderSubject?: string;
+            senderRole?: string;
+            body?: string;
+            /** Format: date-time */
+            createdAt?: string;
+        };
+        /** @description Append-only work-item fact; a closed conversation cannot be reopened. */
+        ConversationWorkEvent: {
+            id?: string;
+            conversationId?: string;
+            conversationVersion?: number;
+            /** @enum {string} */
+            eventType?: "created" | "reopened" | "assigned" | "transferred" | "resolved" | "closed";
+            actorSubject?: string;
+            fromState?: string;
+            toState?: string;
+            reason?: string | null;
+            /** Format: date-time */
+            occurredAt?: string;
+        };
+        /** @description One conversation with its complete message and work-item trails. */
+        ConversationDetail: {
+            conversation?: components["schemas"]["ConversationRecord"];
+            messages?: components["schemas"]["ConversationMessage"][];
+            events?: components["schemas"]["ConversationWorkEvent"][];
+        };
+        ConversationInboxEntry: {
+            conversation?: components["schemas"]["ConversationRecord"];
+            unreadCount?: number;
+        };
+        /** @description Patient inbox with derived unread counts, not a cursor-paginated page. */
+        ConversationInbox: {
+            entries?: components["schemas"]["ConversationInboxEntry"][];
+        };
+        /** @description Role-scoped staff work queue, not a cursor-paginated page. */
+        ConversationWorkQueue: {
+            entries?: components["schemas"]["ConversationRecord"][];
+        };
+        /** @description Connection, unit and actor are re-verified server-side; no caller assertion is trusted. */
+        ConversationOpenRequest: {
+            patientId: string;
+            patientSubject: string;
+            /** @enum {string} */
+            unitKey: "clinic" | "lab" | "radiology" | "pt" | "pharmacy";
+            connectionId: string;
+            topic?: string | null;
+        };
+        ConversationReplyRequest: {
+            body: string;
+        };
+        ConversationAssignRequest: {
+            assigneeSubject: string;
+            reason: string;
+        };
+        ConversationTransferRequest: {
+            toSubject: string;
+            reason: string;
+        };
+        ConversationResolveRequest: {
+            reason: string;
+        };
+        ConversationCloseRequest: {
+            reason: string;
+        };
+        InstantOpenDirectRequest: {
+            facilityId: string;
+            peerSubject: string;
+        };
+        InstantCreateGroupRequest: {
+            facilityId: string;
+            topic?: string | null;
+            memberSubjects: string[];
+        };
+        InstantAddParticipantRequest: {
+            facilityId: string;
+            conversationId: string;
+            subject: string;
+        };
+        InstantSendRequest: {
+            facilityId: string;
+            conversationId: string;
+            body: string;
+        };
+        InstantMarkReadRequest: {
+            facilityId: string;
+            conversationId: string;
+            /** Format: int64 */
+            upToSequence: number;
+        };
+        InstantConversation: {
+            id?: string;
+            facilityId?: string;
+            kind?: string;
+            topic?: string | null;
+            /** Format: int64 */
+            lastSequence?: number;
+            /** Format: int64 */
+            unreadCount?: number;
+        };
+        InstantMessage: {
+            id?: string;
+            /** Format: int64 */
+            sequence?: number;
+            senderSubject?: string;
+            senderRole?: string;
+            body?: string;
+            /** Format: date-time */
+            sentAt?: string;
+        };
+        /** @description Ordered messages of one conversation; not a cursor-paginated page. */
+        InstantMessageList: components["schemas"]["InstantMessage"][];
+        InstantUnread: {
+            conversationId?: string;
+            /** Format: int64 */
+            unreadCount?: number;
+        };
+        /** @description One unread count per conversation; not a cursor-paginated page. */
+        InstantUnreadList: components["schemas"]["InstantUnread"][];
+        /** @description Conversations visible to the caller; not a cursor-paginated page. */
+        InstantConversationList: components["schemas"]["InstantConversation"][];
+        /** @description A visible recipient; blind copy is deliberately absent from the wire vocabulary. */
+        MailRecipient: {
+            /** @enum {string} */
+            kind?: "person" | "role" | "unit_mailbox";
+            value?: string;
+        };
+        /** @description Draft compose or save body; bcc is accepted only so the service can refuse it. */
+        MailComposeRequest: {
+            facilityId?: string;
+            subject?: string;
+            body?: string;
+            to?: components["schemas"]["MailRecipient"][];
+            cc?: components["schemas"]["MailRecipient"][];
+            bcc?: string[];
+            attachmentDocumentIds?: string[];
+        };
+        /** @description Publication requires the explicit recipient list the caller confirmed. */
+        MailSendRequest: {
+            confirmedRecipients?: string[];
+        };
+        MailTextRequest: {
+            body: string;
+        };
+        MailFolderRequest: {
+            /** @enum {string} */
+            folder: "inbox" | "sent" | "drafts" | "archive" | "trash";
+        };
+        MailFlagRequest: {
+            flag: string;
+            enabled: boolean;
+        };
+        /** @description Private versioned draft owned by one subject; version is the save precondition. */
+        MailDraft: {
+            /** Format: uuid */
+            organizationId?: string;
+            id?: string;
+            facilityId?: string;
+            ownerSubject?: string;
+            version?: number;
+            subject?: string;
+            body?: string;
+            to?: components["schemas"]["MailRecipient"][];
+            cc?: components["schemas"]["MailRecipient"][];
+            attachmentDocumentIds?: string[];
+            threadId?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        /** @description Immutable published message with recipients resolved at send time. */
+        MailSentMessage: {
+            /** Format: uuid */
+            organizationId?: string;
+            id?: string;
+            facilityId?: string;
+            threadId?: string;
+            subject?: string;
+            body?: string;
+            senderSubject?: string;
+            senderRole?: string;
+            /** Format: date-time */
+            sentAt?: string;
+            to?: components["schemas"]["MailRecipient"][];
+            cc?: components["schemas"]["MailRecipient"][];
+            resolvedRecipients?: string[];
+            attachmentDocumentIds?: string[];
+            flags?: string[];
+        };
+        /** @description One message with the per-viewer folder placement and shared message flags. */
+        MailView: {
+            message?: components["schemas"]["MailSentMessage"];
+            /** @enum {string} */
+            viewerFolder?: "inbox" | "sent" | "drafts" | "archive" | "trash";
+        };
+        MailThread: {
+            threadId?: string;
+            subject?: string;
+            messages?: components["schemas"]["MailView"][];
+        };
+        /** @description Messages in one folder; not a cursor-paginated page. */
+        MailMessageList: components["schemas"]["MailView"][];
+        /** @description Threads visible to the caller; not a cursor-paginated page. */
+        MailThreadList: components["schemas"]["MailThread"][];
+        SchedulingVisitTypeRequest: {
+            code: string;
+            durationMinutes: number;
+        };
+        SchedulingVisitType: {
+            code?: string;
+            durationMinutes?: number;
+        };
+        SchedulingResourceRequest: {
+            facilityCode: string;
+            /** @enum {string} */
+            kind: "clinician" | "room";
+            code: string;
+            displayName: string;
+        };
+        SchedulingResource: {
+            id?: string;
+            facilityCode?: string;
+            /** @enum {string} */
+            kind?: "clinician" | "room";
+            code?: string;
+            displayName?: string;
+        };
+        /** @description Protected resources of one facility; not a cursor-paginated page. */
+        SchedulingResourceList: components["schemas"]["SchedulingResource"][];
+        SchedulingAvailabilityRequest: {
+            /** @description ISO-8601 day of week */
+            weekday: number;
+            /** @description Local wall-clock start of the window. */
+            startLocal: string;
+            /** @description Local wall-clock end of the window. */
+            endLocal: string;
+        };
+        SchedulingAvailability: {
+            facilityCode?: string;
+            resourceCode?: string;
+            weekday?: number;
+            startLocal?: string;
+            endLocal?: string;
+        };
+        /** @description Append-only delivery fact; correlation id ties it to the originating event. */
+        DeliveryAuditEntry: {
+            id?: string;
+            /** Format: uuid */
+            organizationId?: string;
+            actorId?: string;
+            purpose?: string;
+            action?: string;
+            resourceId?: string;
+            correlationId?: string;
+            outcome?: string;
+            /** Format: date-time */
+            occurredAt?: string;
+        };
+        /** @description Delivery audit facts in insertion order; not a cursor-paginated page. */
+        DeliveryAuditList: components["schemas"]["DeliveryAuditEntry"][];
+        /** @description Append-only patient-access fact. */
+        AccessAuditEntry: {
+            id?: string;
+            /** Format: uuid */
+            organizationId?: string;
+            subject?: string;
+            eventType?: string;
+            resourceId?: string;
+            outcome?: string;
+            detail?: string;
+            /** Format: date-time */
+            occurredAt?: string;
+        };
+        /** @description Access audit facts in insertion order; not a cursor-paginated page. */
+        AccessAuditList: components["schemas"]["AccessAuditEntry"][];
+        /** @description Append-only messaging-governance fact. */
+        MessagingAuditEntry: {
+            id?: string;
+            /** Format: uuid */
+            organizationId?: string;
+            subject?: string;
+            purpose?: string;
+            action?: string;
+            resourceId?: string;
+            unitId?: string;
+            correlationId?: string;
+            outcome?: string;
+            /** Format: date-time */
+            occurredAt?: string;
+        };
+        /** @description Governance audit facts in insertion order; not a cursor-paginated page. */
+        MessagingAuditList: components["schemas"]["MessagingAuditEntry"][];
     };
     responses: {
         /** @description No active membership or missing action permission */
         Forbidden: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Error"];
+            };
+        };
+        /** @description Authentication required before a protected route is reached */
+        AuthenticationRequired: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content?: never;
+        };
+        /** @description Invalid body, path or query parameter, or tenant selection */
+        InvalidRequest: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Error"];
+            };
+        };
+        /** @description Resource not found or inaccessible; existence is concealed */
+        ResourceNotFound: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Error"];
+            };
+        };
+        /** @description The command conflicts with the current state of the resource */
+        StateConflict: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Error"];
+            };
+        };
+        /** @description The resource changed since the caller read its version */
+        StaleVersion: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Error"];
+            };
+        };
+        /** @description The command requires explicit client confirmation before publication */
+        ConfirmationNeeded: {
             headers: {
                 [name: string]: unknown;
             };
@@ -1041,6 +2005,8 @@ export interface components {
         IdempotencyKey: string;
         /** @description Reserved retry-correlation header for draft commands; durable deduplication applies to placement. */
         IdempotencyKeyOptional: string;
+        /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+        RetryKey: string;
     };
     requestBodies: never;
     headers: never;
@@ -2591,6 +3557,1322 @@ export interface operations {
                 };
                 content?: never;
             };
+        };
+    };
+    openConversation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConversationOpenRequest"];
+            };
+        };
+        responses: {
+            /** @description Conversation opened with its first work-item fact appended */
+            201: {
+                headers: {
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationRecord"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    conversationInbox: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The caller's visible inbox entries */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationInbox"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    conversationWorkQueue: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Work items visible to the caller's active roles */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationWorkQueue"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    getConversation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                /** @description Tenant-local conversation identifier */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The thread and both append-only trails */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationDetail"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    replyToConversation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Version of the draft the caller last read; weak and quoted validators are accepted. */
+                "If-Match": components["parameters"]["IfMatch"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                /** @description Tenant-local conversation identifier */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConversationReplyRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated thread with the appended message */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationDetail"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            412: components["responses"]["StaleVersion"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    assignConversation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Version of the draft the caller last read; weak and quoted validators are accepted. */
+                "If-Match": components["parameters"]["IfMatch"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                /** @description Tenant-local conversation identifier */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConversationAssignRequest"];
+            };
+        };
+        responses: {
+            /** @description The conversation with the appended assignment fact */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationRecord"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            412: components["responses"]["StaleVersion"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    transferConversation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Version of the draft the caller last read; weak and quoted validators are accepted. */
+                "If-Match": components["parameters"]["IfMatch"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                /** @description Tenant-local conversation identifier */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConversationTransferRequest"];
+            };
+        };
+        responses: {
+            /** @description The conversation with the appended transfer fact */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationRecord"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            412: components["responses"]["StaleVersion"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    resolveConversation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Version of the draft the caller last read; weak and quoted validators are accepted. */
+                "If-Match": components["parameters"]["IfMatch"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                /** @description Tenant-local conversation identifier */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConversationResolveRequest"];
+            };
+        };
+        responses: {
+            /** @description The conversation with the appended resolution fact */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationRecord"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            412: components["responses"]["StaleVersion"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    closeConversation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Version of the draft the caller last read; weak and quoted validators are accepted. */
+                "If-Match": components["parameters"]["IfMatch"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                /** @description Tenant-local conversation identifier */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConversationCloseRequest"];
+            };
+        };
+        responses: {
+            /** @description The conversation with the appended closure fact */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationRecord"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            412: components["responses"]["StaleVersion"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    markConversationRead: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Version of the draft the caller last read; weak and quoted validators are accepted. */
+                "If-Match": components["parameters"]["IfMatch"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                /** @description Tenant-local conversation identifier */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The conversation with the advanced read sequence */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversationRecord"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            412: components["responses"]["StaleVersion"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    openInstantDirectConversation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InstantOpenDirectRequest"];
+            };
+        };
+        responses: {
+            /** @description Direct conversation opened or found */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstantConversation"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    createInstantGroup: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InstantCreateGroupRequest"];
+            };
+        };
+        responses: {
+            /** @description Group conversation created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstantConversation"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    addInstantParticipant: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InstantAddParticipantRequest"];
+            };
+        };
+        responses: {
+            /** @description Conversation with the new participant */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstantConversation"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    removeInstantParticipant: {
+        parameters: {
+            query: {
+                /** @description Facility the conversation must belong to */
+                facilityId: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque key that makes a retried placement produce a single order. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Tenant-local conversation identifier */
+                conversationId: string;
+                /** @description Tenant-local staff subject */
+                subject: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Conversation with the participant membership closed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstantConversation"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    listInstantMessages: {
+        parameters: {
+            query: {
+                /** @description Facility the conversation must belong to */
+                facilityId: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                /** @description Tenant-local conversation identifier */
+                conversationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Messages ordered by their gap-free sequence */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstantMessageList"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    sendInstantMessage: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque key that makes a retried placement produce a single order. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Tenant-local conversation identifier */
+                conversationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InstantSendRequest"];
+            };
+        };
+        responses: {
+            /** @description The published message with its server sequence */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstantMessage"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    markInstantRead: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InstantMarkReadRequest"];
+            };
+        };
+        responses: {
+            /** @description The remaining unread count after the cursor advanced */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstantUnread"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    listInstantUnreadCounts: {
+        parameters: {
+            query: {
+                /** @description Facility filter for the caller's conversations */
+                facilityId: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One unread count per conversation */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstantUnreadList"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    listInstantConversations: {
+        parameters: {
+            query: {
+                /** @description Facility filter for the caller's conversations */
+                facilityId: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Conversation views visible to the caller */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstantConversationList"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    createMailDraft: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MailComposeRequest"];
+            };
+        };
+        responses: {
+            /** @description The newly created draft owned by the acting subject */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MailDraft"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    saveMailDraft: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Version of the draft the caller last read; weak and quoted validators are accepted. */
+                "If-Match": components["parameters"]["IfMatch"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                /** @description Tenant-local draft identifier */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MailComposeRequest"];
+            };
+        };
+        responses: {
+            /** @description The advanced draft version */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MailDraft"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            412: components["responses"]["StaleVersion"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    sendMailDraft: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque key that makes a retried placement produce a single order. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Tenant-local draft identifier */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MailSendRequest"];
+            };
+        };
+        responses: {
+            /** @description The published immutable message */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MailView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+            428: components["responses"]["ConfirmationNeeded"];
+        };
+    };
+    replyToMail: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                /** @description Tenant-local message identifier */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MailTextRequest"];
+            };
+        };
+        responses: {
+            /** @description The reply draft */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MailDraft"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    replyAllToMail: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                /** @description Tenant-local message identifier */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MailTextRequest"];
+            };
+        };
+        responses: {
+            /** @description The reply-all draft */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MailDraft"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    forwardMail: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                /** @description Tenant-local message identifier */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MailComposeRequest"];
+            };
+        };
+        responses: {
+            /** @description The forward draft */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MailDraft"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    moveMail: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                /** @description Tenant-local message identifier */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MailFolderRequest"];
+            };
+        };
+        responses: {
+            /** @description The message with its updated per-viewer folder */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MailView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    flagMail: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                /** @description Tenant-local message identifier */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MailFlagRequest"];
+            };
+        };
+        responses: {
+            /** @description The message with its updated flags */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MailView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    listMailFolder: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                /** @description Named mail folder */
+                folder: "inbox" | "sent" | "drafts" | "archive" | "trash";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Messages in the requested folder */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MailMessageList"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    getMailMessage: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                /** @description Tenant-local message identifier */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The message with the reader's folder placement */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MailView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    listMailThreads: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Threads visible to the caller */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MailThreadList"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    createVisitType: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SchedulingVisitTypeRequest"];
+            };
+        };
+        responses: {
+            /** @description Visit type defined */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SchedulingVisitType"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    listSchedulingResources: {
+        parameters: {
+            query: {
+                /** @description Tenant-local facility code */
+                facilityCode: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Resources visible in the active tenant */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SchedulingResourceList"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    createSchedulingResource: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SchedulingResourceRequest"];
+            };
+        };
+        responses: {
+            /** @description Resource defined */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SchedulingResource"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    addResourceAvailability: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                /** @description Tenant-local resource code */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SchedulingAvailabilityRequest"];
+            };
+        };
+        responses: {
+            /** @description Weekly window added */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SchedulingAvailability"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            412: components["responses"]["StaleVersion"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    deliveryAuditTrail: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Delivery audit facts in insertion order */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeliveryAuditList"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    patientAccessAuditTrail: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Access audit facts in insertion order */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessAuditList"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    messagingGovernanceAuditTrail: {
+        parameters: {
+            query?: {
+                /** @description Optional exact resource filter */
+                resourceId?: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Governance audit facts in insertion order */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessagingAuditList"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["InvalidRequest"];
         };
     };
 }

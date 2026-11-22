@@ -735,6 +735,852 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
         '422': { description: Invalid attachment identifier or tenant selection }
+  /api/v1/conversations:
+    post:
+      operationId: openConversation
+      summary: Open a verified patient conversation scoped to one care unit
+      tags: [conversations]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/RetryKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConversationOpenRequest' }
+      responses:
+        '201':
+          description: Conversation opened with its first work-item fact appended
+          headers:
+            Location: { schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConversationRecord' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+  /api/v1/conversations/inbox:
+    get:
+      operationId: conversationInbox
+      summary: Read the caller's patient inbox with derived unread counts
+      tags: [conversations]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+      responses:
+        '200':
+          description: The caller's visible inbox entries
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConversationInbox' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+  /api/v1/conversations/work-queue:
+    get:
+      operationId: conversationWorkQueue
+      summary: Read the role-scoped staff work queue
+      tags: [conversations]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+      responses:
+        '200':
+          description: Work items visible to the caller's active roles
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConversationWorkQueue' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+  /api/v1/conversations/{id}:
+    get:
+      operationId: getConversation
+      summary: Read one conversation with its message and work-item trails
+      tags: [conversations]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - { name: id, in: path, required: true, description: Tenant-local conversation identifier, schema: { type: string } }
+      responses:
+        '200':
+          description: The thread and both append-only trails
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConversationDetail' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+  /api/v1/conversations/{id}/reply:
+    post:
+      operationId: replyToConversation
+      summary: Post a reply to a conversation at an expected version
+      tags: [conversations]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/IfMatch'
+        - $ref: '#/components/parameters/RetryKey'
+        - { name: id, in: path, required: true, description: Tenant-local conversation identifier, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConversationReplyRequest' }
+      responses:
+        '200':
+          description: The updated thread with the appended message
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConversationDetail' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+        '412': { $ref: '#/components/responses/StaleVersion' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+  /api/v1/conversations/{id}/assign:
+    post:
+      operationId: assignConversation
+      summary: Assign an open work item to a subject in the same care unit
+      tags: [conversations]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/IfMatch'
+        - $ref: '#/components/parameters/RetryKey'
+        - { name: id, in: path, required: true, description: Tenant-local conversation identifier, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConversationAssignRequest' }
+      responses:
+        '200':
+          description: The conversation with the appended assignment fact
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConversationRecord' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+        '412': { $ref: '#/components/responses/StaleVersion' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+  /api/v1/conversations/{id}/transfer:
+    post:
+      operationId: transferConversation
+      summary: Transfer a work item inside the same care unit
+      tags: [conversations]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/IfMatch'
+        - $ref: '#/components/parameters/RetryKey'
+        - { name: id, in: path, required: true, description: Tenant-local conversation identifier, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConversationTransferRequest' }
+      responses:
+        '200':
+          description: The conversation with the appended transfer fact
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConversationRecord' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+        '412': { $ref: '#/components/responses/StaleVersion' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+  /api/v1/conversations/{id}/resolve:
+    post:
+      operationId: resolveConversation
+      summary: Resolve a work item with a reason
+      tags: [conversations]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/IfMatch'
+        - $ref: '#/components/parameters/RetryKey'
+        - { name: id, in: path, required: true, description: Tenant-local conversation identifier, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConversationResolveRequest' }
+      responses:
+        '200':
+          description: The conversation with the appended resolution fact
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConversationRecord' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+        '412': { $ref: '#/components/responses/StaleVersion' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+  /api/v1/conversations/{id}/close:
+    post:
+      operationId: closeConversation
+      summary: Close a thread and make it read-only
+      tags: [conversations]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/IfMatch'
+        - $ref: '#/components/parameters/RetryKey'
+        - { name: id, in: path, required: true, description: Tenant-local conversation identifier, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConversationCloseRequest' }
+      responses:
+        '200':
+          description: The conversation with the appended closure fact
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConversationRecord' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+        '412': { $ref: '#/components/responses/StaleVersion' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+  /api/v1/conversations/{id}/read:
+    post:
+      operationId: markConversationRead
+      summary: Record that the caller viewed a thread at an expected version
+      tags: [conversations]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/IfMatch'
+        - $ref: '#/components/parameters/RetryKey'
+        - { name: id, in: path, required: true, description: Tenant-local conversation identifier, schema: { type: string } }
+      responses:
+        '200':
+          description: The conversation with the advanced read sequence
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConversationRecord' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+        '412': { $ref: '#/components/responses/StaleVersion' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+  /api/v1/staff/instant/direct:
+    post:
+      operationId: openInstantDirectConversation
+      summary: Open or find the direct conversation with one staff peer in a facility
+      tags: [staff-instant-messaging]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/RetryKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InstantOpenDirectRequest' }
+      responses:
+        '201':
+          description: Direct conversation opened or found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InstantConversation' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+  /api/v1/staff/instant/groups:
+    post:
+      operationId: createInstantGroup
+      summary: Create a group conversation with a bounded set of initial members
+      tags: [staff-instant-messaging]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/RetryKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InstantCreateGroupRequest' }
+      responses:
+        '201':
+          description: Group conversation created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InstantConversation' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+  /api/v1/staff/instant/participants:
+    post:
+      operationId: addInstantParticipant
+      summary: Add an active staff participant to a group conversation
+      tags: [staff-instant-messaging]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/RetryKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InstantAddParticipantRequest' }
+      responses:
+        '200':
+          description: Conversation with the new participant
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InstantConversation' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+  /api/v1/staff/instant/{conversationId}/participants/{subject}:
+    delete:
+      operationId: removeInstantParticipant
+      summary: Close one participant's membership while keeping the conversation history
+      tags: [staff-instant-messaging]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - { name: conversationId, in: path, required: true, description: Tenant-local conversation identifier, schema: { type: string } }
+        - { name: subject, in: path, required: true, description: Tenant-local staff subject, schema: { type: string } }
+        - { name: facilityId, in: query, required: true, description: Facility the conversation must belong to, schema: { type: string } }
+      responses:
+        '200':
+          description: Conversation with the participant membership closed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InstantConversation' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+  /api/v1/staff/instant/{conversationId}/messages:
+    post:
+      operationId: sendInstantMessage
+      summary: Publish one message, deduplicating retries by the client message key
+      tags: [staff-instant-messaging]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - { name: conversationId, in: path, required: true, description: Tenant-local conversation identifier, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InstantSendRequest' }
+      responses:
+        '200':
+          description: The published message with its server sequence
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InstantMessage' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+    get:
+      operationId: listInstantMessages
+      summary: List messages visible to the caller in one conversation
+      tags: [staff-instant-messaging]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - { name: conversationId, in: path, required: true, description: Tenant-local conversation identifier, schema: { type: string } }
+        - { name: facilityId, in: query, required: true, description: Facility the conversation must belong to, schema: { type: string } }
+      responses:
+        '200':
+          description: Messages ordered by their gap-free sequence
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InstantMessageList' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+  /api/v1/staff/instant/read:
+    post:
+      operationId: markInstantRead
+      summary: Advance the caller's read cursor up to a message sequence
+      tags: [staff-instant-messaging]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/RetryKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InstantMarkReadRequest' }
+      responses:
+        '200':
+          description: The remaining unread count after the cursor advanced
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InstantUnread' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+  /api/v1/staff/instant/unread:
+    get:
+      operationId: listInstantUnreadCounts
+      summary: List per-conversation unread counts for the caller in a facility
+      tags: [staff-instant-messaging]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - { name: facilityId, in: query, required: true, description: Facility filter for the caller's conversations, schema: { type: string } }
+      responses:
+        '200':
+          description: One unread count per conversation
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InstantUnreadList' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+  /api/v1/staff/instant/conversations:
+    get:
+      operationId: listInstantConversations
+      summary: List the caller's conversations and unread counts in a facility
+      tags: [staff-instant-messaging]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - { name: facilityId, in: query, required: true, description: Facility filter for the caller's conversations, schema: { type: string } }
+      responses:
+        '200':
+          description: Conversation views visible to the caller
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InstantConversationList' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+  /api/v1/staff/mail/drafts:
+    post:
+      operationId: createMailDraft
+      summary: Start a private version-one staff mail draft
+      tags: [staff-mail]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/RetryKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MailComposeRequest' }
+      responses:
+        '200':
+          description: The newly created draft owned by the acting subject
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MailDraft' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+  /api/v1/staff/mail/drafts/{id}:
+    put:
+      operationId: saveMailDraft
+      summary: Save a new draft version at the version the caller last read
+      tags: [staff-mail]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/IfMatch'
+        - $ref: '#/components/parameters/RetryKey'
+        - { name: id, in: path, required: true, description: Tenant-local draft identifier, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MailComposeRequest' }
+      responses:
+        '200':
+          description: The advanced draft version
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MailDraft' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '412': { $ref: '#/components/responses/StaleVersion' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+  /api/v1/staff/mail/drafts/{id}/send:
+    post:
+      operationId: sendMailDraft
+      summary: Publish a draft after confirming its resolved recipient list
+      tags: [staff-mail]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - { name: id, in: path, required: true, description: Tenant-local draft identifier, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MailSendRequest' }
+      responses:
+        '200':
+          description: The published immutable message
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MailView' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+        '428': { $ref: '#/components/responses/ConfirmationNeeded' }
+  /api/v1/staff/mail/messages/{id}/reply:
+    post:
+      operationId: replyToMail
+      summary: Create a reply draft addressed to the original sender
+      tags: [staff-mail]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/RetryKey'
+        - { name: id, in: path, required: true, description: Tenant-local message identifier, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MailTextRequest' }
+      responses:
+        '200':
+          description: The reply draft
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MailDraft' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+  /api/v1/staff/mail/messages/{id}/reply-all:
+    post:
+      operationId: replyAllToMail
+      summary: Create a reply-all draft addressing every original participant
+      tags: [staff-mail]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/RetryKey'
+        - { name: id, in: path, required: true, description: Tenant-local message identifier, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MailTextRequest' }
+      responses:
+        '200':
+          description: The reply-all draft
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MailDraft' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+  /api/v1/staff/mail/messages/{id}/forward:
+    post:
+      operationId: forwardMail
+      summary: Create a forward draft keeping the original attachment links
+      tags: [staff-mail]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/RetryKey'
+        - { name: id, in: path, required: true, description: Tenant-local message identifier, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MailComposeRequest' }
+      responses:
+        '200':
+          description: The forward draft
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MailDraft' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+  /api/v1/staff/mail/messages/{id}/move:
+    post:
+      operationId: moveMail
+      summary: Move a message into the acting person's folder
+      tags: [staff-mail]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/RetryKey'
+        - { name: id, in: path, required: true, description: Tenant-local message identifier, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MailFolderRequest' }
+      responses:
+        '200':
+          description: The message with its updated per-viewer folder
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MailView' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+  /api/v1/staff/mail/messages/{id}/flag:
+    post:
+      operationId: flagMail
+      summary: Set or clear one flag on a message
+      tags: [staff-mail]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/RetryKey'
+        - { name: id, in: path, required: true, description: Tenant-local message identifier, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MailFlagRequest' }
+      responses:
+        '200':
+          description: The message with its updated flags
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MailView' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+  /api/v1/staff/mail/folders/{folder}:
+    get:
+      operationId: listMailFolder
+      summary: List the acting person's messages in one mail folder
+      tags: [staff-mail]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - { name: folder, in: path, required: true, description: Named mail folder, schema: { type: string, enum: [inbox, sent, drafts, archive, trash] } }
+      responses:
+        '200':
+          description: Messages in the requested folder
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MailMessageList' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+  /api/v1/staff/mail/messages/{id}:
+    get:
+      operationId: getMailMessage
+      summary: Read one message visible to the acting person
+      tags: [staff-mail]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - { name: id, in: path, required: true, description: Tenant-local message identifier, schema: { type: string } }
+      responses:
+        '200':
+          description: The message with the reader's folder placement
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MailView' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+  /api/v1/staff/mail/threads:
+    get:
+      operationId: listMailThreads
+      summary: List the acting person's threads grouped by subject and reference
+      tags: [staff-mail]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+      responses:
+        '200':
+          description: Threads visible to the caller
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MailThreadList' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+  /api/v1/scheduling/visit-types:
+    post:
+      operationId: createVisitType
+      summary: Define a tenant-local visit type and its appointment duration
+      tags: [scheduling-administration]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/RetryKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SchedulingVisitTypeRequest' }
+      responses:
+        '201':
+          description: Visit type defined
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SchedulingVisitType' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+  /api/v1/scheduling/resources:
+    post:
+      operationId: createSchedulingResource
+      summary: Define a protected clinician or room resource in a facility
+      tags: [scheduling-administration]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/RetryKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SchedulingResourceRequest' }
+      responses:
+        '201':
+          description: Resource defined
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SchedulingResource' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+    get:
+      operationId: listSchedulingResources
+      summary: List the protected resources of one facility
+      tags: [scheduling-administration]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - { name: facilityCode, in: query, required: true, description: Tenant-local facility code, schema: { type: string } }
+      responses:
+        '200':
+          description: Resources visible in the active tenant
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SchedulingResourceList' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+  /api/v1/scheduling/resources/{code}/availability:
+    post:
+      operationId: addResourceAvailability
+      summary: Add one weekly availability window to a protected resource
+      tags: [scheduling-administration]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/RetryKey'
+        - { name: code, in: path, required: true, description: Tenant-local resource code, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SchedulingAvailabilityRequest' }
+      responses:
+        '201':
+          description: Weekly window added
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SchedulingAvailability' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+        '412': { $ref: '#/components/responses/StaleVersion' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+  /api/v1/delivery/audit:
+    get:
+      operationId: deliveryAuditTrail
+      summary: Read the tenant's append-only delivery audit trail
+      tags: [audit]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+      responses:
+        '200':
+          description: Delivery audit facts in insertion order
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeliveryAuditList' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+  /api/v1/patient/access/audit:
+    get:
+      operationId: patientAccessAuditTrail
+      summary: Read the tenant's append-only patient-access audit trail
+      tags: [audit]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+      responses:
+        '200':
+          description: Access audit facts in insertion order
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccessAuditList' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+  /api/v1/messaging-governance/audit:
+    get:
+      operationId: messagingGovernanceAuditTrail
+      summary: Read the tenant's append-only messaging-governance audit trail
+      tags: [audit]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - { name: resourceId, in: query, required: false, description: Optional exact resource filter, schema: { type: string } }
+      responses:
+        '200':
+          description: Governance audit facts in insertion order
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MessagingAuditList' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
 components:
   parameters:
     ActiveOrganization:
@@ -779,9 +1625,42 @@ components:
       required: false
       description: Reserved retry-correlation header for draft commands; durable deduplication applies to placement.
       schema: { type: string, minLength: 1, maxLength: 255 }
+    RetryKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it.
+      schema: { type: string, minLength: 1, maxLength: 255 }
   responses:
     Forbidden:
       description: No active membership or missing action permission
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    AuthenticationRequired:
+      description: Authentication required before a protected route is reached
+    InvalidRequest:
+      description: Invalid body, path or query parameter, or tenant selection
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ResourceNotFound:
+      description: Resource not found or inaccessible; existence is concealed
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    StateConflict:
+      description: The command conflicts with the current state of the resource
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    StaleVersion:
+      description: The resource changed since the caller read its version
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ConfirmationNeeded:
+      description: The command requires explicit client confirmation before publication
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }
@@ -1273,3 +2152,400 @@ components:
         attachmentIds: { type: array, items: { type: string } }
         recipients: { type: array, items: { type: string } }
         confirm: { type: boolean }
+    ConversationRecord:
+      type: object
+      description: Current projection of one conversation; version is the compare-and-set token for its commands.
+      properties:
+        id: { type: string }
+        version: { type: integer, minimum: 1 }
+        patientId: { type: string }
+        patientSubject: { type: string }
+        unitKey: { type: string, enum: [clinic, lab, radiology, pt, pharmacy] }
+        connectionId: { type: string }
+        topic: { type: string, nullable: true }
+        state: { type: string, enum: [awaiting_staff, awaiting_patient, resolved, closed] }
+        assigneeSubject: { type: string, nullable: true }
+        patientReadSequence: { type: integer, minimum: 0 }
+        staffReadSequence: { type: integer, minimum: 0 }
+        createdAt: { type: string, format: date-time }
+    ConversationMessage:
+      type: object
+      description: One immutable message in a conversation trail.
+      properties:
+        id: { type: string }
+        conversationId: { type: string }
+        sequence: { type: integer, minimum: 1 }
+        senderKind: { type: string, enum: [patient, staff] }
+        senderSubject: { type: string }
+        senderRole: { type: string }
+        body: { type: string }
+        createdAt: { type: string, format: date-time }
+    ConversationWorkEvent:
+      type: object
+      description: Append-only work-item fact; a closed conversation cannot be reopened.
+      properties:
+        id: { type: string }
+        conversationId: { type: string }
+        conversationVersion: { type: integer, minimum: 1 }
+        eventType: { type: string, enum: [created, reopened, assigned, transferred, resolved, closed] }
+        actorSubject: { type: string }
+        fromState: { type: string }
+        toState: { type: string }
+        reason: { type: string, nullable: true }
+        occurredAt: { type: string, format: date-time }
+    ConversationDetail:
+      type: object
+      description: One conversation with its complete message and work-item trails.
+      properties:
+        conversation: { $ref: '#/components/schemas/ConversationRecord' }
+        messages:
+          type: array
+          items: { $ref: '#/components/schemas/ConversationMessage' }
+        events:
+          type: array
+          items: { $ref: '#/components/schemas/ConversationWorkEvent' }
+    ConversationInboxEntry:
+      type: object
+      properties:
+        conversation: { $ref: '#/components/schemas/ConversationRecord' }
+        unreadCount: { type: integer, minimum: 0 }
+    ConversationInbox:
+      type: object
+      description: Patient inbox with derived unread counts, not a cursor-paginated page.
+      properties:
+        entries:
+          type: array
+          items: { $ref: '#/components/schemas/ConversationInboxEntry' }
+    ConversationWorkQueue:
+      type: object
+      description: Role-scoped staff work queue, not a cursor-paginated page.
+      properties:
+        entries:
+          type: array
+          items: { $ref: '#/components/schemas/ConversationRecord' }
+    ConversationOpenRequest:
+      type: object
+      required: [patientId, patientSubject, unitKey, connectionId]
+      additionalProperties: false
+      description: Connection, unit and actor are re-verified server-side; no caller assertion is trusted.
+      properties:
+        patientId: { type: string }
+        patientSubject: { type: string }
+        unitKey: { type: string, enum: [clinic, lab, radiology, pt, pharmacy] }
+        connectionId: { type: string }
+        topic: { type: string, nullable: true }
+    ConversationReplyRequest:
+      type: object
+      required: [body]
+      additionalProperties: false
+      properties:
+        body: { type: string, minLength: 1 }
+    ConversationAssignRequest:
+      type: object
+      required: [assigneeSubject, reason]
+      additionalProperties: false
+      properties:
+        assigneeSubject: { type: string }
+        reason: { type: string }
+    ConversationTransferRequest:
+      type: object
+      required: [toSubject, reason]
+      additionalProperties: false
+      properties:
+        toSubject: { type: string }
+        reason: { type: string }
+    ConversationResolveRequest:
+      type: object
+      required: [reason]
+      additionalProperties: false
+      properties:
+        reason: { type: string }
+    ConversationCloseRequest:
+      type: object
+      required: [reason]
+      additionalProperties: false
+      properties:
+        reason: { type: string }
+    InstantOpenDirectRequest:
+      type: object
+      required: [facilityId, peerSubject]
+      additionalProperties: false
+      properties:
+        facilityId: { type: string }
+        peerSubject: { type: string }
+    InstantCreateGroupRequest:
+      type: object
+      required: [facilityId, memberSubjects]
+      additionalProperties: false
+      properties:
+        facilityId: { type: string }
+        topic: { type: string, nullable: true }
+        memberSubjects: { type: array, items: { type: string } }
+    InstantAddParticipantRequest:
+      type: object
+      required: [facilityId, conversationId, subject]
+      additionalProperties: false
+      properties:
+        facilityId: { type: string }
+        conversationId: { type: string }
+        subject: { type: string }
+    InstantSendRequest:
+      type: object
+      required: [facilityId, conversationId, body]
+      additionalProperties: false
+      properties:
+        facilityId: { type: string }
+        conversationId: { type: string }
+        body: { type: string, minLength: 1 }
+    InstantMarkReadRequest:
+      type: object
+      required: [facilityId, conversationId, upToSequence]
+      additionalProperties: false
+      properties:
+        facilityId: { type: string }
+        conversationId: { type: string }
+        upToSequence: { type: integer, minimum: 0, format: int64 }
+    InstantConversation:
+      type: object
+      properties:
+        id: { type: string }
+        facilityId: { type: string }
+        kind: { type: string }
+        topic: { type: string, nullable: true }
+        lastSequence: { type: integer, minimum: 0, format: int64 }
+        unreadCount: { type: integer, minimum: 0, format: int64 }
+    InstantMessage:
+      type: object
+      properties:
+        id: { type: string }
+        sequence: { type: integer, minimum: 1, format: int64 }
+        senderSubject: { type: string }
+        senderRole: { type: string }
+        body: { type: string }
+        sentAt: { type: string, format: date-time }
+    InstantMessageList:
+      type: array
+      description: Ordered messages of one conversation; not a cursor-paginated page.
+      items: { $ref: '#/components/schemas/InstantMessage' }
+    InstantUnread:
+      type: object
+      properties:
+        conversationId: { type: string }
+        unreadCount: { type: integer, minimum: 0, format: int64 }
+    InstantUnreadList:
+      type: array
+      description: One unread count per conversation; not a cursor-paginated page.
+      items: { $ref: '#/components/schemas/InstantUnread' }
+    InstantConversationList:
+      type: array
+      description: Conversations visible to the caller; not a cursor-paginated page.
+      items: { $ref: '#/components/schemas/InstantConversation' }
+    MailRecipient:
+      type: object
+      description: A visible recipient; blind copy is deliberately absent from the wire vocabulary.
+      properties:
+        kind: { type: string, enum: [person, role, unit_mailbox] }
+        value: { type: string }
+    MailComposeRequest:
+      type: object
+      description: Draft compose or save body; bcc is accepted only so the service can refuse it.
+      properties:
+        facilityId: { type: string }
+        subject: { type: string }
+        body: { type: string }
+        to:
+          type: array
+          items: { $ref: '#/components/schemas/MailRecipient' }
+        cc:
+          type: array
+          items: { $ref: '#/components/schemas/MailRecipient' }
+        bcc: { type: array, items: { type: string } }
+        attachmentDocumentIds: { type: array, items: { type: string } }
+    MailSendRequest:
+      type: object
+      description: Publication requires the explicit recipient list the caller confirmed.
+      properties:
+        confirmedRecipients: { type: array, items: { type: string } }
+    MailTextRequest:
+      type: object
+      required: [body]
+      additionalProperties: false
+      properties:
+        body: { type: string }
+    MailFolderRequest:
+      type: object
+      required: [folder]
+      additionalProperties: false
+      properties:
+        folder: { type: string, enum: [inbox, sent, drafts, archive, trash] }
+    MailFlagRequest:
+      type: object
+      required: [flag, enabled]
+      additionalProperties: false
+      properties:
+        flag: { type: string }
+        enabled: { type: boolean }
+    MailDraft:
+      type: object
+      description: Private versioned draft owned by one subject; version is the save precondition.
+      properties:
+        organizationId: { type: string, format: uuid }
+        id: { type: string }
+        facilityId: { type: string }
+        ownerSubject: { type: string }
+        version: { type: integer, minimum: 1 }
+        subject: { type: string }
+        body: { type: string }
+        to:
+          type: array
+          items: { $ref: '#/components/schemas/MailRecipient' }
+        cc:
+          type: array
+          items: { $ref: '#/components/schemas/MailRecipient' }
+        attachmentDocumentIds: { type: array, items: { type: string } }
+        threadId: { type: string }
+        updatedAt: { type: string, format: date-time }
+    MailSentMessage:
+      type: object
+      description: Immutable published message with recipients resolved at send time.
+      properties:
+        organizationId: { type: string, format: uuid }
+        id: { type: string }
+        facilityId: { type: string }
+        threadId: { type: string }
+        subject: { type: string }
+        body: { type: string }
+        senderSubject: { type: string }
+        senderRole: { type: string }
+        sentAt: { type: string, format: date-time }
+        to:
+          type: array
+          items: { $ref: '#/components/schemas/MailRecipient' }
+        cc:
+          type: array
+          items: { $ref: '#/components/schemas/MailRecipient' }
+        resolvedRecipients: { type: array, items: { type: string } }
+        attachmentDocumentIds: { type: array, items: { type: string } }
+        flags: { type: array, items: { type: string } }
+    MailView:
+      type: object
+      description: One message with the per-viewer folder placement and shared message flags.
+      properties:
+        message: { $ref: '#/components/schemas/MailSentMessage' }
+        viewerFolder: { type: string, enum: [inbox, sent, drafts, archive, trash] }
+    MailThread:
+      type: object
+      properties:
+        threadId: { type: string }
+        subject: { type: string }
+        messages:
+          type: array
+          items: { $ref: '#/components/schemas/MailView' }
+    MailMessageList:
+      type: array
+      description: Messages in one folder; not a cursor-paginated page.
+      items: { $ref: '#/components/schemas/MailView' }
+    MailThreadList:
+      type: array
+      description: Threads visible to the caller; not a cursor-paginated page.
+      items: { $ref: '#/components/schemas/MailThread' }
+    SchedulingVisitTypeRequest:
+      type: object
+      required: [code, durationMinutes]
+      additionalProperties: false
+      properties:
+        code: { type: string }
+        durationMinutes: { type: integer, minimum: 1, maximum: 1440 }
+    SchedulingVisitType:
+      type: object
+      properties:
+        code: { type: string }
+        durationMinutes: { type: integer, minimum: 1 }
+    SchedulingResourceRequest:
+      type: object
+      required: [facilityCode, kind, code, displayName]
+      additionalProperties: false
+      properties:
+        facilityCode: { type: string }
+        kind: { type: string, enum: [clinician, room] }
+        code: { type: string }
+        displayName: { type: string }
+    SchedulingResource:
+      type: object
+      properties:
+        id: { type: string }
+        facilityCode: { type: string }
+        kind: { type: string, enum: [clinician, room] }
+        code: { type: string }
+        displayName: { type: string }
+    SchedulingResourceList:
+      type: array
+      description: Protected resources of one facility; not a cursor-paginated page.
+      items: { $ref: '#/components/schemas/SchedulingResource' }
+    SchedulingAvailabilityRequest:
+      type: object
+      required: [weekday, startLocal, endLocal]
+      additionalProperties: false
+      properties:
+        weekday: { type: integer, minimum: 1, maximum: 7, description: ISO-8601 day of week, 1 is Monday. }
+        startLocal: { type: string, description: Local wall-clock start of the window. }
+        endLocal: { type: string, description: Local wall-clock end of the window. }
+    SchedulingAvailability:
+      type: object
+      properties:
+        facilityCode: { type: string }
+        resourceCode: { type: string }
+        weekday: { type: integer, minimum: 1, maximum: 7 }
+        startLocal: { type: string }
+        endLocal: { type: string }
+    DeliveryAuditEntry:
+      type: object
+      description: Append-only delivery fact; correlation id ties it to the originating event.
+      properties:
+        id: { type: string }
+        organizationId: { type: string, format: uuid }
+        actorId: { type: string }
+        purpose: { type: string }
+        action: { type: string }
+        resourceId: { type: string }
+        correlationId: { type: string }
+        outcome: { type: string }
+        occurredAt: { type: string, format: date-time }
+    DeliveryAuditList:
+      type: array
+      description: Delivery audit facts in insertion order; not a cursor-paginated page.
+      items: { $ref: '#/components/schemas/DeliveryAuditEntry' }
+    AccessAuditEntry:
+      type: object
+      description: Append-only patient-access fact.
+      properties:
+        id: { type: string }
+        organizationId: { type: string, format: uuid }
+        subject: { type: string }
+        eventType: { type: string }
+        resourceId: { type: string }
+        outcome: { type: string }
+        detail: { type: string }
+        occurredAt: { type: string, format: date-time }
+    AccessAuditList:
+      type: array
+      description: Access audit facts in insertion order; not a cursor-paginated page.
+      items: { $ref: '#/components/schemas/AccessAuditEntry' }
+    MessagingAuditEntry:
+      type: object
+      description: Append-only messaging-governance fact.
+      properties:
+        id: { type: string }
+        organizationId: { type: string, format: uuid }
+        subject: { type: string }
+        purpose: { type: string }
+        action: { type: string }
+        resourceId: { type: string }
+        unitId: { type: string }
+        correlationId: { type: string }
+        outcome: { type: string }
+        occurredAt: { type: string, format: date-time }
+    MessagingAuditList:
+      type: array
+      description: Governance audit facts in insertion order; not a cursor-paginated page.
+      items: { $ref: '#/components/schemas/MessagingAuditEntry' }
