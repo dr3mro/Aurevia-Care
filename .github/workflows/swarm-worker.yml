@@ -68,7 +68,7 @@ jobs:
       # later fetches nothing; a newer main is picked up by the integrator.
       - name: Fetch main
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
           BASE_BRANCH: ${{ github.event.repository.default_branch }}
         run: scripts/agent-run.sh fetch-main || true
       # A fix worker starts on an existing branch that may be behind main: bring main in first, with the
@@ -87,7 +87,7 @@ jobs:
       # issues. Read here with the read-only token; the agent only sees the file.
       - name: Read earlier findings about this task
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
           SWARM_ISSUES: ${{ vars.SWARM_ISSUES }}
         run: |
           python3 -I scripts/swarm.py issue-context --task "$STORY_ID" || true
@@ -121,7 +121,7 @@ jobs:
       - name: Fetch main (after segment 1)
         if: steps.s1.outputs.more == 'true'
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
           BASE_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           header=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 | tr -d '\n')
@@ -157,7 +157,7 @@ jobs:
       - name: Fetch main (after segment 2)
         if: steps.s2.outputs.more == 'true'
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
           BASE_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           header=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 | tr -d '\n')
@@ -193,7 +193,7 @@ jobs:
       - name: Fetch main (after segment 3)
         if: steps.s3.outputs.more == 'true'
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
           BASE_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           header=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 | tr -d '\n')
@@ -226,7 +226,7 @@ jobs:
       - name: Fetch main (final)
         if: always()
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
           BASE_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           header=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 | tr -d '\n')
@@ -312,6 +312,6 @@ jobs:
         if: always()
         continue-on-error: true
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
           TASK_ID: ${{ fromJSON(inputs.task).id }}
         run: python3 -I scripts/swarm.py top-up --id "$TASK_ID"

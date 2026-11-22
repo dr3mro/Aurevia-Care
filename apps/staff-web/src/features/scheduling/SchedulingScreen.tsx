@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useI18n } from '../../i18n/I18nProvider';
-import { useTheme } from '../../theme/ThemeProvider';
+import { useBreakpoint } from '../../theme/useBreakpoint';
 import { AppointmentWorklist } from './AppointmentWorklist';
 import type { BookingInput } from './BookingForm';
 import { BookingForm } from './BookingForm';
@@ -25,6 +25,14 @@ export interface SchedulingScreenProps {
  * Compose the tenant-scoped worklist and booking form. Data and durable
  * commands belong to the page; only the range and the local assignment draft
  * (no API endpoint exists for it) are held here.
+ *
+ * Layout is presentation only. The root `.page` supplies logical safe-area
+ * padding and the reading-width cap; the shared `.grid-2` stacks the two panels
+ * on a phone and places them side by side from the medium breakpoint upward.
+ * Both use `minmax(0, 1fr)` tracks, so a long clinical value wraps instead of
+ * forcing page-level horizontal scroll. Long English and Arabic prose wraps
+ * with a logical property, and no field or column is hidden at any band.
+ * Behaviour, text, API calls and exported names are unchanged (WEB-07, UX-01).
  */
 export function SchedulingScreen({
   appointments,
@@ -35,7 +43,7 @@ export function SchedulingScreen({
   onBook,
 }: SchedulingScreenProps) {
   const { locale } = useI18n();
-  const { tokens } = useTheme();
+  const breakpoint = useBreakpoint();
   const [items, setItems] = useState<Appointment[]>(() => [
     ...appointmentsForTenant(appointments, organizationId),
   ]);
@@ -52,6 +60,12 @@ export function SchedulingScreen({
   // here would drop late-evening rows displayed in a different facility zone.
   const visible = appointmentsForTenant(items, organizationId);
   const scoped = appointmentsForTenant(items, organizationId);
+  const stacked = breakpoint === 'compact';
+
+  // responsive.css has wrapping rules for .grid-2 > * but not for .page > *,
+  // so keep long synthetic prose wrapping with a logical inline property rather
+  // than editing the shared stylesheet.
+  const wrappingStyle = { overflowWrap: 'anywhere' } as const;
 
   function handleCheckIn(id: string) {
     // Row actions exist only for visible ids, so the target is always present.
@@ -77,22 +91,35 @@ export function SchedulingScreen({
 
   return (
     <section
+      className="page"
+      data-breakpoint={breakpoint}
+      data-scheduling-view={stacked ? 'stacked-panels' : 'side-by-side-panels'}
       aria-label={schedulingText(locale, 'scheduling')}
-      style={{ display: 'grid', gap: tokens.spacing.lg }}
     >
-      <h2>{schedulingText(locale, 'scheduling')}</h2>
-      <p>{schedulingText(locale, 'syntheticNotice')}</p>
-      <p role="status" data-testid="scheduling-status" aria-label={schedulingText(locale, 'status')}>
+      <h2 style={wrappingStyle}>{schedulingText(locale, 'scheduling')}</h2>
+      <p style={wrappingStyle}>{schedulingText(locale, 'syntheticNotice')}</p>
+      <p
+        role="status"
+        data-testid="scheduling-status"
+        aria-label={schedulingText(locale, 'status')}
+        style={wrappingStyle}
+      >
         {announcement}
       </p>
-      <AppointmentWorklist
-        appointments={visible}
-        range={range}
-        onRangeChange={onRangeChange}
-        onCheckIn={handleCheckIn}
-        onAssign={handleAssign}
-      />
-      <BookingForm appointments={scoped} organizationId={organizationId} onBook={handleBook} />
+      <div
+        className="grid-2"
+        data-part="panels"
+        data-layout={stacked ? 'stacked' : 'side-by-side'}
+      >
+        <AppointmentWorklist
+          appointments={visible}
+          range={range}
+          onRangeChange={onRangeChange}
+          onCheckIn={handleCheckIn}
+          onAssign={handleAssign}
+        />
+        <BookingForm appointments={scoped} organizationId={organizationId} onBook={handleBook} />
+      </div>
     </section>
   );
 }

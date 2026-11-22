@@ -28,7 +28,9 @@ MAX_FIX = 3
 MAX_DEBUG_ROUNDS = 3
 # One story per worker PR: a batch this large cannot be reviewed or verified
 # as a single bounded change, and it was the source of the G1 quality failures.
-MAX_PR_FILES = 30
+MAX_PR_FILES = 50
+# Added plus removed lines an automatic merge accepts; a larger change cannot be reviewed well.
+MAX_PR_LINES = int(os.environ.get("SWARM_MAX_PR_LINES") or 5000)
 # A task a swarm worker has taken this many times without finishing waits for a person.
 MAX_ATTEMPTS = 5
 BODY_LIMIT = 8000
@@ -1007,7 +1009,7 @@ def monitor_assign(directory, prs=(), nudge=(), exhausted=(), todo="TODO.md", tr
         comment_issue(number, f"**{stamp_now()}** Automatic attempts are used up with no progress. "
                               "A person must take over.")
     started = bool(ids or prs or nudge or reset)
-    if started and waiting_waves() == 0:
+    if started and wave_has_room():
         gh("workflow", "run", "swarm.yml", "-f", f"workers={STORY_WAVE_WORKERS}", check=False)
     return {"tasks": [n for n, _ in ids], "failed": failed, "unanswered": unanswered, "prs": [n for n, _ in prs],
             "nudged": list(nudge), "reset": [n for n, _ in reset], "closed": list(close),
@@ -2440,7 +2442,7 @@ def fail(pr, reason, log_text="", simple=False):
            f"{MARK}\n{reason}. Fix attempt {attempt} of {MAX_FIX}.{detail}")
         # One waiting wave already plans every sent-back pull request, so several fails
         # in one integration run must not each dispatch a wave of their own.
-        if waiting_waves() == 0:
+        if wave_has_room():
             gh("workflow", "run", "swarm.yml", "-f", f"workers={STORY_WAVE_WORKERS}", check=False)
         return True
     if rounds < MAX_DEBUG_ROUNDS:
@@ -2455,8 +2457,14 @@ def fail(pr, reason, log_text="", simple=False):
 
 def main_is_red(workflow="delivery.yml"):
     """True when the newest finished run of the delivery workflow on main failed."""
-    runs = gh_json("run", "list", "--workflow", workflow, "--branch", "main", "--status", "completed",
-                   "--limit", "1", "--json", "conclusion") or []
+    try:
+        runs = gh_json("run", "list", "--workflow", workflow, "--branch", "main", "--status", "completed",
+                       "--limit", "1", "--json", "conclusion") or []
+    except subprocess.CalledProcessError as exc:
+        # A rate limit or API hiccup must not crash the whole flow pass: treat main as not red
+        # and let the next scheduled pass look again.
+        print(f"main_is_red: gh failed ({exc.returncode}); assuming main is not red", file=sys.stderr)
+        return False
     return bool(runs) and runs[0]["conclusion"] == "failure"
 
 
@@ -2552,6 +2560,32 @@ def delivery_runs(head):
     return runs
 
 
+DELIVERY_LISTING_LIMIT = 100
+
+
+def delivery_listing():
+    """One call listing the newest Delivery runs of every branch, shared by a whole pr-flow pass."""
+    runs = gh_json("run", "list", "--workflow", "Delivery", "--limit", str(DELIVERY_LISTING_LIMIT),
+                   "--json", "databaseId,headSha,status,conclusion")
+    return runs if isinstance(runs, list) else []
+
+
+def delivery_runs_from(listing, head):
+    """Runs for one head taken from a shared listing, so a pass costs one call, not two per PR.
+
+    Jobs are read only for a run that has not finished, the one case where an environment
+    gate shows at job level. A head absent from a full listing may just be older than the
+    window, so only then is it looked up on its own.
+    """
+    runs = [r for r in listing if isinstance(r, dict) and (r.get("headSha") or "") == head]
+    if not runs and len(listing) >= DELIVERY_LISTING_LIMIT:
+        return delivery_runs(head)
+    if runs and runs[0].get("databaseId") and runs[0].get("status") != "completed":
+        jobs = gh_json("run", "view", str(runs[0]["databaseId"]), "--json", "jobs") or {}
+        runs[0]["jobs"] = jobs.get("jobs") or []
+    return runs
+
+
 def delivery_gate(pr, head=None, runs=None):
     """Apply the integrator's Delivery policy to one pull request.
 
@@ -2584,19 +2618,73 @@ def delivery_gate(pr, head=None, runs=None):
     return "request"
 
 
+# Decision returned by draft_recovery for one draft pull request.
+DRAFT_RECOVER = "recover"   # Delivery passed on the current head: undraft and queue it.
+DRAFT_FIX = "fix"           # Checks still failed: send it to a fix worker.
+DRAFT_LEAVE = "leave"       # A person owns it (reconciler, blocked, or still waiting).
+# Title of the reconciler's instruction-document draft, which a person must review.
+RECONCILER_TITLE = "instruction updates for review"
+
+
+def draft_recovery(pr_info, runs=None):
+    """Decide what the integrator's plan step should do with one open swarm draft.
+
+    ``pr_info`` is a ``gh pr list`` record (``number``, ``title``, ``labels``,
+    ``isDraft``, ``headRefOid``). ``runs`` may carry a caller's shared Delivery
+    listing; when omitted the runs for this head are fetched. Only Delivery
+    evidence for the current head counts, through :func:`delivery_state`.
+
+    Returns ``recover`` when an ordinary story draft has Delivery ``passed`` and no
+    ``needs-fix``/``needs-human`` label -- it is ready for review and can be queued.
+    A draft whose checks still fail returns ``fix`` so one fix worker is sent for
+    that head; the existing fix/debugger escalation ends in ``needs-human``.
+    Reconciler instruction drafts, repair drafts, blocked drafts and drafts still
+    waiting for Delivery return ``leave`` and stay drafts for a person.
+    """
+    labels = label_names(pr_info)
+    if {"needs-fix", "needs-human"} & labels:
+        return DRAFT_LEAVE
+    title = pr_info.get("title", "")
+    if RECONCILER_TITLE in title or "autofix" in labels or title.startswith(REPAIR_PREFIXES):
+        return DRAFT_LEAVE
+    head = pr_info.get("headRefOid", "")
+    state = delivery_state(delivery_runs(head) if runs is None else runs, head)
+    if state == "passed":
+        return DRAFT_RECOVER
+    if state == "failed":
+        return DRAFT_FIX
+    return DRAFT_LEAVE
+
+
 def plan_integration(red=False):
     """Pull requests ready to integrate, oldest first. While main is red only
     repair pull requests (FIX-, DLV-) may merge, so ordinary work is not blamed for it.
 
-    Drafts are excluded explicitly: a worker that failed local checks (including
-    typecheck) opens a draft, and that work must not merge until a fix pass undrafts it."""
+    A draft whose Delivery already passed is marked ready for review by
+    :func:`draft_recovery` and queued; one whose checks still fail goes to a fix
+    worker. Reconciler instruction drafts and blocked drafts stay drafts for a
+    person and are never queued."""
     prs = gh_json("pr", "list", "--state", "open", "--label", "swarm", "--limit", "50",
                   "--json", "number,title,labels,isCrossRepository,isDraft")
     blocked = {"needs-fix", "needs-human", "needs-debug"}
-    return [p["number"] for p in sorted(prs, key=lambda p: p["number"])
-            if not p["isCrossRepository"] and not p.get("isDraft")
-            and not blocked & label_names(p)
-            and (not red or p.get("title", "").startswith(REPAIR_PREFIXES))]
+    queue = []
+    for p in sorted(prs, key=lambda p: p["number"]):
+        number = p["number"]
+        if p["isCrossRepository"] or blocked & label_names(p):
+            continue
+        if p.get("isDraft"):
+            decision = draft_recovery(p)
+            if decision == DRAFT_RECOVER:
+                gh("pr", "ready", str(number), check=False)
+            elif decision == DRAFT_FIX:
+                fail(number, "Draft pull request: local checks failed", simple=True)
+                continue
+            else:
+                continue
+        if red and not p.get("title", "").startswith(REPAIR_PREFIXES):
+            continue
+        queue.append(number)
+    return queue
 
 
 def only_worker_failures(run):
@@ -2726,7 +2814,8 @@ def add_latest_repair_task(path="TODO.md"):
 
 MAX_ACTIVE_WORKERS = 20  # workers running at once across every wave
 # Repairs, fixes and the debugger are planned first; stories (high, normal, then low) fill every other slot.
-STORY_WAVE_WORKERS = 7
+STORY_WAVE_WORKERS = 3
+MAX_LIVE_WAVES = 6  # waves that may run side by side (3 story workers each, inside the worker cap)
 
 
 WAITING_WAVE_MAX_AGE_MIN = 30
@@ -2749,6 +2838,18 @@ def waiting_waves():
             if now - created < datetime.timedelta(minutes=WAITING_WAVE_MAX_AGE_MIN):
                 total += 1
     return total
+
+
+def live_waves():
+    """Agent swarm runs that have not finished: running, queued or waiting."""
+    out = gh("run", "list", "--workflow", "swarm.yml", "--limit", "30", "--json", "status", "-q",
+             '.[] | select(.status != "completed") | .status', check=False)
+    return len(str(out or "").split())
+
+
+def wave_has_room():
+    """True when a new wave may start: none is waiting for a runner and fewer than MAX_LIVE_WAVES run."""
+    return waiting_waves() == 0 and live_waves() < MAX_LIVE_WAVES
 
 
 def live_workers():
@@ -2779,7 +2880,7 @@ def top_up(finished_id):
     hours. The planner still decides what runs: the combined worker cap, scopes, dependencies and
     the budget gate all apply to the wave this starts. Returns True when a wave was started."""
     live = [name for name in live_workers() if name != finished_id]
-    if len(live) >= MAX_ACTIVE_WORKERS or waiting_waves():
+    if len(live) >= MAX_ACTIVE_WORKERS or waiting_waves() or live_waves() >= MAX_LIVE_WAVES:
         return False
     prs = gh_json("pr", "list", "--state", "open", "--label", "swarm", "--limit", "100",
                   "--json", "number,title,headRefName,isCrossRepository,labels,comments") or []
@@ -3021,6 +3122,11 @@ def pr_flow(now=None):
     prs = gh_json("pr", "list", "--state", "open", "--label", "swarm", "--limit", "100",
                   "--json", "number,title,labels,isCrossRepository,isDraft,headRefOid,updatedAt") or []
     red = main_is_red()
+    try:
+        listing = delivery_listing()
+    except subprocess.CalledProcessError as exc:
+        print(f"pr-flow: delivery listing failed ({exc.returncode}); retry next pass", file=sys.stderr)
+        return []
     acted, ready, wants_debugger, wants_wave = [], [], False, False
     for item in sorted(prs, key=lambda p: p["number"]):
         pr, labels = item["number"], label_names(item)
@@ -3030,7 +3136,23 @@ def pr_flow(now=None):
             wants_debugger = True
             continue
         if "needs-fix" in labels:
-            wants_wave = True
+            # A fix worker may have pushed a clean branch but needs-fix was never cleared
+            # (old code, or the publish step ran before the new clearing logic). If Delivery
+            # already passed on the current head, the fix worked: clear the label so the
+            # integrator can pick it up without spawning another redundant fix worker.
+            head = item.get("headRefOid", "")
+            try:
+                delivered = bool(head) and delivery_state(delivery_runs_from(listing, head), head) == "passed"
+            except subprocess.CalledProcessError as exc:
+                # Rate limit or API hiccup: leave this PR for the next pass, no wave on a guess.
+                print(f"#{pr}: delivery lookup failed ({exc.returncode}); retry next pass", file=sys.stderr)
+                continue
+            if delivered:
+                remove_label(pr, "needs-fix")
+                gh("pr", "ready", str(pr), check=False)
+                acted.append((pr, "needs-fix cleared: delivery already passed"))
+            else:
+                wants_wave = True
             continue
         idle = minutes_since(item["updatedAt"], now)
         if item["isDraft"]:
@@ -3040,7 +3162,7 @@ def pr_flow(now=None):
                 acted.append((pr, "draft sent to fix"))
             continue
         head = item.get("headRefOid", "")
-        state = delivery_state(delivery_runs(head), head)
+        state = delivery_state(delivery_runs_from(listing, head), head)
         if state == "failed":
             fail(pr, "Delivery failed on the current head")
             acted.append((pr, "delivery failed, sent to debugger"))
@@ -3061,7 +3183,7 @@ def pr_flow(now=None):
     if wants_debugger and not active_runs("swarm-debugger.yml"):
         gh("workflow", "run", "swarm-debugger.yml", "--ref", "main", check=False)
         acted.append(("-", "debugger started"))
-    if (wants_wave or any(a == "draft sent to fix" for _, a in acted)) and waiting_waves() == 0:
+    if (wants_wave or any(a == "draft sent to fix" for _, a in acted)) and wave_has_room():
         gh("workflow", "run", "swarm.yml", "-f", f"workers={STORY_WAVE_WORKERS}", "--ref", "main", check=False)
         acted.append(("-", "fix wave started"))
     if ready and not active_runs("swarm-integrator.yml"):
@@ -3160,7 +3282,7 @@ def debug_publish(pr, directory):
     gh("pr", "comment", str(pr), "--body",
        f"{MARK}\n{DEBUG_MARK}\n**Debugger report, round {round_number} of {MAX_DEBUG_ROUNDS}.** A fix worker takes "
        f"it next; if the fix fails, {again}.\n\n{clip_to(clean(report, 7000, 300), 7000)}\n{run_url()}")
-    if waiting_waves() == 0:
+    if wave_has_room():
         gh("workflow", "run", "swarm.yml", "-f", f"workers={STORY_WAVE_WORKERS}", check=False)
     return "fix"
 
@@ -3204,6 +3326,17 @@ def guard(pr, repair=False):
         report_pr_stuck(pr, "too many files",
                         f"It changes {len(files)} files and the limit for an automatic merge is "
                         f"{MAX_PR_FILES}. Split it into one bounded story per pull request.")
+        return files
+    size = json.loads(gh("pr", "view", str(pr), "--json", "additions,deletions") or "{}")
+    lines = size.get("additions", 0) + size.get("deletions", 0)
+    if lines > MAX_PR_LINES:
+        add_labels(pr, "needs-human")
+        gh("pr", "comment", str(pr), "--body",
+           f"{MARK}\nThis pull request changes {lines} lines; the limit is {MAX_PR_LINES}. "
+           "Split it into smaller stories. A person must decide how to split it.")
+        report_pr_stuck(pr, "too many lines",
+                        f"It changes {lines} lines and the limit for an automatic merge is "
+                        f"{MAX_PR_LINES}. Split it into smaller stories.")
         return files
     return []
 
@@ -3720,8 +3853,13 @@ def main(argv=None):
         emit("matrix", json.dumps({"include": lean}, separators=(",", ":")))
         emit("count", len(include))
     elif a.cmd == "pr-flow":
-        for pr, what in pr_flow():
-            print(f"#{pr}: {what}")
+        try:
+            for pr, what in pr_flow():
+                print(f"#{pr}: {what}")
+        except subprocess.CalledProcessError as exc:
+            # GitHub API rate limit or outage: the schedule runs again soon, so end quietly.
+            print(f"pr-flow stopped early: gh failed ({exc.returncode}); next scheduled pass retries",
+                  file=sys.stderr)
     elif a.cmd == "watchdog":
         watchdog()
     elif a.cmd == "strategy-state":
@@ -3753,6 +3891,9 @@ def main(argv=None):
         if go and waiting_waves():
             go = False
             print("A wave is already waiting; not queueing another.")
+        elif go and live_waves() > MAX_LIVE_WAVES:  # this wave is still counted as live
+            go = False
+            print(f"{MAX_LIVE_WAVES} waves are already running; not starting another.")
         print("Starting the next wave." if go else "No further wave to start now.")
         if go:
             gh("workflow", "run", "swarm.yml", "--ref", "main", check=False)

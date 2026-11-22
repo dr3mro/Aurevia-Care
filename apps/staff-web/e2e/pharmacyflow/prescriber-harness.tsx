@@ -3,112 +3,152 @@ import type { ReactElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { useActiveOrganization } from '../../src/api/activeOrganization';
 import { getPharmacyStatus } from '../../src/features/pharmacyinbox/api';
-import {
-  answerClarification,
-  approveSubstitution,
-  getClarificationThread,
-  getSubstitutionProposal,
-} from '../../src/features/prescriberstatus/api';
+import type { StatusViewResponse } from '../../src/features/pharmacyinbox/types';
 import { ClarificationReply } from '../../src/features/prescriberstatus/ClarificationReply';
 import { PharmacyStatusTimeline } from '../../src/features/prescriberstatus/PharmacyStatusTimeline';
 import { SubstitutionReview } from '../../src/features/prescriberstatus/SubstitutionReview';
+import {
+  answerClarification,
+  approveSubstitution,
+  declineSubstitution,
+  getClarificationThread,
+  getSubstitutionProposal,
+} from '../../src/features/prescriberstatus/api';
 import type {
   AnswerDraft,
   DecisionDraft,
-} from '../../src/features/prescriberstatus/types';
-import type {
   ProposalViewResponse,
   ThreadViewResponse,
 } from '../../src/features/prescriberstatus/types';
-import type { StatusViewResponse } from '../../src/features/pharmacyinbox/types';
 import { I18nProvider, useI18n } from '../../src/i18n/I18nProvider';
 import { ThemeProvider } from '../../src/theme/ThemeProvider';
 
 /**
- * Browser-only harness for the prescriber's pharmacy review (RX-02, WEB-09).
- *
- * The status timeline, clarification reply and substitution review are exported
- * but not routed in the staff portal yet, so this harness mounts them through
- * their real providers and real API client. A dev-only prescribe-and-route
- * control seeds the shared synthetic prescription; Vite dev serves the harness
- * and it is never part of the production build. Every value is synthetic.
+ * Dev-only browser harness for the exported prescriber status components
+ * (PHARM-08, PHARM-06, RX-02, WEB-09). They are not routed in the staff portal
+ * yet, so this mounts them with their real providers and drives the real typed
+ * API clients. Vite dev serves it; it is never part of the production build.
+ * Every subject, identifier and medicine is synthetic and every command goes
+ * through the same protected boundary the screens use.
  */
 
-/** Opaque identifier of the one synthetic prescription in this journey. */
+/** Opaque identifiers shared with the synthetic pharmacy API harness. */
 const prescriptionId = 'rx-synthetic-001';
 
-/** Prescriber view backed by the real client and the shared synthetic API. */
+/** Harness controls in both locales; no clinical wording is hard-coded here. */
+const harnessLabels = {
+  en: {
+    route: 'Prescribe and route',
+    refresh: 'Refresh status',
+    waiting: 'No prescription has been routed yet.',
+  },
+  ar: {
+    route: 'وصف وتوجيه',
+    refresh: 'تحديث الحالة',
+    waiting: 'لم يتم توجيه أي وصفة بعد.',
+  },
+} as const;
+
+/** Read one optional view; a synthetic 404 before creation simply hides it. */
+async function maybeGet<T>(read: () => Promise<T>): Promise<T | null> {
+  try {
+    return await read();
+  } catch {
+    return null;
+  }
+}
+
+/** The prescriber's workstation: route, review facts, answer and decide. */
 function PrescriberView(): ReactElement {
+  // The active tenant defaults to the synthetic facility, so this matches the
+  // tenant used to build every fixture in the shared API stand-in.
   const organizationId = useActiveOrganization();
   const { locale, toggleLocale } = useI18n();
-  const [status, setStatus] = useState<StatusViewResponse | undefined>(undefined);
-  const [thread, setThread] = useState<ThreadViewResponse | undefined>(undefined);
-  const [proposal, setProposal] = useState<ProposalViewResponse | undefined>(undefined);
+  const labels = harnessLabels[locale];
+  const [status, setStatus] = useState<StatusViewResponse | null>(null);
+  const [thread, setThread] = useState<ThreadViewResponse | null>(null);
+  const [proposal, setProposal] = useState<ProposalViewResponse | null>(null);
   const [routeStatus, setRouteStatus] = useState('Not routed');
 
-  /** Reload all three projections; absent data simply leaves a view unmounted. */
-  const load = useCallback(async (): Promise<void> => {
-    const [nextStatus, nextThread, nextProposal] = await Promise.allSettled([
-      getPharmacyStatus(prescriptionId, organizationId),
-      getClarificationThread('thread-synthetic-001', organizationId),
-      getSubstitutionProposal('proposal-synthetic-001', organizationId),
+  /** Re-read all three projections through the real API client. */
+  const refresh = useCallback(async (): Promise<void> => {
+    const [nextStatus, nextThread, nextProposal] = await Promise.all([
+      maybeGet(() => getPharmacyStatus(prescriptionId, organizationId)),
+      maybeGet(() => getClarificationThread('thread-synthetic-001', organizationId)),
+      maybeGet(() => getSubstitutionProposal('proposal-synthetic-001', organizationId)),
     ]);
-    setStatus(nextStatus.status === 'fulfilled' ? nextStatus.value : undefined);
-    setThread(nextThread.status === 'fulfilled' ? nextThread.value : undefined);
-    setProposal(nextProposal.status === 'fulfilled' ? nextProposal.value : undefined);
+    setStatus(nextStatus);
+    setThread(nextThread);
+    setProposal(nextProposal);
   }, [organizationId]);
 
+  // Load any already-routed facts on mount; before routing the API returns 404
+  // for each projection, which `maybeGet` turns into the empty state below.
   useEffect(() => {
-    void load();
-  }, [load]);
+    void refresh();
+  }, [refresh]);
 
-  /** Attest and route through the same intercepted endpoints the API exposes. */
-  async function prescribeAndRoute(): Promise<void> {
-    const common = {
-      'Content-Type': 'application/json',
-      'X-Active-Organization': organizationId,
-      'X-XSRF-TOKEN': 'synthetic-csrf-token',
-    };
-    await fetch(`/api/v1/prescriptions/${prescriptionId}/transmit`, {
+  /** Route a synthetic prescription to the pharmacy through the boundary. */
+  async function route(): Promise<void> {
+    await fetch('/api/v1/pharmacy/inbox/route', {
       method: 'POST',
-      headers: { ...common, 'If-Match': '1', 'Idempotency-Key': 'synthetic-route-1' },
-      body: JSON.stringify({ channel: 'synthetic-pharmacy' }),
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Active-Organization': organizationId,
+        'X-XSRF-TOKEN': 'synthetic-csrf-token',
+      },
+      body: JSON.stringify({ prescriptionId, patientId: 'SYN-PATIENT-001' }),
     });
-    await fetch(`/api/v1/prescriptions/${prescriptionId}/confirm-delivery`, {
-      method: 'POST',
-      headers: { ...common, 'If-Match': '2', 'Idempotency-Key': 'synthetic-route-2' },
-      body: JSON.stringify({ submissionId: 'submission-synthetic-001' }),
-    });
-    setRouteStatus('Delivery confirmed');
-    await load();
+    await refresh();
   }
 
-  async function onAnswer(draft: AnswerDraft): Promise<void> {
-    if (thread === undefined) {
+  /** Attest and route, then show the confirmed delivery to the prescriber. */
+  async function prescribeAndRoute(): Promise<void> {
+    await route();
+    // The harness API records the transmit and delivery-confirm commands behind
+    // the single route command; the visible status is the confirmed delivery.
+    setRouteStatus('Delivery confirmed');
+  }
+
+  /** Answer the pharmacy's question on its current thread version. */
+  function sendAnswer(draft: AnswerDraft): void {
+    if (thread === null) {
       return;
     }
-    await answerClarification(
+    void answerClarification(
       thread.thread.id,
       thread.thread.version,
       draft.answerBody,
       draft.amendedRevisionId,
       organizationId,
-    );
-    await load();
+    ).then(() => refresh());
   }
 
-  async function onApprove(draft: DecisionDraft): Promise<void> {
-    if (proposal === undefined) {
+  /** Approve the substitution only with the prescriber's explicit attestation. */
+  function approve(draft: DecisionDraft): void {
+    if (proposal === null) {
       return;
     }
-    await approveSubstitution(
+    void approveSubstitution(
       proposal.proposal.id,
       proposal.proposal.version,
       draft.attestation,
       draft.note,
       organizationId,
-    );
-    await load();
+    ).then(() => refresh());
+  }
+
+  /** Decline keeps the original medication and creates no signed revision. */
+  function decline(draft: DecisionDraft): void {
+    if (proposal === null) {
+      return;
+    }
+    void declineSubstitution(
+      proposal.proposal.id,
+      proposal.proposal.version,
+      draft.note,
+      organizationId,
+    ).then(() => refresh());
   }
 
   return (
@@ -116,31 +156,41 @@ function PrescriberView(): ReactElement {
       <button type="button" onClick={toggleLocale}>
         {locale === 'en' ? 'العربية' : 'English'}
       </button>
-      <button type="button" data-testid="prescribe-route" onClick={() => void prescribeAndRoute()}>
-        Prescribe and route to the synthetic pharmacy
+      <button
+        type="button"
+        data-testid="prescribe-route"
+        onClick={() => void prescribeAndRoute()}
+      >
+        {labels.route}
       </button>
-      <button type="button" data-testid="refresh" onClick={() => void load()}>
-        Refresh pharmacy status
+      <button
+        type="button"
+        data-testid="refresh"
+        onClick={() => void refresh()}
+      >
+        {labels.refresh}
       </button>
       <output data-testid="route-status">{routeStatus}</output>
-      {status === undefined ? null : (
+      {status === null ? (
+        <p data-testid="no-status">{labels.waiting}</p>
+      ) : (
         <PharmacyStatusTimeline status={status} locale={locale} timeZone="UTC" />
       )}
-      {thread === undefined ? null : (
+      {thread === null ? null : (
         <ClarificationReply
           thread={thread}
           locale={locale}
           timeZone="UTC"
-          onSend={(draft) => void onAnswer(draft)}
+          onSend={sendAnswer}
         />
       )}
-      {proposal === undefined ? null : (
+      {proposal === null ? null : (
         <SubstitutionReview
           view={proposal}
           locale={locale}
           timeZone="UTC"
-          onApprove={(draft) => void onApprove(draft)}
-          onDecline={() => undefined}
+          onApprove={approve}
+          onDecline={decline}
         />
       )}
     </div>
@@ -160,8 +210,9 @@ function Harness(): ReactElement {
   );
 }
 
-const container = document.getElementById('pharmacy-prescriber-harness');
-if (container === null) {
-  throw new Error('pharmacy-prescriber-harness container is required');
+const wrapper = document.getElementById('pharmacy-prescriber-harness');
+const container = document.getElementById('prescriber-harness');
+if (wrapper === null || container === null) {
+  throw new Error('prescriber-harness container is required');
 }
 createRoot(container).render(<Harness />);

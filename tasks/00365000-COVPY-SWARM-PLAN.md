@@ -1,4 +1,6 @@
-- [ ] COVPY-SWARM-PLAN · Script tests: swarm.py coverage, plan part (to 100% together with the other parts)
+- [-] COVPY-SWARM-PLAN · Script tests: swarm.py coverage, plan part (to 100% together with the other parts)
+  - agent: swarm-10
+  - attempts: 1
   - requirements: OPS-06
   - scope: scripts/tests/test_swarm_plan_coverage.py
   - depends: WFAUDIT-02, WFAUDIT-06, WQUALITY-01, WQUALITY-02

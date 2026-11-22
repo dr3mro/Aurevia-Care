@@ -1,4 +1,6 @@
-- [ ] RESP-APPOINTMENT-WORKLIST · Staff web: responsive `AppointmentWorklist` (features-scheduling)
+- [x] RESP-APPOINTMENT-WORKLIST · Staff web: responsive `AppointmentWorklist` (features-scheduling)
+  - pr: #789
+  - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/scheduling/AppointmentWorklist.tsx, apps/staff-web/tests/responsive/features-scheduling/AppointmentWorklist.responsive.test.tsx
   - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS

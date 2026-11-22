@@ -61,6 +61,7 @@ GET /api/v1/lab/specimens/{}/history
 GET /api/v1/lab/specimens/{}/label
 GET /api/v1/messaging-governance/audit
 GET /api/v1/messaging-governance/retention/{}
+GET /api/v1/openapi.yaml
 GET /api/v1/orders/{}
 GET /api/v1/patient-flow/notices/{}
 GET /api/v1/patient-flow/presentation
@@ -112,6 +113,7 @@ GET /api/v1/staff/instant/{}/messages
 GET /api/v1/staff/mail/folders/{}
 GET /api/v1/staff/mail/messages/{}
 GET /api/v1/staff/mail/threads
+GET /api/v1/tenant/exports/{}
 GET /api/v1/therapy/episodes/{}
 GET /api/v1/trends/{}
 GET /api/v1/xch03/orders/{}
@@ -328,6 +330,8 @@ POST /api/v1/staff/mail/messages/{}/forward
 POST /api/v1/staff/mail/messages/{}/move
 POST /api/v1/staff/mail/messages/{}/reply
 POST /api/v1/staff/mail/messages/{}/reply-all
+POST /api/v1/tenant/exports
+POST /api/v1/tenant/exports/{}/expire
 POST /api/v1/tenant/imports/commit
 POST /api/v1/tenant/imports/dry-run
 POST /api/v1/tenant/imports/reverse

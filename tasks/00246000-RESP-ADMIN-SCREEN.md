@@ -1,5 +1,5 @@
-- [-] RESP-ADMIN-SCREEN · Staff web: responsive `AdminScreen` (features-admin)
-  - agent: swarm-9
+- [x] RESP-ADMIN-SCREEN · Staff web: responsive `AdminScreen` (features-admin)
+  - pr: #712
   - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/admin/AdminScreen.tsx, apps/staff-web/tests/responsive/features-admin/AdminScreen.responsive.test.tsx

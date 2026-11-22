@@ -1,4 +1,6 @@
-- [ ] RESP-VISIT-STATE-BADGE · Staff web: responsive `VisitStateBadge` (features-scheduling)
+- [x] RESP-VISIT-STATE-BADGE · Staff web: responsive `VisitStateBadge` (features-scheduling)
+  - pr: #801
+  - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/scheduling/VisitStateBadge.tsx, apps/staff-web/tests/responsive/features-scheduling/VisitStateBadge.responsive.test.tsx
   - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS

@@ -1,4 +1,6 @@
-- [ ] RESP-SCHEDULING-PAGE · Staff web: responsive `SchedulingPage` (features-scheduling)
+- [x] RESP-SCHEDULING-PAGE · Staff web: responsive `SchedulingPage` (features-scheduling)
+  - pr: #811
+  - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/scheduling/SchedulingPage.tsx, apps/staff-web/tests/responsive/features-scheduling/SchedulingPage.responsive.test.tsx
   - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS

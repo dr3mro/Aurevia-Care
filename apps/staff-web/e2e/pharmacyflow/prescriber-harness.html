@@ -4,13 +4,20 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex, nofollow" />
-    <title>Prescriber pharmacy review harness (synthetic data only)</title>
+    <title>Prescriber pharmacy browser harness (synthetic data only)</title>
   </head>
   <body>
-    <!-- Browser-only harness for the exported prescriber review components.
-         Vite dev serves it at /e2e/pharmacyflow/prescriber-harness.html. It is
-         not a production entry point and carries no real patient data. -->
-    <div id="pharmacy-prescriber-harness" data-testid="prescriber-harness"></div>
+    <!-- Browser-only harness for the exported prescriber status components
+         (PHARM-08, PHARM-06, RX-02, WEB-09). Vite dev serves this file at
+         /e2e/pharmacyflow/prescriber-harness.html. It mounts the timeline,
+         clarification reply and substitution review through their real
+         providers and typed API clients. It is not a production entry point and
+         carries no real patient data or credential. The outer wrapper keeps the
+         original `pharmacy-prescriber-harness` id while the mount point keeps
+         the `prescriber-harness` id used by the shared journey selectors. -->
+    <div id="pharmacy-prescriber-harness">
+      <div id="prescriber-harness" data-testid="prescriber-harness"></div>
+    </div>
     <script type="module" src="./prescriber-harness.tsx"></script>
   </body>
 </html>

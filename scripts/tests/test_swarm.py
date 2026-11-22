@@ -141,6 +141,16 @@ class ConcurrentWaveTests(unittest.TestCase):
                 self.assertFalse(started)
                 self.assertFalse(fake.said("--ref", "swarm.yml"))
 
+    def test_three_story_workers_per_wave_and_six_waves_at_once(self):
+        self.assertEqual(swarm.STORY_WAVE_WORKERS, 3)
+        self.assertEqual(swarm.MAX_LIVE_WAVES, 6)
+
+    def test_a_wave_needs_room_under_six_live_waves_and_none_waiting(self):
+        for waiting, live, room in ((0, 5, True), (0, 6, False), (1, 2, False)):
+            with mock.patch.object(swarm, "waiting_waves", return_value=waiting), \
+                 mock.patch.object(swarm, "live_waves", return_value=live):
+                self.assertEqual(swarm.wave_has_room(), room)
+
     def test_combined_worker_cap_is_twenty(self):
         self.assertEqual(swarm.MAX_ACTIVE_WORKERS, 20)
 
@@ -942,8 +952,8 @@ class PlanTests(unittest.TestCase):
 
     def test_wave_runs_ten_workers_and_each_publishes_on_its_own(self):
         text = (ROOT / ".github/workflows/swarm.yml").read_text()
-        self.assertIn("default: '7'", text)
-        self.assertIn("inputs.workers || '7'", text)
+        self.assertIn("default: '3'", text)
+        self.assertIn("inputs.workers || '3'", text)
         self.assertIn("max-parallel: 10", text)
         # Each worker is a reusable-workflow call, so its publish job needs only its
         # own work job and never waits for the slowest worker of the wave.
@@ -1560,7 +1570,15 @@ class IntegrationTests(unittest.TestCase):
         fake = FakeGh(diff="apps/api/src/A.java\ndb/migrations/V4__x.sql\n")
         with mock.patch.object(swarm, "gh", fake):
             self.assertEqual(swarm.guard(9), [])
-        self.assertEqual(fake.calls, [("pr", "diff", "9", "--name-only")])
+        self.assertEqual(fake.calls, [("pr", "diff", "9", "--name-only"),
+                                      ("pr", "view", "9", "--json", "additions,deletions")])
+
+    def test_pr_line_limit_is_enforced(self):
+        fake = FakeGh(diff="apps/api/src/A.java\n",
+                      pr_view={"additions": swarm.MAX_PR_LINES, "deletions": 1})
+        with mock.patch.object(swarm, "gh", fake):
+            self.assertEqual(swarm.guard(9), ["apps/api/src/A.java"])
+        self.assertTrue(fake.said("labels[]=needs-human"))
 
     def test_guard_blocks_new_module_check_scripts_for_a_human(self):
         # The merge gate itself is protected, including module check.sh files:
@@ -1832,6 +1850,7 @@ class PrFlowTests(unittest.TestCase):
         with mock.patch.object(swarm, "gh", fake), \
              mock.patch.object(swarm, "gh_json", lambda *a: prs if a[:2] == ("pr", "list") else {"headRefName": "swarm/CW-001-1"}), \
              mock.patch.object(swarm, "main_is_red", return_value=red), \
+             mock.patch.object(swarm, "delivery_listing", return_value=[]), \
              mock.patch.object(swarm, "delivery_runs", return_value=[]), \
              mock.patch.object(swarm, "delivery_state", return_value=state), \
              mock.patch.object(swarm, "delivery_requested", return_value=requested), \
@@ -1873,10 +1892,51 @@ class PrFlowTests(unittest.TestCase):
         self.assertFalse(fake.said("swarm-debugger.yml"))
 
     def test_needs_fix_starts_one_wave_unless_one_waits(self):
-        acted, fake, _, _ = self.run_flow([self.pr(7, ("needs-fix",))])
+        acted, fake, _, _ = self.run_flow([self.pr(7, ("needs-fix",))], state="missing")
         self.assertTrue(fake.said("swarm.yml"))
-        _, fake, _, _ = self.run_flow([self.pr(7, ("needs-fix",))], waiting=1)
+        _, fake, _, _ = self.run_flow([self.pr(7, ("needs-fix",))], state="missing", waiting=1)
         self.assertFalse(fake.said("swarm.yml"))
+
+    def test_needs_fix_is_cleared_when_delivery_already_passed(self):
+        acted, fake, _, _ = self.run_flow([self.pr(7, ("needs-fix",))], state="passed")
+        self.assertIn((7, "needs-fix cleared: delivery already passed"), acted)
+        self.assertFalse(fake.said("swarm.yml"))
+
+    def test_needs_fix_survives_a_delivery_lookup_failure(self):
+        err = swarm.subprocess.CalledProcessError(1, ("run", "list"))
+        with mock.patch.object(swarm, "delivery_runs", side_effect=err), \
+             mock.patch.object(swarm, "delivery_listing", return_value=[{"headSha": "x"}] * 100):
+            fake = FakeGh()
+            with mock.patch.object(swarm, "gh", fake), \
+                 mock.patch.object(swarm, "gh_json", lambda *a: [self.pr(7, ("needs-fix",))]), \
+                 mock.patch.object(swarm, "main_is_red", return_value=False), \
+                 mock.patch.object(swarm, "waiting_waves", return_value=0):
+                acted = swarm.pr_flow(self.NOW)
+        self.assertEqual(acted, [])
+        self.assertFalse(fake.said("swarm.yml"))
+
+    def test_a_pass_lists_delivery_runs_once_for_all_pull_requests(self):
+        listing = [{"databaseId": 1, "headSha": "a", "status": "completed", "conclusion": "success"},
+                   {"databaseId": 2, "headSha": "b", "status": "completed", "conclusion": "failure"}]
+        calls = []
+        with mock.patch.object(swarm, "gh_json", lambda *a: calls.append(a)):
+            with mock.patch.object(swarm, "gh_json", lambda *a: calls.append(a) or []):
+                self.assertEqual(swarm.delivery_runs_from(listing, "a"), [listing[0]])
+                self.assertEqual(swarm.delivery_runs_from(listing, "b"), [listing[1]])
+        self.assertEqual(calls, [])
+
+    def test_unfinished_run_reads_jobs_and_old_heads_fall_back_when_listing_is_full(self):
+        running = [{"databaseId": 9, "headSha": "a", "status": "in_progress", "conclusion": None}]
+        with mock.patch.object(swarm, "gh_json", return_value={"jobs": [{"status": "waiting"}]}):
+            self.assertEqual(swarm.delivery_runs_from(running, "a")[0]["jobs"], [{"status": "waiting"}])
+        with mock.patch.object(swarm, "delivery_runs", return_value=["old"]) as single:
+            self.assertEqual(swarm.delivery_runs_from([{"headSha": "z"}] * 100, "a"), ["old"])
+            single.assert_called_once_with("a")
+
+    def test_main_is_red_survives_a_gh_failure(self):
+        err = swarm.subprocess.CalledProcessError(1, ("run", "list"))
+        with mock.patch.object(swarm, "gh_json", side_effect=err):
+            self.assertFalse(swarm.main_is_red())
 
     def test_missing_delivery_requests_one_run_per_head(self):
         acted, fake, _, _ = self.run_flow([self.pr(7)], state="missing")
@@ -1935,7 +1995,7 @@ class PrFlowTests(unittest.TestCase):
             swarm.main(["pr-flow"])
         flow.assert_called_once()
         text = (ROOT / ".github/workflows/swarm-pr-flow.yml").read_text()
-        for needle in ("cron: '*/10 * * * *'", "workflows: [Delivery]", "scripts/swarm.py pr-flow",
+        for needle in ("cron: '*/20 * * * *'", "workflows: [Delivery]", "scripts/swarm.py pr-flow",
                        "pull-requests: write", "actions: write"):
             self.assertIn(needle, text)
         self.assertNotIn("agent-run.sh", text)

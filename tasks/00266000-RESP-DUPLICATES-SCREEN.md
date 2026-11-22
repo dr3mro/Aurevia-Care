@@ -1,4 +1,6 @@
-- [ ] RESP-DUPLICATES-SCREEN · Staff web: responsive `DuplicatesScreen` (features-duplicates)
+- [x] RESP-DUPLICATES-SCREEN · Staff web: responsive `DuplicatesScreen` (features-duplicates)
+  - pr: #775
+  - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/duplicates/DuplicatesScreen.tsx, apps/staff-web/tests/responsive/features-duplicates/DuplicatesScreen.responsive.test.tsx
   - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS

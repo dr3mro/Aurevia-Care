@@ -26,6 +26,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
+          # The constraint check diffs against origin/main, so it needs the history.
+          fetch-depth: 0
       - name: Shell syntax and lint
         run: |
           files=(scripts/*.sh infra/bootstrap/start.sh apps/api/check.sh db/check.sh)
@@ -45,6 +47,7 @@ jobs:
           python3 -I scripts/check-secrets.py
           python3 -I scripts/check-names.py
           python3 -I scripts/check-wiring.py
+          python3 -I scripts/check-constraints.py --require-base
           python3 -I scripts/check-migrations.py --require-baseline
 
   script-tests:
@@ -176,7 +179,7 @@ jobs:
           pattern: smoke-tested-image-*
       - name: Require a green default-branch run for this commit
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           total=$(gh api --method GET "repos/$GITHUB_REPOSITORY/actions/workflows/delivery.yml/runs" \

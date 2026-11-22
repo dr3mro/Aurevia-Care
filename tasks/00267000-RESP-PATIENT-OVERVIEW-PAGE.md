@@ -1,4 +1,6 @@
-- [ ] RESP-PATIENT-OVERVIEW-PAGE · Staff web: responsive `PatientOverviewPage` (features-patients)
+- [x] RESP-PATIENT-OVERVIEW-PAGE · Staff web: responsive `PatientOverviewPage` (features-patients)
+  - pr: #784
+  - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/patients/PatientOverviewPage.tsx, apps/staff-web/tests/responsive/features-patients/PatientOverviewPage.responsive.test.tsx
   - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
