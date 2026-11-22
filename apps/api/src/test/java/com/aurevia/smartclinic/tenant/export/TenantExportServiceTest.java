@@ -10,13 +10,16 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -98,6 +101,12 @@ class TenantExportServiceTest {
         return job;
     }
 
+    private long storedObjectCount() throws IOException {
+        try (Stream<Path> paths = Files.walk(root)) {
+            return paths.filter(Files::isRegularFile).count();
+        }
+    }
+
     @Test
     void manifestChecksumsMatchTheFilesAndEveryFactIsAudited() {
         ExportJob job = startAndCaptureJob();
@@ -112,6 +121,18 @@ class TenantExportServiceTest {
         assertEquals(checksum, digests.sha256Hex(exportedFile));
         verify(audit).append(any(), eq("TENANT_EXPORT"), eq("EXPORT_START"), eq("EXPORT"), eq("TENANT_EXPORT"),
                 eq(job.id()), eq("SUCCESS"));
+    }
+
+    @Test
+    void exportLeavesNoUnreferencedCopiesAfterExpiry() throws IOException {
+        ExportJob job = startAndCaptureJob();
+        // The manifest is the only artifact a job owns: the authorized source is
+        // already managed by the documents domain and keeps its own lifecycle.
+        assertEquals(2, storedObjectCount(), "start must not duplicate the authorized document");
+        when(store.find(job.id())).thenReturn(Optional.of(job));
+        when(store.markExpired(job.id())).thenReturn(true);
+        service.expire(job.id());
+        assertEquals(1, storedObjectCount(), "expiry must leave only the authorized source object");
     }
 
     @Test

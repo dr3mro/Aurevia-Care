@@ -97,9 +97,9 @@ public class TenantExportService {
                 throw new ApiException(409, "EXPORT_CHECKSUM_MISMATCH",
                         "source bytes do not match their recorded checksum");
             }
-            ObjectKey fileKey = ObjectKey.generate(context.organizationId(), 1);
-            objects.putInQuarantine(fileKey, content);
-            objects.promote(fileKey, checksum);
+            // The manifest cites the verified source and its checksum. Copying the
+            // bytes here would create an unreferenced object with no expiry path:
+            // only the manifest key is durable and only that object can be removed.
             records.add(new ExportRecord(source.recordId(), checksum, source.provenance(),
                     List.of(new ExportedDocument(source.objectId(), checksum,
                             source.authorization(), POLICY_VERSION)),
