@@ -46,7 +46,8 @@ export function Button({
         overflowWrap: 'anywhere',
         whiteSpace: 'normal',
         textAlign: 'start',
-        // Keep a focused primary action clear of the on-screen keyboard.
+        // Best-effort scroll clearance for a focused action; the sticky form
+        // footer owns keeping the primary action reachable above the keyboard.
         scrollMarginBlockEnd: tokens.spacing.lg,
         border: `1px solid ${tokens.border}`,
         borderRadius: tokens.spacing.sm,
