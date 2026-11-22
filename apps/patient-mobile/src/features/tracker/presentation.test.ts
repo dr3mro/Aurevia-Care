@@ -1,5 +1,4 @@
-import { parseTrackerLocale, rowFlexDirection, stepLineFor } from './presentation';
-import { isTrackerRtl } from './presentation';
+import { isTrackerRtl, parseTrackerLocale, rowFlexDirection, stepLineFor } from './presentation';
 import type { TrackerItem } from './types';
 
 const labItem: TrackerItem = {
