@@ -28,6 +28,8 @@ class OffboardingCommandTest {
     private static final Instant NOW = Instant.parse("2026-06-01T00:00:00Z");
     private static final Clock CLOCK = Clock.fixed(NOW, ZoneOffset.UTC);
     private static final int REVIEW_DAYS = 30;
+    private static final ExportProvenance PROVENANCE =
+            new ExportProvenance("synthetic-source", "revision-1", "offboarding");
 
     private final OffboardingCommand command = new OffboardingCommand(CLOCK);
 
@@ -46,7 +48,7 @@ class OffboardingCommandTest {
 
     private static ExportRecord export() {
         return new ExportRecord("export-1", ORGANIZATION, "*", "authorized-admin",
-                NOW.minusSeconds(60), NOW.plusSeconds(60), provenance());
+                NOW.minusSeconds(60), NOW.plusSeconds(60), PROVENANCE);
     }
 
     private static ApiException refusal(Runnable action) {
