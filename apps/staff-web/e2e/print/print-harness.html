@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Print browser harness (synthetic data only)</title>
+  </head>
+  <body>
+    <!-- Dev-only browser harness for the exported print buttons (PRINT-10).
+         Vite dev serves this file at /e2e/print/print-harness.html. The owning
+         screens mount these buttons in production; no real patient data or
+         credential is present here. -->
+    <div id="print-harness" data-testid="print-harness"></div>
+    <script type="module" src="./print-harness.tsx"></script>
+  </body>
+</html>
