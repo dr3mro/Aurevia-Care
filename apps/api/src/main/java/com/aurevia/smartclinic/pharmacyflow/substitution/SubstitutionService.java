@@ -2,15 +2,14 @@ package com.aurevia.smartclinic.pharmacyflow.substitution;
 
 import java.time.Clock;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.aurevia.smartclinic.api.ApiException;
+import com.aurevia.smartclinic.audit.AuditAppender;
 import com.aurevia.smartclinic.pharmacyflow.substitution.SubstitutionCommands.DecideCommand;
 import com.aurevia.smartclinic.pharmacyflow.substitution.SubstitutionCommands.ProposeCommand;
 import com.aurevia.smartclinic.pharmacyflow.substitution.SubstitutionContract.Proposal;
@@ -25,25 +24,26 @@ import com.aurevia.smartclinic.prescription.PrescriptionContract.AllergyCheck;
 import com.aurevia.smartclinic.prescription.PrescriptionContract.CheckOutcome;
 import com.aurevia.smartclinic.prescription.PrescriptionContract.Draft;
 import com.aurevia.smartclinic.prescription.PrescriptionContract.DrugEntry;
+import com.aurevia.smartclinic.tenant.TenantContext;
 
 /**
- * RX-01 / RX-02 pharmacy substitution domain kernel.
+ * RX-01 / RX-02 pharmacy substitution domain kernel over durable storage.
  *
- * <p>The kernel owns tenant-scoped proposals, the tagged alternatives shown
- * with them and the signed revisions created on approval. It has no HTTP or
- * persistence dependency and reads only through the narrow, pharmacy-authorized
- * {@link com.aurevia.smartclinic.pharmacyflow.substitution.SubstitutionCatalog} port,
- * so the propose flow is reachable by pharmacy staff. Callers supply verified
- * membership roles, the active tenant, an {@code If-Match} precondition and an
- * {@code Idempotency-Key}, all of which must be re-derived on every command.</p>
+ * <p>Proposals, their frozen alternatives and signed revisions live in the V94
+ * tenant-guarded tables, never in process memory, so any service instance sees
+ * the same decision after a restart. Every command runs in one transaction: the
+ * idempotency claim, version and entitlement recheck through the prescription
+ * workflow, the durable decision and its provenance, the authoritative
+ * prescription change and the audit event commit together or not at all. A
+ * decline records no revision and leaves the prescribed medicine untouched.</p>
  *
- * <p>Nothing changes the prescription until the named prescriber approves. A
- * proposal may name only a tagged alternative of the entry actually selected on
- * the draft; it must preserve strength and approved route, and it carries the
- * allergy assessment of the proposed medicine. Approval re-validates the catalog
- * and the allergy, requires an explicit prescriber attestation and records a new
- * signed revision with provenance. A decline leaves the original medication in
- * place.</p>
+ * <p>The kernel reads only through the narrow, pharmacy-authorized
+ * {@link com.aurevia.smartclinic.pharmacyflow.substitution.SubstitutionCatalog} port
+ * and writes only through {@link com.aurevia.smartclinic.pharmacyflow.substitution.SubstitutionStore}
+ * and {@link com.aurevia.smartclinic.pharmacyflow.substitution.SubstitutionApplication}.
+ * Callers supply verified membership roles, the active tenant, an {@code If-Match}
+ * precondition and an {@code Idempotency-Key}, all of which are re-derived on
+ * every command.</p>
  */
 @Service
 public final class SubstitutionService {
@@ -53,26 +53,36 @@ public final class SubstitutionService {
     private static final String COMMAND_APPROVE = "approve";
     private static final String COMMAND_DECLINE = "decline";
     private static final String UNSPECIFIED_ROUTE = "unspecified";
+    private static final String AUDIT_PURPOSE = "PHARMACY_SUBSTITUTION";
+    private static final String AUDIT_ACTION = "SUBSTITUTION_DECIDED";
+    private static final String AUDIT_RESOURCE_TYPE = "PHARMACY_SUBSTITUTION";
 
     private final Clock clock;
     private final SubstitutionCatalog catalog;
-
-    private final Map<String, Map<String, Proposal>> proposals = new HashMap<>();
-    private final Map<String, SignedRevision> revisions = new HashMap<>();
-    private final Map<String, List<Alternative>> alternatives = new HashMap<>();
-    private final Map<String, Proposal> proposeIdempotency = new HashMap<>();
-    private final Map<String, Proposal> decideIdempotency = new HashMap<>();
-    private final Map<String, Integer> revisionNumbers = new HashMap<>();
+    private final SubstitutionStore store;
+    private final SubstitutionApplication application;
+    private final TransactionTemplate transactions;
+    private final AuditAppender audit;
 
     /**
-     * Create the substitution kernel over the pharmacy-authorized read port.
+     * Create the substitution kernel over the pharmacy read, decision and application ports.
      *
-     * @param clock   application clock for proposal and revision times
-     * @param catalog tenant-guarded catalog, draft and allergy read port
+     * @param clock       application clock for proposal and revision times
+     * @param catalog     tenant-guarded catalog, draft and allergy read port
+     * @param store       durable tenant-guarded decision store
+     * @param application authoritative prescription application port
+     * @param transactions tenant-guarded transaction template
+     * @param audit        transactional audit appender
      */
-    public SubstitutionService(Clock clock, SubstitutionCatalog catalog) {
+    public SubstitutionService(Clock clock, SubstitutionCatalog catalog, SubstitutionStore store,
+                               SubstitutionApplication application, TransactionTemplate transactions,
+                               AuditAppender audit) {
         this.clock = clock;
         this.catalog = catalog;
+        this.store = store;
+        this.application = application;
+        this.transactions = transactions;
+        this.audit = audit;
     }
 
     /**
@@ -81,14 +91,15 @@ public final class SubstitutionService {
      * <p>The entry must be the one selected on the draft, and the proposed entry
      * must be one of its tagged alternatives with the same strength and approved
      * route. A verified allergy conflict needs a documented override reason. A
-     * retry with the same idempotency key returns the original proposal.</p>
+     * retry with the same idempotency key returns the original proposal without
+     * writing a second one.</p>
      *
      * @param command propose command with verified tenant, actor and roles
      * @return the pending proposal with its side-by-side entries and allergy check
      * @throws ApiException on invalid input, missing permission, denial, an
      *         unbound or non-equivalent entry, an unreviewed allergy conflict or a replay
      */
-    public synchronized ProposalView propose(ProposeCommand command) {
+    public ProposalView propose(ProposeCommand command) {
         SubstitutionInputs.requireText(command.organizationId(), "INVALID_ORGANIZATION",
                 "active organization is required");
         SubstitutionInputs.requireText(command.subject(), "INVALID_ACTOR", "actor is required");
@@ -110,11 +121,11 @@ public final class SubstitutionService {
         }
         String key = key(command.organizationId(), command.prescriptionId(), command.subject(),
                 COMMAND_PROPOSE, command.idempotencyKey());
-        Proposal replay = proposeIdempotency.get(key);
-        if (replay != null) {
-            return view(replay);
-        }
+        return transactions.execute(status -> proposeInside(command, note, overrideReason, reason, key));
+    }
 
+    private ProposalView proposeInside(ProposeCommand command, String note, String overrideReason,
+                                       Reason reason, String key) {
         Draft draft = catalog.draft(command.prescriptionId());
         if (draft == null) {
             throw new ApiException(404, "NOT_FOUND", "prescription draft not found");
@@ -154,10 +165,11 @@ public final class SubstitutionService {
         Proposal proposal = new Proposal(SubstitutionInputs.newId(), command.organizationId(),
                 command.prescriptionId(), draft.patientId(), draft.prescriberSubject(), command.subject(),
                 currentEntry, proposed, reason, note, overrideReason, check, State.PENDING, 1, now);
-        proposals.computeIfAbsent(command.organizationId(), ignored -> new HashMap<>())
-                .put(proposal.id(), proposal);
-        alternatives.put(proposal.id(), drugCatalog.alternativesFor(currentEntry, now));
-        proposeIdempotency.put(key, proposal);
+        List<Alternative> alternatives = drugCatalog.alternativesFor(currentEntry, now);
+        if (!store.claim(command.organizationId(), COMMAND_PROPOSE, key, proposal.id())) {
+            return replay(command.organizationId(), COMMAND_PROPOSE, key);
+        }
+        store.insertProposal(proposal, alternatives);
         return view(proposal);
     }
 
@@ -165,18 +177,20 @@ public final class SubstitutionService {
      * Approve or decline a pending proposal as its named prescriber.
      *
      * <p>Approval re-resolves the catalog and the allergy, requires an explicit
-     * attestation and records an immutable signed revision carrying the proposal,
-     * the replaced and replacement entries, the approving subject and the catalog
-     * provenance. A decline records no revision. Both close the proposal with a
-     * fresh version so a stale or replayed decision cannot act twice.</p>
+     * attestation, rechecks the authoritative prescription version and prescribing
+     * entitlement, records an immutable signed revision, applies the replacement
+     * through the prescription workflow and appends the audit event. A decline
+     * records no revision. Both close the proposal with a fresh version so a stale
+     * or replayed decision cannot act twice. Any failure rolls the transaction
+     * back, leaving the proposal, prescription and audit unchanged.</p>
      *
      * @param command decision command with the version read by the caller
      * @return the closed proposal and, on approval, its signed revision
      * @throws ApiException on invalid input, missing permission, an invisible
      *         proposal, a stale version, a closed proposal, a changed catalog, a
-     *         new allergy conflict, a missing attestation or a replay
+     *         new allergy conflict, a missing attestation, missing entitlement or a replay
      */
-    public synchronized ProposalView decide(DecideCommand command) {
+    public ProposalView decide(DecideCommand command) {
         SubstitutionInputs.requireText(command.organizationId(), "INVALID_ORGANIZATION",
                 "active organization is required");
         SubstitutionInputs.requireText(command.subject(), "INVALID_ACTOR", "actor is required");
@@ -191,18 +205,19 @@ public final class SubstitutionService {
         if (!SubstitutionRules.mayDecide(command.roles())) {
             throw new ApiException(403, "FORBIDDEN", "missing prescriber substitution permission");
         }
-        Proposal current = find(command.organizationId(), command.proposalId());
-        if (current == null) {
-            throw new ApiException(404, "NOT_FOUND", "substitution proposal not found");
-        }
-        if (!command.subject().equals(current.prescriberSubject())) {
-            throw new ApiException(404, "NOT_FOUND", "substitution proposal not found");
-        }
+        String decision = command.approved() ? COMMAND_APPROVE : COMMAND_DECLINE;
         String key = key(command.organizationId(), command.proposalId(), command.subject(),
-                command.approved() ? COMMAND_APPROVE : COMMAND_DECLINE, command.idempotencyKey());
-        Proposal replay = decideIdempotency.get(key);
-        if (replay != null) {
-            return view(replay);
+                decision, command.idempotencyKey());
+        return transactions.execute(status -> decideInside(command, note, decision, key));
+    }
+
+    private ProposalView decideInside(DecideCommand command, String note, String decision, String key) {
+        Proposal current = store.findProposal(command.organizationId(), command.proposalId());
+        if (current == null || !command.subject().equals(current.prescriberSubject())) {
+            throw new ApiException(404, "NOT_FOUND", "substitution proposal not found");
+        }
+        if (!store.claim(command.organizationId(), decision, key, current.id())) {
+            return replay(command.organizationId(), decision, key);
         }
         if (current.version() != command.expectedVersion()) {
             throw new ApiException(412, "STALE_VERSION", "the substitution proposal changed since it was read");
@@ -231,12 +246,14 @@ public final class SubstitutionService {
                 throw new ApiException(422, "ALLERGY_CONFLICT_AT_APPROVAL",
                         "a verified allergy conflict appeared after the proposal");
             }
-            int revisionNumber = revisionNumbers.merge(current.prescriptionId(), 1, Integer::sum);
+            int revisionNumber = store.nextRevisionNumber(command.organizationId(), current.prescriptionId());
             SignedRevision revision = new SignedRevision(SubstitutionInputs.newId(), current.prescriptionId(),
                     current.id(), revisionNumber, freshCurrent, freshProposed, current.reason(),
                     command.subject(), freshCheck, command.attestation(),
                     freshProposed.approvalProvenance(), now);
-            revisions.put(current.id(), revision);
+            application.apply(command.organizationId(), command.subject(), current.prescriptionId(),
+                    current.version(), freshProposed);
+            store.insertRevision(command.organizationId(), revision);
             updated = new Proposal(current.id(), current.organizationId(), current.prescriptionId(),
                     current.patientId(), current.prescriberSubject(), current.proposedBy(), current.original(),
                     current.proposed(), current.reason(), note, current.overrideReason(), current.allergyCheck(),
@@ -247,8 +264,9 @@ public final class SubstitutionService {
                     current.proposed(), current.reason(), note, current.overrideReason(), current.allergyCheck(),
                     State.DECLINED, nextVersion, current.proposedAt());
         }
-        proposals.get(command.organizationId()).put(current.id(), updated);
-        decideIdempotency.put(key, updated);
+        store.closeProposal(updated, now);
+        audit.append(TenantContext.current(), AUDIT_PURPOSE, AUDIT_ACTION, AUDIT_RESOURCE_TYPE,
+                AUDIT_PURPOSE, current.id(), "SUCCESS");
         return view(updated);
     }
 
@@ -259,30 +277,42 @@ public final class SubstitutionService {
      * @param proposalId     tenant-local proposal identifier
      * @param subject        authenticated subject
      * @param roles          active roles in the tenant
-     * @return the proposal with its side-by-side entries, revision and alternatives
+     * @return the persisted proposal with its side-by-side entries, revision and alternatives
      * @throws ApiException on invalid input, denial or an invisible proposal
      */
-    public synchronized ProposalView view(String organizationId, String proposalId, String subject,
-                                          Set<String> roles) {
+    public ProposalView view(String organizationId, String proposalId, String subject, Set<String> roles) {
         SubstitutionInputs.requireText(organizationId, "INVALID_ORGANIZATION",
                 "active organization is required");
         SubstitutionInputs.requireText(proposalId, "INVALID_PROPOSAL", "proposal identifier is required");
         SubstitutionInputs.requireText(subject, "INVALID_ACTOR", "actor is required");
-        Proposal current = find(organizationId, proposalId);
-        if (current == null) {
-            throw new ApiException(404, "NOT_FOUND", "substitution proposal not found");
-        }
-        if (!SubstitutionRules.isParty(subject, current)) {
-            throw new ApiException(404, "NOT_FOUND", "substitution proposal not found");
-        }
-        if (subject.equals(current.proposedBy())) {
-            if (!SubstitutionRules.mayPropose(roles)) {
+        return transactions.execute(status -> {
+            Proposal current = store.findProposal(organizationId, proposalId);
+            if (current == null) {
                 throw new ApiException(404, "NOT_FOUND", "substitution proposal not found");
             }
-        } else if (!SubstitutionRules.mayDecide(roles)) {
-            throw new ApiException(404, "NOT_FOUND", "substitution proposal not found");
+            if (!SubstitutionRules.isParty(subject, current)) {
+                throw new ApiException(404, "NOT_FOUND", "substitution proposal not found");
+            }
+            if (subject.equals(current.proposedBy())) {
+                if (!SubstitutionRules.mayPropose(roles)) {
+                    throw new ApiException(404, "NOT_FOUND", "substitution proposal not found");
+                }
+            } else if (!SubstitutionRules.mayDecide(roles)) {
+                throw new ApiException(404, "NOT_FOUND", "substitution proposal not found");
+            }
+            return view(current);
+        });
+    }
+
+    private ProposalView replay(String organizationId, String command, String key) {
+        String proposalId = store.findReplayProposalId(organizationId, command, key);
+        Proposal decided = proposalId == null ? null : store.findProposal(organizationId, proposalId);
+        if (decided == null) {
+            // A claim without a winning proposal can only come from corrupted
+            // storage; fail closed rather than returning an empty decision.
+            throw new ApiException(409, "DECISION_CONFLICT", "the idempotency key has no matching decision");
         }
-        return view(current);
+        return view(decided);
     }
 
     private static boolean sameStrength(DrugEntry first, DrugEntry second) {
@@ -297,18 +327,14 @@ public final class SubstitutionService {
     }
 
     private ProposalView view(Proposal proposal) {
-        return new ProposalView(proposal, revisions.get(proposal.id()),
-                new ArrayList<>(alternatives.getOrDefault(proposal.id(), List.of())));
+        return new ProposalView(proposal,
+                store.findRevision(proposal.organizationId(), proposal.id()),
+                store.findAlternatives(proposal.organizationId(), proposal.id()));
     }
 
-    private Proposal find(String organizationId, String proposalId) {
-        Map<String, Proposal> tenant = proposals.get(organizationId);
-        return tenant == null ? null : tenant.get(proposalId);
-    }
-
-    private static String key(String organizationId, String prescriptionId, String subject, String command,
+    private static String key(String organizationId, String resourceId, String subject, String command,
                               String idempotencyKey) {
-        return organizationId + IDEM_SEPARATOR + prescriptionId + IDEM_SEPARATOR + subject + IDEM_SEPARATOR
+        return organizationId + IDEM_SEPARATOR + resourceId + IDEM_SEPARATOR + subject + IDEM_SEPARATOR
                 + command + IDEM_SEPARATOR + idempotencyKey;
     }
 }
