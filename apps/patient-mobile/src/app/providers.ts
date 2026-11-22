@@ -1,10 +1,10 @@
 /**
- * Placeholder screen providers for the navigation shell (PAT-01–03, UX-01).
+ * Patient screen providers for the navigation shell (PAT-01–03, UX-01).
  *
- * Every value here is synthetic. These providers exist only so the four tabs
- * can mount their presentational screens without authentication or a network
- * client. The authenticated session and API client replace them in a later,
- * separately approved task; no token, endpoint or patient payload lives here.
+ * The loaders use the authenticated transport and validate every server payload
+ * at this trust boundary. The remaining `placeholder*` values are synthetic and
+ * exist only so screens without a wired command can still mount. No token,
+ * endpoint secret or real patient payload lives here.
  */
 import { loadToken } from '../api/tokenStore';
 import { createTransport } from '../api/transport';
@@ -101,7 +101,7 @@ function isConversationState(value: unknown): value is ConversationState {
  * Format an instant in the facility's IANA zone. An unknown zone is a server
  * data error; showing the UTC instant is safer than inventing a local time.
  */
-function facilityZoneFormatter(): ZoneFormatter {
+export function facilityZoneFormatter(): ZoneFormatter {
   return {
     format(instant: string, timeZone: string): string {
       try {
@@ -137,10 +137,11 @@ function parseAppointment(value: unknown): Appointment {
   if (!isRecord(value)) {
     throw new Error('MALFORMED_APPOINTMENT');
   }
-  const { id, patientId, facilityCode, facilityTimeZone, startsAt, status, confirmationEnabled, confirmedAt } = value;
+  const { id, version, patientId, facilityCode, facilityTimeZone, startsAt, status, confirmationEnabled, confirmedAt } = value;
   const normalizedStatus = appointmentStatusFromWire(status);
   if (
     !isText(id)
+    || !isCount(version)
     || !isText(patientId)
     || !isText(facilityCode)
     || !isText(facilityTimeZone)
@@ -152,6 +153,7 @@ function parseAppointment(value: unknown): Appointment {
   }
   return {
     id,
+    version,
     patientId,
     facilityCode,
     facilityTimeZone,

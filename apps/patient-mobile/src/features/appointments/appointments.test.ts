@@ -1,5 +1,5 @@
 import type { Appointment, ZoneFormatter } from './types';
-import { appointmentView, sortByScheduled } from './appointments';
+import { appointmentView, confirmedAppointmentView, sortByScheduled } from './appointments';
 
 /** S-G3-01: appointment list projection with facility time zone and status (PAT-01). */
 const formatter: ZoneFormatter = {
@@ -23,6 +23,7 @@ const realFormatter: ZoneFormatter = {
 
 const appointmentAt = (startsAt: string): Appointment => ({
   id: 'apt-dst',
+  version: 3,
   patientId: 'patient-1',
   facilityCode: 'NYC',
   facilityTimeZone: 'America/New_York',
@@ -37,6 +38,7 @@ describe('appointmentView', () => {
     const view = appointmentView(
       {
         id: 'apt-1',
+        version: 3,
         patientId: 'patient-1',
         facilityCode: 'MAIN',
         facilityTimeZone: 'Asia/Riyadh',
@@ -52,6 +54,7 @@ describe('appointmentView', () => {
     expect(view).toEqual({
       key: 'org-a\u0000apt-1',
       id: 'apt-1',
+      version: 3,
       timeZone: 'Asia/Riyadh',
       localStart: '2026-12-01T07:00:00Z@Asia/Riyadh',
       status: 'booked',
@@ -112,6 +115,32 @@ describe('appointmentView daylight-saving boundary (PAT-01, UX-01)', () => {
     expect(view.localStart).toBe('01:30');
     expect(view.confirmedLocal).toBe('01:30');
     expect(view.timeZone).toBe('America/New_York');
+  });
+});
+
+describe('confirmedAppointmentView (PAT-01)', () => {
+  it('applies the server instant in the facility zone and advances the version', () => {
+    const row = appointmentView(
+      appointmentAt('2026-11-21T10:00:00Z'),
+      'org-a',
+      realFormatter,
+      { kind: 'pending', confirmedAt: null },
+    );
+    const confirmed = confirmedAppointmentView(
+      row,
+      '2026-11-21T10:05:00Z',
+      4,
+      realFormatter,
+    );
+
+    expect(confirmed.confirmation).toEqual({
+      kind: 'confirmed',
+      confirmedAt: '2026-11-21T10:05:00Z',
+    });
+    expect(confirmed.confirmedLocal).toBe('05:05');
+    expect(confirmed.version).toBe(4);
+    expect(confirmed.id).toBe(row.id);
+    expect(row.confirmation).toEqual({ kind: 'pending', confirmedAt: null });
   });
 });
 

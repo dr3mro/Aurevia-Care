@@ -49,6 +49,7 @@ describe('loadAppointments', () => {
     expect(rows[0]!.key).toBe(`${organizationId}\u0000apt-1`);
     expect(rows[0]!.timeZone).toBe('Asia/Riyadh');
     expect(rows[0]!.status).toBe('booked');
+    expect(rows[0]!.version).toBe(3);
     expect(rows[0]!.confirmation).toEqual({ kind: 'pending', confirmedAt: null });
   });
 
@@ -86,6 +87,7 @@ describe('loadAppointments', () => {
   it.each([
     ['missing id', { ...payload[0]!, id: undefined }],
     ['blank id', { ...payload[0]!, id: '   ' }],
+    ['invalid version', { ...payload[0]!, version: 'three' }],
     ['missing patient id', { ...payload[0]!, patientId: undefined }],
     ['missing facility code', { ...payload[0]!, facilityCode: undefined }],
     ['missing facility zone', { ...payload[0]!, facilityTimeZone: undefined }],

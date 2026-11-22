@@ -27,8 +27,13 @@ export interface AppointmentListScreenProps {
   readonly patientId: string;
   /** Registered devices for the active organization. */
   readonly devices: readonly DeviceToken[];
-  /** Called when the patient confirms an eligible appointment. */
-  readonly onConfirm: (appointmentId: string) => void;
+  /**
+   * Called with the whole read row when the patient confirms an appointment.
+   * The row carries the version the confirm command must echo.
+   */
+  readonly onConfirm: (appointment: AppointmentView) => void;
+  /** Appointment whose confirm command is in flight; its control is disabled. */
+  readonly pendingAppointmentId?: string | null;
   /** Called to request authenticated detail retrieval. */
   readonly onOpenDetails: (appointmentId: string) => void;
   /** Called when the patient revokes one device. */
@@ -170,6 +175,7 @@ export function AppointmentListScreen({
   patientId,
   devices,
   onConfirm,
+  pendingAppointmentId,
   onOpenDetails,
   onRevokeDevice,
   locale = resolveScreenLocale(),
@@ -231,7 +237,8 @@ export function AppointmentListScreen({
                     testID={`confirm-${row.id}`}
                     label={screenText(locale, 'confirmAppointment')}
                     locale={locale}
-                    onPress={() => onConfirm(row.id)}
+                    disabled={pendingAppointmentId === row.id}
+                    onPress={() => onConfirm(row)}
                   />
                 ) : null}
                 {row.confirmation.kind === 'confirmed' ? (
