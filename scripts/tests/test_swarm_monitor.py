@@ -34,17 +34,6 @@ def select(mode, fake, text=TODO, live=()):
 
 
 class SelectTests(unittest.TestCase):
-    def test_now_takes_an_unassigned_issue_after_five_minutes_not_an_hour(self):
-        chosen, _ = select("now", Gh(issues=[aged(5, 10), aged(6, 2)]))
-        self.assertEqual(chosen["triage"], [5])
-        chosen, _ = select("hourly", Gh(issues=[aged(5, 10)]))
-        self.assertEqual(chosen["triage"], [])
-
-    def test_now_still_skips_issues_a_worker_has_had(self):
-        fake = Gh(issues=[aged(3, 30)], comments=[comment("<!-- swarm-claim:CW-001 -->\nWorker 1 received")])
-        chosen, _ = select("now", fake)
-        self.assertEqual(chosen["triage"], [])
-
     def test_hourly_takes_an_issue_nobody_was_assigned_for_an_hour(self):
         chosen, out = select("hourly", Gh(issues=[aged(5, 90)]))
         self.assertEqual(chosen["triage"], [5])
@@ -605,12 +594,10 @@ class NotesTests(unittest.TestCase):
 class WorkflowFileTests(unittest.TestCase):
     root = Path(__file__).resolve().parents[2] / ".github" / "workflows"
 
-    def test_the_monitor_reacts_to_issues_runs_every_ten_minutes_and_at_two_am_new_york(self):
+    def test_the_monitor_runs_hourly_and_at_two_am_new_york(self):
         text = (self.root / "swarm-issue-monitor.yml").read_text()
-        for cron in ("'*/10 * * * *'", "'0 6 * * *'", "'0 7 * * *'"):
+        for cron in ("'37 * * * *'", "'0 6 * * *'", "'0 7 * * *'"):
             self.assertIn(cron, text)
-        self.assertIn("types: [opened, reopened, labeled]", text)
-        self.assertIn("github.event_name == 'issues' && 'now'", text)
         self.assertIn("monitor-select", text)
         self.assertIn("monitor-assign", text)
 

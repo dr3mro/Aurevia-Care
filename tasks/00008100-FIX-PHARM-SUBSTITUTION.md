@@ -1,5 +1,6 @@
-- [-] FIX-PHARM-SUBSTITUTION · Persist and apply approved pharmacy substitutions
-  - agent: swarm-1
+- [x] FIX-PHARM-SUBSTITUTION · Persist and apply approved pharmacy substitutions
+  - pr: #683
+  - evidence: PR #683; integrator ran scripts/repair-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/FIX-PHARM-SUBSTITUTION.md; simulated review only
   - attempts: 1
   - requirements: RX-01, RX-02, ARC-02
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/pharmacyflow/substitution, apps/api/src/test/java/com/aurevia/smartclinic/pharmacyflow/substitution, apps/api/src/main/java/com/aurevia/smartclinic/prescription, apps/api/src/test/java/com/aurevia/smartclinic/prescription, apps/api/src/main/java/com/aurevia/smartclinic/audit, apps/api/src/test/java/com/aurevia/smartclinic/audit, db/migrations/V94__durable_pharmacy_substitution.sql

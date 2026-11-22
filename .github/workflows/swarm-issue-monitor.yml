@@ -1,27 +1,23 @@
 name: Swarm issue monitor
-# Issue flow: a new or reopened issue is picked up at once (the `issues` event) and every ten
-# minutes after that, so an issue that no worker was assigned waits minutes, not an hour. Issues the
-# watchdog opens do not fire the event (a workflow token never starts workflows), which is what the
-# ten-minute schedule is for. Mode `now` picks issues open over five minutes that no worker has had.
+# Hourly at minute 37 (half an hour from the swarm's own safety-net wave at :07): issues
+# no worker was ever assigned (open over an hour) are picked up.
 # Daily at 2:00 AM New York: issues with no progress for 24 hours get a worker again.
 # Cron is UTC only, so the daily job is scheduled at 06:00 UTC (summer, EDT) and 07:00 UTC
 # (winter, EST); each runs only in its own season, so a delayed run still counts. A read-only triage worker derives
 # the scope for an issue with no task; a trusted job validates it and adds the task to TODO.md.
 # Workers comment on the issue when they receive it and when they stop or finish.
 on:
-  issues:
-    types: [opened, reopened, labeled]
   schedule:
-    - cron: '*/10 * * * *'
+    - cron: '37 * * * *'
     - cron: '0 6 * * *'
     - cron: '0 7 * * *'
   workflow_dispatch:
     inputs:
       mode:
-        description: 'now (unassigned issues), hourly (the same, open over an hour) or daily (no progress for 24 hours)'
+        description: 'hourly (unassigned issues) or daily (no progress for 24 hours)'
         type: choice
-        options: [now, hourly, daily]
-        default: now
+        options: [hourly, daily]
+        default: hourly
 permissions:
   contents: read
 concurrency:
@@ -62,7 +58,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           EVENT_NAME: ${{ github.event_name }}
           SCHEDULE: ${{ github.event.schedule }}
-          MODE: ${{ github.event_name == 'schedule' && (github.event.schedule == '*/10 * * * *' && 'now' || 'daily') || github.event_name == 'issues' && 'now' || inputs.mode }}
+          MODE: ${{ github.event_name == 'schedule' && (github.event.schedule == '37 * * * *' && 'hourly' || 'daily') || inputs.mode }}
         run: python3 -I scripts/swarm.py monitor-select --mode "$MODE" --out monitor
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: steps.pick.outputs.act == 'true'

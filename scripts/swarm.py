@@ -520,15 +520,8 @@ def run_event(run_id):
 
     Only runs that are not pull-request runs count: a failing PR run is already the
     integrator's business. A transient infrastructure error is retried once first."""
-    try:
-        info = gh_json("run", "view", str(run_id), "--json",
-                       "name,conclusion,url,headBranch,headSha,jobs,attempt,event") or {}
-    except subprocess.CalledProcessError as error:
-        # A run that was deleted, or whose jobs GitHub no longer lists, has nothing to record; the
-        # next run of the workflow or the 15-minute check covers it. Anything else is a real error.
-        if "404" in f"{error.stderr}{error.stdout}" or "Not Found" in f"{error.stderr}{error.stdout}":
-            return f"run {run_id} no longer exists; nothing to record"
-        raise
+    info = gh_json("run", "view", str(run_id), "--json",
+                   "name,conclusion,url,headBranch,headSha,jobs,attempt,event") or {}
     name, conclusion = info.get("name", "workflow"), info.get("conclusion", "")
     if info.get("event") == "pull_request":
         return "pull-request run; handled by the integrator"
@@ -733,7 +726,6 @@ MAX_ISSUE_TASKS_OPEN = 5
 MAX_ISSUES_PER_RUN = 3
 MAX_REQUEUES = 2
 UNASSIGNED_MINUTES = 60
-FAST_ISSUE_MINUTES = 5     # `now` mode: a new issue gets a worker after this long, not after an hour
 STALE_MINUTES = 24 * 60
 ISSUE_TASK = re.compile(r"ISS-(\d+)")
 ISSUE_LABELS["agent-fixable"] = ("0e8a16", "The issue monitor may assign a worker to this issue")
@@ -838,8 +830,7 @@ def monitor_select(mode, text, out_dir, now=None):
         if mode == "daily":
             if minutes_since(issue["updated_at"], now) < STALE_MINUTES:
                 continue
-        elif minutes_since(issue["created_at"], now) < (FAST_ISSUE_MINUTES if mode == "now" else UNASSIGNED_MINUTES) \
-                or ever_assigned(n):
+        elif minutes_since(issue["created_at"], now) < UNASSIGNED_MINUTES or ever_assigned(n):
             continue
         pr, task_id = latest_pr_marker(issue), marker_of(issue, "task")
         task = by_id.get(f"ISS-{n}") or by_id.get(task_id)
@@ -1554,14 +1545,14 @@ def docs_safe(text, spec_path="SMARTCLINIC_V1_SPEC.md"):
     return re.sub(r"\b(" + "|".join(sorted(bad)) + r")-(?=\d)", r"\1 ", text) if bad else text
 
 
-def audit_entries(findings, text, today, prefix="AUD", source="the daily audit"):
+def audit_entries(findings, text, today):
     """Validate audit findings and format the new ones as TODO.md entries.
 
     The audit worker has no token and its JSON is untrusted, so every field is
     checked: bounded lengths, relative scope paths that are not protected files,
     and no duplicate of an existing task title."""
     tasks = parse_tasks(text)
-    open_audit = [t for t in tasks if t["id"].startswith(f"{prefix}-") and t["status"] != "done"]
+    open_audit = [t for t in tasks if t["id"].startswith("AUD-") and t["status"] != "done"]
     room = min(MAX_AUDIT_NEW, MAX_AUDIT_OPEN - len(open_audit))
     seen = {_norm(t["task"]) for t in tasks}
     existing = {t["id"] for t in tasks}
@@ -1584,18 +1575,18 @@ def audit_entries(findings, text, today, prefix="AUD", source="the daily audit")
             continue
         seen.add(_norm(title))
         number += 1
-        while f"{prefix}-{today}-{number:02d}" in existing:
+        while f"AUD-{today}-{number:02d}" in existing:
             number += 1
         body = "\n".join(f"    {line}" for line in details.strip()[:2000].splitlines() if line.strip())
         entries.append(
-            f"- [ ] {prefix}-{today}-{number:02d} · {title.strip()}\n"
+            f"- [ ] AUD-{today}-{number:02d} · {title.strip()}\n"
             f"  - attempts: 0\n  - scope: {', '.join(scope)}\n  - details:\n{body}\n"
-            f"    Found by {source}. Synthetic fixtures only; failing tests first;\n"
+            "    Found by the daily audit. Synthetic fixtures only; failing tests first;\n"
             "    stay inside the declared scope; record results in your notes file (the path in your prompt).")
     return entries
 
 
-def add_audit_tasks(findings_path, path="TODO.md", today=None, prefix="AUD", source="the daily audit"):
+def add_audit_tasks(findings_path, path="TODO.md", today=None):
     """Append validated audit findings to TODO.md on main for the swarm to take."""
     today = today or datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d")
     try:
@@ -1606,56 +1597,14 @@ def add_audit_tasks(findings_path, path="TODO.md", today=None, prefix="AUD", sou
     added = []
 
     def edit(text):
-        entries = audit_entries(findings, text, today, prefix, source)
+        entries = audit_entries(findings, text, today)
         added[:] = entries
         if not entries:
             return text
         return add_under(text, AUDIT_HEADER, entries)
-    update_todo(edit, f"Daily {source.split('daily ', 1)[-1]}: add findings", path)
+    update_todo(edit, "Daily audit: add findings", path)
     print(f"Added {len(added)} audit task(s).")
     return len(added)
-
-
-# The daily QA and DevSecOps agents: id prefix for the tasks they add, how a task names its
-# source, and what the issue that carries their suggestions is called. Both agents are
-# read-only and hold no token; this trusted code validates what they wrote.
-DAILY_ROLES = {
-    "qa": {"prefix": "QAD", "source": "the daily QA review",
-           "title": "Daily QA review: suggestions for agents and the workflow"},
-    "devsecops": {"prefix": "DSO", "source": "the daily DevSecOps review",
-                  "title": "Daily DevSecOps review: suggestions for agents and the workflow"},
-}
-
-
-def daily_publish(role, findings_path, path="TODO.md"):
-    """Add a daily reviewer's valid tasks to the task files and put its suggestions in one issue.
-
-    Tasks get the role's own id prefix and open-task cap, so a busy QA backlog never blocks the
-    security reviewer. Suggestions for agents (skills, prompts, rules) and for workflows change
-    what runs, so they go to a person in an issue and are never applied automatically."""
-    config = DAILY_ROLES[role]
-    try:
-        data = json.loads(Path(findings_path).read_text())
-    except (OSError, ValueError):
-        print(f"No usable {role} review.", file=sys.stderr)
-        return {"tasks": 0, "issue": ""}
-    data = data if isinstance(data, dict) else {}
-    tasks = data.get("tasks") if isinstance(data.get("tasks"), list) else []
-    with tempfile.TemporaryDirectory() as tmp:
-        listed = Path(tmp) / "tasks.json"
-        listed.write_text(json.dumps(tasks))
-        added = add_audit_tasks(str(listed), path, prefix=config["prefix"], source=config["source"])
-    agents = review_lines(data.get("agents"), ("agent", "problem", "change"))
-    workflow = review_lines(data.get("workflow"), ("title", "evidence", "change"))
-    number = ""
-    if agents or workflow:
-        body = (f"{mask(str(data.get('summary', '')))[:1200]}\n\n"
-                + ("### Suggestions for agents, skills and prompts\n" + "\n".join(agents) + "\n\n" if agents else "")
-                + ("### Suggested workflow changes\n" + "\n".join(workflow) + "\n\n" if workflow else "")
-                + "Nothing here was applied. Decide what to do; close this issue when done.")
-        number = record_issue(f"daily-{role}", ["review"], config["title"], body,
-                              labels=("swarm-review",))
-    return {"tasks": added, "issue": number}
 
 
 STRATEGY_WORKFLOWS = ("swarm.yml", "swarm-integrator.yml", "swarm-debugger.yml", "delivery.yml")
@@ -2096,10 +2045,6 @@ def publish(task, directory):
             pr = str(task["number"])
             gh("pr", "comment", pr, "--body",
                f"Worker {task['slot']} pushed a fix (local checks: {checks}). The integrator will retest.")
-            # A story that ended as a draft stays a draft after its fix: the integrator never takes
-            # a draft, so a clean fix must hand the pull request back by marking it ready.
-            if not incomplete:
-                gh("pr", "ready", pr, check=False)
     elif commits > 0:
         # The bundle step failed (it runs with `|| true`): the commits exist only in the
         # worker's artifact and would otherwise be dropped without a trace.
@@ -2949,98 +2894,6 @@ def debug_select():
     return [p["number"] for p in chosen]
 
 
-
-# ---------------------------------------------------------------------------
-# PR flow. A pull request that stalls blocks everything downstream (the tasks that depend on
-# it, the story pause while fixes wait, main's next batch), so nothing here waits for the next
-# integration run or the hourly wave. It runs when a Delivery run finishes and every ten minutes,
-# looks at every open swarm pull request and does the next step at once: a failed Delivery or a
-# draft goes to the fix workers or the debugger, a missing or approval-stuck Delivery run is
-# requested again, a green pull request wakes the integrator, and a debugger or a wave that
-# should be running is started. It is trusted code and runs no agent: the LLM work stays with
-# the debugger and fix workers it hands off to, so it is fast and cannot be talked into anything.
-PR_STUCK_MINUTES = 90      # a green, unblocked pull request that has not merged for this long
-PR_DRAFT_MINUTES = 5       # a draft with no label gets this long before the flow takes it
-ACTIVE_STATES = ("queued", "in_progress", "waiting", "pending", "requested")
-
-
-def active_runs(workflow):
-    """How many runs of a workflow are queued or running."""
-    total = 0
-    for status in ACTIVE_STATES:
-        out = gh("run", "list", "--workflow", workflow, "--status", status, "--limit", "20",
-                 "--json", "databaseId", "-q", ".[].databaseId", check=False)
-        total += len(out.split())
-    return total
-
-
-def delivery_requested(pr, head):
-    """True when the flow already asked for a fresh Delivery run for this exact head."""
-    comments = gh_json("api", f"repos/{repo_slug()}/issues/{pr}/comments?per_page=100") or []
-    return any(trusted_author(c) and "Delivery is" in (c.get("body") or "")
-               and head[:12] in (c.get("body") or "") for c in comments)
-
-
-def pr_flow(now=None):
-    """One pass over the open swarm pull requests. Returns a list of (pr, action) for the log."""
-    prs = gh_json("pr", "list", "--state", "open", "--label", "swarm", "--limit", "100",
-                  "--json", "number,title,labels,isCrossRepository,isDraft,headRefOid,updatedAt") or []
-    red = main_is_red()
-    acted, ready, wants_debugger, wants_wave = [], [], False, False
-    for item in sorted(prs, key=lambda p: p["number"]):
-        pr, labels = item["number"], label_names(item)
-        if item["isCrossRepository"] or {"needs-human", "needs-review"} & labels:
-            continue
-        if "needs-debug" in labels:
-            wants_debugger = True
-            continue
-        if "needs-fix" in labels:
-            wants_wave = True
-            continue
-        idle = minutes_since(item["updatedAt"], now)
-        if item["isDraft"]:
-            # Nobody takes a draft that carries no label: send it to a fix worker now.
-            if idle >= PR_DRAFT_MINUTES:
-                fail(pr, "Draft pull request: the worker did not finish cleanly", simple=True)
-                acted.append((pr, "draft sent to fix"))
-            continue
-        head = item.get("headRefOid", "")
-        state = delivery_state(delivery_runs(head), head)
-        if state == "failed":
-            fail(pr, "Delivery failed on the current head")
-            acted.append((pr, "delivery failed, sent to debugger"))
-        elif state == "missing" and markdown_only(gh("pr", "diff", str(pr), "--name-only").split()):
-            # delivery.yml ignores docs-only changes, so no run will ever come: the integrator's
-            # local docs check is the evidence, as in delivery_gate. Do not ask for a run.
-            ready.append((pr, idle))
-        elif state in ("missing", "approval-required"):
-            if not delivery_requested(pr, head):
-                branch = (gh_json("pr", "view", str(pr), "--json", "headRefName") or {}).get("headRefName", "")
-                gh("pr", "comment", str(pr), "--body",
-                   f"{MARK}\nDelivery is {state} for {head[:12]}; a fresh run was requested on this branch. "
-                   "Nothing merges until it reports passed.", check=False)
-                gh("workflow", "run", "delivery.yml", "--ref", branch, check=False)
-                acted.append((pr, f"delivery {state}, run requested"))
-        elif state == "passed" and (not red or item.get("title", "").startswith(REPAIR_PREFIXES)):
-            ready.append((pr, idle))
-    if wants_debugger and not active_runs("swarm-debugger.yml"):
-        gh("workflow", "run", "swarm-debugger.yml", "--ref", "main", check=False)
-        acted.append(("-", "debugger started"))
-    if (wants_wave or any(a == "draft sent to fix" for _, a in acted)) and waiting_waves() == 0:
-        gh("workflow", "run", "swarm.yml", "-f", f"workers={STORY_WAVE_WORKERS}", "--ref", "main", check=False)
-        acted.append(("-", "fix wave started"))
-    if ready and not active_runs("swarm-integrator.yml"):
-        gh("workflow", "run", "swarm-integrator.yml", "--ref", "main", check=False)
-        acted.append(("-", f"integrator started for {len(ready)} ready pull request(s)"))
-    for pr, idle in ready:
-        if idle >= PR_STUCK_MINUTES:
-            report_pr_stuck(pr, f"green for {int(idle)} minutes and still not merged",
-                            "Delivery passed and no label blocks it, but the integrator has not merged it. "
-                            "Check the latest Swarm integrator run.")
-            acted.append((pr, "stuck alert"))
-    return acted
-
-
 PR_HISTORY_LIMIT = 45000   # characters of history a worker or debugger gets
 PR_HISTORY_RECENT = 6000   # the newest steps are shown in full up to this size each
 PR_HISTORY_OLD = 2000      # older steps are cut to this size each
@@ -3547,7 +3400,6 @@ def main(argv=None):
     p.add_argument("--file", default="TODO.md")
     p.add_argument("--repair-run", default="")
     sub.add_parser("watchdog")
-    sub.add_parser("pr-flow")
     sub.add_parser("debug-select")
     p = sub.add_parser("strategy-state")
     p.add_argument("--out", default=".agent/swarm-state.md")
@@ -3573,15 +3425,11 @@ def main(argv=None):
     p.add_argument("--file", default="TODO.md")
     p = sub.add_parser("top-up")
     p.add_argument("--id", required=True)
-    p = sub.add_parser("daily-publish")
-    p.add_argument("--role", required=True, choices=sorted(DAILY_ROLES))
-    p.add_argument("--findings", required=True)
-    p.add_argument("--file", default="TODO.md")
     p = sub.add_parser("add-audit-tasks")
     p.add_argument("--findings", required=True)
     p.add_argument("--file", default="TODO.md")
     p = sub.add_parser("monitor-select")
-    p.add_argument("--mode", choices=("now", "hourly", "daily"), required=True)
+    p.add_argument("--mode", choices=("hourly", "daily"), required=True)
     p.add_argument("--out", required=True)
     p.add_argument("--file", default="TODO.md")
     p = sub.add_parser("monitor-assign")
@@ -3669,9 +3517,6 @@ def main(argv=None):
         lean = [{**t, "title": "", "body": "", "fix": ""} for t in include]
         emit("matrix", json.dumps({"include": lean}, separators=(",", ":")))
         emit("count", len(include))
-    elif a.cmd == "pr-flow":
-        for pr, what in pr_flow():
-            print(f"#{pr}: {what}")
     elif a.cmd == "watchdog":
         watchdog()
     elif a.cmd == "strategy-state":
@@ -3738,8 +3583,6 @@ def main(argv=None):
         if list(Path(a.collected).glob("*.files")) and not result["days"]:
             # Fail visibly: the watchdog then opens an issue instead of the notes piling up.
             sys.exit("notes: the reconciler produced no usable daily note; the originals stay for the next run")
-    elif a.cmd == "daily-publish":
-        daily_publish(a.role, a.findings, a.file)
     elif a.cmd == "add-audit-tasks":
         add_audit_tasks(a.findings, a.file)
     elif a.cmd == "add-repair-task":
