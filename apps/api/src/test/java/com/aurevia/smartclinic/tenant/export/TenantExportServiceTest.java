@@ -235,6 +235,18 @@ class TenantExportServiceTest {
     }
 
     @Test
+    void failedJobPersistRemovesThePromotedManifest() throws IOException {
+        when(store.save(any())).thenReturn(false);
+        ApiException failure = assertThrows(ApiException.class, () -> service.start());
+        assertEquals(409, failure.status());
+        assertEquals("EXPORT_STATE_CONFLICT", failure.code());
+        // The manifest is promoted before the insert. With no job row, nothing can
+        // ever expire it, so a refused start must remove the orphan immediately.
+        assertEquals(1, storedObjectCount(),
+                "a refused job must not leave an unreferenced manifest object");
+    }
+
+    @Test
     void unknownJobCannotBeDownloadedOrExpired() {
         when(store.find("unknown")).thenReturn(Optional.empty());
         assertEquals(404, assertThrows(ApiException.class, () -> service.download("unknown")).status());

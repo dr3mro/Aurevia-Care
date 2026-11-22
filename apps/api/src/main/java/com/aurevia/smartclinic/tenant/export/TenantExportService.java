@@ -119,6 +119,10 @@ public class TenantExportService {
                 manifestKey.objectId(), manifestKey.version(), manifestChecksum,
                 now.toString(), now.plus(RETENTION).toString());
         if (!store.save(job)) {
+            // The manifest is already promoted. Without a durable job row nothing
+            // can expire this object, so remove it here rather than leak bytes that
+            // carry provenance and audit history with no cleanup path.
+            objects.delete(manifestKey);
             throw new ApiException(409, "EXPORT_STATE_CONFLICT", "export job was not persisted");
         }
         audit.append(context, PURPOSE, "EXPORT_START", RESOURCE_TYPE, SCOPE, job.id(), "SUCCESS");
