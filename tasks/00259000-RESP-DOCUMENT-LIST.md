@@ -1,4 +1,6 @@
-- [ ] RESP-DOCUMENT-LIST · Staff web: responsive `DocumentList` (features-chart)
+- [-] RESP-DOCUMENT-LIST · Staff web: responsive `DocumentList` (features-chart)
+  - agent: swarm-10
+  - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/chart/DocumentList.tsx, apps/staff-web/tests/responsive/features-chart/DocumentList.responsive.test.tsx
   - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS

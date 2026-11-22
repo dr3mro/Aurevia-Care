@@ -1,4 +1,6 @@
-- [ ] RESP-PATIENTS-PAGE · Staff web: responsive `PatientsPage` (features-patients)
+- [-] RESP-PATIENTS-PAGE · Staff web: responsive `PatientsPage` (features-patients)
+  - agent: swarm-7
+  - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/patients/PatientsPage.tsx, apps/staff-web/tests/responsive/features-patients/PatientsPage.responsive.test.tsx
   - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
