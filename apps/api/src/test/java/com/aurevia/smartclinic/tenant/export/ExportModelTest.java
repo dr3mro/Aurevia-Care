@@ -116,4 +116,14 @@ class ExportModelTest {
         assertTrue(job.expired(Instant.parse(expiresAt)));
         assertTrue(job.expired(Instant.parse("2026-11-22T10:00:01Z")));
     }
+
+    @Test
+    void anExplicitlyExpiredJobIsExpiredBeforeItsRetentionInstant() {
+        ExportJob job = new ExportJob("job-1", "EXPIRED", "obj-1", 1, CHECKSUM,
+                "2026-11-21T10:00:00Z", "2026-11-22T10:00:00Z");
+        // Explicit expiry ends disclosure now; the retention instant is only a
+        // backstop for jobs that nobody expired. Expiry marks the row before it
+        // removes the object, so status must gate downloads in that window.
+        assertTrue(job.expired(Instant.parse("2026-11-21T10:00:01Z")));
+    }
 }

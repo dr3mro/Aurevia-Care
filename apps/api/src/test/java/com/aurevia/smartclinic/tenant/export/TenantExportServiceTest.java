@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -155,6 +156,23 @@ class TenantExportServiceTest {
         ApiException failure = assertThrows(ApiException.class, () -> later.download(job.id()));
         assertEquals(410, failure.status());
         assertEquals("EXPORT_EXPIRED", failure.code());
+    }
+
+    @Test
+    void anExplicitlyExpiredJobCannotBeDownloadedBeforeItsRetentionInstant() {
+        ExportJob job = startAndCaptureJob();
+        ExportJob expired = new ExportJob(job.id(), "EXPIRED", job.objectId(),
+                job.objectVersion(), job.checksum(), job.createdAt(), job.expiresAt());
+        when(store.find(job.id())).thenReturn(Optional.of(expired));
+        // Explicit expiry marks the row before it removes the object, so the
+        // manifest can still be present here. Disclosure must stop at the status
+        // change, not wait for the retention instant or the object removal.
+        assertTrue(objects.getVerified(
+                new ObjectKey(ORG, job.objectId(), job.objectVersion()), job.checksum()).isPresent());
+        ApiException failure = assertThrows(ApiException.class, () -> service.download(job.id()));
+        assertEquals(410, failure.status());
+        assertEquals("EXPORT_EXPIRED", failure.code());
+        verify(audit, never()).append(any(), any(), eq("EXPORT_DOWNLOAD"), any(), any(), any(), any());
     }
 
     @Test

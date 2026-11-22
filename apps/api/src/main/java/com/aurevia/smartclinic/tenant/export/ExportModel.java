@@ -216,13 +216,18 @@ public final class ExportModel {
                             String checksum, String createdAt, String expiresAt) {
 
         /**
-         * Decide whether the artifact is past its retention instant.
+         * Decide whether the artifact must no longer be disclosed.
+         *
+         * <p>An explicit expiry ends disclosure at once; the retention instant is
+         * only a backstop for a job nobody expired. Expiry marks the durable row
+         * before removing the object, so checking status here closes the window
+         * in which the manifest is still present after the job was expired.</p>
          *
          * @param now instant to test
-         * @return {@code true} when the artifact must no longer be disclosed
+         * @return {@code true} when the job was expired or its retention has passed
          */
         public boolean expired(Instant now) {
-            return !now.isBefore(Instant.parse(expiresAt));
+            return "EXPIRED".equals(status) || !now.isBefore(Instant.parse(expiresAt));
         }
     }
 

@@ -28,8 +28,9 @@ import com.aurevia.smartclinic.tenant.export.ExportModel.Manifest;
  * released under the current policy are read, their bytes are re-checksummed,
  * and the manifest carries schema, policy, provenance and audit history before
  * it is promoted in the private object store. Every start, download and expiry
- * is appended to the OPS-02 audit chain. A downloaded artifact is refused once
- * its retention instant has passed, and the object is removed on expiry.</p>
+ * is appended to the OPS-02 audit chain. A downloaded artifact is refused as
+ * soon as its job is expired or its retention instant has passed, and the object
+ * is removed on expiry.</p>
  */
 @Service
 public class TenantExportService {
