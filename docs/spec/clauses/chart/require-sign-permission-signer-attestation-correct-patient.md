@@ -17,6 +17,11 @@ fast, mocked unit tier of the neighbouring clause tests (`authz/clauses`) and of
 `ClinicalNoteServiceTest`: a mocked `NoteRepository`, `AuditAppender` and `TransactionTemplate`,
 a fixed clock and a synthetic `TenantContext`; no real patient data and no new dependency.
 
+Executed proof command and result:
+`mvn -q -B -f apps/api/pom.xml -Pno-security -Djacoco.skip=true -Dtest=RequireSignPermissionSignerAttestationCorrectPatientTest test`
+→ exit 0; Surefire final line
+`Tests run: 7, Failures: 0, Errors: 0, Skipped: 0 -- in com.aurevia.smartclinic.chart.clauses.RequireSignPermissionSignerAttestationCorrectPatientTest`.
+
 - `clinicianSignsDraftWhenPermissionAttestationPatientVersionAndFieldsAllHold` — positive proof.
   An active `clinician` signs a valid draft of a patient in the active organization at the version
   it read, with an explicit attestation. The captured append carries state `signed`,
