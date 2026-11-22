@@ -192,6 +192,11 @@ pixel-level checks remain to the Playwright tasks.
 - The `{"violations": [{"file": "TODO.md", "rule": "tracker"}]}` lines in the
   unittest stdout are emitted by tests that intentionally exercise the tracker
   rule; they are expected test output, not a violation from this pass.
+- `git grep` for conflict-marker lines finds markers in three unrelated HL7 Java
+  files (`Hl7ParseException.java`, `Hl7Parser.java`, `Hl7Segment.java`). Verified
+  present byte-for-byte on `origin/main` (committed from `origin/swarm/BUILD-37-469`),
+  not introduced by this pass, and left untouched as out of scope. The merge of
+  `origin/main` was clean (`Already up to date.`).
 
 ## Lessons for workers
 
