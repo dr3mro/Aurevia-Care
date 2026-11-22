@@ -1,5 +1,6 @@
-- [-] RESP-STAFF-PAGE · Staff web: responsive `StaffPage` (features-admin)
-  - agent: swarm-5
+- [x] RESP-STAFF-PAGE · Staff web: responsive `StaffPage` (features-admin)
+  - pr: #756
+  - evidence: PR #756; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/RESP-STAFF-PAGE.md; simulated review only
   - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/admin/StaffPage.tsx, apps/staff-web/tests/responsive/features-admin/StaffPage.responsive.test.tsx
