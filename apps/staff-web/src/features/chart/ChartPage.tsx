@@ -8,6 +8,7 @@ import { EmptyState, LoadingState, StateView } from '../../components/StateViews
 import { displayLocalName } from '../../i18n/format';
 import { useI18n } from '../../i18n/I18nProvider';
 import { useTheme } from '../../theme/ThemeProvider';
+import { useBreakpoint } from '../../theme/useBreakpoint';
 import { getPatient, listChartEntries, toChart } from './api';
 import type { ChartEntryResponse, ChartViewResponse, PatientViewResponse } from './api';
 import { LongitudinalChart } from './LongitudinalChart';
@@ -22,11 +23,19 @@ type ChartPageData = { patient: PatientViewResponse; chart: ChartViewResponse };
  * Entries are accumulated across cursor pages; an organization or patient
  * switch clears everything first so a previous tenant's rows are never painted.
  * The patient's display name is always shown next to the opaque local id.
+ *
+ * The `page` utility owns the safe-area-aware logical gutter and the single
+ * reading column (WEB-07, UX-01). On compact phones the chart tables sit in a
+ * labelled, keyboard-scrollable region so all clinical columns stay reachable
+ * without a page-level horizontal scroll; from the medium band up the same
+ * tables render directly. No field is hidden and direction stays with the
+ * document, so the identical markup mirrors under right-to-left.
  */
 export function ChartPage() {
   const organizationId = useActiveOrganization();
   const { locale } = useI18n();
   const { tokens } = useTheme();
+  const breakpoint = useBreakpoint();
   const { params } = useRoute();
   const patientId = params.id ?? '';
   const [cursor, setCursor] = useState<string | undefined>(undefined);
@@ -77,13 +86,32 @@ export function ChartPage() {
   }
 
   return (
-    <div style={{ display: 'grid', gap: tokens.spacing.lg }}>
+    <div
+      className="page"
+      data-breakpoint={breakpoint}
+      style={{
+        display: 'grid',
+        gap: tokens.spacing.lg,
+        // Flex/grid children shrink so a long clinical value wraps instead of
+        // forcing a viewport-wide scroll (UX-01, WCAG 1.4.10).
+        minInlineSize: 0,
+        overflowWrap: 'anywhere',
+      }}
+    >
       {result.status === 'error' ? (
         <div data-testid="chart-page-error">{StateView.forTransportError(result.error)}</div>
       ) : null}
       <header style={{ display: 'grid', gap: tokens.spacing.sm }}>
         <h2>{chartText(locale, 'chart')}</h2>
-        <p style={{ marginBlock: 0 }}>
+        <p
+          style={{
+            marginBlock: 0,
+            minInlineSize: 0,
+            overflowWrap: 'anywhere',
+            whiteSpace: 'normal',
+            textAlign: 'start',
+          }}
+        >
           <b>{chartText(locale, 'patient')}:</b>{' '}
           <MixedScriptText text={displayLocalName(chart.patientName, locale)} lang={locale} />
           {' · '}
@@ -93,6 +121,17 @@ export function ChartPage() {
       </header>
       {accumulated.length === 0 ? (
         <EmptyState />
+      ) : breakpoint === 'compact' ? (
+        // One labelled scroll region keeps the wide coded tables reachable by
+        // keyboard on a phone; the region disappears when space allows.
+        <div
+          className="table-region"
+          role="region"
+          aria-label={chartText(locale, 'chart')}
+          tabIndex={0}
+        >
+          <LongitudinalChart chart={chart} locale={locale} />
+        </div>
       ) : (
         <LongitudinalChart chart={chart} locale={locale} />
       )}
