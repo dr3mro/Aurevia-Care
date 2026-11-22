@@ -123,7 +123,9 @@ export const navigation: NavigationItem[] = [
   { id: 'admin-audit', route: '/admin/audit', group: 'Administration', labelKey: 'audit', roles: ['privacy_auditor', 'tenant_admin'] },
   { id: 'operations-queues', route: '/operations/queues', group: 'Operations', labelKey: 'queues', roles: ['operator'] },
   { id: 'operations-exports', route: '/operations/exports', group: 'Operations', labelKey: 'exports', roles: ['tenant_admin'] },
-  { id: 'operations-imports', route: '/operations/imports', group: 'Operations', labelKey: 'imports', roles: ['privacy_auditor'] },
+  // OPS-08 authorizes both roles to review a dry run and sign off an import;
+  // the shell must not deny a role the import screen and service already allow.
+  { id: 'operations-imports', route: '/operations/imports', group: 'Operations', labelKey: 'imports', roles: ['tenant_admin', 'privacy_auditor'] },
   { id: 'account-sessions', route: '/account/sessions', group: 'Account', labelKey: 'sessions', roles: ['staff'] },
 ];
 

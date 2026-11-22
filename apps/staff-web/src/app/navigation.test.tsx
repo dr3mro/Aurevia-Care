@@ -67,6 +67,12 @@ describe('staff web navigation model (screen map section 2)', () => {
     ]);
   });
 
+  it('gives the tenant admin the onboarding import item it may sign off under OPS-08', () => {
+    // The import screen and service authorize tenant_admin as well as the
+    // privacy auditor; the rail and the shell guard must agree with them.
+    expect(idsFor('tenant_admin')).toContain('operations-imports');
+  });
+
   it('gives the privacy auditor the audit and onboarding import items plus the all-staff items', () => {
     // "Today" and "Account" are the table's "all staff" rows, visible to
     // every role; among role-restricted items the auditor sees audit and the
