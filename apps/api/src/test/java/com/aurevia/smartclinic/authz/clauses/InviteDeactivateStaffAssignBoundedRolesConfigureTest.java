@@ -311,6 +311,9 @@ class InviteDeactivateStaffAssignBoundedRolesConfigureTest {
 
     @Test
     void membershipAndRoleHistoryRejectMutation() throws Exception {
+        // The application role has no UPDATE/DELETE grant, so this path proves the
+        // privilege boundary. The owner path below proves the append-only trigger:
+        // the owner keeps its privileges but forced RLS still scopes it to the tenant.
         try (Connection connection = DriverManager.getConnection(URL, "smartclinic_app", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
@@ -318,6 +321,16 @@ class InviteDeactivateStaffAssignBoundedRolesConfigureTest {
                     () -> statement.execute("UPDATE public.membership SET status = 'active'"));
             assertThrows(SQLException.class,
                     () -> statement.execute("DELETE FROM public.role_assignment"));
+        }
+        try (Connection connection = DriverManager.getConnection(URL, "smartclinic_migrate", "");
+             Statement statement = connection.createStatement()) {
+            statement.execute("SET app.current_org = '" + ORG_A + "'");
+            SQLException update = assertThrows(SQLException.class,
+                    () -> statement.execute("UPDATE public.membership SET status = 'active'"));
+            assertEquals("44000", update.getSQLState(), update.getMessage());
+            SQLException delete = assertThrows(SQLException.class,
+                    () -> statement.execute("DELETE FROM public.role_assignment"));
+            assertEquals("44000", delete.getSQLState(), delete.getMessage());
         }
     }
 }
