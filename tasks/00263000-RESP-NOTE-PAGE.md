@@ -1,5 +1,6 @@
-- [-] RESP-NOTE-PAGE · Staff web: responsive `NotePage` (features-chart)
-  - agent: swarm-4
+- [x] RESP-NOTE-PAGE · Staff web: responsive `NotePage` (features-chart)
+  - pr: #758
+  - evidence: PR #758; integrator ran scripts/integrator-gate.sh on the merge result (tool evidence); Delivery re-verifies main after the push; notes in docs/swarm/RESP-NOTE-PAGE.md; simulated review only
   - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/chart/NotePage.tsx, apps/staff-web/tests/responsive/features-chart/NotePage.responsive.test.tsx
