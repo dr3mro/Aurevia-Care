@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { MixedScriptText } from '../../components/MixedScriptText';
 import { useI18n } from '../../i18n/I18nProvider';
-import { useTheme } from '../../theme/ThemeProvider';
+import { useBreakpoint } from '../../theme/useBreakpoint';
 import { AccessStateNotice } from './AccessStateNotice';
 import { AuditEventList } from './AuditEventList';
 import { ConfigEditor } from './ConfigEditor';
@@ -35,7 +35,18 @@ export interface AdminScreenProps {
   anchorCivilDate: string;
 }
 
-/** Compose tenant-scoped configuration, staff history, audit and access review. */
+/**
+ * Compose tenant-scoped configuration, staff history, audit and access review.
+ *
+ * The screen is one logical `.page` grid: it occupies a single full-width
+ * column on phones and centres to the shared reading width on larger viewports,
+ * so long clinical values wrap instead of forcing a page-level horizontal
+ * scroll. The access states use the `.stack` utility rather than a bespoke inline
+ * grid. Direction stays with the document — no subtree overrides it, so the
+ * same markup mirrors under right-to-left. The active layout band is exposed as
+ * `data-breakpoint` because jsdom cannot evaluate the real media queries
+ * (WEB-07, UX-01).
+ */
 export function AdminScreen({
   organizationId,
   configurations,
@@ -48,7 +59,7 @@ export function AdminScreen({
   anchorCivilDate,
 }: AdminScreenProps) {
   const { locale } = useI18n();
-  const { tokens } = useTheme();
+  const breakpoint = useBreakpoint();
   const [proposals, setProposals] = useState<ConfigurationVersion[]>([]);
   const [proposal, setProposal] = useState<LocalProposal | null>(null);
   const [proposalOrganizationId, setProposalOrganizationId] = useState(organizationId);
@@ -78,10 +89,7 @@ export function AdminScreen({
   }
 
   return (
-    <section
-      aria-label={adminText(locale, 'admin')}
-      style={{ display: 'grid', gap: tokens.spacing.lg }}
-    >
+    <section className="page" data-breakpoint={breakpoint} aria-label={adminText(locale, 'admin')}>
       <h2>{adminText(locale, 'admin')}</h2>
       <p>{adminText(locale, 'syntheticNotice')}</p>
       {/* No aria-label: the live region's announcement must be exactly the
@@ -92,7 +100,7 @@ export function AdminScreen({
           lang={locale}
         />
       </p>
-      <section aria-label={adminText(locale, 'accessReview')} style={{ display: 'grid', gap: tokens.spacing.sm }}>
+      <section className="stack" aria-label={adminText(locale, 'accessReview')}>
         <h3>{adminText(locale, 'accessReview')}</h3>
         {accessProbes.map((probe) => (
           <AccessStateNotice
