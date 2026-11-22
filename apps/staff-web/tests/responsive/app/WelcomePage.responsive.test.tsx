@@ -142,34 +142,44 @@ describe.each(BREAKPOINTS)('responsive WelcomePage at %s', (breakpoint) => {
 
 describe('responsive WelcomePage viewport matrix', () => {
   const widths = [320, 360, 390, 768, 820, 1024, 1280] as const;
+  // The acceptance matrix requires every concrete width in both writing directions.
+  const locales: readonly Locale[] = ['en', 'ar'];
 
-  it.each(widths)('resolves %ipx to the correct layout band', (width) => {
-    installMatchMedia({
-      medium: width >= BREAKPOINT_WIDTHS.medium,
-      expanded: width >= BREAKPOINT_WIDTHS.expanded,
-      coarse: width < BREAKPOINT_WIDTHS.expanded,
-      portrait: width < BREAKPOINT_WIDTHS.medium,
-    });
-    render(
-      <ThemeProvider>
-        <I18nProvider>
-          <WelcomePage />
-        </I18nProvider>
-      </ThemeProvider>,
-    );
+  it.each(widths.flatMap((width) => locales.map((locale) => ({ width, locale }))))(
+    'resolves $width px to the correct layout band in $locale',
+    ({ width, locale }) => {
+      installMatchMedia({
+        medium: width >= BREAKPOINT_WIDTHS.medium,
+        expanded: width >= BREAKPOINT_WIDTHS.expanded,
+        coarse: width < BREAKPOINT_WIDTHS.expanded,
+        portrait: width < BREAKPOINT_WIDTHS.medium,
+      });
+      render(
+        <ThemeProvider>
+          <I18nProvider initialLocale={locale}>
+            <WelcomePage />
+          </I18nProvider>
+        </ThemeProvider>,
+      );
 
-    const expected: Breakpoint =
-      width >= BREAKPOINT_WIDTHS.expanded
-        ? 'expanded'
-        : width >= BREAKPOINT_WIDTHS.medium
-          ? 'medium'
-          : 'compact';
-    expect(welcomeRoot().getAttribute('data-breakpoint')).toBe(expected);
-    expect(within(welcomeRoot()).getByRole('heading', { level: 2, name: 'Welcome' }).textContent).toBe(
-      'Welcome',
-    );
-    expect(screen.getByRole('status')).toBeTruthy();
-  });
+      const expected: Breakpoint =
+        width >= BREAKPOINT_WIDTHS.expanded
+          ? 'expanded'
+          : width >= BREAKPOINT_WIDTHS.medium
+            ? 'medium'
+            : 'compact';
+      expect(welcomeRoot().getAttribute('data-breakpoint')).toBe(expected);
+
+      const arabic = locale === 'ar';
+      expect(document.documentElement.dir).toBe(arabic ? 'rtl' : 'ltr');
+      expect(document.documentElement.lang).toBe(locale);
+      const headingName = arabic ? 'مرحباً' : 'Welcome';
+      expect(
+        within(welcomeRoot()).getByRole('heading', { level: 2, name: headingName }).textContent,
+      ).toBe(headingName);
+      expect(screen.getByRole('status')).toBeTruthy();
+    },
+  );
 });
 
 describe('responsive WelcomePage right-to-left', () => {
