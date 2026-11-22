@@ -138,6 +138,9 @@ describe('responsive ConfigEditor (WEB-07, UX-01)', () => {
       expect(scrollRegion?.getAttribute('aria-label')).toBe(
         adminText('en', 'configurationVersions'),
       );
+      // The labelled region owns the inline overflow, so the page never scrolls
+      // horizontally and every clinical column stays reachable by keyboard.
+      expect(styleOf(scrollRegion)).toContain('overflow-x');
       expect(within(table).getAllByRole('columnheader')).toHaveLength(5);
       expect(within(table).getAllByRole('rowheader')).toHaveLength(4);
       expect(styleOf(table)).not.toContain('display: none');

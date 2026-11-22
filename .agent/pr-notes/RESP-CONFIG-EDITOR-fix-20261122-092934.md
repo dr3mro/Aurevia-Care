@@ -58,8 +58,12 @@ migration change.
 Senior React and Vite (`smartclinic-senior-react` skill loaded); strict
 TypeScript verified with `npm run typecheck` (`smartclinic-senior-typescript`
 skill loaded). The worker re-check gate `scripts/frontend-typecheck-check.sh`
-passed. One bounded static specialist review was requested from
-`smartclinic-senior-react` on the two scoped files. No clinical or
+passed. One bounded static specialist review was completed by the
+`smartclinic-senior-react` subagent on the two scoped files: **no actionable
+defects found**; it confirmed logical-only inline styles, correct `matchMedia`
+state sharing, fixture-consistent expectations and the labelled keyboard-focusable
+scroll region. Its single non-blocking suggestion (assert the scroll region owns
+`overflow-x`) was adopted as a cheap regression guard. No clinical or
 defensive-security review is required (see Clinical and architecture review).
 
 ## Data changes
@@ -99,9 +103,15 @@ participant. Commands run from the repository root unless noted.
   (Red-first evidence from the original pass: before the component change most
   of these tests failed on missing `data-part`/`data-breakpoint`, physical
   `width: 100%` and field-wrapper attributes.)
+- The bounded senior-react static review returned no actionable defect; its
+  optional regression guard was added to the existing test
+  (`expect(styleOf(scrollRegion)).toContain('overflow-x')`, asserting the
+  labelled region owns the inline overflow so the page never scrolls
+  horizontally). This adds no production branch. The targeted test and the full
+  gate were re-run after that addition (results below).
 - `cd apps/staff-web && bash check.sh` → `EXIT: 0`, every stage passed under
   `set -e`: generated-client check, typecheck, lint, build, bundle-size gate and
-  coverage. Final lines:
+  coverage. Final lines (from the final run after the regression guard):
   ```
   Test Files  159 passed (159)
        Tests  1897 passed (1897)
@@ -177,8 +187,10 @@ directs.
 
 - **Fix-pass scope:** the implementation and its test were already committed
   (`1db42e32`) when this run started. I verified rather than rewrote them; every
-  frontend gate passes. The only new file here is this note at the exact prompt
-  path. No defect was found in the scoped code.
+  frontend gate passes. The only production/test change in this pass is one
+  optional regression-guard assertion in the existing responsive test (from the
+  specialist review); the new note is at the exact prompt path. No defect was
+  found in the scoped code.
 - **Pre-existing, outside scope:** `origin/main` and this branch contain
   unresolved conflict markers (two per file) in
   `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7ParseException.java`,
