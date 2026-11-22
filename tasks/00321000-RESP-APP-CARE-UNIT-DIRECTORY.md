@@ -1,5 +1,5 @@
-- [-] RESP-APP-CARE-UNIT-DIRECTORY · Patient app: tablet, landscape and large-text layout for `CareUnitDirectory` (units)
-  - agent: swarm-10
+- [x] RESP-APP-CARE-UNIT-DIRECTORY · Patient app: tablet, landscape and large-text layout for `CareUnitDirectory` (units)
+  - pr: #660
   - attempts: 1
   - requirements: PAT-01, PAT-02, UX-01
   - scope: apps/patient-mobile/src/features/units/CareUnitDirectory.tsx, apps/patient-mobile/src/features/units/CareUnitDirectory.tablet.test.tsx

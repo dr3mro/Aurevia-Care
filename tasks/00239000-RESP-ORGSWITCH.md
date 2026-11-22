@@ -1,5 +1,5 @@
-- [-] RESP-ORGSWITCH · Staff web: responsive organization switcher
-  - agent: swarm-9
+- [x] RESP-ORGSWITCH · Staff web: responsive organization switcher
+  - pr: #624
   - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/app/OrgSwitcher.tsx, apps/staff-web/tests/app/OrgSwitcher.responsive.test.tsx
