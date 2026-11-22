@@ -67,10 +67,16 @@ describe('staff web navigation model (screen map section 2)', () => {
     ]);
   });
 
-  it('gives the privacy auditor only the audit item plus the two all-staff items', () => {
+  it('gives the privacy auditor the audit and onboarding import items plus the all-staff items', () => {
     // "Today" and "Account" are the table's "all staff" rows, visible to
-    // every role; among role-restricted items the auditor sees only audit.
-    expect(idsFor('privacy_auditor')).toEqual(['home', 'admin-audit', 'account-sessions']);
+    // every role; among role-restricted items the auditor sees audit and the
+    // onboarding import screen (OPS-08), never the tenant export screen.
+    expect(idsFor('privacy_auditor')).toEqual([
+      'home',
+      'admin-audit',
+      'operations-imports',
+      'account-sessions',
+    ]);
   });
 
   it('never shows the same item twice, for any role', () => {
@@ -152,11 +158,11 @@ describe('staff web navigation rail', () => {
     ]);
   });
 
-  it('renders only the audit and account links for a privacy auditor', () => {
+  it('renders only the audit, import and account links for a privacy auditor', () => {
     renderShell('privacy_auditor');
     const rail = screen.getByRole('group', { name: 'Sections' });
     const links = within(rail).getAllByRole('link').map((link) => link.textContent);
-    expect(links).toEqual(['Today', 'Audit', 'Sessions']);
+    expect(links).toEqual(['Today', 'Audit', 'Onboarding import', 'Sessions']);
   });
 
   it('mirrors the rail in Arabic using logical layout only', () => {

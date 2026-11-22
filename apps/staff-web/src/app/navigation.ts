@@ -66,6 +66,8 @@ export type NavigationLabelKey =
   | 'audit'
   | 'queues'
   | 'sessions'
+  | 'exports'
+  | 'imports'
   | 'groupToday'
   | 'groupScheduling'
   | 'groupClinic'
@@ -120,6 +122,8 @@ export const navigation: NavigationItem[] = [
   { id: 'admin-config', route: '/admin/config', group: 'Administration', labelKey: 'configuration', roles: ['tenant_admin'] },
   { id: 'admin-audit', route: '/admin/audit', group: 'Administration', labelKey: 'audit', roles: ['privacy_auditor', 'tenant_admin'] },
   { id: 'operations-queues', route: '/operations/queues', group: 'Operations', labelKey: 'queues', roles: ['operator'] },
+  { id: 'operations-exports', route: '/operations/exports', group: 'Operations', labelKey: 'exports', roles: ['tenant_admin'] },
+  { id: 'operations-imports', route: '/operations/imports', group: 'Operations', labelKey: 'imports', roles: ['privacy_auditor'] },
   { id: 'account-sessions', route: '/account/sessions', group: 'Account', labelKey: 'sessions', roles: ['staff'] },
 ];
 
@@ -151,6 +155,8 @@ export const navigationLabels: Record<Locale, Record<NavigationLabelKey, string>
     audit: 'Audit',
     queues: 'Operations queues',
     sessions: 'Sessions',
+    exports: 'Tenant export',
+    imports: 'Onboarding import',
     groupToday: 'Today',
     groupScheduling: 'Scheduling',
     groupClinic: 'Clinic',
@@ -190,6 +196,8 @@ export const navigationLabels: Record<Locale, Record<NavigationLabelKey, string>
     audit: 'سجل التدقيق',
     queues: 'قوائم العمليات',
     sessions: 'الجلسات',
+    exports: 'تصدير المستأجر',
+    imports: 'استيراد التسجيل',
     groupToday: 'اليوم',
     groupScheduling: 'الجدولة',
     groupClinic: 'العيادة',
@@ -239,6 +247,30 @@ export function navigationFor(role: Role): NavigationItem[] {
   return navigation.filter(
     (item) => item.roles.includes(role) || item.roles.includes(ALL_STAFF_ROLE),
   );
+}
+
+/**
+ * Roles declared for a registered route pattern, or `null` when the pattern has
+ * no navigation entry and is therefore unrestricted (system and detail pages).
+ *
+ * The lookup uses the exact registered pattern rather than the concrete
+ * pathname: a route such as `/patients/:id/chart` is matched with bound
+ * parameters, so the pattern is the only stable key shared with the router.
+ */
+export function routeAccessRoles(pattern: string): Role[] | null {
+  const item = navigation.find((candidate) => candidate.route === pattern);
+  return item ? item.roles : null;
+}
+
+/**
+ * Whether a role may open a registered route. Routes without a navigation entry
+ * stay open; an entry grants access through an explicit role or through the base
+ * `staff` role held by every signed-in user. This mirrors `navigationFor`, so a
+ * link the rail hides for a role cannot be opened by pasting its URL.
+ */
+export function canAccessRoute(role: Role, pattern: string): boolean {
+  const roles = routeAccessRoles(pattern);
+  return roles === null || roles.includes(role) || roles.includes(ALL_STAFF_ROLE);
 }
 
 /** Items of one group, used to render the grouped rail. */
