@@ -11,8 +11,8 @@ on:
   workflow_dispatch:
     inputs:
       workers:
-        description: 'Story workers per wave; the wave uses fewer when fewer tasks are ready (1 to 10, default 7). Fix, debug and repair workers are not limited by it.'
-        default: '7'
+        description: 'Story workers per wave; the wave uses fewer when fewer tasks are ready (1 to 10, default 3). Fix, debug and repair workers are not limited by it.'
+        default: '3'
       repair_run:
         description: Failed run id on main to repair (optional; the plan job finds failing runs itself)
         default: ''
@@ -116,7 +116,7 @@ jobs:
         if: steps.budget.outputs.start == 'true'
         env:
           GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
-          WORKERS: ${{ inputs.workers || '7' }}
+          WORKERS: ${{ inputs.workers || '3' }}
           BUDGET_WORKERS: ${{ steps.budget.outputs.workers }}
           REPAIR_RUN: ${{ inputs.repair_run }}
           LAUNCH_TASK: ${{ inputs.task }}
