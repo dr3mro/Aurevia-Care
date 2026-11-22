@@ -10,6 +10,7 @@ import java.time.ZoneOffset;
 import org.junit.jupiter.api.Test;
 
 import com.aurevia.smartclinic.api.ApiException;
+import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.ExportProvenance;
 import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.ExportRecord;
 import com.aurevia.smartclinic.tenant.retention.RetentionContract.Offboarding;
 import com.aurevia.smartclinic.tenant.retention.RetentionContract.OffboardingRequest;
@@ -27,6 +28,9 @@ class OffboardingCommandTest {
     private static final Instant NOW = Instant.parse("2026-06-01T00:00:00Z");
     private static final Clock CLOCK = Clock.fixed(NOW, ZoneOffset.UTC);
     private static final int REVIEW_DAYS = 30;
+    /** Synthetic, non-sensitive provenance required by the current export contract. */
+    private static final ExportProvenance PROVENANCE =
+            new ExportProvenance("export-source-1", "rev-1", "offboarding");
 
     private final OffboardingCommand command = new OffboardingCommand(CLOCK);
 
@@ -41,7 +45,7 @@ class OffboardingCommandTest {
 
     private static ExportRecord export() {
         return new ExportRecord("export-1", ORGANIZATION, "*", "authorized-admin",
-                NOW.minusSeconds(60), NOW.plusSeconds(60));
+                NOW.minusSeconds(60), NOW.plusSeconds(60), PROVENANCE);
     }
 
     private static ApiException refusal(Runnable action) {
@@ -90,21 +94,21 @@ class OffboardingCommandTest {
     @Test
     void exportFromAnotherTenantIsRefused() {
         ExportRecord foreign = new ExportRecord("export-1", "55555555-5555-5555-5555-555555555555",
-                "*", "authorized-admin", NOW.minusSeconds(60), NOW.plusSeconds(60));
+                "*", "authorized-admin", NOW.minusSeconds(60), NOW.plusSeconds(60), PROVENANCE);
         assertEquals(409, refusal(() -> command.begin(request(), foreign)).status());
     }
 
     @Test
     void exportWithDifferentIdentifierIsRefused() {
         ExportRecord other = new ExportRecord("export-2", ORGANIZATION, "*", "authorized-admin",
-                NOW.minusSeconds(60), NOW.plusSeconds(60));
+                NOW.minusSeconds(60), NOW.plusSeconds(60), PROVENANCE);
         assertEquals(409, refusal(() -> command.begin(request(), other)).status());
     }
 
     @Test
     void expiredExportIsRefused() {
         ExportRecord expired = new ExportRecord("export-1", ORGANIZATION, "*", "authorized-admin",
-                NOW.minusSeconds(120), NOW.minusSeconds(1));
+                NOW.minusSeconds(120), NOW.minusSeconds(1), PROVENANCE);
         assertEquals(409, refusal(() -> command.begin(request(), expired)).status());
     }
 
