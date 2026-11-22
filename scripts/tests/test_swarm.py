@@ -118,6 +118,29 @@ def pr(number, branch, *names, cross=False, comments=()):
 
 
 class ConcurrentWaveTests(unittest.TestCase):
+    def top_up(self, live=(), waiting=0, ready=True):
+        fake = FakeGh()
+        with mock.patch.object(swarm, "gh", fake), mock.patch.object(swarm, "gh_json", return_value=[]), \
+                mock.patch.object(swarm, "live_workers", return_value=list(live)), \
+                mock.patch.object(swarm, "waiting_waves", return_value=waiting), \
+                mock.patch.object(swarm, "todo_read", return_value=""), \
+                mock.patch.object(swarm, "reclaim", return_value=""), \
+                mock.patch.object(swarm, "plan_workers", return_value=[{"id": "A"}] if ready else []):
+            return swarm.top_up("A-1"), fake
+
+    def test_a_finished_worker_with_room_and_a_ready_task_starts_the_next_wave(self):
+        started, fake = self.top_up(live=["B-1", "A-1"])
+        self.assertTrue(started)
+        self.assertTrue(fake.said("--ref", "swarm.yml"))
+
+    def test_no_next_wave_without_room_a_waiting_wave_or_a_ready_task(self):
+        full = [f"T-{n}" for n in range(swarm.MAX_ACTIVE_WORKERS)]
+        for kwargs in ({"live": full}, {"waiting": 1}, {"ready": False}):
+            with self.subTest(kwargs=kwargs):
+                started, fake = self.top_up(**kwargs)
+                self.assertFalse(started)
+                self.assertFalse(fake.said("--ref", "swarm.yml"))
+
     def test_combined_worker_cap_is_twenty(self):
         self.assertEqual(swarm.MAX_ACTIVE_WORKERS, 20)
 
@@ -449,6 +472,35 @@ class PlanTests(unittest.TestCase):
     def test_open_pull_requests_block_their_task_and_overlapping_scopes(self):
         ids = [t["id"] for t in self.plan([pr(7, "swarm/CW-001-4")])]
         self.assertEqual(ids, ["CW-002", "CW-006"])
+
+    def kinds(self, prs=(), live=(), **kw):
+        return [t["kind"] for t in swarm.plan_workers(10, SLOTS, TASKS, list(prs), live=live, **kw)]
+
+    def test_no_new_story_starts_while_a_pull_request_waits_for_a_fix_or_the_debugger(self):
+        for label in ("needs-fix", "needs-debug"):
+            with self.subTest(label=label):
+                waiting = pr(9, "swarm/CW-002-4", "swarm", label, comments=[swarm.MARK + "\nBroke"])
+                self.assertNotIn("story", self.kinds([waiting], live=["CW-002"]))
+        parked = pr(9, "swarm/CW-002-4", "swarm", "needs-fix", "needs-human")
+        self.assertIn("story", self.kinds([parked]))
+        self.assertIn("story", self.kinds([pr(9, "swarm/CW-002-4", "swarm", "needs-debug", cross=True)]))
+
+    def test_repairs_and_fixes_use_every_slot_while_stories_wait(self):
+        waiting = [dict(pr(n, f"swarm/CW-00{n}-4", "swarm", "needs-fix", comments=[swarm.MARK + "\nBroke"]),
+                        title="t") for n in (1, 2, 6)]
+        self.assertEqual(self.kinds(waiting), ["fix", "fix", "fix"])
+
+    def test_stories_stop_at_the_story_cap_and_the_wave_size(self):
+        busy = [f"T-{n}" for n in range(swarm.STORY_WORKER_CAP)]
+        self.assertEqual(self.kinds(live=busy), [])
+        self.assertEqual(self.kinds(live=busy[:-1]), ["story"])
+        self.assertEqual(self.kinds(story_wave=2), ["story", "story"])
+
+    def test_a_repair_is_not_held_back_by_the_story_cap(self):
+        repair = {"kind": "story", "id": "FIX-9", "number": 0, "branch": "", "title": "r", "body": "b", "fix": ""}
+        full = [f"T-{n}" for n in range(swarm.STORY_WORKER_CAP)]
+        plan = swarm.plan_workers(10, SLOTS, TASKS, [], repair, live=full, story_wave=0)
+        self.assertEqual([t["id"] for t in plan], ["FIX-9"])
 
     def test_a_pull_request_already_being_fixed_gets_no_second_fix_worker(self):
         prs = [pr(9, "swarm/CW-002-4", "swarm", "needs-fix", comments=[swarm.MARK + "\nBroke"])]
@@ -805,8 +857,8 @@ class PlanTests(unittest.TestCase):
 
     def test_wave_runs_ten_workers_and_each_publishes_on_its_own(self):
         text = (ROOT / ".github/workflows/swarm.yml").read_text()
-        self.assertIn("default: '10'", text)
-        self.assertIn("inputs.workers || '10'", text)
+        self.assertIn("default: '7'", text)
+        self.assertIn("inputs.workers || '7'", text)
         self.assertIn("max-parallel: 10", text)
         # Each worker is a reusable-workflow call, so its publish job needs only its
         # own work job and never waits for the slowest worker of the wave.
