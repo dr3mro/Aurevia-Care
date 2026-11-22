@@ -54,6 +54,11 @@ import com.aurevia.smartclinic.web.TenantContextInterceptor;
  * {@code AccessRepository} is a synthetic Mockito boundary; the real-PostgreSQL
  * proof of the same behaviour lives in the integration suite. Fixtures use
  * synthetic subjects and references, never patient data or credentials.</p>
+ *
+ * <p>This proves the reported decision and the audited incident procedure. The
+ * OIDC URL-level authentication boundary is not installed by this standalone
+ * MockMvc harness, and enforcement at clinical-data read call sites is outside
+ * this clause; both belong to other suites.</p>
  */
 class PlatformSupportAccessClinicalDataDisabledDefaultTest {
 
@@ -260,12 +265,13 @@ class PlatformSupportAccessClinicalDataDisabledDefaultTest {
     }
 
     /**
-     * Negative proof that an approved incident is not portable: the same reference
-     * is useless to a different support subject until that subject has its own
-     * approved incident in its own active organization.
+     * Negative proof that an approval is bound to a subject: the same reference is
+     * useless to a different support subject. The repository is mocked here, so the
+     * database-level tenant isolation of the same check is proven separately by the
+     * real-PostgreSQL integration suite.
      */
     @Test
-    void otherOrganizationCannotReuseAnApprovedIncidentReference() throws Exception {
+    void differentSupportSubjectCannotReuseAnApprovedIncidentReference() throws Exception {
         when(repository.activeIncident(REF, SUPPORT, NOW)).thenReturn(Optional.empty());
 
         check(SUPPORT, OTHER_ORG, REF)

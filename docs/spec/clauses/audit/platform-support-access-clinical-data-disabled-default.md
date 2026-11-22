@@ -17,7 +17,11 @@ references and fixed-clock instants only; no patient data, credentials or real
 organization identifiers are used. Every request goes through the real HTTP entry
 point under `/api/v1/access/support/**` in `AccessController`, backed by the real
 `SupportAccessService` and `AccessRules`; only the RLS-bounded `AccessRepository` is
-a synthetic Mockito boundary, matching the neighbouring clause-test style.
+a synthetic Mockito boundary, matching the neighbouring clause-test style. The
+standalone MockMvc harness does not install the Spring Security filter chain, so the
+OIDC URL-level authentication boundary is not exercised here; it is covered by the
+authz clause and integration suites. This proof covers the reported decision and the
+audited incident procedure rather than enforcement at clinical-data read call sites.
 
 - `supportAccessIsDeniedByDefaultAndAuditsTheRefusal` — positive proof of the default-deny
   rule. With no usable incident, `POST /support/check` returns HTTP 200 with
@@ -32,7 +36,8 @@ a synthetic Mockito boundary, matching the neighbouring clause-test style.
   `APPROVED_INCIDENT`. The three steps write `SUPPORT_INCIDENT_CREATE`,
   `SUPPORT_INCIDENT_APPROVE` and `SUPPORT_ACCESS_CHECK` audit events with purpose
   `SUPPORT_ACCESS`, bounded `role:reference` scopes and `SUCCESS` outcomes; the
-  captured contexts confirm organization and actor for each step.
+  captured contexts confirm the actor for all three steps and the organization on
+  creation and on the cross-subject check.
 - `wrongRoleCannotOpenOrApproveAnIncidentAndRefusalIsAudited` — negative proof of role
   separation. A `privacy_auditor` cannot open an incident and a `tenant_admin` cannot
   approve one; both get HTTP 403 `FORBIDDEN`, neither command reaches the repository,
@@ -40,11 +45,18 @@ a synthetic Mockito boundary, matching the neighbouring clause-test style.
 - `selfApprovedOrInactiveMembershipIncidentNeverEnablesAccess` — negative proof of the
   forbidden state. A self-approved incident yields reason `SELF_APPROVAL` and a subject
   without active membership yields `NO_ACTIVE_MEMBERSHIP`; both stay `allowed:false`,
-  neither writes a `SUCCESS` check audit.
-- `otherOrganizationCannotReuseAnApprovedIncidentReference` — negative proof that an
-  approval is not portable. The same reference checked by a different support subject
-  in a different active organization stays denied with `NO_APPROVED_INCIDENT`, and the
-  captured audit context carries that other organization and subject.
+  neither writes a `SUCCESS` check audit. The `SELF_APPROVAL` service branch is
+  defense-in-depth: the real repository filters `approved_by <> subject`, the approval
+  UPDATE requires `subject <> approver`, and V11 adds a CHECK constraint, so a
+  self-approved row cannot reach it. The authoritative self-approval proof is
+  `AccessIntegrationTest.supportIncidentCannotBeSelfApprovedAtDatabaseLevelAndGrantsAreTenantIsolated`.
+- `differentSupportSubjectCannotReuseAnApprovedIncidentReference` — negative proof that
+  an approval is bound to a subject: the same reference checked by a different support
+  subject stays denied with `NO_APPROVED_INCIDENT`, and the captured audit context
+  carries that subject and organization. Because the repository is mocked, this test
+  does not itself prove tenant isolation; the real-PostgreSQL proof is
+  `AccessIntegrationTest.supportAccessIsDeniedByDefaultAndNeedsSeparateApproval`, where
+  the other tenant's check of the same reference returns `allowed:false`.
 - `blankReferenceReasonOrWindowAreRefusedBeforeAnyWrite` — negative proof of missing
   input. Blank reference, blank reason and a zero-minute window give HTTP 422
   `INVALID_REFERENCE`, `INVALID_REASON` and `INVALID_WINDOW` before any repository read
@@ -87,9 +99,15 @@ None of these files was modified by this proof-only task.
 
 ## Gap
 
-No behavioral gap: default denial, separate role-bound approval, expiry, self-approval
-refusal, tenant scoping and the audit trail are implemented and proven by active tests,
-including a real-PostgreSQL HTTP integration test.
+No behavioral gap in the proved surface: default denial, separate role-bound approval,
+expiry, self-approval refusal and the audit trail are implemented and proven by active
+tests. The clause is implemented as a default-deny decision service plus an audited
+incident procedure; a search of `apps/api/src/main/java` finds `checkAccess` consumed
+only by `AccessController`, with no clinical-data read consulting the decision. This
+proof therefore demonstrates the decision and the procedure as the specification
+describes them, not an enforced gate at clinical-data read call sites. Tenant isolation
+and self-approval refusal at the database level are proven by the real-PostgreSQL
+`AccessIntegrationTest`, not by the mocked-repository tests added here.
 
 One non-behavioral gap remains and needs one separate cross-boundary task. The three
 support routes are listed in `contracts/openapi/missing-routes.txt` (lines 131-133)
