@@ -1,4 +1,6 @@
-- [ ] RESP-SHELL · Staff web: responsive application shell (drawer, icon rail, full rail)
+- [-] RESP-SHELL · Staff web: responsive application shell (drawer, icon rail, full rail)
+  - agent: swarm-4
+  - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/app/AppShell.tsx, apps/staff-web/tests/app/AppShell.responsive.test.tsx
   - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-DRAWER, RESP-ORGSWITCH, RESP-BUTTON

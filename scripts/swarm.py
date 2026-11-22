@@ -1321,7 +1321,7 @@ def parse_tasks(text):
             close()
             current = {"id": entry.group(2), "task": entry.group(3), "status": STATUS[entry.group(1)],
                        "requirements": "", "depends": "", "scope": "", "reserved": "", "aliases": "",
-                       "pr": "", "agent": "", "evidence": "", "attempts": ""}
+                       "pr": "", "agent": "", "evidence": "", "attempts": "", "priority": ""}
             body, in_details = [], False
         elif current is not None and line and not line.startswith(" "):
             close()
@@ -1917,11 +1917,29 @@ def task_text(task):
     return clip(f"{head}\n\n{task['details']}")
 
 
+# Daily QA, DevSecOps and audit findings run after everything else, one at a time.
+LOW_PREFIXES = ("QAD-", "DSO-", "AUD-")
+PRIORITY_RANK = {"high": 0, "normal": 1, "low": 2}
+
+
+def priority_of(task):
+    """high, normal or low. A `priority:` field wins; '(HIGH PRIORITY' in the title means high,
+    and the daily QA, DevSecOps and audit tasks are low."""
+    value = (task.get("priority") or "").strip().lower()
+    if value in PRIORITY_RANK:
+        return value
+    if "HIGH PRIORITY" in (task.get("task") or ""):
+        return "high"
+    return "low" if task["id"].startswith(LOW_PREFIXES) else "normal"
+
+
 def plan_workers(max_workers, slots, text, open_prs, repair=None, live=(), story_wave=None, focus=""):
     """Main repairs, then fixes, then ready tasks whose scope is free.
 
-    Repairs and fixes may use every slot. Ordinary stories start only while no pull request waits
-    for a fix or the debugger, at most STORY_WORKER_CAP at once and `story_wave` per wave.
+    Repairs and fixes come first and may use every slot. Then stories by priority (high, normal,
+    low; ties keep file order) fill every free slot, `story_wave` per wave. A story waits only
+    when its scope overlaps a running task or a pull request in the fix loop, so no slot idles
+    while a ready task exists. Low tasks (daily QA, DevSecOps, audits) run one at a time.
     `focus` is a task id a person asked to launch: it is planned first, ignores the attempt limit and
     the waiting-pull-request gate, but still needs open status, a scope, met dependencies and a free scope."""
     tasks = parse_tasks(text)
@@ -1948,14 +1966,13 @@ def plan_workers(max_workers, slots, text, open_prs, repair=None, live=(), story
                          "branch": pr["headRefName"], "title": task["task"],
                          "body": task_text(task),
                          "fix": clip(notes[-1] if notes else "Integration failed.")})
-    failing = any({"needs-fix", "needs-debug"} & label_names(p) and "needs-human" not in label_names(p)
-                  and not p["isCrossRepository"] for p in open_prs)
-    ordinary, story_room = 0, max(0, STORY_WORKER_CAP - len(live))
+    low_busy = any(t["status"] == "taken" and priority_of(t) == "low" for t in tasks)
     in_flight = {task_id_of(p["headRefName"]) for p in open_prs}
     done = {name for t in tasks if t["status"] == "done" for name in (t["id"], *t["aliases"])}
     done |= archived_done_ids()
     # Repairs of main come first: a red main blocks every other merge.
-    for task in sorted(tasks, key=lambda t: (focus not in (t["id"], *t["aliases"]), not is_repair_task(t))):
+    for task in sorted(tasks, key=lambda t: (focus not in (t["id"], *t["aliases"]), not is_repair_task(t),
+                                             PRIORITY_RANK[priority_of(t)])):
         wanted = bool(focus) and focus in (task["id"], *task["aliases"])
         if task["status"] != "todo" or not task["scope"] or task["id"] in in_flight \
                 or (attempts_of(task) >= MAX_ATTEMPTS and not wanted):
@@ -1964,10 +1981,10 @@ def plan_workers(max_workers, slots, text, open_prs, repair=None, live=(), story
             continue
         if any(overlaps(task["scope"], other) for other in busy):
             continue
-        if not is_repair_task(task) and not wanted:
-            if failing or ordinary >= story_room:
+        if priority_of(task) == "low" and not wanted:
+            if low_busy:
                 continue
-            ordinary += 1
+            low_busy = True
         busy.append(task["scope"])
         plan.append({"kind": "story", "id": task["id"], "number": 0, "branch": "",
                      "title": task["task"], "body": task_text(task), "fix": ""})
@@ -2699,10 +2716,7 @@ def add_latest_repair_task(path="TODO.md"):
 
 
 MAX_ACTIVE_WORKERS = 20  # workers running at once across every wave
-# While everything is green, story workers get 14 of the 20 (two waves of 7); the other 6 stay free
-# for fixes, debugging and repairs. As soon as a pull request needs a fix or the debugger, or main
-# is red, no new story starts and all 20 go to those.
-STORY_WORKER_CAP = 14
+# Repairs, fixes and the debugger are planned first; stories (high, normal, then low) fill every other slot.
 STORY_WAVE_WORKERS = 7
 
 
