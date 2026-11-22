@@ -166,6 +166,7 @@ describe('responsive ConfigEditor (WEB-07, UX-01)', () => {
       // in jsdom; they never change the data, the actions or their order.
       expect(root.tagName).toBe('SECTION');
       expect(root.classList.contains('stack')).toBe(true);
+      expect(root.style.gap).not.toBe('');
       expect(root.getAttribute('data-breakpoint')).toBe(band);
       expect(root.getAttribute('data-coarse-pointer')).toBe(String(coarse));
 
