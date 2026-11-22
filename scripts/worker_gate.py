@@ -9,6 +9,8 @@ must pass, and failures in other classes belong to other repair tasks, so they d
 not fail this one (otherwise the first of several repair tasks could never pass
 while the others are still open). A repair task that names no class stays strict.
 The integrator's full gate still runs everything before anything merges.
+Only the private report directory passed by worker-check.sh decides a run; an
+older failing report left in the shared Surefire directory is never consulted.
 """
 import glob
 import json
@@ -19,6 +21,8 @@ import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+# Legacy default for direct/manual invocations. worker-check.sh always passes the
+# private directory for the current run as the second argument instead.
 REPORTS = "apps/api/target/surefire-reports"
 STRICT_PREFIXES = ("FIX-", "DLV-")
 
@@ -45,6 +49,24 @@ def failing_classes(reports_dir):
         if int(suite.get("failures", 0)) or int(suite.get("errors", 0)):
             failing.add(suite.get("name", report.stem).rsplit(".", 1)[-1])
     return failing
+
+
+def usable_reports(reports_dir):
+    """True when the directory holds at least one parseable surefire TEST-*.xml.
+
+    A compile or setup failure can leave the fresh directory absent, empty or
+    holding a truncated report. None of those are test results, so a nonzero
+    build must fail as a compile/setup error instead of being triaged as an
+    integration failure. Unparseable files are skipped rather than counted so
+    that stale or half-written XML cannot stand in for a real failing class.
+    """
+    for report in sorted(Path(reports_dir).glob("TEST-*.xml")):
+        try:
+            ET.parse(report)
+        except ET.ParseError:
+            continue
+        return True
+    return False
 
 
 def _stem(name):
@@ -230,9 +252,16 @@ def candidate_from_env(environ=None, root=".", changed=None):
 
 
 def main(argv=None):
-    mvn_failed = (argv or sys.argv[1:] or ["0"])[0] != "0"
-    reports = Path(REPORTS)
-    failing = failing_classes(reports) if reports.is_dir() else set()
+    args = argv or sys.argv[1:] or ["0"]
+    mvn_failed = args[0] != "0"
+    # The second argument is the private report directory created for this run.
+    # Reading the shared directory would let an earlier run's failing XML decide.
+    reports = Path(args[1]) if len(args) > 1 and args[1] else Path(REPORTS)
+    usable = reports.is_dir() and usable_reports(reports)
+    if mvn_failed and not usable:
+        print("integration run failed without fresh, usable test results (compile or setup error)")
+        return 1
+    failing = failing_classes(reports) if usable else set()
     if mvn_failed and not failing:
         print("integration run failed without a failing test class (compile or setup error)")
         return 1
