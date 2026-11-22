@@ -74,6 +74,8 @@ public class InstantMessagingService {
         String facility = requireSubject(request.facilityId(), "facilityId");
         requireActiveStaff(context.organizationId(), context.subject());
         requireActiveStaff(context.organizationId(), peer);
+        requireFacilityScope(context.organizationId(), context.subject(), facility);
+        requireFacilityScope(context.organizationId(), peer, facility);
         Optional<StaffConversation> existing = store.directConversation(
                 context.organizationId(), facility, context.subject(), peer);
         StaffConversation conversation = existing.orElseGet(() -> {
@@ -102,13 +104,20 @@ public class InstantMessagingService {
             throw invalid("a group needs at least one peer");
         }
         requireActiveStaff(context.organizationId(), context.subject());
+        requireFacilityScope(context.organizationId(), context.subject(), facility);
         Set<String> peers = new LinkedHashSet<>();
         for (String peer : request.memberSubjects()) {
             String member = requireSubject(peer, "memberSubjects");
             if (!member.equals(context.subject())) {
                 requireActiveStaff(context.organizationId(), member);
+                requireFacilityScope(context.organizationId(), member, facility);
                 peers.add(member);
             }
+        }
+        // The raw list may be non-empty yet name only the actor, which the loop
+        // drops; a group with no peer cannot carry a conversation.
+        if (peers.isEmpty()) {
+            throw invalid("a group needs at least one peer");
         }
         StaffConversation conversation = store.createConversation(context.organizationId(), facility,
                 ConversationKind.GROUP, request.topic(), context.subject());
@@ -134,6 +143,7 @@ public class InstantMessagingService {
         Access access = requireAccess(request.facilityId(), request.conversationId(), true);
         requireOwner(access);
         requireActiveStaff(context.organizationId(), subject);
+        requireFacilityScope(context.organizationId(), subject, access.conversation().facilityId());
         if (activeParticipant(access.participants(), subject, clock.instant()).isPresent()) {
             throw new ApiException(409, "ALREADY_MEMBER", "the subject is already an active participant");
         }
@@ -227,6 +237,7 @@ public class InstantMessagingService {
     public List<UnreadView> unreadCounts(String facilityId) {
         TenantContext context = context();
         String facility = requireSubject(facilityId, "facilityId");
+        requireFacilityScope(context.organizationId(), context.subject(), facility);
         return store.conversationsForFacility(context.organizationId(), facility, context.subject())
                 .stream()
                 .map(conversation -> new UnreadView(conversation.id(),
@@ -244,6 +255,7 @@ public class InstantMessagingService {
     public List<ConversationView> conversations(String facilityId) {
         TenantContext context = context();
         String facility = requireSubject(facilityId, "facilityId");
+        requireFacilityScope(context.organizationId(), context.subject(), facility);
         return store.conversationsForFacility(context.organizationId(), facility, context.subject())
                 .stream().map(conversation -> view(conversation, context)).toList();
     }
@@ -276,6 +288,7 @@ public class InstantMessagingService {
         if (!conversation.facilityId().equals(facility)) {
             throw new ApiException(403, "FORBIDDEN", "the conversation belongs to another facility");
         }
+        requireFacilityScope(context.organizationId(), context.subject(), conversation.facilityId());
         List<StaffParticipant> participants = store.participants(context.organizationId(), id);
         StaffParticipant participant = participants.stream()
                 .filter(candidate -> candidate.subject().equals(context.subject()))
@@ -296,6 +309,12 @@ public class InstantMessagingService {
     private void requireActiveStaff(String organizationId, String subject) {
         if (!store.activeStaff(organizationId, subject)) {
             throw new ApiException(403, "FORBIDDEN", "the subject has no active staff role");
+        }
+    }
+
+    private void requireFacilityScope(String organizationId, String subject, String facilityId) {
+        if (!store.facilityWithinScope(organizationId, subject, facilityId)) {
+            throw new ApiException(403, "FORBIDDEN", "the subject is outside the active facility");
         }
     }
 

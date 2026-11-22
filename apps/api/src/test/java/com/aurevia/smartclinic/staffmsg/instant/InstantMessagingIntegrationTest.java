@@ -136,6 +136,10 @@ class InstantMessagingIntegrationTest {
                 + "SELECT '" + org + "', m.id, 'nurse', u.id FROM public.membership m "
                 + "JOIN public.user_identity u ON u.organization_id = m.organization_id AND u.id = m.user_id "
                 + "WHERE u.subject = '" + subject + "'");
+        statement.execute("INSERT INTO public.membership_facility (organization_id, membership_id, facility_id) "
+                + "SELECT '" + org + "', m.id, '" + facility + "' FROM public.membership m "
+                + "JOIN public.user_identity u ON u.organization_id = m.organization_id AND u.id = m.user_id "
+                + "WHERE u.subject = '" + subject + "'");
     }
 
     private static void context(String subject) {
@@ -191,6 +195,23 @@ class InstantMessagingIntegrationTest {
         assertEquals(0L, service.unreadCounts(FACILITY).get(0).unreadCount());
     }
 
+    /**
+     * A stale read acknowledgement must not move a cursor backwards: otherwise
+     * messages already marked read would reappear as unread for that person.
+     */
+    @Test
+    void aLowerReadAcknowledgementDoesNotMoveTheCursorBackwards() {
+        String conversation = direct();
+        service.send(new SendRequest(FACILITY, conversation, "first"), "m1");
+        service.send(new SendRequest(FACILITY, conversation, "second"), "m2");
+
+        context(PEER);
+        service.markRead(new MarkReadRequest(FACILITY, conversation, 2L));
+        assertEquals(0L, service.unreadCounts(FACILITY).get(0).unreadCount());
+        service.markRead(new MarkReadRequest(FACILITY, conversation, 1L));
+        assertEquals(0L, service.unreadCounts(FACILITY).get(0).unreadCount());
+    }
+
     @Test
     void aWrongFacilityOrTenantIsRefused() throws Exception {
         String conversation = direct();
@@ -204,6 +225,18 @@ class InstantMessagingIntegrationTest {
             assertTrue(store.conversation(ORG_A, conversation).isEmpty());
             statement.execute("SET app.current_org = '" + ORG_A + "'");
         }
+    }
+
+    /**
+     * The tenant's membership-facility fold confines an assigned subject to the
+     * facilities they were invited to, even when they have an active staff role.
+     */
+    @Test
+    void aStaffMemberAssignedElsewhereCannotOpenAConversationInAnotherFacility() {
+        assertTrue(store.facilityWithinScope(ORG_A, ACTOR, FACILITY));
+        assertTrue(!store.facilityWithinScope(ORG_A, ACTOR, OTHER_FACILITY));
+        assertEquals(403, assertThrows(ApiException.class,
+                () -> service.openDirect(new OpenDirectRequest(OTHER_FACILITY, PEER))).status());
     }
 
     @Test

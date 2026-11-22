@@ -136,6 +136,21 @@ public interface InstantConversationStore {
     boolean activeStaff(String organizationId, String subject);
 
     /**
+     * Report whether a facility is inside a subject's assigned scope.
+     *
+     * <p>The tenant-owned membership-facility fold is authoritative: a subject
+     * with no recorded assignment keeps organization-wide scope, while an
+     * assigned subject is confined to that set. A facility that does not exist
+     * in the active organization is refused.</p>
+     *
+     * @param organizationId active organization
+     * @param subject        staff subject
+     * @param facilityId     facility the subject must be allowed to use
+     * @return {@code true} only when the facility exists in the tenant and is in scope
+     */
+    boolean facilityWithinScope(String organizationId, String subject, String facilityId);
+
+    /**
      * List conversations in a facility where a subject is still an active member.
      *
      * @param organizationId active organization
