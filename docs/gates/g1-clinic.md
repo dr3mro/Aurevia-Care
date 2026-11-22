@@ -1,6 +1,6 @@
 # G1 clinic gate — evidence note
 
-- Date: 2026-11-22 · Requirements: PRD-01, CLN-01 · Gate: G1 · Class: safety-critical ([risk routing](../../docs/WORKFLOW.md))
+- Date: 2026-11-22 · Requirements: PRD-01, CLN-01 · Gate: G1 · Class: safety-critical ([risk routing](../WORKFLOW.md))
 - Evidence source: executed tool commands (file reads and `git log` on the checked-out branch at HEAD `5c5e308e`) plus bounded simulated review. No human, clinical, privacy or Product Owner evidence is recorded here.
 - Scope: this note only. No production code, migration, dependency, threshold or test was changed.
 
@@ -55,10 +55,13 @@ The acceptance actions and related open defects below are not evidence gaps and 
    recorded in this note or anywhere on `main`. `docs/operations/printing/uat.md` is a *simulated*
    clinician walkthrough (synthetic data), and `docs/design/rtl-and-localization.md` explicitly states
    that it is not clinical or human approval of a localization. A person must accept G1 using this
-   evidence; a worker cannot.
+   evidence; a worker cannot. The task that prepares the signable pack is `GATE-PACK-G1`
+   (`docs/gates/g1-evidence-pack.md`); the decision itself is a human Product Owner action that no
+   worker task can close.
 2. **Human validation of the printed English/Arabic PDFs remains a G5 action.** The merged tests prove
    deterministic bilingual rendering and immutable versioned output. They do not record that a person
-   inspected a printed handout. Closing this is a human UAT/sign-off, not a worker task.
+   inspected a printed handout. Closing this is a human UAT/sign-off, owned by `S-G5-12` and prepared
+   by `GATE-PACK-G5`, not a worker task.
 3. **Related CLN-01 defects are open and narrow broader scheduling readiness**, but they do not negate
    the protected-slot criterion: `BUGS.md` entries `QA-SOURCE-05` (reschedule omits creation-path
    booking-window checks) and `QA-SOURCE-06` (a slot can span time outside the resource window).
