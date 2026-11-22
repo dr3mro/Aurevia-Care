@@ -164,6 +164,15 @@ class OpenApiRouteCoverageTest {
                     path + " must document its reachable 409 conflicts");
         }
 
+        for (String path : List.of("/api/v1/staff/attachments/upload", "/api/v1/staff/attachments/{id}/scan",
+                "/api/v1/staff/attachments/pending", "/api/v1/staff/attachments/send",
+                "/api/v1/staff/attachments/{id}/download")) {
+            Map<String, Object> item = asMap(paths.get(path));
+            Map<String, Object> operation = asMap(item.containsKey("get") ? item.get("get") : item.get("post"));
+            assertTrue(asMap(operation.get("responses")).containsKey("422"),
+                    path + " must document its reachable 422 invalid-input error");
+        }
+
         Map<String, Object> download = asMap(asMap(
                 paths.get("/api/v1/staff/attachments/{id}/download")).get("get"));
         Map<String, Object> content = asMap(asMap(asMap(

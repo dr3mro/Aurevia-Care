@@ -734,6 +734,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+        '422': { description: Invalid attachment identifier or tenant selection }
 components:
   parameters:
     ActiveOrganization:
