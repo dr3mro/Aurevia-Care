@@ -306,3 +306,12 @@ jobs:
           SLOT: ${{ inputs.slot }}
           BASE_BRANCH: ${{ github.event.repository.default_branch }}
         run: python3 -I scripts/swarm.py publish --task "$TASK" --dir "results/worker-$SLOT"
+      # This worker's slot is free: start the next wave now instead of waiting for the slowest
+      # worker of this wave. The planner still applies the worker cap, scopes and the budget.
+      - name: Fill the free slot
+        if: always()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TASK_ID: ${{ fromJSON(inputs.task).id }}
+        run: python3 -I scripts/swarm.py top-up --id "$TASK_ID"

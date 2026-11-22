@@ -1,6 +1,6 @@
 name: Agent swarm
 # The one scheduler. It reads TODO.md, splits the open tasks across up to 10
-# worker slots per wave (20 workers across overlapping waves), and starts one
+# worker slots per wave (up to 20 workers across overlapping waves), and starts one
 # prepared container per slot. Each worker runs the agent with no GitHub token
 # on its own branch, uploads its commits, and exits (the container is
 # discarded, nothing idles). A separate trusted job pushes the branch and opens
@@ -11,8 +11,8 @@ on:
   workflow_dispatch:
     inputs:
       workers:
-        description: 'Worker cap; the wave uses fewer when fewer tasks are ready (1 to 10, default 10)'
-        default: '10'
+        description: 'Story workers per wave; the wave uses fewer when fewer tasks are ready (1 to 10, default 7). Fix, debug and repair workers are not limited by it.'
+        default: '7'
       repair_run:
         description: Failed run id on main to repair (optional; the plan job finds failing runs itself)
         default: ''
@@ -113,7 +113,7 @@ jobs:
         if: steps.budget.outputs.start == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          WORKERS: ${{ inputs.workers || '10' }}
+          WORKERS: ${{ inputs.workers || '7' }}
           BUDGET_WORKERS: ${{ steps.budget.outputs.workers }}
           REPAIR_RUN: ${{ inputs.repair_run }}
           IMAGES_READY: ${{ steps.images.outputs.ready }}

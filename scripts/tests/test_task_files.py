@@ -270,6 +270,14 @@ class CommandTests(Work):
         self.assertIn("First", decided.call_args.args[0])
         shown.assert_called_with("No further wave to start now.")
 
+    def test_top_up_command_reports_whether_it_started_a_wave(self):
+        for started, said in ((True, "Started another wave."), (False, "No room or no ready task.")):
+            with self.subTest(started=started), mock.patch.object(swarm, "top_up", return_value=started) as ran, \
+                 mock.patch("builtins.print") as shown:
+                swarm.main(["top-up", "--id", "CW-001"])
+            ran.assert_called_once_with("CW-001")
+            shown.assert_called_with(said)
+
     def test_integrate_batch_command(self):
         with mock.patch.object(swarm, "integrate_batch") as integrate:
             swarm.main(["integrate-batch", "--queue", "[3]"])
