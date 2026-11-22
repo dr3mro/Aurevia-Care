@@ -4,10 +4,10 @@
  * patient's revocation stops delivery only for that patient's own device.
  *
  * This is a test-only change. It drives the already-built appointments and
- * notifications domain through the same entry points the app uses, with plain
- * synthetic fixtures and injected boundaries (no jest mocks, no timers, no
- * production edits). Negative cases prove the tenant and patient boundary is
- * never crossed by revocation or invalidation.
+ * notifications domain through its module entry points, with plain synthetic
+ * fixtures and injected boundaries (no jest mocks, no timers, no production
+ * edits). Negative cases prove the tenant and patient boundary is never
+ * crossed by revocation or invalidation.
  */
 import {
   eligibleTokens,

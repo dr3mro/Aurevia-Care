@@ -50,8 +50,10 @@ Production symbols exercised (no production file was changed by this task):
 
 ## Gap
 
-None for the clause rule: it is built and proven by active tests. This task added proof only;
-it did not change production code, an existing test, the contract or a migration.
+None for the clause rule: the domain behaviour is built and proven by active tests. "Proven by
+tests" is scoped to that domain behaviour, not to app-level reachability; the adjacent wiring
+debt is recorded below. This task added proof only; it did not change production code, an
+existing test, the contract or a migration.
 
 One adjacent, non-blocking debt is recorded for completeness and is deliberately *not* a
 skipped test: the rule is implemented in the domain and its unit tests, but the app has not
