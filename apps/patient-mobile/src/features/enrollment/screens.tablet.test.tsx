@@ -31,12 +31,12 @@ let mockWindow: WindowSize;
 const MAX_CONTENT_WIDTH = 720;
 const MIN_TOUCH_TARGET = 44;
 
-const WINDOWS: ReadonlyArray<{
+const WINDOWS: readonly {
   windowClass: WindowClass;
   width: number;
   height: number;
   isLandscape: boolean;
-}> = [
+}[] = [
   { windowClass: 'compact', width: 390, height: 844, isLandscape: false },
   { windowClass: 'regular', width: 700, height: 1000, isLandscape: false },
   { windowClass: 'large', width: 1180, height: 820, isLandscape: true },
@@ -180,7 +180,7 @@ function screenCases(isRTL: boolean): ScreenCase[] {
 interface TestNode {
   type: string;
   props: Record<string, unknown>;
-  children: Array<TestNode | string> | null;
+  children: (TestNode | string)[] | null;
 }
 
 /** Resolve a style that may be a single object or an array of objects. */
