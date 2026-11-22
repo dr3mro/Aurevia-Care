@@ -31,7 +31,7 @@ class OffboardingCommandTest {
     // Provenance is a required component of every export record but is not part
     // of offboarding's gating decision (which checks tenant, id and expiry only).
     private static final ExportProvenance PROVENANCE =
-            new ExportProvenance("export-1", "rev-1", "record_access");
+            new ExportProvenance("synthetic-source", "revision-1", "offboarding");
 
     private final OffboardingCommand command = new OffboardingCommand(CLOCK);
 
