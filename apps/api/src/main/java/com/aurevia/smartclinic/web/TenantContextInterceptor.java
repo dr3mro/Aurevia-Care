@@ -42,6 +42,12 @@ public class TenantContextInterceptor implements HandlerInterceptor, WebMvcConfi
             Pattern.compile("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
     private static final Pattern CORRELATION_PATTERN = Pattern.compile("[A-Za-z0-9._-]{1,128}");
 
+    /** Static API documentation route that needs no sign-in (section 7). */
+    private static final String PUBLIC_CONTRACT_PATH = "/api/v1/openapi.yaml";
+
+    /** Shared limiter key for the anonymous contract route; it holds no identity. */
+    private static final String PUBLIC_CONTRACT_LIMIT_KEY = "anonymous:openapi";
+
     private final Environment environment;
     private final RateLimiter rateLimiter;
 
@@ -70,6 +76,9 @@ public class TenantContextInterceptor implements HandlerInterceptor, WebMvcConfi
     /**
      * Validate headers and bind the request tenant context.
      *
+     * <p>The static contract route is the one exception: it is served without a
+     * subject or organization, but still consumes a rate-limit allowance.</p>
+     *
      * @param request  current HTTP request
      * @param response current HTTP response
      * @param handler  selected handler
@@ -94,6 +103,10 @@ public class TenantContextInterceptor implements HandlerInterceptor, WebMvcConfi
         // path; afterCompletion clears it on the normal completion path too.
         MDC.put("correlationId", correlation);
 
+        if (PUBLIC_CONTRACT_PATH.equals(request.getRequestURI())) {
+            enforceRateLimit(response, PUBLIC_CONTRACT_LIMIT_KEY);
+            return true;
+        }
         if (!environment.acceptsProfiles(Profiles.of("synthetic-auth"))) {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             String requestedOrganization = request.getHeader("X-Active-Organization");
@@ -136,8 +149,19 @@ public class TenantContextInterceptor implements HandlerInterceptor, WebMvcConfi
      */
     private void enforceRateLimit(HttpServletResponse response) {
         TenantContext context = TenantContext.current();
-        long retryAfter = rateLimiter.retryAfterSeconds(
-                context.organizationId() + ":" + context.subject());
+        enforceRateLimit(response, context.organizationId() + ":" + context.subject());
+    }
+
+    /**
+     * Reject an over-limit call made under an explicit key, used by public routes
+     * that have no tenant context to key on (section 7).
+     *
+     * @param response current response, given the Retry-After header on rejection
+     * @param key      stable limiter key; never a patient identifier
+     * @throws ApiException with status 429 when the key has used its allowance
+     */
+    private void enforceRateLimit(HttpServletResponse response, String key) {
+        long retryAfter = rateLimiter.retryAfterSeconds(key);
         if (retryAfter > 0) {
             response.setHeader("Retry-After", Long.toString(retryAfter));
             // A throw from preHandle skips this interceptor's afterCompletion,

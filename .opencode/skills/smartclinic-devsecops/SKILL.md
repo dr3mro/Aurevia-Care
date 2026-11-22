@@ -9,6 +9,8 @@ Review scoped credentials, identity boundaries, isolation, audit, dependency sca
 
 Run dependency and static security analysis on every scoped change. OWASP Dependency-Check must be part of the build gate (`failBuildOnCVSS >= 7`); supply the NVD key only through an environment variable referenced by `nvdApiKeyEnvironmentVariable` and never write it into a file, test, log or tracker. Prefer upgrading vulnerable dependency versions over suppressions; every suppression needs a recorded justification and independent review. Treat SpotBugs/equivalent findings as defects to fix or justify with a documented annotation, not noise. Record tool name, version, exact command, finding count and disposition in the checkpoint. Never place PHI or credentials in diagnostics.
 
+**Review verdict.** When the orchestrator asks for the security review of a finished change, return one finding per line as `Critical: <file>:<line> ...`, `Required: ...` or `Optional: ...` (a risk to PHI, tenant isolation, credentials or the supply chain is Critical or Required) and end with exactly one last line, `VERDICT: GO` or `VERDICT: NO-GO`. The swarm's review gate (`scripts/check-verdicts.py`) reads that line.
+
 ## Common rationalizations
 
 | Rationalization | Reality |

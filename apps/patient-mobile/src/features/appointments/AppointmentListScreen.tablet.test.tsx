@@ -35,6 +35,7 @@ const notice: GenericNotice = { title: 'Appointment update', body: 'Open the app
 const pending: AppointmentView = {
   key: 'org-a\u0000apt-1',
   id: 'apt-1',
+  version: 3,
   timeZone: 'Asia/Riyadh',
   localStart: '10:00',
   status: 'booked',

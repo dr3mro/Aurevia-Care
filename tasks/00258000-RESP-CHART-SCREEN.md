@@ -1,5 +1,5 @@
-- [-] RESP-CHART-SCREEN · Staff web: responsive `ChartScreen` (features-chart)
-  - agent: swarm-9
+- [x] RESP-CHART-SCREEN · Staff web: responsive `ChartScreen` (features-chart)
+  - pr: #769
   - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/chart/ChartScreen.tsx, apps/staff-web/tests/responsive/features-chart/ChartScreen.responsive.test.tsx
