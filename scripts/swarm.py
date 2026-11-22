@@ -1007,7 +1007,7 @@ def monitor_assign(directory, prs=(), nudge=(), exhausted=(), todo="TODO.md", tr
         comment_issue(number, f"**{stamp_now()}** Automatic attempts are used up with no progress. "
                               "A person must take over.")
     started = bool(ids or prs or nudge or reset)
-    if started and waiting_waves() == 0:
+    if started and wave_has_room():
         gh("workflow", "run", "swarm.yml", "-f", f"workers={STORY_WAVE_WORKERS}", check=False)
     return {"tasks": [n for n, _ in ids], "failed": failed, "unanswered": unanswered, "prs": [n for n, _ in prs],
             "nudged": list(nudge), "reset": [n for n, _ in reset], "closed": list(close),
@@ -2440,7 +2440,7 @@ def fail(pr, reason, log_text="", simple=False):
            f"{MARK}\n{reason}. Fix attempt {attempt} of {MAX_FIX}.{detail}")
         # One waiting wave already plans every sent-back pull request, so several fails
         # in one integration run must not each dispatch a wave of their own.
-        if waiting_waves() == 0:
+        if wave_has_room():
             gh("workflow", "run", "swarm.yml", "-f", f"workers={STORY_WAVE_WORKERS}", check=False)
         return True
     if rounds < MAX_DEBUG_ROUNDS:
@@ -2758,7 +2758,8 @@ def add_latest_repair_task(path="TODO.md"):
 
 MAX_ACTIVE_WORKERS = 20  # workers running at once across every wave
 # Repairs, fixes and the debugger are planned first; stories (high, normal, then low) fill every other slot.
-STORY_WAVE_WORKERS = 7
+STORY_WAVE_WORKERS = 3
+MAX_LIVE_WAVES = 6  # waves that may run side by side (3 story workers each, inside the worker cap)
 
 
 WAITING_WAVE_MAX_AGE_MIN = 30
@@ -2781,6 +2782,18 @@ def waiting_waves():
             if now - created < datetime.timedelta(minutes=WAITING_WAVE_MAX_AGE_MIN):
                 total += 1
     return total
+
+
+def live_waves():
+    """Agent swarm runs that have not finished: running, queued or waiting."""
+    out = gh("run", "list", "--workflow", "swarm.yml", "--limit", "30", "--json", "status", "-q",
+             '.[] | select(.status != "completed") | .status', check=False)
+    return len(str(out or "").split())
+
+
+def wave_has_room():
+    """True when a new wave may start: none is waiting for a runner and fewer than MAX_LIVE_WAVES run."""
+    return waiting_waves() == 0 and live_waves() < MAX_LIVE_WAVES
 
 
 def live_workers():
@@ -2811,7 +2824,7 @@ def top_up(finished_id):
     hours. The planner still decides what runs: the combined worker cap, scopes, dependencies and
     the budget gate all apply to the wave this starts. Returns True when a wave was started."""
     live = [name for name in live_workers() if name != finished_id]
-    if len(live) >= MAX_ACTIVE_WORKERS or waiting_waves():
+    if len(live) >= MAX_ACTIVE_WORKERS or waiting_waves() or live_waves() >= MAX_LIVE_WAVES:
         return False
     prs = gh_json("pr", "list", "--state", "open", "--label", "swarm", "--limit", "100",
                   "--json", "number,title,headRefName,isCrossRepository,labels,comments") or []
@@ -3114,7 +3127,7 @@ def pr_flow(now=None):
     if wants_debugger and not active_runs("swarm-debugger.yml"):
         gh("workflow", "run", "swarm-debugger.yml", "--ref", "main", check=False)
         acted.append(("-", "debugger started"))
-    if (wants_wave or any(a == "draft sent to fix" for _, a in acted)) and waiting_waves() == 0:
+    if (wants_wave or any(a == "draft sent to fix" for _, a in acted)) and wave_has_room():
         gh("workflow", "run", "swarm.yml", "-f", f"workers={STORY_WAVE_WORKERS}", "--ref", "main", check=False)
         acted.append(("-", "fix wave started"))
     if ready and not active_runs("swarm-integrator.yml"):
@@ -3213,7 +3226,7 @@ def debug_publish(pr, directory):
     gh("pr", "comment", str(pr), "--body",
        f"{MARK}\n{DEBUG_MARK}\n**Debugger report, round {round_number} of {MAX_DEBUG_ROUNDS}.** A fix worker takes "
        f"it next; if the fix fails, {again}.\n\n{clip_to(clean(report, 7000, 300), 7000)}\n{run_url()}")
-    if waiting_waves() == 0:
+    if wave_has_room():
         gh("workflow", "run", "swarm.yml", "-f", f"workers={STORY_WAVE_WORKERS}", check=False)
     return "fix"
 
@@ -3811,6 +3824,9 @@ def main(argv=None):
         if go and waiting_waves():
             go = False
             print("A wave is already waiting; not queueing another.")
+        elif go and live_waves() > MAX_LIVE_WAVES:  # this wave is still counted as live
+            go = False
+            print(f"{MAX_LIVE_WAVES} waves are already running; not starting another.")
         print("Starting the next wave." if go else "No further wave to start now.")
         if go:
             gh("workflow", "run", "swarm.yml", "--ref", "main", check=False)

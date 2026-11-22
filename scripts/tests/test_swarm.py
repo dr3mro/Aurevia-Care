@@ -141,6 +141,16 @@ class ConcurrentWaveTests(unittest.TestCase):
                 self.assertFalse(started)
                 self.assertFalse(fake.said("--ref", "swarm.yml"))
 
+    def test_three_story_workers_per_wave_and_six_waves_at_once(self):
+        self.assertEqual(swarm.STORY_WAVE_WORKERS, 3)
+        self.assertEqual(swarm.MAX_LIVE_WAVES, 6)
+
+    def test_a_wave_needs_room_under_six_live_waves_and_none_waiting(self):
+        for waiting, live, room in ((0, 5, True), (0, 6, False), (1, 2, False)):
+            with mock.patch.object(swarm, "waiting_waves", return_value=waiting), \
+                 mock.patch.object(swarm, "live_waves", return_value=live):
+                self.assertEqual(swarm.wave_has_room(), room)
+
     def test_combined_worker_cap_is_twenty(self):
         self.assertEqual(swarm.MAX_ACTIVE_WORKERS, 20)
 
@@ -942,8 +952,8 @@ class PlanTests(unittest.TestCase):
 
     def test_wave_runs_ten_workers_and_each_publishes_on_its_own(self):
         text = (ROOT / ".github/workflows/swarm.yml").read_text()
-        self.assertIn("default: '7'", text)
-        self.assertIn("inputs.workers || '7'", text)
+        self.assertIn("default: '3'", text)
+        self.assertIn("inputs.workers || '3'", text)
         self.assertIn("max-parallel: 10", text)
         # Each worker is a reusable-workflow call, so its publish job needs only its
         # own work job and never waits for the slowest worker of the wave.
