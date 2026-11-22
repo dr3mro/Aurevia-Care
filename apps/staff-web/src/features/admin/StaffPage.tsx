@@ -10,7 +10,7 @@ import { StateView } from '../../components/StateViews';
 import { useI18n } from '../../i18n/I18nProvider';
 import type { Locale } from '../../i18n/messages';
 import { useTheme } from '../../theme/ThemeProvider';
-import { AdminTableRegion } from './AdminTableRegion';
+import { useBreakpoint } from '../../theme/useBreakpoint';
 import {
   asAdminTransportError,
   deactivateStaff,
@@ -32,6 +32,18 @@ import type { AdminMessageKey } from './messages';
 
 /** Empty invitation draft reused after a successful invite. */
 const EMPTY_INVITE = { subject: '', displayName: '', role: '' };
+
+/**
+ * Logical wrapping shared by every clinical table cell. Long English and Arabic
+ * values wrap at 320 px and at 200 percent zoom instead of clipping or forcing a
+ * page-level horizontal scroll; the value's unit and identifier stay together
+ * in their isolated run (WEB-07, UX-01).
+ */
+const wrappingStyle = {
+  minInlineSize: 0,
+  overflowWrap: 'anywhere',
+  whiteSpace: 'normal',
+} as const;
 
 /** Props for the tenant-keyed staff content. */
 interface StaffContentProps {
@@ -83,6 +95,7 @@ function StaffList({
   onDeactivate,
 }: StaffListProps) {
   const { tokens } = useTheme();
+  const breakpoint = useBreakpoint();
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [accumulated, setAccumulated] = useState<readonly StaffMemberResponse[]>([]);
 
@@ -95,10 +108,11 @@ function StaffList({
     setCursor(undefined);
   }, [reloadToken]);
 
+  const label = adminText(locale, 'staffAdministration');
   return (
     <ApiPage
       resource={{
-        label: adminText(locale, 'staffAdministration'),
+        label,
         load: () => listStaff(cursor, undefined, organizationId),
         deps: [cursor, reloadToken],
       }}
@@ -106,53 +120,77 @@ function StaffList({
     >
       {(page) => {
         const next = page.nextCursor;
+        // One table at every band: no clinical column is added, removed or
+        // hidden. Only the labelled, keyboard-scrollable wrapper is compact-only
+        // so the page never scrolls horizontally on a phone (WEB-07, UX-01).
+        const table = (
+          <table data-breakpoint={breakpoint} style={{ borderCollapse: 'collapse', inlineSize: '100%' }}>
+            <caption style={{ textAlign: 'start', paddingBlock: tokens.spacing.sm }}>{label}</caption>
+            <thead>
+              <tr>
+                <th scope="col" style={wrappingStyle}>
+                  {adminText(locale, 'staffSubject')}
+                </th>
+                <th scope="col" style={wrappingStyle}>
+                  {adminText(locale, 'staffDisplayName')}
+                </th>
+                <th scope="col" style={wrappingStyle}>
+                  {adminText(locale, 'status')}
+                </th>
+                <th scope="col" style={wrappingStyle}>
+                  {adminText(locale, 'roles')}
+                </th>
+                <th scope="col" style={wrappingStyle}>
+                  {adminText(locale, 'actions')}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {accumulated.map((item) => (
+                <tr key={item.subject}>
+                  <th scope="row" style={wrappingStyle}>
+                    <MixedScriptText text={item.subject} lang="en" />
+                  </th>
+                  <td style={wrappingStyle}>
+                    <MixedScriptText text={item.displayName} lang={locale} />
+                  </td>
+                  <td style={wrappingStyle}>
+                    <MixedScriptText text={item.status} lang="en" />
+                  </td>
+                  <td style={wrappingStyle}>
+                    <MixedScriptText text={item.roles.join(', ')} lang="en" />
+                  </td>
+                  <td style={wrappingStyle}>
+                    <Button onClick={() => onHistory(item.subject)}>
+                      {adminText(locale, 'history')}
+                    </Button>{' '}
+                    {item.status === 'active' && (
+                      <Button onClick={() => onDeactivate(item)}>
+                        {adminText(locale, 'deactivate')}
+                      </Button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        );
         return (
           <>
             <PageSink page={page} onPage={append} />
-            <AdminTableRegion label={adminText(locale, 'staffAdministration')}>
-              <table style={{ borderCollapse: 'collapse', width: '100%' }}>
-                <caption style={{ textAlign: 'start', paddingBlock: tokens.spacing.sm }}>
-                  {adminText(locale, 'staffAdministration')}
-                </caption>
-                <thead>
-                  <tr>
-                    <th scope="col">{adminText(locale, 'staffSubject')}</th>
-                    <th scope="col">{adminText(locale, 'staffDisplayName')}</th>
-                    <th scope="col">{adminText(locale, 'status')}</th>
-                    <th scope="col">{adminText(locale, 'roles')}</th>
-                    <th scope="col">{adminText(locale, 'actions')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {accumulated.map((item) => (
-                    <tr key={item.subject}>
-                      <th scope="row">
-                        <MixedScriptText text={item.subject} lang="en" />
-                      </th>
-                      <td>
-                        <MixedScriptText text={item.displayName} lang={locale} />
-                      </td>
-                      <td>
-                        <MixedScriptText text={item.status} lang="en" />
-                      </td>
-                      <td>
-                        <MixedScriptText text={item.roles.join(', ')} lang="en" />
-                      </td>
-                      <td>
-                        <Button onClick={() => onHistory(item.subject)}>
-                          {adminText(locale, 'history')}
-                        </Button>{' '}
-                        {item.status === 'active' && (
-                          <Button onClick={() => onDeactivate(item)}>
-                            {adminText(locale, 'deactivate')}
-                          </Button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </AdminTableRegion>
+            {breakpoint === 'compact' ? (
+              <div
+                className="table-region"
+                role="region"
+                aria-label={label}
+                tabIndex={0}
+                data-breakpoint={breakpoint}
+              >
+                {table}
+              </div>
+            ) : (
+              table
+            )}
             {next !== null && (
               <Button onClick={() => setCursor(next)}>{adminText(locale, 'loadMore')}</Button>
             )}
@@ -174,8 +212,15 @@ interface StaffHistoryPanelProps {
 /** Load immutable history through `ApiPage` and reuse the existing history view. */
 function StaffHistoryPanel({ subject, organizationId, locale, onClose }: StaffHistoryPanelProps) {
   const { tokens } = useTheme();
+  const breakpoint = useBreakpoint();
   return (
-    <section aria-label={adminText(locale, 'history')} style={{ display: 'grid', gap: tokens.spacing.md }}>
+    <section
+      aria-label={adminText(locale, 'history')}
+      className="stack"
+      data-part="history-panel"
+      data-breakpoint={breakpoint}
+      style={{ gap: tokens.spacing.md }}
+    >
       <Button onClick={onClose}>{adminText(locale, 'closeHistory')}</Button>
       <ApiPage
         resource={{
@@ -202,6 +247,7 @@ function StaffHistoryPanel({ subject, organizationId, locale, onClose }: StaffHi
 function StaffContent({ organizationId }: StaffContentProps) {
   const { locale } = useI18n();
   const { tokens } = useTheme();
+  const breakpoint = useBreakpoint();
   const [invite, setInvite] = useState(EMPTY_INVITE);
   const [inviteErrors, setInviteErrors] = useState<ReturnType<typeof validateInvite>>({});
   const [inviteError, setInviteError] = useState<TransportError | undefined>(undefined);
@@ -295,8 +341,13 @@ function StaffContent({ organizationId }: StaffContentProps) {
         ];
 
   return (
-    <div style={{ display: 'grid', gap: tokens.spacing.lg }}>
-      <section aria-label={adminText(locale, 'inviteStaff')} style={{ display: 'grid', gap: tokens.spacing.md }}>
+    <div className="page" data-part="staff-page" data-breakpoint={breakpoint} style={{ gap: tokens.spacing.lg }}>
+      <section
+        aria-label={adminText(locale, 'inviteStaff')}
+        className="stack"
+        data-part="invite"
+        style={{ gap: tokens.spacing.md }}
+      >
         <h2>{adminText(locale, 'staffAdministration')}</h2>
         <p>{adminText(locale, 'staffIntro')}</p>
         <FieldErrorSummary title={adminText(locale, 'errorSummary')} errors={inviteErrorLinks(inviteErrors, locale)} />
@@ -305,7 +356,12 @@ function StaffContent({ organizationId }: StaffContentProps) {
           submitLabel={adminText(locale, 'inviteStaff')}
           onSubmit={handleInvite}
         >
-          <div style={{ display: 'grid', gap: tokens.spacing.md }}>
+          <div
+            className={breakpoint === 'compact' ? 'stack' : 'grid-2'}
+            data-part="invite-fields"
+            data-layout={breakpoint === 'compact' ? 'single-column' : 'two-column'}
+            style={{ gap: tokens.spacing.md }}
+          >
             <FormField
               id="staff-subject"
               label={adminText(locale, 'staffSubject')}
@@ -361,7 +417,10 @@ function StaffContent({ organizationId }: StaffContentProps) {
         <section
           role="dialog"
           aria-label={adminMessage(locale, 'deactivateTitle', { name: confirming.displayName })}
-          style={{ display: 'grid', gap: tokens.spacing.md }}
+          className="stack"
+          data-part="deactivate-dialog"
+          data-breakpoint={breakpoint}
+          style={{ gap: tokens.spacing.md }}
         >
           <h3>{adminMessage(locale, 'deactivateTitle', { name: confirming.displayName })}</h3>
           <p>{adminText(locale, 'deactivateDetail')}</p>
@@ -374,7 +433,7 @@ function StaffContent({ organizationId }: StaffContentProps) {
             {...(reasonErrorText === undefined ? {} : { error: reasonErrorText })}
           />
           {deactivateError !== undefined && StateView.forTransportError(deactivateError)}
-          <div>
+          <div className="cluster" data-part="dialog-actions">
             <Button variant="secondary" buttonRef={cancelRef} onClick={() => setConfirming(undefined)}>
               {adminText(locale, 'cancel')}
             </Button>{' '}
