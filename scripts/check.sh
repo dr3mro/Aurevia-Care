@@ -18,6 +18,7 @@ python3 -I scripts/check-docs.py
 python3 -I scripts/check-secrets.py
 python3 -I scripts/check-names.py
 python3 -I scripts/check-wiring.py
+python3 -I scripts/check-constraints.py
 python3 -I scripts/check-migrations.py --require-baseline
 bash scripts/python-coverage.sh
 bash scripts/frontend-check.sh
