@@ -18,6 +18,7 @@ Rules for the person performing it:
 4. Run the required checks on the exact SHA. Required checks are `Policy and tooling`, `Delivery tooling tests`, `Frontend standards`, `Java and database verification`, `Developer reference`, both `Verify and smoke image` jobs and `Delivery gate`. Never force-push or bypass a protection. Workflow files are protected: only a person applies or rolls back these patches.
 5. If a step cannot be performed because a prerequisite is missing, leave its box unchecked and write the missing item in the result table.
 6. Keep every example synthetic. Do not put a token, a real image digest, a real identifier or patient data into a pull request, an issue, a log or a tracker. The placeholder `<token>` stands for any credential; if a real-looking value appears, mask it before recording evidence.
+7. Read the issue the integrator opens when a synthetic pull request is held for a person or a worker stops before finishing. A held pull request gets a `pr-stuck` issue titled `PR #<n> needs a person: <cause>`, labelled `needs-human` (or `needs-review` when protected files changed); its body names the pull request and task, has **Cause** and **What to do** sections, and says it closes itself when the pull request is merged or closed. A stopped worker gets a hand-off issue titled `Task <task-id> stopped before it finished`, labelled `worker-handoff` and `agent-fixable`, carrying the worker's own reason and a structured diagnosis of tool, step, exit code, failing names, first error and class. Record the issue URL in the result table's Issue URL column and compare the observed title, label and body with the real dispatch. A hand-written or stubbed issue is not GitHub evidence and must not tick a box.
 
 ## Apply order and dependencies
 
@@ -53,9 +54,9 @@ Rules for the person performing it:
 
   **Workflow on GitHub.** Dispatch `Agent swarm` (or `Swarm integrator`) with four synthetic open drafts labelled `swarm`: an ordinary story draft whose head has a green exact-SHA Delivery run and no `needs-fix` or `needs-human` label; a second whose current-head checks still fail; a reconciler draft titled `instruction updates for review`; and a fourth carrying `needs-human`. Watch the plan step and the pull requests.
 
-  **Green looks like.** The first draft is marked ready for review (`gh pr ready`) and queued; the second is sent to one fix worker for that head SHA; the reconciler and the labelled draft stay drafts and are not queued.
+  **Green looks like.** The first draft is marked ready for review (`gh pr ready`) and queued; the second is sent to one fix worker for that head SHA; the reconciler and the labelled draft stay drafts and are not queued. If a fix worker fails, locate and read the existing `pr-stuck` issue the integrator opened for that pull request: it is keyed by pull request and updated when the cause changes, not opened anew.
 
-  **Proving log line.** The plan step returns `recover` for the passing ordinary draft and `fix` for the failing one; the failing draft carries the comment `Draft pull request: local checks failed`. The reconciler and blocked drafts return `leave` and are never queued. The observable GitHub signals are a draft that becomes ready for review and enters the integration queue, a failing draft that gets one fix pass and that comment, and drafts that remain drafts with no fix pass.
+  **Proving log line.** The plan step returns `recover` for the passing ordinary draft and `fix` for the failing one; the failing draft carries the comment `Draft pull request: local checks failed`. The reconciler and blocked drafts return `leave` and are never queued. The observable GitHub signals are a draft that becomes ready for review and enters the integration queue, a failing draft that gets one fix pass and that comment, and drafts that remain drafts with no fix pass. On a failed fix worker the hand-off issue adds the title `PR #<n> needs a person: the fix worker failed`, a `needs-human` label and a **Cause** line naming the failed worker.
 
   **Negative control.** A still-failing draft is given one fix attempt per head SHA and then reaches `needs-human`; it is never undrafted by the plan. A reconciler instruction draft or a draft with `needs-fix`, `needs-human` or `autofix` remains a draft even when its checks pass — a person owns it.
 
@@ -115,7 +116,7 @@ Rules for the person performing it:
 
   **Apply.** No apply step. Confirm `classify(log, task_text, changed_files)` returns `{"class": ..., "catch_layer": ...}` with the five classes and their fixed layers, and that the review table in [failure-classification.md](../../swarm/failure-classification.md) is empty.
 
-  **Workflow on GitHub.** After five swarm pull requests have been judged (merged, `needs-fix` or `needs-debug`), read their failure logs, task texts and changed files, run the classifier on each failure, and hold the review: for every class that occurred, add one regression at its catch layer and record the date, pull requests, class and regression in the guide's review table. Dispatch `Delivery` on the documenting commit.
+  **Workflow on GitHub.** After five swarm pull requests have been judged (merged, `needs-fix` or `needs-debug`), read their failure logs, task texts and changed files, run the classifier on each failure, and hold the review: for every class that occurred, add one regression at its catch layer and record the date, pull requests, class and regression in the guide's review table. When a worker stopped before finishing, locate and read the `worker-handoff` issue the integrator opened for that task; the person running the review may copy its structured diagnosis into the classifier's `log` argument, but the classifier does not read issues itself. Dispatch `Delivery` on the documenting commit.
 
   **Green looks like.** `Delivery tooling tests` is green and `Developer reference` builds the updated guide. Each failure is assigned one of the five classes and the layer that should have caught it, and the review table gains one row per new regression. This item stays unchecked until five swarm pull requests have actually been judged; the concrete assertion is that the guide's review table has exactly one new row for each class that produced a new regression and none for a repeat with no regression.
 
@@ -165,17 +166,17 @@ Rules for the person performing it:
 
 All cells are intentionally unfilled; a person fills them after running each workflow.
 
-| Task | Date | Run URL | Exact SHA | Proving log line | Result |
-|---|---|---|---|---|---|
-| WQUALITY-01 | not run | not run | not run | not run | unchecked |
-| WQUALITY-02 | not run | not run | not run | not run | unchecked |
-| WQUALITY-03 | not run | not run | not run | not run | unchecked |
-| WQUALITY-04 | not run | not run | not run | not run | unchecked |
-| WQUALITY-05 | not run | not run | not run | not run | unchecked |
-| WQUALITY-06 | not run | not run | not run | not run | unchecked |
-| Docker image rebuild | not run | not run | not run | not run | unchecked |
-| Exact-SHA checks | not run | not run | not run | not run | unchecked |
-| Final `Delivery` | not run | not run | not run | not run | unchecked |
+| Task | Date | Run URL | Issue URL | Exact SHA | Proving log line | Result |
+|---|---|---|---|---|---|---|
+| WQUALITY-01 | not run | not run | not run | not run | not run | unchecked |
+| WQUALITY-02 | not run | not run | not run | not run | not run | unchecked |
+| WQUALITY-03 | not run | not run | not run | not run | not run | unchecked |
+| WQUALITY-04 | not run | not run | not run | not run | not run | unchecked |
+| WQUALITY-05 | not run | not run | not run | not run | not run | unchecked |
+| WQUALITY-06 | not run | not run | not run | not run | not run | unchecked |
+| Docker image rebuild | not run | not run | not run | not run | not run | unchecked |
+| Exact-SHA checks | not run | not run | not run | not run | not run | unchecked |
+| Final `Delivery` | not run | not run | not run | not run | not run | unchecked |
 
 ## Findings for the person
 
@@ -185,6 +186,7 @@ All cells are intentionally unfilled; a person fills them after running each wor
 4. Published image tags and manifests are immutable. A corrected publish or a rollback uses a new tag; nothing is overwritten and this document does not authorize a release or a deployment.
 5. `docs/swarm/` holds immutable merge records that skip the structural rules of `check-docs.py`; the regression table added by WQUALITY-06 lives there and is a person-review item, not a CI gate. Worker notes under `.agent/` are also not checked by CI.
 6. This checklist is a documentation-only change. Delivery may skip it under the existing docs path rule; the integrator's local docs check is its evidence, and no required check is waived by that skip.
+7. The issues in rule 7 are hand-off signals from real dispatches. Finding one is an observation to record in the Issue URL column, not a ticked box; a hand-written or stubbed issue and a scratch dispatch never supply evidence. The classifier reads a log argument, not an issue, so a person must copy the diagnosis before classifying it.
 
 ## Approval
 
