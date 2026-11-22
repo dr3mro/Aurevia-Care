@@ -94,6 +94,7 @@ class MetricsHttpTest {
                     .andExpect(status().isOk())
                     .andReturn().getResponse().getContentAsString();
             assertTrue(body.contains("smartclinic_http_requests_total"), body);
+            assertTrue(body.contains("# TYPE smartclinic_http_request_duration_seconds histogram"), body);
 
             mvc.perform(get("/health/metrics")
                             .with(request -> {
@@ -123,6 +124,9 @@ class MetricsHttpTest {
                             .content().contentTypeCompatibleWith(MediaType.TEXT_PLAIN))
                     .andReturn().getResponse().getContentAsString();
             assertTrue(body.contains("route=\"/api/v1/patients/{id}\",status=\"2xx\"} 2"), body);
+            assertTrue(body.contains("smartclinic_http_request_duration_seconds_count{"
+                    + "method=\"GET\",route=\"/api/v1/patients/{id}\",status=\"2xx\"} 2"), body);
+            assertTrue(body.contains("le=\"+Inf\"} 2"), body);
             assertFalse(body.contains("patient-777"), body);
             assertFalse(body.contains("patient-888"), body);
         });

@@ -24,6 +24,26 @@ Status: draft, owners to complete
 
 `GET /health/metrics` publishes per-route `smartclinic_http_requests_total{method,route,status}` and `smartclinic_http_request_seconds_sum{method,route,status}` in Prometheus text format. It requires no login but is answered only from loopback or a network in the comma-separated CIDR list `SMARTCLINIC_METRICS_ALLOW` (loopback by default); any other source receives a bare 404. Route labels are the matched Spring route pattern, never a raw path that could carry an id. Alerting on these series must cover the OPS-03 targets — 99.9% monthly core availability and p95 ≤ 500 ms for routine API reads and ≤ 900 ms for routine commands — together with the OPS-05 error-rate, saturation and queue-age signals, error-budget burn and failed external uptime probes from outside the network; logs and metrics are retained for the period the approved policy pack sets.
 
+### Latency distribution for percentile alerts (OPS-03)
+
+An average cannot show a tail, so the same scrape also publishes a cumulative histogram family, `smartclinic_http_request_duration_seconds`, carrying the same `method`, `route` and `status` labels plus an `le` (upper bound) label. The finite bounds are `0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 1, 2.5, 5, 10` seconds, followed by the mandatory `+Inf` bucket. An observation increments every bucket whose bound is at least its duration; bucket values are therefore cumulative and the `+Inf` bucket always equals `smartclinic_http_request_duration_seconds_count` and `smartclinic_http_requests_total` for the same labels. The two original counter families keep their names, so existing dashboards remain valid.
+
+The `0.5` s and `0.9` s buckets sit exactly on the OPS-03 p95 targets for routine reads and commands, so an alert threshold at the target does not have to be interpolated across a wide bucket gap. Compute p95 from the bucket rates (scrape every 30 s, evaluate over 5 m):
+
+```promql
+# p95 server-side duration for routine reads
+histogram_quantile(0.95, sum by (le) (
+  rate(smartclinic_http_request_duration_seconds_bucket{method="GET", route=~"/api/v1/.+"}[5m])
+)) > 0.5
+
+# p95 server-side duration for routine commands
+histogram_quantile(0.95, sum by (le) (
+  rate(smartclinic_http_request_duration_seconds_bucket{method=~"POST|PUT|PATCH|DELETE", route=~"/api/v1/.+"}[5m])
+)) > 0.9
+```
+
+Add `route` (or `method, route, status`) to the `sum by (...)` clause to alert per route rather than globally. Always include the `+Inf` bucket in the aggregation; dropping it makes `histogram_quantile` overstate latency for observations slower than the largest finite bound. Every label comes from a Spring route pattern or a bounded status class, so no bucket or other label can carry a raw identifier. Keep the alert scoped to routine `/api/v1` read and command routes: document transfer/rendering and external calls are excluded from the OPS-03 measurement.
+
 ## Needs a person
 
 - WAF and TLS setup
