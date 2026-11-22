@@ -23,7 +23,15 @@ patient:
   `verifiedBy = clinician-b` as three independent values.
 - `explicitClinicalAuthorSurvivesVerificationByAnotherClinician` — an author
   claimed at intake is not replaced when a different clinician verifies; the
-  row keeps `clinical_author = clinician-a`, `verified_by = clinician-b`.
+  row keeps `clinical_author = clinician-a`, `verified_by = clinician-b`. A
+  replayed verification at the next version is refused (409) and the row is
+  unchanged.
+- `dataEntryActorCannotVerifyIntoClinicalAuthorship` — the data-entry actor
+  (`clinical_assistant`) cannot verify their own entry to become its clinical
+  author (403); the row stays `UNVERIFIED` with no author.
+- `dataEntryActorComesFromTheTenantContextNotTheRequestBody` — a request body
+  that tries to set `dataEntryActor` is ignored; the response and the row keep
+  the authenticated recorder as the data-entry actor.
 - `recorderCannotAttributeClinicalAuthorshipToAnotherSubject` — a claim that
   names a different subject is refused (422, `INVALID_CLINICAL_AUTHOR`) and no
   row is written.
@@ -48,6 +56,14 @@ fills the author), `com.aurevia.smartclinic.chart.record.ChartActionPolicy`
 (clinician-only verification) and the tenant RLS/FORCE RLS supplied by
 `db/migrations/V13__longitudinal_chart.sql`.
 
+Corroborating suites already on `main` (not re-tested here):
+`com.aurevia.smartclinic.it.chart.record.ChartRecordIntegrationTest`
+(`verificationOfRecorderOpenEntryAssignsAccountableClinicalAuthor` asserts the
+same open-author assignment), `com.aurevia.smartclinic.it.chart.record.ChartRecordServiceTest`
+(service-level author/actor distinctions) and
+`com.aurevia.smartclinic.chart.record.ChartRepositoryVerifyTest` (both outcomes
+of the verification compare-and-set).
+
 Discovery also found the same separation in the clinical-note slice:
 `com.aurevia.smartclinic.clinical.notes.ClinicalNoteService`,
 `com.aurevia.smartclinic.clinical.notes.ClinicalNoteRevision`,
@@ -61,8 +77,14 @@ contract contains no chart-records path or provenance fields.
 
 Verified locally: `SMARTCLINIC_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml
 -Pno-security -Dtest=RecordClinicalAuthorSeparatelyDataEntryActorTest test` —
-`tests="6" errors="0" skipped="0" failures="0"` in the Surefire XML report.
+`tests="8" errors="0" skipped="0" failures="0"` in the Surefire XML report.
+"Proven by tests" is limited to the clause behaviour above; it does not claim
+that the chart-records route is published in the committed OpenAPI contract.
 
 ## Gap
 
-None.
+None for the clause behaviour. Out of scope and pre-existing: the committed
+OpenAPI contract has no `/api/v1/chart/records` path and no author/actor fields
+(`contracts/openapi/missing-routes.txt` already lists those routes). Documenting
+them would change `contracts/openapi.yaml`, the generated client and the
+contract tests — one separate ARC-04/WEB-05 contract task.

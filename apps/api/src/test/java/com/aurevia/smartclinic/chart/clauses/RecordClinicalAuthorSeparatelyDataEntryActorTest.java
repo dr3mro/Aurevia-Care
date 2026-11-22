@@ -183,6 +183,18 @@ class RecordClinicalAuthorSeparatelyDataEntryActorTest {
                 recorder, ORG_A, correlation);
     }
 
+    private ResponseEntity<String> recordWithSpoofedActor(String text, String recorder,
+                                                           String spoofedActor, String correlation) {
+        // The command has no dataEntryActor field; an extra JSON property must
+        // never become an authoritative actor in the response or the row.
+        String body = "{\"patientId\":\"" + PATIENT_A + "\",\"type\":\"PROBLEM\""
+                + ",\"originalText\":\"" + text + "\""
+                + ",\"source\":\"CLINICIAN_OBSERVED\",\"presence\":\"PRESENT\""
+                + ",\"dataEntryActor\":\"" + spoofedActor + "\"}";
+        return request(HttpMethod.POST, "/api/v1/chart/records/entries", body,
+                recorder, ORG_A, correlation);
+    }
+
     private ResponseEntity<String> verify(String id, String version, String subject, String org) {
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-Synthetic-Subject", subject);
@@ -273,6 +285,11 @@ class RecordClinicalAuthorSeparatelyDataEntryActorTest {
         assertEquals("clinician-a", field(verified.getBody(), "dataEntryActor"));
         assertEquals("clinician-b", field(verified.getBody(), "verifiedBy"));
 
+        // A replay at the new version cannot reassign authorship or change the
+        // verified state; the recorded author must survive the second attempt.
+        ResponseEntity<String> replay = verify(id, "2", "clinician-b", ORG_A);
+        assertEquals(409, replay.getStatusCode().value(), replay.getBody());
+
         try (Connection connection = DriverManager.getConnection(URL, "smartclinic_migrate", "");
              Statement statement = connection.createStatement()) {
             statement.execute("SET app.current_org = '" + ORG_A + "'");
@@ -282,6 +299,53 @@ class RecordClinicalAuthorSeparatelyDataEntryActorTest {
                 assertTrue(result.next());
                 assertEquals("clinician-a", result.getString("clinical_author"));
                 assertEquals("clinician-b", result.getString("verified_by"));
+            }
+        }
+    }
+
+    @Test
+    void dataEntryActorCannotVerifyIntoClinicalAuthorship() throws Exception {
+        ResponseEntity<String> created = record("self verification", "assistant-a",
+                "author-self-verify-record");
+        assertEquals(HttpStatus.CREATED, created.getStatusCode(), created.getBody());
+        assertTrue(created.getBody().contains("\"clinicalAuthor\":null"), created.getBody());
+        String id = field(created.getBody(), "id");
+
+        ResponseEntity<String> denied = verify(id, "1", "assistant-a", ORG_A);
+        assertEquals(HttpStatus.FORBIDDEN, denied.getStatusCode(), denied.getBody());
+
+        try (Connection connection = DriverManager.getConnection(URL, "smartclinic_migrate", "");
+             Statement statement = connection.createStatement()) {
+            statement.execute("SET app.current_org = '" + ORG_A + "'");
+            try (ResultSet result = statement.executeQuery(
+                    "SELECT clinical_author, data_entry_actor, verification "
+                            + "FROM public.chart_entry WHERE id = CAST('" + id + "' AS uuid)")) {
+                assertTrue(result.next());
+                assertNull(result.getString("clinical_author"));
+                assertEquals("assistant-a", result.getString("data_entry_actor"));
+                assertEquals("UNVERIFIED", result.getString("verification"));
+            }
+        }
+    }
+
+    @Test
+    void dataEntryActorComesFromTheTenantContextNotTheRequestBody() throws Exception {
+        ResponseEntity<String> created = recordWithSpoofedActor("spoofed actor", "assistant-a",
+                "clinician-b", "author-spoofed-actor");
+        assertEquals(HttpStatus.CREATED, created.getStatusCode(), created.getBody());
+        assertEquals("assistant-a", field(created.getBody(), "dataEntryActor"));
+        assertTrue(created.getBody().contains("\"clinicalAuthor\":null"), created.getBody());
+        String id = field(created.getBody(), "id");
+
+        try (Connection connection = DriverManager.getConnection(URL, "smartclinic_migrate", "");
+             Statement statement = connection.createStatement()) {
+            statement.execute("SET app.current_org = '" + ORG_A + "'");
+            try (ResultSet result = statement.executeQuery(
+                    "SELECT data_entry_actor, clinical_author FROM public.chart_entry "
+                            + "WHERE id = CAST('" + id + "' AS uuid)")) {
+                assertTrue(result.next());
+                assertEquals("assistant-a", result.getString("data_entry_actor"));
+                assertNull(result.getString("clinical_author"));
             }
         }
     }
