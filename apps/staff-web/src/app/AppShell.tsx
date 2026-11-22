@@ -77,12 +77,16 @@ interface IconRailLinkProps {
   onHide: () => void;
   onPress: (id: string) => void;
   onRelease: () => void;
+  /** Abort only the pending long-press timer, leaving an open tooltip intact. */
+  onCancelPress: () => void;
 }
 
 /**
  * A compact navigation link whose accessible name and hover title carry the
  * full label. The visual tooltip is an enhancement: it opens on keyboard focus
- * and on a sustained touch press, never on hover alone (UX-01, WCAG 1.4.13).
+ * and on a sustained touch press, never on hover alone. A tooltip opened by
+ * focus stays until focus moves, so a stray pointer leave cannot hide it
+ * (UX-01, WCAG 1.4.13).
  */
 function IconRailLink({
   item,
@@ -94,6 +98,7 @@ function IconRailLink({
   onHide,
   onPress,
   onRelease,
+  onCancelPress,
 }: IconRailLinkProps) {
   return (
     <li>
@@ -107,9 +112,16 @@ function IconRailLink({
         onBlur={onHide}
         onPointerDown={() => onPress(item.id)}
         onPointerUp={onRelease}
-        onPointerCancel={onRelease}
-        onPointerLeave={onRelease}
+        onPointerCancel={onCancelPress}
+        onPointerLeave={onCancelPress}
         onClick={(event) => {
+          // Keep the router Link's click contract on a hand-rolled anchor: a
+          // modified or non-primary click belongs to the browser (new tab or
+          // window), and an already-handled click must not be hijacked. Link
+          // itself cannot be used here because it exposes no aria-label/className.
+          if (event.defaultPrevented) return;
+          if (event.button !== 0) return;
+          if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
           // An in-application link must not trigger a document reload.
           event.preventDefault();
           navigate(item.route);
@@ -297,6 +309,7 @@ export function AppShell({ role, onSignOut }: AppShellProps) {
                         onHide={hideTooltip}
                         onPress={beginLongPress}
                         onRelease={releaseLongPress}
+                        onCancelPress={cancelLongPress}
                       />
                     ) : (
                       <FullRailLink key={item.id} item={item} label={label} active={active} />

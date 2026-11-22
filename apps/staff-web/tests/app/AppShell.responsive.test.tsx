@@ -334,3 +334,54 @@ describe('responsive content and safe-area contract', () => {
     expect(footer.style.paddingRight).toBe('');
   });
 });
+
+describe('medium icon rail link click semantics', () => {
+  // Modified and non-primary clicks are deliberately left to the browser, so
+  // jsdom logs "Not implemented: navigation" when it cannot open a tab. The
+  // assertions below verify that the shell itself did not change the in-app path.
+  it.each([
+    ['ctrlKey', { ctrlKey: true }],
+    ['metaKey', { metaKey: true }],
+    ['shiftKey', { shiftKey: true }],
+    ['altKey', { altKey: true }],
+    ['a non-primary button', { button: 1 }],
+  ] as const)('does not navigate with %s held', (_name, init) => {
+    installMatchMedia(VIEWPORTS.medium);
+    renderShell('/', 'reception');
+    const link = within(screen.getByRole('group', { name: 'Sections' })).getByRole('link', {
+      name: 'Check-in',
+    });
+    fireEvent.click(link, init);
+    expect(window.location.pathname).toBe('/');
+  });
+
+  it('does not navigate when the click was already prevented', () => {
+    installMatchMedia(VIEWPORTS.medium);
+    renderShell('/', 'reception');
+    const link = within(screen.getByRole('group', { name: 'Sections' })).getByRole('link', {
+      name: 'Check-in',
+    });
+    link.addEventListener('click', (event) => event.preventDefault(), { capture: true });
+    fireEvent.click(link);
+    expect(window.location.pathname).toBe('/');
+  });
+});
+
+describe('medium icon rail tooltip persistence', () => {
+  it('keeps a focus-shown tooltip visible while the pointer leaves, until focus moves', () => {
+    installMatchMedia(VIEWPORTS.medium);
+    renderShell('/', 'reception');
+    const today = within(screen.getByRole('group', { name: 'Sections' })).getByRole('link', {
+      name: 'Today',
+    });
+    const tip = tooltipFor(today);
+    fireEvent.focus(today);
+    expect(tip?.hasAttribute('hidden')).toBe(false);
+    fireEvent.pointerLeave(today);
+    expect(tip?.hasAttribute('hidden')).toBe(false);
+    fireEvent.pointerCancel(today);
+    expect(tip?.hasAttribute('hidden')).toBe(false);
+    fireEvent.blur(today);
+    expect(tip?.hasAttribute('hidden')).toBe(true);
+  });
+});
