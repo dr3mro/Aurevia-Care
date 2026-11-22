@@ -1284,9 +1284,9 @@ def failure_report(directory):
         return "**Why:** no check log was kept, see the worker run.\n\n"
     preferred = [line for line in log.splitlines()
                  if re.search(r"error TS|frontend (typecheck|standards)|typecheck|"
-                              r"FAIL |eslint|Coverage|still failing after two repair",
+                              r"FAIL |eslint|Coverage|Cannot find|has no exported|still failing after",
                               line, re.I)]
-    chosen = preferred[-40:] if preferred else log.splitlines()[-60:]
+    chosen = preferred[-60:] if preferred else log.splitlines()[-80:]
     tail = "\n".join(chosen)[-3000:].replace("```", "'''")
     label = "TypeScript/frontend and gate lines" if preferred else "end of the local check log"
     return f"**Why it failed** ({label}):\n\n```text\n{tail}\n```\n\n"
@@ -2122,6 +2122,15 @@ def publish(task, directory):
             # a draft, so a clean fix must hand the pull request back by marking it ready.
             if not incomplete:
                 gh("pr", "ready", pr, check=False)
+                # The fix is pushed: hand the pull request back to the integrator. While `needs-fix`
+                # stays, the integrator skips it and the planner starts another fix worker on it,
+                # so fix after fix piled up and nothing ever merged.
+                remove_label(pr, "needs-fix")
+            else:
+                # The worker's own checks failed: the debugger looks again (bounded rounds, then a
+                # person) instead of another blind fix on the same label.
+                fail(pr, f"Fix worker {task['slot']} pushed a change whose local checks did not pass "
+                         f"(result: {result}, checks: {checks}, merge: {merged})")
     elif commits > 0:
         # The bundle step failed (it runs with `|| true`): the commits exist only in the
         # worker's artifact and would otherwise be dropped without a trace.
@@ -2446,8 +2455,14 @@ def fail(pr, reason, log_text="", simple=False):
 
 def main_is_red(workflow="delivery.yml"):
     """True when the newest finished run of the delivery workflow on main failed."""
-    runs = gh_json("run", "list", "--workflow", workflow, "--branch", "main", "--status", "completed",
-                   "--limit", "1", "--json", "conclusion") or []
+    try:
+        runs = gh_json("run", "list", "--workflow", workflow, "--branch", "main", "--status", "completed",
+                       "--limit", "1", "--json", "conclusion") or []
+    except subprocess.CalledProcessError as exc:
+        # A rate limit or API hiccup must not crash the whole flow pass: treat main as not red
+        # and let the next scheduled pass look again.
+        print(f"main_is_red: gh failed ({exc.returncode}); assuming main is not red", file=sys.stderr)
+        return False
     return bool(runs) and runs[0]["conclusion"] == "failure"
 
 
@@ -2540,6 +2555,32 @@ def delivery_runs(head):
     if current and current[0].get("databaseId"):
         jobs = gh_json("run", "view", str(current[0]["databaseId"]), "--json", "jobs") or {}
         current[0]["jobs"] = jobs.get("jobs") or []
+    return runs
+
+
+DELIVERY_LISTING_LIMIT = 100
+
+
+def delivery_listing():
+    """One call listing the newest Delivery runs of every branch, shared by a whole pr-flow pass."""
+    runs = gh_json("run", "list", "--workflow", "Delivery", "--limit", str(DELIVERY_LISTING_LIMIT),
+                   "--json", "databaseId,headSha,status,conclusion")
+    return runs if isinstance(runs, list) else []
+
+
+def delivery_runs_from(listing, head):
+    """Runs for one head taken from a shared listing, so a pass costs one call, not two per PR.
+
+    Jobs are read only for a run that has not finished, the one case where an environment
+    gate shows at job level. A head absent from a full listing may just be older than the
+    window, so only then is it looked up on its own.
+    """
+    runs = [r for r in listing if isinstance(r, dict) and (r.get("headSha") or "") == head]
+    if not runs and len(listing) >= DELIVERY_LISTING_LIMIT:
+        return delivery_runs(head)
+    if runs and runs[0].get("databaseId") and runs[0].get("status") != "completed":
+        jobs = gh_json("run", "view", str(runs[0]["databaseId"]), "--json", "jobs") or {}
+        runs[0]["jobs"] = jobs.get("jobs") or []
     return runs
 
 
@@ -3012,6 +3053,11 @@ def pr_flow(now=None):
     prs = gh_json("pr", "list", "--state", "open", "--label", "swarm", "--limit", "100",
                   "--json", "number,title,labels,isCrossRepository,isDraft,headRefOid,updatedAt") or []
     red = main_is_red()
+    try:
+        listing = delivery_listing()
+    except subprocess.CalledProcessError as exc:
+        print(f"pr-flow: delivery listing failed ({exc.returncode}); retry next pass", file=sys.stderr)
+        return []
     acted, ready, wants_debugger, wants_wave = [], [], False, False
     for item in sorted(prs, key=lambda p: p["number"]):
         pr, labels = item["number"], label_names(item)
@@ -3021,7 +3067,23 @@ def pr_flow(now=None):
             wants_debugger = True
             continue
         if "needs-fix" in labels:
-            wants_wave = True
+            # A fix worker may have pushed a clean branch but needs-fix was never cleared
+            # (old code, or the publish step ran before the new clearing logic). If Delivery
+            # already passed on the current head, the fix worked: clear the label so the
+            # integrator can pick it up without spawning another redundant fix worker.
+            head = item.get("headRefOid", "")
+            try:
+                delivered = bool(head) and delivery_state(delivery_runs_from(listing, head), head) == "passed"
+            except subprocess.CalledProcessError as exc:
+                # Rate limit or API hiccup: leave this PR for the next pass, no wave on a guess.
+                print(f"#{pr}: delivery lookup failed ({exc.returncode}); retry next pass", file=sys.stderr)
+                continue
+            if delivered:
+                remove_label(pr, "needs-fix")
+                gh("pr", "ready", str(pr), check=False)
+                acted.append((pr, "needs-fix cleared: delivery already passed"))
+            else:
+                wants_wave = True
             continue
         idle = minutes_since(item["updatedAt"], now)
         if item["isDraft"]:
@@ -3031,7 +3093,7 @@ def pr_flow(now=None):
                 acted.append((pr, "draft sent to fix"))
             continue
         head = item.get("headRefOid", "")
-        state = delivery_state(delivery_runs(head), head)
+        state = delivery_state(delivery_runs_from(listing, head), head)
         if state == "failed":
             fail(pr, "Delivery failed on the current head")
             acted.append((pr, "delivery failed, sent to debugger"))
@@ -3711,8 +3773,13 @@ def main(argv=None):
         emit("matrix", json.dumps({"include": lean}, separators=(",", ":")))
         emit("count", len(include))
     elif a.cmd == "pr-flow":
-        for pr, what in pr_flow():
-            print(f"#{pr}: {what}")
+        try:
+            for pr, what in pr_flow():
+                print(f"#{pr}: {what}")
+        except subprocess.CalledProcessError as exc:
+            # GitHub API rate limit or outage: the schedule runs again soon, so end quietly.
+            print(f"pr-flow stopped early: gh failed ({exc.returncode}); next scheduled pass retries",
+                  file=sys.stderr)
     elif a.cmd == "watchdog":
         watchdog()
     elif a.cmd == "strategy-state":

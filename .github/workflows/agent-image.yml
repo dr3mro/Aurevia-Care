@@ -36,7 +36,7 @@ jobs:
             apps/api/pom.xml
       - name: Build and push
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
           OPENCODE_VERSION: ${{ inputs.opencode_version || '2.3.2' }}
           OPENCODE_INTEGRITY: ${{ inputs.opencode_integrity || 'sha512-U/DD6X8kgnEFM3VYT7+QN/UJotW++qOxTJtPEUiNzKwu9tNHtAC1jOtup1gpk773j0AFNmMBbLNou4YkdvlRKA==' }}
         run: |
