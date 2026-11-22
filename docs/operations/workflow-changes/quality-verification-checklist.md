@@ -3,7 +3,7 @@
 - Status: **proposed checklist — nothing here is verified.** Every box is unchecked.
 - Date: 2026-11-22
 - Requirement IDs: OPS-06, WEB-12
-- Source tasks: WQUALITY-01 through WQUALITY-06 (merged script and documentation changes) and WQUALITY-07 (this checklist). The two pending audit checks come from OPS-WORKER-QUALITY (`TODO.md:14916-14924`, with the pending note at `:14922` and its context at `:14919`); the digest-pin finding AUD-20261121-18 (PR `#477`) is a related prerequisite for a reproducible rebuild, not the source of the pending phrase.
+- Source tasks: WQUALITY-01 through WQUALITY-06 (merged script and documentation changes) and WQUALITY-07 (this checklist). The two pending audit checks come from the `OPS-WORKER-QUALITY` task in `TODO.md`, whose details say verbatim "Docker image rebuild and exact-SHA GitHub checks are pending." and whose evidence records "confirmed fixture environment leakage and missing PyYAML". The digest-pin finding AUD-20261121-18 (PR `#477`) is a related prerequisite for a reproducible rebuild, not the source of the pending phrase. The tracker task is cited by name and verbatim quote rather than by line number, because `TODO.md` is a regenerated view whose line numbers drift with every merged task.
 - Evidence for this checklist: file reads of the six changed scripts or guides, their task rows in `TODO.md`, their notes under `.agent/pr-notes/`, and the sibling [GitHub verification checklist](github-verification-checklist.md). No GitHub workflow was run, no log was produced, no reviewer or human participant was involved. All example values are synthetic (`owner/repo`, `v0.1.0-rc.<n>`, `g<run>-<sha12>`, `<sha12>`, `<digest>`). This document does not authorize a release.
 
 ## Purpose and rules
@@ -127,7 +127,7 @@ Rules for the person performing it:
 
 ### Pending audit — Docker image rebuild
 
-- [ ] **Pending audit check, not run.** Source: `OPS-WORKER-QUALITY` in `TODO.md:14916-14924`, with the pending note at `:14922` and its PyYAML/fixture-isolation context at `:14919`. The related `AUD-20261121-18` (PR `#477`) pins the `Dockerfile.app` build stages by digest so that a rebuild of the same commit is reproducible.
+- [ ] **Pending audit check, not run.** Source: the `OPS-WORKER-QUALITY` task in `TODO.md`, which says verbatim "Docker image rebuild and exact-SHA GitHub checks are pending." and whose evidence records "confirmed fixture environment leakage and missing PyYAML". The related `AUD-20261121-18` (PR `#477`) pins the `Dockerfile.app` build stages by digest so that a rebuild of the same commit is reproducible. The task is named and quoted rather than cited by line number because `TODO.md` is regenerated and its line numbers drift.
 
   **Apply.** Confirm the worker image patch is on `main`: PyYAML is installed for the tooling imports and the synthetic fixture uses an isolated import path, not the shared Surefire directory. Confirm `Dockerfile.app` pins both build-stage base images by `sha256` digest rather than a mutable tag. Build the worker image from an exact green `main` SHA. No workflow patch is applied by this checklist; a person owns the image and the registry.
 
@@ -181,7 +181,7 @@ All cells are intentionally unfilled; a person fills them after running each wor
 
 1. WQUALITY-01 through WQUALITY-06 are merged as script or documentation changes; their GitHub behaviour has not been observed. This checklist records scenarios only and verifies nothing.
 2. WQUALITY-02 calls `delivery_state` from WQUALITY-01, and WQUALITY-06 builds on WFAUDIT-06's `diagnose`. Prove the predecessors before their dependants.
-3. The pending Docker rebuild is the worker-image verification from `OPS-WORKER-QUALITY` (`TODO.md:14919`, `:14922`): PyYAML and fixture isolation must be in the rebuilt image, proved by a green tooling job with no `No module named 'yaml'`. Separately, `AUD-20261121-18` (PR `#477`) digest-pins the `Dockerfile.app` build stages; a floating tag makes the same source commit produce a different toolchain, so a rebuild is not reproducible until it is pinned.
+3. The pending Docker rebuild is the worker-image verification from `OPS-WORKER-QUALITY` in `TODO.md`: its evidence records "confirmed fixture environment leakage and missing PyYAML" and its details say "Docker image rebuild and exact-SHA GitHub checks are pending." PyYAML and fixture isolation must be in the rebuilt image, proved by a green tooling job with no `No module named 'yaml'`. Separately, `AUD-20261121-18` (PR `#477`) digest-pins the `Dockerfile.app` build stages; a floating tag makes the same source commit produce a different toolchain, so a rebuild is not reproducible until it is pinned.
 4. Published image tags and manifests are immutable. A corrected publish or a rollback uses a new tag; nothing is overwritten and this document does not authorize a release or a deployment.
 5. `docs/swarm/` holds immutable merge records that skip the structural rules of `check-docs.py`; the regression table added by WQUALITY-06 lives there and is a person-review item, not a CI gate. Worker notes under `.agent/` are also not checked by CI.
 6. This checklist is a documentation-only change. Delivery may skip it under the existing docs path rule; the integrator's local docs check is its evidence, and no required check is waived by that skip.
