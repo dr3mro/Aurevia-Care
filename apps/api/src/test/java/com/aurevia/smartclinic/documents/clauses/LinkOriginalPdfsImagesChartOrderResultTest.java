@@ -42,7 +42,7 @@ import com.aurevia.smartclinic.tenant.TenantContext;
  * <p>The repository is a Mockito mock and the transaction template invokes its
  * callback directly, so the tenant/role decision in {@code DocumentService.authorize}
  * and the chart/subject gates in {@code DocumentService.link} are exercised without
- * a database. Every identifier and byte string here is synthetic. The three
+ * a database. Every identifier and byte string here is synthetic. The four
  * positives prove the attachment and its history/audit; the two authorization
  * denials and the unknown-chart denial prove what the rule must refuse. No
  * production code is changed by this proof.</p>
@@ -121,6 +121,18 @@ class LinkOriginalPdfsImagesChartOrderResultTest {
         verify(repository).appendEvent(anyString(), eq("link"), eq(null));
         verify(audit).append(eq(TenantContext.current()), eq("DOCUMENT_LINK"), eq("DOCUMENT_LINK"),
                 eq("DOCUMENT"), eq("DOCUMENTS"), anyString(), eq("SUCCESS"));
+    }
+
+    @Test
+    void linkAttachesOriginalPngImageToChart() {
+        when(repository.chartExists(SUBJECT)).thenReturn(true);
+        insertReturns(1);
+        LinkRequest png = new LinkRequest("chart", SUBJECT, "scan.png", "image/png", BASE64, 0);
+        assertEquals(ID, service.link(png).id());
+        // The bounded media type must reach the store unchanged, so an image is retained as an image.
+        verify(repository).insert(eq(ORG), anyString(), eq("chart"), eq(SUBJECT),
+                eq("scan.png"), eq("image/png"), any(byte[].class), anyInt());
+        verify(repository).appendEvent(anyString(), eq("link"), eq(null));
     }
 
     @Test

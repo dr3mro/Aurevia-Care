@@ -21,6 +21,10 @@ Active proof (synthetic fixtures only, no database and no real patient data):
   membership, the `clinician` role and `chartExists` true, `link` inserts one original,
   appends the `link` history event, writes a `SUCCESS` audit row and returns the
   association id.
+- `linkAttachesOriginalPngImageToChart` — positive proof. An authorized actor attaches an
+  `image/png` original and the test verifies that the bounded media type and file name reach
+  `DocumentRepository.insert` unchanged; this proves the "images" part of the clause, the
+  "PDFs" part being proved by the chart/order/result cases which use `application/pdf`.
 - `linkAttachesOriginalToOrderAndToResult` — positive proof. The same authorized actor
   attaches an original to an `order` and to a `result`; the repository insert is verified
   for each subject type and both calls append a `link` event.
@@ -45,7 +49,8 @@ Production classes exercised by the proof:
 - `com.aurevia.smartclinic.documents.DocumentInputs` — bounded subject types
   (`chart`, `order`, `result`), media types (PDF/JPEG/PNG), size and rotation validation.
 - `com.aurevia.smartclinic.documents.DocumentRepository` — `hasActiveMembership`,
-  `activeRoles`, `chartExists`/`subjectExists` and `insert` (the RLS-bounded SQL boundary).
+  `activeRoles`, `chartExists` and `insert` (the RLS-bounded SQL boundary). `subjectExists`
+  is invoked inside the store's real `insert`, which is mocked here, not by `link()` itself.
 - `com.aurevia.smartclinic.documents.DocumentController` — thin `POST
   /api/v1/documents/associations` adapter that receives the service by injection.
 - `db/migrations/V17__document_associations.sql` — association and event tables with
@@ -55,11 +60,16 @@ Production classes exercised by the proof:
 
 The thin HTTP adapter `DocumentController.link()` is unit-covered by
 `apps/api/src/test/java/com/aurevia/smartclinic/it/documents/DocumentControllerTest.java`
-(`linkReturns201WithALocation`, with a mocked service). The separate
-`DocumentArtifactControllerHttpIntegrationTest` is a real HTTP test but drives the X-03
-`/api/v1/documents/artifacts/...` commands, not the link POST route; there is currently no
-HTTP-level integration test for `POST /api/v1/documents/associations`, which is adjacent to
-the contract-publication gap recorded below.
+(`linkReturns201WithALocation`, with a mocked service). The link POST route is also driven
+over real HTTP by `@Tag("integration")` `@SpringBootTest(RANDOM_PORT)` helpers in
+`DocumentDownloadHttpIntegrationTest.link(...)` (asserts 201),
+`it/documents/DocumentIsolationTest.link(...)` (asserts 201),
+`tenancy/clauses/IsolationAcrossSurfacesTest.linkFile(...)` (asserts 201) and
+`acceptance/platform/PlatformAcceptanceTest.linkFile(...)` (asserts 201). None of those is
+dedicated to this clause's membership/role refusal assertions, which the service-level test
+above supplies; this clause's proof therefore stays at the service layer where the
+authorization decision lives. `DocumentArtifactControllerHttpIntegrationTest` is a separate
+real HTTP test for the X-03 `/api/v1/documents/artifacts/...` commands, not this route.
 Two remaining `link()` branches — insert returning zero rows (404 subject not found) and a
 `DuplicateKeyException` (409 conflict) — are covered by
 `apps/api/src/test/java/com/aurevia/smartclinic/documents/DocumentServiceSubjectLinkTest.java`
