@@ -284,6 +284,19 @@ class RepairFilterTests(unittest.TestCase):
             self.run_of("Delivery", ("Swarm worker / x", "failure"))))
 
 
+class RepairTaskMissingRunTests(unittest.TestCase):
+    def test_deleted_run_is_skipped_not_a_crash(self):
+        error = subprocess.CalledProcessError(1, ["gh"], "", "HTTP 404: Not Found")
+        with mock.patch.object(swarm, "gh_json", side_effect=error):
+            self.assertIsNone(swarm.repair_task("137096121303"))
+
+    def test_other_gh_errors_still_raise(self):
+        error = subprocess.CalledProcessError(1, ["gh"], "", "HTTP 500")
+        with mock.patch.object(swarm, "gh_json", side_effect=error):
+            with self.assertRaises(subprocess.CalledProcessError):
+                swarm.repair_task("1")
+
+
 class RepairTaskTests(unittest.TestCase):
     TASK = {"id": "FIX-9", "title": "Repair main: Delivery failed", "body": "Reproduce.\n\nlog line"}
 
