@@ -65,6 +65,16 @@ Keys: `q` quits and `r` refreshes now. A new failed run rings the terminal bell 
 
 The monitor also keeps the swarm running: when no Agent swarm run is queued or in progress and TODO.md still has open tasks, it dispatches a wave (`gh workflow run swarm.yml`), at most once every 10 minutes. `--autostart-wait MINUTES` changes that gap and `--no-autostart` turns it off. `--once` never starts a wave.
 
+### Force a task
+
+To start one task now, ahead of the queue, dispatch the swarm with its id (needs `gh`, signed in):
+
+```
+gh workflow run swarm.yml --ref main -f task=FIX-INSTANT-OPENAPI -f now=true -f workers=1
+```
+
+Replace `FIX-INSTANT-OPENAPI` with any task id from `tasks/`. See "Forcing a task" in `docs/SWARM.md` for what it overrides.
+
 ## The image
 
 `Dockerfile.app` builds the single image in three stages: the staff web (`npm run build`), the API (a runnable Spring Boot jar) and a PostgreSQL 17 base that adds nginx and Java. `infra/app/start.sh` starts PostgreSQL, applies the migrations, then starts the API and nginx. nginx serves the web on 3000 and proxies `/api` to the API.
