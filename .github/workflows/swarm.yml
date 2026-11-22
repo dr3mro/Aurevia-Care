@@ -11,8 +11,8 @@ on:
   workflow_dispatch:
     inputs:
       workers:
-        description: 'Story workers per wave; the wave uses fewer when fewer tasks are ready (1 to 10, default 7). Fix, debug and repair workers are not limited by it.'
-        default: '7'
+        description: 'Story workers per wave; the wave uses fewer when fewer tasks are ready (1 to 10, default 3). Fix, debug and repair workers are not limited by it.'
+        default: '3'
       repair_run:
         description: Failed run id on main to repair (optional; the plan job finds failing runs itself)
         default: ''
@@ -89,7 +89,7 @@ jobs:
       # the cap. No wave, no worker containers, and an issue for a person.
       - id: budget
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
         run: python3 -I scripts/swarm.py budget-gate
       # A red main becomes a repair task here, in the same run that plans the
       # wave, instead of a separate watchdog run per failure. The task goes in
@@ -97,7 +97,7 @@ jobs:
       - id: repair
         if: steps.budget.outputs.start == 'true'
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
         run: python3 -I scripts/swarm.py add-repair-task --latest
       # The prepared images are built once by agent-image.yml / swarm-images.yml
       # and reused by every worker. Never start a wave while they are rebuilding
@@ -108,15 +108,15 @@ jobs:
       - id: images
         if: steps.budget.outputs.start == 'true'
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
         run: python3 -I scripts/swarm.py images-ready
       # Marks every task it starts as [-] in TODO.md and pushes that to main
       # (GITHUB_TOKEN pushes do not trigger another run).
       - id: plan
         if: steps.budget.outputs.start == 'true'
         env:
-          GH_TOKEN: ${{ github.token }}
-          WORKERS: ${{ inputs.workers || '7' }}
+          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
+          WORKERS: ${{ inputs.workers || '3' }}
           BUDGET_WORKERS: ${{ steps.budget.outputs.workers }}
           REPAIR_RUN: ${{ inputs.repair_run }}
           LAUNCH_TASK: ${{ inputs.task }}
@@ -204,5 +204,5 @@ jobs:
             tasks
             docs/archive/TODO-DONE.md
       - env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
         run: python3 -I scripts/swarm.py continue
