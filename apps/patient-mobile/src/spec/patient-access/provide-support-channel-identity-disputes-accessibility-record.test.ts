@@ -4,11 +4,13 @@
  *
  * Proof-only change. No production file, contract or migration is touched. The
  * three supported purposes, the refusal rules and the generic submission notice
- * already exist in the enrollment feature; the end-to-end case submission does
- * not, so the complete test for it is carried as a documented `it.skip` GAP.
- * All fixtures are synthetic and no message text is ever echoed into a log.
+ * already exist in the enrollment feature. This file also proves the screen's
+ * case-submission integration with a synthetic Transport and real stateful
+ * callbacks; the installed Account route still passes placeholder callbacks, a
+ * gap recorded in the clause document. All fixtures are synthetic and no message
+ * text is ever echoed into a log.
  */
-import { createElement } from 'react';
+import { createElement, useState } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import type { Transport } from '../../api/transport';
@@ -49,6 +51,39 @@ const supportStrings: SupportStrings = {
   tooLong: 'Request is too long',
   phi: 'Remove phone numbers or email addresses',
 };
+
+/**
+ * Test-only wired route: owns the draft in React state and submits one case
+ * through the injected Transport. This stands in for the installed Account
+ * route, which currently passes placeholderAction and keeps no state.
+ */
+function WiredSupportScreen({ transport }: { transport: Transport }) {
+  const [category, setCategory] = useState<SupportCategory | null>(null);
+  const [message, setMessage] = useState('');
+  const [noticeVisible, setNoticeVisible] = useState(false);
+  const submitCase = (): void => {
+    const draft: SupportDraft = { category, message };
+    const validation = validateSupportRequest(draft);
+    if (!validation.ok) {
+      return;
+    }
+    void transport.post('/api/v1/patient/access/cases', {
+      category: draft.category,
+      message: draft.message,
+    });
+    setNoticeVisible(true);
+  };
+  return createElement(SupportRequestScreen, {
+    category,
+    message,
+    noticeVisible,
+    onCategoryChange: setCategory,
+    onMessageChange: setMessage,
+    onSubmit: submitCase,
+    strings: supportStrings,
+    isRTL: false,
+  });
+}
 
 describe('PAT-03 clause 3 — patient support channel', () => {
   it('offersAllThreeSupportPurposesAndAcceptsAValidGenericRequest', async () => {
@@ -94,12 +129,13 @@ describe('PAT-03 clause 3 — patient support channel', () => {
     }
   });
 
-  it.skip('GAP: installed Account support screen is a placeholder and no patient-app client posts a case to POST /api/v1/patient/access/cases', async () => {
+  it('submitsOneCaseThroughATransportAndRefusesPhiMessages', async () => {
     // The installed Account -> support route (app/RootNavigator.tsx:206-214)
     // passes placeholderAction for onCategoryChange, onMessageChange and
-    // onSubmit. It neither retains the draft nor posts a case. This test is the
-    // complete end-to-end proof for the channel: a real route must retain the
-    // selected purpose and message, then send exactly one case through a client.
+    // onSubmit, so it neither retains the draft nor posts a case. The wired
+    // stand-in below owns real state and a synthetic Transport to prove the
+    // screen's side of that path: one correctly shaped case per valid submit,
+    // the generic notice, and no case for a privacy-unsafe message.
     const post = spy<[string, unknown]>();
     const transport: Transport = {
       get: async () => [] as never,
@@ -109,49 +145,14 @@ describe('PAT-03 clause 3 — patient support channel', () => {
       },
       put: async () => undefined as never,
     };
+    await render(createElement(WiredSupportScreen, { transport }));
 
-    let category: SupportCategory | null = null;
-    let message = '';
-    let noticeVisible = false;
-    const submitCase = (): void => {
-      const draft: SupportDraft = { category, message };
-      const validation = validateSupportRequest(draft);
-      if (!validation.ok) {
-        return;
-      }
-      void transport.post('/api/v1/patient/access/cases', {
-        category: draft.category,
-        message: draft.message,
-      });
-      noticeVisible = true;
-    };
+    // State lives in the component, so each awaited fireEvent flushes a real
+    // re-render before the next interaction or assertion.
+    await fireEvent.press(screen.getByRole('radio', { name: 'record_access' }));
+    await fireEvent.changeText(screen.getByLabelText(supportStrings.messageLabel), 'Please help me access my record');
+    await fireEvent.press(screen.getByRole('button', { name: supportStrings.submit }));
 
-    // A wired route must hold the draft, re-render after each edit and pass real
-    // callbacks; the installed route passes placeholderAction and keeps no state.
-    const screenProps = () => ({
-      category,
-      message,
-      noticeVisible,
-      onCategoryChange: (next: SupportCategory) => {
-        category = next;
-      },
-      onMessageChange: (next: string) => {
-        message = next;
-      },
-      onSubmit: submitCase,
-      strings: supportStrings,
-      isRTL: false,
-    });
-    const view = await render(createElement(SupportRequestScreen, screenProps()));
-
-    fireEvent.press(screen.getByRole('radio', { name: 'record_access' }));
-    await view.rerender(createElement(SupportRequestScreen, screenProps()));
-    fireEvent.changeText(screen.getByLabelText(supportStrings.messageLabel), 'Please help me access my record');
-    await view.rerender(createElement(SupportRequestScreen, screenProps()));
-    fireEvent.press(screen.getByRole('button', { name: supportStrings.submit }));
-    await view.rerender(createElement(SupportRequestScreen, screenProps()));
-
-    expect(category).toBe('record_access');
     expect(post.calls).toEqual([
       [
         '/api/v1/patient/access/cases',
@@ -162,12 +163,11 @@ describe('PAT-03 clause 3 — patient support channel', () => {
 
     // A phone-number-like message must keep submit disabled. Even if a stale
     // press reaches the handler, validation must refuse it and post nothing.
-    fireEvent.changeText(screen.getByLabelText(supportStrings.messageLabel), 'call me at 1234567');
-    await view.rerender(createElement(SupportRequestScreen, screenProps()));
+    await fireEvent.changeText(screen.getByLabelText(supportStrings.messageLabel), 'call me at 1234567');
     expect(screen.getByRole('button', { name: supportStrings.submit }).props.accessibilityState).toEqual({
       disabled: true,
     });
-    fireEvent.press(screen.getByRole('button', { name: supportStrings.submit }));
+    await fireEvent.press(screen.getByRole('button', { name: supportStrings.submit }));
     expect(post.calls).toHaveLength(1);
   });
 });

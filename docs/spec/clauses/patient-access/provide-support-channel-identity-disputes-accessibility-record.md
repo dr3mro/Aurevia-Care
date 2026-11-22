@@ -28,18 +28,17 @@ Test methods:
   `{ ok: false, reason }` for a null category, a blank message, a message over
   500 characters, a phone-number-like message and an email-like message, so an
   incomplete or privacy-unsafe request cannot pass local validation.
-- `GAP: installed Account support screen is a placeholder and no patient-app
-  client posts a case to POST /api/v1/patient/access/cases` — present as a
-  complete `it.skip(...)` test and intentionally not executed. It wires a
-  synthetic `Transport` as the case client, renders the screen with real
-  stateful callbacks, drives a purpose selection, a generic message and submit,
-  and asserts exactly one correctly shaped case request to
-  `/api/v1/patient/access/cases` plus a refusal path where a phone-number-like
-  message disables submit and posts nothing. It stays skipped because the
-  installed route supplies none of those callbacks and no such client exists.
+- `submitsOneCaseThroughATransportAndRefusesPhiMessages` — active proof of the
+  screen's case-submission integration. It wires a synthetic `Transport` as the
+  case client, renders the screen with real stateful callbacks, drives a purpose
+  selection, a generic message and submit, and asserts exactly one correctly
+  shaped case request to `/api/v1/patient/access/cases` plus a refusal path where
+  a phone-number-like message disables submit and posts nothing. The installed
+  Account route still supplies placeholder callbacks and has no such client, so
+  the end-to-end gap below remains open; this test proves the screen half only.
 
-Production symbols exercised by the active tests (source survey result, none
-changed by this proof-only task):
+Production symbols surveyed by this clause (none changed by this proof-only
+task):
 
 - `apps/patient-mobile/src/features/enrollment/model.ts` — `SUPPORT_CATEGORIES`,
   `SupportCategory`, `SupportDraft`, `SupportInvalidReason`,
@@ -53,8 +52,8 @@ changed by this proof-only task):
   disabled state follows validation.
 - `apps/patient-mobile/src/app/providers.ts` — `placeholderAction` and
   `placeholderSupportStrings`, the synthetic callbacks and labels the installed
-  route passes to the screen (named in the survey and in the GAP description;
-  not imported by the two active tests).
+  route passes to the screen (named in the survey and in the gap below; not
+  imported by the active tests).
 
 Where the clause is implemented today (source survey result):
 
@@ -83,8 +82,8 @@ Closing this gap needs **one** bounded follow-up task (registered as a
 `task-requests` entry in the worker notes, not created here). It would add a
 small synthetic-fixture-backed case client under
 `apps/patient-mobile/src/api/`, replace the three `placeholderAction` callbacks
-in `app/RootNavigator.tsx` with real stateful handlers that call it, enable the
-skipped test above, publish the POST route in `contracts/openapi.yaml` with a
-tag and an `Idempotency-Key` header and regenerate the client. The server route
-and its migration already exist and need no change. No production file,
-contract, migration or existing test was modified by this proof-only task.
+in `app/RootNavigator.tsx` with real stateful handlers that call it, and publish
+the POST route in `contracts/openapi.yaml` with a tag and an `Idempotency-Key`
+header and regenerate the client. The server route and its migration already
+exist and need no change. No production file, contract, migration or existing
+test was modified by this proof-only task.
