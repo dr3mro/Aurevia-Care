@@ -1,4 +1,6 @@
-- [ ] RESP-CHART-PAGE · Staff web: responsive `ChartPage` (features-chart)
+- [-] RESP-CHART-PAGE · Staff web: responsive `ChartPage` (features-chart)
+  - agent: swarm-7
+  - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/chart/ChartPage.tsx, apps/staff-web/tests/responsive/features-chart/ChartPage.responsive.test.tsx
   - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS

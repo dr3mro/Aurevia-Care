@@ -41,7 +41,7 @@ jobs:
       # is pulled once, so ten separate runners only added startup time.
       - name: Build and push the slot images
         env:
-          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           base="ghcr.io/${GITHUB_REPOSITORY,,}-agent:latest"

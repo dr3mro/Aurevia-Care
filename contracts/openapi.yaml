@@ -587,6 +587,154 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+  /api/v1/staff/attachments/upload:
+    post:
+      operationId: uploadStaffAttachment
+      summary: Upload a PDF, JPEG or PNG into private quarantine bound to one draft
+      description: The Idempotency-Key header is correlation-only here; a retry creates a new attachment. Conflicts carry stable 409 codes.
+      tags: [staff-messaging]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/IdempotencyKeyOptional'
+        - { name: draftId, in: query, required: true, description: Conversation or mail draft that owns the attachment, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '201':
+          description: The quarantined attachment; its independent scan verdict is still pending
+          headers:
+            Location: { schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StaffAttachment' }
+        '401': { description: Authentication required }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409':
+          description: The attachment link write did not commit
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422': { description: Unsupported type, oversized payload, invalid file name, unreadable payload or invalid draft }
+  /api/v1/staff/attachments/{id}/scan:
+    post:
+      operationId: scanStaffAttachment
+      summary: Record an independent quarantine scan verdict for one attachment
+      description: The Idempotency-Key header is correlation-only here; a second verdict on one file returns 409.
+      tags: [staff-messaging]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/IdempotencyKeyOptional'
+        - { name: id, in: path, required: true, description: Tenant-local attachment identifier, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ScanRequest' }
+      responses:
+        '200':
+          description: The attachment with its recorded scan state
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StaffAttachment' }
+        '401': { description: Authentication required }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: Attachment not found or inaccessible; existence is concealed }
+        '409':
+          description: Only a pending file can be scanned, or the attachment write did not commit
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422': { description: Missing or non-terminal verdict, invalid detail or tenant selection }
+  /api/v1/staff/attachments/pending:
+    get:
+      operationId: listPendingStaffAttachments
+      summary: List the pending unsent files of one draft for the sender to review
+      tags: [staff-messaging]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - { name: draftId, in: query, required: true, description: Conversation or mail draft whose pending files are listed, schema: { type: string } }
+      responses:
+        '200':
+          description: Pending files in upload order; a named array, not a paginated list
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PendingStaffAttachments' }
+        '401': { description: Authentication required }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { description: Invalid draft or tenant selection }
+  /api/v1/staff/attachments/send:
+    post:
+      operationId: sendStaffAttachments
+      summary: Publish named clean files to their confirmed recipients
+      description: The Idempotency-Key header is correlation-only here; resending an already sent file returns 409.
+      tags: [staff-messaging]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/IdempotencyKeyOptional'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SendRequest' }
+      responses:
+        '200':
+          description: The published attachments
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/StaffAttachment' }
+        '401': { description: Authentication required }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: Attachment, draft or message not found or inaccessible; existence is concealed }
+        '409':
+          description: A named file is quarantined or not clean, is already sent, or the attachment write did not commit
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422': { description: Unconfirmed or empty command, duplicate or missing ids, invalid recipients or identifiers }
+  /api/v1/staff/attachments/{id}/download:
+    get:
+      operationId: downloadStaffAttachment
+      summary: Return verified original bytes to an authorized message recipient
+      tags: [staff-messaging]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - { name: id, in: path, required: true, description: Tenant-local attachment identifier, schema: { type: string } }
+      responses:
+        '200':
+          description: Original bytes with their integrity headers and original PDF, JPEG or PNG media type
+          headers:
+            X-Checksum: { description: SHA-256 checksum of the returned bytes, schema: { type: string } }
+            Content-Length: { description: Byte length of the returned payload, schema: { type: integer, format: int64 } }
+          content:
+            application/pdf:
+              schema: { type: string, format: binary }
+            image/jpeg:
+              schema: { type: string, format: binary }
+            image/png:
+              schema: { type: string, format: binary }
+        '401': { description: Authentication required }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: Attachment not found or inaccessible; existence is concealed }
+        '409':
+          description: File is not sent and clean, or the private object is absent or failed integrity verification
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422': { description: Invalid attachment identifier or tenant selection }
 components:
   parameters:
     ActiveOrganization:
@@ -1083,3 +1231,45 @@ components:
         provenance: { type: string }
         producedAt: { type: string, format: date-time }
         producedBy: { type: string }
+    StaffAttachment:
+      type: object
+      description: Current projection of one quarantined or published staff-message attachment; bytes stay behind the download route.
+      properties:
+        organizationId: { type: string, format: uuid }
+        id: { type: string }
+        uploaderSubject: { type: string }
+        draftId: { type: string }
+        documentId: { type: string }
+        fileName: { type: string }
+        contentType: { type: string, enum: [application/pdf, image/jpeg, image/png] }
+        sizeBytes: { type: integer, format: int64, minimum: 0 }
+        checksum: { type: string }
+        objectKey: { type: string }
+        objectVersion: { type: integer }
+        scanState: { type: string, enum: [pending, clean, quarantined] }
+        messageId: { type: string }
+        sent: { type: boolean }
+        createdAt: { type: string, format: date-time }
+    PendingStaffAttachments:
+      type: array
+      description: Bounded set of unsent files of one draft; not a paginated list.
+      items: { $ref: '#/components/schemas/StaffAttachment' }
+    ScanRequest:
+      type: object
+      required: [verdict]
+      additionalProperties: false
+      description: Independent scanner verdict; a bounded detail explains a failed verdict to the sender without carrying file content or a pathogen name.
+      properties:
+        verdict: { type: string, enum: [clean, failed], description: Terminal scanner verdict; failed quarantines the file. Stored scan states are reported by StaffAttachment.scanState. }
+        detail: { type: string, maxLength: 200 }
+    SendRequest:
+      type: object
+      required: [draftId, messageId, attachmentIds, recipients, confirm]
+      additionalProperties: false
+      description: Explicit publication command; confirm must be true and every named file must be clean and owned by the sender.
+      properties:
+        draftId: { type: string }
+        messageId: { type: string }
+        attachmentIds: { type: array, items: { type: string } }
+        recipients: { type: array, items: { type: string } }
+        confirm: { type: boolean }
