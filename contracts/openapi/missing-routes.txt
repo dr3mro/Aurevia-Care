@@ -61,6 +61,7 @@ GET /api/v1/lab/specimens/{}/history
 GET /api/v1/lab/specimens/{}/label
 GET /api/v1/messaging-governance/audit
 GET /api/v1/messaging-governance/retention/{}
+GET /api/v1/openapi.yaml
 GET /api/v1/orders/{}
 GET /api/v1/patient-flow/notices/{}
 GET /api/v1/patient-flow/presentation
