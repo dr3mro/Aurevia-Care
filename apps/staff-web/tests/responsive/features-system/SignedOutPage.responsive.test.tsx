@@ -110,7 +110,7 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
       installMatchMedia(VIEWPORTS[layout]);
       renderPage('en');
 
-      const stack = screen.getByRole('heading', { level: 1 }).closest('.stack');
+      const stack = pageWrapper().querySelector(':scope > .stack');
       expect(stack).not.toBeNull();
       expect(stack?.parentElement).toBe(pageWrapper());
       expect(stack?.hasAttribute('style')).toBe(false);
