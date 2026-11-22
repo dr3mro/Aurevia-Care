@@ -22,11 +22,13 @@ It follows the fixtures and database setup of
 Test methods (one positive rule proof, five negative refusals):
 
 - `namedApprovalEffectiveDatesAuditAndVersionHistoryAreEnforced` — positive proof. A
-  draft with an explicit past `effectiveFrom` is appended (201 `pending`) and a second
-  approval request carries a forged `approvedBy` in its body; the approve response is
-  200 `approved` with `approvedBy` equal to the acting admin's user id and the note
-  preserved, so the approver is derived from the actor. A GET then serves the value
-  from the effective window. Direct SQL finds exactly `CONFIG_CREATE` and
+  draft with an explicit past `effectiveFrom` is appended (201 `pending`) and is still
+  invisible to a GET (404) until a separate approval exists. A second approval request
+  then carries a forged `approvedBy` in its body; the approve response is 200 `approved`
+  with `approvedBy` equal to the acting admin's user id and the note preserved, and the
+  durable `config_approval.approved_by` equals the same user id, so the named approver
+  is derived from the actor both in the projection and at rest. A GET then serves the
+  value from the effective window. Direct SQL finds exactly `CONFIG_CREATE` and
   `CONFIG_APPROVE` audit events for the two correlation ids, attributed to the acting
   admin with purpose `CONFIG_ADMIN`, scope `CONFIG` and outcome `SUCCESS`. History
   reports one entry at version 1, and `UPDATE`/`DELETE` of `config_entry` and

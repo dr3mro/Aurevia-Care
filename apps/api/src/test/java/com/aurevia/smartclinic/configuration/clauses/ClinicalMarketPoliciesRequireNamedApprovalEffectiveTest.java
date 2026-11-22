@@ -249,6 +249,10 @@ class ClinicalMarketPoliciesRequireNamedApprovalEffectiveTest {
         assertEquals(HttpStatus.CREATED, draft.getStatusCode(), draft.getBody());
         assertEquals("pending", field(draft.getBody(), "status"));
         assertEquals("policy-v1", field(draft.getBody(), "value"));
+        // A draft with an already-open window is still invisible until a named
+        // approval exists; otherwise "require named approval" is not proven.
+        assertEquals(HttpStatus.NOT_FOUND,
+                get("clinical.release", "admin-a", ORG_A, "adm01-c2-draft-read").getStatusCode());
 
         // The request body carries a forged approver; the database trigger and the
         // service must both derive the named approver from the authenticated actor.
@@ -285,6 +289,15 @@ class ClinicalMarketPoliciesRequireNamedApprovalEffectiveTest {
                     + "' AND purpose = 'CONFIG_ADMIN' AND scope = 'CONFIG' AND outcome = 'SUCCESS'")) {
                 assertTrue(result.next());
                 assertEquals(2, result.getInt(1));
+            }
+            // The forged approver must never reach storage: the V5 actor trigger
+            // overwrites approved_by from app.actor, not from the request body.
+            try (ResultSet result = statement.executeQuery(
+                    "SELECT count(*) FROM public.config_approval WHERE entry_id = "
+                    + "(SELECT id FROM public.config_entry WHERE key = 'clinical.release' AND version = 1) "
+                    + "AND approved_by = '" + adminId(ORG_A, "admin-a") + "'")) {
+                assertTrue(result.next());
+                assertEquals(1, result.getInt(1));
             }
 
             SQLException updateEntry = assertThrows(SQLException.class,
