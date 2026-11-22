@@ -165,11 +165,18 @@ describe('responsive AdminScreen (WEB-07, UX-01)', () => {
 
       for (const key of TABLE_LABEL_KEYS) {
         const label = adminText('en', key);
+        if (breakpoint === 'compact' && key === 'auditEvents') {
+          expect(within(screen.getByRole('list', { name: label })).getAllByRole('listitem').length)
+            .toBeGreaterThan(0);
+          continue;
+        }
         const region = screen
           .getAllByRole('region', { name: label })
           .find((element) => element.getAttribute('tabindex') === '0');
         expect(region).toBeDefined();
-        expect(within(region as HTMLElement).getByRole('table', { name: label })).toBeTruthy();
+        const tableName = breakpoint === 'compact' && key === 'staffHistory' ? /^Seq / : label;
+        expect(within(region as HTMLElement).getAllByRole('table', { name: tableName }).length)
+          .toBeGreaterThan(0);
       }
 
       // Every responsive descendant agrees on the active layout band, so a
@@ -208,7 +215,7 @@ describe('responsive AdminScreen (WEB-07, UX-01)', () => {
       Number(element.getAttribute('tabindex')),
     );
     expect(tabStops.every((index) => index >= 0)).toBe(true);
-    expect([...container.querySelectorAll('[role="region"][tabindex="0"]')]).toHaveLength(3);
+    expect([...container.querySelectorAll('[role="region"][tabindex="0"]')]).toHaveLength(breakpoint === 'compact' ? 2 : 3);
     const focusable = [...container.querySelectorAll('button, input, [tabindex="0"]')];
     expect(focusable.indexOf(value)).toBeLessThan(focusable.indexOf(propose));
     expect(focusable.indexOf(effectiveFrom)).toBeLessThan(focusable.indexOf(propose));
@@ -278,7 +285,7 @@ describe('responsive AdminScreen (WEB-07, UX-01)', () => {
     ).toBeTruthy();
     expect(screen.getByText(LONG_ENGLISH)).toBeTruthy();
     expect(screen.getByText(LONG_ARABIC)).toBeTruthy();
-    expect(screen.getByRole('table', { name: adminText('ar', 'auditEvents') })).toBeTruthy();
+    expect(screen.getByRole('list', { name: adminText('ar', 'auditEvents') })).toBeTruthy();
 
     for (const run of document.querySelectorAll('bdi')) {
       const isolated = run as HTMLElement;
