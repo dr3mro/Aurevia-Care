@@ -66,9 +66,10 @@ export interface ReleasedReportsScreenProps {
  * refuse it anyway (XCH-06).
  *
  * Responsive presentation (decision 0005, UX-01) follows the current window, not the device:
- * every window class gets a centred, capped content column and safe-area padding, and a large
- * window lays a report's summary and its result detail out as two side-by-side panes. No state,
- * cache or data access is added — the data still arrives from the authenticated client.
+ * every window class gets a centred content column and safe-area padding; large windows
+ * additionally cap that column's width and lay a report's summary and its result detail out as
+ * two side-by-side panes. No state, cache or data access is added — the data still arrives from
+ * the authenticated client.
  */
 export function ReleasedReportsScreen({
   reports,
