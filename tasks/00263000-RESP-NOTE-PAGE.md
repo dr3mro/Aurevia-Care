@@ -1,4 +1,6 @@
-- [ ] RESP-NOTE-PAGE · Staff web: responsive `NotePage` (features-chart)
+- [-] RESP-NOTE-PAGE · Staff web: responsive `NotePage` (features-chart)
+  - agent: swarm-4
+  - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/chart/NotePage.tsx, apps/staff-web/tests/responsive/features-chart/NotePage.responsive.test.tsx
   - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
