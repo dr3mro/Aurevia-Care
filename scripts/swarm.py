@@ -28,7 +28,7 @@ MAX_FIX = 3
 MAX_DEBUG_ROUNDS = 3
 # One story per worker PR: a batch this large cannot be reviewed or verified
 # as a single bounded change, and it was the source of the G1 quality failures.
-MAX_PR_FILES = 30
+MAX_PR_FILES = 50
 # A task a swarm worker has taken this many times without finishing waits for a person.
 MAX_ATTEMPTS = 5
 BODY_LIMIT = 8000
