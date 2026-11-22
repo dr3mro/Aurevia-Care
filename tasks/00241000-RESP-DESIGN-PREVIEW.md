@@ -1,5 +1,5 @@
-- [-] RESP-DESIGN-PREVIEW · Staff web: responsive `DesignPreview` (app)
-  - agent: swarm-5
+- [x] RESP-DESIGN-PREVIEW · Staff web: responsive `DesignPreview` (app)
+  - pr: #708
   - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/app/DesignPreview.tsx, apps/staff-web/tests/responsive/app/DesignPreview.responsive.test.tsx

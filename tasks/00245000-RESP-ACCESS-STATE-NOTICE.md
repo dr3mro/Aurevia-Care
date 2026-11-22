@@ -1,5 +1,5 @@
-- [-] RESP-ACCESS-STATE-NOTICE · Staff web: responsive `AccessStateNotice` (features-admin)
-  - agent: swarm-8
+- [x] RESP-ACCESS-STATE-NOTICE · Staff web: responsive `AccessStateNotice` (features-admin)
+  - pr: #710
   - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/admin/AccessStateNotice.tsx, apps/staff-web/tests/responsive/features-admin/AccessStateNotice.responsive.test.tsx

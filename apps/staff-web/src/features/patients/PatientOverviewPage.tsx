@@ -2,7 +2,7 @@ import { useActiveOrganization } from '../../api/activeOrganization';
 import { ApiPage } from '../../components/ApiPage';
 import { useRoute } from '../../app/router';
 import { useI18n } from '../../i18n/I18nProvider';
-import { useTheme } from '../../theme/ThemeProvider';
+import { useBreakpoint } from '../../theme/useBreakpoint';
 import { getPatient } from './api';
 import type { PatientViewResponse } from './domain';
 import { toPatientOverview } from './domain';
@@ -18,9 +18,17 @@ interface PatientOverviewContentProps {
 /** Load one effective patient view and render the overview states. */
 function PatientOverviewContent({ organizationId, patientId }: PatientOverviewContentProps) {
   const { locale } = useI18n();
-  const { tokens } = useTheme();
+  const breakpoint = useBreakpoint();
   return (
-    <div style={{ display: 'grid', gap: tokens.spacing.lg }}>
+    // A transparent `.stack` wrapper keeps the single content column and lets
+    // long values wrap; `ApiPage` remains the only `.page` layout owner, so the
+    // safe-area padding and reading-width cap are applied once, not twice. The
+    // resolved breakpoint is exposed as a data attribute for jsdom structure
+    // assertions. `overflow-wrap`
+    // is inherited so long English and Arabic clinical values wrap instead of
+    // forcing a horizontal scroll. No field is hidden and direction stays with
+    // the document.
+    <div className="stack" data-breakpoint={breakpoint} style={{ overflowWrap: 'anywhere' }}>
       <ApiPage
         resource={{
           label: patientsText(locale, 'overviewTitle'),

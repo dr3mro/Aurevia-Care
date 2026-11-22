@@ -1,5 +1,5 @@
-- [-] RESP-REGISTER-PATIENT-FORM · Staff web: responsive `RegisterPatientForm` (features-patients)
-  - agent: swarm-10
+- [x] RESP-REGISTER-PATIENT-FORM · Staff web: responsive `RegisterPatientForm` (features-patients)
+  - pr: #791
   - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/patients/RegisterPatientForm.tsx, apps/staff-web/tests/responsive/features-patients/RegisterPatientForm.responsive.test.tsx
