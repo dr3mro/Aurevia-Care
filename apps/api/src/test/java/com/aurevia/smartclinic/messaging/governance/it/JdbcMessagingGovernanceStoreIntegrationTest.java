@@ -28,6 +28,7 @@ import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.Audit
 import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.AuditEvent;
 import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.ConnectionReference;
 import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.CopyRequest;
+import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.ExportProvenance;
 import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.ExportRecord;
 import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.LegalHold;
 import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.MessagingResource;
@@ -421,8 +422,12 @@ class JdbcMessagingGovernanceStoreIntegrationTest {
         assertEquals(List.of(effectB), as(ORG_B, SHARED_SUBJECT, () -> store.revocationEffects(ORG_B, OTHER_ID)));
         assertTrue(as(ORG_A, SHARED_SUBJECT, () -> store.revocationEffects(ORG_A, SHARED_ID)).isEmpty());
 
-        ExportRecord exportA = new ExportRecord(SHARED_ID, ORG_A, "scope-a", "clinician-a", NOW, NOW.plusSeconds(60));
-        ExportRecord exportB = new ExportRecord(SHARED_ID, ORG_B, "scope-b", "clinician-b", NOW, NOW.plusSeconds(120));
+        ExportProvenance provenanceA = new ExportProvenance(SHARED_ID, "rev-1", "record_access");
+        ExportProvenance provenanceB = new ExportProvenance(SHARED_ID, "rev-2", "legal_review");
+        ExportRecord exportA = new ExportRecord(SHARED_ID, ORG_A, "scope-a", "clinician-a", NOW,
+                NOW.plusSeconds(60), provenanceA);
+        ExportRecord exportB = new ExportRecord(SHARED_ID, ORG_B, "scope-b", "clinician-b", NOW,
+                NOW.plusSeconds(120), provenanceB);
         as(ORG_A, SHARED_SUBJECT, () -> {
             store.putExport(ORG_A, exportA);
             return null;
@@ -433,6 +438,10 @@ class JdbcMessagingGovernanceStoreIntegrationTest {
         });
         assertEquals(exportA, as(ORG_A, SHARED_SUBJECT, () -> store.export(ORG_A, SHARED_ID)).orElseThrow());
         assertEquals(exportB, as(ORG_B, SHARED_SUBJECT, () -> store.export(ORG_B, SHARED_ID)).orElseThrow());
+        assertEquals(provenanceA,
+                as(ORG_A, SHARED_SUBJECT, () -> store.export(ORG_A, SHARED_ID)).orElseThrow().provenance());
+        assertEquals(provenanceB,
+                as(ORG_B, SHARED_SUBJECT, () -> store.export(ORG_B, SHARED_ID)).orElseThrow().provenance());
         assertTrue(as(ORG_A, SHARED_SUBJECT, () -> store.export(ORG_A, OTHER_ID)).isEmpty());
     }
 

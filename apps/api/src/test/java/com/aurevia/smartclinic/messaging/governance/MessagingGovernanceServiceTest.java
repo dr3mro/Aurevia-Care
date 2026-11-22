@@ -26,6 +26,7 @@ import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.Audit
 import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.AuditEvent;
 import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.CopyRequest;
 import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.CreateExportRequest;
+import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.ExportProvenance;
 import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.ExportRecord;
 import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.LegalHold;
 import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.LinkToChartRequest;
@@ -60,6 +61,8 @@ class MessagingGovernanceServiceTest {
     private static final String MSG = "d0ffee11-1111-1111-1111-111111111111";
     private static final String MISSING = "abcdef01-2345-6789-abcd-ef0123456789";
     private static final Instant NOW = Instant.parse("2026-11-19T12:00:00Z");
+    private static final ExportProvenance PROVENANCE =
+            new ExportProvenance(RESOURCE, "rev-2", "record_access");
 
     private InMemoryMessagingGovernanceStore store;
     private MessagingGovernanceService service;
@@ -276,27 +279,87 @@ class MessagingGovernanceServiceTest {
     @Test
     void createExportBoundsScopeAndTtl() {
         as("auditor", ORG);
-        ExportRecord export = service.createExport(new CreateExportRequest("conversation", 600L));
+        ExportRecord export = service.createExport(new CreateExportRequest("conversation", 600L, PROVENANCE));
         assertEquals("conversation", export.scope());
         assertEquals("auditor", export.createdBy());
         assertEquals(NOW.plusSeconds(600), export.expiresAt());
+        assertEquals(PROVENANCE, export.provenance());
         assertEquals(AuditAction.EXPORT, lastAudit().action());
 
         assertEquals("INVALID_TTL", assertThrows(ApiException.class,
-                () -> service.createExport(new CreateExportRequest("conversation", 10L))).code());
+                () -> service.createExport(new CreateExportRequest("conversation", 10L, PROVENANCE))).code());
         assertEquals("INVALID_TTL", assertThrows(ApiException.class,
-                () -> service.createExport(new CreateExportRequest("conversation", 90_000L))).code());
+                () -> service.createExport(new CreateExportRequest("conversation", 90_000L, PROVENANCE))).code());
         assertEquals("INVALID_SCOPE", assertThrows(ApiException.class,
-                () -> service.createExport(new CreateExportRequest("  ", 600L))).code());
+                () -> service.createExport(new CreateExportRequest("  ", 600L, PROVENANCE))).code());
         assertEquals("INVALID_SCOPE", assertThrows(ApiException.class,
-                () -> service.createExport(new CreateExportRequest("diagnosis free text", 600L))).code());
+                () -> service.createExport(new CreateExportRequest("diagnosis free text", 600L, PROVENANCE))).code());
         // A null TTL uses the server default without polluting the audit scope.
-        ExportRecord defaulted = service.createExport(new CreateExportRequest("audit", null));
+        ExportRecord defaulted = service.createExport(new CreateExportRequest("audit", null, PROVENANCE));
         assertEquals(NOW.plusSeconds(3600), defaulted.expiresAt());
 
         as("patient-user", ORG);
         assertEquals(403, assertThrows(ApiException.class,
-                () -> service.createExport(new CreateExportRequest("conversation", 600L))).status());
+                () -> service.createExport(new CreateExportRequest("conversation", 600L, PROVENANCE))).status());
+    }
+
+    @Test
+    void createExportRejectsMissingProvenance() {
+        as("auditor", ORG);
+        ApiException error = assertThrows(ApiException.class,
+                () -> service.createExport(new CreateExportRequest("conversation", 600L, null)));
+        assertEquals(422, error.status());
+        assertEquals("INVALID_PROVENANCE", error.code());
+        assertEquals(0, store.auditEvents(ORG).size(),
+                "a rejected export must not fabricate a successful audit fact");
+    }
+
+    @Test
+    void createExportRejectsBlankOrOverlongProvenanceFields() {
+        as("auditor", ORG);
+        assertEquals("INVALID_SOURCEREFERENCE", assertThrows(ApiException.class,
+                () -> service.createExport(new CreateExportRequest("conversation", 600L,
+                        new ExportProvenance("  ", "rev-2", "record_access")))).code());
+        assertEquals("INVALID_SOURCEREVISION", assertThrows(ApiException.class,
+                () -> service.createExport(new CreateExportRequest("conversation", 600L,
+                        new ExportProvenance(RESOURCE, null, "record_access")))).code());
+        assertEquals("INVALID_PURPOSE", assertThrows(ApiException.class,
+                () -> service.createExport(new CreateExportRequest("conversation", 600L,
+                        new ExportProvenance(RESOURCE, "rev-2", "x".repeat(129))))).code());
+        assertEquals(0, store.auditEvents(ORG).size());
+    }
+
+    @Test
+    void createExportBindsProvenanceToATrackedSourceResource() {
+        as("auditor", ORG);
+        ApiException untracked = assertThrows(ApiException.class,
+                () -> service.createExport(new CreateExportRequest("conversation", 600L,
+                        new ExportProvenance(MISSING, "rev-2", "record_access"))));
+        assertEquals(404, untracked.status());
+        assertEquals("NOT_FOUND", untracked.code());
+        assertEquals(Outcome.NOT_FOUND, lastAudit().outcome());
+
+        assertEquals("INVALID_PURPOSE", assertThrows(ApiException.class,
+                () -> service.createExport(new CreateExportRequest("conversation", 600L,
+                        new ExportProvenance(RESOURCE, "rev-2", "free text with a patient name")))).code());
+        assertEquals("INVALID_SOURCEREVISION", assertThrows(ApiException.class,
+                () -> service.createExport(new CreateExportRequest("conversation", 600L,
+                        new ExportProvenance(RESOURCE, "rev 2; drop table", "record_access")))).code());
+    }
+
+    @Test
+    void heldConversationSurvivesRetentionAndExportKeepsProvenance() {
+        as("auditor", ORG);
+        service.placeHold(new PlaceHoldRequest(RESOURCE, "Synthetic dispute"));
+        assertFalse(service.applyRetention(NOW).contains(RESOURCE),
+                "a held conversation must survive the retention job");
+        assertEquals("LEGAL_HOLD", service.retentionDecision(RESOURCE).reason());
+
+        ExportProvenance provenance = new ExportProvenance(RESOURCE, "rev-2", "record_access");
+        ExportRecord exported = service.createExport(
+                new CreateExportRequest("conversation", 600L, provenance));
+        assertEquals(provenance, exported.provenance());
+        assertEquals(provenance, store.export(ORG, exported.id()).orElseThrow().provenance());
     }
 
     @Test
@@ -532,9 +595,9 @@ class MessagingGovernanceServiceTest {
         assertEquals(decision, controller.retention(RESOURCE));
         verify(mocked).retentionDecision(RESOURCE);
 
-        CreateExportRequest exportRequest = new CreateExportRequest("conversation", 600L);
+        CreateExportRequest exportRequest = new CreateExportRequest("conversation", 600L, PROVENANCE);
         ExportRecord export = new ExportRecord("export-1", ORG, "conversation", "auditor", NOW,
-                NOW.plusSeconds(600));
+                NOW.plusSeconds(600), PROVENANCE);
         when(mocked.createExport(exportRequest)).thenReturn(export);
         ResponseEntity<ExportRecord> exportResponse = controller.createExport(exportRequest);
         assertEquals(HttpStatus.CREATED, exportResponse.getStatusCode());

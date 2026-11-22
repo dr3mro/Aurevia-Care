@@ -19,6 +19,7 @@ import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.Audit
 import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.ConnectionReference;
 import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.CopyRequest;
 import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.CreateExportRequest;
+import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.ExportProvenance;
 import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.ExportRecord;
 import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.LegalHold;
 import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.LinkToChartRequest;
@@ -48,6 +49,8 @@ class MessagingAuditDomainTest {
     private static final String UNIT = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
     private static final String CONNECTION = "cccccccc-cccc-cccc-cccc-cccccccccccc";
     private static final Instant NOW = Instant.parse("2026-11-19T12:00:00Z");
+    private static final ExportProvenance PROVENANCE =
+            new ExportProvenance(RESOURCE, "rev-2", "record_access");
 
     @Test
     void everyAuditActionRoundTripsItsWireValue() {
@@ -124,7 +127,7 @@ class MessagingAuditDomainTest {
         ProvenanceLink link = new ProvenanceLink("link-1", ORG, "conv-1", "msg-1", "patient-1",
                 "chart-1", "instruction", "instruction-1", "rev-2", "clinician", NOW);
         ExportRecord export = new ExportRecord("export-1", ORG, "conversation", "auditor", NOW,
-                NOW.plusSeconds(60));
+                NOW.plusSeconds(60), PROVENANCE);
         CopyRequest copy = new CopyRequest("copy-1", ORG, RESOURCE, "patient-user", "record_access",
                 "ROUTED", NOW);
         RevocationEffect effect = new RevocationEffect("effect-1", ORG, CONNECTION, true, true,
@@ -142,6 +145,8 @@ class MessagingAuditDomainTest {
         assertEquals("clinician", link.linkedBy());
         assertEquals("instruction", link.sourceType());
         assertEquals("auditor", export.createdBy());
+        assertEquals(PROVENANCE, export.provenance());
+        assertEquals("rev-2", export.provenance().sourceRevision());
         assertTrue(export.expiresAt().isAfter(NOW));
         assertEquals("ROUTED", copy.status());
         assertEquals("record_access", copy.purpose());
@@ -168,7 +173,10 @@ class MessagingAuditDomainTest {
         assertEquals(RESOURCE, new PlaceHoldRequest(RESOURCE, "dispute").resourceId());
         assertEquals("msg-1", new LinkToChartRequest("conv-1", "msg-1", "patient-1", "chart-1",
                 "message", "ref-1", "rev-1").messageId());
-        assertEquals(Long.valueOf(600), new CreateExportRequest("conversation", 600L).ttlSeconds());
+        assertEquals(Long.valueOf(600),
+                new CreateExportRequest("conversation", 600L, PROVENANCE).ttlSeconds());
+        assertEquals(PROVENANCE,
+                new CreateExportRequest("conversation", 600L, PROVENANCE).provenance());
         assertEquals("record_access", new RequestCopyRequest(RESOURCE, "record_access").purpose());
     }
 
@@ -282,7 +290,7 @@ class MessagingAuditDomainTest {
         store.putProvenanceLink(ORG, link);
         store.putProvenanceLink(OTHER_ORG, foreignLink);
         ExportRecord export = new ExportRecord("export-1", ORG, "conversation", "auditor", NOW,
-                NOW.plusSeconds(60));
+                NOW.plusSeconds(60), PROVENANCE);
         store.putExport(ORG, export);
         CopyRequest copy = new CopyRequest("copy-1", ORG, RESOURCE, "patient-user", "record_access",
                 "ROUTED", NOW);

@@ -15,6 +15,7 @@ import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.Audit
 import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.ConnectionReference;
 import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.CopyRequest;
 import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.CreateExportRequest;
+import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.ExportProvenance;
 import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.ExportRecord;
 import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.LegalHold;
 import com.aurevia.smartclinic.messaging.governance.MessagingAuditContract.LinkToChartRequest;
@@ -263,9 +264,10 @@ public class MessagingGovernanceService {
         }
         TenantContext context = requireContext();
         authorize(context, AuditAction.EXPORT, scope);
+        ExportProvenance provenance = validatedProvenance(request.provenance(), context);
         Instant now = clock.instant();
         ExportRecord export = new ExportRecord(MessagingGovernanceInputs.newId(), context.organizationId(),
-                scope, context.subject(), now, now.plusSeconds(ttl));
+                scope, context.subject(), now, now.plusSeconds(ttl), provenance);
         store.putExport(context.organizationId(), export);
         append(context, AuditAction.EXPORT, scope, SYSTEM_SCOPE, Outcome.SUCCESS);
         return export;
@@ -422,6 +424,38 @@ public class MessagingGovernanceService {
         store.putCopyRequest(context.organizationId(), copy);
         append(context, AuditAction.COPY_REQUEST, resourceId, SYSTEM_SCOPE, Outcome.SUCCESS);
         return copy;
+    }
+
+    /**
+     * Validate the provenance an export must carry and bind it to a real source.
+     *
+     * <p>Provenance is a server-durable trace of the source material and the
+     * exact revision a copy was derived from. The source must be a resource the
+     * governance store already tracks in the active tenant, otherwise a caller
+     * could attribute a copy to material that was never exported. Free-text
+     * fields are reduced to allowlisted codes and bounded identifier tokens so
+     * patient identifiers cannot be written into the immutable record (F2).</p>
+     *
+     * @param provenance caller-supplied provenance
+     * @param context    active tenant used for the source binding
+     * @return validated provenance naming a tracked resource
+     * @throws ApiException when provenance is absent, malformed or names an untracked source
+     */
+    private ExportProvenance validatedProvenance(ExportProvenance provenance, TenantContext context) {
+        if (provenance == null) {
+            throw new ApiException(422, "INVALID_PROVENANCE", "export provenance is required");
+        }
+        String sourceReference = MessagingGovernanceInputs.uuid(
+                provenance.sourceReference(), "sourceReference");
+        String sourceRevision = MessagingGovernanceInputs.exportRevision(provenance.sourceRevision());
+        String purpose = MessagingGovernanceInputs.exportPurpose(provenance.purpose());
+        boolean tracked = store.resources(context.organizationId()).stream()
+                .anyMatch(resource -> sourceReference.equals(resource.id()));
+        if (!tracked) {
+            throw deny(context, AuditAction.EXPORT, sourceReference, 404,
+                    "NOT_FOUND", "export source resource not found in the active organization");
+        }
+        return new ExportProvenance(sourceReference, sourceRevision, purpose);
     }
 
     private boolean isHeld(TenantContext context, String resourceId) {

@@ -258,7 +258,30 @@ public final class MessagingAuditContract {
     }
 
     /**
+     * Non-sensitive provenance carried by a conversation export.
+     *
+     * <p>The export keeps a stable pointer to the source material, the exact
+     * revision it was derived from and the purpose of the copy, so a later
+     * review can trace a copy back to its origin. No message body, attachment
+     * bytes or clinical payload is duplicated into the governance record.
+     * Exports created before provenance was introduced read back as empty
+     * values; only exports created through the current command carry validated
+     * references.</p>
+     *
+     * @param sourceReference stable non-sensitive source reference
+     * @param sourceRevision  immutable source revision at export time
+     * @param purpose         non-sensitive purpose of the copy
+     * @return the immutable provenance
+     */
+    public record ExportProvenance(String sourceReference, String sourceRevision, String purpose) {
+    }
+
+    /**
      * A scoped, expiring export record (OPS-07).
+     *
+     * <p>The provenance is part of the durable record: an authorized review can
+     * establish where the exported copy came from even after the source
+     * conversation has left the retention window.</p>
      *
      * @param id             export identifier
      * @param organizationId owning organization
@@ -266,10 +289,11 @@ public final class MessagingAuditContract {
      * @param createdBy      authorized actor
      * @param createdAt      server creation instant
      * @param expiresAt      server expiry instant
+     * @param provenance     non-sensitive source provenance for the copy
      * @return the immutable record
      */
     public record ExportRecord(String id, String organizationId, String scope, String createdBy,
-                               Instant createdAt, Instant expiresAt) {
+                               Instant createdAt, Instant expiresAt, ExportProvenance provenance) {
     }
 
     /**
@@ -390,13 +414,14 @@ public final class MessagingAuditContract {
     }
 
     /**
-     * Create a scoped, expiring export.
+     * Create a scoped, expiring export that keeps its source provenance.
      *
-     * @param scope     explicit resource scope
+     * @param scope      explicit resource scope
      * @param ttlSeconds requested validity window, or {@code null} for the default
+     * @param provenance non-sensitive source provenance for the copy
      * @return the command
      */
-    public record CreateExportRequest(String scope, Long ttlSeconds) {
+    public record CreateExportRequest(String scope, Long ttlSeconds, ExportProvenance provenance) {
     }
 
     /**
