@@ -6,6 +6,7 @@ import { MixedScriptText } from '../../components/MixedScriptText';
 import { formatCivilDate } from '../../i18n/format';
 import { useI18n } from '../../i18n/I18nProvider';
 import { useTheme } from '../../theme/ThemeProvider';
+import { useBreakpoint } from '../../theme/useBreakpoint';
 import { AdminTableRegion } from './AdminTableRegion';
 import type { ConfigurationDraft, ConfigurationVersion } from './domain';
 import { effectiveVersion, isValidCivilDate, versionsFor } from './domain';
@@ -27,7 +28,17 @@ export interface ConfigurationEditorProps {
   onApprove?: (version: number) => void;
 }
 
-/** Show versioned, effective-dated configuration and collect a local draft. */
+/**
+ * Show versioned, effective-dated configuration and collect a local draft.
+ *
+ * Layout is presentation only and never changes the data or the available
+ * actions: the versions table stays in its labelled, keyboard-scrollable
+ * region at every width, and the draft form stacks its fields in one column on
+ * a phone. The active band is exposed as `data-breakpoint` so the structure can
+ * be checked in jsdom; no clinical column is hidden and all side-aware values
+ * are CSS logical properties, so one DOM mirrors under right-to-left
+ * (WEB-07, UX-01).
+ */
 export function ConfigEditor({
   entries,
   organizationId,
@@ -38,6 +49,7 @@ export function ConfigEditor({
 }: ConfigurationEditorProps) {
   const { locale } = useI18n();
   const { tokens } = useTheme();
+  const breakpoint = useBreakpoint();
   const [value, setValue] = useState('');
   const [effectiveFrom, setEffectiveFrom] = useState('');
   const [invalidField, setInvalidField] = useState<'value' | 'effectiveFrom' | null>(null);
@@ -74,13 +86,23 @@ export function ConfigEditor({
   }
 
   return (
-    <section aria-label={text('configurationEditor')} style={{ display: 'grid', gap: tokens.spacing.md }}>
+    <section
+      aria-label={text('configurationEditor')}
+      className="stack"
+      data-part="config-editor"
+      data-breakpoint={breakpoint}
+      style={{ gap: tokens.spacing.md }}
+    >
       <h3>{text('configurationEditor')}</h3>
-      <p>
+      <p data-part="config-key" style={{ overflowWrap: 'anywhere' }}>
         {text('configKey')}: <MixedScriptText text={configKey} lang="en" />
       </p>
       <AdminTableRegion label={text('configurationVersions')}>
-        <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+        <table
+          data-part="versions-table"
+          data-breakpoint={breakpoint}
+          style={{ borderCollapse: 'collapse', inlineSize: '100%' }}
+        >
           <caption style={{ textAlign: 'start', paddingBlock: tokens.spacing.sm }}>
             {text('configurationVersions')}
           </caption>
@@ -102,7 +124,7 @@ export function ConfigEditor({
               versions.map((entry) => (
                 <tr key={`${entry.organizationId}:${entry.version}`}>
                   <th scope="row">{entry.version}</th>
-                  <td>
+                  <td data-part="configured-value">
                     <MixedScriptText text={entry.value} lang="en" />
                   </td>
                   <td>
@@ -115,7 +137,14 @@ export function ConfigEditor({
                     )}
                   </td>
                   <td>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: tokens.spacing.sm }}>
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        flexWrap: 'wrap',
+                        alignItems: 'center',
+                        gap: tokens.spacing.sm,
+                      }}
+                    >
                       {entry.approved ? (
                         <StateBadge glyph="✓" label={text('approved')} tone="approved" />
                       ) : (
