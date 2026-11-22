@@ -1,5 +1,5 @@
-- [-] RESP-APP-SCREENS · Patient app: tablet, landscape and large-text layout for `screens` (enrollment)
-  - agent: swarm-10
+- [x] RESP-APP-SCREENS · Patient app: tablet, landscape and large-text layout for `screens` (enrollment)
+  - pr: #649
   - attempts: 1
   - requirements: PAT-01, PAT-02, UX-01
   - scope: apps/patient-mobile/src/features/enrollment/screens.tsx, apps/patient-mobile/src/features/enrollment/screens.tablet.test.tsx

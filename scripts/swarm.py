@@ -2374,6 +2374,130 @@ def main_is_red(workflow="delivery.yml"):
     return bool(runs) and runs[0]["conclusion"] == "failure"
 
 
+# A workflow run that ended without passing: cancelled is a failed verification,
+# not an absent one, so a person must not mistake it for a run still to come.
+DELIVERY_FAILED = frozenset({"failure", "timed_out", "cancelled"})
+# A run waiting for a first-time-contributor review or an environment approval.
+DELIVERY_APPROVAL = frozenset({"waiting", "action_required"})
+
+
+def _delivery_needs_approval(run):
+    """True when a Delivery run or one of its jobs waits for a human approval gate.
+
+    First-time-contributor approval is reported on the run; an environment gate
+    is reported on a job while the run itself still looks in progress. Both mean
+    the same thing to the integrator: nothing can pass until a person acts.
+    """
+    if run.get("status") in DELIVERY_APPROVAL or run.get("conclusion") == "action_required":
+        return True
+    for job in (run.get("jobs") or []):
+        if not isinstance(job, dict):
+            continue
+        if job.get("status") in DELIVERY_APPROVAL or job.get("conclusion") == "action_required":
+            return True
+    return False
+
+
+def delivery_state(runs, head_sha):
+    """Classify the newest Delivery workflow run that tested one head SHA.
+
+    ``runs`` is a newest-first list of ``gh run list`` records. A record carries
+    ``headSha`` (``head_sha`` is accepted for synthetic fixtures), ``status``,
+    ``conclusion`` and optionally ``jobs``. Only runs for ``head_sha`` count: a
+    run for an older commit says nothing about the branch tip. The newest such
+    run wins, so a re-run supersedes an earlier failure.
+
+    Returns exactly one of:
+
+    - ``passed`` — the run succeeded;
+    - ``failed`` — it failed, timed out or was cancelled;
+    - ``approval-required`` — it waits for a contributor or environment approval;
+    - ``pending`` — it is queued or running and not waiting on approval;
+    - ``missing`` — no run tested this SHA, or the run was skipped and therefore
+      produced no verification. A skipped run cannot prove a Markdown-only
+      change by itself: the caller applies that documented exception after
+      inspecting the actual changed files.
+
+    The caller applies the integrator policy; this function only reports facts.
+    """
+    current = [run for run in (runs or [])
+               if isinstance(run, dict) and (run.get("headSha") or run.get("head_sha")) == head_sha]
+    if not current:
+        return "missing"
+    run = current[0]
+    if _delivery_needs_approval(run):
+        return "approval-required"
+    conclusion = run.get("conclusion")
+    if conclusion == "success":
+        return "passed"
+    if conclusion in DELIVERY_FAILED:
+        return "failed"
+    if conclusion == "skipped":
+        # paths-ignore makes a docs-only change have no run at all; a run that
+        # was skipped for another reason is not evidence either way. Let the
+        # caller decide using the changed files rather than trusting the label.
+        return "missing"
+    return "pending"
+
+
+def markdown_only(files):
+    """True when every changed path is documentation (docs/ or a Markdown file).
+
+    Delivery ignores those paths, so a docs-only pull request has no run to
+    inspect. The integrator's local docs check is its evidence instead.
+    """
+    paths = [name for name in files if name]
+    return bool(paths) and all(name.startswith("docs/") or name.endswith(".md") for name in paths)
+
+
+def delivery_runs(head):
+    """Newest Delivery runs for one commit, with jobs on the newest matching run.
+
+    Filtering the listing by commit prevents an old green run from being read as
+    evidence for a newer head. Jobs are read separately because the run listing
+    does not expose them and an environment gate is only visible at job level.
+    """
+    runs = gh_json("run", "list", "--workflow", "Delivery", "--commit", head,
+                   "--json", "databaseId,headSha,status,conclusion") or []
+    current = [run for run in runs if isinstance(run, dict) and (run.get("headSha") or "") == head]
+    if current and current[0].get("databaseId"):
+        jobs = gh_json("run", "view", str(current[0]["databaseId"]), "--json", "jobs") or {}
+        current[0]["jobs"] = jobs.get("jobs") or []
+    return runs
+
+
+def delivery_gate(pr, head=None, runs=None):
+    """Apply the integrator's Delivery policy to one pull request.
+
+    Returns ``merge``, ``wait``, ``fix`` or ``request``. Only ``merge`` may stage
+    the pull request: ``wait`` leaves it untouched with no label, ``fix`` sends a
+    failed run back to the fix workers, and ``request`` asks for a fresh run for
+    ``missing`` or ``approval-required`` evidence. A Markdown-only change uses the
+    documented exception: with no Delivery run it is checked by the local docs
+    gate instead. ``runs`` may be supplied by a caller that already listed them.
+    """
+    if head is None:
+        head = (gh_json("pr", "view", str(pr), "--json", "headRefOid") or {}).get("headRefOid", "")
+    state = delivery_state(delivery_runs(head) if runs is None else runs, head)
+    if state == "passed":
+        return "merge"
+    if state == "failed":
+        fail(pr, "Delivery failed on the current head")
+        return "fix"
+    if state == "pending":
+        return "wait"
+    if state == "missing" and markdown_only(gh("pr", "diff", str(pr), "--name-only").split()):
+        # delivery.yml's paths-ignore means a docs-only change never gets a run;
+        # quick-check.sh already ran check-docs.py on this exact merge result.
+        return "merge"
+    branch = (gh_json("pr", "view", str(pr), "--json", "headRefName") or {}).get("headRefName", "")
+    gh("pr", "comment", str(pr), "--body",
+       f"{MARK}\nDelivery is {state} for {head[:12]}; a fresh run was requested on this branch. "
+       "Nothing merges until it reports passed.", check=False)
+    gh("workflow", "run", "delivery.yml", "--ref", branch, check=False)
+    return "request"
+
+
 def plan_integration(red=False):
     """Pull requests ready to integrate, oldest first. While main is red only
     repair pull requests (FIX-, DLV-) may merge, so ordinary work is not blamed for it.
@@ -3067,17 +3191,28 @@ def migrate_tasks(attempts=4):
                 return 0
 
 
-def integrate_batch(queue, gate="scripts/quick-check.sh"):
+def integrate_batch(queue, gate="scripts/quick-check.sh", check_delivery=None):
     """Merge every ready PR in one job, gate each, then push main once.
 
     One cache/Java setup serves the whole batch. A PR whose gate fails is sent
     back to the workers and its merge is rolled back before the next PR, so a
-    bad PR never blocks the others. Returns the number of merged PRs."""
+    bad PR never blocks the others. The production caller is the trusted
+    integrator job in GitHub Actions, where a current-head Delivery verdict is
+    a precondition for staging a merge; direct callers that only exercise merge
+    mechanics have no CI evidence to check. ``check_delivery`` overrides that
+    default. Returns the number of merged PRs."""
     merged, conflicted, gates = [], [], {}
+    require_evidence = (os.environ.get("GITHUB_ACTIONS") == "true") \
+        if check_delivery is None else check_delivery
     migrate_tasks()
     for pr in queue:
         blocked = guard(pr, is_repair(pr))
         if blocked:
+            continue
+        head = (gh_json("pr", "view", str(pr), "--json", "headRefOid") or {}).get("headRefOid", "")
+        if require_evidence and delivery_gate(pr, head) != "merge":
+            # wait/fix/request PRs stay open and unstaged; the gate already took
+            # the appropriate label or comment action for each verdict.
             continue
         sha, task_id, conflicts = merge_local(pr)
         if sha is None:
@@ -3093,7 +3228,6 @@ def integrate_batch(queue, gate="scripts/quick-check.sh"):
             else:
                 fail(pr, reason, simple=True)
             continue
-        head = gh_json("pr", "view", str(pr), "--json", "headRefOid")["headRefOid"]
         if head != sha:
             fail(pr, "the branch changed after planning; it will be retested", simple=True)
             git("merge", "--abort", check=False)
