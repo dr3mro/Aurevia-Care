@@ -230,7 +230,10 @@ describe('ReleasedReportsScreen responsive layout (RESP-APP-RELEASED-REPORTS-SCR
 
   it('keeps a single summary pane when a report has no result detail and tolerates no provider', async () => {
     mockWindow = { width: 1024, height: 1400, scale: 2, fontScale: 1 };
-    const withoutResult: ReleasedReport = { ...report, result: undefined };
+    // Omit the key rather than assigning undefined: exactOptionalPropertyTypes
+    // forbids writing undefined to an optional property, and the screen treats an
+    // absent result exactly like an explicitly undefined one.
+    const { result: _discardedResult, ...withoutResult } = report;
 
     const view = await renderScreen(
       <ReleasedReportsScreen reports={[withoutResult]} error={null} onDownload={() => undefined} locale="en" />,
