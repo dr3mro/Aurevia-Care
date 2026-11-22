@@ -11,6 +11,8 @@ import { patientsText } from './messages';
 export interface PatientsScreenProps {
   patients: readonly Patient[];
   locale: Locale;
+  /** The containing page already provides the compact scrolling region. */
+  embeddedInScrollRegion?: boolean;
 }
 
 /**
@@ -24,7 +26,7 @@ export interface PatientsScreenProps {
  * UX-01). Headers and cells wrap long English and Arabic values and keep no
  * fixed block size, so text stays readable at 200 percent zoom.
  */
-export function PatientsScreen({ patients, locale }: PatientsScreenProps) {
+export function PatientsScreen({ patients, locale, embeddedInScrollRegion = false }: PatientsScreenProps) {
   const { tokens } = useTheme();
   const breakpoint = useBreakpoint();
   const caption = patientsText(locale, 'resultsCaption');
@@ -88,7 +90,7 @@ export function PatientsScreen({ patients, locale }: PatientsScreenProps) {
 
   // The region is a layout affordance only: the table keeps its caption,
   // headers and every clinical column at each breakpoint.
-  if (breakpoint === 'compact') {
+  if (breakpoint === 'compact' && !embeddedInScrollRegion) {
     return (
       <div className="table-region" role="region" aria-label={caption} tabIndex={0}>
         {table}
