@@ -186,6 +186,11 @@ describe('responsive ChartPage (WEB-07, UX-01)', () => {
         screen.getByRole('heading', { level: 2, name: chartText('en', 'chart') }),
       ).toBeTruthy();
       for (const [key, headerKeys] of Object.entries(CLINICAL_TABLES)) {
+        if (breakpoint === 'compact' && key === 'vitals') {
+          const list = screen.getByRole('list', { name: chartText('en', 'vitals') });
+          expect(within(list).getByRole('listitem').textContent).toBe(chartText('en', 'noEntries'));
+          continue;
+        }
         const table = screen.getByRole('table', {
           name: chartText('en', key as Parameters<typeof chartText>[1]),
         }) as HTMLElement;

@@ -1,4 +1,6 @@
-- [ ] COVPY-SWARM-WORKERS · Script tests: swarm.py coverage, workers part (to 100% together with the other parts)
+- [-] COVPY-SWARM-WORKERS · Script tests: swarm.py coverage, workers part (to 100% together with the other parts)
+  - agent: swarm-10
+  - attempts: 1
   - requirements: OPS-06
   - scope: scripts/tests/test_swarm_workers_coverage.py
   - depends: WFAUDIT-02, WFAUDIT-06, WQUALITY-01, WQUALITY-02
