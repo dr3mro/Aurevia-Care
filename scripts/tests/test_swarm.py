@@ -1883,6 +1883,18 @@ class PrFlowTests(unittest.TestCase):
         self.assertIn((7, "needs-fix cleared: delivery already passed"), acted)
         self.assertFalse(fake.said("swarm.yml"))
 
+    def test_needs_fix_survives_a_delivery_lookup_failure(self):
+        err = swarm.subprocess.CalledProcessError(1, ("run", "list"))
+        with mock.patch.object(swarm, "delivery_runs", side_effect=err):
+            fake = FakeGh()
+            with mock.patch.object(swarm, "gh", fake), \
+                 mock.patch.object(swarm, "gh_json", lambda *a: [self.pr(7, ("needs-fix",))]), \
+                 mock.patch.object(swarm, "main_is_red", return_value=False), \
+                 mock.patch.object(swarm, "waiting_waves", return_value=0):
+                acted = swarm.pr_flow(self.NOW)
+        self.assertEqual(acted, [])
+        self.assertFalse(fake.said("swarm.yml"))
+
     def test_main_is_red_survives_a_gh_failure(self):
         err = swarm.subprocess.CalledProcessError(1, ("run", "list"))
         with mock.patch.object(swarm, "gh_json", side_effect=err):

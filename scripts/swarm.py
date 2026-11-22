@@ -3041,7 +3041,13 @@ def pr_flow(now=None):
             # already passed on the current head, the fix worked: clear the label so the
             # integrator can pick it up without spawning another redundant fix worker.
             head = item.get("headRefOid", "")
-            if head and delivery_state(delivery_runs(head), head) == "passed":
+            try:
+                delivered = bool(head) and delivery_state(delivery_runs(head), head) == "passed"
+            except subprocess.CalledProcessError as exc:
+                # Rate limit or API hiccup: leave this PR for the next pass, no wave on a guess.
+                print(f"#{pr}: delivery lookup failed ({exc.returncode}); retry next pass", file=sys.stderr)
+                continue
+            if delivered:
                 remove_label(pr, "needs-fix")
                 gh("pr", "ready", str(pr), check=False)
                 acted.append((pr, "needs-fix cleared: delivery already passed"))
@@ -3736,8 +3742,13 @@ def main(argv=None):
         emit("matrix", json.dumps({"include": lean}, separators=(",", ":")))
         emit("count", len(include))
     elif a.cmd == "pr-flow":
-        for pr, what in pr_flow():
-            print(f"#{pr}: {what}")
+        try:
+            for pr, what in pr_flow():
+                print(f"#{pr}: {what}")
+        except subprocess.CalledProcessError as exc:
+            # GitHub API rate limit or outage: the schedule runs again soon, so end quietly.
+            print(f"pr-flow stopped early: gh failed ({exc.returncode}); next scheduled pass retries",
+                  file=sys.stderr)
     elif a.cmd == "watchdog":
         watchdog()
     elif a.cmd == "strategy-state":
