@@ -1,4 +1,5 @@
 - [ ] RESP-NOT-FOUND-PAGE · Staff web: responsive `NotFoundPage` (app)
+  - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/app/NotFoundPage.tsx, apps/staff-web/tests/responsive/app/NotFoundPage.responsive.test.tsx
   - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
