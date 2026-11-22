@@ -1,4 +1,6 @@
-- [ ] RESP-BOOKING-FORM · Staff web: responsive `BookingForm` (features-scheduling)
+- [-] RESP-BOOKING-FORM · Staff web: responsive `BookingForm` (features-scheduling)
+  - agent: swarm-6
+  - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/scheduling/BookingForm.tsx, apps/staff-web/tests/responsive/features-scheduling/BookingForm.responsive.test.tsx
   - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS

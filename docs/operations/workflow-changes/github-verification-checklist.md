@@ -103,7 +103,7 @@ Rules for the person performing it:
 
   **Green looks like.** Both jobs green; the `developer-reference` artifact is uploaded.
 
-  **Proving log line.** `Developer reference` finishes with an uploaded `developer-reference` artifact containing `index.html`; `Policy and tooling` has no `check-docs:` error. The guide states the 5-attempt and 30-file limits in prose (the code constants are `MAX_ATTEMPTS` and `MAX_PR_FILES`), the `repair-gate.sh` path for repairs, `SWARM_ALLOW_PROTECTED` and the `protected-change` oversight issue.
+  **Proving log line.** `Developer reference` finishes with an uploaded `developer-reference` artifact containing `index.html`; `Policy and tooling` has no `check-docs:` error. The guide states the 5-attempt and 50-file limits in prose (the code constants are `MAX_ATTEMPTS` and `MAX_PR_FILES`), the `repair-gate.sh` path for repairs, `SWARM_ALLOW_PROTECTED` and the `protected-change` oversight issue.
 
   **Negative control.** A stale number or an absolute protected-file claim in either document is caught by reading the source lines cited in [the WFAUDIT-08 notes](../../../.agent/pr-notes/WFAUDIT-08-20261121-153634.md) (notes are not themselves checked by CI; this is a person review).
 

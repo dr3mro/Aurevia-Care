@@ -1,4 +1,6 @@
-- [ ] RESP-SIGNED-OUT-PAGE · Staff web: responsive `SignedOutPage` (features-system)
+- [-] RESP-SIGNED-OUT-PAGE · Staff web: responsive `SignedOutPage` (features-system)
+  - agent: swarm-9
+  - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/system/SignedOutPage.tsx, apps/staff-web/tests/responsive/features-system/SignedOutPage.responsive.test.tsx
   - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS

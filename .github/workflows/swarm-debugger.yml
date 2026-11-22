@@ -41,7 +41,7 @@ jobs:
           sparse-checkout: scripts
       - id: pick
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
         run: python3 -I scripts/swarm.py debug-select
       - id: image
         run: echo "prefix=ghcr.io/${GITHUB_REPOSITORY,,}-agent" >> "$GITHUB_OUTPUT"
@@ -91,11 +91,11 @@ jobs:
       # integrator and earlier workers said about this pull request and task to files.
       - name: Fetch main
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
         run: scripts/agent-run.sh fetch-main || true
       - name: Collect the failure context
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
           SWARM_ISSUES: ${{ vars.SWARM_ISSUES }}
         run: |
           mkdir -p .agent

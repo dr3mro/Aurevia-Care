@@ -431,6 +431,100 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/staff/attachments/upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload a PDF, JPEG or PNG into private quarantine bound to one draft
+         * @description The Idempotency-Key header is correlation-only here; a retry creates a new attachment. Conflicts carry stable 409 codes.
+         */
+        post: operations["uploadStaffAttachment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/attachments/{id}/scan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record an independent quarantine scan verdict for one attachment
+         * @description The Idempotency-Key header is correlation-only here; a second verdict on one file returns 409.
+         */
+        post: operations["scanStaffAttachment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/attachments/pending": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the pending unsent files of one draft for the sender to review */
+        get: operations["listPendingStaffAttachments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/attachments/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Publish named clean files to their confirmed recipients
+         * @description The Idempotency-Key header is correlation-only here; resending an already sent file returns 409.
+         */
+        post: operations["sendStaffAttachments"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/attachments/{id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Return verified original bytes to an authorized message recipient */
+        get: operations["downloadStaffAttachment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -877,6 +971,48 @@ export interface components {
             /** Format: date-time */
             producedAt?: string;
             producedBy?: string;
+        };
+        /** @description Current projection of one quarantined or published staff-message attachment; bytes stay behind the download route. */
+        StaffAttachment: {
+            /** Format: uuid */
+            organizationId?: string;
+            id?: string;
+            uploaderSubject?: string;
+            draftId?: string;
+            documentId?: string;
+            fileName?: string;
+            /** @enum {string} */
+            contentType?: "application/pdf" | "image/jpeg" | "image/png";
+            /** Format: int64 */
+            sizeBytes?: number;
+            checksum?: string;
+            objectKey?: string;
+            objectVersion?: number;
+            /** @enum {string} */
+            scanState?: "pending" | "clean" | "quarantined";
+            messageId?: string;
+            sent?: boolean;
+            /** Format: date-time */
+            createdAt?: string;
+        };
+        /** @description Bounded set of unsent files of one draft; not a paginated list. */
+        PendingStaffAttachments: components["schemas"]["StaffAttachment"][];
+        /** @description Independent scanner verdict; a bounded detail explains a failed verdict to the sender without carrying file content or a pathogen name. */
+        ScanRequest: {
+            /**
+             * @description Terminal scanner verdict; failed quarantines the file. Stored scan states are reported by StaffAttachment.scanState.
+             * @enum {string}
+             */
+            verdict: "clean" | "failed";
+            detail?: string;
+        };
+        /** @description Explicit publication command; confirm must be true and every named file must be clean and owned by the sender. */
+        SendRequest: {
+            draftId: string;
+            messageId: string;
+            attachmentIds: string[];
+            recipients: string[];
+            confirm: boolean;
         };
     };
     responses: {
@@ -2157,6 +2293,303 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Error"];
                 };
+            };
+        };
+    };
+    uploadStaffAttachment: {
+        parameters: {
+            query: {
+                /** @description Conversation or mail draft that owns the attachment */
+                draftId: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Reserved retry-correlation header for draft commands; durable deduplication applies to placement. */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKeyOptional"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The quarantined attachment; its independent scan verdict is still pending */
+            201: {
+                headers: {
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffAttachment"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            /** @description The attachment link write did not commit */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unsupported type */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    scanStaffAttachment: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Reserved retry-correlation header for draft commands; durable deduplication applies to placement. */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKeyOptional"];
+            };
+            path: {
+                /** @description Tenant-local attachment identifier */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScanRequest"];
+            };
+        };
+        responses: {
+            /** @description The attachment with its recorded scan state */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffAttachment"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            /** @description Attachment not found or inaccessible; existence is concealed */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Only a pending file can be scanned, or the attachment write did not commit */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Missing or non-terminal verdict */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listPendingStaffAttachments: {
+        parameters: {
+            query: {
+                /** @description Conversation or mail draft whose pending files are listed */
+                draftId: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Pending files in upload order; a named array, not a paginated list */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PendingStaffAttachments"];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            /** @description Invalid draft or tenant selection */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    sendStaffAttachments: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Reserved retry-correlation header for draft commands; durable deduplication applies to placement. */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKeyOptional"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendRequest"];
+            };
+        };
+        responses: {
+            /** @description The published attachments */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffAttachment"][];
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            /** @description Attachment */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A named file is quarantined or not clean, is already sent, or the attachment write did not commit */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unconfirmed or empty command */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    downloadStaffAttachment: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                /** @description Tenant-local attachment identifier */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Original bytes with their integrity headers and original PDF, JPEG or PNG media type */
+            200: {
+                headers: {
+                    /** @description SHA-256 checksum of the returned bytes */
+                    "X-Checksum"?: string;
+                    /** @description Byte length of the returned payload */
+                    "Content-Length"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                    "image/jpeg": string;
+                    "image/png": string;
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            /** @description Attachment not found or inaccessible; existence is concealed */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description File is not sent and clean, or the private object is absent or failed integrity verification */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Invalid attachment identifier or tenant selection */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
