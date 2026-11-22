@@ -196,9 +196,11 @@ describe('responsive FacilitiesPage (WEB-07, UX-01)', () => {
         expect(header.getAttribute('scope')).toBe('col');
         expect(header.style.display).not.toBe('none');
       }
-      expect(within(table).getByRole('rowheader', { name: 'MAIN' })).toBeTruthy();
-      expect(within(table).getByText('Synthetic Main Facility')).toBeTruthy();
-      expect(within(table).getByText('UTC')).toBeTruthy();
+      // Rows are appended by PageSink's effect after the table commits, so the
+      // data-driven content must be awaited rather than queried synchronously.
+      expect(await within(table).findByRole('rowheader', { name: 'MAIN' })).toBeTruthy();
+      expect(await within(table).findByText('Synthetic Main Facility')).toBeTruthy();
+      expect(await within(table).findByText('UTC')).toBeTruthy();
 
       const observed = [...page.querySelectorAll('[data-breakpoint]')].map((element) =>
         element.getAttribute('data-breakpoint'),
@@ -271,8 +273,8 @@ describe('responsive FacilitiesPage (WEB-07, UX-01)', () => {
 
     expect(document.documentElement.dir).toBe('rtl');
     expect(document.documentElement.lang).toBe('ar');
-    expect(within(table).getByText(LONG_ENGLISH)).toBeTruthy();
-    expect(within(table).getByText(LONG_ARABIC)).toBeTruthy();
+    expect(await within(table).findByText(LONG_ENGLISH)).toBeTruthy();
+    expect(await within(table).findByText(LONG_ARABIC)).toBeTruthy();
 
     for (const run of document.querySelectorAll('bdi')) {
       const isolated = run as HTMLElement;
@@ -304,7 +306,7 @@ describe('responsive FacilitiesPage (WEB-07, UX-01)', () => {
     page = pageRoot(container);
     expect(page.classList.contains('page')).toBe(true);
     expect(page.getAttribute('data-breakpoint')).toBe('medium');
-    expect(screen.getByText('Synthetic Main Facility')).toBeTruthy();
+    expect(await screen.findByText('Synthetic Main Facility')).toBeTruthy();
     expect(screen.getByLabelText(adminText('en', 'facilityCode'))).toBeTruthy();
     expect(fieldsWrapper(page).classList.contains('grid-2')).toBe(true);
   });
