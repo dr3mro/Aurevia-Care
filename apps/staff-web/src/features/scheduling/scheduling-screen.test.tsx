@@ -72,7 +72,7 @@ function fillBooking() {
 describe('SchedulingScreen', () => {
   it('shows only the active tenant, ordered by scheduled time', () => {
     wrap(<Harness />);
-    expect(screen.getAllByRole('rowheader').map((cell) => cell.textContent)).toEqual([
+    expect(screen.getAllByRole('rowheader').map((cell) => cell.querySelector('bdi')?.textContent)).toEqual([
       'Synthetic Sara',
       'Synthetic Omar',
       'Synthetic Layla',
@@ -88,6 +88,13 @@ describe('SchedulingScreen', () => {
       screen.getByRole('heading', { level: 2, name: schedulingText('en', 'scheduling') }),
     ).toBeTruthy();
     expect(screen.getByTestId('scheduling-status').textContent).toBe('');
+  });
+
+  it('shows the empty check-in panel for a tenant with no visible rows', () => {
+    wrap(<Harness organizationId="synthetic-empty-organization" />);
+    expect(screen.queryAllByRole('rowheader')).toHaveLength(0);
+    expect(screen.getByText(schedulingText('en', 'noAppointments'))).toBeTruthy();
+    expect(screen.getByText(schedulingText('en', 'selectRow'))).toBeTruthy();
   });
 
   it('sends check-in to the page callback and announces the request', () => {
@@ -161,6 +168,9 @@ describe('SchedulingScreen', () => {
 
   it('never treats the other tenant with the same local id as a conflict', () => {
     wrap(<Harness organizationId={betaOrganizationId} />);
+    fireEvent.change(screen.getByLabelText(schedulingText('en', 'facilitySelect')), {
+      target: { value: 'LAB' },
+    });
     fillBooking();
     fireEvent.change(screen.getByLabelText(schedulingText('en', 'resource')), {
       target: { value: 'clinician-7' },
@@ -169,7 +179,7 @@ describe('SchedulingScreen', () => {
       target: { value: '2026-03-09T09:00:00Z' },
     });
     expect(screen.getByTestId('conflict-status').textContent).toBe('');
-    expect(screen.getAllByRole('rowheader').map((cell) => cell.textContent)).toEqual([
+    expect(screen.getAllByRole('rowheader').map((cell) => cell.querySelector('bdi')?.textContent)).toEqual([
       'Synthetic Reem',
       'Synthetic Kareem',
       'Synthetic Zain',
@@ -184,5 +194,92 @@ describe('SchedulingScreen', () => {
       screen.getByRole('heading', { level: 2, name: schedulingText('ar', 'scheduling') }),
     ).toBeTruthy();
     expect(screen.getByRole('button', { name: schedulingText('ar', 'week') })).toBeTruthy();
+    expect(
+      screen.getByRole('region', { name: schedulingText('ar', 'scheduling') }).getAttribute('data-layout'),
+    ).toBe('rtl');
+    expect(screen.getByRole('heading', { level: 1, name: schedulingText('ar', 'today') })).toBeTruthy();
+    expect(screen.getByTestId('appointment-worklist')).toBeTruthy();
+  });
+
+});
+
+describe('SchedulingScreen reception panels', () => {
+  it('records a no-show reason, blocking an empty reason', () => {
+    wrap(<Harness />);
+    fireEvent.click(within(rowFor('Synthetic Hana')).getByRole('button', { name: schedulingText('en', 'rebook') }));
+    const form = screen.getByTestId('no-show-reason-form');
+    fireEvent.click(within(form).getByRole('button', { name: schedulingText('en', 'recordReason') }));
+    expect(within(form).getByRole('alert').textContent).toBe(schedulingText('en', 'reasonRequired'));
+    fireEvent.change(within(form).getByLabelText(schedulingText('en', 'reasonLabel')), {
+      target: { value: 'unreachable' },
+    });
+    fireEvent.click(within(form).getByRole('button', { name: schedulingText('en', 'recordReason') }));
+    expect(screen.queryByTestId('no-show-reason-form')).toBeNull();
+    expect(screen.getByTestId('scheduling-status').textContent).toContain('unreachable');
+    expect(screen.getByTestId('scheduling-status').textContent).toContain(
+      schedulingText('en', 'recordedNoShow').replace('{value}', 'unreachable'),
+    );
+  });
+
+  it('books a free slot once from the stale-slot alert', () => {
+    const onBook = vi.fn();
+    wrap(<Harness onBook={onBook} />);
+    expect(screen.getByRole('alert').textContent).toContain('Room 3 at 10:15 AM');
+    const slots = screen.getAllByTestId('free-slot');
+    const first = slots[0]?.querySelector('button');
+    const second = slots[1]?.querySelector('button');
+    expect(first).toBeTruthy();
+    fireEvent.click(required(first));
+    expect((required(second) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(required(first));
+    expect(onBook).toHaveBeenCalledTimes(1);
+    expect(onBook).toHaveBeenCalledWith({
+      organizationId: alphaOrganizationId,
+      resourceId: 'room-3',
+      scheduledAt: '2026-03-09T10:30:00Z',
+      facilityCode: 'MAIN',
+      patientId: 'synthetic-walk-in',
+      visitType: 'Synthetic follow-up',
+    });
+    expect(screen.getByText(new RegExp(schedulingText('en', 'slotPicked')))).toBeTruthy();
+  });
+
+  it('records a panel check-in and focuses the booking form on New booking', () => {
+    wrap(<Harness />);
+    fireEvent.click(screen.getByRole('button', { name: schedulingText('en', 'checkInNotify') }));
+    expect(screen.getByTestId('scheduling-status').textContent).toContain('Synthetic Receptionist');
+    expect(screen.getByTestId('scheduling-status').textContent).toContain(
+      schedulingText('en', 'checkInRecorded').replace('{value}', 'Synthetic Receptionist'),
+    );
+    fireEvent.click(screen.getByRole('button', { name: schedulingText('en', 'newBooking') }));
+    expect(document.activeElement?.id).toBe('booking-facility');
+  });
+
+  it('announces handoff and open-chart actions', () => {
+    wrap(<Harness />);
+    fireEvent.click(within(rowFor('Synthetic Omar')).getByRole('button', { name: schedulingText('en', 'handoff') }));
+    expect(screen.getByTestId('scheduling-status').textContent).toContain(schedulingText('en', 'handoff'));
+    fireEvent.click(within(rowFor('Synthetic Sara')).getByRole('button', { name: schedulingText('en', 'openChart') }));
+    expect(screen.getByTestId('scheduling-status').textContent).toContain(schedulingText('en', 'openChart'));
+  });
+
+  it('scopes the worklist to the selected facility and keeps the filters within it', () => {
+    wrap(<Harness />);
+    const facility = screen.getByLabelText(schedulingText('en', 'facilitySelect'));
+    fireEvent.change(facility, { target: { value: 'LAB' } });
+    expect(screen.getAllByText('Harbor Family Clinic, Lab site').length).toBeGreaterThan(0);
+    expect(screen.queryAllByRole('rowheader')).toHaveLength(0);
+    fireEvent.change(facility, { target: { value: 'MAIN' } });
+    expect(screen.getAllByRole('rowheader')).toHaveLength(8);
+    fireEvent.click(screen.getByRole('button', { name: schedulingText('en', 'filterNeedsCheckIn') }));
+    expect(screen.getAllByRole('rowheader')).toHaveLength(3);
   });
 });
+
+/** Narrow a DOM query used by the stale-slot booking test. */
+function required(value: Element | null | undefined): Element {
+  if (value === null || value === undefined) {
+    throw new Error('Expected a rendered slot button');
+  }
+  return value;
+}

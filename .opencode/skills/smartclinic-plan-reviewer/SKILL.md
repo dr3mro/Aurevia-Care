@@ -18,6 +18,8 @@ Check the plan against these, and name each gap precisely.
 7. **Gates.** The plan names the exact checks for each touched area (`scripts/check.sh`, `bash apps/staff-web/check.sh`, `bash apps/patient-mobile/check.sh`, the targeted Maven test, never the full `mvn verify`) and does not rely on a threshold, exclusion or skipped test.
 8. **Data and safety.** Synthetic fixtures only, no PHI in logs or tests, no new dependency unless the task allows it.
 
+Before reaching a verdict, apply three doubt questions to any non-trivial plan (new branching logic, a boundary crossing, a state transition, an irreversible migration or a security decision): what assumption would break the plan if it were wrong, which boundary or failure path is asserted only by reasoning rather than a test, and what would be expensive to reverse after merge? A plan that cannot answer all three gets a Required gap; for a routine, one-file change this pass is silent.
+
 Output: each gap as `Required: <what is missing and what to add>` or `Optional: ...`; a plan that would fail a gate or break an AGENTS.md rule is Required. Finish with one last line, exactly `VERDICT: GO` when no Required gap remains, otherwise `VERDICT: NO-GO`. Be brief: a plan review is minutes, not a second design phase.
 
 ## Common rationalizations

@@ -6,7 +6,7 @@ import type { TransportErrorKind } from '../../api/transport';
 import { useApi } from '../../api/useApi';
 import { useRoute } from '../../app/router';
 import { Button } from '../../components/Button';
-import { ConflictState, LoadingState, StateView } from '../../components/StateViews';
+import { LoadingState, StateView } from '../../components/StateViews';
 import { defined } from '../../components/invariant';
 import { MixedScriptText } from '../../components/MixedScriptText';
 import { displayLocalName } from '../../i18n/format';
@@ -363,7 +363,7 @@ function NoteNotices({
   source: ClinicalNoteRevisionResponse | undefined;
   locale: Locale;
 }) {
-  const { status, dirty, signedAttestation, commandError, conflict, copied, comparing } = workflow;
+  const { status, dirty, signedAttestation, commandError, copied, comparing } = workflow;
   return (
     <>
       {status !== '' ? (
@@ -381,16 +381,10 @@ function NoteNotices({
           <b>{chartText(locale, 'signerAttestation')}:</b> {signedAttestation}
         </p>
       ) : null}
-      {commandError !== undefined ? (
-        conflict ? (
-          <ConflictState
-            onCompare={() => workflow.setComparing(true)}
-            onReload={workflow.handleReload}
-            onCopy={workflow.handleCopy}
-          />
-        ) : (
-          StateView.forTransportError(commandError)
-        )
+      {/* Conflict recovery lives inside the note card; every other failure is
+          still mapped to the shared blocking state view here. */}
+      {commandError !== undefined && !workflow.conflict ? (
+        StateView.forTransportError(commandError)
       ) : null}
       {copied ? <p>{chartText(locale, 'copiedNotice')}</p> : null}
       {comparing ? (
@@ -560,6 +554,10 @@ export function NotePage() {
         history={history}
         locale={locale}
         onContentChange={workflow.handleContentChange}
+        conflict={workflow.conflict}
+        onCompare={() => workflow.setComparing(true)}
+        onReload={workflow.handleReload}
+        onCopy={workflow.handleCopy}
         onSign={() => {
           // The sign command carries no edited content: signing while dirty
           // would silently certify the last saved revision, not what is shown.

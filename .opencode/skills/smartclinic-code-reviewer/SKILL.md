@@ -37,6 +37,12 @@ Output: one finding per line, most severe first, each as `Critical: <file>:<line
 - A class named after a story or requirement ID.
 - A verdict of GO with no file and line in any finding on a large diff.
 
+## Related skill
+
+For a green change whose implementation is needlessly complex, apply
+`smartclinic-code-simplify` as an optional follow-up pass. It is not a gate: a
+simplification must preserve behavior exactly and rerun the canonical checks.
+
 ## Verification
 
 - [ ] Every item in the seven steps was checked against the actual diff, not the notes.

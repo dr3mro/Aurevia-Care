@@ -126,6 +126,29 @@ def violations(lines):
     return found
 
 
+def written_bar_violations(root, base):
+    """Flag added CONSTRAINTS.md lines that lower a written threshold.
+
+    The table in CONSTRAINTS.md is the human-readable contract for the numbers the
+    gates enforce. A change that edits a row to a looser value must be caught even
+    though Markdown is otherwise exempt from the source-suppression rules.
+    """
+    path = "CONSTRAINTS.md"
+    found = []
+    for name, number, text in diff_added_lines(git(root, "diff", "-U0", "--no-color", base, "--", path)):
+        if name != path:
+            continue
+        # A written 100% / 0 warnings / strict:true turned into anything looser.
+        if re.search(r"\b(?:[1-9]?\d|\d\.\d+)\s*%", text) and not re.search(r"\b100\s*%", text):
+            if re.search(r"\b(?:coverage|bar|threshold)\b", text, re.I):
+                found.append((name, number, "written coverage bar lowered", text.strip()))
+        if re.search(r"\b(?:warning|warnings)\b", text, re.I) and not re.search(r"\b0\b", text):
+            found.append((name, number, "written warning bar lowered", text.strip()))
+        if re.search(r"strict:\s*false", text):
+            found.append((name, number, "written strictness bar lowered", text.strip()))
+    return found
+
+
 def main(argv=None, root=ROOT):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base", default=os.environ.get("COVERAGE_BASE", "origin/main"))
@@ -136,7 +159,7 @@ def main(argv=None, root=ROOT):
         message = f"constraints: cannot resolve {args.base}; the added lines were not checked"
         print(message, file=sys.stderr)
         return 1 if args.require_base else 0
-    found = violations(added_lines(root, base))
+    found = violations(added_lines(root, base)) + written_bar_violations(root, base)
     for path, number, label, text in found:
         print(f"{path}:{number}: {label}: {text}", file=sys.stderr)
     if found:

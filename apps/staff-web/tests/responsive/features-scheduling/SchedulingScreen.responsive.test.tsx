@@ -138,7 +138,15 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
       ).toBeTruthy();
 
       const table = screen.getByRole('table', { name: schedulingText('en', 'appointments') });
-      for (const key of ['patient', 'time', 'resource', 'state', 'assignee', 'actions'] as const) {
+      for (const key of [
+        'colTime',
+        'colPatient',
+        'colVisit',
+        'colClinicianRoom',
+        'colState',
+        'colAssigned',
+        'colActions',
+      ] as const) {
         expect(
           within(table).getByRole('columnheader', { name: schedulingText('en', key) }),
         ).toBeTruthy();
