@@ -260,6 +260,35 @@ describe('QueuesPage commands', () => {
     expect(descriptorAt(2).headers['X-Active-Organization']).toBe('org-beta');
   });
 
+});
+
+describe('QueuesPage late command settlement', () => {
+  it('ignores a queue action that fails at the moment the tenant changes', async () => {
+    let rejectAction!: (reason: unknown) => void;
+    const pending = new Promise<typeof alphaQueuesView>((_, reject) => {
+      rejectAction = reject;
+    });
+    sendMock
+      .mockResolvedValueOnce(alphaQueuesView)
+      .mockReturnValueOnce(pending)
+      .mockResolvedValue(betaQueuesView);
+    const { rerender } = wrap();
+    await screen.findByText(operationsText('en', 'unsigned-encounters'));
+    startResolve();
+    confirmAction();
+
+    rerender(element(<QueuesPage />, 'org-beta'));
+    await act(async () => {
+      rejectAction(failure('server'));
+      await Promise.resolve();
+    });
+
+    await waitFor(() => expect(sendMock).toHaveBeenCalledTimes(3));
+    expect(screen.queryByTestId('operations-command-error')).toBeNull();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByText('owner accepted the handover')).toBeNull();
+  });
+
   it('ignores a queue action that fails after the tenant changes', async () => {
     let rejectAction!: (reason: unknown) => void;
     const pending = new Promise<typeof alphaQueuesView>((_, reject) => {

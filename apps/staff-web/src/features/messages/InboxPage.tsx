@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { useActiveOrganization } from '../../api/activeOrganization';
 import { TransportError } from '../../api/transport';
 import { ApiPage } from '../../components/ApiPage';
@@ -61,7 +61,9 @@ export function InboxPage() {
     setRecoveryNotice(undefined);
   }
 
-  useEffect(() => {
+  // A layout effect runs before any continuation of a settled command can be
+  // scheduled, so a result arriving across a switch is recognized as stale.
+  useLayoutEffect(() => {
     activeOrganization.current = organizationId;
   }, [organizationId]);
 

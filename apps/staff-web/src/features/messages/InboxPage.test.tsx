@@ -314,6 +314,33 @@ describe('InboxPage tenant isolation', () => {
 });
 
 describe('InboxPage late command settlement', () => {
+  it('ignores a reply that fails at the moment the tenant changes', async () => {
+    let rejectReply!: (reason: unknown) => void;
+    const pending = new Promise<typeof alphaInboxView>((_, reject) => {
+      rejectReply = reject;
+    });
+    sendMock
+      .mockResolvedValueOnce(alphaInboxView)
+      .mockReturnValueOnce(pending)
+      .mockResolvedValue(betaInboxView);
+    const { rerender } = wrap();
+    await screen.findByRole('button', { name: /Synthetic Grace Okafor: Appointment change/ });
+    fireEvent.change(composer(), { target: { value: 'alpha in-flight reply' } });
+    fireEvent.click(screen.getByRole('button', { name: inboxText('en', 'send') }));
+
+    rerender(element(<InboxPage />, 'org-beta'));
+    await act(async () => {
+      rejectReply(failure('server'));
+      await Promise.resolve();
+    });
+
+    expect(
+      await screen.findByRole('button', { name: /Synthetic Hassan Ibrahim beta: Refill question/ }),
+    ).toBeTruthy();
+    expect(screen.queryByTestId('inbox-command-error')).toBeNull();
+    expect((composer() as HTMLTextAreaElement).value).toBe('');
+  });
+
   it('ignores a reply that fails after the tenant changes', async () => {
     let rejectReply!: (reason: unknown) => void;
     const pending = new Promise<typeof alphaInboxView>((_, reject) => {
