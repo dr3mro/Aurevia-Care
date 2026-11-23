@@ -1,4 +1,5 @@
-- [-] COVPY-SWARM-SCHEDULE · Script tests: swarm.py coverage, schedule part (to 100% together with the other parts)
+- [x] COVPY-SWARM-SCHEDULE · Script tests: swarm.py coverage, schedule part (to 100% together with the other parts)
+  - evidence: merged on main 1e148b43 (#897)
   - agent: swarm-8
   - attempts: 3
   - requirements: OPS-06

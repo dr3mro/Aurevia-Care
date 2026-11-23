@@ -3737,6 +3737,52 @@ def refresh_wiring_baseline(checker, base):
     return ""
 
 
+def pr_already_in_main(pr, head, base):
+    """Return True when a PR's head is already contained in the current main.
+
+    A squash or rebase merge replays the PR's commits, so the exact head SHA is
+    usually not an ancestor. Compare the tree the PR would produce against
+    main's tree: when they match, the PR has no remaining effect and integrating
+    it would waste a full gate run.
+    """
+    if not head:
+        return False
+
+    def run(*args):
+        return subprocess.run(["git", *args], capture_output=True, text=True)
+
+    if run("merge-base", "--is-ancestor", head, base).returncode == 0:
+        return True
+    # Three-way merge of the PR into main; if the result equals main's tree,
+    # the PR is already fully present (all its content is on main).
+    try:
+        merged = run("merge-tree", "--write-tree", base, head)
+        if merged.returncode != 0:
+            return False
+        tree = merged.stdout.strip().splitlines()[0].strip()
+        current = run("rev-parse", base + "^{tree}")
+        return current.returncode == 0 and tree == current.stdout.strip()
+    except (IndexError, OSError):
+        return False
+
+
+def close_integrated_pr(pr, task_id):
+    """Close a PR whose work is already on main and mark its task done."""
+    gh("pr", "close", str(pr), "--comment",
+       f"{MARK}\nThis PR's changes are already in main; closing to avoid a redundant gate run.",
+       check=False)
+    if task_id:
+        def edit(text):
+            for old in (f"- [-] {task_id}", f"- [ ] {task_id}"):
+                if old in text:
+                    return text.replace(old, f"- [x] {task_id}", 1)
+            return text
+        try:
+            update_todo(edit, f"Mark {task_id} done (PR already in main)")
+        except Exception:
+            pass
+
+
 def integrate_batch(queue, gate="scripts/quick-check.sh", check_delivery=None):
     """Merge every ready PR in one job, gate each, then push main once.
 
@@ -3757,7 +3803,14 @@ def integrate_batch(queue, gate="scripts/quick-check.sh", check_delivery=None):
         blocked = guard(pr, is_repair(pr))
         if blocked:
             continue
-        head = (gh_json("pr", "view", str(pr), "--json", "headRefOid") or {}).get("headRefOid", "")
+        pr_view = gh_json("pr", "view", str(pr), "--json", "headRefOid,headRefName") or {}
+        head = pr_view.get("headRefOid", "")
+        current_main = git("rev-parse", "HEAD").strip()
+        if pr_already_in_main(pr, head, current_main):
+            tid = task_id_of(pr_view.get("headRefName", "") or "")
+            close_integrated_pr(pr, tid)
+            print(f"PR #{pr} already in main; closed and task {tid or '?'} marked done")
+            continue
         if require_evidence and delivery_gate(pr, head) != "merge":
             # wait/fix/request PRs stay open and unstaged; the gate already took
             # the appropriate label or comment action for each verdict.
