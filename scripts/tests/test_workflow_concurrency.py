@@ -1,9 +1,13 @@
-"""Every workflow in the swarm delivery chain must queue, never cancel.
+"""Workflow concurrency must report a verdict for every commit that can merge.
 
-Branch protection checks the exact SHA. If a newer push cancels the older
-run, that SHA never receives a verdict and the swarm can merge unverified
-code. Queueing per ref keeps every SHA's verdict while serializing expensive
-full verification within main, each PR and each tag.
+Branch protection checks the exact SHA, so a push to main or a tag must never
+cancel an older run: that SHA would receive no verdict and unverified code
+could land on the protected branch. A pull request is different -- only its
+current head can be merged, and an older head is never merged. Queueing a new
+head behind a stale, in-progress run leaves the required ``Delivery gate``
+check unreported ("Expected -- Waiting for status to be reported") and blocks
+the PR while the stale work finishes. Delivery therefore cancels stale runs
+only for pull_request events and still queues every other trigger.
 """
 import unittest
 
@@ -31,11 +35,17 @@ class WorkflowConcurrencyTest(unittest.TestCase):
                 self.assertIn("concurrency", config)
                 concurrency = config["concurrency"]
                 self.assertTrue(concurrency.get("group"))
-                self.assertIs(concurrency.get("cancel-in-progress"), False)
-                # cancel-in-progress:false protects only the running run. Without
-                # queue:max GitHub keeps a single pending run and replaces it with
-                # each newer trigger, so a frequently dispatched workflow can be
-                # starved indefinitely (the 18 unmerged green PRs incident).
+                if path.name == "delivery.yml":
+                    self.assertEqual(concurrency.get("cancel-in-progress"),
+                                     "${{ github.event_name == 'pull_request' }}")
+                else:
+                    self.assertIs(concurrency.get("cancel-in-progress"), False)
+                # For every non-cancelling trigger, cancel-in-progress:false
+                # protects only the running run. Without queue:max GitHub keeps
+                # a single pending run and replaces it with each newer trigger,
+                # so a frequently dispatched workflow can be starved indefinitely
+                # (the 18 unmerged green PRs incident). PRs are the exception:
+                # they cancel stale runs so the current head reports promptly.
                 self.assertEqual(concurrency.get("queue"), "max")
 
     def test_swarm_waves_overlap_with_a_group_per_run(self):
@@ -48,6 +58,20 @@ class WorkflowConcurrencyTest(unittest.TestCase):
         group = load(WORKFLOWS / "delivery.yml")["concurrency"]["group"]
         self.assertIn("github.ref", group)
         self.assertNotIn("github.sha", group)
+
+    def test_delivery_reports_a_check_for_every_pull_request(self):
+        """A path-filtered PR never runs Delivery, so the required check is absent."""
+        trigger = load(WORKFLOWS / "delivery.yml")[True]["pull_request"]
+        if trigger is not None:
+            self.assertIsInstance(trigger, dict)
+            self.assertNotIn("paths", trigger)
+            self.assertNotIn("paths-ignore", trigger)
+
+    def test_delivery_does_not_cancel_verified_branch_pushes(self):
+        """Main and tag pushes keep every verdict; only stale PR runs are cancelled."""
+        cancel = load(WORKFLOWS / "delivery.yml")["concurrency"]["cancel-in-progress"]
+        self.assertIsInstance(cancel, str)
+        self.assertIn("github.event_name == 'pull_request'", cancel)
 
 
 if __name__ == "__main__":
