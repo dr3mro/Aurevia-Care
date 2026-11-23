@@ -196,6 +196,12 @@ def fetch(emit=None, full=True):
             return
         t1 = time.monotonic()
         jobs = collect({i: spawn(["run", "view", str(i), "--json", "jobs"]) for i in want})
+        # Retry any live run whose job fetch failed (None), once, so a transient
+        # timeout does not leave the worker count stale.
+        missing = [i for i in want if jobs.get(i) is None]
+        if missing:
+            retry = collect({i: spawn(["run", "view", str(i), "--json", "jobs"]) for i in missing})
+            jobs.update({i: v for i, v in retry.items() if v is not None})
         timed("jobs", t1, f"{len(want)} run view calls")
         with guard:
             have = dict(out.get("jobs") or {})
