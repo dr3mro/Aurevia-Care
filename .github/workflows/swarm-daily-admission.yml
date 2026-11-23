@@ -8,6 +8,7 @@ on:
 concurrency:
   group: swarm-daily-admission-${{ github.run_id }}
   cancel-in-progress: false
+  queue: max
 permissions:
   contents: read
   actions: read

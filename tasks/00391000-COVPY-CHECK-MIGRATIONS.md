@@ -1,4 +1,5 @@
 - [x] COVPY-CHECK-MIGRATIONS · Script tests: reach 100% line and branch coverage of `scripts/check-migrations.py`
+  - evidence: PR #386 merged to main (reconciled 2026-11-23)
   - pr: #386
   - attempts: 1
   - requirements: OPS-06

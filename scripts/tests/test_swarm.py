@@ -1,5 +1,6 @@
 import importlib.util
 import datetime
+import base64
 import io
 import json
 import os
@@ -193,6 +194,7 @@ class ConcurrentWaveTests(unittest.TestCase):
                     mock.patch.object(swarm, "todo_read", return_value=""), \
                     mock.patch.object(swarm, "plan_workers", return_value=workers), \
                     mock.patch.object(swarm, "delivery_listing", return_value=[]), \
+                    mock.patch.object(swarm, "pending_note_days", return_value=False), \
                     mock.patch.object(swarm, "delivery_state", return_value=state):
                 self.assertEqual(swarm.daily_can_start(), expected)
 
@@ -1334,7 +1336,7 @@ class DebuggerWorkflowTests(unittest.TestCase):
         self.assertEqual(steps[0]["with"]["fetch-depth"], 0)
         agent = next(step for step in steps if step.get("id") == "debug")
         command = agent["run"]
-        self.assertIn('git show "$GITHUB_SHA:scripts/agent-run.sh" > "$runner"', command)
+        self.assertIn("git -c safe.directory='*' show \"$GITHUB_SHA:scripts/agent-run.sh\" > \"$runner\"", command)
         self.assertIn('bash "$runner" debug', command)
         self.assertNotIn("git checkout", command)
 
@@ -1349,7 +1351,7 @@ class DebuggerWorkflowTests(unittest.TestCase):
 
     def test_fix_workers_read_the_pull_request_comments_the_debugger_writes(self):
         text = (ROOT / ".github/workflows/swarm-worker.yml").read_text(encoding="utf-8")
-        self.assertIn('git show "origin/$BASE_BRANCH:scripts/swarm.py" > "$context"', text)
+        self.assertIn("git -c safe.directory='*' show \"origin/$BASE_BRANCH:scripts/swarm.py\" > \"$context\"", text)
         self.assertIn('python3 -I "$context" pr-context --pr "$PR_NUMBER"', text)
 
 
@@ -2370,7 +2372,11 @@ class ResolveConflictTests(unittest.TestCase):
     def test_swarm_worker_uses_its_token_only_before_the_agent_runs(self):
         text = (ROOT / ".github/workflows/swarm-worker.yml").read_text()
         worker = text.split("  publish:\n", 1)[0]
-        self.assertLess(worker.index("agent-run.sh fetch-main"), worker.index("agent-run.sh implement"))
+        self.assertLess(worker.index("bash \"$runner\" fetch-main"), worker.index("agent-run.sh implement"))
+        # The token-bearing step must run a trusted copy, never the PR's script.
+        fetch_step = worker.split("- name: Fetch main", 1)[1].split("- name:", 1)[0]
+        self.assertIn("git -c safe.directory='*' show \"origin/$BASE_BRANCH:scripts/agent-run.sh\"", fetch_step)
+        self.assertNotIn("secrets.SWARM_TOKEN", fetch_step)
         # After the agent has run, the only step that sees a token is the inline
         # fetch: no workspace script, repository hooks off, token sent to github.com.
         import yaml
@@ -2973,6 +2979,49 @@ class BudgetTests(unittest.TestCase):
         self.assertTrue(fake.said("issue", "create"))
 
 
+class ProtectedBranchTests(unittest.TestCase):
+    def test_gh013_is_a_repository_rules_failure_not_quota(self):
+        log = ("remote: error: GH013: Repository rule violations found for refs/heads/main.\n"
+               "remote: - 3 of 3 required status checks are expected.\n"
+               "! [remote rejected] HEAD -> main\n")
+        self.assertEqual(swarm.classify_failure(log), "repository-rules")
+        self.assertNotEqual(swarm.classify_failure(log), "quota")
+        self.assertTrue(swarm.repo_rule_rejection(log))
+        self.assertFalse(swarm.repo_rule_rejection("rate limit exceeded"))
+
+    def test_safe_command_redacts_the_authorization_header(self):
+        args = ("-c", "http.https://github.com/.extraheader=AUTHORIZATION: basic ZmFrZS10b2tlbg==",
+                "push", "origin", "HEAD:main")
+        cleaned = swarm.safe_command(args)
+        self.assertNotIn("ZmFrZS10b2tlbg==", " ".join(cleaned))
+        self.assertIn("AUTHORIZATION: basic ***", " ".join(cleaned))
+        self.assertEqual(cleaned[-3:], ("push", "origin", "HEAD:main"))
+
+    def test_git_exception_does_not_carry_the_token(self):
+        credential = "SYN-TOKEN-123"
+        header = base64.b64encode(f"x-access-token:{credential}".encode()).decode()
+        args = ("-c", f"http.https://github.com/.extraheader=AUTHORIZATION: basic {header}", "push")
+        done = subprocess.CompletedProcess([], 1, "", "permission denied")
+        with mock.patch.object(swarm.subprocess, "run", return_value=done):
+            with self.assertRaises(subprocess.CalledProcessError) as caught:
+                swarm.git(*args)
+        self.assertNotIn(credential, str(caught.exception))
+        self.assertNotIn(header, str(caught.exception))
+
+    def test_permanent_push_rejection_stops_immediately_and_restores_tracker(self):
+        log = "error: GH013: Repository rule violations found for refs/heads/main."
+        failure = subprocess.CalledProcessError(1, ("push",), stderr=log)
+        with mock.patch.object(swarm, "todo_read", return_value="- [ ] A-1\n"), \
+                mock.patch.object(swarm, "todo_write"), \
+                mock.patch.object(swarm, "todo_paths", return_value=["tasks/A-1.md"]), \
+                mock.patch.object(swarm, "git") as git, \
+                mock.patch.object(swarm, "authed_git", side_effect=failure) as push:
+            with self.assertRaises(swarm.TrackerPushBlocked):
+                swarm.update_todo(lambda text: text + "- [x] A-2\n", "claim")
+        push.assert_called_once()
+        git.assert_any_call("reset", "-q", "--hard", "origin/main")
+
+
 class TwoTierTests(unittest.TestCase):
     def setUp(self):
         # These tests build a throwaway repository with a TODO.md; moving it into task files
@@ -2991,6 +3040,18 @@ class TwoTierTests(unittest.TestCase):
         env = run.call_args.kwargs["env"]
         self.assertNotIn("GH_TOKEN", env)
         self.assertNotIn("GITHUB_TOKEN", env)
+
+    def test_gate_environment_drops_every_credential_shape_but_the_nvd_key(self):
+        secrets = ("GH_TOKEN", "GITHUB_TOKEN", "SWARM_TOKEN", "GH_ISSUES_TOKEN",
+                   "PUSH_TOKEN", "OPENCODE_API_KEY", "AWS_SECRET_ACCESS_KEY",
+                   "DB_PASSWORD", "CLIENT_CREDENTIAL")
+        with mock.patch.dict(os.environ, {**dict.fromkeys(secrets, "s"),
+                                          "NVD_API_KEY": "nvd", "PATH": "/bin"}):
+            env = swarm.gate_environment()
+        for name in secrets:
+            self.assertNotIn(name, env)
+        self.assertEqual(env["NVD_API_KEY"], "nvd")
+        self.assertEqual(env["PATH"], "/bin")
 
     def test_integrator_prunes_wiring_before_gating_the_merge_commit(self):
         wiring = load("check-wiring")
@@ -3501,6 +3562,131 @@ class ArchiveTodoTest(unittest.TestCase):
             self.assertEqual(swarm.archived_done_ids(str(arc)), {"A-1", "A-4"})
             self.assertEqual(swarm.archived_done_ids(str(Path(tmp, "none.md"))), set())
             self.assertNotIn("[x]", todo.read_text())
+
+
+class TrustedCopyTests(unittest.TestCase):
+    def test_every_trusted_copy_in_a_container_marks_the_repo_safe(self):
+        for name in ("swarm-worker.yml", "swarm-debugger.yml"):
+            text = (ROOT / ".github/workflows" / name).read_text()
+            copies = [line for line in text.splitlines() if "git " in line and " show " in line
+                      and "scripts/" in line]
+            self.assertTrue(copies, name)
+            for line in copies:
+                self.assertIn("safe.directory='*'", line, (name, line))
+
+    def test_every_inline_fetch_in_a_container_marks_the_repo_safe(self):
+        # A container worker owns neither the host-mounted workspace nor its git
+        # config, so an inline fetch before any workspace script runs is refused
+        # unless the command marks the repository safe itself.
+        import yaml
+        text = (ROOT / ".github/workflows/swarm-worker.yml").read_text()
+        steps = yaml.safe_load(text)["jobs"]["work"]["steps"]
+        fetches = [step for step in steps
+                   if 'fetch -q "https://github.com/$GITHUB_REPOSITORY"'
+                   in step.get("run", "")]
+        self.assertEqual(len(fetches), 4)
+        for step in fetches:
+            self.assertIn("-c safe.directory='*'", step["run"], step["name"])
+
+
+class ModelOverrideTests(unittest.TestCase):
+    def test_every_opencode_workflow_honours_the_swarm_model_variable(self):
+        for path in (ROOT / ".github/workflows").glob("*.yml"):
+            text = path.read_text()
+            if "MODEL:" not in text:
+                continue
+            self.assertIn("vars.SWARM_MODEL", text, path.name)
+            self.assertNotIn("MODEL: opencode-go/", text, path.name)
+
+    def test_the_worker_falls_back_to_the_slot_model(self):
+        text = (ROOT / ".github/workflows/swarm-worker.yml").read_text()
+        self.assertIn("MODEL: ${{ vars.SWARM_MODEL || fromJSON(inputs.task).model }}", text)
+
+
+class FailureReportTests(unittest.TestCase):
+    def test_a_failing_policy_command_outranks_frontend_noise(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp, "check.log").write_text(
+                "> patient-mobile@0.1.0 typecheck\n> tsc --noEmit\n"
+                "point.coverage.test.tsx 2 tests 48ms\n"
+                "frontend standards: policy and tool commands passed\n"
+                "env -u CHECK_SCRIPT bash scripts/worker-check.sh\n"
+                "check-pack: opencode.json is stale: run scripts/gen-opencode.py\n")
+            text = swarm.failure_report(tmp)
+        self.assertIn("failing commands and final lines", text)
+        self.assertIn("check-pack: opencode.json is stale", text)
+        self.assertNotIn("point.coverage.test.tsx", text)
+
+    def test_frontend_lines_are_used_when_no_strong_signature_exists(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp, "frontend-typecheck.log").write_text(
+                "some noise\nerror TS2322: Type 'string' is not assignable\n")
+            text = swarm.failure_report(tmp)
+        self.assertIn("failing commands and final lines", text)
+        self.assertIn("error TS2322", text)
+
+    def test_no_log_is_reported_as_such(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            text = swarm.failure_report(tmp)
+        self.assertIn("no check log was kept", text)
+
+
+class ReconcileTasksTests(unittest.TestCase):
+    def test_merged_task_is_marked_with_evidence_and_pushed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp, "X-1.md")
+            path.write_text("- [-] X-1 · a story\n  - agent: swarm-1\n")
+            merged = '[{"number": 42, "title": "X-1: a story"}]'
+            with mock.patch.object(swarm.subprocess, "check_output", return_value=merged), \
+                 mock.patch.object(swarm, "git") as git, \
+                 mock.patch.object(swarm, "authed_git") as push, \
+                 mock.patch.dict(os.environ, {"GH_TOKEN": "t", "DEFAULT_BRANCH": "main"}):
+                count = swarm.reconcile_tasks(directory=tmp, persist=True)
+            self.assertEqual(count, 1)
+            text = path.read_text()
+            self.assertIn("- [x] X-1", text)
+            self.assertIn("evidence: PR #42 merged", text)
+            self.assertIn("pr: #42", text)
+            git.assert_any_call("add", str(path))
+            push.assert_called_once_with("push", "origin", "HEAD:main")
+
+    def test_a_task_that_already_has_evidence_needs_no_extra_fields(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp, "X-9.md")
+            path.write_text("- [ ] X-9 · story\n  - evidence: PR #12 merged\n  - pr: #12\n")
+            merged = '[{"number": 12, "title": "X-9: story"}]'
+            with mock.patch.object(swarm.subprocess, "check_output", return_value=merged), \
+                 mock.patch.object(swarm, "git") as git:
+                count = swarm.reconcile_tasks(directory=tmp)
+            self.assertEqual(count, 1)
+            text = path.read_text()
+            self.assertIn("- [x] X-9", text)
+            self.assertEqual(text.count("evidence:"), 1)
+            self.assertEqual(text.count("pr:"), 1)
+            git.assert_not_called()
+
+    def test_nothing_to_reconcile_does_not_commit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp, "X-2.md")
+            path.write_text("- [ ] X-2 · open\n")
+            with mock.patch.object(swarm.subprocess, "check_output", return_value='[{"number": 9, "title": "X-1: done"}]'), \
+                 mock.patch.object(swarm, "git") as git:
+                count = swarm.reconcile_tasks(directory=tmp, persist=True)
+            self.assertEqual(count, 0)
+            self.assertIn("- [ ] X-2", path.read_text())
+            git.assert_not_called()
+
+    def test_missing_token_commits_but_does_not_push(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp, "X-3.md")
+            path.write_text("- [-] X-3 · story\n")
+            with mock.patch.object(swarm.subprocess, "check_output", return_value='[{"number": 7, "title": "X-3: done"}]'), \
+                 mock.patch.object(swarm, "git"), \
+                 mock.patch.object(swarm, "authed_git") as push, \
+                 mock.patch.dict(os.environ, {"GH_TOKEN": ""}):
+                count = swarm.reconcile_tasks(directory=tmp, persist=True)
+            self.assertEqual(count, 1)
+            push.assert_not_called()
 
 
 if __name__ == "__main__":

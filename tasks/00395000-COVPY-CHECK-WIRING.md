@@ -1,4 +1,5 @@
 - [x] COVPY-CHECK-WIRING · Script tests: reach 100% line and branch coverage of `scripts/check-wiring.py`
+  - evidence: PR #389 merged to main (reconciled 2026-11-23)
   - pr: #389
   - attempts: 1
   - requirements: OPS-06

@@ -1,4 +1,5 @@
 - [x] RESP-FORBIDDEN-PAGE · Staff web: responsive `ForbiddenPage` (features-system)
+  - evidence: PR #807 merged to main (reconciled 2026-11-23)
   - pr: #807
   - attempts: 1
   - requirements: WEB-07, UX-01

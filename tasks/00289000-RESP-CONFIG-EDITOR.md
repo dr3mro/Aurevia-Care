@@ -1,4 +1,5 @@
 - [x] RESP-CONFIG-EDITOR · Staff web: responsive `ConfigEditor` (features-admin)
+  - evidence: PR #1048 merged to main (reconciled 2026-11-23)
   - pr: #1048
   - attempts: 3
   - requirements: WEB-07, UX-01

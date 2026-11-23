@@ -1,4 +1,5 @@
 - [x] RESP-APP-MESSAGING-AUDIT-PANEL · Patient app: tablet, landscape and large-text layout for `MessagingAuditPanel` (governance)
+  - evidence: PR #652 merged to main (reconciled 2026-11-23)
   - pr: #652
   - attempts: 1
   - requirements: PAT-01, PAT-02, UX-01

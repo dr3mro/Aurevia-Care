@@ -1,4 +1,5 @@
 - [x] GATE-ISOLATION-SURFACES · G0 isolation across API, search, files, workers and exports: two tenants with identical local IDs (test and gap note)
+  - evidence: PR #377 merged to main (reconciled 2026-11-23)
   - pr: #377
   - attempts: 1
   - requirements: ARC-02, IAM-01

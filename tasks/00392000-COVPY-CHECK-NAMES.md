@@ -1,4 +1,5 @@
 - [x] COVPY-CHECK-NAMES · Script tests: reach 100% line and branch coverage of `scripts/check-names.py`
+  - evidence: PR #391 merged to main (reconciled 2026-11-23)
   - pr: #391
   - attempts: 1
   - requirements: OPS-06

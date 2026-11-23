@@ -1,4 +1,5 @@
 - [x] RESP-PATIENT-OVERVIEW-SCREEN · Staff web: responsive `PatientOverviewScreen` (features-patients)
+  - evidence: PR #786 merged to main (reconciled 2026-11-23)
   - pr: #786
   - attempts: 1
   - requirements: WEB-07, UX-01

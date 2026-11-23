@@ -1,4 +1,5 @@
 - [x] RESP-SUPPORT · Staff web: phones and tablets count as supported widths
+  - evidence: PR #530 merged to main (reconciled 2026-11-23)
   - pr: #530
   - attempts: 1
   - requirements: WEB-07, UX-01

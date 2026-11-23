@@ -1,4 +1,5 @@
 - [x] RESP-NAV-DOC · Docs: update the supported widths in the screen and navigation map
+  - evidence: PR #512 merged to main (reconciled 2026-11-23)
   - pr: #512
   - attempts: 1
   - requirements: WEB-07, UX-01

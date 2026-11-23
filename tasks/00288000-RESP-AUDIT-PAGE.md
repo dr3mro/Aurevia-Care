@@ -1,4 +1,5 @@
 - [x] RESP-AUDIT-PAGE · Staff web: responsive `AuditPage` (features-admin)
+  - evidence: PR #1199 merged to main (reconciled 2026-11-23)
   - pr: #1199
   - attempts: 3
   - requirements: WEB-07, UX-01

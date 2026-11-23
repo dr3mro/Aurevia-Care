@@ -1,4 +1,5 @@
 - [x] RESP-APP-CONVERSATION-INBOX · Patient app: tablet, landscape and large-text layout for `ConversationInbox` (conversations)
+  - evidence: PR #643 merged to main (reconciled 2026-11-23)
   - pr: #643
   - attempts: 1
   - requirements: PAT-01, PAT-02, UX-01

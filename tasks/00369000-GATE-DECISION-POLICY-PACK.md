@@ -1,4 +1,5 @@
 - [x] GATE-DECISION-POLICY-PACK · Decision pack for a person to approve: Market policy pack, hosting region, jurisdiction and data handling map
+  - evidence: PR #373 merged to main (reconciled 2026-11-23)
   - pr: #373
   - attempts: 1
   - requirements: OPS-01, PRD-05

@@ -1,4 +1,5 @@
 - [x] RESP-DUPLICATES-PAGE · Staff web: responsive `DuplicatesPage` (features-duplicates)
+  - evidence: PR #777 merged to main (reconciled 2026-11-23)
   - pr: #777
   - attempts: 1
   - requirements: WEB-07, UX-01

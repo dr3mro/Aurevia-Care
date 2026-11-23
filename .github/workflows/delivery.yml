@@ -16,6 +16,7 @@ permissions:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
+  queue: max
 
 jobs:
   policy:
@@ -37,7 +38,11 @@ jobs:
         run: |
           python3 -m venv "$RUNNER_TEMP/actionlint"
           "$RUNNER_TEMP/actionlint/bin/pip" install -q actionlint-py==1.7.12.25
-          "$RUNNER_TEMP/actionlint/bin/actionlint"
+          # actionlint 1.7.12 predates GitHub's concurrency `queue` key. Ignore
+          # only that unknown-key message; scripts/tests/test_workflow_concurrency.py
+          # asserts every workflow declares queue: max.
+          "$RUNNER_TEMP/actionlint/bin/actionlint" \
+            -ignore 'unexpected key "queue" for "concurrency" section'
       - name: Agent pack, docs and secret checks
         run: |
           python3 -I scripts/project-name.py displayName >/dev/null
@@ -182,7 +187,8 @@ jobs:
           pattern: smoke-tested-image-*
       - name: Require a green default-branch run for this commit
         env:
-          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
+          # Read-only API call: the job token is sufficient.
+          GH_TOKEN: ${{ github.token }}
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           total=$(gh api --method GET "repos/$GITHUB_REPOSITORY/actions/workflows/delivery.yml/runs" \
@@ -231,9 +237,13 @@ jobs:
           fi
 
   # One stable check name for branch protection and the merge queue. Require
-  # "Delivery gate" and nothing else: it fails when any verification job fails
-  # or is cancelled, and accepts the jobs that are skipped on purpose (the image
-  # smoke test and the release run only on main and tags).
+  # "Delivery gate" and nothing else. The gate fails closed through
+  # scripts/check-delivery-gate.py: a mandatory job (policy, script-tests,
+  # frontend, java-verify, docs) must report success, and a conditional job may
+  # be skipped only when its documented condition justifies it -- verify only on
+  # pull requests, release only off a tag. A missing, failed, cancelled or
+  # unjustified-skipped job fails the gate, and a job added to `needs` without
+  # updating the contract fails too, so nothing can be dropped in silence.
   gate:
     name: Delivery gate
     if: always()
@@ -241,9 +251,16 @@ jobs:
     timeout-minutes: 5
     runs-on: ubuntu-24.04
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
       - name: Require every verification job to pass
         env:
           RESULTS: ${{ toJSON(needs) }}
+          EVENT_NAME: ${{ github.event_name }}
+          REF_TYPE: ${{ github.ref_type }}
         run: |
-          printf '%s\n' "$RESULTS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
-          printf '%s\n' "$RESULTS" | jq -e 'all(.[]; .result == "success" or .result == "skipped")' >/dev/null
+          python3 scripts/check-delivery-gate.py \
+            --results "$RESULTS" \
+            --event-name "$EVENT_NAME" \
+            --ref-type "$REF_TYPE"

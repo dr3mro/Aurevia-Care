@@ -1,4 +1,5 @@
 - [x] RESP-PATIENT-OVERVIEW-PAGE · Staff web: responsive `PatientOverviewPage` (features-patients)
+  - evidence: PR #784 merged to main (reconciled 2026-11-23)
   - pr: #784
   - attempts: 1
   - requirements: WEB-07, UX-01
