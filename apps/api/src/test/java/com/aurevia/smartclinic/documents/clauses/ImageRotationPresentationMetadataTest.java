@@ -65,6 +65,10 @@ class ImageRotationPresentationMetadataTest {
     private static final String PEER = "clinician-b";
     private static final byte[] ORIGINAL = "%PDF-1.4 synthetic original bytes".getBytes(StandardCharsets.UTF_8);
     private static final String ENCODED = Base64.getEncoder().encodeToString(ORIGINAL);
+    // PNG signature followed by synthetic ASCII, so an image original is neither empty nor huge.
+    private static final byte[] IMAGE_BYTES = HexFormat.of().parseHex(
+            "89504e470d0a1a0a53594e54484554494320494d414745");
+    private static final String ENCODED_IMAGE = Base64.getEncoder().encodeToString(IMAGE_BYTES);
 
     private RestClient rest;
 
@@ -170,6 +174,23 @@ class ImageRotationPresentationMetadataTest {
     private String link(String chartId, int rotation) {
         ResponseEntity<String> response = post("/api/v1/documents/associations",
                 linkBody(chartId, rotation), CLINICIAN, ORG_A);
+        assertEquals(HttpStatus.CREATED, response.getStatusCode(), response.getBody());
+        return field(response.getBody(), "id");
+    }
+
+    /**
+     * Link a synthetic PNG original at the given presentation rotation.
+     *
+     * @param chartId  freshly registered synthetic chart
+     * @param rotation quarter turn to record as metadata
+     * @return the new association id
+     */
+    private String linkImage(String chartId, int rotation) {
+        String body = "{\"subjectType\":\"chart\",\"subjectId\":\"" + chartId
+                + "\",\"fileName\":\"scan.png\",\"mediaType\":\"image/png\","
+                + "\"contentBase64\":\"" + ENCODED_IMAGE + "\",\"rotationDegrees\":" + rotation + "}";
+        ResponseEntity<String> response = post("/api/v1/documents/associations",
+                body, CLINICIAN, ORG_A);
         assertEquals(HttpStatus.CREATED, response.getStatusCode(), response.getBody());
         return field(response.getBody(), "id");
     }
@@ -347,5 +368,52 @@ class ImageRotationPresentationMetadataTest {
 
         assertEquals(HttpStatus.FORBIDDEN, refused.getStatusCode(), refused.getBody());
         assertEquals("FORBIDDEN", field(refused.getBody(), "code"));
+    }
+
+    /**
+     * An image original keeps its exact bytes: rotation is recorded as metadata
+     * beside the database-derived digest and is never applied to the image.
+     */
+    @Test
+    void imageRotationIsPresentationMetadataForImageOriginals() throws Exception {
+        String associationId = linkImage(registerChart(), 90);
+
+        ResponseEntity<String> view = get("/api/v1/documents/associations/" + associationId,
+                CLINICIAN, ORG_A);
+        assertEquals(HttpStatus.OK, view.getStatusCode(), view.getBody());
+        String body = view.getBody();
+        assertEquals("image/png", field(body, "mediaType"));
+        assertEquals("90", field(body, "rotationDegrees"));
+        assertEquals(String.valueOf(IMAGE_BYTES.length), field(body, "byteSize"));
+        assertEquals(digest(IMAGE_BYTES), field(body, "sha256"),
+                "the database digest must describe the exact retained image bytes");
+        assertFalse(body.contains("contentBase64"), "original image bytes must not leak into the view");
+
+        ResponseEntity<byte[]> content = getBytes("/api/v1/documents/associations/" + associationId
+                + "/content", CLINICIAN, ORG_A);
+        assertEquals(HttpStatus.OK, content.getStatusCode());
+        assertArrayEquals(IMAGE_BYTES, content.getBody(),
+                "a presentation rotation must never transform the retained image");
+    }
+
+    /**
+     * An unsupported rotation is refused on the render path before any immutable
+     * PDF is written, so the subject has no rendered version afterwards.
+     */
+    @Test
+    void invalidRenderRotationIsRefused() {
+        String chartId = registerChart();
+        String associationId = link(chartId, 90);
+
+        ResponseEntity<String> refused = post("/api/v1/documents/rendered",
+                renderBody(chartId, 45, associationId), CLINICIAN, ORG_A);
+
+        assertEquals(422, refused.getStatusCode().value(), refused.getBody());
+        assertEquals("INVALID_ROTATION", field(refused.getBody(), "code"));
+        ResponseEntity<String> renders = get("/api/v1/documents/rendered?subjectType=chart"
+                + "&subjectId=" + chartId + "&locale=en", CLINICIAN, ORG_A);
+        assertEquals(HttpStatus.OK, renders.getStatusCode(), renders.getBody());
+        assertEquals("[]", renders.getBody(),
+                "a refused render rotation must not leave an immutable artifact behind");
     }
 }
