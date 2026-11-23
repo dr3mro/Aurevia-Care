@@ -131,6 +131,9 @@ class SurfaceBacklogUnassignedWorkFailedNotificationsOverdueTest {
              Statement statement = connection.createStatement()) {
             seedOwningTenant(statement);
             seedOtherTenant(statement);
+            // The approved urgent/downtime channels are seeded and approved by
+            // seedOwningTenant (below). ORG_B stays unseeded so the cross-tenant
+            // concealment assertion keeps its premise.
         }
     }
 
