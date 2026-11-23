@@ -73,7 +73,7 @@ unverified in the change log below.
 | 3 | Fewer jobs | ~1 min per extra slot | Publish is one job for all slots instead of a 10-way matrix; the separate publish job's 5–11s setup billed as a minute per slot. Folding into the worker would save another minute but was rejected to keep the token out of agent-written code. |
 | 4 | Right-size pool | up to ~21 min per idle wave | Default cap 10 → 3 ready tasks; empty plan starts no worker jobs. Observed no-op wave billed 3 min; a full 10-slot image build billed 11 min. |
 | 5 | Faster launch | ~1 min per base rebuild, unverified | Dropped `curl`/`shellcheck` from the worker image and put the warm Maven repo in one layer; slot layers stay config-only and only slots in the wave are pulled. Image pull cost (13–19s) and size/billing cannot be measured locally (no Docker); the V1→V2 CLI fix is carried over. |
-| 6 | Fewer triggers | ~6 min per docs-only push | `paths-ignore` for `docs/**` and Markdown skips Delivery's ~6-minute job set on documentation-only changes; waves still run only on TODO.md changes or manual dispatch. |
+| 6 | Fewer triggers | ~6 min per docs-only push | `paths-ignore` for `docs/**` and Markdown skips Delivery's ~6-minute job set on documentation-only changes; waves still run only on tasks/ changes or manual dispatch. |
 | 7 | Budget guard | unbounded risk reduction | Refuses a wave above 90% of the 1,500-minute cap and opens an issue; no direct per-wave saving, but limits worst-case monthly spend. |
 
 **Unverified on GitHub:** integrator merge seconds (no merge job completed in the

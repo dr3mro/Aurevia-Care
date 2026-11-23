@@ -48,7 +48,7 @@ jobs:
           persist-credentials: false
           sparse-checkout: |
             scripts
-            TODO.md
+            tasks/
             tasks
             docs/archive/TODO-DONE.md
       - name: Move every open swarm pull request to its next step

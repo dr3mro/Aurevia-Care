@@ -1,12 +1,12 @@
 name: Agent swarm
-# The one scheduler. It reads TODO.md, splits the open tasks across up to 20
+# The one scheduler. It reads tasks/, splits the open tasks across up to 20
 # worker jobs per wave (also capped at 20 across overlapping waves), and starts one
 # prepared container per slot. Each worker runs the agent with no GitHub token
 # on its own branch, uploads its commits, and exits (the container is
 # discarded, nothing idles). A separate trusted job pushes the branch and opens
 # the pull request. The integrator then runs in the same run (full gate before
 # main is touched) and the last job starts the next wave while work remains.
-# Failed runs on main arrive as repair tasks in TODO.md, planned first.
+# Failed runs on main arrive as repair task files under tasks/, planned first.
 on:
   workflow_dispatch:
     inputs:
@@ -51,7 +51,7 @@ env:
 jobs:
   plan:
     name: Plan the wave
-    # Planning reads TODO.md and claims tasks, so it never overlaps another
+    # Planning reads tasks/ and claims tasks, so it never overlaps another
     # plan, whichever wave it belongs to.
     concurrency:
       group: agent-swarm-plan
@@ -80,7 +80,7 @@ jobs:
           sparse-checkout: |
             scripts
             .github/swarm
-            TODO.md
+            tasks/
             tasks
             docs/archive/TODO-DONE.md
       - id: image
@@ -93,7 +93,7 @@ jobs:
         run: python3 -I scripts/swarm.py budget-gate
       # A red main becomes a repair task here, in the same run that plans the
       # wave, instead of a separate watchdog run per failure. The task goes in
-      # TODO.md first, so the planner below picks it up ahead of everything else.
+      # task files first, so the planner below picks them up ahead of everything else.
       - id: repair
         if: steps.budget.outputs.start == 'true'
         env:
@@ -110,7 +110,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
         run: python3 -I scripts/swarm.py images-ready
-      # Marks every task it starts as [-] in TODO.md and pushes that to main
+      # Marks every task it starts as [-] in the task files and pushes that to main
       # (GITHUB_TOKEN pushes do not trigger another run).
       - id: plan
         if: steps.budget.outputs.start == 'true'
@@ -202,7 +202,7 @@ jobs:
           persist-credentials: false
           sparse-checkout: |
             scripts
-            TODO.md
+            tasks/
             tasks
             docs/archive/TODO-DONE.md
       - env:

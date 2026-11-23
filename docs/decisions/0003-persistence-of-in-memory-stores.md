@@ -42,7 +42,7 @@ The security-relevant stores are not excused by group 3: authorization decisions
 
 - **Replace every in-memory store in one change** — rejected: it cannot be reviewed or verified as one green slice, and it obscures which store owns which invariant. Ordering by "bean with a table" first, then "bean needing a table", then "no production caller" keeps each change traceable to a test.
 - **Keep the in-memory stores and periodically flush snapshots to PostgreSQL** — rejected: a periodic flush is not atomic with the domain commit, so state, audit and outbox can diverge on process loss, contrary to ARC-02 and ARC-05. The replacement must commit state and audit in the same transaction.
-- **One shared migration for all stores, or one migration version per group** — rejected: each store owns its schema and reserved version. A shared migration couples independent stories and defeats expand/contract review under OPS-06. Use V59 and up, one per store, claimed in TODO.md before use.
+- **One shared migration for all stores, or one migration version per group** — rejected: each store owns its schema and reserved version. A shared migration couples independent stories and defeats expand/contract review under OPS-06. Use V59 and up, one per store, claimed in tasks/ before use.
 - **Defer the decision ledger and idempotency ledger because nothing production-facing injects them** — rejected: OPS-02 durable authorization audit and ARC-03/ARC-04 replay protection are required before real-patient use, so they are named explicitly in Consequences and carry a production-enablement gate even though their current adapters are test-only.
 
 ## Consequences and evidence

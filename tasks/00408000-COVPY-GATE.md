@@ -17,7 +17,7 @@
     3. Write `scripts/tests/test_python_coverage_gate.py`: the script exits non-zero when a stub `coverage` reports a missed line in `--full` mode, exits zero at 100%, prints the install hint and exits non-zero when `coverage` is missing and `REQUIRE_PY_COVERAGE` is set, and falls back to plain unittest with a warning when it is not set.
     4. Run `bash scripts/check.sh` and paste the result.
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
-    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+    Before you start read the "Instructions for every agent" in tasks/_head.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 
 ## Spec clause coverage: one task per sentence of the specification (new files only, no dependencies)
 

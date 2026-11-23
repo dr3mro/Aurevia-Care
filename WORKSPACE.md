@@ -2,7 +2,7 @@
 
 | Field | Current value |
 |---|---|
-| Working tree and remote | Branch `main`, HEAD `928d886`, `0/0` with `origin/main` (`github.com/dr3mro/Aurevia-Care.git`). `delivery/g0` retired; all scoped work commits to `main`. Remote swarm workers and auto-merges are active — always `git fetch origin main` and reconcile before editing trackers or pushing. Keep `TODO.md` in sync at least every 10 minutes. |
+| Working tree and remote | Branch `main`, HEAD `928d886`, `0/0` with `origin/main` (`github.com/dr3mro/Aurevia-Care.git`). `delivery/g0` retired; all scoped work commits to `main`. Remote swarm workers and auto-merges are active — always `git fetch origin main` and reconcile before editing trackers or pushing. Task state lives in `tasks/`; `tasks/` is a generated view, not tracked. |
 | Active story | None claimed. Standing directive: watch **every** non-successful Actions run (failure, cancelled, skipped, stuck), fetch logs, fix, commit, push until green; pull remote updates and resolve conflicts; keep local exactly 1:1 with `origin/main`. |
 | Approved delivery branch | `main` |
 | Stable commands | `scripts/check.sh`, `scripts/quick-check.sh`, `scripts/docs.sh`, `scripts/frontend-check.sh`, `python3 -I -m unittest discover -s scripts/tests -q`, `python3 -I scripts/gen-opencode.py --check`, `bash apps/api/check.sh`, `bash db/check.sh` |
@@ -12,4 +12,4 @@
 | Watch checkpoint | 2026-11-19T15:26Z: HEAD `e6259cc`, 0/0. Full 10-worker waves and integrators green; integrator `44552323716` (SHA `2340ae7`) verified the new `scripts/integrator-gate.sh` (check.sh + docs.sh + Doxygen) end-to-end and merged 2 PRs (G3-03/G3-04). Fixes this session: multi-hyphen task IDs, publish ref reuse, REST labels, `[skip ci]` amplification, root frontend typecheck, flaky publish test, `PUSH_TOKEN`, reserved-version migration gaps, 502/503 retries (gh + apt), temporary 1-worker then restored to 10, integrator push race (soft-reset reconciliation), merged Javadoc repair + docs gate before merge. Local gates green on merged state (168 tests, docs.sh, check.sh, quick-check.sh, migrations). |
 | Next action | Continue watch passes: check `gh run list` for any non-success, fetch job logs, fix + push, keep 1:1. Note: a literal 24-hour continuous watch is not possible in one session — the durable automation (hourly swarm, watchdog, issue monitor, daily notes and audit, PR repair, integrator) carries the loop between sessions. |
 
-Keep this card short and current. TODO.md owns task state and evidence; docs/archive/PROGRESS.md holds the earlier chronological log. MEMORY.md owns durable decisions.
+Keep this card short and current. Task state and evidence live in `tasks/`; docs/archive/PROGRESS.md holds the earlier chronological log. MEMORY.md owns durable decisions.

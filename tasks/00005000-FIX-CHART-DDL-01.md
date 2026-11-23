@@ -14,4 +14,4 @@
     4. Add an integration assertion that, after Flyway runs the production migrations only, `chart_entry` exists, has row level security forced, and a cross-tenant read returns no rows.
     5. Run `bash scripts/worker-check.sh` and `python3 -I scripts/check-migrations.py --require-baseline`.
 
-    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT change files outside `scope`, add patient data to logs, or edit any existing migration.
+    Before you start read the "Instructions for every agent" in tasks/_head.md. Finish by running the check named in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Do NOT change files outside `scope`, add patient data to logs, or edit any existing migration.

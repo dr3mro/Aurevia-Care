@@ -55,7 +55,7 @@ Missing is not the core code but the approval/manual-evidence boundary:
 2. No manual-workflow documentation that identifies delivery evidence and verification evidence for any partner-specific or manual step. Supply by: site clinical/operations owner at G5.
 3. No clinical sign-off for dictionaries, interpreting privileges, result escalation and coverage, and no G4/G5 acceptance evidence (wrong-patient study refusal, addendum to referrer, PT discharge/referral closure, ambiguous-transmission reconciliation, site launch sign-offs). Supply by: Clinical safety lead, site medical director and product/clinical/privacy owners.
 
-Files that would change when the gap is closed (none changed by this note): a new decision record under `docs/decisions/` for the interface approvals; the affected `contracts/` fixtures and conformance reports; `docs/operations/` evidence artifacts for delivery/verification; and the G4/G5 acceptance matrix in TODO.md / the gate evidence docs. No code or migration change is implied by this note.
+Files that would change when the gap is closed (none changed by this note): a new decision record under `docs/decisions/` for the interface approvals; the affected `contracts/` fixtures and conformance reports; `docs/operations/` evidence artifacts for delivery/verification; and the G4/G5 acceptance matrix in tasks/ / the gate evidence docs. No code or migration change is implied by this note.
 
 Separate tasks needed: at least three — (a) partner interface approvals and conformance evidence per interface, (b) manual-workflow delivery/verification evidence documentation, and (c) the G4/G5 clinical and site acceptance sign-offs. Each is human/partner-gated and cannot be closed by code alone.
 

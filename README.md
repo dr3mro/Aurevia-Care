@@ -1,6 +1,6 @@
 # Aurevia Care
 
-Aurevia Care (SmartClinic Cloud V1) is a multi-tenant healthcare platform: a Spring Boot API, a React staff web app and a React Native patient app, built by a team of OpenCode agents through GitHub Actions. The product specification is in `SMARTCLINIC_V1_SPEC.md`, the task list in `TODO.md`, and setup details in `README-SETUP.md`.
+Aurevia Care (SmartClinic Cloud V1) is a multi-tenant healthcare platform: a Spring Boot API, a React staff web app and a React Native patient app, built by a team of OpenCode agents through GitHub Actions. The product specification is in `SMARTCLINIC_V1_SPEC.md`, the task files in `tasks/` (`tasks/` is a generated view), and setup details in `README-SETUP.md`.
 
 ## Run it with one command
 
@@ -63,7 +63,7 @@ Options: `--runtime`, `--memory`, `--cpus`, `--name`, `--image`, `--web-port`, `
 
 Keys: `q` quits and `r` refreshes now. A new failed run rings the terminal bell until you press any key. Other options: `aurevia monitor --once` prints one snapshot, `--interval SECONDS` changes the refresh time and `--recent N` changes how many runs are listed.
 
-The monitor also keeps the swarm running: when no Agent swarm run is queued or in progress and TODO.md still has open tasks, it dispatches a wave (`gh workflow run swarm.yml`), at most once every 10 minutes. `--autostart-wait MINUTES` changes that gap and `--no-autostart` turns it off. `--once` never starts a wave.
+The monitor also keeps the swarm running: when no Agent swarm run is queued or in progress and `tasks/` still has open tasks, it dispatches a wave (`gh workflow run swarm.yml`), at most once every 10 minutes. `--autostart-wait MINUTES` changes that gap and `--no-autostart` turns it off. `--once` never starts a wave.
 
 ### Force a task
 
@@ -100,4 +100,4 @@ The workflow file is `.github/workflows/release-app-image.yml`.
 
 - `bash scripts/quick-check.sh` is the fast gate. `bash scripts/worker-check.sh` adds PostgreSQL integration tests, the frontend standards gate and SpotBugs. `bash apps/api/check.sh` is the full Java gate with coverage.
 - Applications: `apps/api` (Spring Boot), `apps/staff-web` (React, Vite), `apps/patient-mobile` (React Native, Expo).
-- Tasks, agent rules and the swarm: `TODO.md`, `AGENTS.md`, `docs/SWARM.md`. Watch the swarm with `scripts/monitor.sh`.
+- Tasks, agent rules and the swarm: `tasks/`, `AGENTS.md`, `docs/SWARM.md`. Watch the swarm with `scripts/monitor.sh`.

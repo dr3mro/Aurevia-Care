@@ -192,4 +192,4 @@ current state, the delivery evidence and the full event history.
 Evidence source for this guide: the approved clauses in
 [SMARTCLINIC_V1_SPEC.md](../../../SMARTCLINIC_V1_SPEC.md), the existing
 `prescription.rx` domain model (channel families, states and event vocabulary),
-and the ordering tasks in `TODO.md`. No human or clinical evidence is claimed.
+and the ordering tasks in `tasks/`. No human or clinical evidence is claimed.

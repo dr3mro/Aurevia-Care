@@ -26,10 +26,10 @@ The API and persistence slice for all four facts exists in the repository and is
 
 - Staff web: `apps/staff-web/src/features/finance/` does not exist and no feature `routes.ts` exports a finance route; [navigation.ts](../../../../apps/staff-web/src/app/navigation.ts) already shows a `/finance` item but there is no page behind it. TODO.md entry READY-30 is still `[-]` after two attempts. Files that would change: the new `apps/staff-web/src/features/finance/**` tree and the feature route registry. One task.
 - Browser verification: the finance journey in `apps/staff-web/e2e` is not written (BUILD-60 is `[ ]`). One task.
-- G4 evidence and acceptance: `SPEC-G4-01` through `SPEC-G4-05`, `BUILD-64` and `GATE-PACK-G4` are all `[ ]` in TODO.md, and `docs/gates/g4-evidence-pack.md` does not exist. Seven tasks (five clause tests, the acceptance tests and the gate pack).
+- G4 evidence and acceptance: `SPEC-G4-01` through `SPEC-G4-05`, `BUILD-64` and `GATE-PACK-G4` are all `[ ]` in tasks/, and `docs/gates/g4-evidence-pack.md` does not exist. Seven tasks (five clause tests, the acceptance tests and the gate pack).
 - Traceability discrepancy found during this survey: `CommandCatalog.issueInvoice` uses the path `/api/v1/invoices`, while `FinanceController.create` serves `/api/v1/finance/invoices`. [CommandClientGenerator.java](../../../../apps/api/src/main/java/com/aurevia/smartclinic/api/authorization/CommandClientGenerator.java) generates the command client from that path, so the checked-in generated client and manifest advertise a create route that the controller does not serve. Runtime authorization is performed independently by `FinanceService`, and the HTTP tests exercise the real controller route, so this is a generated-contract mismatch rather than a proven authorization failure. Files that would change: `CommandCatalog.java` plus the regenerated client and manifest. One task.
 
-That is at least ten separate tasks already identified in TODO.md or by this survey. No code, workflow, contract or migration was changed by this note.
+That is at least ten separate tasks already identified in tasks/ or by this survey. No code, workflow, contract or migration was changed by this note.
 
 ## How to verify
 

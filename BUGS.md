@@ -1,6 +1,6 @@
 # SmartClinic defect register
 
-Start with an empty register. Add findings only when supported by observed evidence. Record environmental blockers under the task in TODO.md.
+Start with an empty register. Add findings only when supported by observed evidence. Record environmental blockers under the task in tasks/.
 
 | ID | Requirement | Severity | Environment | Steps | Expected | Observed | Evidence | Owner/status | Retest |
 |---|---|---|---|---|---|---|---|---|---|
@@ -39,4 +39,4 @@ Start with an empty register. Add findings only when supported by observed evide
 | OPS-RED-MAIN-FIRST | OPS-06 | High | Swarm scheduler with a failing Delivery verdict | Plan a global repair with a free slot and an unrelated open PR holding a scope | Dispatch the repair without waiting for the other PR | Ordinary scope claims could indefinitely block the global repair while unrelated PRs still received follow-up work | Synthetic planner reproduction and red/green Python tests | Local repair defers non-repair dispatch and preserves repair scope locks and worker capacity | 1195 Python tests and changed-script coverage gate passed. GitHub retest pending. |
 | OPS-RED-MAIN-DETECTION | OPS-06 | High | Swarm with synthetic GitHub run history | Fill the recent history with cancellations after a failure or queue a newer unrelated workflow repair | Preserve the latest Delivery verdict and prioritize its repair | A bounded unfiltered run listing could hide red Delivery and unrelated automatic repairs could take precedence | Local red/green unit fixtures and verified GitHub filtered queries | Local repair checks definitive verdicts and defers other workflow repairs | GitHub workflow verification pending. |
 
-Record reporter role and distinguish simulated, human pilot and automated evidence. Triage with the Product Owner. Link the regression test, corrective commit and retest outcome. Ideas with no observed defect go into TODO.md.
+Record reporter role and distinguish simulated, human pilot and automated evidence. Triage with the Product Owner. Link the regression test, corrective commit and retest outcome. Ideas with no observed defect go into tasks/.

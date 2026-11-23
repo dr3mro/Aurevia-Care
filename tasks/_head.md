@@ -37,7 +37,7 @@ You are one worker on the SmartClinic V1 team. Follow these steps in order for e
    - **Async UI assertions:** use `findByRole`/`findByTestId` (or `waitFor`) when the result follows an awaited API call; a synchronous `getBy*` sees "Loading"/"Nothing to show" and fails.
    - **Empty list assertions:** the "Nothing to show" empty state is correct when the fixture has no rows; seed the fixture (or assert the empty state) rather than expecting a populated table.
 7. **Commits and pull requests.** Never add `Co-Authored-By` or `Claude-Session` lines to a commit message or pull request description.
-8. **Do not edit `TODO.md`, `tasks/`, `.github/workflows/*`, `.opencode/*`, `opencode.json`, `AGENTS.md` or `scripts/*`.** The orchestrator, the integrator and people own them, and a pull request that touches them is not merged automatically. Put a lesson for these files under `## Lessons for workers` in your notes.
+8. **Do not edit `tasks/`, `.github/workflows/*`, `.opencode/*`, `opencode.json`, `AGENTS.md` or `scripts/*`.** The orchestrator, the integrator and people own them, and a pull request that touches them is not merged automatically. Put a lesson for these files under `## Lessons for workers` in your notes.
 9. **If something is unclear or the spec and the task disagree**, do not guess. Write the question and what you found under `## Why this is not finished` in your notes file and stop. When your prompt has findings from earlier runs, start from them.
 
 ## G0 — platform (IAM, tenant model, catalog, audit, infrastructure)
