@@ -17,10 +17,10 @@ import com.aurevia.smartclinic.staffmsg.model.StaffMessagingContract.StaffPartic
  * row-level security also confines the statement to the guarded transaction.
  * Conversation, participant and message values come from the shared
  * {@link com.aurevia.smartclinic.staffmsg.model.StaffMessagingContract} domain so
- * no second copy of the messaging vocabulary is introduced. Read cursors are a
- * process-local projection: the V91 schema has no durable read-state column,
- * which is recorded in the story notes, so a cursor is never treated as a
- * clinical record.</p>
+ * no second copy of the messaging vocabulary is introduced. Read cursors are
+ * durable, tenant-scoped read state: they survive a restart, never move backwards
+ * and cannot advance past the last visible message. They are not a clinical
+ * record.</p>
  */
 public interface InstantConversationStore {
 
@@ -162,17 +162,18 @@ public interface InstantConversationStore {
                                                      String subject);
 
     /**
-     * Advance one person's read cursor; a cursor never moves backwards.
+     * Persist one person's read cursor. A cursor never moves backwards and is
+     * clamped to the last sequence appended to the conversation's ledger.
      *
      * @param organizationId active organization
      * @param conversationId owning conversation
-     * @param subject        reader subject
-     * @param upToSequence   highest sequence read
+     * @param subject        reader subject, derived from the authenticated context
+     * @param upToSequence   highest sequence read; may exceed the ledger and is clamped
      */
     void markRead(String organizationId, String conversationId, String subject, long upToSequence);
 
     /**
-     * Read a person's cursor for one conversation.
+     * Read a person's durable cursor for one conversation.
      *
      * @param organizationId active organization
      * @param conversationId owning conversation
