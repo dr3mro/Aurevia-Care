@@ -1295,6 +1295,54 @@ paths:
         '401': { $ref: '#/components/responses/AuthenticationRequired' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/InvalidRequest' }
+  /api/v1/staff/instant/events:
+    get:
+      operationId: pollInstantEvents
+      summary: Poll identifier-only message and read events for the caller's conversations
+      description: >-
+        Returns the same identifier set as the SSE stream for a given cursor.
+        nextCursor is the hub high-water sequence, so an invisible or empty page
+        still advances; a cursor above the high-water mark signals resynchronisation.
+      tags: [staff-instant-messaging]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - { name: facilityId, in: query, required: true, description: Facility filter for the caller's conversations, schema: { type: string } }
+        - { name: cursor, in: query, required: false, description: Exclusive sequence lower bound; omit to replay from the start, schema: { type: string } }
+        - { name: limit, in: query, required: false, description: Maximum number of events to return, default 100, schema: { type: integer, minimum: 1, maximum: 200 } }
+      responses:
+        '200':
+          description: Identifier-only events in sequence order and the high-water cursor
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RealtimeEventPage' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+  /api/v1/staff/instant/events/stream:
+    get:
+      operationId: streamInstantEvents
+      summary: Stream identifier-only message and read events over server-sent events
+      description: >-
+        Replays missed events after Last-Event-ID and then delivers live ones.
+        Events carry identifiers only, never message text. Revocation closes the
+        stream on the next event. This transport is instance-scoped; the durable
+        shared outbox is a separate story.
+      tags: [staff-instant-messaging]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - { name: facilityId, in: query, required: true, description: Facility filter for the caller's conversations, schema: { type: string } }
+        - { name: Last-Event-ID, in: header, required: false, description: Sequence of the last received event for resume, schema: { type: string } }
+      responses:
+        '200':
+          description: An SSE stream whose data is one identifier-only event per message
+          content:
+            text/event-stream:
+              schema: { $ref: '#/components/schemas/RealtimeEvent' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
   /api/v1/staff/mail/drafts:
     post:
       operationId: createMailDraft
@@ -2453,6 +2501,27 @@ components:
       type: array
       description: Conversations visible to the caller; not a cursor-paginated page.
       items: { $ref: '#/components/schemas/InstantConversation' }
+    RealtimeEventType:
+      type: string
+      description: Stable wire value of an identifier-only realtime event; never carries clinical content.
+      enum: [message, read]
+    RealtimeEvent:
+      type: object
+      description: Identifier-only notification about a change in a staff conversation.
+      properties:
+        id: { type: string, description: Stable identifier of the changed message or read cursor }
+        sequence: { type: integer, format: int64, minimum: 1, description: Monotonic hub sequence used for resume }
+        type: { $ref: '#/components/schemas/RealtimeEventType' }
+        conversationId: { type: string, description: Owning conversation identifier }
+        subject: { type: string, description: Acting staff subject, never a display name }
+    RealtimeEventPage:
+      type: object
+      description: Bounded polling page of identifier-only events with the high-water cursor.
+      properties:
+        events:
+          type: array
+          items: { $ref: '#/components/schemas/RealtimeEvent' }
+        nextCursor: { type: integer, format: int64, description: Hub high-water sequence for the next poll }
     MailRecipient:
       type: object
       description: A visible recipient; blind copy is deliberately absent from the wire vocabulary.
