@@ -859,6 +859,35 @@ def reconcile_tasks(directory="tasks", file=""):
     print(f"reconciled {changed} task(s)")
 
 
+def draft_triage(threshold=3, age_minutes=120):
+    """Count open swarm draft PRs older than age_minutes. If more than threshold,
+    open a single needs-triage issue listing them. Returns the count."""
+    import datetime
+    prs = gh_json("pr", "list", "--state", "open", "--draft", "--limit", "100",
+                  "--json", "number,title,createdAt,isDraft") or []
+    now = datetime.datetime.now(datetime.timezone.utc)
+    old = []
+    for p in prs:
+        if not p.get("isDraft"):
+            continue
+        created = p.get("createdAt")
+        if not created:
+            continue
+        try:
+            dt = datetime.datetime.fromisoformat(created.replace("Z", "+00:00"))
+        except ValueError:
+            continue
+        if (now - dt).total_seconds() >= age_minutes * 60:
+            old.append(p)
+    print(f"old drafts: {len(old)} (threshold {threshold})")
+    if len(old) > threshold and os.environ.get("SWARM_ISSUES", "on") != "off":
+        body = "Stale swarm draft PRs needing triage:\n\n" + "\n".join(
+            f"- #{p['number']} {p['title']}" for p in old)
+        gh("issue", "create", "--title", "Draft PR triage: too many stale drafts",
+           "--body", body, "--label", "needs-triage", check=False)
+    return len(old)
+
+
 def monitor_select(mode, text, out_dir, now=None):
     """Pick the issues to act on. Writes triage inputs to out_dir.
 
@@ -3936,6 +3965,7 @@ def main(argv=None):
     p = sub.add_parser("reconcile-tasks")
     p.add_argument("--dir", default="tasks")
     p.add_argument("--file", default="")
+    sub.add_parser("draft-triage")
     p = sub.add_parser("monitor-assign")
     p.add_argument("--selection", required=True)
     p.add_argument("--triage", default="triage")
