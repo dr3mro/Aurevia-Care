@@ -20,6 +20,6 @@
     "verbatimModuleSyntax": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["frontend/**/*.ts", "vitest.config.ts", "apps/staff-web/src/**/*.ts", "apps/staff-web/src/**/*.tsx", "apps/patient-mobile/src/**/*.ts", "apps/patient-mobile/src/**/*.tsx"],
+  "include": ["tools/**/*.ts", "vitest.config.ts", "apps/staff-web/src/**/*.ts", "apps/staff-web/src/**/*.tsx", "apps/patient-mobile/src/**/*.ts", "apps/patient-mobile/src/**/*.tsx"],
   "exclude": ["node_modules", "build", "**/target", "**/dist"]
 }

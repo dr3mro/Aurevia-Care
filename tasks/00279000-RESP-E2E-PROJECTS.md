@@ -1,4 +1,5 @@
-- [-] RESP-E2E-PROJECTS · Staff web end-to-end: add phone, tablet and desktop device projects to Playwright
+- [x] RESP-E2E-PROJECTS · Staff web end-to-end: add phone, tablet and desktop device projects to Playwright
+  - evidence: merged on main 716b1751 (#891)
   - agent: swarm-6
   - attempts: 3
   - requirements: WEB-07, UX-01
