@@ -1,5 +1,4 @@
-- [-] COVPY-SWARM-INTEGRATOR · Script tests: swarm.py coverage, integrator part (to 100% together with the other parts)
-  - agent: swarm-3
+- [ ] COVPY-SWARM-INTEGRATOR · Script tests: swarm.py coverage, integrator part (to 100% together with the other parts)
   - attempts: 2
   - requirements: OPS-06
   - scope: scripts/tests/test_swarm_integrator_coverage.py
