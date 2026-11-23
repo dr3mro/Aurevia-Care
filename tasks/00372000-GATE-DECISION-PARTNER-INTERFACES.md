@@ -1,4 +1,5 @@
 - [x] GATE-DECISION-PARTNER-INTERFACES · Decision pack for a person to approve: Laboratory, PACS and pharmacy interface contracts, credentials and outage drills
+  - evidence: PR #374 merged to main (reconciled 2026-11-23)
   - pr: #374
   - attempts: 1
   - requirements: ARC-05, XCH-04

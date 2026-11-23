@@ -54,7 +54,7 @@ def verdicts_and_findings(section):
             verdicts[verdict.group(1).lower()] = verdict.group(2).upper()
             continue
         finding = FINDING.match(line)
-        if finding and "resolved" not in finding.group(2).lower():
+        if finding and not re.search(r"(?<!un)\bresolved\b", finding.group(2), re.I):
             findings.append(line.strip())
     return verdicts, findings
 

@@ -1,4 +1,5 @@
 - [x] RESP-CHART-SCREEN · Staff web: responsive `ChartScreen` (features-chart)
+  - evidence: PR #769 merged to main (reconciled 2026-11-23)
   - pr: #769
   - attempts: 1
   - requirements: WEB-07, UX-01

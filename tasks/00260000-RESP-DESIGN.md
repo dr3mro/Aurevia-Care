@@ -1,4 +1,5 @@
 - [x] RESP-DESIGN · Design guide: responsive layout patterns for the staff web
+  - evidence: PR #521 merged to main (reconciled 2026-11-23)
   - pr: #521
   - attempts: 1
   - requirements: WEB-07, UX-01

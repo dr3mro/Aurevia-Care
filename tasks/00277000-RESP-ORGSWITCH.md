@@ -1,4 +1,5 @@
 - [x] RESP-ORGSWITCH · Staff web: responsive organization switcher
+  - evidence: PR #624 merged to main (reconciled 2026-11-23)
   - pr: #624
   - attempts: 1
   - requirements: WEB-07, UX-01

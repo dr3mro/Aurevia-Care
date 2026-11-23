@@ -1,4 +1,5 @@
 - [x] FIX-INSTANT-OPENAPI · Document the instant-messaging API in the OpenAPI contract (HIGH PRIORITY: Delivery fails on PR #1497, SMSG-03)
+  - evidence: PR #1297 merged to main (reconciled 2026-11-23)
   - pr: #1297
   - attempts: 1
   - priority: high

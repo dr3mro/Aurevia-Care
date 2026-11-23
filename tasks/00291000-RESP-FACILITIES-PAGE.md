@@ -1,4 +1,5 @@
 - [x] RESP-FACILITIES-PAGE · Staff web: responsive `FacilitiesPage` (features-admin)
+  - evidence: PR #726 merged to main (reconciled 2026-11-23)
   - pr: #726
   - attempts: 1
   - requirements: WEB-07, UX-01

@@ -1,4 +1,5 @@
 - [x] RESP-MANIFEST · Staff web: web app manifest so the portal can be added to a home screen (no service worker)
+  - evidence: PR #535 merged to main (reconciled 2026-11-23)
   - pr: #535
   - attempts: 1
   - requirements: WEB-07, UX-01

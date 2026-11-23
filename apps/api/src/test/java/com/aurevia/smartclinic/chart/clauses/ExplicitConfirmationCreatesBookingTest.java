@@ -38,7 +38,8 @@ import tools.jackson.databind.ObjectMapper;
  * migrations. The positive test shows that confirmation creates exactly one
  * appointment carrying the follow-up provenance. The negative tests show that
  * suggesting, overriding, opening or completing a task, omitting the version
- * precondition, supplying a stale version, repeating a confirmation, acting
+ * precondition, supplying a non-positive version, supplying a stale version,
+ * repeating a confirmation, acting
  * without the booking permission, or acting from a peer tenant all refuse to
  * create a booking. All fixtures are synthetic; no production code is added.</p>
  */
@@ -425,5 +426,22 @@ class ExplicitConfirmationCreatesBookingTest {
                 "a peer tenant cannot book against another tenant's suggestion");
         assertEquals(peerBefore, appointmentCount(ORG_B, peerPatient),
                 "the peer tenant books nothing in its own organization either");
+    }
+
+    @Test
+    void invalidVersionConfirmationCreatesNoBooking() throws Exception {
+        String patient = patientId(ORG_A, RECEPTION);
+        long before = appointmentCount(ORG_A, patient);
+        // An encounter before every booked slot in this fixture keeps the suggestion
+        // independent of other tests; no confirmation succeeds here, so no slot is used.
+        JsonNode suggestion = suggest(patient, "2027-01-06T15:00:00Z");
+        String id = suggestion.get("id").asText();
+
+        ResponseEntity<String> refused = post("/api/v1/follow-ups/" + id + "/confirm",
+                "{}", RECEPTION, ORG_A, "\"0\"");
+        assertEquals(422, refused.getStatusCode().value(), refused.getBody());
+        assertEquals("INVALID_IF_MATCH", json(refused).get("code").asText(), refused.getBody());
+        assertEquals(before, appointmentCount(ORG_A, patient),
+                "an invalid version precondition books nothing");
     }
 }

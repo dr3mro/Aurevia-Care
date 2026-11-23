@@ -1,4 +1,5 @@
 - [x] COVPY-CHECK-PACK · Script tests: reach 100% line and branch coverage of `scripts/check-pack.py`
+  - evidence: PR #668 merged to main (reconciled 2026-11-23)
   - pr: #668
   - attempts: 1
   - requirements: OPS-06

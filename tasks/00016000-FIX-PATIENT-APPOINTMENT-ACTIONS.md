@@ -1,4 +1,5 @@
 - [x] FIX-PATIENT-APPOINTMENT-ACTIONS · Wire appointment details and device revocation in the patient app
+  - evidence: PR #1093 merged to main (reconciled 2026-11-23)
   - pr: #1093
   - attempts: 4
   - requirements: PAT-01

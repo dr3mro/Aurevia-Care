@@ -75,6 +75,12 @@ class RouteTests(unittest.TestCase):
         self.assertEqual(route.field("none", "scope"), "")
         self.assertEqual(route.field(None, "scope"), "")
 
+    def test_field_reads_the_worker_brief_format(self):
+        body = ("Task: X\nRequirements: CLN-06, API-02\n"
+                "Scope (stay inside these paths): apps/api/src, docs/x.md\n")
+        self.assertEqual(route.field(body, "scope"), "apps/api/src, docs/x.md")
+        self.assertEqual(route.field(body, "requirements"), "CLN-06, API-02")
+
     def test_main_reads_scope_and_requirements_from_the_body(self):
         out = io.StringIO()
         body = "  - scope: docs/x.md\n  - requirements: Z-9\n"

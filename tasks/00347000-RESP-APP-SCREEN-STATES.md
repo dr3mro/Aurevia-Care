@@ -1,4 +1,5 @@
 - [x] RESP-APP-SCREEN-STATES · Patient app: tablet, landscape and large-text layout for `screenStates` (app)
+  - evidence: PR #650 merged to main (reconciled 2026-11-23)
   - pr: #650
   - attempts: 1
   - requirements: PAT-01, PAT-02, UX-01
