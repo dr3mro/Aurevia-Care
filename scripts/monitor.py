@@ -735,6 +735,7 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False, loading=frozenset()):
     ID_MAX = 20
     # Compact id column: id plus a fixed two-space gap, no padding to the longest id.
     queue = sorted((t for t in todo if t["status"] == "todo"), key=lambda t: PRIORITY_RANK[priority_of(t)])
+    mark = {"high": ("H", "b_red"), "low": ("L", "dim")}
     right = [dict(title="Swarm Tasks Taken", total=len(taken), col="cyan", border="gray", prio=2,
                   items=[cells(iw, (">", "yellow", 1), (t["agent"] or "-", "magenta", 9), (t["id"] + "  ", "b_cyan", None), (t["title"], "", None))
                          for t in taken]),
