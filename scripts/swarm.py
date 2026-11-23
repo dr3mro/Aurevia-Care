@@ -2794,9 +2794,9 @@ def delivery_state(runs, head_sha):
     if conclusion in DELIVERY_FAILED:
         return "failed"
     if conclusion == "skipped":
-        # paths-ignore makes a docs-only change have no run at all; a run that
-        # was skipped for another reason is not evidence either way. Let the
-        # caller decide using the changed files rather than trusting the label.
+        # A skipped run is never verification evidence. Keep this defensive
+        # branch for historical runs and other skip reasons; the caller decides
+        # from the changed files rather than trusting the label.
         return "missing"
     return "pending"
 
@@ -2804,8 +2804,9 @@ def delivery_state(runs, head_sha):
 def markdown_only(files):
     """True when every changed path is documentation (docs/ or a Markdown file).
 
-    Delivery ignores those paths, so a docs-only pull request has no run to
-    inspect. The integrator's local docs check is its evidence instead.
+    Every pull request now runs Delivery, so this is a defensive exception for
+    a missing or skipped run (for example a run from before the path filter was
+    removed). The integrator's local docs check is the evidence in that case.
     """
     paths = [name for name in files if name]
     return bool(paths) and all(name.startswith("docs/") or name.endswith(".md") for name in paths)
@@ -2893,8 +2894,9 @@ def delivery_gate(pr, head=None, runs=None):
     the pull request: ``wait`` leaves it untouched with no label, ``fix`` sends a
     failed run back to the fix workers, and ``request`` asks for a fresh run for
     ``missing`` or ``approval-required`` evidence. A Markdown-only change uses the
-    documented exception: with no Delivery run it is checked by the local docs
-    gate instead. ``runs`` may be supplied by a caller that already listed them.
+    documented defensive exception: if its run is missing or skipped, the local
+    docs gate is the evidence instead. ``runs`` may be supplied by a caller that
+    already listed them.
     """
     if head is None:
         head = (gh_json("pr", "view", str(pr), "--json", "headRefOid") or {}).get("headRefOid", "")
@@ -2908,8 +2910,9 @@ def delivery_gate(pr, head=None, runs=None):
     if state == "pending":
         return "wait"
     if state == "missing" and markdown_only(gh("pr", "diff", str(pr), "--name-only").split()):
-        # delivery.yml's paths-ignore means a docs-only change never gets a run;
-        # quick-check.sh already ran check-docs.py on this exact merge result.
+        # Defensive exception for a docs-only run that never started (for example
+        # one from before the PR path filter was removed); quick-check.sh already
+        # ran check-docs.py on this exact merge result.
         return "merge"
     branch = (gh_json("pr", "view", str(pr), "--json", "headRefName") or {}).get("headRefName", "")
     gh("pr", "comment", str(pr), "--body",

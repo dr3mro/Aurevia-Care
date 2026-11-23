@@ -70,8 +70,10 @@ tests), `frontend` (`scripts/frontend-check.sh`), `java-verify` (the reusable
 `.github/actions/java-verify` action runs `apps/api/check.sh` and `db/check.sh` with
 PostgreSQL 17 and the full JaCoCo/OWASP/SpotBugs tier), and `docs` (`scripts/docs.sh`).
 The single `Delivery gate` job requires every verification job to pass or be skipped
-on purpose, and branch protection checks it on the exact commit
-(`.github/workflows/delivery.yml`, `docs` are skipped for doc-only PRs by `paths-ignore`).
+on purpose, and branch protection checks it on the exact commit. Every pull request
+runs this workflow, including documentation-only changes: a path-filtered PR would
+never report the required check. `paths-ignore` on `push` still skips docs-only
+commits that are already on `main`.
 
 **Integrator (before merge and on tags).** The integrator runs
 `bash scripts/integrator-gate.sh` — full `check.sh` plus `docs.sh` — on each merge
