@@ -84,7 +84,16 @@ run_step() {
   local code=0
   printf '\n==> %s\n' "$name"
   set +e
-  "$@" 2>&1 | tee "$log"
+  # Keep policy calls visible to ShellCheck and stop a failed check before a
+  # later success can hide it. The parent still captures the producer status.
+  (
+    set -e
+    case "$1" in
+      check_shell) check_shell ;;
+      check_policy) check_policy ;;
+      *) "$@" ;;
+    esac
+  ) 2>&1 | tee "$log"
   code=${PIPESTATUS[0]}
   set -e
   if [[ "$code" == "0" ]]; then
@@ -210,25 +219,17 @@ finish() {
 # --- policy -----------------------------------------------------------------
 shell_files=(scripts/*.sh infra/bootstrap/start.sh apps/api/check.sh db/check.sh)
 
-# shellcheck disable=SC2329
 check_shell() {
   local file
   for file in "${shell_files[@]}"; do bash -n "$file"; done
   shellcheck "${shell_files[@]}"
 }
 
-# shellcheck disable=SC2329
-check_workflows() {
-  actionlint
-}
-
 # check-constraints diffs against origin/main; CI passes --require-base, so do the same
 # whenever the base can be resolved and warn when it cannot.
-# shellcheck disable=SC2329
 check_policy() {
-  local base_flag=()
   if git rev-parse --verify --quiet origin/main >/dev/null; then
-    base_flag=(--require-base)
+    set -- --require-base
   else
     printf 'origin/main not found: run "git fetch origin main" for the full constraint check\n' >&2
   fi
@@ -239,7 +240,7 @@ check_policy() {
   python3 -I scripts/check-secrets.py
   python3 -I scripts/check-names.py
   python3 -I scripts/check-wiring.py
-  python3 -I scripts/check-constraints.py "${base_flag[@]}"
+  python3 -I scripts/check-constraints.py "$@"
   python3 -I scripts/check-migrations.py --require-baseline
 }
 
@@ -249,7 +250,7 @@ else
   skip_step "policy: shell syntax and shellcheck" "shellcheck not installed"
 fi
 if command -v actionlint >/dev/null; then
-  run_step "policy: workflow lint (actionlint)" check_workflows
+  run_step "policy: workflow lint (actionlint)" actionlint
 else
   skip_step "policy: workflow lint (actionlint)" "actionlint not installed"
 fi
