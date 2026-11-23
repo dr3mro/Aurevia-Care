@@ -1,7 +1,16 @@
 import { defined } from '../../components/invariant';
 import { syntheticOrganizations } from '../../fixtures/synthetic';
 import type { PersonName } from '../../i18n/format';
-import type { Chart, CodedEntry, DocumentAssociation, NoteRevision, Vital } from './domain';
+import type {
+  Chart,
+  CodedEntry,
+  DocumentAssociation,
+  FollowUpSuggestion,
+  NoteRevision,
+  PatientSummary,
+  RecentResult,
+  Vital,
+} from './domain';
 
 /** The two synthetic tenants; their local identifiers intentionally collide. */
 export const alphaOrganizationId = defined(syntheticOrganizations[0], 'alpha organization').id;
@@ -65,6 +74,19 @@ const alphaProblems: readonly CodedEntry[] = [
 ];
 
 const alphaAllergies: readonly CodedEntry[] = [
+  {
+    organizationId: alphaOrganizationId,
+    id: 'allergy-penicillin',
+    code: 'A-PEN',
+    originalText: 'Synthetic penicillin (source text)',
+    display: 'Synthetic penicillin',
+    displayLocal: 'بنسلين تجريبي',
+    source: 'synthetic intake',
+    effectiveOn: '2026-01-12',
+    verification: 'verified',
+    clinicalAuthor: syntheticSigner,
+    enteredBy: syntheticDataEntryActor,
+  },
   {
     organizationId: alphaOrganizationId,
     id: 'allergy-001',
@@ -159,6 +181,7 @@ const alphaRevisions: readonly NoteRevision[] = [
     templateVersion: 'soap-v2',
     signer: syntheticSigner,
     signedAt: '2026-03-02T10:00:00Z',
+    savedAt: '2026-03-02T09:58:00Z',
     effectiveOn: '2026-03-02',
     checksum: 'synthetic:prior:rev-001',
     enteredInError: {
@@ -181,6 +204,7 @@ const alphaRevisions: readonly NoteRevision[] = [
     templateVersion: 'soap-v2',
     signer: syntheticSigner,
     signedAt: '2026-03-09T11:00:00Z',
+    savedAt: '2026-03-09T09:41:00Z',
     effectiveOn: '2026-03-09',
     checksum: 'synthetic:current:rev-002',
   },
@@ -200,6 +224,7 @@ const betaRevisions: readonly NoteRevision[] = [
     templateVersion: 'soap-v2',
     signer: syntheticSigner,
     signedAt: '2026-03-04T10:00:00Z',
+    savedAt: '2026-03-04T09:40:00Z',
     effectiveOn: '2026-03-04',
     checksum: 'synthetic:prior:rev-001-beta',
   },
@@ -214,6 +239,7 @@ const betaRevisions: readonly NoteRevision[] = [
     state: 'draft',
     content: { ...syntheticSoap },
     templateVersion: 'soap-v2',
+    savedAt: '2026-03-09T09:41:00Z',
     amends: 'rev-001',
   },
 ];
@@ -290,6 +316,88 @@ const betaDocuments: readonly DocumentAssociation[] = [
   },
 ];
 
+/** Synthetic banner demographics; never derived from `PatientViewResponse`. */
+const alphaSummary: PatientSummary = {
+  name: alphaPatient,
+  age: '63 y',
+  sex: 'female',
+  dateOfBirth: '1963-06-02',
+  mrn: 'SYN-099804',
+  mrnIssuer: 'Harbor Family Clinic',
+  language: 'en',
+  allergy: {
+    display: 'Synthetic penicillin',
+    reaction: 'rash',
+    verification: 'verified',
+  },
+  resultsToReview: 1,
+};
+
+/** A second synthetic summary without an allergy, used by the draft tenant. */
+const betaSummary: PatientSummary = {
+  name: betaPatient,
+  age: '41 y',
+  sex: 'female',
+  dateOfBirth: '1985-04-12',
+  mrn: 'SYN-100312',
+  mrnIssuer: 'Synthetic Harbor Clinic',
+  language: 'en',
+  resultsToReview: 0,
+};
+
+/** Synthetic results with preserved source units, reference ranges and flags. */
+const alphaResults: readonly RecentResult[] = [
+  {
+    organizationId: alphaOrganizationId,
+    id: 'result-hba1c',
+    test: 'Synthetic HbA1c',
+    value: 6.9,
+    unit: '%',
+    referenceLow: 4.0,
+    referenceHigh: 5.6,
+    observedOn: '2026-03-14',
+    flag: 'high',
+  },
+  {
+    organizationId: alphaOrganizationId,
+    id: 'result-glucose',
+    test: 'Synthetic fasting glucose',
+    value: 118,
+    unit: 'mg/dL',
+    referenceLow: 70,
+    referenceHigh: 99,
+    observedOn: '2026-03-14',
+    flag: 'high',
+  },
+  {
+    organizationId: alphaOrganizationId,
+    id: 'result-creatinine',
+    test: 'Synthetic creatinine',
+    value: 0.9,
+    unit: 'mg/dL',
+    referenceLow: 0.7,
+    referenceHigh: 1.3,
+    observedOn: '2026-03-14',
+    flag: 'normal',
+  },
+];
+
+/** A follow-up suggestion with the rule that produced it, synthetic throughout. */
+const alphaFollowUp: FollowUpSuggestion = {
+  organizationId: alphaOrganizationId,
+  id: 'follow-up-001',
+  suggestedOn: '2026-12-19',
+  rule: 'Synthetic rule: visit type Follow-up, interval 4 weeks, prior follow-up open since Nov 21. Nothing is booked until you confirm.',
+};
+
+/** The draft tenant uses the same synthetic suggestion shape with its own id. */
+const betaFollowUp: FollowUpSuggestion = {
+  organizationId: betaOrganizationId,
+  id: 'follow-up-002',
+  suggestedOn: '2026-12-19',
+  rule: 'Synthetic rule: visit type Follow-up, interval 4 weeks. Nothing is booked until you confirm.',
+};
+
 /** Synthetic alpha chart with a preserved entered-in-error revision in its history. */
 export const syntheticAlphaChart: Chart = {
   organizationId: alphaOrganizationId,
@@ -301,6 +409,9 @@ export const syntheticAlphaChart: Chart = {
   vitals: alphaVitals,
   revisions: alphaRevisions,
   documents: alphaDocuments,
+  patientSummary: alphaSummary,
+  recentResults: alphaResults,
+  followUp: alphaFollowUp,
 };
 
 /** Synthetic beta chart reusing the same local ids with different content. */
@@ -314,6 +425,9 @@ export const syntheticBetaChart: Chart = {
   vitals: [],
   revisions: betaRevisions,
   documents: betaDocuments,
+  patientSummary: betaSummary,
+  recentResults: [],
+  followUp: betaFollowUp,
 };
 
 /** The complete synthetic pool; two tenants share every local identifier. */

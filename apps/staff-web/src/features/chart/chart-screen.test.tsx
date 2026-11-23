@@ -209,19 +209,166 @@ describe('ChartScreen tenant switching and empty states', () => {
     expect(observed.noteEditorTenants.every((id) => id === betaOrganizationId)).toBe(true);
   });
 
-  it('announces an accessible error and keeps the draft editable when signing an incomplete note', () => {
+  it('gates signing on the required Plan field and preserves typed work', () => {
     screenFor(betaOrganizationId);
-    for (const field of ['subjective', 'objective', 'assessment', 'plan'] as const) {
-      fireEvent.change(screen.getByRole('textbox', { name: chartText('en', field) }), {
-        target: { value: '' },
-      });
-    }
+    const plan = screen.getByRole<HTMLTextAreaElement>('textbox', {
+      name: chartText('en', 'plan'),
+    });
+    fireEvent.change(plan, { target: { value: '' } });
+    fireEvent.click(screen.getByRole('checkbox', { name: chartText('en', 'attestation') }));
+    const sign = screen.getByRole<HTMLButtonElement>('button', { name: chartText('en', 'sign') });
+    expect(sign.disabled).toBe(true);
+    expect(screen.getByText(chartText('en', 'signDisabledReason'))).toBeTruthy();
+    expect(plan.getAttribute('aria-invalid')).toBe('true');
+    fireEvent.change(screen.getByRole('textbox', { name: chartText('en', 'subjective') }), {
+      target: { value: 'Synthetic preserved concern' },
+    });
+    expect(
+      screen.getByRole<HTMLTextAreaElement>('textbox', { name: chartText('en', 'subjective') }).value,
+    ).toBe('Synthetic preserved concern');
+    expect(
+      screen.getByRole<HTMLTextAreaElement>('textbox', { name: chartText('en', 'plan') }).readOnly,
+    ).toBe(false);
+  });
+
+  it('announces the domain rejection when a non-Plan required field is empty', () => {
+    screenFor(betaOrganizationId);
+    fireEvent.change(screen.getByRole('textbox', { name: chartText('en', 'subjective') }), {
+      target: { value: '' },
+    });
     fireEvent.click(screen.getByRole('checkbox', { name: chartText('en', 'attestation') }));
     fireEvent.click(screen.getByRole('button', { name: chartText('en', 'sign') }));
     expect(screen.getByRole('alert').textContent).toContain(chartText('en', 'signError'));
     expect(screen.getByTestId('chart-status').textContent).toBe('');
-    expect(
-      screen.getByRole<HTMLTextAreaElement>('textbox', { name: chartText('en', 'plan') }).readOnly,
-    ).toBe(false);
+  });
+});
+
+describe('ChartScreen approved-design chrome', () => {
+  it('shows the synthetic patient banner with demographics, chips and actions', () => {
+    screenFor(alphaOrganizationId);
+    const banner = screen.getByRole('region', { name: chartText('en', 'patientBanner') });
+    expect(within(banner).getByText('Synthetic Layla')).toBeTruthy();
+
+    const demographics = must(banner.querySelector('[data-part="demographics"]'));
+    expect(demographics.textContent).toContain('63 y');
+    expect(demographics.textContent).toContain('female');
+    expect(demographics.textContent).toContain(chartText('en', 'born'));
+    expect(demographics.textContent).toContain(chartText('en', 'mrn'));
+    expect(demographics.textContent).toContain('SYN-099804');
+    expect(demographics.textContent).toContain(chartText('en', 'issuer'));
+    expect(demographics.textContent).toContain('Harbor Family Clinic');
+
+    const chips = must(banner.querySelector('[data-part="chips"]'));
+    expect(chips.textContent).toContain(chartText('en', 'allergy'));
+    expect(chips.textContent).toContain('Synthetic penicillin');
+    expect(chips.textContent).toContain('rash');
+    expect(chips.textContent).toContain(chartText('en', 'verified'));
+    expect(chips.textContent).toContain(chartText('en', 'language'));
+    expect(chips.textContent).toContain(chartText('en', 'languageEn'));
+    expect(chips.textContent).toContain('1');
+    expect(chips.textContent).toContain(chartText('en', 'resultsToReview'));
+
+    expect(within(banner).getByRole('button', { name: chartText('en', 'newOrder') })).toBeTruthy();
+    expect(within(banner).getByRole('button', { name: chartText('en', 'prescribe') })).toBeTruthy();
+  });
+
+  it('offers six chart tabs with Overview selected and lets another tab take the current state', () => {
+    screenFor(alphaOrganizationId);
+    const tabs = screen.getByRole('navigation', { name: chartText('en', 'chartTabs') });
+    const overview = within(tabs).getByRole('button', { name: chartText('en', 'overview') });
+    expect(within(tabs).getAllByRole('button')).toHaveLength(6);
+    expect(overview.getAttribute('aria-current')).toBe('page');
+    for (const key of ['notes', 'orders', 'results', 'documents', 'messages'] as const) {
+      expect(within(tabs).getByRole('button', { name: chartText('en', key) })).toBeTruthy();
+    }
+    const notes = within(tabs).getByRole('button', { name: chartText('en', 'notes') });
+    fireEvent.click(notes);
+    expect(notes.getAttribute('aria-current')).toBe('page');
+    expect(overview.getAttribute('aria-current')).toBeNull();
+  });
+
+  it('composes the overview, note and results regions for any tenant', () => {
+    screenFor(alphaOrganizationId);
+    expect(screen.getByRole('region', { name: chartText('en', 'overviewCards') })).toBeTruthy();
+    expect(screen.getByRole('region', { name: chartText('en', 'recentResults') })).toBeTruthy();
+    const content = must(screen.getByRole('region', { name: chartText('en', 'chart') }).querySelector<HTMLElement>('[data-part="chart-content"]'));
+    expect(content.querySelectorAll('[data-part="overview-cards"], [data-part="note"]')).toHaveLength(2);
+    expect(content.style.gridTemplateColumns).toContain('20rem');
+  });
+
+  it('omits the follow-up card for a draft chart without a suggestion', () => {
+    const withoutSuggestion = { ...must(syntheticCharts[1]), followUp: undefined };
+    wrap(<ChartScreen charts={[withoutSuggestion]} organizationId={betaOrganizationId} />);
+    expect(screen.queryByRole('heading', { name: chartText('en', 'followUpSuggestion') })).toBeNull();
+    expect(screen.getByRole('button', { name: chartText('en', 'sign') })).toBeTruthy();
+  });
+
+  it('composes the follow-up and sign affordances for a draft revision', () => {
+    screenFor(betaOrganizationId);
+    expect(screen.getByRole('heading', { name: chartText('en', 'followUpSuggestion') })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: chartText('en', 'signSection') })).toBeTruthy();
+  });
+
+  it('omits the allergy and results chips when the chart has no such data', () => {
+    screenFor(betaOrganizationId);
+    const banner = screen.getByRole('region', { name: chartText('en', 'patientBanner') });
+    const chips = must(banner.querySelector('[data-part="chips"]'));
+    expect(chips.textContent).not.toContain(chartText('en', 'allergy'));
+    expect(chips.textContent).not.toContain(chartText('en', 'resultsToReview'));
+  });
+
+  it('announces a preview notice for banner actions instead of pretending to book', () => {
+    screenFor(alphaOrganizationId);
+    fireEvent.click(screen.getByRole('button', { name: chartText('en', 'newOrder') }));
+    expect(screen.getByTestId('chart-status').textContent).toContain(chartText('en', 'previewNotice'));
+    fireEvent.click(screen.getByRole('button', { name: chartText('en', 'prescribe') }));
+    expect(screen.getByTestId('chart-status').textContent).toContain(chartText('en', 'previewNotice'));
+  });
+
+  it('announces follow-up booking and override outcomes from the draft chart', () => {
+    screenFor(betaOrganizationId);
+    fireEvent.click(screen.getByRole('button', { name: chartText('en', 'confirmAndBook') }));
+    fireEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: chartText('en', 'confirmBooking'),
+      }),
+    );
+    expect(screen.getByTestId('chart-status').textContent).toContain(chartText('en', 'bookedNotice'));
+
+    fireEvent.click(screen.getByRole('button', { name: chartText('en', 'overrideWithReason') }));
+    const dialog = screen.getByRole('dialog');
+    fireEvent.change(
+      within(dialog).getByRole('textbox', { name: chartText('en', 'overrideReason') }),
+      { target: { value: 'Synthetic scheduling conflict' } },
+    );
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: chartText('en', 'confirmOverride') }),
+    );
+    expect(screen.getByTestId('chart-status').textContent).toContain(
+      chartText('en', 'overrideNotice'),
+    );
+  });
+
+  it('renders an Arabic banner under RTL', () => {
+    screenFor(alphaOrganizationId, 'ar');
+    expect(document.documentElement.dir).toBe('rtl');
+    const banner = screen.getByRole('region', { name: chartText('ar', 'patientBanner') });
+    expect(within(banner).getByText('ليلى تجريبية')).toBeTruthy();
+    expect(must(banner.querySelector('[data-part="chips"]')).textContent).toContain(
+      chartText('ar', 'allergy'),
+    );
+  });
+
+  it('omits synthetic-only cards when the chart has no demo summary, results or follow-up', () => {
+    const bare = {
+      ...must(syntheticCharts[0]),
+      patientSummary: undefined,
+      recentResults: undefined,
+      followUp: undefined,
+    };
+    wrap(<ChartScreen charts={[bare]} organizationId={alphaOrganizationId} />);
+    expect(screen.queryByRole('region', { name: chartText('en', 'patientBanner') })).toBeNull();
+    expect(screen.queryByRole('region', { name: chartText('en', 'recentResults') })).toBeNull();
+    expect(screen.queryByRole('heading', { name: chartText('en', 'followUpSuggestion') })).toBeNull();
   });
 });

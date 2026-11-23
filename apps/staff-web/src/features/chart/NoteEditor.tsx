@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import type { CSSProperties } from 'react';
 import { Button } from '../../components/Button';
+import { ConflictState } from '../../components/StateViews';
+import { formatInstant } from '../../i18n/format';
 import type { Locale } from '../../i18n/messages';
 import { useTheme } from '../../theme/ThemeProvider';
 import { useBreakpoint, usePointerCoarse } from '../../theme/useBreakpoint';
@@ -19,6 +21,17 @@ export interface NoteEditorProps {
   onSign: () => void;
   onAmend: () => void;
   onMarkEnteredInError: () => void;
+  /**
+   * Enforce the design's required Plan field. Opt-in: the wire-backed note
+   * stores one content string, so only the synthetic chart preview can show a
+   * four-field requiredness rule without changing the API contract.
+   */
+  planRequired?: boolean | undefined;
+  /** Show the stale-version recovery surface inside the note card. */
+  conflict?: boolean | undefined;
+  onCompare?: (() => void) | undefined;
+  onReload?: (() => void) | undefined;
+  onCopy?: (() => void) | undefined;
 }
 
 /** SOAP field labels in display order; each maps to a typed content key. */
@@ -38,6 +51,157 @@ function AmendmentNotice({ amends, locale }: { amends: string | undefined; local
     <p data-testid="amendment-notice">
       {chartText(locale, 'amendmentOf')} {amends}
     </p>
+  );
+}
+
+/** Template, revision, save time and draft state above the SOAP fields. */
+function NoteHeader({
+  revision,
+  locale,
+  editable,
+}: {
+  revision: NoteRevision;
+  locale: Locale;
+  editable: boolean;
+}) {
+  const { tokens } = useTheme();
+  return (
+    <div data-part="note-header" style={{ display: 'grid', gap: tokens.spacing.sm }}>
+      <h3 style={{ marginBlock: 0 }}>
+        {chartText(locale, 'clinicalNote')} · {revision.templateVersion}
+      </h3>
+      <p data-revision-id={revision.id} data-state={revision.state} style={{ marginBlock: 0 }}>
+        {`${chartText(locale, 'revision')} ${revision.version} · ${
+          editable ? chartText(locale, 'noteDraft') : chartText(locale, 'noteSigned')
+        }`}
+        {revision.savedAt === undefined ? null : (
+          <>
+            {' · '}
+            {chartText(locale, 'savedAt')}{' '}
+            <time dateTime={revision.savedAt}>
+              {formatInstant(revision.savedAt, 'UTC', locale)}
+            </time>
+          </>
+        )}
+        {revision.kind === 'amendment' ? (
+          <span style={{ paddingInline: tokens.spacing.sm }}>
+            {chartText(locale, 'noteAmendment')}
+          </span>
+        ) : null}
+      </p>
+    </div>
+  );
+}
+
+/** The four labelled SOAP textareas with an optional bound Plan error. */
+function SoapFields({
+  revision,
+  locale,
+  editable,
+  planRequired,
+  requiredMissing,
+  onContentChange,
+}: {
+  revision: NoteRevision;
+  locale: Locale;
+  editable: boolean;
+  planRequired: boolean;
+  requiredMissing: boolean;
+  onContentChange: (field: keyof SoapContent, value: string) => void;
+}) {
+  const { tokens } = useTheme();
+  const planErrorId = `plan-error-${revision.id}`;
+  return (
+    <div className="stack" data-part="fields" data-layout="single-column">
+      {soapFields.map(({ field, key }) => {
+        const invalid = field === 'plan' && requiredMissing;
+        return (
+          <div key={field} style={{ display: 'grid', gap: tokens.spacing.sm }}>
+            <label htmlFor={`note-${field}-${revision.id}`}>
+              {chartText(locale, key)}
+              {field === 'plan' && planRequired ? (
+                <span> ({chartText(locale, 'required')})</span>
+              ) : null}
+            </label>
+            <textarea
+              id={`note-${field}-${revision.id}`}
+              className="field touch"
+              aria-label={chartText(locale, key)}
+              aria-invalid={invalid ? true : undefined}
+              aria-describedby={invalid ? planErrorId : undefined}
+              readOnly={!editable}
+              value={revision.content[field]}
+              onChange={
+                editable ? (event) => onContentChange(field, event.target.value) : undefined
+              }
+              rows={2}
+            />
+            {invalid ? (
+              <p id={planErrorId} data-testid="plan-error" style={{ color: tokens.foreground }}>
+                {chartText(locale, 'planError')}
+              </p>
+            ) : null}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Attestation, sign help and the gated sign action for an editable draft. */
+function SignaturePanel({
+  revision,
+  locale,
+  attested,
+  signDisabled,
+  requiredMissing,
+  onAttestationChange,
+  onSign,
+  stickySignature,
+}: {
+  revision: NoteRevision;
+  locale: Locale;
+  attested: boolean;
+  signDisabled: boolean;
+  requiredMissing: boolean;
+  onAttestationChange: (checked: boolean) => void;
+  onSign: () => void;
+  stickySignature: boolean;
+}) {
+  const { tokens } = useTheme();
+  // On phones the signature is a sticky footer with logical padding; from
+  // medium it is an ordinary in-flow row. The Button keeps its own .touch
+  // target floor, so this wrapper only arranges the controls.
+  const signatureStyle: CSSProperties = stickySignature
+    ? {
+        display: 'grid',
+        gap: tokens.spacing.sm,
+        position: 'sticky',
+        insetBlockEnd: '0px',
+        paddingBlock: tokens.spacing.sm,
+        paddingInline: tokens.spacing.md,
+        background: 'var(--sc-color-surface-default, #ffffff)',
+      }
+    : { display: 'grid', gap: tokens.spacing.sm };
+  return (
+    <div className="touch" data-part="signature" style={signatureStyle}>
+      <h4 style={{ marginBlock: 0 }}>{chartText(locale, 'signSection')}</h4>
+      <label htmlFor={`note-attestation-${revision.id}`}>{chartText(locale, 'attestation')}</label>
+      <input
+        id={`note-attestation-${revision.id}`}
+        className="touch"
+        type="checkbox"
+        checked={attested}
+        onChange={(event) => onAttestationChange(event.target.checked)}
+      />
+      {requiredMissing ? (
+        <p data-testid="sign-disabled-reason">{chartText(locale, 'signDisabledReason')}</p>
+      ) : null}
+      <p>{chartText(locale, 'signHelp')}</p>
+      <Button onClick={onSign} disabled={signDisabled}>
+        {chartText(locale, 'sign')}
+      </Button>
+    </div>
   );
 }
 
@@ -61,6 +225,11 @@ export function NoteEditor({
   onSign,
   onAmend,
   onMarkEnteredInError,
+  planRequired,
+  conflict,
+  onCompare,
+  onReload,
+  onCopy,
 }: NoteEditorProps) {
   const { tokens } = useTheme();
   const breakpoint = useBreakpoint();
@@ -69,6 +238,11 @@ export function NoteEditor({
   const editable = isEditable(revision);
   const amendable = canAmend(revision);
   const stickySignature = breakpoint === 'compact';
+  // The domain still rejects every incomplete draft; this UI gate only marks
+  // Plan because that is the field the approved design names as required.
+  const requiredMissing =
+    planRequired === true && editable && revision.content.plan.trim().length === 0;
+  const signDisabled = !attested || requiredMissing;
 
   // The page class owns the reading cap, safe-area padding and the minmax(0, 1fr)
   // track; the wrapping and scroll reservation keep long clinical text inside
@@ -77,21 +251,6 @@ export function NoteEditor({
     overflowWrap: 'anywhere',
     scrollPaddingBlockEnd: 'var(--sc-space-8, 32px)',
   };
-
-  // On phones the signature is a sticky footer with logical padding; from medium
-  // it is an ordinary in-flow row. Either way the Button keeps its own .touch
-  // target floor, so this wrapper only arranges the controls.
-  const signatureStyle: CSSProperties = stickySignature
-    ? {
-        display: 'grid',
-        gap: tokens.spacing.sm,
-        position: 'sticky',
-        insetBlockEnd: '0px',
-        paddingBlock: tokens.spacing.sm,
-        paddingInline: tokens.spacing.md,
-        background: 'var(--sc-color-surface-default, #ffffff)',
-      }
-    : { display: 'grid', gap: tokens.spacing.sm };
 
   return (
     <section
@@ -103,39 +262,24 @@ export function NoteEditor({
       data-signature-layout={stickySignature ? 'sticky-footer' : 'inline'}
       style={editorStyle}
     >
-      <h3>{chartText(locale, 'clinicalNote')}</h3>
-      <p data-revision-id={revision.id} data-state={revision.state}>
-        {`${chartText(locale, 'revision')} ${revision.version} · ${
-          editable ? chartText(locale, 'noteDraft') : chartText(locale, 'noteSigned')
-        }`}
-        {revision.kind === 'amendment' ? (
-          <span style={{ paddingInline: tokens.spacing.sm }}>
-            {chartText(locale, 'noteAmendment')}
-          </span>
-        ) : null}
-      </p>
+      <NoteHeader revision={revision} locale={locale} editable={editable} />
       <AmendmentNotice amends={revision.amends} locale={locale} />
       {revision.enteredInError ? (
         <EnteredInErrorBanner detail={revision.enteredInError} locale={locale} />
       ) : null}
-      <div className="stack" data-part="fields" data-layout="single-column">
-        {soapFields.map(({ field, key }) => (
-          <div key={field} style={{ display: 'grid', gap: tokens.spacing.sm }}>
-            <label htmlFor={`note-${field}-${revision.id}`}>{chartText(locale, key)}</label>
-            <textarea
-              id={`note-${field}-${revision.id}`}
-              className="field touch"
-              aria-label={chartText(locale, key)}
-              readOnly={!editable}
-              value={revision.content[field]}
-              onChange={
-                editable ? (event) => onContentChange(field, event.target.value) : undefined
-              }
-              rows={2}
-            />
-          </div>
-        ))}
-      </div>
+      <SoapFields
+        revision={revision}
+        locale={locale}
+        editable={editable}
+        planRequired={planRequired === true}
+        requiredMissing={requiredMissing}
+        onContentChange={onContentChange}
+      />
+      {conflict === true ? (
+        <div data-part="conflict">
+          <ConflictState onCompare={onCompare} onReload={onReload} onCopy={onCopy} />
+        </div>
+      ) : null}
       {revision.state === 'signed' ? (
         <dl
           data-testid="note-provenance"
@@ -157,21 +301,16 @@ export function NoteEditor({
         </dl>
       ) : null}
       {editable ? (
-        <div className="touch" data-part="signature" style={signatureStyle}>
-          <label htmlFor={`note-attestation-${revision.id}`}>
-            {chartText(locale, 'attestation')}
-          </label>
-          <input
-            id={`note-attestation-${revision.id}`}
-            className="touch"
-            type="checkbox"
-            checked={attested}
-            onChange={(event) => setAttested(event.target.checked)}
-          />
-          <Button onClick={onSign} disabled={!attested}>
-            {chartText(locale, 'sign')}
-          </Button>
-        </div>
+        <SignaturePanel
+          revision={revision}
+          locale={locale}
+          attested={attested}
+          signDisabled={signDisabled}
+          requiredMissing={requiredMissing}
+          onAttestationChange={setAttested}
+          onSign={onSign}
+          stickySignature={stickySignature}
+        />
       ) : (
         <p data-testid="readonly-notice" data-part="readonly-notice">
           {chartText(locale, 'readOnly')}
