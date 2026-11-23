@@ -68,6 +68,12 @@ class EnabledUnitPublishServiceHoursResponseTargetsTest {
         store.seedApprovedChannels(ORG, "msg06.approved_downtime_channels", "downtime-channel");
         // The same local unit identifier in another tenant must stay isolated.
         store.addUnit(OTHER_ORG, OTHER_ORG_UNIT);
+        // Publishing first checks the site-approved urgent and downtime channels.
+        // Seed the codes these requests use so the field rules this class proves
+        // (topics, urgent instructions, version) are actually reached; otherwise
+        // every publish stops at UNAPPROVED_CHANNEL before those assertions run.
+        store.seedApprovedChannels(ORG, "msg06.approved_urgent_channels", "urgent-channel");
+        store.seedApprovedChannels(ORG, "msg06.approved_downtime_channels", "downtime-channel");
     }
 
     @AfterEach

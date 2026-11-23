@@ -90,7 +90,8 @@ class OpenApiPaginationRulesTest {
         Map<String, Object> document = parse(committedContract());
         List<String> listOperations = listGetOperationIds(document);
         assertEquals(Set.of("listFacilities", "queryAuditEvents", "listStaff", "listAppointments",
-                "listLabAccessions", "listFinanceInvoices", "listOrders", "listCatalogFamily"),
+                "listLabAccessions", "listFinanceInvoices", "listOrders", "listCatalogFamily",
+                "pollInstantEvents"),
                 new HashSet<>(listOperations), "every list GET must be detected, got " + listOperations);
         assertEquals(List.of(), violations(document, true), "committed contract must obey every pagination rule");
     }
