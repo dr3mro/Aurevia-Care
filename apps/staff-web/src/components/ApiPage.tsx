@@ -21,7 +21,7 @@ export interface ApiPageProps<T> {
   resource: ApiResource<T>;
   children: (data: T) => ReactNode;
   isEmpty?: ((data: T) => boolean) | undefined;
-  /** Owning recovery actions for the mapped error state, when the screen has any. */
+  /** Owning recovery actions for the mapped error state, when the screen defines them. */
   actions?: StateViewActions | undefined;
 }
 
