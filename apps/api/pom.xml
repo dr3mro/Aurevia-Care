@@ -27,7 +27,7 @@
     <aws.sdk.version>2.59.5</aws.sdk.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <jacoco.version>0.8.16</jacoco.version>
-    <owasp.version>12.1.0</owasp.version>
+    <owasp.version>13.0.0</owasp.version>
     <spotbugs.version>4.10.5.0</spotbugs.version>
     <owasp.skip>true</owasp.skip>
     <spotbugs.skip>true</spotbugs.skip>
