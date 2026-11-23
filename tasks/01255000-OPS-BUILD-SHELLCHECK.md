@@ -1,5 +1,0 @@
-- [-] OPS-BUILD-SHELLCHECK · Make build-and-test policy checks statically reachable and preserve failures.
-  - agent: Codex
-  - requirements: OPS-06
-  - scope: scripts/build-and-test.sh, scripts/tests/test_build_and_test.py
-  - details: Delivery's shell lint should pass without suppressing reachability checks. A failing policy command must fail the step even when later checks would pass.
