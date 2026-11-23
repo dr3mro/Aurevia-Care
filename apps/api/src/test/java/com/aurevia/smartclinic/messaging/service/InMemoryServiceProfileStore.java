@@ -30,6 +30,7 @@ public class InMemoryServiceProfileStore implements ServiceProfileStore {
     private final Set<String> verifiedCharts = ConcurrentHashMap.newKeySet();
     private final Map<String, String> connections = new ConcurrentHashMap<>();
     private final Map<String, String> assignments = new ConcurrentHashMap<>();
+    private final Map<String, Set<String>> approvedChannels = new ConcurrentHashMap<>();
     private final Map<String, ServiceProfile> profiles = new ConcurrentHashMap<>();
     private final Map<String, List<WorkItemFact>> workItems = new ConcurrentHashMap<>();
     private final Map<String, List<MessagingAudit>> audits = new ConcurrentHashMap<>();
@@ -62,6 +63,24 @@ public class InMemoryServiceProfileStore implements ServiceProfileStore {
     /** Assign a staff subject to a care unit. */
     public void assignUnit(String organizationId, String subject, String unitId) {
         assignments.put(key(organizationId, subject), unitId);
+    }
+
+    /**
+     * Seed the tenant-approved channel codes for one policy key.
+     *
+     * @param organizationId active tenant identifier
+     * @param key            tenant-local approved-channel policy key
+     * @param codes          comma-separated approved channel codes
+     */
+    public void seedApprovedChannels(String organizationId, String key, String codes) {
+        Set<String> approved = new java.util.HashSet<>();
+        for (String code : codes.split(",")) {
+            String trimmed = code.strip();
+            if (!trimmed.isEmpty()) {
+                approved.add(trimmed);
+            }
+        }
+        approvedChannels.put(key(organizationId, key), Set.copyOf(approved));
     }
 
     /** Seed a synthetic service profile version. */
@@ -108,6 +127,11 @@ public class InMemoryServiceProfileStore implements ServiceProfileStore {
     @Override
     public boolean isUnitAssigned(String organizationId, String subject, String unitId) {
         return unitId.equals(assignments.get(key(organizationId, subject)));
+    }
+
+    @Override
+    public Set<String> approvedChannels(String organizationId, String key) {
+        return approvedChannels.getOrDefault(key(organizationId, key), Set.of());
     }
 
     @Override

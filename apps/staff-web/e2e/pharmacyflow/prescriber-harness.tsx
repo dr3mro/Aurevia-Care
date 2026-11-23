@@ -1,7 +1,7 @@
-import { StrictMode, useState } from 'react';
+import { StrictMode, useCallback, useEffect, useState } from 'react';
 import type { ReactElement } from 'react';
 import { createRoot } from 'react-dom/client';
-import { syntheticFacility } from '../../src/fixtures/synthetic';
+import { useActiveOrganization } from '../../src/api/activeOrganization';
 import { getPharmacyStatus } from '../../src/features/pharmacyinbox/api';
 import type { StatusViewResponse } from '../../src/features/pharmacyinbox/types';
 import { ClarificationReply } from '../../src/features/prescriberstatus/ClarificationReply';
@@ -25,10 +25,11 @@ import { ThemeProvider } from '../../src/theme/ThemeProvider';
 
 /**
  * Dev-only browser harness for the exported prescriber status components
- * (PHARM-06, RX-02). They are not routed in the staff portal yet, so this mounts
- * them with their real providers and drives the real typed API clients. Vite dev
- * serves it; it is never part of the production build. Every value is synthetic
- * and every command goes through the same protected boundary the screens use.
+ * (PHARM-08, PHARM-06, RX-02, WEB-09). They are not routed in the staff portal
+ * yet, so this mounts them with their real providers and drives the real typed
+ * API clients. Vite dev serves it; it is never part of the production build.
+ * Every subject, identifier and medicine is synthetic and every command goes
+ * through the same protected boundary the screens use.
  */
 
 /** Opaque identifiers shared with the synthetic pharmacy API harness. */
@@ -59,15 +60,18 @@ async function maybeGet<T>(read: () => Promise<T>): Promise<T | null> {
 
 /** The prescriber's workstation: route, review facts, answer and decide. */
 function PrescriberView(): ReactElement {
+  // The active tenant defaults to the synthetic facility, so this matches the
+  // tenant used to build every fixture in the shared API stand-in.
+  const organizationId = useActiveOrganization();
   const { locale, toggleLocale } = useI18n();
   const labels = harnessLabels[locale];
-  const organizationId = syntheticFacility.organizationId;
   const [status, setStatus] = useState<StatusViewResponse | null>(null);
   const [thread, setThread] = useState<ThreadViewResponse | null>(null);
   const [proposal, setProposal] = useState<ProposalViewResponse | null>(null);
+  const [routeStatus, setRouteStatus] = useState('Not routed');
 
   /** Re-read all three projections through the real API client. */
-  async function refresh(): Promise<void> {
+  const refresh = useCallback(async (): Promise<void> => {
     const [nextStatus, nextThread, nextProposal] = await Promise.all([
       maybeGet(() => getPharmacyStatus(prescriptionId, organizationId)),
       maybeGet(() => getClarificationThread('thread-synthetic-001', organizationId)),
@@ -76,7 +80,13 @@ function PrescriberView(): ReactElement {
     setStatus(nextStatus);
     setThread(nextThread);
     setProposal(nextProposal);
-  }
+  }, [organizationId]);
+
+  // Load any already-routed facts on mount; before routing the API returns 404
+  // for each projection, which `maybeGet` turns into the empty state below.
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
 
   /** Route a synthetic prescription to the pharmacy through the boundary. */
   async function route(): Promise<void> {
@@ -84,11 +94,20 @@ function PrescriberView(): ReactElement {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'X-Active-Organization': organizationId,
         'X-XSRF-TOKEN': 'synthetic-csrf-token',
       },
       body: JSON.stringify({ prescriptionId, patientId: 'SYN-PATIENT-001' }),
     });
     await refresh();
+  }
+
+  /** Attest and route, then show the confirmed delivery to the prescriber. */
+  async function prescribeAndRoute(): Promise<void> {
+    await route();
+    // The harness API records the transmit and delivery-confirm commands behind
+    // the single route command; the visible status is the confirmed delivery.
+    setRouteStatus('Delivery confirmed');
   }
 
   /** Answer the pharmacy's question on its current thread version. */
@@ -133,16 +152,25 @@ function PrescriberView(): ReactElement {
   }
 
   return (
-    <>
-      <button type="button" onClick={() => void route()}>
-        {labels.route}
-      </button>
-      <button type="button" onClick={() => void refresh()}>
-        {labels.refresh}
-      </button>
+    <div style={{ display: 'grid', gap: '1rem' }}>
       <button type="button" onClick={toggleLocale}>
         {locale === 'en' ? 'العربية' : 'English'}
       </button>
+      <button
+        type="button"
+        data-testid="prescribe-route"
+        onClick={() => void prescribeAndRoute()}
+      >
+        {labels.route}
+      </button>
+      <button
+        type="button"
+        data-testid="refresh"
+        onClick={() => void refresh()}
+      >
+        {labels.refresh}
+      </button>
+      <output data-testid="route-status">{routeStatus}</output>
       {status === null ? (
         <p data-testid="no-status">{labels.waiting}</p>
       ) : (
@@ -165,7 +193,7 @@ function PrescriberView(): ReactElement {
           onDecline={decline}
         />
       )}
-    </>
+    </div>
   );
 }
 
@@ -182,8 +210,9 @@ function Harness(): ReactElement {
   );
 }
 
+const wrapper = document.getElementById('pharmacy-prescriber-harness');
 const container = document.getElementById('prescriber-harness');
-if (container === null) {
+if (wrapper === null || container === null) {
   throw new Error('prescriber-harness container is required');
 }
 createRoot(container).render(<Harness />);

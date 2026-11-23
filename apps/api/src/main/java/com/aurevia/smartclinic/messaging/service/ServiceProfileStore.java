@@ -3,6 +3,7 @@ package com.aurevia.smartclinic.messaging.service;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import com.aurevia.smartclinic.messaging.units.MessagingContract.MessagingAudit;
 import com.aurevia.smartclinic.messaging.service.ServiceProfileContract.ServiceProfile;
@@ -33,6 +34,22 @@ public interface ServiceProfileStore {
 
     /** @return whether the subject is assigned to the unit in the active tenant */
     boolean isUnitAssigned(String organizationId, String subject, String unitId);
+
+    /**
+     * Read the site-approved channel codes of one tenant policy from the
+     * authoritative versioned configuration fold.
+     *
+     * <p>The organization is named explicitly so a stale or wrong request
+     * context can never read another tenant's policy. An effective but
+     * unapproved version is invisible in the fold, so the returned set is
+     * empty until a named approver approves a version; callers must fail
+     * closed on an empty set.</p>
+     *
+     * @param organizationId active tenant identifier
+     * @param key            tenant-local approved-channel configuration key
+     * @return approved, trimmed channel codes; empty when none is effective
+     */
+    Set<String> approvedChannels(String organizationId, String key);
 
     /** @return a profile by opaque identifier in this tenant */
     Optional<ServiceProfile> findProfile(String organizationId, String profileId);

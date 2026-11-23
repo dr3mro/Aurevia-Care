@@ -600,8 +600,8 @@ def swarm_idle():
     text = todo_read()
     prs = gh_json("pr", "list", "--state", "open", "--label", "swarm", "--limit", "100",
                   "--json", "number,title,headRefName,isCrossRepository,labels,comments") or []
-    ready = plan_workers(5, [{"slot": n, "model": ""} for n in range(1, 6)], text, prs)
     red = main_is_red()
+    ready = plan_workers(5, [{"slot": n, "model": ""} for n in range(1, 6)], text, prs, red=red)
     work = bool(ready) or red
     recent = [f"{r['status']}/{r['conclusion'] or '-'}" for r in runs[:5]]
     facts = (f"{len(active)} wave(s) running or queued; the last wave started {idle} minutes ago. Ready now: "
@@ -1935,13 +1935,14 @@ def priority_of(task):
     return "low" if task["id"].startswith(LOW_PREFIXES) else "normal"
 
 
-def plan_workers(max_workers, slots, text, open_prs, repair=None, live=(), story_wave=None, focus=""):
+def plan_workers(max_workers, slots, text, open_prs, repair=None, live=(), story_wave=None, focus="", red=False):
     """Main repairs, then fixes, then ready tasks whose scope is free.
 
+    While main is red, only repair work is eligible and unrelated scopes do not block it.
     Repairs and fixes come first and may use every slot. Then stories by priority (high, normal,
     low; ties keep file order) fill every free slot, `story_wave` per wave. A story waits only
     when its scope overlaps a running task or a pull request in the fix loop, so no slot idles
-    while a ready task exists. Low tasks (daily QA, DevSecOps, audits) run one at a time.
+    while a ready task exists. Low-priority backlog tasks fill spare slots.
     `focus` is a task id a person asked to launch: it is planned first, ignores the attempt limit and
     the waiting-pull-request gate, but still needs open status, a scope, met dependencies and a free scope."""
     tasks = parse_tasks(text)
@@ -1950,31 +1951,42 @@ def plan_workers(max_workers, slots, text, open_prs, repair=None, live=(), story
         for alias in t["aliases"]:
             by_id.setdefault(alias, t)
     # Scopes of tasks other agents already took stay off limits.
-    plan, busy = ([repair] if repair else []), [t["scope"] for t in tasks if t["status"] == "taken"]
+    plan = [repair] if repair and (not red or not other_pipeline_repair(repair["title"])) else []
+    busy = [t["scope"] for t in tasks if t["status"] == "taken"
+            and (not red or main_repair_id(t["id"], t["task"]))]
+    assigned = set(live)
+    fix_busy = [t["scope"] for t in tasks if t["id"] in assigned
+                and (not red or main_repair_id(t["id"], t["task"]))]
     for pr in sorted(open_prs, key=lambda p: p["number"]):
         tid = task_id_of(pr["headRefName"])
         task = by_id.get(tid)
-        if task is None and tid.startswith("FIX-"):
+        if task is None and tid.startswith(REPAIR_PREFIXES):
             task = {"id": tid, "task": pr.get("title", tid), "scope": [], "details": "",
                     "requirements": "", "reserved": ""}
+        if red and not main_repair_id(tid if task is None else task["id"], pr.get("title", "")):
+            continue
         if task:
             busy.append(task["scope"])
         # One fix worker per pull request: overlapping waves used to each start one for
         # the same PR, and every worker after the first was rejected as non-fast-forward.
         if "needs-fix" in label_names(pr) and "needs-human" not in label_names(pr) \
-                and not pr["isCrossRepository"] and task and task["id"] not in set(live):
+                and not pr["isCrossRepository"] and task and task["id"] not in assigned \
+                and not any(overlaps(task["scope"], scope) for scope in fix_busy):
+            assigned.add(task["id"])
+            fix_busy.append(task["scope"])
             notes = [c["body"] for c in pr["comments"] if MARK in c["body"]]
             plan.append({"kind": "fix", "id": task["id"], "number": pr["number"],
                          "branch": pr["headRefName"], "title": task["task"],
                          "body": task_text(task),
                          "fix": clip(notes[-1] if notes else "Integration failed.")})
-    low_busy = any(t["status"] == "taken" and priority_of(t) == "low" for t in tasks)
     in_flight = {task_id_of(p["headRefName"]) for p in open_prs}
     done = {name for t in tasks if t["status"] == "done" for name in (t["id"], *t["aliases"])}
     done |= archived_done_ids()
     # Repairs of main come first: a red main blocks every other merge.
     for task in sorted(tasks, key=lambda t: (focus not in (t["id"], *t["aliases"]), not is_repair_task(t),
                                              PRIORITY_RANK[priority_of(t)])):
+        if red and not main_repair_id(task["id"], task["task"]):
+            continue
         wanted = bool(focus) and focus in (task["id"], *task["aliases"])
         if task["status"] != "todo" or not task["scope"] or task["id"] in in_flight \
                 or (attempts_of(task) >= MAX_ATTEMPTS and not wanted):
@@ -1983,10 +1995,6 @@ def plan_workers(max_workers, slots, text, open_prs, repair=None, live=(), story
             continue
         if any(overlaps(task["scope"], other) for other in busy):
             continue
-        if priority_of(task) == "low" and not wanted:
-            if low_busy:
-                continue
-            low_busy = True
         busy.append(task["scope"])
         plan.append({"kind": "story", "id": task["id"], "number": 0, "branch": "",
                      "title": task["task"], "body": task_text(task), "fix": ""})
@@ -2426,7 +2434,7 @@ def protected_files(files):
     return [f for f in files if any(fnmatch.fnmatch(f, pattern) for pattern in PROTECTED)]
 
 
-def fail(pr, reason, log_text="", simple=False):
+def fail(pr, reason, log_text="", simple=False, dispatch=True, evidence=""):
     """A failure goes to the debugger (rounds 1 to MAX_DEBUG_ROUNDS), then a fix; after the last round a person.
 
     `simple` is for a failure the reason already explains in full (a tracker file a worker must
@@ -2434,38 +2442,55 @@ def fail(pr, reason, log_text="", simple=False):
     info = gh_json("pr", "view", str(pr), "--json", "labels")
     rounds = debug_rounds(label_names(info))
     detail = f"\n\n{diagnosis(log_text)}" if log_text else ""
+    detail += f"\n\n{evidence}" if evidence else ""
     attempts = len([n for n in label_names(info) if re.fullmatch(r"fix-\d", n)])
     if simple and attempts < MAX_FIX and rounds == 0:
         attempt = attempts + 1
         add_labels(pr, "needs-fix", f"fix-{attempt}")
+        if "needs-debug" in label_names(info):
+            remove_label(pr, "needs-debug")
         gh("pr", "comment", str(pr), "--body",
            f"{MARK}\n{reason}. Fix attempt {attempt} of {MAX_FIX}.{detail}")
         # One waiting wave already plans every sent-back pull request, so several fails
         # in one integration run must not each dispatch a wave of their own.
-        if wave_has_room():
+        if dispatch and wave_has_room():
             gh("workflow", "run", "swarm.yml", "-f", f"workers={STORY_WAVE_WORKERS}", check=False)
         return True
     if rounds < MAX_DEBUG_ROUNDS:
-        return send_to_debugger(pr, f"Integration failed: {reason}", detail, log_text)
+        return send_to_debugger(pr, f"Integration failed: {reason}", detail, log_text, dispatch=dispatch)
     cause = f"still failing after {MAX_DEBUG_ROUNDS} debugger rounds, each followed by a fix"
     add_labels(pr, "needs-human")
     remove_label(pr, "needs-fix")
     gh("pr", "comment", str(pr), "--body", f"{MARK}\nIntegration {cause}: {reason}. A person must take over.{detail}")
     report_pr_stuck(pr, cause, f"**Why it was stopped:** {reason}", log_text=log_text)
-    return False
+    return None
+
+
+def latest_main_delivery_verdict(workflow="delivery.yml"):
+    """Find the newest completed pass or failure without scanning cancelled runs."""
+    runs = []
+    for conclusion in ("failure", "success"):
+        runs.extend(gh_json("run", "list", "--workflow", workflow, "--branch", "main",
+                            "--status", conclusion, "--limit", "1",
+                            "--json", "databaseId,conclusion,createdAt") or [])
+    return max(runs, key=lambda run: (run["createdAt"], run["databaseId"]), default={})
 
 
 def main_is_red(workflow="delivery.yml"):
-    """True when the newest finished run of the delivery workflow on main failed."""
+    """True when the latest completed Delivery verdict on main is a failure."""
     try:
         runs = gh_json("run", "list", "--workflow", workflow, "--branch", "main", "--status", "completed",
-                       "--limit", "1", "--json", "conclusion") or []
+                       "--limit", "20", "--json", "conclusion") or []
+        verdict = next((run["conclusion"] for run in runs
+                        if run["conclusion"] in ("success", "failure")), None)
+        if verdict is None and len(runs) == 20:
+            verdict = latest_main_delivery_verdict(workflow).get("conclusion")
     except subprocess.CalledProcessError as exc:
         # A rate limit or API hiccup must not crash the whole flow pass: treat main as not red
         # and let the next scheduled pass look again.
         print(f"main_is_red: gh failed ({exc.returncode}); assuming main is not red", file=sys.stderr)
         return False
-    return bool(runs) and runs[0]["conclusion"] == "failure"
+    return verdict == "failure"
 
 
 # A workflow run that ended without passing: cancelled is a failed verification,
@@ -2586,6 +2611,39 @@ def delivery_runs_from(listing, head):
     return runs
 
 
+def delivery_failure_log(run_id):
+    """Read the failed-job log in the trusted runner; callers keep only diagnostic evidence."""
+    return gh("run", "view", str(run_id), "--log-failed", check=False)
+
+
+def queue_delivery_failure(pr, head, runs, dispatch=True, only_actionable=False):
+    """Send actionable exact-head Delivery failures to fix workers and ambiguous ones to debug."""
+    reason = "Delivery failed on the current head"
+    run = next((item for item in runs if isinstance(item, dict)
+                and (item.get("headSha") or item.get("head_sha")) == head), {})
+    run_id = run.get("databaseId")
+    if not run_id:
+        return False if only_actionable else fail(pr, reason, dispatch=dispatch)
+    log = delivery_failure_log(run_id)
+    report = diagnose(log)
+    test_failure = re.search(
+        r"\bFAIL(?:ED)?[ :]+[\w./-]+|\bFailures:\s*[1-9]\d*|"
+        r"\bCOMPILATION ERROR\b|\berror TS\d+\b|coverage threshold",
+        log, re.IGNORECASE)
+    actionable = (run.get("conclusion") == "failure" and bool(test_failure)
+                  and report["class"] in {"implementation", "missing-tests", "check-parity"})
+    if only_actionable and not actionable:
+        return False
+    # Preserve tool and source identifiers, never the raw job log, request values,
+    # exception messages or arbitrary assertions that may contain fixture data.
+    names = ", ".join(name for name in report["names"]
+                      if re.fullmatch(r"[A-Za-z0-9_./:$-]+", name)) or "none identified"
+    evidence = (f"**Delivery evidence** — head `{head}`, "
+                f"[run {run_id}](https://github.com/{repo_slug()}/actions/runs/{run_id}). "
+                f"Tool: {report['tool']}. Class: {report['class']}. Identifiers: {names}.")
+    return fail(pr, reason, simple=actionable, dispatch=dispatch, evidence=evidence)
+
+
 def delivery_gate(pr, head=None, runs=None):
     """Apply the integrator's Delivery policy to one pull request.
 
@@ -2598,11 +2656,12 @@ def delivery_gate(pr, head=None, runs=None):
     """
     if head is None:
         head = (gh_json("pr", "view", str(pr), "--json", "headRefOid") or {}).get("headRefOid", "")
-    state = delivery_state(delivery_runs(head) if runs is None else runs, head)
+    runs = delivery_runs(head) if runs is None else runs
+    state = delivery_state(runs, head)
     if state == "passed":
         return "merge"
     if state == "failed":
-        fail(pr, "Delivery failed on the current head")
+        queue_delivery_failure(pr, head, runs)
         return "fix"
     if state == "pending":
         return "wait"
@@ -2665,11 +2724,13 @@ def plan_integration(red=False):
     worker. Reconciler instruction drafts and blocked drafts stay drafts for a
     person and are never queued."""
     prs = gh_json("pr", "list", "--state", "open", "--label", "swarm", "--limit", "50",
-                  "--json", "number,title,labels,isCrossRepository,isDraft")
+                  "--json", "number,title,labels,isCrossRepository,isDraft,headRefOid")
     blocked = {"needs-fix", "needs-human", "needs-debug"}
     queue = []
     for p in sorted(prs, key=lambda p: p["number"]):
         number = p["number"]
+        if red and not main_repair_id(p.get("title", "").partition(":")[0], p.get("title", "")):
+            continue
         if p["isCrossRepository"] or blocked & label_names(p):
             continue
         if p.get("isDraft"):
@@ -2681,8 +2742,6 @@ def plan_integration(red=False):
                 continue
             else:
                 continue
-        if red and not p.get("title", "").startswith(REPAIR_PREFIXES):
-            continue
         queue.append(number)
     return queue
 
@@ -2729,6 +2788,18 @@ REPAIR_HEADER = "## Repairs (automatic)"
 REPAIR_PREFIXES = ("FIX-", "DLV-")
 
 
+def other_pipeline_repair(title):
+    """Recognize generated repairs for operational workflows other than Delivery."""
+    return any(title.endswith(f"Repair main: {workflow} failed")
+               for workflow in REPAIR_WORKFLOWS if workflow != "Delivery")
+
+
+def main_repair_id(task_id, title=""):
+    """Match a Delivery repair or a legacy run repair without workflow provenance."""
+    return ((bool(re.fullmatch(r"FIX-\d+", task_id)) and not other_pipeline_repair(title))
+            or task_id.startswith("DLV-"))
+
+
 def is_repair_task(task):
     return task["id"].startswith(REPAIR_PREFIXES)
 
@@ -2748,18 +2819,20 @@ def add_repair_task(run_id, path="TODO.md"):
 
     Bounded like the old watchdog: nothing while a repair pull request or task is
     still open, and an issue for a person after three repairs in a day."""
-    start, why = repair_gate(run_id)
-    print(why)
-    if not start:
-        return False
     task = repair_task(run_id)
     if task is None:
         print("The run is not a failed run on main; nothing to repair.")
         return False
+    delivery = task["title"] == "Repair main: Delivery failed"
+    start, why = repair_gate(run_id, delivery=delivery)
+    print(why)
+    if not start:
+        return False
     added = []
 
     def edit(text):
-        if any(is_repair_task(t) and t["status"] != "done" for t in parse_tasks(text)):
+        if any(t["status"] != "done" and main_repair_id(t["id"], t["task"] if delivery else "")
+               for t in parse_tasks(text)):
             print("A repair task is already open.")
             return text
         head = "" if REPAIR_HEADER in text else f"\n{REPAIR_HEADER}\n\n"
@@ -2777,18 +2850,24 @@ def failing_runs_on_main():
 
     Only the newest finished run of each workflow counts: a later green run means
     that workflow is healthy again. Cancelled and skipped runs say nothing either
-    way and are passed over. The result is ordered newest first."""
+    way and are passed over. A failing Delivery is the only eligible automatic repair."""
     runs = gh_json("run", "list", "--branch", "main", "--limit", "60",
                    "--json", "databaseId,name,status,conclusion,createdAt") or []
     seen, failing = set(), []
-    for run in sorted(runs, key=lambda r: r["createdAt"], reverse=True):
+    for run in sorted(runs, key=lambda r: (r["name"] == "Delivery", r["createdAt"]), reverse=True):
         if run["name"] not in REPAIR_WORKFLOWS or run["name"] in seen:
             continue
         if run["status"] != "completed" or run["conclusion"] not in ("success", "failure"):
             continue
         seen.add(run["name"])
         if run["conclusion"] == "failure":
+            if run["name"] == "Delivery":
+                return [run["databaseId"]]
             failing.append(run["databaseId"])
+    if "Delivery" not in seen and len(runs) == 60:
+        verdict = latest_main_delivery_verdict()
+        if verdict.get("conclusion") == "failure":
+            return [verdict["databaseId"]]
     return failing
 
 
@@ -2814,8 +2893,7 @@ def add_latest_repair_task(path="TODO.md"):
 
 MAX_ACTIVE_WORKERS = 20  # workers running at once across every wave
 # Repairs, fixes and the debugger are planned first; stories (high, normal, then low) fill every other slot.
-STORY_WAVE_WORKERS = 3
-MAX_LIVE_WAVES = 6  # waves that may run side by side (3 story workers each, inside the worker cap)
+STORY_WAVE_WORKERS = MAX_ACTIVE_WORKERS
 
 
 WAITING_WAVE_MAX_AGE_MIN = 30
@@ -2840,16 +2918,9 @@ def waiting_waves():
     return total
 
 
-def live_waves():
-    """Agent swarm runs that have not finished: running, queued or waiting."""
-    out = gh("run", "list", "--workflow", "swarm.yml", "--limit", "30", "--json", "status", "-q",
-             '.[] | select(.status != "completed") | .status', check=False)
-    return len(str(out or "").split())
-
-
 def wave_has_room():
-    """True when a new wave may start: none is waiting for a runner and fewer than MAX_LIVE_WAVES run."""
-    return waiting_waves() == 0 and live_waves() < MAX_LIVE_WAVES
+    """Coalesce queued waves and admit new work by available workers, not old workflow tails."""
+    return waiting_waves() == 0 and active_workers() < MAX_ACTIVE_WORKERS
 
 
 def live_workers():
@@ -2860,7 +2931,7 @@ def live_workers():
     both bounds the combined worker cap and tells reclaim which claims are alive.
     Returns [] when the API call fails (the per-wave cap and the budget gate still
     apply)."""
-    runs = gh("run", "list", "--workflow", "swarm.yml", "--limit", "30",
+    runs = gh("run", "list", "--workflow", "swarm.yml", "--limit", "100",
               "--json", "databaseId,status", "-q",
               '.[] | select(.status != "completed") | .databaseId', check=False)
     live = []
@@ -2880,14 +2951,14 @@ def top_up(finished_id):
     hours. The planner still decides what runs: the combined worker cap, scopes, dependencies and
     the budget gate all apply to the wave this starts. Returns True when a wave was started."""
     live = [name for name in live_workers() if name != finished_id]
-    if len(live) >= MAX_ACTIVE_WORKERS or waiting_waves() or live_waves() >= MAX_LIVE_WAVES:
+    if len(live) >= MAX_ACTIVE_WORKERS or waiting_waves():
         return False
     prs = gh_json("pr", "list", "--state", "open", "--label", "swarm", "--limit", "100",
                   "--json", "number,title,headRefName,isCrossRepository,labels,comments") or []
     everything = gh_json("pr", "list", "--state", "all", "--label", "swarm", "--limit", "200",
                          "--json", "number,headRefName,state,labels") or []
     text = reclaim(todo_read(), everything, live)
-    if not plan_workers(1, [{"slot": 1, "model": ""}], text, prs, live=live):
+    if not plan_workers(1, [{"slot": 1, "model": ""}], text, prs, live=live, red=main_is_red()):
         return False
     gh("workflow", "run", "swarm.yml", "--ref", "main", check=False)
     return True
@@ -2904,6 +2975,11 @@ def rotate_slots(slots, busy):
         return slots
     start = busy % len(slots)
     return slots[start:] + slots[:start]
+
+
+def worker_slots(slots, busy):
+    """Reuse each configured account at most twice, rotating by occupied capacity."""
+    return rotate_slots(slots, busy) * 2
 
 
 WORKER_MINUTES = 190  # one worker: 175 min of agent work, merge, bundle and publish
@@ -2975,11 +3051,12 @@ def budget_gate(cap=DEFAULT_MONTHLY_MINUTES, now=None, used=None):
     return False, f"Estimated monthly swarm minutes {used:.0f} of {cap}: pausing waves."
 
 
-def repair_gate(run_id, now=None):
+def repair_gate(run_id, now=None, delivery=False):
     """Decide whether to start a repair. Stops after three tries in a day."""
     prs = gh_json("pr", "list", "--state", "all", "--label", "swarm", "--limit", "100",
                   "--json", "number,title,state,createdAt") or []
-    repairs = [p for p in prs if p["title"].startswith("FIX-")]
+    repairs = [p for p in prs if re.fullmatch(r"FIX-\d+", p["title"].partition(":")[0])
+               and (not delivery or not other_pipeline_repair(p["title"]))]
     if any(p["state"] == "OPEN" for p in repairs):
         return False, "A repair pull request is already open."
     since = (now or datetime.datetime.now(datetime.timezone.utc)) - datetime.timedelta(hours=24)
@@ -3043,7 +3120,7 @@ def debug_rounds(names):
     return len([n for n in names if re.fullmatch(r"debug-\d", n)])
 
 
-def send_to_debugger(pr, reason, detail="", log_text=""):
+def send_to_debugger(pr, reason, detail="", log_text="", dispatch=True):
     """A failure goes to the debugger first, not to a blind fix: worker, debugger, fix, and again
     for up to MAX_DEBUG_ROUNDS rounds, then a person."""
     remove_label(pr, "needs-fix")
@@ -3052,7 +3129,8 @@ def send_to_debugger(pr, reason, detail="", log_text=""):
        f"{MARK}\n{reason}. The debugger takes over: it reads the whole project, runs the tests, finds "
        "the cause and sends a report to a fix worker. After "
        f"{MAX_DEBUG_ROUNDS} rounds of debugger and fix without a green result, a person must take over.{detail}")
-    gh("workflow", "run", "swarm-debugger.yml", "--ref", "main", check=False)
+    if dispatch:
+        gh("workflow", "run", "swarm-debugger.yml", "--ref", "main", check=False)
     return False
 
 
@@ -3072,9 +3150,11 @@ def debug_select():
     Emits the job matrix (pr, branch, task, round, slot) and how many were chosen; returns the
     pull request numbers."""
     prs = gh_json("pr", "list", "--state", "open", "--label", "needs-debug", "--limit", "50",
-                  "--json", "number,headRefName,isCrossRepository,labels") or []
+                  "--json", "number,title,headRefName,isCrossRepository,labels") or []
+    red = main_is_red()
     ready = [p for p in sorted(prs, key=lambda p: p["number"])
-             if not p["isCrossRepository"] and "needs-human" not in label_names(p)
+             if (not red or main_repair_id(task_id_of(p["headRefName"]), p.get("title", "")))
+             and not p["isCrossRepository"] and "needs-human" not in label_names(p)
              and BRANCH.fullmatch(p["headRefName"])]
     chosen = ready[:DEBUG_PARALLEL]
     include = [{"pr": p["number"], "branch": p["headRefName"], "task": task_id_of(p["headRefName"]),
@@ -3117,7 +3197,7 @@ def delivery_requested(pr, head):
                and head[:12] in (c.get("body") or "") for c in comments)
 
 
-def pr_flow(now=None):
+def pr_flow(now=None, dispatch_wave=True):
     """One pass over the open swarm pull requests. Returns a list of (pr, action) for the log."""
     prs = gh_json("pr", "list", "--state", "open", "--label", "swarm", "--limit", "100",
                   "--json", "number,title,labels,isCrossRepository,isDraft,headRefOid,updatedAt") or []
@@ -3129,10 +3209,21 @@ def pr_flow(now=None):
         return []
     acted, ready, wants_debugger, wants_wave = [], [], False, False
     for item in sorted(prs, key=lambda p: p["number"]):
+        if red and not main_repair_id(item.get("title", "").partition(":")[0], item.get("title", "")):
+            continue
         pr, labels = item["number"], label_names(item)
         if item["isCrossRepository"] or {"needs-human", "needs-review"} & labels:
             continue
         if "needs-debug" in labels:
+            # Reuse the first fix wave for queued PRs that have never had a debugger or fix round.
+            if not debug_rounds(labels) and not any(re.fullmatch(r"fix-\d", label) for label in labels):
+                head = item.get("headRefOid", "")
+                runs = delivery_runs_from(listing, head)
+                if delivery_state(runs, head) == "failed" and queue_delivery_failure(
+                        pr, head, runs, dispatch=False, only_actionable=True):
+                    wants_wave = True
+                    acted.append((pr, "delivery failed, queued for fix"))
+                    continue
             wants_debugger = True
             continue
         if "needs-fix" in labels:
@@ -3155,18 +3246,23 @@ def pr_flow(now=None):
                 wants_wave = True
             continue
         idle = minutes_since(item["updatedAt"], now)
+        head = item.get("headRefOid", "")
+        runs = delivery_runs_from(listing, head)
+        state = delivery_state(runs, head)
+        if state == "failed":
+            queued = queue_delivery_failure(pr, head, runs, dispatch=False)
+            wants_wave |= queued is True
+            wants_debugger |= queued is False
+            action = {True: "queued for fix", False: "sent to debugger", None: "needs human"}
+            acted.append((pr, f"delivery failed, {action[queued]}"))
+            continue
         if item["isDraft"]:
             # Nobody takes a draft that carries no label: send it to a fix worker now.
             if idle >= PR_DRAFT_MINUTES:
-                fail(pr, "Draft pull request: the worker did not finish cleanly", simple=True)
+                fail(pr, "Draft pull request: the worker did not finish cleanly", simple=True, dispatch=False)
                 acted.append((pr, "draft sent to fix"))
             continue
-        head = item.get("headRefOid", "")
-        state = delivery_state(delivery_runs_from(listing, head), head)
-        if state == "failed":
-            fail(pr, "Delivery failed on the current head")
-            acted.append((pr, "delivery failed, sent to debugger"))
-        elif state == "missing" and markdown_only(gh("pr", "diff", str(pr), "--name-only").split()):
+        if state == "missing" and markdown_only(gh("pr", "diff", str(pr), "--name-only").split()):
             # delivery.yml ignores docs-only changes, so no run will ever come: the integrator's
             # local docs check is the evidence, as in delivery_gate. Do not ask for a run.
             ready.append((pr, idle))
@@ -3178,12 +3274,12 @@ def pr_flow(now=None):
                    "Nothing merges until it reports passed.", check=False)
                 gh("workflow", "run", "delivery.yml", "--ref", branch, check=False)
                 acted.append((pr, f"delivery {state}, run requested"))
-        elif state == "passed" and (not red or item.get("title", "").startswith(REPAIR_PREFIXES)):
+        elif state == "passed":
             ready.append((pr, idle))
     if wants_debugger and not active_runs("swarm-debugger.yml"):
         gh("workflow", "run", "swarm-debugger.yml", "--ref", "main", check=False)
         acted.append(("-", "debugger started"))
-    if (wants_wave or any(a == "draft sent to fix" for _, a in acted)) and wave_has_room():
+    if dispatch_wave and (wants_wave or any(a == "draft sent to fix" for _, a in acted)) and wave_has_room():
         gh("workflow", "run", "swarm.yml", "-f", f"workers={STORY_WAVE_WORKERS}", "--ref", "main", check=False)
         acted.append(("-", "fix wave started"))
     if ready and not active_runs("swarm-integrator.yml"):
@@ -3435,13 +3531,32 @@ def dispatch_delivery():
     gh("workflow", "run", "delivery.yml", "--ref", "main", check=False)
 
 
-def continue_swarm(text, prs):
-    """True when another wave has work and nothing is waiting for the integrator,
-    which starts the next wave itself after it merges."""
-    ready = plan_workers(1, [{"slot": 1, "model": ""}], text, prs)
-    waiting = [p for p in prs if not p["isCrossRepository"]
-               and not {"needs-fix", "needs-human", "needs-debug"} & label_names(p)]
-    return bool(ready) and not waiting
+def continue_swarm(text, prs, red=False):
+    """Keep eligible workers busy while the independent integrator runs."""
+    return bool(plan_workers(1, [{"slot": 1, "model": ""}], text, prs, red=red))
+
+
+def daily_can_start():
+    """Admit optional scheduled agents only after higher-priority work has been offered capacity."""
+    if main_is_red() or active_runs("swarm-integrator.yml") or active_runs("swarm-debugger.yml"):
+        return False
+    live = live_workers()
+    if len(live) >= MAX_ACTIVE_WORKERS:
+        return False
+    prs = gh_json("pr", "list", "--state", "open", "--label", "swarm", "--limit", "100",
+                  "--json", "number,title,headRefName,isCrossRepository,isDraft,labels,comments,headRefOid") or []
+    if any(not p["isCrossRepository"] and "needs-debug" in label_names(p)
+           and not {"needs-human", "needs-review"} & label_names(p) for p in prs):
+        return False
+    if plan_workers(1, [{"slot": 1, "model": ""}], todo_read(), prs, live=live):
+        return False
+    mergeable = [p for p in prs if not p["isCrossRepository"] and not p["isDraft"]
+                 and not {"needs-fix", "needs-debug", "needs-human", "needs-review"} & label_names(p)]
+    if not mergeable:
+        return True
+    runs = delivery_listing()
+    return not any(delivery_state(delivery_runs_from(runs, p["headRefOid"]), p["headRefOid"]) == "passed"
+                   for p in mergeable)
 
 
 REPAIR_GATE = "scripts/repair-gate.sh"
@@ -3724,13 +3839,16 @@ def main(argv=None):
     p.add_argument("--slot", type=int, required=True)
     p.add_argument("--slots", default=".github/swarm/slots.json")
     p = sub.add_parser("plan-workers")
-    p.add_argument("--max", type=int, default=10)
+    p.add_argument("--max", type=int, default=STORY_WAVE_WORKERS)
+    p.add_argument("--capacity", type=int, default=MAX_ACTIVE_WORKERS)
     p.add_argument("--slots", default=".github/swarm/slots.json")
     p.add_argument("--file", default="TODO.md")
     p.add_argument("--repair-run", default="")
     p.add_argument("--task", default="")
     sub.add_parser("watchdog")
-    sub.add_parser("pr-flow")
+    p = sub.add_parser("pr-flow")
+    p.add_argument("--no-wave", action="store_true")
+    sub.add_parser("daily-admission")
     sub.add_parser("debug-select")
     p = sub.add_parser("strategy-state")
     p.add_argument("--out", default=".agent/swarm-state.md")
@@ -3823,10 +3941,10 @@ def main(argv=None):
         live = live_workers()
         text = reclaim(todo_read(a.file), everything, live)
         busy = len(live)
-        room = max(0, MAX_ACTIVE_WORKERS - busy)
+        room = max(0, min(a.capacity, MAX_ACTIVE_WORKERS - busy))
         print(f"{busy} worker(s) already running; room for {room} of {MAX_ACTIVE_WORKERS}.")
-        include = plan_workers(room, rotate_slots(load_slots(a.slots), busy),
-                               text, prs, repair, live, story_wave=a.max, focus=a.task)
+        include = plan_workers(room, worker_slots(load_slots(a.slots), busy),
+                               text, prs, repair, live, story_wave=a.max, focus=a.task, red=main_is_red())
         claims = {t["id"]: f"swarm-{t['slot']}" for t in include if t["kind"] == "story"}
 
         granted = set()
@@ -3854,12 +3972,14 @@ def main(argv=None):
         emit("count", len(include))
     elif a.cmd == "pr-flow":
         try:
-            for pr, what in pr_flow():
+            for pr, what in pr_flow(dispatch_wave=not a.no_wave):
                 print(f"#{pr}: {what}")
         except subprocess.CalledProcessError as exc:
             # GitHub API rate limit or outage: the schedule runs again soon, so end quietly.
             print(f"pr-flow stopped early: gh failed ({exc.returncode}); next scheduled pass retries",
                   file=sys.stderr)
+    elif a.cmd == "daily-admission":
+        emit("ready", str(daily_can_start()).lower())
     elif a.cmd == "watchdog":
         watchdog()
     elif a.cmd == "strategy-state":
@@ -3886,14 +4006,12 @@ def main(argv=None):
         # wave is seen as finished and the loop carries on.
         everything = gh_json("pr", "list", "--state", "all", "--label", "swarm", "--limit", "200",
                              "--json", "number,headRefName,state,labels") or []
-        text = reclaim(todo_read(a.file), everything, live_workers())
-        go = continue_swarm(text, prs)
-        if go and waiting_waves():
+        live = live_workers()
+        text = reclaim(todo_read(a.file), everything, live)
+        go = continue_swarm(text, prs, red=main_is_red())
+        if go and (len(live) >= MAX_ACTIVE_WORKERS or waiting_waves()):
             go = False
-            print("A wave is already waiting; not queueing another.")
-        elif go and live_waves() > MAX_LIVE_WAVES:  # this wave is still counted as live
-            go = False
-            print(f"{MAX_LIVE_WAVES} waves are already running; not starting another.")
+            print("No free workers or a wave is already waiting.")
         print("Starting the next wave." if go else "No further wave to start now.")
         if go:
             gh("workflow", "run", "swarm.yml", "--ref", "main", check=False)

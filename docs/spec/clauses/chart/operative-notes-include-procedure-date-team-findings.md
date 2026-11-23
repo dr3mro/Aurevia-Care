@@ -6,50 +6,68 @@ Operative notes include procedure, date, team, findings, complications and follo
 
 ## Status
 
-Partly proven
+Domain half proven by active tests; the HTTP half is documented as a gap (partly proven overall).
 
 ## Evidence
 
-Active, synthetic-data proof of the **domain half** of the rule (unit level, through the public
-`TemplateService` entry point):
+Active, synthetic-data proof of the rule through the public `TemplateService` domain entry point:
 
 - Test class: `com.aurevia.smartclinic.chart.clauses.OperativeNotesIncludeProcedureDateTeamFindingsTest`
   (`apps/api/src/test/java/com/aurevia/smartclinic/chart/clauses/OperativeNotesIncludeProcedureDateTeamFindingsTest.java`).
+  All seven tests are active (none are disabled) and pass with synthetic data only. They exercise
+  the versioned-template domain service through its normal public API with an `InMemoryTemplateStore`
+  fixture, so no external infrastructure, tenant context, database or patient data is used. No test
+  goes through the durable `JdbcTemplateStore`, the forced-RLS tables in
+  `db/migrations/V80__template_store.sql`, the frozen OPERATIVE row in
+  `db/migrations/V87__baseline_templates.sql`, or an HTTP route; those durable layers were surveyed
+  only, not executed by this evidence task.
+
+Positive proof of the field set and the rule being met:
+
+- `operativeTemplateDeclaresAllSixFieldsAsGovernanceRequired` — positive proof of the field set.
+  The OPERATIVE baseline carries exactly `procedure`, `procedureDate`, `team`, `findings`,
+  `complications` and `followUp`, all governance-required; `procedureDate` is a `DATE`, `findings` is
+  `FREE_TEXT` with a language, so each of procedure, date, team, findings, complications and
+  follow-up is represented with the right value kind.
 - `validatesAndSavesAnOperativeNoteWithAllSixRequiredFieldsInTheDomain` — defines and approves the
   synthetic OPERATIVE baseline as version one, validates a note carrying all six fields, and saves it.
-  The saved revision returns `procedure`, `procedureDate`, `team`, `findings`, `complications` and
-  `followUp` with their authored values and the exact six field definitions frozen with the version.
-- `refusesAnOperativeNoteMissingARequiredFieldInTheDomain` — omits `complications`, asserts the
-  validation violation `missing:complications` and that `saveNote` refuses the note with HTTP 422.
-  The six-field requiredness is therefore an enforced rule, not an optional field set.
+  The saved revision returns every authored value and the exact six field definitions frozen with
+  the version; the saved revision is read back through the domain to prove the field meanings survive
+  a reload, not just the in-memory save call.
+- `operativeNoteWithAllSixFieldsValidatesAndSaves` — after governance approves version one, a note
+  documenting all six fields validates with no violations, saves successfully and can be read back.
 
-Production classes exercised by the active tests:
+Negative proof (the rule is enforced, not optional):
+
+- `operativeNoteOmittingAnyRequiredFieldIsRefused` — for each of the six fields, removing it makes
+  validation invalid with `missing:<field>`, and saving the incomplete note is refused with HTTP 422
+  `INVALID_NOTE`; nothing is persisted.
+- `refusesAnOperativeNoteMissingARequiredFieldInTheDomain` — omits `complications`, asserts the
+  `missing:complications` violation, that `saveNote` refuses the note with HTTP 422, and that a later
+  read of the refused note yields HTTP 404 (the refused note is not persisted).
+- `operativeNoteWithABlankRequiredFieldIsRefused` — a blank `complications` value yields
+  `blank:complications` and the note is refused with 422 `INVALID_NOTE`.
+- `aRoleThatCannotAuthorClinicalNotesIsRefusedAnOperativeNote` — a `reception` actor cannot save an
+  operative note: the service denies with 403 `FORBIDDEN` naming `TEMPLATE_NOTE_SAVE`.
+
+Production classes exercised by the active tests (none changed by this task):
 
 - `com.aurevia.smartclinic.clinical.templates.BaselineTemplates` — `fieldsFor(TemplateKind.OPERATIVE)`
-  defines all six fields as required with their types, labels and free-text language.
+  is the authoritative in-process definition of clause 2's six fields, all required with their types,
+  labels and free-text language.
 - `com.aurevia.smartclinic.clinical.templates.TemplateService` — `defineVersion`, `approveVersion`,
-  `validate`, `saveNote`, `savedNote` and the role authorization in `authorize`.
+  `validate`, `saveNote`, `savedNote` and the role authorization in `authorize` enforce requiredness
+  and role authorization and freeze field meanings into the saved revision.
 - `com.aurevia.smartclinic.clinical.templates.FieldDefinition`, `FieldValue`, `FieldType`,
   `TemplateNoteRevision`, `TemplateKind`, `SavedNoteRevision`, `ValidationReport`, `TemplateActor` —
-  the synthetic note and validation contract.
-
-The two test methods use `InMemoryTemplateStore` (the existing synthetic store) so they are
-deterministic and need no tenant context or database; they prove the in-process rule only. No test
-goes through the durable `JdbcTemplateStore`, the forced-RLS tables in
-`db/migrations/V80__template_store.sql`, the frozen OPERATIVE row in
-`db/migrations/V87__baseline_templates.sql`, or an HTTP route. Those durable layers were surveyed
-only; they were not executed by this evidence task.
-
-The **HTTP half** is not proven here and is tracked as follow-up tasks (see the Gap section). The
-would-be HTTP proofs — a full-note save/read through `POST`/`GET /api/v1/templates/notes`, an HTTP 422
-for a note missing `complications`, an HTTP 403 for a `reception` actor, and an HTTP 404 cross-tenant
-concealment — are specified in the follow-up task requests rather than left as disabled tests in this
-pull request. No test is skipped or disabled: a skipped test cannot exercise the absent endpoint and
-only obscures the gap.
+  the value types that carry field meaning, authored values and validation outcomes through the API.
+- `com.aurevia.smartclinic.clinical.templates.InMemoryTemplateStore` — the existing synthetic store.
 
 The test class is a plain unit test with synthetic subjects; it creates no database and starts no
-Spring context. Surefire for the targeted run: `tests="2" errors="0" skipped="0" failures="0"`.
-No test was weakened, skipped or disabled.
+Spring context. Surefire for the targeted run: `tests="7" errors="0" skipped="0" failures="0"`.
+No test was weakened, skipped or disabled. The would-be HTTP proofs are specified as follow-up task
+requests rather than left as disabled tests, because a skipped test cannot exercise an absent
+endpoint and would only obscure the gap.
 
 Discovery survey (where the rule lives today): the chart package
 `apps/api/src/main/java/com/aurevia/smartclinic/chart/record` has `EntryType` with only `PROBLEM`,
@@ -59,11 +77,20 @@ V80 and V87. Every controller under `apps/api/src/main/java/com/aurevia/smartcli
 `clinical/notes/ClinicalNoteController`) was checked: none calls `TemplateService`, none handles
 `TemplateKind.OPERATIVE`, and `contracts/openapi.yaml` has no template path. The template service is
 listed as `unreferenced-service` in `scripts/wiring-baseline.json`, confirming there is no caller.
+Neighbouring implementation observed in the survey (not changed): the authoritative governance
+baseline is also frozen in `db/migrations/V87__baseline_templates.sql`
+(`clinical_template_baseline` and `current_clinical_template_baseline`), with tenant-owned template
+version, field-dictionary and note-revision tables in `db/migrations/V80__template_store.sql` and the
+JDBC adapter `com.aurevia.smartclinic.clinical.templates.JdbcTemplateStore`. The migration baseline
+and the Java baseline are kept in lockstep by `BaselineTemplatesTest`. The domain-service API is the
+exercised entry point, matching the neighbouring clause-proof tests (`TemplateVersioningTest`,
+`TemplateNoteAcceptanceTest`).
 
 ## Gap
 
-The six-field rule is built and enforced in the domain, but an operative note cannot be captured or
-read over HTTP, so the API half of the clause is not proven.
+The domain half of the rule is built and proven by the active tests; there is no gap in that proof.
+The HTTP half is not proven here: the six-field rule is built and enforced in the domain, but an
+operative note cannot be captured or read over HTTP, so the API half of the clause is not proven.
 
 1. **No HTTP entry point for versioned templates or operative notes.** There is no
    `TemplateController` (or equivalent) under `apps/api/src/main/java/com/aurevia/smartclinic/web`,
@@ -85,4 +112,4 @@ with 100% coverage; (2) staff-web capture and clinical review. Real clinical acc
 separate G5 human gate and is not claimed here.
 
 This evidence task added only a test class and this note. It changed no production code, no existing
-test, no migration, no contract and no tracker.
+test, no migration, no contract, no tracker and no file outside its scope.

@@ -551,8 +551,15 @@ class MainTest(unittest.TestCase):
 
     def test_maven_failure_with_failing_reports_still_fails(self):
         # A strict repair task that names no class stays red on any failing class.
-        self.assertEqual(self.run_main(argv=["1"], env={"STORY_ID": "FIX-01"},
-                                       failing={"FooTest"}, reports=True), 1)
+        # Use a real private report directory with a parseable XML file, not the
+        # shared Surefire path, and do not mask is_dir: the real directory must
+        # satisfy worker_gate itself for the strict verdict to be exercised.
+        with tempfile.TemporaryDirectory() as reports:
+            write_report(reports, "TEST-FooTest.xml", suite_xml("pkg.FooTest", "0", "1"))
+            with mock.patch.object(worker_gate, "changed_paths", return_value=[]), \
+                 mock.patch.object(worker_gate, "failing_classes", return_value={"FooTest"}), \
+                 mock.patch.dict(os.environ, {"STORY_ID": "FIX-01", "STORY_BODY": ""}, clear=True):
+                self.assertEqual(worker_gate.main(["1", reports]), 1)
 
     def test_maven_success_with_failing_reports_uses_the_decision(self):
         ok, message = worker_gate.decide({"FooTest"}, [], "FIX-01", "")

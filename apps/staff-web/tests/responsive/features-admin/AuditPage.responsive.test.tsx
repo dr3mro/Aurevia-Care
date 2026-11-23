@@ -255,10 +255,12 @@ describe('responsive AuditPage and its shared children (WEB-07, UX-01)', () => {
     expect(zone.parentElement?.classList.contains('stack')).toBe(true);
     expect(zone.style.fontSize).toBe('');
 
-    // No audit value is hidden: the existing table and every field stay in the
-    // accessibility tree at all three bands, including the narrowest phone.
+    // No inline hiding style is set on an audit value at any of the three bands,
+    // including the narrowest phone. Real accessibility-tree and painted-width
+    // claims belong to the Playwright/axe projects (section 13), not to jsdom.
     expect(document.body.querySelectorAll('[style*="display: none"]')).toHaveLength(0);
     expect(document.body.querySelectorAll('[style*="visibility: hidden"]')).toHaveLength(0);
+    expect(document.body.querySelectorAll('[hidden]')).toHaveLength(0);
 
     // The wrapping and gutter rules behind that structure are in the shared
     // stylesheet; assert the text so a rule deletion fails this suite. Painted
@@ -332,6 +334,13 @@ describe('responsive AuditPage and its shared children (WEB-07, UX-01)', () => {
     const zone = screen.getByText(adminMessage('ar', 'auditFacilityZone', { zone: 'America/New_York' }));
     expect(root.contains(zone)).toBe(true);
     expect(zone.parentElement?.classList.contains('stack')).toBe(true);
+
+    // Section 13 R11: the mixed-script audit value is one isolated bdi run whose
+    // direction and language survive the right-to-left page. jsdom can assert
+    // the isolation hooks; the painted order is still Playwright/Arabic evidence.
+    const isolated = screen.getByText(LONG_ARABIC).closest('bdi');
+    expect(isolated?.getAttribute('dir')).toBe('auto');
+    expect(isolated?.getAttribute('lang')).toBe('en');
 
     // No component sets a physical side or overrides direction; the document
     // direction mirrors the logical CSS on its own. No fixed inline font size

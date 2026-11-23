@@ -23,7 +23,7 @@ ENV JAVA_HOME=/opt/java/openjdk \
 # guards it with command -v).
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
-      bash ca-certificates curl git gh gnupg jq python3 python3-yaml shellcheck doxygen \
+      bash ca-certificates curl git gh gnupg jq python3 python3-yaml python3-coverage shellcheck doxygen \
  && install -d /usr/share/keyrings \
  && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
       | gpg --dearmor -o /usr/share/keyrings/pgdg.gpg \
