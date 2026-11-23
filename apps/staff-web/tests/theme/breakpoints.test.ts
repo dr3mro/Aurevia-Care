@@ -102,6 +102,33 @@ describe('useBreakpoint', () => {
     expect(result.current).toBe('compact');
   });
 
+  it('re-syncs a media value that changes between render and subscription', () => {
+    const query = '(pointer: coarse)';
+    let calls = 0;
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn((requested: string) => {
+        if (requested !== query) {
+          throw new Error(`unexpected query ${requested}`);
+        }
+        // The render's getSnapshot reads `true`; the subscription that follows
+        // reads `false`. This reproduces the narrow window where a media change
+        // lands after the snapshot but before the change listener is attached,
+        // which the subscribe-time check must recover from.
+        const matches = calls++ === 0;
+        return {
+          matches,
+          addEventListener: () => undefined,
+          removeEventListener: () => undefined,
+        };
+      }),
+    );
+
+    // Without the subscribe-time re-sync the cached snapshot would stay `true`.
+    const { result } = renderHook(() => usePointerCoarse());
+    expect(result.current).toBe(false);
+  });
+
   it('removes both media query listeners on unmount', () => {
     const media = installMatchMedia({
       [BREAKPOINT_MEDIA_QUERIES.medium]: true,
