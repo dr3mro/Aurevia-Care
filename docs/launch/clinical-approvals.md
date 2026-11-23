@@ -1,6 +1,8 @@
 # Clinical configuration approvals — decision pack
 
-Status: Not approved
+Status: **Not approved** — all five items are open pending a named human
+approval; none is enabled by a repository check. No value in this pack is an
+approval, a contract or a credential.
 
 This pack prepares the material a person needs for TODO task `S-G5-02`. It records
 no decision, recommends no option, and names no jurisdiction, region, partner,
@@ -38,6 +40,64 @@ For each enabled pilot site, a person must approve:
 Each approval names the person accountable and the dates from which, and if
 applicable until which, it applies. The decision itself is recorded by the
 roles in the approval record, not by this document.
+
+## Approval register
+
+The five item groups above are the single decision that section 10 of
+[SMARTCLINIC_V1_SPEC.md](../../SMARTCLINIC_V1_SPEC.md) assigns to the clinical
+safety lead and the site medical director. Each row names the accountable owner
+role, where the repository evidence lives, the human artifact that must be
+attached, and the current status. Status values are:
+
+- `approved` — a named person has signed and effective dates are recorded;
+- `open` — human approval is not yet supplied, and the repository can hold the
+  data once it is;
+- `blocked` — human approval is not yet supplied and a named engineering gap
+  prevents a durable, versioned approval record.
+
+All five rows are `open` in this checkout: the durable stores and HTTP entry
+points exist, so the only thing outstanding is the named human decision. No row
+is `blocked` by a persistence or reachability gap. A passing repository check or
+a synthetic review cannot move a row to `approved`.
+
+| Item | Spec clause | Owner role | Evidence location (repository) | Human evidence to attach (open item) | Status |
+|---|---|---|---|---|---|
+| 1. Clinical note templates and field dictionaries | ADM-01 C01/C02; CLN-04 | Clinical safety lead and site medical director | `apps/api/src/main/java/com/aurevia/smartclinic/clinical/templates/` (`BaselineTemplates`, `FieldDictionary`, `TemplateService`, `JdbcTemplateStore`), `db/migrations/V15__clinical_note_signing.sql`, `db/migrations/V80__template_store.sql` | Approved version identifier per family, field definitions and requiredness, approved dictionaries, permitted free-text languages, named approver, effective-from/to dates, retained audit and version history | `open` |
+| 2. Diagnosis and procedure code sets | ADM-01 C01/C02 | Clinical safety lead and site medical director | `apps/api/src/main/java/com/aurevia/smartclinic/catalog/dictionary/` (`ClinicalCatalogController`, `DurableVersionStore`, `VersionPersistence`, `DiagnosisCode`, `Approval`), `db/migrations/V6__catalog_fold.sql` | Approved code-set version and mapping, named approver, effective dates, evidence that notes saved against an earlier version keep their original meanings | `open` |
+| 3. Imaging interpretation privileges | ADM-01 C01/C02; RAD-01 | Clinical safety lead and site medical director | `apps/api/src/main/java/com/aurevia/smartclinic/radiology/` (`RadPolicyCatalog`, `ImagingService`, `ImagingController`), `apps/api/src/main/java/com/aurevia/smartclinic/authz/specialty/SpecialtyRoles.java` | Approved modality list, named interpreter per modality, effective window per privilege, verification of privilege, timed workflow drill | `open` |
+| 4. Critical-result escalation rules | ADM-01 C01/C02; XCH-05 | Clinical safety lead and site medical director | `apps/api/src/main/java/com/aurevia/smartclinic/exchange/critical/` (`CriticalResultService`, `CriticalResultRepository`, `CriticalContract`, `CriticalResultController`), `db/migrations/V23__critical_results.sql` | Approved owner, deadline, primary and backup channels and recipients, read-back and human acknowledgment, named approver, effective dates, timed escalation drill with recorded acknowledgment | `open` |
+| 5. Coverage rosters | ADM-01 C01/C02 | Clinical safety lead and site medical director | `apps/api/src/main/java/com/aurevia/smartclinic/exchange/result/ResultRules.java`, `apps/api/src/main/java/com/aurevia/smartclinic/messaging/service/ServiceProfileContract.java`, `db/migrations/V22__result_routing.sql` | Named owner and backup per queue or unit, effective dates, hand-off notice, drill showing a critical result reaching a staffed backup queue | `open` |
+
+The owner role is the same for all five rows because they are one section-10
+decision, "Clinical templates, code sets, interpreting privileges, results
+escalation and coverage", whose required evidence is "approved dictionaries and
+timed workflow drills". The G5 row of section 9 additionally requires the site
+to approve its workflow, staffing and downtime drills and to have no unresolved
+critical-escalation defect. The evidence locations are code facts, not
+approvals; they do not change who is accountable.
+
+## Synthetic example (illustrative shape only — not an approval)
+
+The row below shows only the *shape* a completed approval takes. Every value is
+a placeholder token, not a person, date, jurisdiction, partner or credential.
+It records no decision and must not be copied into an approval record.
+
+| Item | Version (synthetic) | Approver (synthetic) | Effective from (synthetic) | Effective to (synthetic) | Status |
+|---|---|---|---|---|---|
+| 1. Templates / dictionaries | `SYNTHETIC-TEMPLATE-VERSION` | `SYNTHETIC-APPROVER-CLINICAL-SAFETY` | `SYNTHETIC-DATE-FROM` | `SYNTHETIC-DATE-TO` | `open` |
+
+A real row replaces each token with the approved value and attaches the evidence
+named in the register. Until then the item stays `open`.
+
+## Requirement mapping
+
+| Requirement / clause | What it requires | Where this pack addresses it | Status |
+|---|---|---|---|
+| ADM-01 C01 — tenant admins configure facilities, referral partner directory, scheduling policies, templates, catalogs, coverage rosters, critical-result escalation rules and patient release policies | Configuration capability exists and is tenant-admin scoped | [What the repository already supports](#what-the-repository-already-supports), register items 1–5 | `open` — human configuration approval pending |
+| ADM-01 C02 — clinical/market policies require named approval, effective dates, audit and version history | Named approval, effective dates, audit and version history on each policy | [Evidence checklist](#evidence-checklist), [Approval register](#approval-register), [Approval record](#approval-record) | `open` — no named approval recorded |
+| ADM-01 C03 — pilot site onboarding tests each configured channel | Each configured channel is tested at onboarding | [Evidence checklist](#evidence-checklist) drill items, [Questions for the owner](#questions-for-the-owner) | `open` — drill evidence to be attached by the site |
+| Section 9 G5 row | Site approves workflow, staffing and downtime drills; no unresolved critical-escalation defect | register item 4, [What is missing](#what-is-missing) | `open` |
+| Section 10 decision row | Clinical safety lead and site medical director accountable; approved dictionaries and timed workflow drills as evidence | [Approval register](#approval-register), [Approval record](#approval-record) | `open` |
 
 ## Why it matters
 
@@ -89,21 +149,28 @@ These are code and migration facts in this checkout, not approvals:
   [CatalogController](../../apps/api/src/main/java/com/aurevia/smartclinic/web/CatalogController.java).
 - Synthetic baseline field sets for the five CLN-04 template families, an
   approved-flag field dictionary, a versioned template service that approves a
-  dictionary before a coded field and preserves field meanings per version, and
-  audit roles for define and approve:
+  dictionary before a coded field and preserves field meanings per version,
+  audit roles for define and approve, and a tenant-guarded JDBC store so an
+  approved dictionary and version survive a restart:
   [BaselineTemplates](../../apps/api/src/main/java/com/aurevia/smartclinic/clinical/templates/BaselineTemplates.java),
   [FieldDictionary](../../apps/api/src/main/java/com/aurevia/smartclinic/clinical/templates/FieldDictionary.java),
   [FieldDefinition](../../apps/api/src/main/java/com/aurevia/smartclinic/clinical/templates/FieldDefinition.java),
   [FieldType](../../apps/api/src/main/java/com/aurevia/smartclinic/clinical/templates/FieldType.java),
   [TemplateVersion](../../apps/api/src/main/java/com/aurevia/smartclinic/clinical/templates/TemplateVersion.java),
   [TemplateService](../../apps/api/src/main/java/com/aurevia/smartclinic/clinical/templates/TemplateService.java),
-  [V15 clinical note signing](../../db/migrations/V15__clinical_note_signing.sql).
+  [JdbcTemplateStore](../../apps/api/src/main/java/com/aurevia/smartclinic/clinical/templates/JdbcTemplateStore.java),
+  [V15 clinical note signing](../../db/migrations/V15__clinical_note_signing.sql),
+  [V80 template store](../../db/migrations/V80__template_store.sql).
 - Versioned diagnosis and procedure catalogues with a named approval and an
-  effective-version fold, and the shared version store they use:
+  effective-version fold, durable configuration-backed version persistence and
+  an HTTP administration controller, all using the shared version contract:
   [DiagnosisCatalogService](../../apps/api/src/main/java/com/aurevia/smartclinic/catalog/dictionary/DiagnosisCatalogService.java),
   [DiagnosisCode](../../apps/api/src/main/java/com/aurevia/smartclinic/catalog/dictionary/DiagnosisCode.java),
   [Approval](../../apps/api/src/main/java/com/aurevia/smartclinic/catalog/dictionary/Approval.java),
-  [VersionStore](../../apps/api/src/main/java/com/aurevia/smartclinic/catalog/dictionary/VersionStore.java).
+  [VersionStore](../../apps/api/src/main/java/com/aurevia/smartclinic/catalog/dictionary/VersionStore.java),
+  [DurableVersionStore](../../apps/api/src/main/java/com/aurevia/smartclinic/catalog/dictionary/DurableVersionStore.java),
+  [VersionPersistence](../../apps/api/src/main/java/com/aurevia/smartclinic/catalog/dictionary/VersionPersistence.java),
+  [ClinicalCatalogController](../../apps/api/src/main/java/com/aurevia/smartclinic/catalog/dictionary/ClinicalCatalogController.java).
 - Approved, effective-dated imaging policies where a signature needs an
   approved privilege for that specific modality and future dates do not apply
   early: [RadPolicyCatalog](../../apps/api/src/main/java/com/aurevia/smartclinic/radiology/RadPolicyCatalog.java),
@@ -133,16 +200,10 @@ These are code and migration facts in this checkout, not approvals:
   owned by a person, not satisfiable by a repository check.
 - `S-G5-12` — per-site launch approvals and final G5 acceptance, where these
   artifacts are attached to the signed acceptance matrix.
-- `BUILD-26` — persist field dictionaries and template versions with JDBC. The
-  current template and dictionary store is in memory, so approved data does not
-  survive a restart.
 - `BUILD-17` — operational queues for unsigned encounters and missing coverage,
   including assign, resolve and reason.
 - `BUILD-14` — unit service hours, response targets and named backup coverage,
   including escalation of overdue conversations.
-- NO TASK — a durable diagnosis and procedure code-set store; the versioned
-  catalogue uses an in-memory version store, so an approved code set is not yet
-  durable across a restart.
 - NO TASK — a dedicated, durable imaging-privilege registry. Privileges are
   read from approved configuration; the named interpreters, modalities and
   effective windows are site evidence a person must supply, not code this pack
@@ -151,9 +212,10 @@ These are code and migration facts in this checkout, not approvals:
   production enablement), the section that assigns this decision. Related
   clause notes for the requirements cited here come from `SPEC-ADM-01-C01`
   (ADM-01 tenant configuration) and `SPEC-CLN-04-C02` (CLN-04 operative note
-  fields). These `SPEC-*` evidence-note tasks write under `docs/spec/clauses/`,
-  which is absent from this checkout, so their notes are not yet available as
-  evidence. The authoritative clause text is in sections 9 and 10 of
+  fields). These `SPEC-*` evidence-note tasks write under `docs/spec/clauses/`.
+  That directory exists, but no ADM-01 or CLN-04 clause note is present in this
+  checkout, so their notes are not yet available as evidence. The authoritative
+  clause text is in sections 9 and 10 of
   [SMARTCLINIC_V1_SPEC.md](../../SMARTCLINIC_V1_SPEC.md). Nothing here depends
   on those notes being present.
 
@@ -197,9 +259,10 @@ A site must hold each artifact below before enabling the related capability:
 
 Accountable roles from section 10 of [SMARTCLINIC_V1_SPEC.md](../../SMARTCLINIC_V1_SPEC.md).
 The Name, Date and Decision columns are intentionally empty: the approver
-completes them when the decision is made. This pack records no approval.
+completes them when the decision is made. Status stays `open` until a person
+signs. This pack records no approval.
 
-| Role | Name | Date | Decision |
-|---|---|---|---|
-| Clinical safety lead |  |  |  |
-| Site medical director |  |  |  |
+| Role | Name | Date | Decision | Status |
+|---|---|---|---|---|
+| Clinical safety lead |  |  |  | `open` |
+| Site medical director |  |  |  | `open` |
