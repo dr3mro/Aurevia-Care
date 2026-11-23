@@ -170,10 +170,11 @@ class AuthorizePatientAccessThroughConnectionStaffAccessTest {
 
     /** Assert the directory's connection-use audit records the expected outcome. */
     private void assertConnectionAudit(String outcome) {
-        MessagingAudit recorded = store.auditEvents(ORG).stream()
+        List<MessagingAudit> recorded = store.auditEvents(ORG).stream()
                 .filter(event -> "CONNECTION_USE".equals(event.action()))
-                .findFirst().orElseThrow();
-        assertEquals(outcome, recorded.outcome());
+                .toList();
+        assertEquals(1, recorded.size());
+        assertEquals(outcome, recorded.get(0).outcome());
     }
 
     @Test

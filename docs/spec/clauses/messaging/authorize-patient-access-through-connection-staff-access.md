@@ -44,8 +44,9 @@ Staff access through membership, unit and role:
   unit opens a conversation with a successful audit and no patient connection use.
 - `staffOpenDeniesInactiveMembership` — an inactive membership is refused with HTTP 403
   `FORBIDDEN` and an audited denial before any role or patient lookup.
-- `staffOpenDeniesARoleWithoutTheOpenPermission` — an active `tenant_admin` (which passes the unit
-  check) is still refused with HTTP 403 `FORBIDDEN` because the action permission is missing.
+- `staffOpenDeniesARoleWithoutTheOpenPermission` — an active `tenant_admin`, whose role would pass
+  the unit matrix, is refused at the action-permission gate before any unit check runs (HTTP 403
+  `FORBIDDEN`).
 - `staffOpenForAnUnassignedUnitIsDenied` — a role eligible for the lab cannot open a clinic unit
   conversation (HTTP 403 `FORBIDDEN`) and no conversation is written.
 - `staffWorkItemDeniesWrongRoleAndCrossUnit` — a patient cannot take a work-item action (audited
@@ -77,9 +78,10 @@ Production classes exercised through the normal domain-service entry points
 For staff, unit assignment is expressed by the role-to-unit capability matrix in
 `ConversationActions.allowsUnit` together with the recipient unit stored on the conversation;
 there is no separate per-subject unit-assignment row. The tests assert both halves: an eligible
-role in its unit succeeds, while the same action in another unit is refused. Controllers in
-`com.aurevia.smartclinic.web` delegate these decisions to the owning service; this task did not
-change production code, an existing test, the contract or a migration.
+role in its unit succeeds, while the same action in another unit is refused. The
+`com.aurevia.smartclinic.messaging.conversations.ConversationController` HTTP adapter delegates
+`POST /api/v1/conversations` to the owning service; this task did not change production code, an
+existing test, the contract or a migration.
 
 ## Gap
 
