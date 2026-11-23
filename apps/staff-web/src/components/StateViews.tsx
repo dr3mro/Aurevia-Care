@@ -189,19 +189,53 @@ export function SessionExpiredState({ onSignIn = noop }: SessionExpiredStateProp
 }
 
 /**
+ * The recovery actions a screen can hand to its state views. Every member is
+ * optional and explicitly allows `undefined`: a caller may own only some of
+ * the actions, and `exactOptionalPropertyTypes` keeps that absence visible to
+ * the state component, which falls back to its inert default.
+ */
+export interface StateViewActions {
+  /** Re-run a failed request or discard a stale view and reload the record. */
+  onReload?: (() => void) | undefined;
+  /** Preserve the user's local edits as a separate working copy. */
+  onCopy?: (() => void) | undefined;
+  /** Show the difference between local edits and the stored record. */
+  onCompare?: (() => void) | undefined;
+  /** Re-attempt the command or request that failed. */
+  onRetry?: (() => void) | undefined;
+  /** Return the user to sign-in while keeping their current place. */
+  onSignIn?: (() => void) | undefined;
+}
+
+/** Keeps direct callers that own no recovery actions on the safe no-op path. */
+function actionsOrEmpty(actions: StateViewActions | undefined): StateViewActions {
+  return actions ?? {};
+}
+
+/**
  * Maps a transport failure to the single blocking state a screen should show.
  * Response text is never used: only the typed kind and the correlation ID.
+ * Recovery controls invoke the matching supplied action; when no owner is
+ * given, the state component keeps its safe no-op so the control is still
+ * keyboard reachable and never throws.
  */
 export const StateView = {
-  forTransportError(error: TransportError): ReactNode {
+  forTransportError(error: TransportError, actions?: StateViewActions): ReactNode {
+    const recovery = actionsOrEmpty(actions);
     switch (error.kind) {
       case 'session-expired':
-        return <SessionExpiredState />;
+        return <SessionExpiredState onSignIn={recovery.onSignIn} />;
       case 'forbidden':
         return <ForbiddenState />;
       case 'conflict':
       case 'precondition-required':
-        return <ConflictState />;
+        return (
+          <ConflictState
+            onCompare={recovery.onCompare}
+            onReload={recovery.onReload}
+            onCopy={recovery.onCopy}
+          />
+        );
       case 'csrf-missing':
       case 'not-found':
       case 'invalid':
@@ -209,7 +243,7 @@ export const StateView = {
       case 'server':
       case 'offline':
       case 'timeout':
-        return <ErrorState correlationId={error.correlationId} />;
+        return <ErrorState correlationId={error.correlationId} onRetry={recovery.onRetry} />;
     }
   },
 };
