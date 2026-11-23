@@ -131,8 +131,16 @@ function style(node: Element | null): string {
   return node?.getAttribute('style') ?? '';
 }
 
-const COLUMNS_EN = ['Patient', 'Time', 'Protected resource', 'Visit state', 'Assign to', 'Actions'];
-const COLUMNS_AR = ['المريض', 'الوقت', 'المورد المحمي', 'حالة الزيارة', 'إسناد إلى', 'إجراءات'];
+const COLUMNS_EN = [
+  'TIME',
+  'PATIENT',
+  'VISIT',
+  'CLINICIAN AND ROOM',
+  'STATE',
+  'ASSIGNED',
+  'ACTIONS',
+];
+const COLUMNS_AR = ['الوقت', 'المريض', 'الزيارة', 'الطبيب والغرفة', 'الحالة', 'المسند', 'الإجراءات'];
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -167,7 +175,7 @@ describe('responsive AppointmentWorklist (WEB-07, UX-01)', () => {
       expect(style(card)).toContain('flex-direction: column');
       expect(style(card)).toContain('padding-inline');
       // Every clinical cell stays in the card: none is hidden to save space.
-      expect(card.querySelectorAll('th, td')).toHaveLength(6);
+      expect(card.querySelectorAll('th, td')).toHaveLength(7);
       for (const cell of card.querySelectorAll('th, td')) {
         expect(style(cell)).toContain('overflow-wrap: anywhere');
         expect(style(cell)).toContain('white-space: normal');
@@ -187,7 +195,7 @@ describe('responsive AppointmentWorklist (WEB-07, UX-01)', () => {
     // Time, patient, status and the next action are all in the same card.
     expect(within(first).getByText(schedulingText('en', 'stateInProgress'))).toBeTruthy();
     expect(
-      within(first).getByRole('button', { name: schedulingText('en', 'checkIn') }),
+      within(first).getByRole('button', { name: schedulingText('en', 'openChart') }),
     ).toBeTruthy();
     expect(within(first).getByLabelText(schedulingText('en', 'assign'))).toBeTruthy();
   });
@@ -244,27 +252,32 @@ describe('responsive AppointmentWorklist (WEB-07, UX-01)', () => {
         ).querySelectorAll('button, select, [tabindex="0"]'),
       );
       expect(stops.slice(0, 2).map((node) => node.textContent)).toEqual(['Day', 'Week']);
+      expect(stops.slice(2, 5).map((node) => node.textContent)).toEqual([
+        schedulingText('en', 'filterAll'),
+        schedulingText('en', 'filterNeedsCheckIn'),
+        schedulingText('en', 'filterWaiting'),
+      ]);
       const controls = stops
-        .slice(2)
+        .slice(5)
         .filter((node) => node.tagName === 'BUTTON' || node.tagName === 'SELECT');
       expect(controls.map((node) => node.tagName)).toEqual([
-        'BUTTON',
         'SELECT',
         'BUTTON',
         'SELECT',
         'BUTTON',
         'SELECT',
+        'BUTTON',
       ]);
       if (band === 'compact') {
-        expect(stops[2]?.getAttribute('role')).toBe('region');
+        expect(stops[5]?.getAttribute('role')).toBe('region');
       } else {
         expect(stops.some((node) => node.getAttribute('role') === 'region')).toBe(false);
       }
 
       const checks = screen.getAllByRole('button', { name: schedulingText('en', 'checkIn') });
-      expect(checks).toHaveLength(3);
-      expect((checks[2] as HTMLButtonElement).disabled).toBe(false);
-      fireEvent.click(required(checks[2]));
+      expect(checks).toHaveLength(1);
+      expect((checks[0] as HTMLButtonElement).disabled).toBe(false);
+      fireEvent.click(required(checks[0]));
       expect(onCheckIn).toHaveBeenCalledWith('apt-001');
 
       const selects = screen.getAllByLabelText<HTMLSelectElement>(schedulingText('en', 'assign'));
@@ -285,7 +298,7 @@ describe('responsive AppointmentWorklist (WEB-07, UX-01)', () => {
     const table = screen.getByRole('table', { name: caption });
     expect(
       within(table).getByText(schedulingText('en', 'noAppointments')).getAttribute('colspan'),
-    ).toBe('6');
+    ).toBe('7');
     expect((table.querySelector('tbody') as HTMLElement).querySelectorAll('tr')).toHaveLength(1);
 
     fireEvent.click(screen.getByRole('button', { name: schedulingText('en', 'week') }));
