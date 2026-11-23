@@ -212,6 +212,27 @@ describe('print preview dialog keyboard behaviour', () => {
     fireEvent.keyDown(document, { key: 'Tab' });
     expect(document.activeElement).toBe(closeButton);
   });
+
+  it('handles a Tab delivered after the dialog unmounted', () => {
+    // Capture the real listener before unmount: the focus trap must fall back
+    // to an empty control list when its ref is cleared, not read a stale node.
+    const addListener = vi.spyOn(document, 'addEventListener');
+    const view = renderDialog(readyState);
+    const keydown = addListener.mock.calls.find(([type]) => type === 'keydown');
+    addListener.mockRestore();
+    expect(keydown?.[1]).toBeTypeOf('function');
+    const listener = keydown?.[1];
+    if (typeof listener !== 'function') {
+      throw new Error('Expected the preview to register a keydown listener');
+    }
+
+    view.unmount();
+    const event = new KeyboardEvent('keydown', { key: 'Tab', cancelable: true });
+    listener(event);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
 });
 
 describe('print preview dialog localization', () => {
