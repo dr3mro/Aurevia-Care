@@ -1392,25 +1392,44 @@ def images_ready_command(slots=None, generations=None):
     return ready, reason, dispatch
 
 
-def failure_report(directory):
-    """Why a worker's local check failed: prefer TypeScript/frontend lines, else the log tail.
+# A failing command's own output outranks generic frontend or Java lines. A worker
+# whose only real failure was `check-pack: opencode.json is stale` used to produce a
+# draft whose "Why it failed" block showed nothing but passing typecheck output.
+FAILURE_SIGNATURE = re.compile(
+    r"check-(?:pack|docs|secrets|names|wiring|constraints|migrations|verdicts):|"
+    r"gen-opencode\.py|is stale|FAILURE!|<<< (?:FAILURE|ERROR)|AssertionError|"
+    r"expected .*but was|error TS\d+|\bFailures: [1-9]|\bErrors: [1-9]|"
+    r"BUILD FAILURE|not up-to-date|UNAPPROVED|FATAL:|frontend standards: .*failed",
+    re.I)
 
-    The log is output of the repository's own scripts. It is clipped and its code fences
-    are neutralised so it cannot break out of the block it is shown in. Fix workers must
-    see ``error TS…`` lines when those caused the failure, not unrelated unittest noise."""
+
+def failure_report(directory):
+    """Name the failing command before showing surrounding check output.
+
+    The three logs are the repository's own scripts. Strong failure signatures win;
+    when there are none, TypeScript/frontend lines win over generic noise. The final
+    lines are always appended so the command that actually exited non-zero is visible.
+    Fences are neutralised and the result clipped before it enters a pull request body.
+    """
     root = Path(directory)
     parts = [read(root / name, "") for name in (
         "check.log", "frontend-typecheck.log", "coverage.log")]
     log = "\n".join(p for p in parts if p)
     if not log.strip():
         return "**Why:** no check log was kept, see the worker run.\n\n"
-    preferred = [line for line in log.splitlines()
-                 if re.search(r"error TS|frontend (typecheck|standards)|typecheck|"
-                              r"FAIL |eslint|Coverage|Cannot find|has no exported|still failing after",
-                              line, re.I)]
-    chosen = preferred[-60:] if preferred else log.splitlines()[-80:]
+    lines = log.splitlines()
+    strong = [line for line in lines if FAILURE_SIGNATURE.search(line)]
+    if strong:
+        chosen = strong[-20:]
+        label = "failing commands and final lines"
+    else:
+        preferred = [line for line in lines
+                     if re.search(r"error TS|frontend (typecheck|standards)|typecheck|"
+                                  r"FAIL |eslint|Coverage|Cannot find|has no exported|still failing after",
+                                  line, re.I)]
+        chosen = preferred[-60:] if preferred else lines[-80:]
+        label = "TypeScript/frontend and gate lines" if preferred else "end of the local check log"
     tail = "\n".join(chosen)[-3000:].replace("```", "'''")
-    label = "TypeScript/frontend and gate lines" if preferred else "end of the local check log"
     return f"**Why it failed** ({label}):\n\n```text\n{tail}\n```\n\n"
 
 
