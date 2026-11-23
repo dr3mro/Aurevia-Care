@@ -209,11 +209,16 @@ class CommandTableAndSpawnTests(unittest.TestCase):
     def test_call_table_has_every_section_and_both_run_pages(self):
         self.assertEqual(
             set(monitor.CALLS),
-            {"repo", "issues", "prs", "merged", "closed", "runs", "runs_more",
+            {"repo", "issues", "prs", "merged", "closed", "runs", "runs_live", "runs_more",
              "total", "todo", "archive"})
         self.assertEqual(monitor.CALLS["repo"][:2], ["repo", "view"])
         self.assertEqual(monitor.CALLS["runs"][3], "100")
         self.assertEqual(monitor.CALLS["runs_more"][3], "300")
+        # Live waves are fetched separately so pagination cannot hide them.
+        self.assertEqual(monitor.CALLS["runs_live"][:5],
+                         ["run", "list", "--workflow", "Agent swarm", "--status"])
+        self.assertEqual(monitor.CALLS["runs_live"][5], "in_progress")
+        self.assertEqual(monitor.CALLS["runs_live"][7], "100")
         self.assertIn("{since}", " ".join(monitor.CALLS["merged"]))
         self.assertEqual(monitor.ONCE, 0)
         self.assertEqual(monitor.AUTOSTART, 0)
