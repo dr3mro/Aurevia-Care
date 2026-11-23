@@ -16,6 +16,9 @@
 # Every step runs even if an earlier one failed, so one run shows everything that
 # would be red; --fail-fast stops at the first failure. A summary is written to
 # build/build-and-test-summary.txt and the exit code is non-zero if any step failed.
+# Each step's full output is kept in build/logs/<step>.log, and build/build-and-test-failures.txt
+# lists every failed step in a fixed, machine-readable layout (see its header) so an LLM or a
+# script can read the failures and propose fixes without scrolling the whole run.
 # A missing optional tool (shellcheck, actionlint, doxygen, docker) is reported as
 # SKIPPED, and --strict turns every skip into a failure, as in CI.
 #
@@ -26,7 +29,10 @@ cd "$(dirname "$0")/.."
 
 BUILD_DIR="build"
 SUMMARY="$BUILD_DIR/build-and-test-summary.txt"
-mkdir -p "$BUILD_DIR"
+FAILURES="$BUILD_DIR/build-and-test-failures.txt"
+LOG_DIR="$BUILD_DIR/logs"
+rm -rf "$LOG_DIR"
+mkdir -p "$BUILD_DIR" "$LOG_DIR"
 
 SKIP_DOCKER=0
 SKIP_FRONTEND=0
@@ -51,23 +57,44 @@ done
 
 results=()
 failed=0
+# One entry per failed step, kept in parallel arrays: name, command line, exit code, log file.
+fail_names=()
+fail_cmds=()
+fail_codes=()
+fail_logs=()
 
 # record STATUS NAME SECONDS: remember one line of the summary.
 record() {
   results+=("$(printf '%-8s %-34s %ss' "$1" "$2" "$3")")
 }
 
-# run_step NAME COMMAND [ARG...]: run one gate, time it and record the outcome.
+# slugify TEXT: a file-name-safe form of a step name.
+slugify() {
+  printf '%s' "$1" | tr -c 'A-Za-z0-9\n' '-' | tr -s '-' | sed 's/^-//; s/-$//'
+}
+
+# run_step NAME COMMAND [ARG...]: run one gate, show its output live, keep it in a log,
+# time it and record the outcome (including the exit code and log of a failure).
 run_step() {
   local name="$1"
   shift
   local started=$SECONDS
+  local log="$LOG_DIR/$(slugify "$name").log"
+  local code=0
   printf '\n==> %s\n' "$name"
-  if "$@"; then
+  set +e
+  "$@" 2>&1 | tee "$log"
+  code=${PIPESTATUS[0]}
+  set -e
+  if [[ "$code" == "0" ]]; then
     record PASS "$name" $((SECONDS - started))
   else
     record FAIL "$name" $((SECONDS - started))
     failed=1
+    fail_names+=("$name")
+    fail_cmds+=("$*")
+    fail_codes+=("$code")
+    fail_logs+=("$log")
     if [[ "$FAIL_FAST" == "1" ]]; then
       finish
     fi
@@ -80,13 +107,92 @@ skip_step() {
   if [[ "$STRICT" == "1" ]]; then
     record FAIL "$1 (skipped: $2)" 0
     failed=1
+    fail_names+=("$1")
+    fail_cmds+=("(not run)")
+    fail_codes+=("skipped")
+    fail_logs+=("")
   else
     record SKIPPED "$1 ($2)" 0
   fi
 }
 
-# finish: print and save the summary, then exit with the overall verdict.
+# strip_ansi: remove terminal colour and cursor codes from a stream.
+strip_ansi() {
+  LC_ALL=C sed $'s/\033\\[[0-9;?]*[A-Za-z]//g'
+}
+
+# findings LOG: print the lines of a step log that name a concrete problem, one per line,
+# as "<kind> | <location> | <detail>". Recognises ESLint, tsc, Vitest/Jest, Maven/JUnit/JaCoCo,
+# Python unittest, shellcheck and the repository policy scripts; anything else is covered
+# by the log excerpt that follows the findings.
+findings() {
+  strip_ansi <"$1" | awk '
+    /^[^ ].*\.(ts|tsx|js|jsx|mjs|cjs)$/ { file = $0; next }
+    $1 ~ /^[0-9]+:[0-9]+$/ && ($2 == "error" || $2 == "warning") {
+      msg = ""
+      for (i = 3; i < NF; i++) msg = msg " " $i
+      printf "eslint | %s:%s | %s |%s\n", file, $1, $NF, msg; next
+    }
+    /error TS[0-9]+/ { print "tsc | " $0; next }
+    /^ *(FAIL|✗|×|✖) / { print "test-failed | " $0; next }
+    /(AssertionError|AssertionFailedError|expected .* to (be|equal|have|contain|match)|Unable to find|TestingLibraryElementError)/ { print "assertion | " $0; next }
+    /Tests run:.*(Failures: [1-9]|Errors: [1-9])/ { print "junit | " $0; next }
+    /<<< (FAILURE|ERROR)!/ { print "junit | " $0; next }
+    /Rule violated|coverage checks have not been met|COVERAGE|below the threshold|below threshold|uncovered|not covered/ { print "coverage | " $0; next }
+    /^(FAIL|ERROR): / { print "python-test | " $0; next }
+    /^In .* line [0-9]+:/ { print "shellcheck | " $0; next }
+    /\[ERROR\]/ { print "maven | " $0; next }
+    /^npm ERR!|^npm error/ { print "npm | " $0; next }
+    /"violations": \[\{/ { print "policy | " $0; next }
+  ' | awk '!seen[$0]++' | head -400
+}
+
+# write_failures: write build/build-and-test-failures.txt. The layout is fixed so a model can
+# parse it: a header, then one block per failed step delimited by "=== FAILURE n/N ===" and
+# "=== END FAILURE n ===", each holding key: value lines, a FINDINGS section and a LOG TAIL.
+write_failures() {
+  local total=${#fail_names[@]} i
+  {
+    printf 'BUILD AND TEST FAILURES\n'
+    printf 'generated: %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    printf 'commit: %s\n' "$(git rev-parse --short HEAD 2>/dev/null || printf unknown)"
+    printf 'branch: %s\n' "$(git rev-parse --abbrev-ref HEAD 2>/dev/null || printf unknown)"
+    printf 'failed_steps: %s\n' "$total"
+    if [[ "$total" == "0" ]]; then
+      printf 'status: PASS (nothing to fix)\n'
+      return 0
+    fi
+    printf 'status: FAIL\n\n'
+    printf 'HOW TO USE THIS FILE\n'
+    printf -- '- Fix the cause in the code or tests. Never disable a rule, skip or weaken a test, lower a\n'
+    printf -- '  threshold, or add a suppression comment (see AGENTS.md).\n'
+    printf -- '- Each block names the failing step, the exact command to re-run it (from the repo root),\n'
+    printf -- '  FINDINGS (kind | location | detail) and the last lines of the log. The full output is in\n'
+    printf -- '  the log file named in each block.\n'
+    printf -- '- Re-run only the failing step, then bash scripts/build-and-test.sh before pushing.\n\n'
+    for ((i = 0; i < total; i++)); do
+      printf '=== FAILURE %s/%s ===\n' "$((i + 1))" "$total"
+      printf 'step: %s\n' "${fail_names[$i]}"
+      printf 'exit_code: %s\n' "${fail_codes[$i]}"
+      printf 'rerun: %s\n' "${fail_cmds[$i]}"
+      if [[ -n "${fail_logs[$i]}" ]]; then
+        printf 'log: %s\n' "${fail_logs[$i]}"
+        printf '%s\n' '--- FINDINGS (kind | location | detail) ---'
+        findings "${fail_logs[$i]}"
+        printf '%s\n' '--- LOG TAIL (last 60 lines) ---'
+        strip_ansi <"${fail_logs[$i]}" | tail -n 60
+      else
+        printf '%s\n' '--- FINDINGS ---'
+        printf 'step was skipped because a required tool is missing (--strict)\n'
+      fi
+      printf '=== END FAILURE %s ===\n\n' "$((i + 1))"
+    done
+  } >"$FAILURES"
+}
+
+# finish: print and save the summary and the failures file, then exit with the verdict.
 finish() {
+  write_failures
   {
     printf '\n==== build-and-test summary ====\n'
     printf '%s\n' "${results[@]}"
@@ -94,6 +200,7 @@ finish() {
       printf 'RESULT: all gates passed\n'
     else
       printf 'RESULT: FAILED, do not push\n'
+      printf 'Failures for an LLM to fix: %s\n' "$FAILURES"
     fi
   } | tee "$SUMMARY"
   exit "$failed"
