@@ -13,7 +13,6 @@ import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -33,24 +32,14 @@ import tools.jackson.databind.ObjectMapper;
  *
  * <p>The fixture seeds a synthetic tenant, three care units, a named publisher
  * and approver, a connected patient and an approved site-channel policy through
- * the authoritative {@code config_entry}/{@code config_approval} fold. Both
- * tests are complete and are disabled together by the single class-level GAP
- * reason: service-profile publish currently accepts any non-blank, bounded,
- * non-PHI-shaped free text as an urgent or downtime channel. No messaging class
- * consults an approved-channel policy and no class dispatches time-sensitive
- * care over these channels, so the refusal below cannot pass until a later task
- * implements that enforcement. The pull request stays green; a later task
- * removes the annotation to enable the proof.</p>
+ * the authoritative {@code config_entry}/{@code config_approval} fold. Publish
+ * now reads that fold and refuses any urgent or downtime code outside the
+ * approved set through the audited denial path, so both tests run and pass.</p>
  *
- * <p>The proposed policy keys and the {@code UNAPPROVED_CHANNEL} code mirror the
- * established approved-channel convention in {@code prescription.rx.RxService}.
- * An implementing task should keep these wire names so this proof need not be
- * rewritten when it is enabled.</p>
+ * <p>The policy keys and the {@code UNAPPROVED_CHANNEL} code mirror the
+ * established approved-channel convention in {@code prescription.rx.RxService}.</p>
  */
 @Tag("integration")
-@Disabled("GAP: messaging captures urgentChannel/downtimeChannel as unconstrained free text "
-        + "(ServiceProfileInputs.safeText, V92 service_profile) and never checks them against a "
-        + "site-approved channel policy; no class dispatches time-sensitive care over these channels.")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/smartclinic_urgent_channels_it")
 @ActiveProfiles("synthetic-auth")
@@ -161,7 +150,9 @@ class UseSiteSApprovedUrgentDowntimeChannelsTest {
                 + "'ref-channels', '" + UUID.nameUUIDFromBytes("rel-channels".getBytes())
                 + "', 'active', '" + SEEDER + "', now(), now())");
 
-        seedPolicy(statement, URGENT_POLICY_KEY, APPROVED_URGENT + ",SECURE_PUSH");
+        // The doubled comma is intentional: a stray separator must not turn an
+        // empty token into an approvable channel code.
+        seedPolicy(statement, URGENT_POLICY_KEY, APPROVED_URGENT + ",,SECURE_PUSH");
         seedPolicy(statement, DOWNTIME_POLICY_KEY, APPROVED_DOWNTIME + ",PAGER");
     }
 
@@ -208,9 +199,9 @@ class UseSiteSApprovedUrgentDowntimeChannelsTest {
     /**
      * Evidence for the rule being met: a draft published with the site's approved
      * urgent and downtime channels can be approved and served with exactly those
-     * channels, both in the HTTP response and in the committed row. This half
-     * passes today and is an anchor, not the differentiator; the refusal below is
-     * the assertion that proves enforcement.
+     * channels, both in the HTTP response and in the committed row. This is the
+     * anchor that proves approved channels still work; the refusal below is the
+     * assertion that proves enforcement.
      */
     @Test
     void publishApprovesAndServesSiteApprovedUrgentAndDowntimeChannels() throws Exception {
@@ -240,9 +231,9 @@ class UseSiteSApprovedUrgentDowntimeChannelsTest {
     /**
      * Evidence for the rule refusing what it must refuse: a structurally valid
      * but unapproved urgent channel is rejected with a structured 422 and no row;
-     * a blank downtime channel is likewise rejected. Both refusals are audited.
-     * These assertions fail today because publish accepts any bounded free text
-     * and validation errors raised inside the input parser bypass the audit.
+     * a blank downtime channel is likewise rejected. Both refusals are audited
+     * with no durable row, because publish checks membership before parsing the
+     * free-text fields and routes the refusal through its audited denial path.
      */
     @Test
     void publishRefusesUnapprovedAndBlankUrgentDowntimeChannels() throws Exception {
