@@ -69,6 +69,9 @@ class EnabledUnitPublishServiceHoursResponseTargetsTest {
         // The same local unit identifier in another tenant must stay isolated.
         store.addUnit(OTHER_ORG, OTHER_ORG_UNIT);
 
+        // Publish now fails closed on unapproved time-sensitive channels. These
+        // legacy fixture codes are the tenant's approved site policy for this
+        // class, so the field/version refusals below are the ones actually tested.
         // Publishing first checks the site-approved urgent and downtime channels.
         // Seed the codes these requests use so the field rules this class proves
         // (topics, urgent instructions, version) are actually reached; otherwise
