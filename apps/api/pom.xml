@@ -52,6 +52,14 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-web</artifactId>
     </dependency>
+    <!-- Pinned in-repository Swagger UI assets. The version is mirrored in
+         SwaggerUiResourceResolver so a drift between build and served path is
+         caught by SwaggerUiHttpTest.pinnedWebjarVersionIsResolvable. -->
+    <dependency>
+      <groupId>org.webjars</groupId>
+      <artifactId>swagger-ui</artifactId>
+      <version>5.36.0</version>
+    </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-jdbc</artifactId>

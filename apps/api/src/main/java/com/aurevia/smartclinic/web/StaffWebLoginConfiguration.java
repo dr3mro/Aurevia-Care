@@ -121,14 +121,16 @@ public class StaffWebLoginConfiguration {
     /**
      * Build the browser security chain, ordered ahead of the bearer chain.
      *
-     * @param http  shared web security builder
-     * @param clock injected clock for the absolute session lifetime guard
+     * @param http        shared web security builder
+     * @param clock       injected clock for the absolute session lifetime guard
+     * @param docsEnabled shared decision on whether browser documentation is exposed
      * @return the staff web filter chain
      * @throws Exception when the chain cannot be built
      */
     @Bean
     @Order(1)
-    SecurityFilterChain staffWebSecurityFilterChain(HttpSecurity http, Clock clock) throws Exception {
+    SecurityFilterChain staffWebSecurityFilterChain(HttpSecurity http, Clock clock,
+            DocsEnabled docsEnabled) throws Exception {
         return http
                 .securityMatcher(request -> !SecurityConfiguration.isBearerRequest(request))
                 // A null request-attribute name makes the handler resolve the
@@ -141,13 +143,19 @@ public class StaffWebLoginConfiguration {
                             .csrfTokenRequestHandler(handler);
                 })
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
-                .authorizeHttpRequests(authorize -> authorize
-                        // WEB-05/WEB-06: probes carry no bearer header, so they meet this chain
-                        // first; permit exact paths so they never reach the login entry point.
-                        // Section 7: the static OpenAPI document is public too.
-                        .requestMatchers(HttpMethod.GET, "/health/live", "/health/ready", "/health/metrics",
-                                "/api/v1/openapi.yaml").permitAll()
-                        .anyRequest().authenticated())
+                .authorizeHttpRequests(authorize -> {
+                    // WEB-05/WEB-06: probes carry no bearer header, so they meet this chain
+                    // first; permit exact paths so they never reach the login entry point.
+                    // Section 7: the static OpenAPI document is public too.
+                    authorize.requestMatchers(HttpMethod.GET, "/health/live", "/health/ready", "/health/metrics",
+                            "/api/v1/openapi.yaml").permitAll();
+                    if (docsEnabled.isEnabled()) {
+                        // Browser docs meet this higher-priority chain first; assets are
+                        // static and tenant-free, and the permit disappears when disabled.
+                        authorize.requestMatchers(HttpMethod.GET, "/swagger-ui", "/swagger-ui/**").permitAll();
+                    }
+                    authorize.anyRequest().authenticated();
+                })
                 .oauth2Login(withDefaults())
                 .logout(logout -> logout
                         .logoutRequestMatcher(PathPatternRequestMatcher.pathPattern(HttpMethod.POST, "/logout"))
