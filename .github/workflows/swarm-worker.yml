@@ -113,6 +113,12 @@ jobs:
           else
             echo "start-postgres missing - older agent image" >&2
           fi
+      - name: Preflight checks (fail fast before the agent runs)
+        run: |
+          set -e
+          python3 -I scripts/check-wiring.py
+          if [[ -d apps/staff-web ]]; then (cd apps/staff-web && npx tsc --noEmit); fi
+          if [[ -d apps/patient-mobile ]]; then (cd apps/patient-mobile && npx tsc --noEmit); fi
       - id: s1
         name: Work the task, segment 1 of 4 (no GitHub token in this step)
         env:
