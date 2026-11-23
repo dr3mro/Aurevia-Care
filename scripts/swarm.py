@@ -813,6 +813,52 @@ def issue_input(issue):
             + "".join(f"\n---\n{clean(c, 1500, 40)}\n" for c in comments))
 
 
+def reconcile_tasks(directory="tasks", file=""):
+    """Mark taken/todo tasks done when their pull request is merged (or their task id
+    appears in a merged pull request title). Writes the updated task files back."""
+    import subprocess, json, glob, os
+    try:
+        out = subprocess.check_output(["gh", "pr", "list", "--state", "merged", "--limit", "500",
+                                      "--json", "number,title"], text=True, stderr=subprocess.DEVNULL)
+        merged = json.loads(out)
+    except Exception:
+        merged = []
+    merged_ids = set()
+    merged_prs = set()
+    for p in merged:
+        merged_prs.add(p["number"])
+        key = p["title"].split(":")[0].strip()
+        merged_ids.add(key)
+        merged_ids.add(p["title"].split()[0])
+    files = [file] if file else sorted(glob.glob(os.path.join(directory, "*.md")))
+    changed = 0
+    for path in files:
+        if not os.path.isfile(path):
+            continue
+        text = open(path).read()
+        m = re.search(r'^- \[[- ]\] (\S+)', text, re.M)
+        if not m:
+            continue
+        mark = m.group(0)
+        tid = m.group(1)
+        # extract pr number
+        pr_m = re.search(r'^\s*-\s*pr:\s*#?(\d+)', text, re.M)
+        pr_num = int(pr_m.group(1)) if pr_m else None
+        if tid not in merged_ids and (pr_num is None or pr_num not in merged_prs):
+            continue
+        # only reconcile taken/todo tasks
+        if "- [-]" not in text and "- [ ]" not in text:
+            continue
+        new = text.replace("- [-] " + tid, "- [x] " + tid, 1).replace("- [ ] " + tid, "- [x] " + tid, 1)
+        if new != text:
+            if "evidence:" not in new:
+                new = new.replace("- [x] " + tid + "\n", "- [x] " + tid + "\n  - evidence: PR merged to main (auto-reconciled)\n", 1)
+            open(path, "w").write(new)
+            changed += 1
+            print(f"reconciled {tid}")
+    print(f"reconciled {changed} task(s)")
+
+
 def monitor_select(mode, text, out_dir, now=None):
     """Pick the issues to act on. Writes triage inputs to out_dir.
 
@@ -3887,6 +3933,9 @@ def main(argv=None):
     p.add_argument("--mode", choices=("now", "hourly", "daily"), required=True)
     p.add_argument("--out", required=True)
     p.add_argument("--file", default="TODO.md")
+    p = sub.add_parser("reconcile-tasks")
+    p.add_argument("--dir", default="tasks")
+    p.add_argument("--file", default="")
     p = sub.add_parser("monitor-assign")
     p.add_argument("--selection", required=True)
     p.add_argument("--triage", default="triage")

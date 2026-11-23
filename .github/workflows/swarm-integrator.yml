@@ -116,6 +116,9 @@ jobs:
           QUEUE: ${{ needs.pick.outputs.queue }}
           GATE: scripts/integrator-gate.sh
         run: python3 -I scripts/swarm.py integrate-batch --queue "$QUEUE" --gate "$GATE"
+      - name: Reconcile tasks whose PRs merged
+        if: always()
+        run: python3 -I scripts/swarm.py reconcile-tasks --dir tasks
 
   # A PR that conflicts with main is not failed right away: the agent merges main
   # into its branch and fixes the conflicts, then a separate trusted job pushes
