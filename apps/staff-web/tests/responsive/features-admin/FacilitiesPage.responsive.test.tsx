@@ -280,8 +280,8 @@ describe('responsive FacilitiesPage (WEB-07, UX-01)', () => {
 
     expect(document.documentElement.dir).toBe('rtl');
     expect(document.documentElement.lang).toBe('ar');
-    expect(within(table).getByText(LONG_ENGLISH)).toBeTruthy();
-    expect(within(table).getByText(LONG_ARABIC)).toBeTruthy();
+    expect(await within(table).findByText(LONG_ENGLISH)).toBeTruthy();
+    expect(await within(table).findByText(LONG_ARABIC)).toBeTruthy();
 
     for (const run of document.querySelectorAll('bdi')) {
       const isolated = run;

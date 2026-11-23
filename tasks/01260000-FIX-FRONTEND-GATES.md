@@ -1,0 +1,8 @@
+- [ ] FIX-FRONTEND-GATES · Stabilize Facilities RTL assertions and restore mobile lint startup.
+  - requirements: WEB-07, UX-01, OPS-06
+  - scope: apps/staff-web/tests/responsive/features-admin/FacilitiesPage.responsive.test.tsx, apps/patient-mobile/eslint.config.mjs
+  - details: Wait for asynchronously loaded rows before RTL assertions. Preserve Expo and TypeScript lint rules with one plugin registration.
+  - evidence: Prior full staff-web logs show the RTL assertion failing on a table with an empty tbody. Awaiting both real fixture rows preserved the content and layout assertions. The frontend specialist confirmed the render timing and resolver fix.
+  - evidence: Mobile ESLint 9.39.5 rejected duplicate plugin registration before the fix. Normalizing plugin identity and resolving Expo's installed TypeScript resolver preserved the rule presets and produced zero lint diagnostics. Mobile typecheck and Jest coverage passed (1,264 tests).
+  - evidence: Staff-web typecheck, ESLint, generated API check and all 2,613 Vitest tests passed. Formatting, secret scanning and whitespace checks passed.
+  - pending: Staff-web coverage fails at the unchanged 100% threshold for 19 source files. npm production audit was blocked by registry DNS. Repository fetch was blocked by read-only Git metadata.
