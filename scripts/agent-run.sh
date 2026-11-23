@@ -640,8 +640,6 @@ cmd_merge_main() {
       printf '%s\n' "Merge with $base could not be completed after $attempt attempt(s)" >> "$out/check.log"
       printf '%s' failed > "$out/checks"
       emit checks failed
-      # Fast-fail: do not leave a silently rolled-back branch for the publish step.
-      if [[ -z "${SYNC_ONLY:-}" ]]; then exit 1; fi
     fi
   elif [[ -z "${SYNC_ONLY:-}" ]] && ! git diff --quiet "$pre" HEAD; then
     # Main's changes are now part of the branch: check the merged result.
