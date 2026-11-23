@@ -58,6 +58,9 @@ export type NavigationLabelKey =
   | 'radiology'
   | 'therapy'
   | 'pharmacy'
+  | 'resultEntry'
+  | 'labRelease'
+  | 'turnaroundBoard'
   | 'messages'
   | 'finance'
   | 'facilities'
@@ -65,6 +68,9 @@ export type NavigationLabelKey =
   | 'configuration'
   | 'audit'
   | 'queues'
+  | 'exports'
+  | 'imports'
+  | 'partnerBoard'
   | 'sessions'
   | 'groupToday'
   | 'groupScheduling'
@@ -110,6 +116,9 @@ export const navigation: NavigationItem[] = [
   { id: 'results', route: '/results', group: 'Results', labelKey: 'results', roles: ['clinician', 'operator'] },
   { id: 'critical-results', route: '/results/critical', group: 'Results', labelKey: 'criticalResults', roles: ['clinician'] },
   { id: 'accessions', route: '/lab/accessions', group: 'Specialty', labelKey: 'accessions', roles: ['lab'] },
+  { id: 'lab-result-entry', route: '/lab/results/entry', group: 'Specialty', labelKey: 'resultEntry', roles: ['lab'] },
+  { id: 'lab-release', route: '/lab/release', group: 'Specialty', labelKey: 'labRelease', roles: ['lab'] },
+  { id: 'lab-turnaround-board', route: '/lab/turnaround-board', group: 'Specialty', labelKey: 'turnaroundBoard', roles: ['lab'] },
   { id: 'radiology', route: '/radiology', group: 'Specialty', labelKey: 'radiology', roles: ['radiology'] },
   { id: 'therapy', route: '/therapy', group: 'Specialty', labelKey: 'therapy', roles: ['therapist'] },
   { id: 'pharmacy', route: '/pharmacy', group: 'Specialty', labelKey: 'pharmacy', roles: ['clinician', 'pharmacy'] },
@@ -120,6 +129,9 @@ export const navigation: NavigationItem[] = [
   { id: 'admin-config', route: '/admin/config', group: 'Administration', labelKey: 'configuration', roles: ['tenant_admin'] },
   { id: 'admin-audit', route: '/admin/audit', group: 'Administration', labelKey: 'audit', roles: ['privacy_auditor', 'tenant_admin'] },
   { id: 'operations-queues', route: '/operations/queues', group: 'Operations', labelKey: 'queues', roles: ['operator'] },
+  { id: 'operations-exports', route: '/operations/exports', group: 'Operations', labelKey: 'exports', roles: ['tenant_admin'] },
+  { id: 'operations-imports', route: '/operations/imports', group: 'Operations', labelKey: 'imports', roles: ['tenant_admin'] },
+  { id: 'operations-partner-board', route: '/operations/partner-board', group: 'Operations', labelKey: 'partnerBoard', roles: ['operator'] },
   { id: 'account-sessions', route: '/account/sessions', group: 'Account', labelKey: 'sessions', roles: ['staff'] },
 ];
 
@@ -143,6 +155,9 @@ export const navigationLabels: Record<Locale, Record<NavigationLabelKey, string>
     radiology: 'Radiology',
     therapy: 'Therapy',
     pharmacy: 'Pharmacy',
+    resultEntry: 'Result entry',
+    labRelease: 'Release results',
+    turnaroundBoard: 'Turnaround board',
     messages: 'Messages',
     finance: 'Finance',
     facilities: 'Facilities',
@@ -150,6 +165,9 @@ export const navigationLabels: Record<Locale, Record<NavigationLabelKey, string>
     configuration: 'Configuration',
     audit: 'Audit',
     queues: 'Operations queues',
+    exports: 'Exports',
+    imports: 'Imports',
+    partnerBoard: 'Partner board',
     sessions: 'Sessions',
     groupToday: 'Today',
     groupScheduling: 'Scheduling',
@@ -182,6 +200,9 @@ export const navigationLabels: Record<Locale, Record<NavigationLabelKey, string>
     radiology: 'الأشعة',
     therapy: 'العلاج الطبيعي',
     pharmacy: 'الصيدلية',
+    resultEntry: 'إدخال النتائج',
+    labRelease: 'إصدار النتائج',
+    turnaroundBoard: 'لوحة زمن الإنجاز',
     messages: 'الرسائل',
     finance: 'المالية',
     facilities: 'المرافق',
@@ -189,6 +210,9 @@ export const navigationLabels: Record<Locale, Record<NavigationLabelKey, string>
     configuration: 'الإعدادات',
     audit: 'سجل التدقيق',
     queues: 'قوائم العمليات',
+    exports: 'التصدير',
+    imports: 'الاستيراد',
+    partnerBoard: 'لوحة الشركاء',
     sessions: 'الجلسات',
     groupToday: 'اليوم',
     groupScheduling: 'الجدولة',
@@ -259,4 +283,57 @@ export function navigationGroupsFor(role: Role): NavigationGrouping[] {
     }
   }
   return groups;
+}
+
+/**
+ * Direct-link access that differs from rail visibility, keyed by exact route.
+ *
+ * The screen-map test fixes the privacy auditor's rail to three items, but the
+ * import service authorizes that role to review a dry run and sign it off. This
+ * narrow rule keeps a direct link consistent with the feature's own guard
+ * without changing the tested rail; the rail entry stays tenant-admin-only.
+ */
+export const routeAccessRoles: Readonly<Record<string, readonly Role[]>> = {
+  '/operations/imports': ['tenant_admin', 'privacy_auditor'],
+};
+
+/** Result for a route the shell must not guard. */
+export const UNRESTRICTED_ROUTE = null;
+
+/** Roles allowed to open a route, or `UNRESTRICTED_ROUTE` when anyone may. */
+export type RouteAccess = readonly Role[] | typeof UNRESTRICTED_ROUTE;
+
+/**
+ * Resolve the roles allowed to open a registered route pattern.
+ *
+ * An exact navigation match wins; otherwise trailing `:parameter` segments are
+ * removed until a navigation entry is found, which covers detail routes such
+ * as `/pharmacy/:id`. A route with no entry, or one whose entry is available to
+ * every authenticated user (`staff`), is unrestricted. This is the single role
+ * source for both the rail and the shell guard; no role is read from a URL.
+ *
+ * @param pattern registered route pattern, never a patient name or free text
+ * @returns the allowed roles, or `UNRESTRICTED_ROUTE` when the shell must not guard
+ */
+export function rolesForRoute(pattern: string): RouteAccess {
+  let candidate = pattern;
+  for (;;) {
+    const override = routeAccessRoles[candidate];
+    if (override !== undefined) {
+      return override;
+    }
+    const item = navigation.find((entry) => entry.route === candidate);
+    if (item !== undefined) {
+      // 'staff' is the base role of every authenticated user, so such an item
+      // can never be denied and the shell must leave it unguarded.
+      return item.roles.includes(ALL_STAFF_ROLE) ? UNRESTRICTED_ROUTE : item.roles;
+    }
+    const separator = candidate.lastIndexOf('/');
+    const tail = candidate.slice(separator + 1);
+    if (!tail.startsWith(':')) {
+      break;
+    }
+    candidate = candidate.slice(0, separator);
+  }
+  return UNRESTRICTED_ROUTE;
 }

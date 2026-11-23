@@ -8,10 +8,20 @@ import {
   navigationLabel,
   navigationLabels,
   groupLabelKey,
+  rolesForRoute,
+  UNRESTRICTED_ROUTE,
 } from './navigation';
-import type { Role } from './navigation';
+import type { NavigationGroup, Role } from './navigation';
+import { collectFeatureRoutes, type FeatureRouteModule } from './routes';
+import { IMPORT_PERMITTED_ROLES } from '../features/dataexchange/domain';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { ThemeProvider } from '../theme/ThemeProvider';
+
+/** Feature modules collected exactly as the application collects them. */
+const featureRouteModules = import.meta.glob<FeatureRouteModule>(
+  '../features/*/routes.ts',
+  { eager: true },
+);
 
 const ALL_ROLES: readonly Role[] = [
   'reception',
@@ -174,5 +184,116 @@ describe('staff web navigation rail', () => {
     renderShell();
     const rail = screen.getByRole('group', { name: 'Sections' });
     expect(within(rail).getByRole('link', { name: 'Check-in' })).toBeTruthy();
+  });
+});
+
+/** The six shipped screens that had no screen-map row before this story. */
+const FEATURE_NAV_ITEMS: ReadonlyArray<{
+  id: string;
+  route: string;
+  group: NavigationGroup;
+  roles: Role[];
+}> = [
+  { id: 'lab-result-entry', route: '/lab/results/entry', group: 'Specialty', roles: ['lab'] },
+  { id: 'lab-release', route: '/lab/release', group: 'Specialty', roles: ['lab'] },
+  { id: 'lab-turnaround-board', route: '/lab/turnaround-board', group: 'Specialty', roles: ['lab'] },
+  {
+    id: 'operations-exports',
+    route: '/operations/exports',
+    group: 'Operations',
+    roles: ['tenant_admin'],
+  },
+  {
+    id: 'operations-imports',
+    route: '/operations/imports',
+    group: 'Operations',
+    roles: ['tenant_admin'],
+  },
+  {
+    id: 'operations-partner-board',
+    route: '/operations/partner-board',
+    group: 'Operations',
+    roles: ['operator'],
+  },
+];
+
+describe('new feature navigation entries', () => {
+  it('registers each shipped screen in its group for its role only', () => {
+    for (const expected of FEATURE_NAV_ITEMS) {
+      const item = navigation.find((candidate) => candidate.id === expected.id);
+      expect(item).toBeDefined();
+      expect(item!.route).toBe(expected.route);
+      expect(item!.group).toBe(expected.group);
+      expect(item!.roles).toEqual(expected.roles);
+      for (const role of ALL_ROLES) {
+        const visible = navigationFor(role).some((candidate) => candidate.id === expected.id);
+        expect(visible).toBe(expected.roles.includes(role));
+      }
+    }
+  });
+
+  it('never makes a new entry all-staff or visible to the privacy auditor on the rail', () => {
+    for (const expected of FEATURE_NAV_ITEMS) {
+      const item = navigation.find((candidate) => candidate.id === expected.id)!;
+      expect(item.roles).not.toContain('staff');
+      expect(item.roles).not.toContain('privacy_auditor');
+    }
+  });
+});
+
+describe('rolesForRoute', () => {
+  it('returns the navigation roles for an exact pattern without parameters', () => {
+    expect(rolesForRoute('/pharmacy')).toEqual(['clinician', 'pharmacy']);
+  });
+
+  it('matches an exact pattern that itself contains parameters', () => {
+    expect(rolesForRoute('/patients/:id/notes/:noteId')).toEqual(['clinician']);
+  });
+
+  it('strips one trailing parameter to reach the parent navigation item', () => {
+    expect(rolesForRoute('/pharmacy/:id')).toEqual(['clinician', 'pharmacy']);
+  });
+
+  it('strips several trailing parameters to reach the parent navigation item', () => {
+    expect(rolesForRoute('/patients/:id/:section/:entryId')).toEqual(['clinician']);
+  });
+
+  it('returns the unrestricted sentinel when no navigation item matches', () => {
+    expect(rolesForRoute('/no-such/screen')).toBe(UNRESTRICTED_ROUTE);
+  });
+
+  it('returns the unrestricted sentinel when a stripped pattern still has no match', () => {
+    expect(rolesForRoute('/no-such/screen/:id')).toBe(UNRESTRICTED_ROUTE);
+  });
+
+  it('treats an all-staff navigation item as unrestricted', () => {
+    expect(rolesForRoute('/')).toBe(UNRESTRICTED_ROUTE);
+    expect(rolesForRoute('/account/sessions')).toBe(UNRESTRICTED_ROUTE);
+  });
+
+  it('uses the access override for a direct import link without changing the rail', () => {
+    expect(rolesForRoute('/operations/imports')).toEqual(['tenant_admin', 'privacy_auditor']);
+    expect(navigationFor('privacy_auditor').map((item) => item.id)).not.toContain(
+      'operations-imports',
+    );
+  });
+
+  it('keeps the import override in step with the feature authorization table', () => {
+    // A test may import feature code even though navigation.ts must not: the
+    // shell grant must never be broader than the import service's own roles.
+    expect(rolesForRoute('/operations/imports')).toEqual(IMPORT_PERMITTED_ROLES);
+  });
+
+  it('resolves every registered feature route except the fixed system pages', () => {
+    // The four system pages are intentionally public; every other shipped
+    // screen must resolve to a role set so a new route cannot silently become
+    // reachable by everyone when it forgets a navigation row.
+    const systemPatterns = new Set(['/signed-out', '/session-expired', '/forbidden', '/not-found']);
+    for (const route of collectFeatureRoutes(featureRouteModules)) {
+      if (systemPatterns.has(route.pattern)) {
+        continue;
+      }
+      expect(rolesForRoute(route.pattern), route.pattern).not.toBe(UNRESTRICTED_ROUTE);
+    }
   });
 });

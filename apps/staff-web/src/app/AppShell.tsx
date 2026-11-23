@@ -11,6 +11,8 @@ import {
   groupLabelKey,
   navigationGroupsFor,
   navigationLabel,
+  rolesForRoute,
+  UNRESTRICTED_ROUTE,
 } from './navigation';
 import type { NavigationGroup, NavigationItem, Role } from './navigation';
 import { OrgSwitcher } from './OrgSwitcher';
@@ -198,7 +200,12 @@ export function AppShell({ role, onSignOut }: AppShellProps) {
     (candidate) => candidate.pattern !== '*' && matchRoute(candidate.pattern, path) !== null,
   );
   const catchAll = routes.find((candidate) => candidate.pattern === '*');
-  const ActivePage = (matched ?? catchAll)!.component;
+  const allowedRoles = matched === undefined ? UNRESTRICTED_ROUTE : rolesForRoute(matched.pattern);
+  const denied = allowedRoles !== UNRESTRICTED_ROUTE && !allowedRoles.includes(activeRole);
+  // Reuse the system feature's lazy forbidden page: the guard must show the
+  // same safe state as a direct link to /forbidden without a static import.
+  const forbiddenPage = routes.find((candidate) => candidate.pattern === '/forbidden')!;
+  const ActivePage = denied ? forbiddenPage.component : (matched ?? catchAll)!.component;
   const isActive = (pattern: string): boolean => matchRoute(pattern, path) !== null;
 
   const compact = breakpoint === 'compact';
