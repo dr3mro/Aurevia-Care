@@ -131,15 +131,22 @@ class SurfaceBacklogUnassignedWorkFailedNotificationsOverdueTest {
              Statement statement = connection.createStatement()) {
             seedOwningTenant(statement);
             seedOtherTenant(statement);
+
             // The publish endpoint only accepts site-approved channel codes. Seed the
             // owning tenant's fold so the positive snapshot proof can publish a profile;
             // the values match this class's publishBody literals. ORG_B stays unseeded so
             // the cross-tenant concealment assertion keeps its premise. Seed once, here,
             // so the version-1 approval stays unique per config entry.
+
+            // Publish enforces site-approved urgent and downtime channels. Seed
+            // the owning tenant's fold so publishAndApproveProfile succeeds;
+            // ORG_B stays unseeded so cross-tenant concealment keeps its premise.
+
             seedApprovedChannelPolicy(statement, ORG_A, "msg06.approved_urgent_channels", "urgent");
             seedApprovedChannelPolicy(statement, ORG_A, "msg06.approved_downtime_channels", "downtime");
         }
     }
+
 
     /**
      * Seed one site-approved channel policy through the versioned config fold.
@@ -155,6 +162,9 @@ class SurfaceBacklogUnassignedWorkFailedNotificationsOverdueTest {
      * @param value     synthetic approved channel code
      * @throws Exception when a seed statement fails
      */
+
+    /** Seed one site-approved channel policy through the versioned config fold. */
+
     private static void seedApprovedChannelPolicy(Statement statement, String org, String key,
                                                   String value) throws Exception {
         statement.execute("SET app.current_org = '" + org + "'");
@@ -338,10 +348,6 @@ class SurfaceBacklogUnassignedWorkFailedNotificationsOverdueTest {
         seedMember(statement, ORG_A, UNASSIGNED_SUPERVISOR, "unit_supervisor");
         seedConnectedPatient(statement, ORG_A, PATIENT, CHART_A);
 
-        // Site-approved channel policy is seeded once in prepare() via
-        // seedApprovedChannelPolicy. Seeding it here as well would insert a second
-        // approval for the same version-1 config_entry and violate the
-        // config_approval_organization_id_entry_id_key unique constraint.
 
         statement.execute("SET app.current_org = '" + ORG_A + "'");
         statement.execute("SET app.actor = '" + SEEDER + "'");

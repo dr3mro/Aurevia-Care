@@ -1,6 +1,6 @@
 name: Daily audit
 # Once a day a read-only worker audits the whole repo and writes findings as JSON.
-# A separate trusted job validates them and appends new tasks to TODO.md on main
+# A separate trusted job validates them and appends new task files under tasks/ on main
 # for the swarm to take. The audit worker never holds a GitHub token. It uses slot 2's
 # account so it never competes with swarm worker slot 1 for the free quota.
 on:
@@ -78,7 +78,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 1
   append:
-    name: Add findings to TODO.md
+    name: Add findings to tasks/
     needs: audit
     if: always() && needs.audit.result != 'skipped'
     runs-on: ubuntu-latest

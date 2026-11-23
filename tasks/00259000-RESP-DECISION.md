@@ -12,5 +12,5 @@
     3. Record the consequences: WEB-07 in `SMARTCLINIC_V1_SPEC.md` must be amended by a person (the swarm may not edit the specification); until then the compact layout floor in code follows this decision. List the supported browser matrix for phones (latest two majors of iOS Safari, Chrome on Android, Samsung Internet is out of scope). Status: Proposed, with the owner Product.
     4. Run `python3 -I scripts/check-docs.py` and paste the result.
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
-    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+    Before you start read the "Instructions for every agent" in tasks/_head.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 

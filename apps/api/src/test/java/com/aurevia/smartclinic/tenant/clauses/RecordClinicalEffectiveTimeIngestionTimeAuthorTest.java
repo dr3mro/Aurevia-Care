@@ -11,6 +11,8 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
 
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterAll;
@@ -270,10 +272,18 @@ class RecordClinicalEffectiveTimeIngestionTimeAuthorTest {
                 "provenance positive note", effective, "clinician-a", 2);
         assertEquals(200, created.getStatusCode().value(), created.getBody());
         String body = created.getBody();
-        // The repository re-reads the stored instant, so the wire value uses
-        // PostgreSQL's timestamptz text form rather than the submitted ISO text.
-        assertTrue(field(body, "effectiveAt").startsWith("2024-06-01 10:15:30"),
-                "the clinical effective time must be returned; got " + field(body, "effectiveAt"));
+        // PostgreSQL renders timestamptz in the session time zone and can omit
+        // zero offset minutes. Preserve the assertion on the full instant.
+        DateTimeFormatter postgresTimestamp = new DateTimeFormatterBuilder()
+                .append(DateTimeFormatter.ISO_LOCAL_DATE)
+                .appendLiteral(' ')
+                .append(DateTimeFormatter.ISO_LOCAL_TIME)
+                .appendOffset("+HH:mm", "Z")
+                .toFormatter();
+        String returnedEffectiveAt = field(body, "effectiveAt");
+        assertEquals(Instant.parse(effective),
+                OffsetDateTime.parse(returnedEffectiveAt, postgresTimestamp).toInstant(),
+                "the clinical effective time must be returned");
         assertEquals("clinician-a", field(body, "clinicalAuthorSubject"));
         assertEquals("clinician-a", field(body, "dataEntrySubject"));
         assertFalse(field(body, "createdAt").isEmpty(), "the ingestion instant must be recorded");

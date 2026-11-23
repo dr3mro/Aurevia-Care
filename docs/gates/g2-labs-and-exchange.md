@@ -59,7 +59,7 @@ python3 -I scripts/check-secrets.py
 ## Open items (not evidence gaps, not acceptance)
 
 1. **Human acceptance of G2 remains open.** No Product Owner, clinical or privacy sign-off is recorded in this note or anywhere on `main`. A person must accept G2 using this evidence; a worker cannot. `GATE-PACK-G2` (`docs/gates/g2-evidence-pack.md`) is the open task that prepares the signable pack, and the decision itself is a human Product Owner action that no worker task can close.
-2. **Per-clause gate tasks remain open.** `SPEC-G2-01`, `SPEC-G2-02`, `SPEC-G2-03` and `SPEC-G2-04` are `[ ]` in `TODO.md` and their `docs/spec/clauses/gates/` notes and `gates/clauses` test classes do not exist on `main`. They are still-open formal artifacts, not evidence gaps: the merged BUILD-62 acceptance tests and the integration tests above already prove each behaviour. Closing them is a separate clause-note task, not a reason to mark a criterion open here.
+2. **Per-clause gate tasks remain open.** `SPEC-G2-01`, `SPEC-G2-02`, `SPEC-G2-03` and `SPEC-G2-04` are `[ ]` in tasks/ and their `docs/spec/clauses/gates/` notes and `gates/clauses` test classes do not exist on `main`. They are still-open formal artifacts, not evidence gaps: the merged BUILD-62 acceptance tests and the integration tests above already prove each behaviour. Closing them is a separate clause-note task, not a reason to mark a criterion open here.
 3. **Pre-existing committed conflict markers outside this scope.** HEAD `0764f10b` contains literal `<<<<<<<`/`=======`/`>>>>>>>` lines inside Javadoc comments in `apps/api/src/main/java/com/aurevia/smartclinic/exchange/hl7/Hl7ParseException.java`, `Hl7Parser.java` and `Hl7Segment.java` (introduced from `origin/swarm/BUILD-37-469`). They do not change the behaviour cited above and were not touched here because they are outside `scope: docs/gates`. They should be cleaned up by an owner of those files before the developer reference is published. Recorded as a finding, not as an evidence gap.
 4. **This note is evidence, not a verdict.** It does not say "Ready for acceptance" or "Not ready"; that verdict belongs to the signable pack and the human decision described above.
 
@@ -67,5 +67,5 @@ python3 -I scripts/check-secrets.py
 
 - `SMARTCLINIC_V1_SPEC.md` §9 (G2 row) and requirements LAB-01, LAB-02, XCH-01, XCH-04, XCH-05.
 - `docs/gates/g0-isolation-surfaces.md` and `docs/gates/g1-clinic.md` — the same evidence-not-acceptance pattern for G0 and G1.
-- `TODO.md` entries BUILD-62 (PR #582), BUILD-38, LABFLOW-02, LABFLOW-05, SPEC-G2-01 … SPEC-G2-04 and GATE-PACK-G2.
+- tasks/ entries BUILD-62 (PR #582), BUILD-38, LABFLOW-02, LABFLOW-05, SPEC-G2-01 … SPEC-G2-04 and GATE-PACK-G2.
 - `.agent/pr-notes/S-G2-11-20261122-102224.md` — exact commands, results, findings and lessons for this worker run.

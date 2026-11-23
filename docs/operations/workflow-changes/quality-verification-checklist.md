@@ -3,7 +3,7 @@
 - Status: **proposed checklist — nothing here is verified.** Every box is unchecked.
 - Date: 2026-11-23
 - Requirement IDs: OPS-06
-- Source tasks: WQUALITY-01 through WQUALITY-06 in [TODO.md](../../../TODO.md). All six are merged as script, test or documentation changes, but none of the GitHub behaviour described below has been exercised for this checklist.
+- Source tasks: WQUALITY-01 through WQUALITY-06 in [tasks/](../../../tasks/). All six are merged as script, test or documentation changes, but none of the GitHub behaviour described below has been exercised for this checklist.
 - Evidence for this checklist: file reads of the six task rows, the six changed symbols and their tests, the pending OPS-WORKER-QUALITY wording, the sibling [GitHub verification checklist](github-verification-checklist.md), the [failure classification guide](../../swarm/failure-classification.md), and the job names in the Delivery workflow. No GitHub workflow was run, no log was produced, no reviewer or human participant was involved. All values in the examples below are synthetic (`<owner>/<repo>`, `<sha12>`, `g<run>-<sha12>`, `<digest>` and token-shaped placeholders); there is no real SHA, credential, patient datum or release authorization in this document.
 
 ## Purpose and rules
@@ -65,7 +65,7 @@ Rules for the person performing it:
 
   **Proving log line.** Clean candidate: `{"violations": []}`. A file outside the declared scope produces `{"violations": [{"file": "<path>", "rule": "scope"}]}`; a candidate whose HEAD moved after validation produces `{"violations": [{"file": "", "rule": "candidate-changed"}]}`. In the tooling tests: `test_clean_candidate_passes`, `test_file_outside_scope_is_reported`, `test_every_tracker_file_is_reported` and `test_candidate_sha_mismatch_is_reported`.
 
-  **Negative control.** In a synthetic worker candidate, change a file outside the scope line to get `scope`; change `TODO.md` to get `tracker`; remove `## Test evidence` or `## Coverage` to get `notes-heading`; leave a `<placeholder>` in a section to get `notes-placeholder`; stop early without `## Why this is not finished` to get `notes-unfinished`; move HEAD between sampling points to get `candidate-changed`. Each must fail the gate. These are person-run negative controls; no tracker file is edited by this checklist.
+  **Negative control.** In a synthetic worker candidate, change a file outside the scope line to get `scope`; change tasks/ to get `tracker`; remove `## Test evidence` or `## Coverage` to get `notes-heading`; leave a `<placeholder>` in a section to get `notes-placeholder`; stop early without `## Why this is not finished` to get `notes-unfinished`; move HEAD between sampling points to get `candidate-changed`. Each must fail the gate. These are person-run negative controls; no tracker file is edited by this checklist.
 
   **Rollback.** Revert PR `#403` and its test file on a branch with workflow permission; the worker gate stops rejecting moved candidates and malformed hand-offs. Re-run the tooling tests and one synthetic worker pass. Read the integrator's oversight issue for this protected script change before merging the revert.
 
@@ -119,7 +119,7 @@ Rules for the person performing it:
 
 ## Pending baseline prerequisites
 
-- [ ] **Docker image rebuild.** OPS-WORKER-QUALITY in [TODO.md](../../../TODO.md) records that the Docker image rebuild and exact-SHA GitHub checks are pending. The local patch isolates the test fixture and provisions isolated Python imports in the worker image and hosted runner setup; the worker image must be rebuilt so those changes are present, then one synthetic worker run must show no fixture leakage and a working `yaml` import. Docker is unavailable locally, so this is a GitHub-only step. The result table stays unfilled and its digest reference is a synthetic placeholder until a person runs the rebuild; that person then records the real image digest in the row's Proving observation cell. No production release is authorized here.
+- [ ] **Docker image rebuild.** OPS-WORKER-QUALITY in [tasks/](../../../tasks/) records that the Docker image rebuild and exact-SHA GitHub checks are pending. The local patch isolates the test fixture and provisions isolated Python imports in the worker image and hosted runner setup; the worker image must be rebuilt so those changes are present, then one synthetic worker run must show no fixture leakage and a working `yaml` import. Docker is unavailable locally, so this is a GitHub-only step. The result table stays unfilled and its digest reference is a synthetic placeholder until a person runs the rebuild; that person then records the real image digest in the row's Proving observation cell. No production release is authorized here.
 
 - [ ] **Exact-SHA GitHub checks.** Run the affected workflows on the exact SHA and confirm `Delivery`, the dispatchable workflows `Agent swarm`, `Swarm slot images` and `Swarm integrator`, and `Fix PR gate` on a synthetic fix pull request are green as applicable. `Fix PR gate` is pull-request-event only and must be reached by opening a synthetic fix pull request; it cannot be dispatched by hand. Record each run URL and exact SHA in the result table.
 

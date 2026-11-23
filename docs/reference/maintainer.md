@@ -13,7 +13,7 @@
 
 ## Follow a feature
 
-Start with its story and requirement ID in TODO.md. Find the public entry point. Trace validation and authorization into the domain operation, persistence and any outbox event. Follow the test around that entry point before editing. Update the contract and tests alongside implementation. New modules add a short map here or link to a focused module guide.
+Start with its story and requirement ID in tasks/. Find the public entry point. Trace validation and authorization into the domain operation, persistence and any outbox event. Follow the test around that entry point before editing. Update the contract and tests alongside implementation. New modules add a short map here or link to a focused module guide.
 
 Document transaction boundaries, tenant scope, event ownership, retries and expected errors at the symbol or module that owns them. Describe how to add an endpoint, schema change or workflow when the first real example exists. Use synthetic examples and links to source rather than copying implementation into docs.
 
