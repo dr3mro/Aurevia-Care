@@ -2020,6 +2020,21 @@ def priority_of(task):
     return "low" if task["id"].startswith(LOW_PREFIXES) else "normal"
 
 
+def archived_task_scope(task_id):
+    """Scope of a done task that was archived out of TODO.md, or [] when unknown.
+
+    An open PR can belong to a task that was already marked done and moved to the
+    archive; its scope must still block overlapping work until the PR merges.
+    """
+    text = Path(ARCHIVE).read_text() if Path(ARCHIVE).exists() else ""
+    if store().active():
+        text += "\n" + store().archived()
+    for t in parse_tasks(text):
+        if task_id in (t["id"], *t["aliases"]):
+            return t["scope"]
+    return []
+
+
 def plan_workers(max_workers, slots, text, open_prs, repair=None, live=(), story_wave=None, focus="", red=False):
     """Main repairs, then fixes, then ready tasks whose scope is free.
 
@@ -2045,6 +2060,11 @@ def plan_workers(max_workers, slots, text, open_prs, repair=None, live=(), story
     for pr in sorted(open_prs, key=lambda p: p["number"]):
         tid = task_id_of(pr["headRefName"])
         task = by_id.get(tid)
+        if task is None and tid:
+            archived_scope = archived_task_scope(tid)
+            if archived_scope:
+                task = {"id": tid, "task": pr.get("title", tid), "scope": archived_scope,
+                        "details": "", "requirements": "", "reserved": ""}
         if task is None and tid.startswith(REPAIR_PREFIXES):
             task = {"id": tid, "task": pr.get("title", tid), "scope": [], "details": "",
                     "requirements": "", "reserved": ""}
