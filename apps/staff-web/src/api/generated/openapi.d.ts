@@ -305,7 +305,518 @@ export interface paths {
         /** List self-pay invoices in the active organization with cursor pagination */
         get: operations["listFinanceInvoices"];
         put?: never;
+        /** Create an itemized self-pay draft invoice */
+        post: operations["createFinanceInvoice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/invoices/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read one invoice with its lines and immutable ledger trail */
+        get: operations["getFinanceInvoice"];
+        put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/invoices/{id}/issue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Issue a draft invoice under an If-Match version precondition */
+        post: operations["issueFinanceInvoice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/invoices/{id}/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record a payment against an invoice under an If-Match version precondition */
+        post: operations["recordFinancePayment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/invoices/{id}/credits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record an approved credit against an invoice under an If-Match version precondition */
+        post: operations["recordFinanceCredit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/invoices/{id}/refunds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record an approved refund against an invoice under an If-Match version precondition */
+        post: operations["recordFinanceRefund"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/invoices/{id}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Void an unposted invoice with a reason and independent approver */
+        post: operations["voidFinanceInvoice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/reconciliation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read the finance-only daily reconciliation report for the active tenant */
+        get: operations["getFinanceReconciliation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prescription-drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a prescription draft for a verified patient of the active tenant */
+        post: operations["createPrescriptionDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prescription-drafts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read one prescription draft with its immutable override */
+        get: operations["getPrescriptionDraft"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prescription-drafts/{id}/catalog-version": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read the immutable catalog version this draft was built from */
+        get: operations["getDraftCatalogVersion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prescription-drafts/{id}/allergy-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Check a candidate catalog entry against the patient's verified allergies */
+        post: operations["checkDraftAllergies"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prescription-drafts/{id}/select-medication": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Select a medication under an If-Match version, recording any override reason */
+        post: operations["selectDraftMedication"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prescriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Register a transmission record for an RX-01 prescription draft */
+        post: operations["createPrescription"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prescriptions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read one prescription with its immutable event trail */
+        get: operations["getPrescription"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prescriptions/{id}/printable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Produce the locally printable prescription with the prescriber attestation */
+        get: operations["getPrintablePrescription"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prescriptions/{id}/attest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record the prescriber's attestation under an If-Match version */
+        post: operations["attestPrescription"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prescriptions/{id}/transmit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Route an attested prescription through an approved channel */
+        post: operations["transmitPrescription"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prescriptions/{id}/confirm-delivery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm delivery of the exact stable submission id */
+        post: operations["confirmPrescriptionDelivery"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prescriptions/{id}/verify-partner-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify partner status for an ambiguous submission before any retry */
+        post: operations["verifyPrescriptionPartnerStatus"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prescriptions/{id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retry a verified-absent submission reusing the original submission id */
+        post: operations["retryPrescription"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prescriptions/{id}/pharmacy-response": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record a pharmacy acceptance, rejection or clarification request */
+        post: operations["recordPharmacyResponse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prescriptions/{id}/dispensing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record partner-supplied dispensing evidence, distinct from acceptance */
+        post: operations["recordDispensingEvidence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prescriptions/{id}/renew": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record a renewal linked to the original submission */
+        post: operations["renewPrescription"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prescriptions/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel a live prescription with a recorded reason */
+        post: operations["cancelPrescription"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/drug-catalog/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search the approved effective drug catalog by name and formulation */
+        get: operations["searchDrugCatalog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/drug-catalog/search-with-version": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search the approved catalog and report the publication version used */
+        get: operations["searchDrugCatalogWithVersion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pharmacy/substitutions/{proposalId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read one substitution proposal visible to one of its two parties */
+        get: operations["getSubstitutionProposal"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pharmacy/substitutions/{prescriptionId}/proposals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Propose a tagged catalog alternative for a prescription's medication */
+        post: operations["proposeSubstitution"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pharmacy/substitutions/{proposalId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve a pending proposal, creating its signed prescription revision */
+        post: operations["approveSubstitution"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pharmacy/substitutions/{proposalId}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decline a pending proposal, keeping the originally prescribed medication */
+        post: operations["declineSubstitution"];
         delete?: never;
         options?: never;
         head?: never;
@@ -904,6 +1415,46 @@ export interface paths {
         };
         /** List the caller's conversations and unread counts in a facility */
         get: operations["listInstantConversations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/instant/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Poll identifier-only message and read events for the caller's conversations
+         * @description Returns the same identifier set as the SSE stream for a given cursor. nextCursor is the hub high-water sequence, so an invisible or empty page still advances; a cursor above the high-water mark signals resynchronisation.
+         */
+        get: operations["pollInstantEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/instant/events/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stream identifier-only message and read events over server-sent events
+         * @description Replays missed events after Last-Event-ID and then delivers live ones. Events carry identifiers only, never message text. Revocation closes the stream on the next event. This transport is instance-scoped; the durable shared outbox is a separate story.
+         */
+        get: operations["streamInstantEvents"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1580,6 +2131,349 @@ export interface components {
             placedAt?: string;
             idempotencyKey?: string;
         };
+        /** @description Itemized self-pay invoice creation command; money is an integer count of currency minor units. */
+        CreateInvoiceRequest: {
+            /** Format: uuid */
+            patientId: string;
+            currency: string;
+            serviceReference?: string | null;
+            items: components["schemas"]["InvoiceLineRequest"][];
+        };
+        InvoiceLineRequest: {
+            description: string;
+            quantity: number;
+            /** Format: int64 */
+            unitAmountMinor: number;
+        };
+        /** @description Ledger entry command; the entry type comes from the route, never the request body. */
+        EntryRequest: {
+            /** Format: int64 */
+            amountMinor: number;
+            reference: string;
+            reason?: string | null;
+            approverSubject?: string | null;
+        };
+        /** @description Void command with a recorded reason and an approver distinct from the actor. */
+        VoidRequest: {
+            reason: string;
+            approverSubject: string;
+        };
+        DailyTotal: {
+            day?: string;
+            currency?: string;
+            /** Format: int64 */
+            issuedMinor?: number;
+            /** Format: int64 */
+            paymentMinor?: number;
+            /** Format: int64 */
+            refundMinor?: number;
+            /** Format: int64 */
+            creditMinor?: number;
+            /** Format: int64 */
+            netMinor?: number;
+            entryCount?: number;
+        };
+        /** @description Finance-only daily totals by currency; no clinical field is present. */
+        Reconciliation: {
+            days?: components["schemas"]["DailyTotal"][];
+        };
+        /** @description Draft creation command for a verified patient of the active tenant. */
+        CreateDraftRequest: {
+            patientId: string;
+            encounterReference?: string | null;
+            destination?: string | null;
+        };
+        /** @description Current projection of a prescription draft. */
+        Draft: {
+            id?: string;
+            version?: number;
+            patientId?: string;
+            state?: string;
+            selectedEntryId?: string | null;
+            selectedEntryVersion?: number | null;
+            drugGenericName?: string | null;
+            doseValue?: string | null;
+            doseUnit?: string | null;
+            route?: string | null;
+            frequency?: string | null;
+            quantity?: string | null;
+            quantityUnit?: string | null;
+            refills?: number | null;
+            instructions?: string | null;
+            destination?: string | null;
+            encounterReference?: string | null;
+            prescriberSubject?: string | null;
+            /** Format: date-time */
+            createdAt?: string;
+        };
+        /** @description Immutable override binding a reason, its author and the matched data snapshot. */
+        OverrideRecord: {
+            draftId?: string;
+            draftVersion?: number;
+            reason?: string;
+            authorSubject?: string;
+            matchedSnapshot?: string;
+            /** Format: date-time */
+            occurredAt?: string;
+        };
+        DraftView: {
+            draft?: components["schemas"]["Draft"];
+            override?: components["schemas"]["OverrideRecord"];
+        };
+        /** @description Immutable draft-to-catalog binding; the version is null until a medication is selected. */
+        DraftCatalogVersion: {
+            draftId?: string;
+            catalogVersion?: number | null;
+        };
+        AllergyCheckRequest: {
+            catalogEntryId: string;
+        };
+        AllergyFinding: {
+            /** @enum {string} */
+            kind?: "exact_match" | "cross_reactivity" | "unresolved_ingredient" | "incomplete_assessment";
+            substanceId?: string | null;
+            group?: string | null;
+            groupVersion?: number;
+            detail?: string;
+        };
+        /** @description Versioned allergy check; an unresolved or unverified assessment is never silently safe. */
+        AllergyCheck: {
+            /** @enum {string} */
+            outcome?: "no_conflict" | "conflict" | "warning" | "unresolved";
+            /** @enum {string} */
+            allergyStatus?: "verified_list" | "verified_none" | "unknown" | "unverified";
+            findings?: components["schemas"]["AllergyFinding"][];
+            catalogVersion?: string;
+        };
+        /** @description Medication selection with an override reason required when a verified conflict exists. */
+        SelectMedicationRequest: {
+            catalogEntryId: string;
+            doseValue: string;
+            doseUnit: string;
+            route: string;
+            frequency: string;
+            quantity: string;
+            quantityUnit: string;
+            refills?: number | null;
+            instructions: string;
+            overrideReason?: string | null;
+        };
+        Ingredient: {
+            substanceId?: string | null;
+            group?: string | null;
+            groupVersion?: number;
+        };
+        /** @description One approved effective catalog entry; suggestions never change a clinician's selection. */
+        DrugEntry: {
+            entryId?: string;
+            version?: number;
+            genericName?: string;
+            tradeName?: string;
+            formulation?: string;
+            strengthValue?: string;
+            strengthUnit?: string;
+            ingredients?: components["schemas"]["Ingredient"][];
+            approved?: boolean;
+            /** Format: date-time */
+            effectiveFrom?: string;
+            /** Format: date-time */
+            effectiveTo?: string | null;
+            approvalProvenance?: string;
+        };
+        /** @description Review-only tagged alternative with its source catalog version. */
+        Alternative: {
+            /** @enum {string} */
+            kind?: "suggestion";
+            entry?: components["schemas"]["DrugEntry"];
+            reason?: string;
+            sourceCatalogVersion?: string;
+            requiresClinicianSelection?: boolean;
+        };
+        CatalogHit: {
+            entry?: components["schemas"]["DrugEntry"];
+            alternatives?: components["schemas"]["Alternative"][];
+        };
+        /** @description Effective catalog entries with tagged alternatives; not a cursor-paginated page. */
+        DrugCatalogHits: components["schemas"]["CatalogHit"][];
+        MedicationCatalogVersion: {
+            version?: number;
+            market?: string;
+            /** Format: date-time */
+            publishedAt?: string;
+            provenance?: string;
+        };
+        MedicationCatalogItem: {
+            drug?: components["schemas"]["DrugEntry"];
+            route?: string;
+        };
+        /** @description Catalog hits paired with the publication version that produced them. */
+        VersionedCatalogSearch: {
+            version?: components["schemas"]["MedicationCatalogVersion"];
+            items?: components["schemas"]["MedicationCatalogItem"][];
+        };
+        /** @description Transmission registration for an RX-01 draft; the local id is supplied by the caller. */
+        CreatePrescriptionRequest: {
+            prescriptionId: string;
+            patientId: string;
+            medication: string;
+            strength?: string | null;
+            dose?: string | null;
+            route?: string | null;
+            frequency?: string | null;
+            quantity?: number | null;
+            prescriberSubject: string;
+            destinationPharmacy?: string | null;
+        };
+        Prescription: {
+            id?: string;
+            version?: number;
+            patientId?: string;
+            medication?: string;
+            strength?: string | null;
+            dose?: string | null;
+            route?: string | null;
+            frequency?: string | null;
+            quantity?: number;
+            prescriberSubject?: string;
+            destinationPharmacy?: string | null;
+            /** @enum {string} */
+            state?: "draft" | "attested" | "submitted" | "ambiguous" | "delivery_confirmed" | "accepted" | "rejected" | "clarification" | "dispensed" | "printed" | "cancelled";
+            channel?: string | null;
+            submissionId?: string | null;
+            retryAllowed?: boolean;
+            /** Format: date-time */
+            createdAt?: string;
+        };
+        /** @description Immutable transmission fact; acceptance and dispensing are deliberately distinct. */
+        PrescriptionEvent: {
+            id?: string;
+            prescriptionId?: string;
+            prescriptionVersion?: number;
+            /** @enum {string} */
+            eventType?: "attested" | "submitted" | "delivery_confirmed" | "partner_status_verified" | "printed" | "pharmacy_accepted" | "pharmacy_rejected" | "clarification" | "renewal" | "cancelled" | "dispensing_evidence";
+            actorId?: string | null;
+            channel?: string | null;
+            submissionId?: string | null;
+            outcome?: string | null;
+            detail?: string | null;
+            /** Format: date-time */
+            occurredAt?: string;
+        };
+        PrescriptionView: {
+            prescription?: components["schemas"]["Prescription"];
+            events?: components["schemas"]["PrescriptionEvent"][];
+        };
+        /** @description Locally printed prescription carrying the attestation; no electronic delivery is implied. */
+        PrintablePrescription: {
+            prescriptionId?: string;
+            patientId?: string;
+            medication?: string;
+            strength?: string | null;
+            dose?: string | null;
+            route?: string | null;
+            frequency?: string | null;
+            quantity?: number;
+            prescriberSubject?: string;
+            destinationPharmacy?: string | null;
+            attestationNote?: string | null;
+            /** Format: date-time */
+            attestedAt?: string;
+            channel?: string;
+        };
+        AttestRequest: {
+            note?: string | null;
+        };
+        TransmitRequest: {
+            channel: string;
+            outcome?: string | null;
+        };
+        ConfirmDeliveryRequest: {
+            submissionId: string;
+        };
+        /** @description Three-valued status; only absent authorizes a retry. */
+        VerifyPartnerStatusRequest: {
+            submissionId: string;
+            /** @enum {string} */
+            status: "present" | "absent" | "unknown";
+        };
+        /** @description Retry reuses the original stable submission id. */
+        RetryTransmissionRequest: {
+            submissionId: string;
+            /** @enum {string} */
+            outcome: "submitted" | "ambiguous";
+        };
+        PharmacyResponseRequest: {
+            submissionId: string;
+            /** @enum {string} */
+            outcome: "accepted" | "rejected" | "clarification";
+            note?: string | null;
+        };
+        DispensingRequest: {
+            submissionId: string;
+            note?: string | null;
+        };
+        RenewRequest: {
+            note?: string | null;
+        };
+        CancelPrescriptionRequest: {
+            reason: string;
+        };
+        /** @description Pharmacy-proposed alternative; the reason is a bounded, auditable key. */
+        ProposeSubstitutionRequest: {
+            currentEntryId: string;
+            proposedEntryId: string;
+            /** @enum {string} */
+            reason: "stock" | "brand" | "formulation";
+            note?: string | null;
+            overrideReason?: string | null;
+        };
+        DecideSubstitutionRequest: {
+            attestation: string;
+            note?: string | null;
+        };
+        SubstitutionProposal: {
+            id?: string;
+            organizationId?: string;
+            prescriptionId?: string;
+            patientId?: string;
+            prescriberSubject?: string;
+            proposedBy?: string;
+            original?: components["schemas"]["DrugEntry"];
+            proposed?: components["schemas"]["DrugEntry"];
+            /** @enum {string} */
+            reason?: "stock" | "brand" | "formulation";
+            note?: string | null;
+            overrideReason?: string | null;
+            allergyCheck?: components["schemas"]["AllergyCheck"];
+            /** @enum {string} */
+            state?: "pending" | "approved" | "declined";
+            version?: number;
+            /** Format: date-time */
+            proposedAt?: string;
+        };
+        /** @description Immutable signed revision created only on approval, with full catalog provenance. */
+        SignedSubstitutionRevision: {
+            id?: string;
+            prescriptionId?: string;
+            proposalId?: string;
+            revisionNumber?: number;
+            replaced?: components["schemas"]["DrugEntry"];
+            replacement?: components["schemas"]["DrugEntry"];
+            /** @enum {string} */
+            reason?: "stock" | "brand" | "formulation";
+            approvedBy?: string;
+            allergyCheck?: components["schemas"]["AllergyCheck"];
+            attestation?: string;
+            catalogProvenance?: string;
+            /** Format: date-time */
+            signedAt?: string;
+        };
+        /** @description Review-only side-by-side proposal with its optional signed revision. */
+        ProposalView: {
+            proposal?: components["schemas"]["SubstitutionProposal"];
+            appliedRevision?: components["schemas"]["SignedSubstitutionRevision"];
+            alternatives?: components["schemas"]["Alternative"][];
+        };
         Error: {
             code?: string;
             message?: string;
@@ -1836,6 +2730,35 @@ export interface components {
         InstantUnreadList: components["schemas"]["InstantUnread"][];
         /** @description Conversations visible to the caller; not a cursor-paginated page. */
         InstantConversationList: components["schemas"]["InstantConversation"][];
+        /**
+         * @description Stable wire value of an identifier-only realtime event; never carries clinical content.
+         * @enum {string}
+         */
+        RealtimeEventType: "message" | "read";
+        /** @description Identifier-only notification about a change in a staff conversation. */
+        RealtimeEvent: {
+            /** @description Stable identifier of the changed message or read cursor */
+            id?: string;
+            /**
+             * Format: int64
+             * @description Monotonic hub sequence used for resume
+             */
+            sequence?: number;
+            type?: components["schemas"]["RealtimeEventType"];
+            /** @description Owning conversation identifier */
+            conversationId?: string;
+            /** @description Acting staff subject */
+            subject?: string;
+        };
+        /** @description Bounded polling page of identifier-only events with the high-water cursor. */
+        RealtimeEventPage: {
+            events?: components["schemas"]["RealtimeEvent"][];
+            /**
+             * Format: int64
+             * @description Hub high-water sequence for the next poll
+             */
+            nextCursor?: number;
+        };
         /** @description A visible recipient; blind copy is deliberately absent from the wire vocabulary. */
         MailRecipient: {
             /** @enum {string} */
@@ -2929,6 +3852,1337 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    createFinanceInvoice: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateInvoiceRequest"];
+            };
+        };
+        responses: {
+            /** @description Created draft invoice */
+            201: {
+                headers: {
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    getFinanceInvoice: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                /** @description Tenant-local invoice identifier */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The invoice with its items and ledger entries */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+        };
+    };
+    issueFinanceInvoice: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+                /** @description Version of the draft the caller last read; weak and quoted validators are accepted. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                /** @description Tenant-local invoice identifier */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The issued invoice */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            412: components["responses"]["StaleVersion"];
+            422: components["responses"]["InvalidRequest"];
+            /** @description If-Match precondition required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    recordFinancePayment: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+                /** @description Version of the draft the caller last read; weak and quoted validators are accepted. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                /** @description Tenant-local invoice identifier */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EntryRequest"];
+            };
+        };
+        responses: {
+            /** @description The invoice with its updated balance and ledger trail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            412: components["responses"]["StaleVersion"];
+            422: components["responses"]["InvalidRequest"];
+            /** @description If-Match precondition required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    recordFinanceCredit: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+                /** @description Version of the draft the caller last read; weak and quoted validators are accepted. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                /** @description Tenant-local invoice identifier */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EntryRequest"];
+            };
+        };
+        responses: {
+            /** @description The invoice with its updated balance and ledger trail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            412: components["responses"]["StaleVersion"];
+            422: components["responses"]["InvalidRequest"];
+            /** @description If-Match precondition required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    recordFinanceRefund: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+                /** @description Version of the draft the caller last read; weak and quoted validators are accepted. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                /** @description Tenant-local invoice identifier */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EntryRequest"];
+            };
+        };
+        responses: {
+            /** @description The invoice with its updated balance and ledger trail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            412: components["responses"]["StaleVersion"];
+            422: components["responses"]["InvalidRequest"];
+            /** @description If-Match precondition required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    voidFinanceInvoice: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+                /** @description Version of the draft the caller last read; weak and quoted validators are accepted. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                /** @description Tenant-local invoice identifier */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VoidRequest"];
+            };
+        };
+        responses: {
+            /** @description The void invoice */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            412: components["responses"]["StaleVersion"];
+            422: components["responses"]["InvalidRequest"];
+            /** @description If-Match precondition required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getFinanceReconciliation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Daily totals by currency with no clinical narrative */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Reconciliation"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createPrescriptionDraft: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDraftRequest"];
+            };
+        };
+        responses: {
+            /** @description Created draft at version one */
+            201: {
+                headers: {
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Draft"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    getPrescriptionDraft: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                /** @description Tenant-local draft identifier */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The draft and its optional override */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+        };
+    };
+    getDraftCatalogVersion: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                /** @description Tenant-local draft identifier */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The draft-to-catalog binding, with a null version before selection */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftCatalogVersion"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+        };
+    };
+    checkDraftAllergies: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                /** @description Tenant-local draft identifier */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AllergyCheckRequest"];
+            };
+        };
+        responses: {
+            /** @description The versioned allergy check with retained findings */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AllergyCheck"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    selectDraftMedication: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+                /** @description Version of the draft the caller last read; weak and quoted validators are accepted. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                /** @description Tenant-local draft identifier */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SelectMedicationRequest"];
+            };
+        };
+        responses: {
+            /** @description The updated draft bound to the effective catalog version */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Draft"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            412: components["responses"]["StaleVersion"];
+            422: components["responses"]["InvalidRequest"];
+            /** @description If-Match precondition required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createPrescription: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePrescriptionRequest"];
+            };
+        };
+        responses: {
+            /** @description Created transmission record at version one */
+            201: {
+                headers: {
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Prescription"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    getPrescription: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                /** @description Tenant-local prescription identifier */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The prescription and its facts */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrescriptionView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+        };
+    };
+    getPrintablePrescription: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                /** @description Tenant-local prescription identifier */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The immutable print-ready prescription; no electronic delivery is implied */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrintablePrescription"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+        };
+    };
+    attestPrescription: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+                /** @description Version of the draft the caller last read; weak and quoted validators are accepted. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                /** @description Tenant-local prescription identifier */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AttestRequest"];
+            };
+        };
+        responses: {
+            /** @description The attested prescription */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Prescription"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            412: components["responses"]["StaleVersion"];
+            422: components["responses"]["InvalidRequest"];
+            /** @description If-Match precondition required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    transmitPrescription: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+                /** @description Version of the draft the caller last read; weak and quoted validators are accepted. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                /** @description Tenant-local prescription identifier */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransmitRequest"];
+            };
+        };
+        responses: {
+            /** @description The transmitted prescription with its stable submission id */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Prescription"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            412: components["responses"]["StaleVersion"];
+            422: components["responses"]["InvalidRequest"];
+            /** @description If-Match precondition required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    confirmPrescriptionDelivery: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+                /** @description Version of the draft the caller last read; weak and quoted validators are accepted. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                /** @description Tenant-local prescription identifier */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmDeliveryRequest"];
+            };
+        };
+        responses: {
+            /** @description The prescription awaiting a pharmacy response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Prescription"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            412: components["responses"]["StaleVersion"];
+            422: components["responses"]["InvalidRequest"];
+            /** @description If-Match precondition required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    verifyPrescriptionPartnerStatus: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+                /** @description Version of the draft the caller last read; weak and quoted validators are accepted. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                /** @description Tenant-local prescription identifier */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerifyPartnerStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description The reconciled prescription */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Prescription"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            412: components["responses"]["StaleVersion"];
+            422: components["responses"]["InvalidRequest"];
+            /** @description If-Match precondition required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    retryPrescription: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+                /** @description Version of the draft the caller last read; weak and quoted validators are accepted. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                /** @description Tenant-local prescription identifier */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RetryTransmissionRequest"];
+            };
+        };
+        responses: {
+            /** @description The resubmitted prescription */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Prescription"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            412: components["responses"]["StaleVersion"];
+            422: components["responses"]["InvalidRequest"];
+            /** @description If-Match precondition required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    recordPharmacyResponse: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+                /** @description Version of the draft the caller last read; weak and quoted validators are accepted. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                /** @description Tenant-local prescription identifier */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PharmacyResponseRequest"];
+            };
+        };
+        responses: {
+            /** @description The prescription in the pharmacy-response state */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Prescription"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            412: components["responses"]["StaleVersion"];
+            422: components["responses"]["InvalidRequest"];
+            /** @description If-Match precondition required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    recordDispensingEvidence: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+                /** @description Version of the draft the caller last read; weak and quoted validators are accepted. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                /** @description Tenant-local prescription identifier */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DispensingRequest"];
+            };
+        };
+        responses: {
+            /** @description The dispensed prescription */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Prescription"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            412: components["responses"]["StaleVersion"];
+            422: components["responses"]["InvalidRequest"];
+            /** @description If-Match precondition required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    renewPrescription: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+                /** @description Version of the draft the caller last read; weak and quoted validators are accepted. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                /** @description Tenant-local prescription identifier */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RenewRequest"];
+            };
+        };
+        responses: {
+            /** @description The prescription with its renewal fact */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Prescription"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            412: components["responses"]["StaleVersion"];
+            422: components["responses"]["InvalidRequest"];
+            /** @description If-Match precondition required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    cancelPrescription: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+                /** @description Version of the draft the caller last read; weak and quoted validators are accepted. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                /** @description Tenant-local prescription identifier */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelPrescriptionRequest"];
+            };
+        };
+        responses: {
+            /** @description The cancelled prescription */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Prescription"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            412: components["responses"]["StaleVersion"];
+            422: components["responses"]["InvalidRequest"];
+            /** @description If-Match precondition required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    searchDrugCatalog: {
+        parameters: {
+            query?: {
+                /** @description Generic or trade name fragment */
+                query?: string;
+                /** @description Exact formulation filter */
+                formulation?: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Effective entries with tagged, review-only alternatives */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DrugCatalogHits"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    searchDrugCatalogWithVersion: {
+        parameters: {
+            query?: {
+                /** @description Generic or trade name fragment */
+                query?: string;
+                /** @description Exact formulation filter */
+                formulation?: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Versioned route-bearing items tagged with the catalog publication */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionedCatalogSearch"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    getSubstitutionProposal: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path: {
+                /** @description Tenant-local substitution proposal identifier */
+                proposalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The proposal with side-by-side entries and optional signed revision */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProposalView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+        };
+    };
+    proposeSubstitution: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+            };
+            path: {
+                /** @description Tenant-local prescription identifier */
+                prescriptionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProposeSubstitutionRequest"];
+            };
+        };
+        responses: {
+            /** @description The pending proposal with side-by-side entries */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProposalView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    approveSubstitution: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+                /** @description Version of the draft the caller last read; weak and quoted validators are accepted. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                /** @description Tenant-local substitution proposal identifier */
+                proposalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecideSubstitutionRequest"];
+            };
+        };
+        responses: {
+            /** @description The approved proposal and its signed revision */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProposalView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            412: components["responses"]["StaleVersion"];
+            422: components["responses"]["InvalidRequest"];
+            /** @description If-Match precondition required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    declineSubstitution: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Opaque client retry key for state-changing commands; the owning service applies replay safety where the command supports it. */
+                "Idempotency-Key"?: components["parameters"]["RetryKey"];
+                /** @description Version of the draft the caller last read; weak and quoted validators are accepted. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                /** @description Tenant-local substitution proposal identifier */
+                proposalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecideSubstitutionRequest"];
+            };
+        };
+        responses: {
+            /** @description The declined proposal without a revision */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProposalView"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["ResourceNotFound"];
+            409: components["responses"]["StateConflict"];
+            412: components["responses"]["StaleVersion"];
+            422: components["responses"]["InvalidRequest"];
+            /** @description If-Match precondition required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
             };
         };
     };
@@ -4563,6 +6817,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InstantConversationList"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    pollInstantEvents: {
+        parameters: {
+            query: {
+                /** @description Facility filter for the caller's conversations */
+                facilityId: string;
+                /** @description Exclusive sequence lower bound; omit to replay from the start */
+                cursor?: string;
+                /** @description Maximum number of events to return */
+                limit?: number;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Identifier-only events in sequence order and the high-water cursor */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RealtimeEventPage"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    streamInstantEvents: {
+        parameters: {
+            query: {
+                /** @description Facility filter for the caller's conversations */
+                facilityId: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Sequence of the last received event for resume */
+                "Last-Event-ID"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description An SSE stream whose data is one identifier-only event per message */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": components["schemas"]["RealtimeEvent"];
                 };
             };
             401: components["responses"]["AuthenticationRequired"];
