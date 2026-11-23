@@ -79,7 +79,8 @@ run_step() {
   local name="$1"
   shift
   local started=$SECONDS
-  local log="$LOG_DIR/$(slugify "$name").log"
+  local log
+  log="$LOG_DIR/$(slugify "$name").log"
   local code=0
   printf '\n==> %s\n' "$name"
   set +e
@@ -209,18 +210,21 @@ finish() {
 # --- policy -----------------------------------------------------------------
 shell_files=(scripts/*.sh infra/bootstrap/start.sh apps/api/check.sh db/check.sh)
 
+# shellcheck disable=SC2329
 check_shell() {
   local file
   for file in "${shell_files[@]}"; do bash -n "$file"; done
   shellcheck "${shell_files[@]}"
 }
 
+# shellcheck disable=SC2329
 check_workflows() {
   actionlint
 }
 
 # check-constraints diffs against origin/main; CI passes --require-base, so do the same
 # whenever the base can be resolved and warn when it cannot.
+# shellcheck disable=SC2329
 check_policy() {
   local base_flag=()
   if git rev-parse --verify --quiet origin/main >/dev/null; then
