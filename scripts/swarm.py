@@ -2412,7 +2412,10 @@ def referenced_notes():
 def notes_collect(out_dir, notes_dir=NOTES_DIR, today=None, added=None, keep=None):
     """Group the notes files of finished days. Writes <day>.md (input) and <day>.files to out_dir.
 
-    Returns the days, oldest first. Daily files and the current day are left alone."""
+    Returns the days, newest finished day first. The newest day gets the context
+    budget first: an older day must never consume it all and starve yesterday's
+    notes, which are the ones every later agent reads. Daily files and the
+    current day are left alone."""
     today = today or new_york_now().strftime("%Y-%m-%d")
     keep = referenced_notes() if keep is None else keep
     days = {}
@@ -2424,9 +2427,17 @@ def notes_collect(out_dir, notes_dir=NOTES_DIR, today=None, added=None, keep=Non
             days.setdefault(day, []).append(path)
     Path(out_dir).mkdir(parents=True, exist_ok=True)
     chosen, used = [], 0
-    for day in sorted(days)[:MAX_NOTE_DAYS]:
+    for day in sorted(days, reverse=True)[:MAX_NOTE_DAYS]:
         files, parts = [], []
-        for path in days[day][:MAX_NOTE_FILES]:
+        candidates = days[day]
+        # Spread the sample across the day instead of taking the first 80 names,
+        # which otherwise selects only one task's notes from a busy wave.
+        if MAX_NOTE_FILES == 0:
+            candidates = []
+        elif len(candidates) > MAX_NOTE_FILES:
+            step = len(candidates) / MAX_NOTE_FILES
+            candidates = [candidates[int(i * step)] for i in range(MAX_NOTE_FILES)]
+        for path in candidates:
             part = f"\n## {path.name}\n\n{clean(path.read_text(errors='replace'), 4000, 120)}\n"
             if used + len(part) > NOTES_BUDGET and (files or chosen):
                 break
@@ -2434,7 +2445,9 @@ def notes_collect(out_dir, notes_dir=NOTES_DIR, today=None, added=None, keep=Non
             parts.append(part)
             used += len(part)
         if not files:
-            break
+            # This day could not fit even one note in the remaining budget;
+            # try the next day instead of abandoning all remaining days.
+            continue
         chosen.append(day)
         (Path(out_dir) / f"{day}.md").write_text(f"# Worker notes for {day} ({len(files)} files)\n" + "".join(parts))
         (Path(out_dir) / f"{day}.files").write_text("\n".join(p.name for p in files) + "\n")
