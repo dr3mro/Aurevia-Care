@@ -35,8 +35,12 @@ jobs:
           git config user.name "${SWARM_GIT_NAME:-github-actions[bot]}"
           git config user.email "${SWARM_GIT_EMAIL:-41898282+github-actions[bot]@users.noreply.github.com}"
           header=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 | tr -d '\n')
-          fetch="git -c core.hooksPath=/dev/null -c http.https://github.com/.extraheader=AUTHORIZATION:basic\ $header fetch -q origin"
-          $fetch "+refs/heads/$BASE:refs/remotes/origin/$BASE"
+          gh_fetch() {
+            git -c core.hooksPath=/dev/null \
+              -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $header" \
+              fetch -q origin "$@"
+          }
+          gh_fetch "+refs/heads/$BASE:refs/remotes/origin/$BASE"
           if git merge-base --is-ancestor "origin/$BASE" HEAD; then
             echo "Already contains main; nothing to rebase."; exit 0
           fi
