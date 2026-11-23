@@ -99,11 +99,15 @@ These are code and migration facts in this checkout, not approvals:
   [TemplateService](../../apps/api/src/main/java/com/aurevia/smartclinic/clinical/templates/TemplateService.java),
   [V15 clinical note signing](../../db/migrations/V15__clinical_note_signing.sql).
 - Versioned diagnosis and procedure catalogues with a named approval and an
-  effective-version fold, and the shared version store they use:
+  effective-version fold, and the durable production version store they use:
   [DiagnosisCatalogService](../../apps/api/src/main/java/com/aurevia/smartclinic/catalog/dictionary/DiagnosisCatalogService.java),
   [DiagnosisCode](../../apps/api/src/main/java/com/aurevia/smartclinic/catalog/dictionary/DiagnosisCode.java),
   [Approval](../../apps/api/src/main/java/com/aurevia/smartclinic/catalog/dictionary/Approval.java),
-  [VersionStore](../../apps/api/src/main/java/com/aurevia/smartclinic/catalog/dictionary/VersionStore.java).
+  [DurableVersionStore](../../apps/api/src/main/java/com/aurevia/smartclinic/catalog/dictionary/DurableVersionStore.java).
+  The [VersionStore](../../apps/api/src/main/java/com/aurevia/smartclinic/catalog/dictionary/VersionStore.java)
+  is the deterministic in-memory kernel behind the no-arg unit-test
+  constructors, whose validation helpers are shared with the production
+  `DurableVersionStore`.
 - Approved, effective-dated imaging policies where a signature needs an
   approved privilege for that specific modality and future dates do not apply
   early: [RadPolicyCatalog](../../apps/api/src/main/java/com/aurevia/smartclinic/radiology/RadPolicyCatalog.java),
