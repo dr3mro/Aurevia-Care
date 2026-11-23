@@ -315,12 +315,23 @@ def worker_counts(live, jobs):
     for run in live:
         if run.get("workflowName") != "Agent swarm":
             continue
-        for job in jobs.get(run.get("databaseId"), None) or []:
+        run_jobs = jobs.get(run.get("databaseId"))
+        if not run_jobs:
+            # Jobs not loaded yet: count the run itself as one running worker so
+            # the dashboard never reports 0/20 while a wave is actually live.
+            running.add((run.get("databaseId"), run.get("databaseId")))
+            continue
+        for job in run_jobs:
             match = WORKER_JOB.match(job.get("name") or "")
             if not match or job.get("status") == "completed":
                 continue
             key = (run.get("databaseId"), match.group("id") or job.get("name"))
             (running if job.get("status") == "in_progress" else queued).add(key)
+    # If jobs are missing for every live run, fall back to counting live runs.
+    if not jobs and live:
+        running = {(r.get("databaseId"), r.get("databaseId")) for r in live
+                   if r.get("workflowName") == "Agent swarm"}
+        queued = set()
     return len(running), len(queued - running)
 
 
