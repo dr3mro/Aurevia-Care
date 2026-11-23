@@ -317,6 +317,9 @@ def worker_counts(live, jobs):
             continue
         run_jobs = jobs.get(run.get("databaseId"))
         if not run_jobs:
+            # Jobs not loaded (timeout/cache): count the run itself so the
+            # dashboard reflects live waves instead of undercounting.
+            running.add((run.get("databaseId"), run.get("databaseId")))
             continue
         has_worker = False
         for job in run_jobs:
