@@ -5,6 +5,11 @@ Start with [Maintainer guide](maintainer.md). The class, package, file, and sear
 - [Staff web TypeScript reference](staff-web/index.html)
 - [Patient mobile TypeScript reference](patient-mobile/index.html)
 
+## On-demand checklists
+
+- [Observability checklist](observability-checklist.md) — the signals a new critical path must emit, and the on-call questions they answer.
+- [Performance checklist](performance-checklist.md) — web Core Web Vitals targets, bundle budget and backend query expectations.
+
 ## Design and decisions
 
 - [Responsive layout patterns](../design/responsive-layout.md) — the staff-web layout contract from 320 px upward: breakpoints, navigation, tables, touch targets, right-to-left and its verification matrix.
