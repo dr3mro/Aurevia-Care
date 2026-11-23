@@ -34,32 +34,22 @@ Production classes exercised by the active tests:
   the synthetic note and validation contract.
 
 The two test methods use `InMemoryTemplateStore` (the existing synthetic store) so they are
-deterministic and need no tenant context; they prove the in-process rule only. The class fixture does
-execute SQL against the forced-RLS `template_version` and `template_version_sequence` tables created
-by `db/migrations/V80__template_store.sql` and reads the frozen OPERATIVE row in
-`db/migrations/V87__baseline_templates.sql`, but no active test method goes through the durable
-`JdbcTemplateStore` or an HTTP route.
+deterministic and need no tenant context or database; they prove the in-process rule only. No test
+goes through the durable `JdbcTemplateStore`, the forced-RLS tables in
+`db/migrations/V80__template_store.sql`, the frozen OPERATIVE row in
+`db/migrations/V87__baseline_templates.sql`, or an HTTP route. Those durable layers were surveyed
+only; they were not executed by this evidence task.
 
-Complete-but-disabled proof for the **HTTP half** (`@Disabled(GAP)`, one shared reason naming the
-missing controller, routes and contract entries):
+The **HTTP half** is not proven here and is tracked as follow-up tasks (see the Gap section). The
+would-be HTTP proofs — a full-note save/read through `POST`/`GET /api/v1/templates/notes`, an HTTP 422
+for a note missing `complications`, an HTTP 403 for a `reception` actor, and an HTTP 404 cross-tenant
+concealment — are specified in the follow-up task requests rather than left as disabled tests in this
+pull request. No test is skipped or disabled: a skipped test cannot exercise the absent endpoint and
+only obscures the gap.
 
-- `savesAndReadsAnOperativeNoteWithAllSixRequiredFields` — saves a full note with
-  `POST /api/v1/templates/notes` (HTTP 201) and reads it with
-  `GET /api/v1/templates/notes/{noteId}` (HTTP 200), asserting all six fields on both responses.
-- `refusesAnOperativeNoteMissingARequiredField` — a note without `complications` is refused with
-  HTTP 422 and the `INVALID_NOTE` code. The machine-readable `missing:complications` violation is
-  asserted by the active domain test; surfacing it in the HTTP error body is part of the gap below.
-- `refusesOperativeNoteCaptureByNonClinicalRole` — a `reception` actor is refused with HTTP 403.
-- `concealsAnOperativeNoteFromAnotherTenant` — a note saved in one tenant is concealed from a
-  clinician of another tenant with HTTP 404.
-
-The class uses the throwaway database `smartclinic_cln04_operative_c02_it`, migrated from
-`db/migrations` and dropped in `@AfterAll`, with synthetic subjects in both tenants. Its fixture
-adopts the V87 OPERATIVE baseline as approved tenant version one (V87 is a global catalog and cannot
-write a tenant row itself) and sends a stable `Idempotency-Key` on every command POST; each HTTP test
-uses a distinct note id. Surefire for the
-targeted run: `tests="6" errors="0" skipped="4" failures="0"` — the four skips are exactly the
-gap-marked HTTP tests, so the pull request stays green. No test was weakened or deleted.
+The test class is a plain unit test with synthetic subjects; it creates no database and starts no
+Spring context. Surefire for the targeted run: `tests="2" errors="0" skipped="0" failures="0"`.
+No test was weakened, skipped or disabled.
 
 Discovery survey (where the rule lives today): the chart package
 `apps/api/src/main/java/com/aurevia/smartclinic/chart/record` has `EntryType` with only `PROBLEM`,
@@ -84,13 +74,13 @@ read over HTTP, so the API half of the clause is not proven.
    with a tag, an `Idempotency-Key` header on the POST and route-parity coverage), and the regenerated
    client. The 422 response must carry the machine-readable validation violations (for example
    `missing:complications`); the current `TemplateService` error carries only `INVALID_NOTE`. The durable `JdbcTemplateStore` and the V80/V87 migrations already exist; no new migration,
-   RLS policy or table is needed. Enabling the four disabled tests and proving 100% coverage of the
-   new controller is part of this work.
+   RLS policy or table is needed. Adding the HTTP-level tests (save/read, 422, 403, cross-tenant
+   404) and proving 100% coverage of the new controller is part of this work.
 2. **No staff-web capture surface.** `apps/staff-web` has no operative-template form; it only calls
    `/api/v1/clinical-notes` for CLN-05 free-text revisions. A form that saves the six fields against
    an approved template version, with UX and clinical review, is separate work.
 
-That is **two separate tasks**: (1) backend controller + contract + generated client + test enablement
+That is **two separate tasks**: (1) backend controller + contract + generated client + HTTP test addition
 with 100% coverage; (2) staff-web capture and clinical review. Real clinical acceptance remains a
 separate G5 human gate and is not claimed here.
 
