@@ -1,0 +1,5 @@
+- [-] FIX-STAFF-COMMAND-STATUS · Preserve lab success notices during queue reload and stabilize pharmacy detail assertions.
+  - agent: Codex
+  - requirements: LAB-01, RX-02
+  - scope: apps/staff-web/src/features/labcollection, apps/staff-web/src/features/pharmacyinbox/PharmacyItemPage.test.tsx
+  - details: Confirm collection and rejection after refreshing to an empty queue. Verify pharmacy flags after the detail reload commits.

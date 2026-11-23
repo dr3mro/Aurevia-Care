@@ -266,12 +266,14 @@ describe('PharmacyItemPage commands', () => {
     );
     expect(descriptorAt(2).headers['If-Match']).toBe(String(syntheticStatus.version));
     expect(descriptorAt(2).headers['Idempotency-Key']).toMatch(/^[0-9a-f-]{36}$/);
-    expect(screen.getByTestId('accepted-flag').textContent).toContain(
-      pharmacyText('en', 'flagYes'),
-    );
-    expect(screen.getByTestId('dispensed-flag').textContent).toContain(
-      pharmacyText('en', 'flagNo'),
-    );
+    await waitFor(() => {
+      expect(screen.getByTestId('accepted-flag').textContent).toContain(
+        pharmacyText('en', 'flagYes'),
+      );
+      expect(screen.getByTestId('dispensed-flag').textContent).toContain(
+        pharmacyText('en', 'flagNo'),
+      );
+    });
     expect(await screen.findByText(pharmacyText('en', 'commandDone'))).toBeTruthy();
   });
 
@@ -309,10 +311,12 @@ describe('PharmacyItemPage commands', () => {
       dispensedAt: '2026-11-21T10:30:00Z',
       handedOver: '30 tablets',
     });
-    expect(screen.getByTestId('accepted-flag').textContent).toContain(pharmacyText('en', 'flagNo'));
-    expect(screen.getByTestId('dispensed-flag').textContent).toContain(
-      pharmacyText('en', 'flagYes'),
-    );
+    await waitFor(() => {
+      expect(screen.getByTestId('accepted-flag').textContent).toContain(pharmacyText('en', 'flagNo'));
+      expect(screen.getByTestId('dispensed-flag').textContent).toContain(
+        pharmacyText('en', 'flagYes'),
+      );
+    });
     expect(await screen.findByText(pharmacyText('en', 'commandDone'))).toBeTruthy();
   });
 

@@ -51,6 +51,18 @@ export function CollectionDeskPage() {
   return <CollectionDeskContent key={organizationId} organizationId={organizationId} />;
 }
 
+/** Preserve the success announcement when the list screen is absent during reload. */
+function DetachedCollectionStatus({ hasRows, message }: { hasRows: boolean; message: string }) {
+  if (hasRows || message === '') {
+    return null;
+  }
+  return (
+    <p role="status" data-testid="collection-status">
+      {message}
+    </p>
+  );
+}
+
 function CollectionDeskContent({ organizationId }: { organizationId: string }) {
   const { locale } = useI18n();
   const { tokens } = useTheme();
@@ -150,6 +162,7 @@ function CollectionDeskContent({ organizationId }: { organizationId: string }) {
           {StateView.forTransportError(visibleCommandError)}
         </div>
       ) : null}
+      <DetachedCollectionStatus hasRows={loaded.length > 0} message={statusMessage} />
       {result.status === 'loading' && loaded.length === 0 ? (
         <LoadingState />
       ) : result.status === 'error' && loaded.length === 0 ? (

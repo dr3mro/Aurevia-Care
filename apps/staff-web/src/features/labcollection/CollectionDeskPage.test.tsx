@@ -188,6 +188,8 @@ describe('CollectionDeskPage commands', () => {
     verifyIdentity();
     fillSpecimen();
 
+    sendMock.mockResolvedValueOnce({});
+    sendMock.mockResolvedValueOnce({ items: [], nextCursor: null });
     fireEvent.click(screen.getByRole('button', { name: labText('en', 'recordCollection') }));
 
     await waitFor(() => expect(sendMock).toHaveBeenCalledTimes(3));
@@ -198,6 +200,7 @@ describe('CollectionDeskPage commands', () => {
     expect(command.body).toMatchObject({ specimenType: 'SERUM', expectedVersion: 1 });
     expect(command.headers['If-Match']).toBe('1');
     expect(descriptorAt(2).method).toBe('GET');
+    expect(await screen.findByText(stateViewText('en', 'empty'))).toBeTruthy();
     expect(screen.getByTestId('collection-status').textContent).toContain(
       labText('en', 'collectionRecorded'),
     );
@@ -272,6 +275,8 @@ describe('CollectionDeskPage commands', () => {
       target: { value: 'haemolysed' },
     });
 
+    sendMock.mockResolvedValueOnce({});
+    sendMock.mockResolvedValueOnce({ items: [], nextCursor: null });
     fireEvent.click(screen.getByRole('button', { name: labText('en', 'rejectSpecimen') }));
 
     await waitFor(() => expect(sendMock).toHaveBeenCalledTimes(3));
@@ -281,6 +286,7 @@ describe('CollectionDeskPage commands', () => {
     expect(command.headers['If-Match']).toBe('1');
     expect(command.body).toMatchObject({ reason: 'haemolysed', expectedVersion: 1 });
     expect(command.headers['Idempotency-Key']).toMatch(/^[0-9a-f-]{36}$/);
+    expect(await screen.findByText(stateViewText('en', 'empty'))).toBeTruthy();
     expect(screen.getByTestId('collection-status').textContent).toContain(
       labText('en', 'specimenRejected'),
     );
