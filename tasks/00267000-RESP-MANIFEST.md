@@ -5,6 +5,8 @@
   - scope: apps/staff-web/public/manifest.webmanifest, apps/staff-web/tests/theme/manifest.test.ts
   - depends: RESP-DECISION
   - details:
+    Historical brief. Use the recorded evidence and PR to locate the delivered change before starting a follow-up.
+
     1. Read `apps/staff-web/public` and `docs/decisions/0004-responsive-staff-web.md`.
     2. Write `manifest.webmanifest`: name, short name, `display: standalone`, `start_url: "/"`, `scope: "/"`, `theme_color`, `background_color`, `dir: "auto"`, `lang: "en"`, no icons that do not exist in the repository. No service worker, no caching of clinical data and no offline mode: the portal must stay online-only.
     3. Test: valid JSON, required members, no `serviceWorker`, `start_url` is relative and holds no patient data.

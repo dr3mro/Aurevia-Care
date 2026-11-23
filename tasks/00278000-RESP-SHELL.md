@@ -5,6 +5,9 @@
   - scope: apps/staff-web/src/app/AppShell.tsx, apps/staff-web/tests/app/AppShell.responsive.test.tsx
   - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-DRAWER, RESP-ORGSWITCH, RESP-BUTTON
   - details:
+    Historical brief. Use the recorded evidence and PR to locate the delivered change before starting a follow-up.
+    Current reference points to verify against that delivery are `docs/design/responsive-layout.md`, `apps/staff-web/src/app/AppShell.tsx`.
+
     1. Read `AppShell.tsx`, `navigation.ts`, `NavigationDrawer.tsx`, `OrgSwitcher.tsx`, `docs/design/screens-and-navigation.md` and `docs/design/responsive-layout.md`.
     2. Use `useBreakpoint`: compact shows a slim header (menu button, title, organization switcher, user menu collapsed into one button) and the drawer; medium shows the icon rail with accessible names and tooltips that also work on focus and long press; expanded shows the full rail. Keep the skip link, the landmarks, focus to `<main>` on route change, the theme toggle, the locale toggle and sign out; they may move into the user menu on phones but stay reachable in two taps. The rail is on the inline-start side in both directions.
     3. The main content uses the page class and never scrolls horizontally. Safe-area insets apply to the header and the bottom edge.

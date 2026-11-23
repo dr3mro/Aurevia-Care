@@ -5,6 +5,9 @@
   - requirements: MSG-02, ARC-07, WEB-05
   - scope: contracts/openapi.yaml, contracts/openapi, apps/staff-web/src/api/generated/openapi.d.ts, apps/api/src/main/java/com/aurevia/smartclinic/staffmsg/instant, apps/api/src/test/java/com/aurevia/smartclinic/staffmsg/instant
   - details:
+    Historical brief. Use the recorded evidence and PR to locate the delivered change before starting a follow-up.
+    Current reference points to verify against that delivery are `apps/api/src/main/java/com/aurevia/smartclinic/staffmsg/instant/InstantMessagingContract.java`, `apps/api/src/main/java/com/aurevia/smartclinic/staffmsg/instant/InstantMessagingService.java`.
+
     Problem: Delivery "Java and database verification" on SMSG-03 (PR #1497) ran 4108 tests and 4 failed, all OpenAPI contract tests, because the `/api/v1/staff/instant/*` routes are not correctly in `contracts/openapi.yaml`. Work on the SMSG-03 branch of PR #1497 when it is still open; otherwise on top of main.
     1. `OpenApiContractRulesTest.committedStaffApiContractSatisfiesEveryRule`: give every instant operation a tag, and declare the `Idempotency-Key` header on every POST and DELETE (`/staff/instant/direct`, `/groups`, `/participants`, `/{conversationId}/participants/{subject}`, `/read`). The two GETs `/{conversationId}/messages` and `/conversations`, and `/unread`, only need the tag.
     2. `OpenApiPaginationRulesTest` (two tests): `listInstantMessages`, `listInstantUnreadCounts` and `listInstantConversations` are list GETs. Give each the query parameters `cursor` and `limit` and a `nextCursor` field in the response, and implement that in the controller, or change the response so it is not a list. Do not exempt them; the only allowed exemption is `listCatalogFamily`.

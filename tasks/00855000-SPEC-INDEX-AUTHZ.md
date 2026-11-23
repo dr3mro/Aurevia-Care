@@ -3,6 +3,12 @@
   - scope: docs/spec/clauses/authz/index.md
   - depends: SPEC-IAM-01-C01, SPEC-IAM-01-C02, SPEC-IAM-01-C03, SPEC-IAM-01-C04, SPEC-IAM-01-C05, SPEC-IAM-01-C06, SPEC-IAM-02-C01, SPEC-IAM-02-C02, SPEC-IAM-02-C03, SPEC-IAM-02-C04, SPEC-ROLE-RECEPTION, SPEC-ROLE-CLINICAL-ASSISTANT, SPEC-ROLE-CLINICIAN, SPEC-ROLE-LAB-COLLECTOR-VERIFIER, SPEC-ROLE-RADIOLOGY-STAFF-INTERPRETER, SPEC-ROLE-PT-CLINICIAN, SPEC-ROLE-PHARMACY-STAFF, SPEC-ROLE-FINANCE, SPEC-ROLE-TENANT-ADMIN-PRIVACY, SPEC-ROLE-PATIENT
   - details:
+    Agent brief. Use the acceptance criteria below to select the smallest change that meets the task outcome.
+    Current starting points to inspect are `scripts/check-docs.py`.
+    Identify the nearest integration or feature test and reproduce the acceptance gap before writing production code.
+    Await these open prerequisites before implementation: SPEC-ROLE-RECEPTION, SPEC-ROLE-CLINICAL-ASSISTANT, SPEC-ROLE-CLINICIAN, SPEC-ROLE-LAB-COLLECTOR-VERIFIER, SPEC-ROLE-RADIOLOGY-STAFF-INTERPRETER, SPEC-ROLE-PT-CLINICIAN, SPEC-ROLE-PHARMACY-STAFF, SPEC-ROLE-FINANCE, SPEC-ROLE-TENANT-ADMIN-PRIVACY, SPEC-ROLE-PATIENT.
+    These scope paths are absent in this snapshot and need confirmation as planned paths or stale references: `docs/spec/clauses/authz/index.md`.
+
     1. List every `.md` file in `docs/spec/clauses/authz` except `index.md`. Read the `## Status` line of each.
     2. Write `docs/spec/clauses/authz/index.md`: a table with the clause (first sentence of `## Clause`, shortened), the requirement id, the status and a link to the note, then a count per status at the top.
     3. Run `python3 -I scripts/check-docs.py` and paste the result.

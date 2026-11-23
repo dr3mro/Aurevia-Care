@@ -5,6 +5,8 @@
   - scope: apps/patient-mobile/app.json
   - depends: RESP-APP-DECISION
   - details:
+    Historical brief. Use the recorded evidence and PR to locate the delivered change before starting a follow-up.
+
     1. Read `apps/patient-mobile/app.json` and `docs/decisions/0005-patient-app-tablets.md`.
     2. Set `ios.supportsTablet` to true, `orientation` to `default`, keep every other key, and add `ios.requireFullScreen: false` so split view and slide over work. Do not add a plugin or a dependency.
     3. Run the JSON through `python3 -m json.tool`, then `bash apps/patient-mobile/check.sh`, and paste the results.

@@ -3,6 +3,12 @@
   - scope: apps/staff-web/e2e/reflowAndZoom.spec.ts
   - depends: RESP-E2E-PROJECTS
   - details:
+    Agent brief. Use the acceptance criteria below to select the smallest change that meets the task outcome.
+    Current starting points to inspect are `docs/design/responsive-layout.md`, `apps/staff-web/src/app/routes.tsx`.
+    Start with the existing assertions in `apps/staff-web/e2e/smoke.spec.ts` and add a failing case for the acceptance gap.
+    These scope paths are absent in this snapshot and need confirmation as planned paths or stale references: `apps/staff-web/e2e/reflowAndZoom.spec.ts`.
+    Run `bash apps/staff-web/check.sh` and confirm 100% coverage on changed source files.
+
     1. Read `e2e/playwright.config.ts`, `e2e/smoke.spec.ts` and `docs/design/responsive-layout.md`. List the routes from `src/app/routes.tsx` and the feature `routes.ts` files and use synthetic data only.
     2. At 320 px wide and at 200 percent and 400 percent browser zoom, content reflows without two-dimensional scrolling except in labelled scroll regions, and text spacing overrides (line height 1.5, letter spacing 0.12 em, word spacing 0.16 em) cause no clipping (WCAG 1.4.10 and 1.4.12).
     3. Write `e2e/reflowAndZoom.spec.ts` with one test per route and project where it applies; failure messages name the route, project and measurement. If a check fails on a real defect, do not weaken the test and do not leave it red: mark that single test `test.fixme` with the reason and the route, and list each defect under `## Why this is not finished` so a follow-up task is written.

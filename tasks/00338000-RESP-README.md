@@ -3,6 +3,11 @@
   - scope: apps/staff-web/README.md
   - depends: RESP-E2E-PROJECTS
   - details:
+    Agent brief. Use the acceptance criteria below to select the smallest change that meets the task outcome.
+    Current starting points to inspect are `docs/design/responsive-layout.md`, `scripts/check-docs.py`.
+    Identify the nearest integration or feature test and reproduce the acceptance gap before writing production code.
+    Run `bash apps/staff-web/check.sh` and confirm 100% coverage on changed source files.
+
     1. Read `apps/staff-web/README.md` and `docs/design/responsive-layout.md`.
     2. Add one section "Responsive layout": the three width classes, the stylesheet and hook, how to run the device projects (`npm run e2e -- --project=phone-portrait`), how to emulate a phone in a desktop browser, and the rule that no feature may hide a clinical field on a small screen. Keep every other line.
     3. Run `python3 -I scripts/check-docs.py` and paste the result.

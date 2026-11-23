@@ -5,6 +5,9 @@
   - scope: apps/patient-mobile/src/app/layout/useWindowClass.ts, apps/patient-mobile/src/app/layout/useWindowClass.test.ts
   - depends: RESP-APP-DECISION
   - details:
+    Historical brief. Use the recorded evidence and PR to locate the delivered change before starting a follow-up.
+    Current reference points to verify against that delivery are `apps/patient-mobile/src/app/layout/useWindowClass.ts`.
+
     1. Read `apps/patient-mobile/src/app` and `docs/decisions/0005-patient-app-tablets.md`.
     2. Add `useWindowClass()` using React Native `useWindowDimensions`: `compact` below 600, `regular` 600 to 839, `large` 840 and above, plus `isLandscape`, `fontScale` and safe-area insets (use the existing safe-area library if the app already has one; otherwise take insets as an optional argument, add no dependency). Export a pure `windowClassFor(width)`.
     3. Tests: boundary widths 599, 600, 839 and 840; landscape flag; the hook reacts to dimension changes.

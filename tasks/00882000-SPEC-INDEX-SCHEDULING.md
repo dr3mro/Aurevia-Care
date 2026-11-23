@@ -3,6 +3,11 @@
   - scope: docs/spec/clauses/scheduling/index.md
   - depends: SPEC-CLN-01-C01, SPEC-CLN-01-C02, SPEC-CLN-01-C03, SPEC-CLN-01-C04, SPEC-CLN-01-C05, SPEC-CLN-02-C01, SPEC-CLN-02-C02, SPEC-CLN-02-C03, SPEC-CLN-02-C04, SPEC-CLN-02-C05
   - details:
+    Agent brief. Use the acceptance criteria below to select the smallest change that meets the task outcome.
+    Current starting points to inspect are `scripts/check-docs.py`.
+    Identify the nearest integration or feature test and reproduce the acceptance gap before writing production code.
+    These scope paths are absent in this snapshot and need confirmation as planned paths or stale references: `docs/spec/clauses/scheduling/index.md`.
+
     1. List every `.md` file in `docs/spec/clauses/scheduling` except `index.md`. Read the `## Status` line of each.
     2. Write `docs/spec/clauses/scheduling/index.md`: a table with the clause (first sentence of `## Clause`, shortened), the requirement id, the status and a link to the note, then a count per status at the top.
     3. Run `python3 -I scripts/check-docs.py` and paste the result.

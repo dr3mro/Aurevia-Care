@@ -5,6 +5,9 @@
   - scope: apps/patient-mobile/src/app/RootNavigator.tsx, apps/patient-mobile/src/app/RootNavigator.tablet.test.tsx
   - depends: RESP-APP-LAYOUT-HOOK, RESP-APP-CONFIG
   - details:
+    Historical brief. Use the recorded evidence and PR to locate the delivered change before starting a follow-up.
+    Current reference points to verify against that delivery are `apps/patient-mobile/src/app/layout/useWindowClass.ts`, `apps/patient-mobile/src/app/RootNavigator.tsx`.
+
     1. Read the component, its existing test, `docs/decisions/0005-patient-app-tablets.md` and `src/app/layout/useWindowClass.ts`.
     2. Make it work on compact, regular and large windows, portrait and landscape, with font scale 1.0, 1.5 and 2.0: content has a maximum readable width and is centred on large windows; lists and detail use two panes on large windows where the screen is a list plus a detail (inbox and thread, appointments and detail, reports and detail); touch targets are at least 44 by 44 points; nothing is clipped at 200 percent text; safe-area insets are respected; focus order and screen-reader labels are unchanged; right-to-left mirrors; no persistent clinical cache is added (PAT-02).
     3. Add a new test file (named in `scope`) that renders the component at each window class and font scale and asserts the structure, the accessibility labels and the right-to-left case. Existing tests must still pass.

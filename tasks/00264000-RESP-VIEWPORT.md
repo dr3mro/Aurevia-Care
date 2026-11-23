@@ -5,6 +5,8 @@
   - scope: apps/staff-web/index.html, apps/staff-web/tests/indexability.test.ts
   - depends: RESP-DECISION
   - details:
+    Historical brief. Use the recorded evidence and PR to locate the delivered change before starting a follow-up.
+
     1. Read `apps/staff-web/index.html` and `tests/indexability.test.ts`.
     2. Set the viewport meta to `width=device-width, initial-scale=1, viewport-fit=cover` (never `user-scalable=no` or `maximum-scale`, which would break zoom for low-vision users). Add `<meta name="theme-color">` for light and dark with `media` attributes. Keep `noindex, nofollow` and `color-scheme`.
     3. Extend `indexability.test.ts` (keep its existing assertions) with: the viewport allows zoom, includes `viewport-fit=cover`, and both theme colours exist.

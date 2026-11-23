@@ -3,6 +3,12 @@
   - scope: docs/spec/clauses/gates/index.md
   - depends: SPEC-G0-01, SPEC-G0-02, SPEC-G0-03, SPEC-G1-01, SPEC-G1-02, SPEC-G1-03, SPEC-G1-04, SPEC-G1-05, SPEC-G2-01, SPEC-G2-02, SPEC-G2-03, SPEC-G2-04, SPEC-G3-01, SPEC-G3-02, SPEC-G3-03, SPEC-G3-04, SPEC-G3-05, SPEC-G4-01, SPEC-G4-02, SPEC-G4-03, SPEC-G4-04, SPEC-G4-05
   - details:
+    Agent brief. Use the acceptance criteria below to select the smallest change that meets the task outcome.
+    Current starting points to inspect are `scripts/check-docs.py`.
+    Identify the nearest integration or feature test and reproduce the acceptance gap before writing production code.
+    Await these open prerequisites before implementation: SPEC-G0-01, SPEC-G0-02, SPEC-G0-03, SPEC-G1-01, SPEC-G1-02, SPEC-G1-03, SPEC-G1-04, SPEC-G1-05, SPEC-G2-01, SPEC-G2-02, SPEC-G2-03, SPEC-G2-04, SPEC-G3-01, SPEC-G3-02, SPEC-G3-03, SPEC-G3-04, SPEC-G3-05, SPEC-G4-01, SPEC-G4-02, SPEC-G4-03, SPEC-G4-04, SPEC-G4-05.
+    These scope paths are absent in this snapshot and need confirmation as planned paths or stale references: `docs/spec/clauses/gates/index.md`.
+
     1. List every `.md` file in `docs/spec/clauses/gates` except `index.md`. Read the `## Status` line of each.
     2. Write `docs/spec/clauses/gates/index.md`: a table with the clause (first sentence of `## Clause`, shortened), the requirement id, the status and a link to the note, then a count per status at the top.
     3. Run `python3 -I scripts/check-docs.py` and paste the result.

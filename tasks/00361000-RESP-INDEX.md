@@ -5,6 +5,9 @@
   - scope: docs/reference/index.md
   - depends: RESP-DESIGN, RESP-APP-DECISION
   - details:
+    Historical brief. Use the recorded evidence and PR to locate the delivered change before starting a follow-up.
+    Current reference points to verify against that delivery are `docs/design/responsive-layout.md`, `scripts/check-docs.py`.
+
     1. Read `docs/reference/index.md`. List which of these exist now: `docs/design/responsive-layout.md`, `docs/decisions/0004-responsive-staff-web.md`, `docs/decisions/0005-patient-app-tablets.md`.
     2. Add one line for each page that exists and is not linked, with a one-line description, in the section where it fits. Do not link a page that does not exist.
     3. Run `python3 -I scripts/check-docs.py` and paste the result.

@@ -1,9 +1,16 @@
-- [ ] RESP-NOT-FOUND-PAGE · Staff web: responsive `NotFoundPage` (app)
+- [x] RESP-NOT-FOUND-PAGE · Staff web: responsive `NotFoundPage` (app)
+  - evidence: Git history confirms PR #720 merged into main at 3797385b.
+  - pr: #720
   - attempts: 1
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/app/NotFoundPage.tsx, apps/staff-web/tests/responsive/app/NotFoundPage.responsive.test.tsx
   - depends: RESP-BREAKPOINTS, RESP-STYLESHEET, RESP-BUTTON, RESP-DATATABLE, RESP-FORM, RESP-FORMFIELD, RESP-DIALOG, RESP-STATEVIEWS
   - details:
+    Agent brief. Use the acceptance criteria below to select the smallest change that meets the task outcome.
+    Current starting points to inspect are `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/useBreakpoint.ts`.
+    Start with the existing assertions in `apps/staff-web/tests/responsive/app/NotFoundPage.responsive.test.tsx` and add a failing case for the acceptance gap.
+    Run `bash apps/staff-web/check.sh` and confirm 100% coverage on changed source files.
+
     1. Read the component, its existing test, `docs/design/responsive-layout.md`, `apps/staff-web/src/theme/responsive.css` and `apps/staff-web/src/theme/useBreakpoint.ts`.
     2. Make it work at 320, 360, 390, 768, 820, 1024 and 1280 px, left-to-right and right-to-left: no horizontal page scroll; no clipped or overlapping text; long English and Arabic strings wrap; columns stack on phones; coarse pointers get 44 by 44 CSS px targets; inputs use 16 px text; safe-area insets are respected; everything uses CSS logical properties; no clinical column or field is hidden with `display: none`; text at 200 percent zoom stays readable. 
     3. Use the classes in `responsive.css` and the hook rather than new CSS. If a class you need is missing, do not edit the stylesheet: use logical inline styles and record the missing class under `## Lessons for workers`.

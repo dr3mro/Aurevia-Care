@@ -5,6 +5,9 @@
   - scope: docs/design/screens-and-navigation.md
   - depends: RESP-DECISION
   - details:
+    Historical brief. Use the recorded evidence and PR to locate the delivered change before starting a follow-up.
+    Current reference points to verify against that delivery are `docs/design/screens-and-navigation.md`, `scripts/check-docs.py`.
+
     1. Read `docs/design/screens-and-navigation.md` and `docs/decisions/0004-responsive-staff-web.md`.
     2. Replace the statement that below 768 px the staff web shows a "use a larger screen" notice with the responsive rules from the decision: drawer on phones, icon rail from 768 to 1279 px, full rail from 1280 px. Update the navigation row and the supported widths paragraph only; keep every other line.
     3. Run `python3 -I scripts/check-docs.py` and paste the result.
