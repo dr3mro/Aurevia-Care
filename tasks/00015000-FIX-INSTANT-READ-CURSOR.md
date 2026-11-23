@@ -1,5 +1,4 @@
-- [-] FIX-INSTANT-READ-CURSOR · Persist monotonic instant-message read cursors
-  - agent: swarm-3
+- [ ] FIX-INSTANT-READ-CURSOR · Persist monotonic instant-message read cursors
   - attempts: 1
   - requirements: MSG-02, ARC-02, ARC-07
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/staffmsg/instant, apps/api/src/test/java/com/aurevia/smartclinic/staffmsg/instant, db/migrations/V96__staff_message_read_cursor.sql

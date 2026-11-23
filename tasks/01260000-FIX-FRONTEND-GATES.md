@@ -1,5 +1,4 @@
-- [-] FIX-FRONTEND-GATES · Stabilize Facilities RTL assertions and restore mobile lint startup.
-  - agent: swarm-5
+- [ ] FIX-FRONTEND-GATES · Stabilize Facilities RTL assertions and restore mobile lint startup.
   - attempts: 1
   - requirements: WEB-07, UX-01, OPS-06
   - scope: apps/staff-web/tests/responsive/features-admin/FacilitiesPage.responsive.test.tsx, apps/patient-mobile/eslint.config.mjs
