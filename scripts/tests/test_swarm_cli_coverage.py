@@ -9,6 +9,7 @@ output). All data is synthetic; no test reaches the network, a real repository,
 ``TODO.md``, ``.agent/`` or a real credential.
 """
 
+import contextlib
 import io
 import json
 import os
@@ -201,6 +202,13 @@ class MainDispatchCoverageTests(CliTestCase):
         self.assertEqual(emitted["count"], "0")
         self.assertIn("repository rules", emitted["reason"])
         note.assert_not_called()
+
+    def test_main_reconcile_tasks_reports_a_blocked_push_without_crashing(self):
+        with mock.patch.object(swarm, "reconcile_tasks",
+                               side_effect=swarm.TrackerPushBlocked()), \
+                contextlib.redirect_stderr(io.StringIO()) as err:
+            self.assertEqual(swarm.main(["reconcile-tasks"]), 0)
+        self.assertIn("repository rules", err.getvalue())
 
     def test_main_archive_todo_prints_the_archived_count(self):
         with mock.patch.object(swarm, "archive_todo", return_value=2):

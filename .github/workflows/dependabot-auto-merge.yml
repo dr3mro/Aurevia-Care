@@ -8,6 +8,7 @@ permissions:
 concurrency:
   group: dependabot-auto-merge-${{ github.ref }}
   cancel-in-progress: false
+  queue: max
 jobs:
   auto-merge:
     if: github.actor == 'dependabot[bot]'

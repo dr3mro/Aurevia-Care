@@ -18,6 +18,7 @@ permissions:
 concurrency:
   group: swarm-debugger
   cancel-in-progress: false
+  queue: max
 env:
   SWARM_GIT_NAME: ${{ vars.SWARM_GIT_NAME }}
   SWARM_GIT_EMAIL: ${{ vars.SWARM_GIT_EMAIL }}
@@ -100,7 +101,7 @@ jobs:
         run: |
           runner=$(mktemp)
           trap 'rm -f "$runner"' EXIT
-          git show "origin/$BASE_BRANCH:scripts/agent-run.sh" > "$runner"
+          git -c safe.directory='*' show "origin/$BASE_BRANCH:scripts/agent-run.sh" > "$runner"
           bash "$runner" fetch-main || true
       - name: Collect the failure context
         env:
@@ -111,7 +112,7 @@ jobs:
           mkdir -p .agent
           runner=$(mktemp)
           trap 'rm -f "$runner"' EXIT
-          git show "origin/$BASE_BRANCH:scripts/swarm.py" > "$runner"
+          git -c safe.directory='*' show "origin/$BASE_BRANCH:scripts/swarm.py" > "$runner"
           python3 -I "$runner" pr-context --pr "$PR_NUMBER" --out .agent/debug-context.md || true
           python3 -I "$runner" issue-context --task "$STORY_ID" || true
       - name: Start PostgreSQL for the integration tests
@@ -130,7 +131,7 @@ jobs:
           # Keep the PR checkout for diagnosis. Older PRs may predate the debug command.
           runner=$(mktemp)
           trap 'rm -f "$runner"' EXIT
-          git show "$GITHUB_SHA:scripts/agent-run.sh" > "$runner"
+          git -c safe.directory='*' show "$GITHUB_SHA:scripts/agent-run.sh" > "$runner"
           bash "$runner" debug
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: always()

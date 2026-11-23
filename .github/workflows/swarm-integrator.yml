@@ -16,6 +16,7 @@ permissions:
 concurrency:
   group: swarm-integrator
   cancel-in-progress: false
+  queue: max
 env:
   SWARM_GIT_NAME: ${{ vars.SWARM_GIT_NAME }}
   SWARM_GIT_EMAIL: ${{ vars.SWARM_GIT_EMAIL }}

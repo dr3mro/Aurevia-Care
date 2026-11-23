@@ -16,6 +16,7 @@ permissions:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
+  queue: max
 
 jobs:
   policy:
@@ -37,7 +38,11 @@ jobs:
         run: |
           python3 -m venv "$RUNNER_TEMP/actionlint"
           "$RUNNER_TEMP/actionlint/bin/pip" install -q actionlint-py==1.7.12.25
-          "$RUNNER_TEMP/actionlint/bin/actionlint"
+          # actionlint 1.7.12 predates GitHub's concurrency `queue` key. Ignore
+          # only that unknown-key message; scripts/tests/test_workflow_concurrency.py
+          # asserts every workflow declares queue: max.
+          "$RUNNER_TEMP/actionlint/bin/actionlint" \
+            -ignore 'unexpected key "queue" for "concurrency" section'
       - name: Agent pack, docs and secret checks
         run: |
           python3 -I scripts/project-name.py displayName >/dev/null

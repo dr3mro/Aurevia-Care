@@ -258,7 +258,10 @@ else
   skip_step "policy: shell syntax and shellcheck" "shellcheck not installed"
 fi
 if command -v actionlint >/dev/null; then
-  run_step "policy: workflow lint (actionlint)" actionlint
+  # actionlint 1.7.12 predates GitHub's concurrency `queue` key; the queue
+  # contract itself is asserted by scripts/tests/test_workflow_concurrency.py.
+  run_step "policy: workflow lint (actionlint)" command actionlint \
+    -ignore 'unexpected key "queue" for "concurrency" section'
 else
   skip_step "policy: workflow lint (actionlint)" "actionlint not installed"
 fi
