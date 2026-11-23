@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { defined } from '../../components/invariant';
 import { useI18n } from '../../i18n/I18nProvider';
 import { useBreakpoint } from '../../theme/useBreakpoint';
 import { AppointmentWorklist } from './AppointmentWorklist';
@@ -70,20 +71,20 @@ export function SchedulingScreen({
   const wrappingStyle = { overflowWrap: 'anywhere' } as const;
 
   function handleCheckIn(id: string) {
-    // Row actions exist only for visible ids, so the target is always present.
-    const target = items.find((appointment) => appointment.id === id);
-    if (target === undefined) {
-      return;
-    }
+    // Row actions exist only for visible ids; `defined` records that invariant.
+    const target = defined(
+      items.find((appointment) => appointment.id === id),
+      'checked-in appointment',
+    );
     setAnnouncement(`${target.patientName.latinName}: ${schedulingText(locale, 'commandSent')}`);
     onCheckIn(id);
   }
 
   function handleAssign(id: string, assignee: string) {
-    const target = items.find((appointment) => appointment.id === id);
-    if (target === undefined) {
-      return;
-    }
+    const target = defined(
+      items.find((appointment) => appointment.id === id),
+      'assigned appointment',
+    );
     setItems((current) =>
       replaceAppointment(current, organizationId, id, (appointment) =>
         applyCommand(appointment, { kind: 'assign', assignee }),

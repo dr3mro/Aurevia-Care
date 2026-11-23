@@ -3,6 +3,7 @@ import { useActiveOrganization } from '../../api/activeOrganization';
 import { TransportError } from '../../api/transport';
 import { useApi } from '../../api/useApi';
 import { Button } from '../../components/Button';
+import { defined } from '../../components/invariant';
 import { EmptyState, LoadingState, StateView } from '../../components/StateViews';
 import { useI18n } from '../../i18n/I18nProvider';
 import { useBreakpoint } from '../../theme/useBreakpoint';
@@ -104,10 +105,11 @@ export function SchedulingPage({ anchorCivilDate }: SchedulingPageProps) {
   }, [refetch, setCursor, setAccumulated, setNextCursor, setCommandError]);
 
   async function handleCheckIn(id: string) {
-    const target = loaded.find((appointment) => appointment.id === id);
-    if (target === undefined) {
-      return;
-    }
+    // Row actions only exist for loaded ids; `defined` records that invariant.
+    const target = defined(
+      loaded.find((appointment) => appointment.id === id),
+      'checked-in appointment',
+    );
     try {
       await checkIn(id, target.version, organizationId);
       setCommandError(undefined);

@@ -46,11 +46,11 @@ const wrappingStyle = {
  * @returns The wrapped title, each labelled field, the status and void state.
  */
 function documentValues(document: DocumentAssociation, locale: Locale): DocumentValues {
+  // Resolve the fallback once: the guard below only selects a localized title
+  // when it is a non-empty string, so re-applying `?? ''` here would be dead.
+  const titleLocal = document.titleLocal ?? '';
   return {
-    title:
-      locale === 'ar' && (document.titleLocal ?? '') !== ''
-        ? (document.titleLocal ?? '')
-        : document.title,
+    title: locale === 'ar' && titleLocal !== '' ? titleLocal : document.title,
     kind: document.kind.toUpperCase(),
     version: document.version,
     language: chartText(locale, document.language === 'ar' ? 'languageAr' : 'languageEn'),

@@ -92,10 +92,10 @@ function CodedEntryTable({
         ) : (
           entries.map((entry) => {
             const key = `${entry.organizationId}:${entry.id}`;
-            const shown =
-              locale === 'ar' && (entry.displayLocal ?? '') !== ''
-                ? (entry.displayLocal ?? '')
-                : entry.display;
+            // One fallback resolution feeds both the check and the displayed
+            // value; a second `?? ''` in the branch could never be reached.
+            const displayLocal = entry.displayLocal ?? '';
+            const shown = locale === 'ar' && displayLocal !== '' ? displayLocal : entry.display;
             return (
               <tr key={key}>
                 <th scope="row" style={{ ...WRAPPING_STYLE, border }}>

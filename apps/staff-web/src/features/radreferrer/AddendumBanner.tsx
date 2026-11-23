@@ -39,7 +39,6 @@ export function AddendumBanner({
   // Split each translated sentence around its named placeholder so the order-
   // local version digit is an isolated LTR run under an RTL interface.
   const [bodyLead, bodyTail] = radreferrerText(locale, 'addendumBody').split('{version}');
-  const [actionLead, actionTail] = radreferrerText(locale, 'acknowledgeVersion').split('{version}');
   return (
     <div
       data-testid="addendum-banner"
@@ -67,7 +66,10 @@ export function AddendumBanner({
             </div>
             <button
               type="button"
-              aria-label={`${actionLead}${addendum.version}${actionTail ?? ''}`}
+              aria-label={radreferrerText(locale, 'acknowledgeVersion').replace(
+                '{version}',
+                String(addendum.version),
+              )}
               onClick={() => onAcknowledge(addendum)}
             >
               {radreferrerText(locale, 'acknowledge')}
