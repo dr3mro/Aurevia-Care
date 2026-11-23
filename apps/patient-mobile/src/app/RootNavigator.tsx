@@ -24,8 +24,12 @@ import {
   RecoveryScreen,
   SupportRequestScreen,
 } from '../features/enrollment/screens';
+import { applyRegistration, commandForSession } from '../features/notifications/registration';
 
+import type { DeviceWriteClient } from '../features/appointments/deviceClient';
+import { eligibleTokens } from '../features/appointments/devices';
 import { SCREEN_TOKENS } from '../features/appointments/patientDesign';
+import type { DeviceToken } from '../features/appointments/types';
 
 import { applyDirection } from './direction';
 import { useWindowClass } from './layout/useWindowClass';
@@ -53,7 +57,7 @@ import {
   ConversationInboxPage,
   ReleasedReportsPage,
 } from './patientPages';
-import type { PatientPageProps } from './patientPages';
+import type { AppointmentListPageProps, PatientPageProps } from './patientPages';
 import { ScreenStack, type StackRoute } from './ScreenStack';
 import { SignedOutScreen } from './SignedOutScreen';
 import { TAB_DEFINITIONS, type TabId } from './tabs';
@@ -66,6 +70,23 @@ const Tab = createBottomTabNavigator<RootTabParamList>();
 /** Synthetic organization and patient identifiers until identity is wired. */
 const SYNTHETIC_ORGANIZATION_ID = 'synthetic-organization';
 const SYNTHETIC_PATIENT_ID = 'synthetic-patient';
+
+/**
+ * Device registered for the synthetic signed-in session in the installed shell.
+ *
+ * V1 publishes no server device-list route and account identity is not wired,
+ * so the synthetic shell has no authoritative registration to project. Keeping
+ * this fixture beside the synthetic organization and patient ids means the
+ * seeded device still travels through the real registration command and the
+ * tenant/patient eligibility helpers before it reaches the appointments tab.
+ * A clinic-supplied device source replaces it when identity is wired.
+ */
+const SYNTHETIC_REGISTERED_DEVICE: DeviceToken = {
+  id: 'dev-1',
+  patientId: SYNTHETIC_PATIENT_ID,
+  state: 'active',
+  token: 'synthetic-device-token',
+};
 
 /**
  * Maximum inline width of readable content. On a large window the shell is
@@ -86,12 +107,20 @@ export interface RootNavigatorProps {
   readonly locale: Locale;
   /** Injectable transport; the shell builds a real one when omitted. */
   readonly transport?: Transport;
+  /**
+   * Device registered for the signed-in session. The installed shell omits this
+   * and uses its synthetic registration; tests inject a device to prove that
+   * only the verified patient's active device becomes a revoke control.
+   */
+  readonly registeredDevice?: DeviceToken;
+  /** Injectable device write port; the appointments page builds a real one when omitted. */
+  readonly deviceClient?: DeviceWriteClient;
   /** Optional hook for the host after the credential has been cleared. */
   readonly onSessionExpired?: () => void;
 }
 
 /** Appointments tab: the patient appointment list (PAT-01). */
-function AppointmentsTab(props: PatientPageProps) {
+function AppointmentsTab(props: AppointmentListPageProps) {
   return <AppointmentListPage {...props} />;
 }
 
@@ -244,7 +273,13 @@ function AccountTab({ locale }: PatientPageProps) {
 }
 
 /** Select the screen owned by one tab. */
-function TabContent({ id, pageProps }: { readonly id: TabId; readonly pageProps: PatientPageProps }) {
+function TabContent({
+  id,
+  pageProps,
+}: {
+  readonly id: TabId;
+  readonly pageProps: AppointmentListPageProps;
+}) {
   switch (id) {
     case 'appointments':
       return <AppointmentsTab {...pageProps} />;
@@ -304,7 +339,13 @@ function TabViewport({
  * @param props active display locale and optional transport/test hooks
  * @returns the application title and tabs, or the signed-out screen
  */
-export function RootNavigator({ locale, transport, onSessionExpired }: RootNavigatorProps) {
+export function RootNavigator({
+  locale,
+  transport,
+  registeredDevice,
+  deviceClient,
+  onSessionExpired,
+}: RootNavigatorProps) {
   const [signedOut, setSignedOut] = useState(false);
   const layout = useWindowClass();
   useEffect(() => {
@@ -350,12 +391,34 @@ export function RootNavigator({ locale, transport, onSessionExpired }: RootNavig
   ];
   const tabBarStyle = { minHeight: TOUCH_TARGET };
 
-  const pageProps: PatientPageProps = {
+  // Register the signed-in device and project it through the same tenant- and
+  // patient-scoped helpers the notification and appointment domains use, so a
+  // foreign or revoked registration can never become a revoke control. A plain const (not a hook)
+  // keeps the early return above free of a conditional hook call, and the page
+  // reads this mount-time seed before it renders any device action.
+  const devices = eligibleTokens(
+    applyRegistration(
+      new Map<string, DeviceToken>(),
+      commandForSession({
+        kind: 'signed_in',
+        organizationId: SYNTHETIC_ORGANIZATION_ID,
+        device: registeredDevice ?? SYNTHETIC_REGISTERED_DEVICE,
+      }),
+    ),
+    SYNTHETIC_ORGANIZATION_ID,
+    SYNTHETIC_PATIENT_ID,
+  );
+
+  const pageProps: AppointmentListPageProps = {
     transport: api,
     locale,
     organizationId: SYNTHETIC_ORGANIZATION_ID,
     patientId: SYNTHETIC_PATIENT_ID,
     onSessionExpired: handleSessionExpired,
+    initialDevices: devices,
+    // Only forward the host's port when one was supplied: an explicitly
+    // undefined optional property is rejected under exactOptionalPropertyTypes.
+    ...(deviceClient !== undefined ? { deviceClient } : {}),
   };
 
   return (
