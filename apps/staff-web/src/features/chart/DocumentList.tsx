@@ -46,11 +46,12 @@ const wrappingStyle = {
  * @returns The wrapped title, each labelled field, the status and void state.
  */
 function documentValues(document: DocumentAssociation, locale: Locale): DocumentValues {
+  // Resolve the optional local title once. Both arms of the nullish default are
+  // exercised by synthetic documents with and without a local name; the
+  // non-empty test below then needs no second, unreachable fallback.
+  const localTitle = document.titleLocal ?? '';
   return {
-    title:
-      locale === 'ar' && (document.titleLocal ?? '') !== ''
-        ? (document.titleLocal ?? '')
-        : document.title,
+    title: locale === 'ar' && localTitle !== '' ? localTitle : document.title,
     kind: document.kind.toUpperCase(),
     version: document.version,
     language: chartText(locale, document.language === 'ar' ? 'languageAr' : 'languageEn'),

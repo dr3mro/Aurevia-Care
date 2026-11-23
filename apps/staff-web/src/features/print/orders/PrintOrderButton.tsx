@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import { Button } from '../../../components/Button';
+import { defined } from '../../../components/invariant';
 import { useI18n } from '../../../i18n/I18nProvider';
 import type { HandoutLanguage, PrintReason } from '../components/messages';
 import { printReasonKey, printText } from '../components/messages';
@@ -56,9 +57,12 @@ function useDialogFocus(
         return;
       }
       // The dialog declares aria-modal, so Tab must not reach the controls
-      // behind it. Wrap focus among this dialog's own controls.
+      // behind it. Wrap focus among this dialog's own controls; the listener
+      // exists only while the dialog is mounted, so the ref is always present.
       const items = Array.from(
-        dialogRef.current?.querySelectorAll<HTMLElement>(focusableSelector) ?? [],
+        defined(dialogRef.current, 'order print dialog').querySelectorAll<HTMLElement>(
+          focusableSelector,
+        ),
       );
       const index = items.indexOf(document.activeElement as HTMLElement);
       event.preventDefault();

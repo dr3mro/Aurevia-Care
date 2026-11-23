@@ -1,5 +1,6 @@
 /** Synthetic, non-patient fixtures for the print profile settings screen. */
 
+import { defined } from '../../../components/invariant';
 import type { ApprovedLogoAsset, PrintProfileVersion } from './domain';
 
 /** Active tenant used by every synthetic print profile fixture. */
@@ -31,7 +32,7 @@ export const syntheticVersions: readonly PrintProfileVersion[] = [
     version: 1,
     facilityName: 'Synthetic Main Clinic v1',
     address: '1 Synthetic Way, Test City',
-    logoReference: required(approvedLogoAssets[0]).reference,
+    logoReference: defined(approvedLogoAssets[0], 'approved logo asset').reference,
     footerText: 'Synthetic footer v1 — not a real notice',
     defaultLanguage: 'en',
     paperSize: 'A4',
@@ -45,7 +46,7 @@ export const syntheticVersions: readonly PrintProfileVersion[] = [
     version: 2,
     facilityName: 'Synthetic Main Clinic v2',
     address: '2 Synthetic Way, Test City',
-    logoReference: required(approvedLogoAssets[1]).reference,
+    logoReference: defined(approvedLogoAssets[1], 'second approved logo asset').reference,
     footerText: 'Synthetic footer v2 — not a real notice',
     defaultLanguage: 'ar',
     paperSize: 'LETTER',
@@ -58,7 +59,7 @@ export const syntheticVersions: readonly PrintProfileVersion[] = [
     version: 1,
     facilityName: 'Other tenant clinic',
     address: '9 Other Way, Test City',
-    logoReference: required(approvedLogoAssets[0]).reference,
+    logoReference: defined(approvedLogoAssets[0], 'approved logo asset').reference,
     footerText: 'Other tenant synthetic footer',
     defaultLanguage: 'en',
     paperSize: 'A4',
@@ -66,10 +67,3 @@ export const syntheticVersions: readonly PrintProfileVersion[] = [
     approved: true,
   },
 ];
-
-function required<T>(value: T | null | undefined): T {
-  if (value === null || value === undefined) {
-    throw new Error('Expected value to be present');
-  }
-  return value;
-}

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button } from '../../components/Button';
+import { defined } from '../../components/invariant';
 import { useI18n } from '../../i18n/I18nProvider';
 import { useTheme } from '../../theme/ThemeProvider';
 import { CollectionForm } from './CollectionForm';
@@ -100,10 +101,9 @@ export function CollectionDeskScreen({
   // The command controls are only rendered with a selected order, so the
   // guards below only narrow the type.
   function handleCollect() {
-    if (selected === undefined) {
-      return;
-    }
-    const order = selected;
+    // Command controls render only with a selected order; the shared invariant
+    // narrows the type without leaving an unreachable early return.
+    const order = defined(selected, 'selected collection order');
     onCollect(order, {
       patientId: presented.patientId,
       accessionNo: presented.accessionNo,
@@ -118,17 +118,11 @@ export function CollectionDeskScreen({
   }
 
   function handlePrint() {
-    if (selected === undefined) {
-      return;
-    }
-    onPrint(selected);
+    onPrint(defined(selected, 'selected collection order'));
   }
 
   function handleReject() {
-    if (selected === undefined) {
-      return;
-    }
-    const order = selected;
+    const order = defined(selected, 'selected collection order');
     onReject(order, {
       reason: rejection.reason,
       detail: rejection.detail,

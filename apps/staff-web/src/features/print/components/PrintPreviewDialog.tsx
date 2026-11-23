@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { ReactNode, RefObject } from 'react';
 import { Button } from '../../../components/Button';
 import { ErrorState, ForbiddenState, LoadingState } from '../../../components/StateViews';
+import { defined } from '../../../components/invariant';
 import { useI18n } from '../../../i18n/I18nProvider';
 import { useTheme } from '../../../theme/ThemeProvider';
 import { printStyleId, printStylesheet } from '../styles/printStyles';
@@ -71,8 +72,12 @@ function useModalFocus(
       if (event.key !== 'Tab') {
         return;
       }
+      // The body stays mounted for the whole lifetime of this listener, so the
+      // container is a real element whenever a Tab key is handled.
       const items = Array.from(
-        containerRef.current?.querySelectorAll<HTMLElement>(focusableSelector) ?? [],
+        defined(containerRef.current, 'modal focus container').querySelectorAll<HTMLElement>(
+          focusableSelector,
+        ),
       );
       const index = items.indexOf(document.activeElement as HTMLElement);
       event.preventDefault();
