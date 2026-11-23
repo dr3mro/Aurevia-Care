@@ -310,11 +310,15 @@ class SignedRevisionsCannotEditedTest {
         ResponseEntity<String> edit = edit("clinician-a", ORG_A, id, "2", LATE_CONTENT);
         assertEquals(HttpStatus.CONFLICT, edit.getStatusCode(), edit.getBody());
         assertEquals("IMMUTABLE_REVISION", field(edit.getBody(), "code"));
+        // The public error message must name the rule, not just the machine code.
+        assertEquals("a signed revision cannot be edited", field(edit.getBody(), "message"));
 
         assertEquals(before, rowSnapshot(id), "a refused edit must not change the signed row");
         ResponseEntity<String> reread = request(HttpMethod.GET, "/api/v1/clinical-notes/" + id,
                 null, "clinician-a", ORG_A, null);
         assertEquals(HttpStatus.OK, reread.getStatusCode(), reread.getBody());
+        assertEquals(DRAFT_CONTENT, field(reread.getBody(), "content"),
+                "the originally signed content must survive the refused edit");
         assertTrue(reread.getBody().contains("\"signed\""));
         assertTrue(reread.getBody().contains(signedChecksum));
         assertFalse(reread.getBody().contains(LATE_CONTENT));

@@ -20,9 +20,11 @@ Active HTTP-level proof (`synthetic-auth` profile, a fresh PostgreSQL database m
   and `GET /api/v1/clinical-notes/{id}` routes; the chart clause paths are fixed by this story's scope.
 - `editingASignedNoteRevisionIsRefusedAndTheSignedRowIsUnchanged` — positive proof. A draft is created,
   signed at the version it was read at, and then edited with a still-valid `If-Match`. The edit is
-  refused with HTTP 409 and code `IMMUTABLE_REVISION`. A tenant-scoped SQL read of the current revision
-  verifies that `content`, `content_checksum`, `signer_subject`, `version` and `signed_at` are unchanged,
-  and a fresh read shows the signed checksum still present and the attempted late-edit content absent.
+  refused with HTTP 409 and code `IMMUTABLE_REVISION`, with the public message naming the rule
+  ("a signed revision cannot be edited"). A tenant-scoped SQL read of the current revision verifies
+  that `content`, `content_checksum`, `signer_subject`, `version` and `signed_at` are unchanged, and a
+  fresh HTTP read shows the originally signed content and checksum still present, no appended revision
+  and the attempted late-edit content absent.
 - `receptionCannotSignOrEditASignedNoteRevision` — negative proof. A `reception` member is refused
   HTTP 403 for both sign and edit, and the stored draft and signed rows are unchanged. Authorization
   runs before the version and state checks.
@@ -38,19 +40,23 @@ Active HTTP-level proof (`synthetic-auth` profile, a fresh PostgreSQL database m
 Production classes and files exercised through the normal HTTP entry point:
 
 - `com.aurevia.smartclinic.clinical.notes.ClinicalNoteController` — thin adapter publishing the draft,
-  sign, edit and read routes.
+  sign, edit and read routes; it binds `PUT /api/v1/clinical-notes/{id}` and parses the `If-Match`
+  precondition through `com.aurevia.smartclinic.api.IfMatch`.
 - `com.aurevia.smartclinic.clinical.notes.ClinicalNoteService` — `updateDraft` guard order
   (authorize, require version, require editable) and the `requireEditable` refusal of a signed
   revision with 409 `IMMUTABLE_REVISION`; `sign` performs attestation, required-field, patient-context
   and version validation.
 - `com.aurevia.smartclinic.clinical.notes.NoteState` — `DRAFT`, `SIGNED`, `AMENDMENT_DRAFT`, `ADDENDUM`
-  and `ENTERED_IN_ERROR`, with only drafts editable.
+  and `ENTERED_IN_ERROR`; `editable()` is `true` only for `DRAFT` and `AMENDMENT_DRAFT`, while
+  `SIGNED`, `ADDENDUM` and `ENTERED_IN_ERROR` are immutable.
 - `com.aurevia.smartclinic.clinical.notes.ClinicalNoteRevision`, `NoteRepository`, `NoteChecksum` and
   `NoteInputs` — the immutable revision record, tenant-guarded SQL boundary, SHA-256 content checksum
   and trust-boundary validation.
 - `db/migrations/V15__clinical_note_signing.sql` — append-only ledger with state, signer, signed time,
   attestation, content checksum and template version, tenant policies, trigger-owned versions and
-  no-update/no-delete/successor guards that preserve every prior revision.
+  no-update/no-delete/successor guards that preserve every prior revision. BEFORE triggers reject
+  direct UPDATE, DELETE and TRUNCATE of a stored revision, and the app role's UPDATE/DELETE/TRUNCATE
+  grants are revoked, so immutability holds in storage for every role, not only through the service.
 
 Additional active evidence already on the default branch:
 `com.aurevia.smartclinic.it.clinical.ClinicalNoteRevisionIntegrationTest.signedRevisionsCannotBeEditedOrReSigned`

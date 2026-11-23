@@ -327,13 +327,17 @@ class MainTest(unittest.TestCase):
 
     def test_integration_failure_still_fails_the_gate(self):
         # A repair task is strict: its failing class fails the gate even with no
-        # hand-off scope declared.
-        with mock.patch.object(worker_gate, "failing_classes",
-                               return_value={"RxTransmissionFlowTest"}):
-            with mock.patch.object(worker_gate.Path, "is_dir", return_value=True), \
+        # hand-off scope declared. Own a real, parseable report directory so the
+        # gate reads usable results without depending on Maven creating the
+        # shared Surefire directory first.
+        with tempfile.TemporaryDirectory() as reports:
+            (Path(reports) / "TEST-RxTransmissionFlowTest.xml").write_text(
+                '<testsuite name="RxTransmissionFlowTest" tests="1" errors="1" failures="0"/>')
+            with mock.patch.object(worker_gate, "failing_classes",
+                                   return_value={"RxTransmissionFlowTest"}), \
                  mock.patch.object(worker_gate, "changed_paths", return_value=[]), \
                  mock.patch.dict(os.environ, {"STORY_ID": "FIX-01"}, clear=True):
-                self.assertEqual(worker_gate.main(["1"]), 1)
+                self.assertEqual(worker_gate.main(["1", reports]), 1)
 
     def test_missing_maven_status_defaults_to_zero(self):
         self.assertEqual(self.run_main(argv=[]), 0)
