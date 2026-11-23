@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Finance reconciliation browser harness (synthetic data only)</title>
+  </head>
+  <body>
+    <!-- Dev-only harness for the bilingual finance journey (WEB-10, FIN-01).
+         Vite dev serves this at /e2e/financeflow/finance-harness.html. No
+         finance screen is routed in this checkout, so this mounts a small
+         workstation with the real locale and theme providers. The role query
+         parameter only chooses which synthetic role sends the command; it is
+         never a source of authorization in production. -->
+    <main>
+      <div id="finance-harness" data-testid="finance-harness"></div>
+    </main>
+    <script type="module" src="./finance-harness.tsx"></script>
+  </body>
+</html>
