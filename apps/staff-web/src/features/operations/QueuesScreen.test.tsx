@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
+import { defined } from '../../components/invariant';
 import { I18nProvider } from '../../i18n/I18nProvider';
 import type { Locale } from '../../i18n/messages';
 import { ThemeProvider } from '../../theme/ThemeProvider';
@@ -136,8 +137,13 @@ describe('QueuesScreen', () => {
     }));
     try {
       wrap(<Harness />);
-      const view = document.querySelector('[data-operations-layout]');
-      expect(view?.getAttribute('data-operations-layout')).toBe('stacked');
+      const view = defined(
+        document.querySelector<HTMLElement>('[data-operations-layout]'),
+        'operations layout',
+      );
+      expect(view.getAttribute('data-operations-layout')).toBe('stacked');
+      // A fixed 320px minimum would overflow a 320px phone after page padding.
+      expect(view.style.minInlineSize).toBe('0');
     } finally {
       vi.unstubAllGlobals();
     }

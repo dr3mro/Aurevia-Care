@@ -42,6 +42,19 @@ export function QueuesPage() {
   const [failedDraft, setFailedDraft] = useState<QueueDraft | undefined>(undefined);
   const [recoveryNotice, setRecoveryNotice] = useState<string | undefined>(undefined);
   const [generation, setGeneration] = useState(0);
+  const [draftOrganization, setDraftOrganization] = useState(organizationId);
+
+  // A tenant switch clears every draft synchronously during render. The page
+  // stays mounted while useApi refetches, so without this a reason typed for
+  // one tenant could be reopened and sent under the next tenant.
+  if (draftOrganization !== organizationId) {
+    setDraftOrganization(organizationId);
+    setDraft(undefined);
+    setFailedDraft(undefined);
+    setReasonError(undefined);
+    setCommandError(undefined);
+    setRecoveryNotice(undefined);
+  }
 
   const reload = (): void => setGeneration((value) => value + 1);
 

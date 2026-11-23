@@ -1,12 +1,5 @@
 import type { InboxMessageKey } from './labels';
-import type {
-  InboundMessage,
-  InboxView,
-  Message,
-  ScanState,
-  Thread,
-  ThreadState,
-} from './types';
+import type { ScanState, ThreadState } from './types';
 
 /**
  * Pure unit-inbox rules. Work-item creation and state words are derived here so
@@ -68,51 +61,3 @@ export function hasReason(value: string): boolean {
   return value.trim().length > 0;
 }
 
-/**
- * Build the work item created by a first inbound patient message. The work item
- * is unread and unassigned so a supervisor can see outstanding work immediately
- * (MSG-02); the server remains authoritative about the connection.
- */
-function newWorkItem(inbound: InboundMessage): Thread {
-  return {
-    id: inbound.threadId,
-    patientName: inbound.patientName,
-    patientId: inbound.patientId,
-    topic: inbound.topic,
-    state: 'new',
-    owner: '',
-    unread: true,
-    lastActivityAt: inbound.message.sentAt,
-    timeZone: inbound.message.timeZone,
-    connectionVerified: true,
-    version: 1,
-    messages: [inbound.message],
-  };
-}
-
-/**
- * Apply one inbound message: a new thread becomes a work item, and an existing
- * (including resolved) thread is reopened as new unread work. Other threads are
- * returned unchanged so a refresh never rebinds an open row to another patient.
- */
-export function applyInboundMessage(view: InboxView, inbound: InboundMessage): InboxView {
-  const existing = view.threads.find((thread) => thread.id === inbound.threadId);
-  if (existing === undefined) {
-    return { ...view, threads: [newWorkItem(inbound), ...view.threads] };
-  }
-  const appended: Message = inbound.message;
-  return {
-    ...view,
-    threads: view.threads.map((thread) =>
-      thread.id === inbound.threadId
-        ? {
-            ...thread,
-            messages: [...thread.messages, appended],
-            state: 'new',
-            unread: true,
-            lastActivityAt: appended.sentAt,
-          }
-        : thread,
-    ),
-  };
-}

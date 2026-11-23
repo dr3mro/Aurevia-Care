@@ -35,13 +35,25 @@ export interface InboxScreenProps {
   readonly onDiscardDraft: () => void;
 }
 
-/** State role styling; the word beside the role is the accessible signal. */
-function toneStyle(tokens: ThemeTokens, tone: ThreadTone): CSSProperties {
+/**
+ * State role styling; the word beside the role is the accessible signal.
+ * An active row is filled with the accent, so its chips invert to keep text
+ * and borders legible on that fill (WCAG 1.4.3) in both light and dark themes.
+ */
+function toneStyle(tokens: ThemeTokens, tone: ThreadTone, active: boolean): CSSProperties {
   if (tone === 'urgent') {
-    return { background: tokens.accent, color: tokens.background, border: `1px solid ${tokens.accent}` };
+    return {
+      background: active ? tokens.background : tokens.accent,
+      color: active ? tokens.accent : tokens.background,
+      border: `1px solid ${active ? tokens.background : tokens.accent}`,
+    };
   }
   if (tone === 'waiting') {
-    return { background: 'transparent', color: tokens.foreground, border: `2px solid ${tokens.border}` };
+    return {
+      background: 'transparent',
+      color: active ? tokens.background : tokens.foreground,
+      border: `2px solid ${active ? tokens.background : tokens.border}`,
+    };
   }
   return { background: tokens.background, color: tokens.foreground, border: `1px solid ${tokens.border}` };
 }
@@ -90,6 +102,18 @@ function ThreadRow({
   const { tokens } = useTheme();
   const tone = stateTone(thread.state);
   const owner = thread.owner === '' ? inboxText(locale, 'unassigned') : thread.owner;
+  // The accessible name carries every MSG-02 work-item fact, not just the
+  // heading: an aria-label replaces the child text for screen readers.
+  const nameParts = [
+    `${thread.patientName.latinName}: ${thread.topic}`,
+    formatInstant(thread.lastActivityAt, thread.timeZone, locale),
+    inboxText(locale, stateWordKey(thread.state)),
+    owner,
+    thread.patientId,
+  ];
+  if (thread.unread) {
+    nameParts.push(inboxText(locale, 'unread'));
+  }
   return (
     <li>
       <button
@@ -98,7 +122,7 @@ function ThreadRow({
         data-thread-state={thread.state}
         data-open={active}
         aria-current={active ? 'true' : undefined}
-        aria-label={`${thread.patientName.latinName}: ${thread.topic}`}
+        aria-label={nameParts.join(', ')}
         onClick={() => onSelect(thread.id)}
         style={{
           display: 'grid',
@@ -118,7 +142,10 @@ function ThreadRow({
         </span>
         <span>{thread.topic}</span>
         <span style={{ display: 'flex', gap: tokens.spacing.md }}>
-          <span data-tone={tone} style={{ ...toneStyle(tokens, tone), paddingInline: tokens.spacing.sm }}>
+          <span
+            data-tone={tone}
+            style={{ ...toneStyle(tokens, tone, active), paddingInline: tokens.spacing.sm }}
+          >
             {inboxText(locale, stateWordKey(thread.state))}
           </span>
           <span>{owner}</span>
@@ -162,7 +189,7 @@ function AttachmentChip({
       type="button"
       className="touch"
       data-scan-state={attachment.scanState}
-      aria-label={`Open attachment ${attachment.fileName}`}
+      aria-label={`Open attachment ${attachment.fileName}, ${attachment.sizeLabel}, ${inboxText(locale, scanWordKey(attachment.scanState))}`}
       onClick={() => onOpen(attachment.fileName)}
       style={style}
     >
@@ -421,7 +448,14 @@ export function InboxScreen({
         {inboxText(locale, 'unitInboxHeading').replace('{unit}', view.unit.name)}
       </h2>
       <UnitStrip unit={view.unit} locale={locale} />
-      <div className="grid-2" data-inbox-panels style={{ gridTemplateColumns: '320px minmax(0, 1fr)' }}>
+      <div
+        className="grid-2"
+        data-inbox-panels
+        style={{
+          gridTemplateColumns:
+            breakpoint === 'compact' ? 'minmax(0, 1fr)' : '320px minmax(0, 1fr)',
+        }}
+      >
         <section aria-label={inboxText(locale, 'threadListLabel')}>
           <ul style={{ listStyle: 'none', paddingInlineStart: 0, display: 'grid', gap: tokens.spacing.sm }}>
             {view.threads.map((thread) => (

@@ -158,7 +158,12 @@ export function QueuesScreen({
       data-breakpoint={breakpoint}
       data-operations-layout={breakpoint === 'compact' ? 'stacked' : 'columns'}
       aria-label={operationsText(locale, 'title')}
-      style={{ minInlineSize: '320px', maxInlineSize: '460px', display: 'grid', gap: tokens.spacing.lg }}
+      style={{
+        minInlineSize: breakpoint === 'compact' ? 0 : '320px',
+        maxInlineSize: '460px',
+        display: 'grid',
+        gap: tokens.spacing.lg,
+      }}
     >
       <h2 style={{ overflowWrap: 'anywhere' }}>{operationsText(locale, 'title')}</h2>
       <p style={{ overflowWrap: 'anywhere' }}>{operationsText(locale, 'subtitle')}</p>

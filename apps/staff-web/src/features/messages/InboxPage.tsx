@@ -43,6 +43,20 @@ export function InboxPage() {
   const [retry, setRetry] = useState<(() => void) | undefined>(undefined);
   const [recoveryNotice, setRecoveryNotice] = useState<string | undefined>(undefined);
   const [generation, setGeneration] = useState(0);
+  const [draftOrganization, setDraftOrganization] = useState(organizationId);
+
+  // A tenant switch clears every draft synchronously during render. The page
+  // stays mounted while useApi refetches, so without this a reply or reason
+  // typed for one tenant would be shown and sent under the next tenant.
+  if (draftOrganization !== organizationId) {
+    setDraftOrganization(organizationId);
+    setReplyText('');
+    setWorkDraft(undefined);
+    setReasonError(undefined);
+    setCommandError(undefined);
+    setRetry(undefined);
+    setRecoveryNotice(undefined);
+  }
 
   const reload = (): void => setGeneration((value) => value + 1);
 

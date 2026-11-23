@@ -234,4 +234,29 @@ describe('QueuesPage commands', () => {
     await waitFor(() => expect(sendMock).toHaveBeenCalledTimes(2));
     expect(descriptorAt(1).headers['X-Active-Organization']).toBe('org-beta');
   });
+
+  it('discards an unsubmitted reason and a failed command when the organization changes', async () => {
+    sendMock
+      .mockResolvedValueOnce(alphaQueuesView)
+      .mockRejectedValueOnce(failure('server'))
+      .mockResolvedValueOnce(betaQueuesView);
+    const { rerender } = wrap();
+    await screen.findByText(operationsText('en', 'unsigned-encounters'));
+    startResolve();
+    confirmAction();
+    expect(await screen.findByTestId('operations-command-error')).toBeTruthy();
+    expect(descriptorAt(1).body).toEqual({ reason: 'owner accepted the handover' });
+
+    rerender(element(<QueuesPage />, 'org-beta'));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('heading', { name: /Missing coverage: Imaging desk/ }),
+      ).toBeNull(),
+    );
+    await waitFor(() => expect(sendMock).toHaveBeenCalledTimes(3));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByTestId('operations-command-error')).toBeNull();
+    expect(screen.queryByText('owner accepted the handover')).toBeNull();
+    expect(descriptorAt(2).headers['X-Active-Organization']).toBe('org-beta');
+  });
 });

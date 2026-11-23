@@ -2,14 +2,14 @@ import { useState } from 'react';
 import type { ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
+import { defined } from '../../components/invariant';
 import { I18nProvider } from '../../i18n/I18nProvider';
 import type { Locale } from '../../i18n/messages';
 import { ThemeProvider } from '../../theme/ThemeProvider';
-import { applyInboundMessage } from './domain';
 import { alphaInboxView } from './fixtures';
 import { inboxText } from './labels';
 import { InboxScreen } from './InboxScreen';
-import type { InboundMessage, InboxView, SendDraft, WorkDraft } from './types';
+import type { InboxView, SendDraft, Thread, WorkDraft } from './types';
 
 function wrap(ui: ReactElement, locale: Locale = 'en') {
   return render(
@@ -67,6 +67,20 @@ describe('InboxScreen layout and conversation', () => {
     expect(screen.getByText(inboxText('en', 'connectionVerified'))).toBeTruthy();
     expect(composer()).toBeTruthy();
     expect(screen.getByText(/Synthetic Grace Okafor · patient/)).toBeTruthy();
+
+    const panels = defined(
+      document.querySelector<HTMLElement>('[data-inbox-panels]'),
+      'inbox panels',
+    );
+    expect(panels.style.gridTemplateColumns).toBe('320px minmax(0, 1fr)');
+
+    const workItem = screen.getByRole('button', {
+      name: /Synthetic Hassan Ibrahim: Refill question/,
+    });
+    expect(workItem.getAttribute('aria-label')).toContain(inboxText('en', 'stateNew'));
+    expect(workItem.getAttribute('aria-label')).toContain('synthetic-patient-002');
+    expect(workItem.getAttribute('aria-label')).toContain(inboxText('en', 'unassigned'));
+    expect(workItem.getAttribute('aria-label')).toContain(inboxText('en', 'unread'));
   });
 
   it('keeps an unscanned attachment closed and names its scan state', () => {
@@ -80,30 +94,91 @@ describe('InboxScreen layout and conversation', () => {
     expect(clean?.getAttribute('data-scan-state')).toBe('clean');
     expect(clean?.tagName).toBe('BUTTON');
     expect(within(clean as HTMLElement).getByText(inboxText('en', 'scanClean'))).toBeTruthy();
+    expect(clean?.getAttribute('aria-label')).toContain('212 KB');
+    expect(clean?.getAttribute('aria-label')).toContain(inboxText('en', 'scanClean'));
+  });
+
+  it('keeps the state word legible on the active row in both tones', () => {
+    wrap(<Harness />);
+    const send = screen.getByRole('button', { name: inboxText('en', 'send') });
+    const waiting = defined(
+      screen.getByText(inboxText('en', 'stateReplied')).closest<HTMLElement>('[data-tone]'),
+      'waiting state chip',
+    );
+    expect(waiting.style.color).toBe(send.style.color);
+
+    fireEvent.click(screen.getByRole('button', { name: /Synthetic Hassan Ibrahim: Refill question/ }));
+    const urgent = defined(
+      screen.getByText(inboxText('en', 'stateNew')).closest<HTMLElement>('[data-tone]'),
+      'urgent state chip',
+    );
+    expect(urgent.style.background).toBe(send.style.color);
+    expect(urgent.style.color).toBe(send.style.background);
+  });
+
+  it('shows a server-created inbound work item as new, unread and unassigned', () => {
+    const incoming: Thread = {
+      id: 'thread-010',
+      patientName: { latinName: 'Synthetic Nour', localName: 'نور تجريبية' },
+      patientId: 'synthetic-patient-010',
+      topic: 'Saturday hours',
+      state: 'new',
+      owner: '',
+      unread: true,
+      lastActivityAt: '2026-03-09T17:00:00Z',
+      timeZone: 'America/New_York',
+      connectionVerified: true,
+      version: 1,
+      messages: [
+        {
+          id: 'message-010',
+          senderRole: 'patient',
+          senderName: 'Synthetic Nour',
+          body: 'Are you open on Saturday?',
+          sentAt: '2026-03-09T17:00:00Z',
+          timeZone: 'America/New_York',
+          attachments: [],
+        },
+      ],
+    };
+    wrap(<Harness view={{ ...alphaInboxView, threads: [incoming, ...alphaInboxView.threads] }} />);
+    expect(screen.getAllByText('Synthetic Nour').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Saturday hours').length).toBeGreaterThan(0);
+    expect(screen.getAllByText(inboxText('en', 'stateNew'))).toHaveLength(2);
+    const workItem = screen.getByRole('button', { name: /Synthetic Nour: Saturday hours/ });
+    expect(workItem.getAttribute('aria-label')).toContain(inboxText('en', 'unread'));
+    expect(workItem.getAttribute('aria-label')).toContain(inboxText('en', 'unassigned'));
   });
 
 });
 
 describe('InboxScreen composer and work commands', () => {
   it('keeps a failed-scan attachment closed and names its scan state', () => {
-    const inbound: InboundMessage = {
-      threadId: 'thread-011',
-      patientName: { latinName: 'Synthetic Failed Scan' },
-      patientId: 'synthetic-patient-011',
-      topic: 'Replacement file',
-      message: {
-        id: 'message-011',
-        senderRole: 'patient',
-        senderName: 'Synthetic Failed Scan',
-        body: 'I tried to attach a replacement.',
-        sentAt: '2026-03-09T17:10:00Z',
-        timeZone: 'America/New_York',
-        attachments: [
-          { id: 'attachment-011', fileName: 'scan-failed.png', sizeLabel: '64 KB', scanState: 'failed' },
-        ],
-      },
+    const openThread = defined(alphaInboxView.threads[0], 'open thread');
+    const firstMessage = defined(openThread.messages[0], 'first message');
+    const failedView: InboxView = {
+      ...alphaInboxView,
+      threads: [
+        {
+          ...openThread,
+          messages: [
+            {
+              ...firstMessage,
+              attachments: [
+                {
+                  id: 'attachment-011',
+                  fileName: 'scan-failed.png',
+                  sizeLabel: '64 KB',
+                  scanState: 'failed',
+                },
+              ],
+            },
+          ],
+        },
+        ...alphaInboxView.threads.slice(1),
+      ],
     };
-    wrap(<Harness view={applyInboundMessage(alphaInboxView, inbound)} />);
+    wrap(<Harness view={failedView} />);
     const chip = screen.getByText('scan-failed.png').closest('[data-scan-state]');
     expect(chip?.getAttribute('data-scan-state')).toBe('failed');
     expect(within(chip as HTMLElement).getByText(inboxText('en', 'scanFailed'))).toBeTruthy();
@@ -158,28 +233,6 @@ describe('InboxScreen send and work commands', () => {
     expect(onWorkSubmit).toHaveBeenLastCalledWith(
       expect.objectContaining({ threadId: 'thread-001', action: 'resolve', reason: 'answered' }),
     );
-  });
-
-  it('adds an inbound message as a new work item in the thread list', () => {
-    const inbound: InboundMessage = {
-      threadId: 'thread-010',
-      patientName: { latinName: 'Synthetic Nour', localName: 'نور تجريبية' },
-      patientId: 'synthetic-patient-010',
-      topic: 'Saturday hours',
-      message: {
-        id: 'message-010',
-        senderRole: 'patient',
-        senderName: 'Synthetic Nour',
-        body: 'Are you open on Saturday?',
-        sentAt: '2026-03-09T17:00:00Z',
-        timeZone: 'America/New_York',
-        attachments: [],
-      },
-    };
-    wrap(<Harness view={applyInboundMessage(alphaInboxView, inbound)} />);
-    expect(screen.getAllByText('Synthetic Nour').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Saturday hours').length).toBeGreaterThan(0);
-    expect(screen.getAllByText(inboxText('en', 'stateNew'))).toHaveLength(2);
   });
 
   it('asks before leaving a thread with an unsaved reply', () => {
@@ -256,6 +309,11 @@ describe('InboxScreen send and work commands', () => {
       wrap(<Harness />);
       const view = document.querySelector('[data-inbox-layout]');
       expect(view?.getAttribute('data-inbox-layout')).toBe('stacked');
+      const panels = defined(
+        document.querySelector<HTMLElement>('[data-inbox-panels]'),
+        'inbox panels',
+      );
+      expect(panels.style.gridTemplateColumns).toBe('minmax(0, 1fr)');
     } finally {
       vi.unstubAllGlobals();
     }

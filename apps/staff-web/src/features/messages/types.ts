@@ -90,11 +90,3 @@ export interface WorkDraft {
   readonly assignee: string;
 }
 
-/** One inbound message that creates or reopens a work item. */
-export interface InboundMessage {
-  readonly threadId: string;
-  readonly patientName: PersonName;
-  readonly patientId: string;
-  readonly topic: string;
-  readonly message: Message;
-}

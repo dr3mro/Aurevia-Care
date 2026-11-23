@@ -53,7 +53,7 @@ function descriptorAt(call: number): RequestDescriptor {
 }
 
 function composer(): HTMLElement {
-  return screen.getByRole('textbox', { name: /Reply to .* from Front desk/ });
+  return screen.getByRole('textbox', { name: /Reply to .* from / });
 }
 
 beforeEach(() => {
@@ -270,6 +270,9 @@ describe('InboxPage commands', () => {
     expect(descriptorAt(2).url).toBe('/api/v1/conversations/thread-001/reply');
   });
 
+});
+
+describe('InboxPage tenant isolation', () => {
   it('clears the previous tenant rows when the active organization changes', async () => {
     sendMock.mockResolvedValueOnce(alphaInboxView).mockResolvedValue(betaInboxView);
     const { rerender } = wrap();
@@ -281,5 +284,30 @@ describe('InboxPage commands', () => {
     ).toBeNull();
     await waitFor(() => expect(sendMock).toHaveBeenCalledTimes(2));
     expect(descriptorAt(1).headers['X-Active-Organization']).toBe('org-beta');
+  });
+
+  it('discards a typed reply and a failed command when the organization changes', async () => {
+    sendMock
+      .mockResolvedValueOnce(alphaInboxView)
+      .mockRejectedValueOnce(failure('server'))
+      .mockResolvedValueOnce(betaInboxView);
+    const { rerender } = wrap();
+    await screen.findByRole('button', { name: /Synthetic Grace Okafor: Appointment change/ });
+    fireEvent.change(composer(), { target: { value: 'alpha private reply' } });
+    fireEvent.click(screen.getByRole('button', { name: inboxText('en', 'send') }));
+    expect(await screen.findByTestId('inbox-command-error')).toBeTruthy();
+    expect(descriptorAt(1).body).toMatchObject({ body: 'alpha private reply' });
+
+    rerender(element(<InboxPage />, 'org-beta'));
+    expect(
+      await screen.findByRole('button', { name: /Synthetic Hassan Ibrahim beta: Refill question/ }),
+    ).toBeTruthy();
+    expect((composer() as HTMLTextAreaElement).value).toBe('');
+    expect(screen.queryByTestId('inbox-command-error')).toBeNull();
+    expect(screen.queryByText('alpha private reply')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: inboxText('en', 'send') }));
+    expect(sendMock).toHaveBeenCalledTimes(3);
+    expect(descriptorAt(2).headers['X-Active-Organization']).toBe('org-beta');
   });
 });
