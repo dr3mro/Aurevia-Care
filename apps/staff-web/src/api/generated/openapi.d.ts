@@ -525,6 +525,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/staff/references/attach": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Attach a typed reference to a staff message and screen its subject line
+         * @description The actor and organization are derived from the authenticated context; the body carries only opaque handles, a non-identifying label and the raw subject. The subject line is screened but never echoed in the warning. Idempotency-Key is correlation-only here; a retry creates a new reference.
+         */
+        post: operations["attachStaffMessageReference"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/references/view": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read the label-only projection of a staff message reference
+         * @description The recipient's access is not evaluated here; opening the reference re-runs the access check. No target data is returned before an authorized open.
+         */
+        get: operations["viewStaffMessageReference"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/references/open": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Open a reference after re-running the recipient's access check
+         * @description A recipient without a care relationship, a wrong-tenant target or a revoked or stale target is blocked or concealed. An authorized open audits the event and dispatches an identifier-free notification; a dispatch failure is propagated rather than reported as sent.
+         */
+        post: operations["openStaffMessageReference"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/references/screen-subject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Screen a subject line for identifiers before a reference is attached
+         * @description The raw subject travels in the POST body, never in a URL, so it is not copied into access logs. The response carries only a fixed reason code, never the subject text. Idempotency-Key is correlation-only here.
+         */
+        post: operations["screenStaffMessageSubject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/conversations": {
         parameters: {
             query?: never;
@@ -3557,6 +3637,203 @@ export interface operations {
                 };
                 content?: never;
             };
+        };
+    };
+    attachStaffMessageReference: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Reserved retry-correlation header for draft commands; durable deduplication applies to placement. */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKeyOptional"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Opaque target handle */
+                    targetId: string;
+                    /** @description Opaque connection handle */
+                    connectionId: string;
+                    /** @description Reference kind wire key */
+                    kind: string;
+                    /** @description Non-identifying label shown before access is checked */
+                    label: string;
+                    /** @description Raw subject line screened for identifiers and never copied into a URL or notification */
+                    subject: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The opaque reference and a fixed-reason subject warning */
+            201: {
+                headers: {
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            /** @description Invalid handle */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    viewStaffMessageReference: {
+        parameters: {
+            query: {
+                /** @description Opaque reference handle */
+                id: string;
+                /** @description Opaque connection handle */
+                connectionId: string;
+                /** @description Reference kind wire key */
+                kind: string;
+                /** @description Opaque target handle */
+                targetId: string;
+                /** @description Non-identifying label */
+                label: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Label-only projection; no target data */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            /** @description Invalid handle */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    openStaffMessageReference: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Reserved retry-correlation header for draft commands; durable deduplication applies to placement. */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKeyOptional"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Allowed, blocked or concealed outcome; notification text contains no identifiers */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
+            /** @description Invalid handle */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    screenStaffMessageSubject: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Reserved retry-correlation header for draft commands; durable deduplication applies to placement. */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKeyOptional"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Raw subject line to screen */
+                    subject: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Fixed-reason warning; no subject text is echoed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            /** @description Authentication required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Forbidden"];
         };
     };
     openConversation: {

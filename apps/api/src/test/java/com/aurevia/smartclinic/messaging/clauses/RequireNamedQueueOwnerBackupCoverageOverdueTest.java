@@ -122,6 +122,11 @@ class RequireNamedQueueOwnerBackupCoverageOverdueTest {
         profileStore.linkPatient(ORG_A, PATIENT_USER, PATIENT);
         profileStore.addConnection(ORG_A, PATIENT, UNIT, true);
         profileStore.addProfile(namedProfile(1, "nurse-lead", List.of("nurse-backup")));
+        // Publish rejects time-sensitive channels that are not site-approved. Seed
+        // the two codes this clause's HTTP fixtures use so the tests keep proving
+        // named-owner and backup validation rather than the channel gate.
+        profileStore.seedApprovedChannels(ORG_A, "msg06.approved_urgent_channels", "urgent-phone");
+        profileStore.seedApprovedChannels(ORG_A, "msg06.approved_downtime_channels", "downtime-phone");
 
         factStore.addMember(ORG_A, STAFF, "lab_collector", true);
         factStore.addMember(ORG_A, UNASSIGNED_STAFF, "lab_collector", true);

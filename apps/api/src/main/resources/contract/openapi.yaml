@@ -735,6 +735,114 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
         '422': { description: Invalid attachment identifier or tenant selection }
+  /api/v1/staff/references/attach:
+    post:
+      operationId: attachStaffMessageReference
+      summary: Attach a typed reference to a staff message and screen its subject line
+      description: The actor and organization are derived from the authenticated context; the body carries only opaque handles, a non-identifying label and the raw subject. The subject line is screened but never echoed in the warning. Idempotency-Key is correlation-only here; a retry creates a new reference.
+      tags: [staff-messaging]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/IdempotencyKeyOptional'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [targetId, connectionId, kind, label, subject]
+              properties:
+                targetId: { type: string, description: Opaque target handle }
+                connectionId: { type: string, description: Opaque connection handle }
+                kind: { type: string, description: Reference kind wire key }
+                label: { type: string, description: Non-identifying label shown before access is checked }
+                subject: { type: string, description: Raw subject line screened for identifiers and never copied into a URL or notification }
+      responses:
+        '201':
+          description: The opaque reference and a fixed-reason subject warning
+          headers:
+            Location: { schema: { type: string } }
+          content:
+            application/json:
+              schema: { type: object }
+        '401': { description: Authentication required }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { description: Invalid handle, kind, label or subject }
+  /api/v1/staff/references/view:
+    get:
+      operationId: viewStaffMessageReference
+      summary: Read the label-only projection of a staff message reference
+      description: The recipient's access is not evaluated here; opening the reference re-runs the access check. No target data is returned before an authorized open.
+      tags: [staff-messaging]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - { name: id, in: query, required: true, description: Opaque reference handle, schema: { type: string } }
+        - { name: connectionId, in: query, required: true, description: Opaque connection handle, schema: { type: string } }
+        - { name: kind, in: query, required: true, description: Reference kind wire key, schema: { type: string } }
+        - { name: targetId, in: query, required: true, description: Opaque target handle, schema: { type: string } }
+        - { name: label, in: query, required: true, description: Non-identifying label, schema: { type: string } }
+      responses:
+        '200':
+          description: Label-only projection; no target data
+          content:
+            application/json:
+              schema: { type: object }
+        '401': { description: Authentication required }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { description: Invalid handle, kind or label }
+  /api/v1/staff/references/open:
+    post:
+      operationId: openStaffMessageReference
+      summary: Open a reference after re-running the recipient's access check
+      description: A recipient without a care relationship, a wrong-tenant target or a revoked or stale target is blocked or concealed. An authorized open audits the event and dispatches an identifier-free notification; a dispatch failure is propagated rather than reported as sent.
+      tags: [staff-messaging]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/IdempotencyKeyOptional'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200':
+          description: Allowed, blocked or concealed outcome; notification text contains no identifiers
+          content:
+            application/json:
+              schema: { type: object }
+        '401': { description: Authentication required }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { description: Invalid handle, kind or label }
+  /api/v1/staff/references/screen-subject:
+    post:
+      operationId: screenStaffMessageSubject
+      summary: Screen a subject line for identifiers before a reference is attached
+      description: The raw subject travels in the POST body, never in a URL, so it is not copied into access logs. The response carries only a fixed reason code, never the subject text. Idempotency-Key is correlation-only here.
+      tags: [staff-messaging]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/IdempotencyKeyOptional'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [subject]
+              properties:
+                subject: { type: string, description: Raw subject line to screen }
+      responses:
+        '200':
+          description: Fixed-reason warning; no subject text is echoed
+          content:
+            application/json:
+              schema: { type: object }
+        '401': { description: Authentication required }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /api/v1/conversations:
     post:
       operationId: openConversation
