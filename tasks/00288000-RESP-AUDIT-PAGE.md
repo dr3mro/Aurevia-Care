@@ -1,5 +1,5 @@
-- [-] RESP-AUDIT-PAGE · Staff web: responsive `AuditPage` (features-admin)
-  - agent: swarm-3
+- [x] RESP-AUDIT-PAGE · Staff web: responsive `AuditPage` (features-admin)
+  - pr: #1199
   - attempts: 3
   - requirements: WEB-07, UX-01
   - scope: apps/staff-web/src/features/admin/AuditPage.tsx, apps/staff-web/tests/responsive/features-admin/AuditPage.responsive.test.tsx
