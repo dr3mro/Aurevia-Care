@@ -1,4 +1,5 @@
-- [-] COVPY-SWARM-INTEGRATOR · Script tests: swarm.py coverage, integrator part (to 100% together with the other parts)
+- [x] COVPY-SWARM-INTEGRATOR · Script tests: swarm.py coverage, integrator part (to 100% together with the other parts)
+  - evidence: merged on main 6b7e4ffa (#910)
   - agent: swarm-10
   - attempts: 3
   - requirements: OPS-06
