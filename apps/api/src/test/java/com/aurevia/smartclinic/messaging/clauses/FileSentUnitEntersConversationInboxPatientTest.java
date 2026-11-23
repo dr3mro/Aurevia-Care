@@ -5,31 +5,14 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.Statement;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Set;
 
-import org.flywaydb.core.Flyway;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.web.client.RestClient;
 
 import com.aurevia.smartclinic.api.ApiException;
 import com.aurevia.smartclinic.messaging.attachments.AttachmentContract.Actor;
@@ -57,10 +40,10 @@ import com.aurevia.smartclinic.messaging.attachments.InMemoryAttachmentStore;
  * are refused or see nothing. All identifiers and payload metadata are
  * synthetic; no payload bytes, patient data or credentials are used.</p>
  *
- * <p>The HTTP route that would prove the whole chain is not built yet. It is
- * kept as a complete, disabled test in {@code SentFileAppearsInUnitConversationInboxOverHttpTest}
- * so a later task can enable it once publish/inbox routes and the attachment to
- * conversation-message link exist.</p>
+ * <p>The HTTP publish/inbox routes and the attachment to conversation-message
+ * link that would prove the whole chain end to end are not built yet; those are
+ * tracked as follow-up work. This class proves the domain behaviour that exists
+ * today without relying on an unexercisable HTTP test.</p>
  */
 class FileSentUnitEntersConversationInboxPatientTest {
 
@@ -228,156 +211,5 @@ class FileSentUnitEntersConversationInboxPatientTest {
         ApiException failure = assertThrows(ApiException.class, action::run);
         assertEquals(status, failure.status());
         assertEquals(code, failure.code());
-    }
-}
-
-/**
- * End-to-end HTTP proof of MSG-03 clause 8: a patient file is published and then
- * read from the receiving unit's conversation inbox over HTTP.
- *
- * <p>This class is complete but disabled. A later task must add a publish route
- * and a recipient-unit inbox route to
- * {@code com.aurevia.smartclinic.messaging.attachments.AttachmentController},
- * link the published {@code messageId} to a conversation message marked as
- * patient-supplied, and document both routes in the OpenAPI contract; then the
- * test annotation can be removed and the fixture below enabled.</p>
- */
-@Tag("integration")
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/smartclinic_file_inbox_it")
-@ActiveProfiles("synthetic-auth")
-class SentFileAppearsInUnitConversationInboxOverHttpTest {
-
-    private static final String ORG_A = "11111111-1111-1111-1111-111111111111";
-    private static final String PATIENT = "44444444-4444-4444-4444-444444444444";
-    private static final String FILE_ID = "33333333-3333-3333-3333-333333333333";
-    private static final String UNIT = "unit-1";
-    private static final String CONNECTION = "conv-http-1";
-    private static final String MESSAGE = "msg-http-1";
-    private static final String CHECKSUM = "a".repeat(64);
-    private static final String URL = "jdbc:postgresql://127.0.0.1:5432/smartclinic_file_inbox_it";
-    private static final String ADMIN = System.getenv().getOrDefault(
-            "SMARTCLINIC_PG_ADMIN", System.getProperty("user.name"));
-
-    RestClient rest;
-
-    /** Create the isolated database, apply production migrations and seed synthetic actors. */
-    @BeforeAll
-    static void prepare() throws Exception {
-        try (Connection root = DriverManager.getConnection(
-                "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
-             Statement statement = root.createStatement()) {
-            statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='smartclinic_migrate') THEN "
-                    + "CREATE ROLE smartclinic_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='smartclinic_app') THEN "
-                    + "CREATE ROLE smartclinic_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS smartclinic_file_inbox_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE smartclinic_file_inbox_it OWNER smartclinic_migrate");
-        }
-        Flyway.configure()
-                .dataSource(URL, "smartclinic_migrate", "")
-                .locations("filesystem:../../db/migrations")
-                .load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "smartclinic_migrate", "");
-             Statement statement = connection.createStatement()) {
-            seedUser(statement, "patient-http", "patient");
-            seedUser(statement, "reception-http", "reception");
-            statement.execute("SET app.current_org = '" + ORG_A + "'");
-            statement.execute("SET app.actor = 'patient-http'");
-            statement.execute("INSERT INTO public.patient_record "
-                    + "(organization_id, id, version, mrn, mrn_issuer, display_name, normalized_name, dob) "
-                    + "VALUES (CAST('" + ORG_A + "' AS uuid), CAST('" + PATIENT + "' AS uuid), 1, "
-                    + "'MRN-FILE-INBOX', 'CLINIC', 'Synthetic File Patient', 'synthetic file patient', "
-                    + "DATE '1990-05-20')");
-            statement.execute("INSERT INTO public.attachment_connection_grant "
-                    + "(organization_id, connection_id, unit_id, patient_id, active) VALUES ("
-                    + "CAST('" + ORG_A + "' AS uuid), '" + CONNECTION + "', '" + UNIT + "', '"
-                    + PATIENT + "', true)");
-            // A clean draft in quarantine: the upload and clean-scan steps already
-            // have their own HTTP coverage; publish + inbox are the missing links.
-            statement.execute("INSERT INTO public.attachment "
-                    + "(organization_id, id, version, uploader_subject, connection_id, unit_id, patient_id, "
-                    + "file_name, file_type, size_bytes, checksum, object_key, object_version, verdict, "
-                    + "state, message_id, recipient_unit_id, created_at) VALUES ("
-                    + "CAST('" + ORG_A + "' AS uuid), CAST('" + FILE_ID + "' AS uuid), 2, 'patient-http', "
-                    + "'" + CONNECTION + "', '" + UNIT + "', '" + PATIENT + "', 'notes.pdf', "
-                    + "'application/pdf', 128, '" + CHECKSUM + "', 'quarantine/" + ORG_A + "/" + FILE_ID
-                    + "/v1', 1, 'clean', 'clean', null, null, now())");
-        }
-    }
-
-    /** Drop the isolated fixture database after the class. */
-    @AfterAll
-    static void cleanUp() throws Exception {
-        try (Connection root = DriverManager.getConnection(
-                "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
-             Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS smartclinic_file_inbox_it WITH (FORCE)");
-        }
-    }
-
-    /** Bind the HTTP client to the randomly assigned server port. */
-    @BeforeEach
-    void initRest(@LocalServerPort int port) {
-        rest = RestClient.builder().baseUrl("http://localhost:" + port).build();
-    }
-
-    private static void seedUser(Statement statement, String subject, String role) throws Exception {
-        statement.execute("SET app.current_org = '" + ORG_A + "'");
-        statement.execute("SET app.actor = '" + subject + "'");
-        statement.execute("INSERT INTO public.organization (organization_id, display_name) "
-                + "SELECT CAST('" + ORG_A + "' AS uuid), 'Org " + subject + "' "
-                + "WHERE NOT EXISTS (SELECT 1 FROM public.organization "
-                + "WHERE organization_id = CAST('" + ORG_A + "' AS uuid))");
-        statement.execute("INSERT INTO public.user_identity (organization_id, subject, display_name) "
-                + "VALUES (CAST('" + ORG_A + "' AS uuid), '" + subject + "', '" + subject + "')");
-        statement.execute("INSERT INTO public.membership (organization_id, user_id, status) "
-                + "SELECT CAST('" + ORG_A + "' AS uuid), id, 'active' FROM public.user_identity "
-                + "WHERE subject = '" + subject + "' AND organization_id = CAST('" + ORG_A + "' AS uuid)");
-        statement.execute("INSERT INTO public.role_assignment "
-                + "(organization_id, membership_id, role_key, granted_by) "
-                + "SELECT CAST('" + ORG_A + "' AS uuid), m.id, '" + role + "', u.id FROM public.membership m "
-                + "JOIN public.user_identity u ON u.organization_id = m.organization_id "
-                + "AND u.id = m.user_id WHERE u.subject = '" + subject + "' "
-                + "AND u.organization_id = CAST('" + ORG_A + "' AS uuid)");
-    }
-
-    private ResponseEntity<String> request(HttpMethod method, String uri, String body, String subject) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("X-Synthetic-Subject", subject);
-        headers.set("X-Active-Organization", ORG_A);
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        RestClient.RequestBodySpec spec = rest.method(method).uri(uri)
-                .headers(httpHeaders -> httpHeaders.addAll(headers));
-        RestClient.RequestHeadersSpec<?> headerSpec = body == null ? spec : spec.body(body);
-        return headerSpec.retrieve().onStatus(status -> true, (req, response) -> { })
-                .toEntity(String.class);
-    }
-
-    /**
-     * Complete HTTP acceptance for the clause; disabled until the publish and
-     * unit-inbox routes and the attachment-to-conversation-message link exist.
-     */
-    @Test
-    @Disabled("GAP: AttachmentController exposes only upload/scan/download; no publish/inbox route and "
-            + "no attachment-to-conversation-message link or patient-supplied marker; no OpenAPI paths")
-    void sentFileAppearsInUnitConversationInboxOverHttp() {
-        String publishBody = "{\"attachmentIds\":[\"" + FILE_ID + "\"],\"messageId\":\"" + MESSAGE
-                + "\",\"recipientUnitId\":\"" + UNIT + "\"}";
-        ResponseEntity<String> published = request(HttpMethod.POST, "/api/v1/patient/files/publish",
-                publishBody, "patient-http");
-        assertEquals(HttpStatus.OK, published.getStatusCode(), published.getBody());
-
-        ResponseEntity<String> inbox = request(HttpMethod.GET,
-                "/api/v1/patient/files/inbox?unitId=" + UNIT, null, "reception-http");
-        assertEquals(HttpStatus.OK, inbox.getStatusCode(), inbox.getBody());
-        assertTrue(inbox.getBody().contains("\"" + FILE_ID + "\""));
-        assertTrue(inbox.getBody().contains("\"patientId\":\"" + PATIENT + "\""));
-        assertTrue(inbox.getBody().contains("\"uploaderSubject\":\"patient-http\""));
-        assertTrue(inbox.getBody().contains("\"messageId\":\"" + MESSAGE + "\""));
-        assertTrue(inbox.getBody().contains("\"recipientUnitId\":\"" + UNIT + "\""));
-        assertTrue(inbox.getBody().contains("\"state\":\"published\""));
-        assertTrue(inbox.getBody().contains("\"eventType\":\"published\""));
     }
 }

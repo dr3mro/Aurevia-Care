@@ -53,22 +53,23 @@ of `state == PUBLISHED` attachments from the tenant store; it is not a persisted
 conversation inbox and no attachment-to-conversation-message record is written
 today. `patientId` is grant-derived (a staff upload on the same verified grant
 also carries it), so "patient-supplied" rests on `uploaderSubject = patient-a`
-together with the `PUBLISHED` fact. The route-level proof is therefore disabled:
+together with the `PUBLISHED` fact. The route-level proof is therefore not
+available from this evidence task:
 
-- `sentFileAppearsInUnitConversationInboxOverHttp` in
-  `SentFileAppearsInUnitConversationInboxOverHttpTest` (same source file) is
-  present but `@Disabled` with a single `GAP:` reason. Its fixture already uses
-  the real-PostgreSQL/Flyway setup of the neighbouring clause tests
-  (`chart/clauses/RecordClinicalAuthorSeparatelyDataEntryActorTest`): an
-  isolated database from the production migrations, synthetic memberships and a
-  clean draft seeded through the tenant-bound migration role. When enabled it
-  will `POST` a publish command and `GET` the unit inbox over HTTP and assert the
-  patient-supplied provenance in the responses.
+- An HTTP acceptance sketch (`sentFileAppearsInUnitConversationInboxOverHttp`
+  in `SentFileAppearsInUnitConversationInboxOverHttpTest`) was drafted with the
+  real-PostgreSQL/Flyway fixture style of the neighbouring clause tests
+  (`chart/clauses/RecordClinicalAuthorSeparatelyDataEntryActorTest`), but the
+  publish/inbox routes and the attachment-to-conversation-message link it needs
+  do not exist. It was deleted in repair attempt 1 as dead, unexercisable code
+  rather than left `@Disabled` (the constraint gate forbids an added skip). The
+  follow-up implementation task must re-create it as an enabled HTTP test when
+  those routes land; see the Gap section below.
 
 Verified locally: `mvn -q -B -f apps/api/pom.xml -Pno-security
 -Dtest=FileSentUnitEntersConversationInboxPatientTest test` — Surefire
-`tests="5" errors="0" skipped="0" failures="0"` for the enabled class; selecting
-the disabled class alone gives `tests="1" errors="0" skipped="1" failures="0"`.
+`tests="5" errors="0" skipped="0" failures="0"` for the enabled class. No
+skipped test remains in this change.
 
 ## Gap
 
