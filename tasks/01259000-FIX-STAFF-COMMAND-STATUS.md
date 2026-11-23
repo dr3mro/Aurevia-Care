@@ -1,4 +1,5 @@
-- [ ] FIX-STAFF-COMMAND-STATUS · Preserve lab success notices during queue reload and stabilize pharmacy detail assertions.
+- [-] FIX-STAFF-COMMAND-STATUS · Preserve lab success notices during queue reload and stabilize pharmacy detail assertions.
+  - agent: swarm-4
   - attempts: 1
   - requirements: LAB-01, RX-02
   - scope: apps/staff-web/src/features/labcollection, apps/staff-web/src/features/pharmacyinbox/PharmacyItemPage.test.tsx

@@ -1,4 +1,5 @@
-- [ ] FIX-STAFF-MAIL-FACILITY · Resolve staff mail role recipients by selected facility
+- [-] FIX-STAFF-MAIL-FACILITY · Resolve staff mail role recipients by selected facility
+  - agent: swarm-2
   - attempts: 1
   - requirements: MSG-02, ARC-07
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/staffmsg/mail, apps/api/src/test/java/com/aurevia/smartclinic/staffmsg/mail, apps/api/src/main/java/com/aurevia/smartclinic/staffmsg/directory, apps/api/src/test/java/com/aurevia/smartclinic/staffmsg/directory
