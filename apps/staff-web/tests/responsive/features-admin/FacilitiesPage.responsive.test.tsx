@@ -196,7 +196,10 @@ describe('responsive FacilitiesPage (WEB-07, UX-01)', () => {
         expect(header.getAttribute('scope')).toBe('col');
         expect(header.style.display).not.toBe('none');
       }
-      expect(within(table).getByRole('rowheader', { name: 'MAIN' })).toBeTruthy();
+      // The table commits with its headers in the same render that `useApi`
+      // turns ready; the rows arrive one commit later from `PageSink`. Wait for
+      // the row so a synchronous read cannot observe the empty tbody (WEB-07).
+      expect(await within(table).findByRole('rowheader', { name: 'MAIN' })).toBeTruthy();
       expect(within(table).getByText('Synthetic Main Facility')).toBeTruthy();
       expect(within(table).getByText('UTC')).toBeTruthy();
 
@@ -307,6 +310,24 @@ describe('responsive FacilitiesPage (WEB-07, UX-01)', () => {
     expect(screen.getByText('Synthetic Main Facility')).toBeTruthy();
     expect(screen.getByLabelText(adminText('en', 'facilityCode'))).toBeTruthy();
     expect(fieldsWrapper(page).classList.contains('grid-2')).toBe(true);
+  });
+
+  it('shows the facility row after a deferred list response commits the table first', async () => {
+    installMatchMedia('compact');
+    // Defer the transport so the table (with its headers) commits before the
+    // row is appended by the list's post-commit sink. All data is synthetic.
+    sendMock.mockImplementation(
+      () => new Promise((resolve) => setTimeout(() => resolve(facilityPage()), 0)),
+    );
+    wrap();
+    const table = await screen.findByRole('table', { name: adminText('en', 'facilities') });
+
+    // The deferred response makes the two commits explicit: the table is queryable
+    // before its rows exist. Waiting for the row proves the end state still reaches
+    // the user without depending on how fast the effect that appends it runs.
+    expect(await within(table).findByRole('rowheader', { name: 'MAIN' })).toBeTruthy();
+    expect(within(table).getByText('Synthetic Main Facility')).toBeTruthy();
+    expect(within(table).getByText('UTC')).toBeTruthy();
   });
 });
 

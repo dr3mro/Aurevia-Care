@@ -1,5 +1,6 @@
-- [ ] FIX-INSTANT-OPENAPI · Document the instant-messaging API in the OpenAPI contract (HIGH PRIORITY: Delivery fails on PR #1497, SMSG-03)
-  - attempts: 0
+- [-] FIX-INSTANT-OPENAPI · Document the instant-messaging API in the OpenAPI contract (HIGH PRIORITY: Delivery fails on PR #1497, SMSG-03)
+  - agent: swarm-10
+  - attempts: 1
   - priority: high
   - requirements: MSG-02, ARC-07, WEB-05
   - scope: contracts/openapi.yaml, contracts/openapi, apps/staff-web/src/api/generated/openapi.d.ts, apps/api/src/main/java/com/aurevia/smartclinic/staffmsg/instant, apps/api/src/test/java/com/aurevia/smartclinic/staffmsg/instant

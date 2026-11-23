@@ -10,7 +10,7 @@ TEXT = ("repo", "todo", "archive", "total", "commits")  # plain-text results; ev
 # Sections that change slowly are re-read every SLOW_EVERY seconds, not on every refresh, and the jobs of a
 # finished run never change, so they are looked up once. This keeps the GitHub rate limit for other work.
 SLOW = ("archive", "total", "closed", "merged", "commits", "runs_more")
-SLOW_EVERY = 300
+SLOW_EVERY = 60
 CACHE = {"jobs": {}, "slow_at": 0.0}
 CALLS = {
     "repo": ["repo", "view", "--json", "nameWithOwner", "-q", ".nameWithOwner"],
@@ -19,6 +19,7 @@ CALLS = {
     "merged": ["pr", "list", "--state", "merged", "--limit", "300", "--search", "merged:>={since}", "--json", "number,title,mergedAt"],
     "closed": ["pr", "list", "--state", "closed", "--limit", "300", "--search", "closed:>={since}", "--json", "number,title,closedAt,mergedAt"],
     "runs": ["run", "list", "--limit", "100", "--json", FIELDS],  # first page: shows quickly
+    "runs_live": ["run", "list", "--workflow", "Agent swarm", "--status", "in_progress", "--limit", "100", "--json", FIELDS],  # live waves: never lost in pagination
     "runs_more": ["run", "list", "--limit", "300", "--json", FIELDS],  # three pages, merged in when it arrives
     "total": ["api", "graphql", "-F", "o={owner}", "-F", "n={repo}", "-q", ".data.repository.defaultBranchRef.target.history.totalCount",
               "-f", "query=query($o:String!,$n:String!){repository(owner:$o,name:$n){defaultBranchRef{target{... on Commit{history{totalCount}}}}}}"],
@@ -169,7 +170,7 @@ def fetch(emit=None, full=True):
                 timed("compare", t1, "what the day's commits changed")
                 churn = dict(got, commits=len(commits)) if isinstance(got, dict) else None
             return put({"churn": churn})
-        if k in ("runs", "runs_more"):  # the quick first page shows at once; the full list merges in when it lands
+        if k in ("runs", "runs_live", "runs_more"):  # the quick first page shows at once; the full list merges in when it lands
             with guard:
                 merged = merge_runs(val, out.get("runs") or [])
             put({"runs": merged})
@@ -184,6 +185,10 @@ def fetch(emit=None, full=True):
                  and r.get("updatedAt") and (now - ts(r["updatedAt"])).total_seconds() < 86400]
         done = {r["databaseId"] for r in runs if r.get("status") == "completed"}
         with guard:
+            # Drop stale job lists for any run that is live again, so a re-run is not
+            # masked by a cached completed-run snapshot.
+            for i in [r["databaseId"] for r in runs if r.get("status") != "completed"]:
+                CACHE["jobs"].pop(i, None)
             cached = dict(CACHE["jobs"])
             want = [i for i in dict.fromkeys(want) if i not in claimed and i not in cached]
             claimed.update(want)
@@ -191,6 +196,12 @@ def fetch(emit=None, full=True):
             return
         t1 = time.monotonic()
         jobs = collect({i: spawn(["run", "view", str(i), "--json", "jobs"]) for i in want})
+        # Retry any live run whose job fetch failed (None), once, so a transient
+        # timeout does not leave the worker count stale.
+        missing = [i for i in want if jobs.get(i) is None]
+        if missing:
+            retry = collect({i: spawn(["run", "view", str(i), "--json", "jobs"]) for i in missing})
+            jobs.update({i: v for i, v in retry.items() if v is not None})
         timed("jobs", t1, f"{len(want)} run view calls")
         with guard:
             have = dict(out.get("jobs") or {})
@@ -311,12 +322,24 @@ def worker_counts(live, jobs):
     for run in live:
         if run.get("workflowName") != "Agent swarm":
             continue
-        for job in jobs.get(run.get("databaseId"), None) or []:
+        run_jobs = jobs.get(run.get("databaseId"))
+        if not run_jobs:
+            # Jobs not loaded (timeout/cache): count the run itself so the
+            # dashboard reflects live waves instead of undercounting.
+            running.add((run.get("databaseId"), run.get("databaseId")))
+            continue
+        has_worker = False
+        for job in run_jobs:
             match = WORKER_JOB.match(job.get("name") or "")
-            if not match or job.get("status") == "completed":
+            if not match:
+                continue
+            has_worker = True
+            if job.get("status") == "completed":
                 continue
             key = (run.get("databaseId"), match.group("id") or job.get("name"))
             (running if job.get("status") == "in_progress" else queued).add(key)
+        if not has_worker:
+            running.add((run.get("databaseId"), run.get("databaseId")))
     return len(running), len(queued - running)
 
 

@@ -120,6 +120,8 @@ def main(argv=None, root=ROOT):
         print(f"note: {rule}: {key} is fixed; delete it from {BASELINE}", file=sys.stderr)
     for rule, key in new:
         print(f"FAIL {rule}: {key}\n     {ADVICE[rule]}", file=sys.stderr)
+    if "--fail-on-stale" in args and stale:
+        return 1
     return 1 if new else 0
 
 

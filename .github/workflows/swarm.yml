@@ -1,6 +1,6 @@
 name: Agent swarm
-# The one scheduler. It reads TODO.md, splits the open tasks across up to 10
-# worker slots per wave (up to 20 workers across overlapping waves), and starts one
+# The one scheduler. It reads TODO.md, splits the open tasks across up to 20
+# worker jobs per wave (also capped at 20 across overlapping waves), and starts one
 # prepared container per slot. Each worker runs the agent with no GitHub token
 # on its own branch, uploads its commits, and exits (the container is
 # discarded, nothing idles). A separate trusted job pushes the branch and opens
@@ -11,8 +11,8 @@ on:
   workflow_dispatch:
     inputs:
       workers:
-        description: 'Story workers per wave; the wave uses fewer when fewer tasks are ready (1 to 10, default 3). Fix, debug and repair workers are not limited by it.'
-        default: '3'
+        description: 'Story workers per wave; the wave uses fewer when fewer tasks are ready (1 to 20, default 20). Fix, debug and repair workers are not limited by it.'
+        default: '20'
       repair_run:
         description: Failed run id on main to repair (optional; the plan job finds failing runs itself)
         default: ''
@@ -116,7 +116,7 @@ jobs:
         if: steps.budget.outputs.start == 'true'
         env:
           GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
-          WORKERS: ${{ inputs.workers || '3' }}
+          WORKERS: ${{ inputs.workers || '20' }}
           BUDGET_WORKERS: ${{ steps.budget.outputs.workers }}
           REPAIR_RUN: ${{ inputs.repair_run }}
           LAUNCH_TASK: ${{ inputs.task }}
@@ -131,11 +131,14 @@ jobs:
           fi
           python3 -I scripts/swarm.py ensure-labels
           # Never plan more workers than the remaining monthly budget can pay for.
-          if [[ "$BUDGET_WORKERS" =~ ^[0-9]+$ ]] && (( BUDGET_WORKERS < WORKERS )); then
-            echo "Budget allows $BUDGET_WORKERS worker(s); capping the wave." >&2
-            WORKERS=$BUDGET_WORKERS
+          capacity=20
+          if [[ "$BUDGET_WORKERS" =~ ^[0-9]+$ ]] && (( BUDGET_WORKERS < capacity )); then
+            capacity=$BUDGET_WORKERS
           fi
-          python3 -I scripts/swarm.py plan-workers --max "$WORKERS" --repair-run "$REPAIR_RUN" --task "$LAUNCH_TASK"
+          # Repairs and fixes are queued before offering spare workers to backlog tasks.
+          # Ready merges use the independent serialized integrator instead of waiting for this wave.
+          python3 -I scripts/swarm.py pr-flow --no-wave
+          python3 -I scripts/swarm.py plan-workers --max "$WORKERS" --capacity "$capacity" --repair-run "$REPAIR_RUN" --task "$LAUNCH_TASK"
   worker:
     # Static name: GitHub renders matrix values in a job name only when the
     # wave has tasks, and a literal ${{ ... }} shows when the matrix is empty.
@@ -145,9 +148,8 @@ jobs:
     # on the matrix would then fail the whole run and trigger a false repair.
     if: needs.plan.result == 'success' && fromJSON(needs.plan.outputs.count || '0') > 0
     strategy:
-      # Ten slots, ten accounts: workers run side by side and each one
-      # publishes its own pull request when it ends (see swarm-worker.yml).
-      max-parallel: 10
+      # The ten configured accounts can each serve two independent workers.
+      max-parallel: 20
       fail-fast: false
       matrix: ${{ fromJSON(needs.plan.outputs.matrix || '{"include":[]}') }}
     # A called workflow gets at most the permissions its caller grants.
@@ -180,8 +182,8 @@ jobs:
       packages: read
     uses: ./.github/workflows/swarm-integrator.yml
     secrets: inherit
-  # Keeps the loop going without a person: when work remains and no pull request
-  # is waiting, start another wave (never while one is already waiting). A task a
+  # Keep the loop going while work remains, even if another PR is waiting to merge.
+  # Never queue another wave while one is already waiting. A task a
   # worker fails three times waits for a person, so this cannot spin forever.
   loop:
     name: Start the next wave

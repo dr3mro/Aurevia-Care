@@ -147,6 +147,10 @@ class ServiceProfileHttpIntegrationTest {
         seedMember(statement, org, NO_ROLE, "reception");
         seedMember(statement, org, PATIENT, "patient");
         seedMember(statement, org, UNCONNECTED_PATIENT, "patient");
+        // The publish path now enforces the site's approved channels. Seed an
+        // effective named approval for the legacy fixture codes used here.
+        seedApprovedChannels(statement, org, "msg06.approved_urgent_channels", "urgent");
+        seedApprovedChannels(statement, org, "msg06.approved_downtime_channels", "downtime");
 
         statement.execute("SET app.current_org = '" + org + "'");
         statement.execute("SET app.actor = '" + SEEDER + "'");
@@ -200,6 +204,18 @@ class ServiceProfileHttpIntegrationTest {
                 + "SELECT '" + org + "', m.id, '" + role + "', u.id FROM public.membership m "
                 + "JOIN public.user_identity u ON u.organization_id = m.organization_id AND u.id = m.user_id "
                 + "WHERE u.subject = '" + subject + "'");
+    }
+
+    /** Seed one approved channel policy through the versioned configuration fold. */
+    private static void seedApprovedChannels(Statement statement, String org, String key, String value)
+            throws Exception {
+        statement.execute("SET app.current_org = '" + org + "'");
+        statement.execute("SET app.actor = '" + SEEDER + "'");
+        statement.execute("INSERT INTO public.config_entry (organization_id, key, version, value) VALUES ('"
+                + org + "', '" + key + "', 1, '" + value + "')");
+        statement.execute("INSERT INTO public.config_approval (organization_id, entry_id, note) "
+                + "SELECT '" + org + "', id, 'synthetic approval' FROM public.config_entry "
+                + "WHERE key = '" + key + "' AND version = 1");
     }
 
     @Test

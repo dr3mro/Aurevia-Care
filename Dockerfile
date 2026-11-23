@@ -1,5 +1,5 @@
 # postgres:17-alpine (digest pinned; Dependabot bumps it)
-FROM postgres:17-alpine@sha256:526f86d93c6ea08fd3f1fe5605650cacc781b2c6013169a0ad8f42c7d3d84f32
+FROM postgres:19-alpine@sha256:8b0ff4cdf221f0c53d7fcda681d3b461be725c492cd881c5ec9c0ad25023f188
 RUN apk add --no-cache nginx
 ARG VERSION=dev
 ARG REVISION=unknown
