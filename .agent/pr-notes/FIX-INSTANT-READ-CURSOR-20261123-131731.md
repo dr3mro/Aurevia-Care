@@ -87,3 +87,36 @@ No suppression, exclusion, `@Disabled`, `.skip`, pragma or threshold change was 
 - A "new store instance" assertion is what makes a persistence story genuinely red — the old in-memory map still passes every stale/repeat and same-store unread assertion.
 - For a tenant-isolation test on a new table with composite FKs, seed a real row in the foreign tenant before attempting a foreign write, and restore the connection's `app.current_org`/`app.actor` in `finally`.
 
+## Coverage repair (attempt 1 of 2) — tool evidence
+
+The failing integrator gate was **not** a JaCoCo coverage miss: the full `mvn verify`
+aborted in the Surefire `default-test` phase (`5795` tests, `1` error) before JaCoCo
+`check` ran. The single error was deterministic and in an unrelated test class:
+
+```
+SurfaceBacklogUnassignedWorkFailedNotificationsOverdueTest.prepare:138
+  ->seedApprovedChannelPolicy:162 ? PSQL ERROR: duplicate key value violates unique constraint
+  "config_approval_organization_id_entry_id_key"
+```
+
+- Reproduced in isolation (tool): `SMARTCLINIC_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dgroups=integration -Dtest=SurfaceBacklogUnassignedWorkFailedNotificationsOverdueTest -DfailIfNoTests=false test` → `EXIT=1`, `initializationError` at the same line during `@BeforeAll`.
+- Root cause (tool, `git log`/`git blame`): `origin/main` carries two overlapping seeds of the same two `config_entry` policies for ORG_A. Commit `0fdc9ae3` added inline seeding inside `seedOwningTenant` (version 1 + approval), and the later commit `7e6f5933` added a second `seedApprovedChannelPolicy` helper called from `prepare()`. That helper inserts a version-2 `config_entry` but hard-codes the approval `SELECT ... WHERE version = 1`, approving the already-approved version-1 entry → duplicate `(organization_id, entry_id)`.
+- Fix (test fixture only): removed the redundant `seedApprovedChannelPolicy` helper and its two calls in `prepare()` from `apps/api/src/test/java/com/aurevia/smartclinic/messaging/clauses/SurfaceBacklogUnassignedWorkFailedNotificationsOverdueTest.java`. This restores the file to its pre-duplicate blob `8b10ee69`, keeping the single inline seed from `seedOwningTenant` that the positive publish/snapshot path relies on. No production code, migration, contract or threshold changed.
+- Green re-run (tool): the exact isolated command above → `EXIT=0`; surefire `Tests run: 4, Failures: 0, Errors: 0, Skipped: 0`; request log shows publish `201`, approve `200`, snapshot `200`, then `403`/`404`/`404` and no `UNAPPROVED_CHANNEL`.
+- Re-confirmed task coverage (tool): `SMARTCLINIC_PG_ADMIN=postgres mvn -q -B -f apps/api/pom.xml -Pno-security -Dtest=InstantMessagingIntegrationTest,InstantMessagingServiceTest,InstantMessagingControllerTest,JdbcInstantConversationStoreTest -DfailIfNoTests=false test jacoco:report` → `MVN_EXIT=0`; totals `17 + 29 + 10 + 3` tests, all green. JaCoCo `jacoco.xml`: `JdbcInstantConversationStore` LINE 0/95, BRANCH 0/4, METHOD 0/36, CLASS 0/1; `InstantMessagingService` LINE 0/158, BRANCH 0/50; `InstantMessagingController` LINE 0/12. V96 applied (`now at version v96`).
+- Gates (tool): `python3 -I -m unittest discover -s scripts/tests -p test_java_conventions.py` → `Ran 2`, `OK`; `python3 -I scripts/check-constraints.py --base origin/main --require-base` → exit 0; `python3 -I scripts/check-verdicts.py .agent/pr-notes/FIX-INSTANT-READ-CURSOR-20261123-131731.md --base origin/main` → exit 0; `git diff --check` → exit 0.
+
+### Branch-to-test list (unchanged — repair added no production branch)
+
+No new or changed production line/branch/method/class was introduced by this repair; it only removed a duplicate test seed. The authoritative list from the original implementation stays valid:
+
+| Branch | Test |
+|---|---|
+| `readSequence` aggregate / empty result | `JdbcInstantConversationStoreTest.readSequenceReturnsZeroWhenNoCursorIsStored` / `readSequenceReturnsTheStoredCursor`; `InstantMessagingIntegrationTest.cursorIsIsolatedByTenantAndParticipant`, `markReadOnAnEmptyConversationIsClampedToZero` |
+| `markRead` insert path | `readCursorSurvivesANewStoreInstance`, `futureCursorIsClampedSoTheNextMessageBecomesUnread`, `httpMarkReadUpdatesUnreadCounts` |
+| GREATEST monotonic raise (conflict `WHERE excluded > existing` true) | `aHigherReadAcknowledgementRaisesTheCursor` |
+| Conflict no-op (`WHERE excluded > existing` false) | `staleAndRepeatedMarkReadDoNotMoveTheCursorBackwards`, `JdbcInstantConversationStoreTest.markReadIgnoresAZeroRowConflictUpdate` |
+| Tenant/participant keys and RLS | `cursorIsIsolatedByTenantAndParticipant`, `markReadDenialsDoNotMoveTheCursor` |
+
+No suppression, exclusion, `@Disabled`/`.skip`, pragma or threshold change was added; the full `mvn verify` remains the integrator's gate.
+
