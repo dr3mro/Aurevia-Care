@@ -25,8 +25,11 @@ import org.yaml.snakeyaml.Yaml;
 
 /**
  * WEB-05 / ARC-04 gate: the authoritative OpenAPI contract must describe every
- * controller route. There is no baseline: any undocumented route, or any
- * contract route with no controller, fails the build.
+ * controller route. The only excuses are exact entries in the frozen baseline of
+ * pre-existing undocumented routes; a new route or any contract route without a
+ * controller fails this build. Baseline growth is rejected by the worker gate
+ * against the pinned base, so this suite can tolerate frozen debt without
+ * letting a worker quietly extend it.
  *
  * <p>Routes come from Spring's live {@link RequestMappingHandlerMapping}, not a
  * source-text search, so a new mapping is always seen. The only route removed
@@ -43,6 +46,7 @@ class OpenApiRouteParityTest {
 
     /** Surefire's basedir is the module directory (apps/api). */
     private static final Path CONTRACT = Path.of("../../contracts/openapi.yaml");
+    private static final Path BASELINE = Path.of("../../contracts/openapi/missing-routes.txt");
     private static final Set<String> HTTP_METHODS = Set.of(
             "GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "TRACE");
 
@@ -50,18 +54,19 @@ class OpenApiRouteParityTest {
     RequestMappingHandlerMapping handlerMapping;
 
     /**
-     * Fail when a live application route is absent from the contract or the
-     * contract publishes a route with no live controller.
+     * Fail when a live application route is absent from the contract and the
+     * frozen baseline, or when the contract publishes a route with no controller.
      *
-     * @throws IOException when the authoritative contract cannot be read
+     * @throws IOException when the contract or the baseline cannot be read
      */
     @Test
-    void everyControllerRouteIsDocumented() throws IOException {
+    void everyControllerRouteIsDocumentedOrBaselined() throws IOException {
         Set<OpenApiRouteCoverage.Route> controller = OpenApiRouteCoverage.withoutFrameworkRoutes(
                 controllerRoutes(handlerMapping));
         Set<OpenApiRouteCoverage.Route> contract = readContract(CONTRACT);
 
-        OpenApiRouteCoverage.Report report = OpenApiRouteCoverage.compare(controller, contract);
+        OpenApiRouteCoverage.Report report = OpenApiRouteCoverage.evaluate(
+                controller, contract, BASELINE);
 
         assertTrue(report.passed(), OpenApiRouteCoverage.describe(report));
     }

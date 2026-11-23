@@ -1,5 +1,9 @@
 package com.aurevia.smartclinic.it.contract;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -13,11 +17,13 @@ import java.util.regex.Pattern;
  * Pure comparison logic for the strict OpenAPI route gate (WEB-05, ARC-04).
  *
  * <p>A controller route is acceptable only when the authoritative contract
- * documents it. There is no shrinking baseline: the gate also rejects contract
- * routes with no controller, so the contract cannot drift in either direction.
- * The single framework fallback that Spring registers without a method
- * condition is removed explicitly by {@link #withoutFrameworkRoutes(Set)} before
- * the comparison; every real application route remains subject to the gate.</p>
+ * documents it, or when it is an exact entry in the frozen baseline of
+ * pre-existing undocumented routes. The baseline may shrink after a repair but
+ * never grow; the worker gate enforces that against the pinned base. The gate
+ * also rejects contract routes with no controller, so the contract cannot drift
+ * in either direction. The single framework fallback that Spring registers
+ * without a method condition is removed explicitly by
+ * {@link #withoutFrameworkRoutes(Set)} before the comparison.</p>
  *
  * <p>Path template variables are normalised so a controller and a contract may
  * use different placeholder names for the same route.</p>
@@ -164,6 +170,64 @@ public final class OpenApiRouteCoverage {
             throw new IllegalArgumentException("expected " + LINE_SHAPE + " but got: " + line);
         }
         return new Route(method, path);
+    }
+
+    /**
+     * Read the frozen pre-existing undocumented routes from a baseline file.
+     *
+     * <p>Only exact {@code METHOD /path} lines count. Blank lines and {@code #}
+     * comments carry no route, and path variables are normalized so a baseline
+     * entry matches regardless of the placeholder name. A malformed line is
+     * rejected: corrupt parity evidence must not silently suppress a real route.</p>
+     *
+     * @param path baseline file location
+     * @return immutable, ordered set of normalized baseline routes
+     * @throws java.io.IOException when the baseline file cannot be read
+     * @throws IllegalArgumentException when a line is not in {@code METHOD /path} form
+     */
+    public static Set<Route> readBaseline(Path path) throws IOException {
+        Set<Route> baseline = new TreeSet<>(Route.ORDER);
+        for (String line : Files.readAllLines(path, StandardCharsets.UTF_8)) {
+            String trimmed = line.trim();
+            if (trimmed.isEmpty() || trimmed.startsWith("#")) {
+                continue;
+            }
+            baseline.add(parseRoute(trimmed).normalized());
+        }
+        return Collections.unmodifiableSet(baseline);
+    }
+
+    /**
+     * Remove exact baseline exceptions from an undocumented-route report.
+     *
+     * <p>A route is excused only when both the HTTP method and the normalized
+     * path match a baseline entry, so a new method or a new path still fails.
+     * Ghost routes are never removed: the contract must not publish an operation
+     * without a controller, even when debt is baselined.</p>
+     *
+     * @param report strict comparison of controller and contract routes
+     * @param baseline normalized pre-existing exceptions
+     * @return report holding only new undocumented routes and every ghost
+     */
+    public static Report withoutBaselined(Report report, Set<Route> baseline) {
+        Set<Route> remaining = new TreeSet<>(Route.ORDER);
+        remaining.addAll(report.undocumented());
+        remaining.removeAll(baseline);
+        return new Report(remaining, report.ghost());
+    }
+
+    /**
+     * Compare live routes with the contract and apply the frozen baseline.
+     *
+     * @param controller routes registered by Spring, already stripped of framework plumbing
+     * @param contractRoutes routes documented in the authoritative contract
+     * @param baselinePath frozen baseline file location
+     * @return report holding only new undocumented routes and every ghost
+     * @throws java.io.IOException when the baseline file cannot be read
+     */
+    public static Report evaluate(Set<Route> controller, Set<Route> contractRoutes,
+                                  Path baselinePath) throws IOException {
+        return withoutBaselined(compare(controller, contractRoutes), readBaseline(baselinePath));
     }
 
     /**
