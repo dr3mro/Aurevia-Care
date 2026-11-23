@@ -1,5 +1,7 @@
-- [-] OPS-WIRING-REFRESH · Prune resolved wiring exemptions in the trusted integrator before verification.
-  - agent: Codex
+- [ ] OPS-WIRING-REFRESH · Prune resolved wiring exemptions in the trusted integrator before verification.
   - requirements: OPS-06
   - scope: scripts/swarm.py, scripts/tests/test_swarm.py, docs/SWARM.md
   - details: Reject candidate-owned baseline edits and new findings. Amend only the baseline in the merge commit before normal or repair verification. Preserve merge ancestry and rollback.
+  - evidence: The workflow specialist reviewed trusted-checker loading, merge ancestry and rollback. Synthetic Git repository tests exercised the CLI and gated amended HEAD, with cases for a stale entry, an active entry, a candidate-edited baseline, a new wiring finding, gate failure, a moved PR head and an already-integrated candidate. Tests failed before the refresh and rollback fixes, then passed. The targeted swarm and wiring suites passed 323 tests under Coverage.py 7.17.4.
+  - evidence: Strict wiring, documentation, secret scan, actionlint 1.7.12 and whitespace checks passed. The local origin/main tracking ref points to b96f9f78.
+  - Why this is not finished: GitHub CLI could not connect to api.github.com, so hosted verification of the exact SHA was unavailable. Confirm Delivery and the first swarm integrator run using the refresh.
