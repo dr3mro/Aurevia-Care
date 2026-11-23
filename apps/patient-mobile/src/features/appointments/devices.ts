@@ -35,6 +35,96 @@ export function eligibleTokens(
 }
 
 /**
+ * Index a flat device projection under one organization's tenant keys.
+ *
+ * @param devices flat registrations supplied by the signed-in host
+ * @param organizationId active organization that owns the keys
+ * @returns a tenant-keyed registry for the domain functions in this module
+ */
+function toRegistry(
+  devices: readonly DeviceToken[],
+  organizationId: OrganizationId,
+): Map<string, DeviceToken> {
+  const registry = new Map<string, DeviceToken>();
+  for (const token of devices) {
+    registry.set(tenantKey(organizationId, token.id), token);
+  }
+  return registry;
+}
+
+/**
+ * Load the devices this patient may act on in the active organization.
+ *
+ * A flat host projection is indexed under the active tenant first, so a row
+ * with the same local id in another organization is never selected. Only active
+ * registrations owned by the verified patient are offered for display.
+ *
+ * @param devices flat registrations supplied by the signed-in host
+ * @param organizationId active organization from the account
+ * @param patientId verified linked patient
+ * @returns active, tenant-owned devices of that patient
+ */
+export function devicesForPatient(
+  devices: readonly DeviceToken[],
+  organizationId: OrganizationId,
+  patientId: string,
+): DeviceToken[] {
+  return eligibleTokens(toRegistry(devices, organizationId), organizationId, patientId);
+}
+
+/**
+ * Re-resolve a pressed device id against the devices the patient may act on.
+ *
+ * The page receives a bare local id from a control. Resolving it again here
+ * means a foreign-tenant, foreign-patient, revoked or guessed identifier can
+ * never become a confirmation target.
+ *
+ * @param devices flat registrations read by the signed-in page
+ * @param organizationId active organization from the account
+ * @param deviceId organization-local identifier from the pressed control
+ * @param patientId verified linked patient
+ * @returns the active device when it belongs to this patient and tenant
+ */
+export function findEligibleDevice(
+  devices: readonly DeviceToken[],
+  organizationId: OrganizationId,
+  deviceId: string,
+  patientId: string,
+): DeviceToken | undefined {
+  return devicesForPatient(devices, organizationId, patientId).find(
+    (token) => token.id === deviceId,
+  );
+}
+
+/**
+ * Recompute the devices offered after one revocation settles.
+ *
+ * No server device-list route exists in V1, so a successful DELETE is applied
+ * to the tenant-scoped local projection and eligibility is recomputed. The
+ * revoked device disappears while another patient's or another tenant's row is
+ * never selected; the source list is not mutated.
+ *
+ * @param devices flat registrations read before the command
+ * @param organizationId active organization from the account
+ * @param deviceId identifier the server just revoked
+ * @param patientId verified linked patient
+ * @returns active devices still eligible for this patient in this tenant
+ */
+export function refreshVisibleDevices(
+  devices: readonly DeviceToken[],
+  organizationId: OrganizationId,
+  deviceId: string,
+  patientId: string,
+): DeviceToken[] {
+  const registry = toRegistry(devices, organizationId);
+  return eligibleTokens(
+    withRevokedDevice(registry, organizationId, deviceId, patientId),
+    organizationId,
+    patientId,
+  );
+}
+
+/**
  * Return a revoked copy of a device without mutating the registration.
  *
  * @param token current registration
