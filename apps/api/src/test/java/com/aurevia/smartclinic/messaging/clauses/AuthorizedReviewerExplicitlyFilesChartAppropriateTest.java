@@ -196,9 +196,9 @@ class AuthorizedReviewerExplicitlyFilesChartAppropriateTest {
 
     /**
      * Tenant-scoped attachment store that counts projection writes without
-     * changing behaviour. The filing operation must append a fact only, so a
-     * write count that never changes proves no chart row or attachment version
-     * was created by the command under test.
+     * changing behaviour. Filing must append a fact only, so an unchanged count
+     * proves the attachment projection was not rewritten. A chart write path, if
+     * one is added later, needs its own persisted-effect assertion.
      */
     private static final class WriteCountingAttachmentStore implements AttachmentStore {
 
