@@ -19,6 +19,7 @@ permissions:
 concurrency:
   group: swarm-worker-${{ github.run_id }}-${{ fromJSON(inputs.task).id }}
   cancel-in-progress: false
+  queue: max
 env:
   SWARM_GIT_NAME: ${{ vars.SWARM_GIT_NAME }}
   SWARM_GIT_EMAIL: ${{ vars.SWARM_GIT_EMAIL }}
@@ -44,7 +45,9 @@ jobs:
       run:
         shell: bash
     env:
-      MODEL: ${{ fromJSON(inputs.task).model }}
+      # Optional repository variable SWARM_MODEL overrides the model baked into
+      # the slot image. The slot model remains the default when it is not set.
+      MODEL: ${{ vars.SWARM_MODEL || fromJSON(inputs.task).model }}
       MODE: ${{ fromJSON(inputs.task).kind == 'fix' && 'fix' || 'story' }}
       BRANCH: ${{ fromJSON(inputs.task).branch }}
       BRANCH_PREFIX: swarm
@@ -68,9 +71,15 @@ jobs:
       # later fetches nothing; a newer main is picked up by the integrator.
       - name: Fetch main
         env:
-          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
+          # This job is read-only; the job token is enough. Never expose the
+          # write-capable swarm PAT to a script from the checked-out branch.
+          GH_TOKEN: ${{ github.token }}
           BASE_BRANCH: ${{ github.event.repository.default_branch }}
-        run: scripts/agent-run.sh fetch-main || true
+        run: |
+          runner=$(mktemp)
+          trap 'rm -f "$runner"' EXIT
+          git -c safe.directory='*' show "origin/$BASE_BRANCH:scripts/agent-run.sh" > "$runner"
+          bash "$runner" fetch-main || true
       # A fix worker starts on an existing branch that may be behind main: bring main in first, with the
       # agent resolving any conflicts, so the work starts from the current code.
       - name: Merge main into the branch (start, no GitHub token in this step)
@@ -86,19 +95,19 @@ jobs:
           # Older PR branches may lack the conflict skill loader.
           runner=$(mktemp)
           trap 'rm -f "$runner"' EXIT
-          git show "origin/$BASE_BRANCH:scripts/agent-run.sh" > "$runner"
+          git -c safe.directory='*' show "origin/$BASE_BRANCH:scripts/agent-run.sh" > "$runner"
           bash "$runner" merge-main || true
       # What earlier workers and the integrator wrote about this task in trusted
       # issues. Read here with the read-only token; the agent only sees the file.
       - name: Read earlier findings about this task
         env:
-          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
+          GH_TOKEN: ${{ github.token }}
           SWARM_ISSUES: ${{ vars.SWARM_ISSUES }}
           BASE_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           context=$(mktemp)
           trap 'rm -f "$context"' EXIT
-          git show "origin/$BASE_BRANCH:scripts/swarm.py" > "$context"
+          git -c safe.directory='*' show "origin/$BASE_BRANCH:scripts/swarm.py" > "$context"
           python3 -I "$context" issue-context --task "$STORY_ID" || true
           if [[ "$MODE" == fix && "$PR_NUMBER" =~ ^[1-9][0-9]*$ ]]; then
             python3 -I "$context" pr-context --pr "$PR_NUMBER" || true
@@ -133,15 +142,16 @@ jobs:
       # Bring main into the branch between segments so the work never drifts far
       # from it. The only token step after the agent has run is this inline fetch:
       # it runs no workspace script, ignores repository hooks and sends the
-      # read-only token to github.com only.
+      # read-only token to github.com only. Inside the container the host-mounted
+      # workspace has a different owner, so the fetch marks it safe explicitly.
       - name: Fetch main (after segment 1)
         if: steps.s1.outputs.more == 'true'
         env:
-          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
+          GH_TOKEN: ${{ github.token }}
           BASE_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           header=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 | tr -d '\n')
-          git -c core.hooksPath=/dev/null -c core.fsmonitor=false \
+          git -c safe.directory='*' -c core.hooksPath=/dev/null -c core.fsmonitor=false \
             -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $header" \
             fetch -q "https://github.com/$GITHUB_REPOSITORY" \
             "+refs/heads/$BASE_BRANCH:refs/remotes/origin/$BASE_BRANCH" || true
@@ -169,15 +179,16 @@ jobs:
       # Bring main into the branch between segments so the work never drifts far
       # from it. The only token step after the agent has run is this inline fetch:
       # it runs no workspace script, ignores repository hooks and sends the
-      # read-only token to github.com only.
+      # read-only token to github.com only. Inside the container the host-mounted
+      # workspace has a different owner, so the fetch marks it safe explicitly.
       - name: Fetch main (after segment 2)
         if: steps.s2.outputs.more == 'true'
         env:
-          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
+          GH_TOKEN: ${{ github.token }}
           BASE_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           header=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 | tr -d '\n')
-          git -c core.hooksPath=/dev/null -c core.fsmonitor=false \
+          git -c safe.directory='*' -c core.hooksPath=/dev/null -c core.fsmonitor=false \
             -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $header" \
             fetch -q "https://github.com/$GITHUB_REPOSITORY" \
             "+refs/heads/$BASE_BRANCH:refs/remotes/origin/$BASE_BRANCH" || true
@@ -205,15 +216,16 @@ jobs:
       # Bring main into the branch between segments so the work never drifts far
       # from it. The only token step after the agent has run is this inline fetch:
       # it runs no workspace script, ignores repository hooks and sends the
-      # read-only token to github.com only.
+      # read-only token to github.com only. Inside the container the host-mounted
+      # workspace has a different owner, so the fetch marks it safe explicitly.
       - name: Fetch main (after segment 3)
         if: steps.s3.outputs.more == 'true'
         env:
-          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
+          GH_TOKEN: ${{ github.token }}
           BASE_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           header=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 | tr -d '\n')
-          git -c core.hooksPath=/dev/null -c core.fsmonitor=false \
+          git -c safe.directory='*' -c core.hooksPath=/dev/null -c core.fsmonitor=false \
             -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $header" \
             fetch -q "https://github.com/$GITHUB_REPOSITORY" \
             "+refs/heads/$BASE_BRANCH:refs/remotes/origin/$BASE_BRANCH" || true
@@ -242,11 +254,11 @@ jobs:
       - name: Fetch main (final)
         if: always()
         env:
-          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
+          GH_TOKEN: ${{ github.token }}
           BASE_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           header=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 | tr -d '\n')
-          git -c core.hooksPath=/dev/null -c core.fsmonitor=false \
+          git -c safe.directory='*' -c core.hooksPath=/dev/null -c core.fsmonitor=false \
             -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $header" \
             fetch -q "https://github.com/$GITHUB_REPOSITORY" \
             "+refs/heads/$BASE_BRANCH:refs/remotes/origin/$BASE_BRANCH" || true
@@ -331,6 +343,6 @@ jobs:
         if: always()
         continue-on-error: true
         env:
-          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
+          GH_TOKEN: ${{ github.token }}
           TASK_ID: ${{ fromJSON(inputs.task).id }}
         run: python3 -I scripts/swarm.py top-up --id "$TASK_ID"

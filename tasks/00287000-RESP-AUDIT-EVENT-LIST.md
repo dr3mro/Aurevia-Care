@@ -1,4 +1,5 @@
 - [x] RESP-AUDIT-EVENT-LIST · Staff web: responsive `AuditEventList` (features-admin)
+  - evidence: PR #727 merged to main (reconciled 2026-11-23)
   - pr: #727
   - attempts: 1
   - requirements: WEB-07, UX-01

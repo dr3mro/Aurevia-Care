@@ -1,4 +1,5 @@
 - [x] RESP-ADMIN-SCREEN · Staff web: responsive `AdminScreen` (features-admin)
+  - evidence: PR #712 merged to main (reconciled 2026-11-23)
   - pr: #712
   - attempts: 1
   - requirements: WEB-07, UX-01

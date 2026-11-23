@@ -11,6 +11,7 @@ permissions:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
+  queue: max
 
 jobs:
   build:
@@ -75,14 +76,39 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/resolve-version
         id: version
+      - name: Require a green default-branch run for the tagged commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          total=$(gh api --method GET "repos/$GITHUB_REPOSITORY/actions/workflows/delivery.yml/runs" \
+            -f branch="$DEFAULT_BRANCH" -f head_sha="$GITHUB_SHA" -f event=push -f status=success \
+            --jq '.total_count')
+          if [[ "$total" -lt 1 ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not point to a green $DEFAULT_BRANCH commit ($GITHUB_SHA)"
+            exit 1
+          fi
       - name: Create the manifest
         env:
           VERSION: ${{ steps.version.outputs.value }}
           GH_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
           image="ghcr.io/${GITHUB_REPOSITORY,,}-app"
           printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          # A version tag is immutable: never replace a published manifest.
+          if docker buildx imagetools inspect "$image:$VERSION" >/dev/null 2>&1; then
+            echo "::error::$image:$VERSION already exists; tags are immutable"
+            exit 1
+          fi
           tags=(--tag "$image:$VERSION")
           [[ "$VERSION" == *-* ]] || tags+=(--tag "$image:latest")
           docker buildx imagetools create "${tags[@]}" "$image:$VERSION-amd64" "$image:$VERSION-arm64"
+          manifest=$(docker buildx imagetools inspect "$image:$VERSION" --raw)
+          for arch in amd64 arm64; do
+            digest=$(docker buildx imagetools inspect "$image:$VERSION-$arch" \
+              --format '{{json .Manifest}}' | jq -er .digest)
+            jq -e --arg digest "$digest" '.manifests | any(.digest == $digest)' \
+              <<< "$manifest" >/dev/null
+          done
           docker buildx imagetools inspect "$image:$VERSION"

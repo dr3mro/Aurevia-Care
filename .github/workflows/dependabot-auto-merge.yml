@@ -1,13 +1,14 @@
 name: Dependabot auto-merge
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, labeled]
 permissions:
   contents: write
   pull-requests: write
 concurrency:
   group: dependabot-auto-merge-${{ github.ref }}
   cancel-in-progress: false
+  queue: max
 jobs:
   auto-merge:
     if: github.actor == 'dependabot[bot]'
@@ -16,6 +17,18 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ github.head_ref }}
+      - name: Require an explicit human approval
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # A bot opening a PR is not a review. A person must opt in by adding
+          # this label; the label survives a new push, unlike an approval that
+          # can be dismissed by the branch protection rules.
+          if ! gh pr view "$PR_URL" --json labels --jq '.labels[].name' | grep -qx 'dependency-approved'; then
+            echo "Dependency update needs the dependency-approved label from a person."
+            exit 0
+          fi
       - name: Enable auto-merge
         run: gh pr merge --auto --squash "$PR_URL"
         env:

@@ -1,4 +1,5 @@
 - [x] COVPY-MONITOR-TUI · Script tests: monitor tool coverage, tui part (to 100% together with the other three parts)
+  - evidence: PR #420 merged to main (reconciled 2026-11-23)
   - pr: #420
   - attempts: 1
   - requirements: OPS-06

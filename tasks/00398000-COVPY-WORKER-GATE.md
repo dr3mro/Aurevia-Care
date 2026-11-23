@@ -1,4 +1,5 @@
 - [x] COVPY-WORKER-GATE · Script tests: reach 100% line and branch coverage of `scripts/worker_gate.py`
+  - evidence: PR #670 merged to main (reconciled 2026-11-23)
   - pr: #670
   - attempts: 1
   - requirements: OPS-06

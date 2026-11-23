@@ -1,4 +1,5 @@
 - [x] RESP-APP-SCREEN-STACK · Patient app: tablet, landscape and large-text layout for `ScreenStack` (app)
+  - evidence: PR #610 merged to main (reconciled 2026-11-23)
   - pr: #610
   - attempts: 1
   - requirements: PAT-01, PAT-02, UX-01

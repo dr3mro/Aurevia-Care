@@ -20,6 +20,7 @@ permissions:
 concurrency:
   group: swarm-watchdog
   cancel-in-progress: false
+  queue: max
   # Keep every waiting run: without this a newer trigger replaces a waiting one,
   # so a failure event or the 2 AM run could be dropped.
 env:

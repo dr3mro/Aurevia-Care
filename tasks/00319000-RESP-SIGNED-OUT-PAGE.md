@@ -1,4 +1,5 @@
 - [x] RESP-SIGNED-OUT-PAGE · Staff web: responsive `SignedOutPage` (features-system)
+  - evidence: PR #805 merged to main (reconciled 2026-11-23)
   - pr: #805
   - attempts: 1
   - requirements: WEB-07, UX-01

@@ -1,4 +1,5 @@
 - [x] RESP-APIPAGE · Staff web: responsive `ApiPage` component
+  - evidence: PR #593 merged to main (reconciled 2026-11-23)
   - pr: #593
   - attempts: 1
   - requirements: WEB-07, UX-01

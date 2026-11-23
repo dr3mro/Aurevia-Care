@@ -1,4 +1,5 @@
 - [x] RESP-REGISTER-PATIENT-FORM · Staff web: responsive `RegisterPatientForm` (features-patients)
+  - evidence: PR #791 merged to main (reconciled 2026-11-23)
   - pr: #791
   - attempts: 1
   - requirements: WEB-07, UX-01
