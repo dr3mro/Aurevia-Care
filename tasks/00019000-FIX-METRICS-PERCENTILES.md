@@ -1,6 +1,6 @@
-- [-] FIX-METRICS-PERCENTILES · Expose latency distributions for OPS-03 percentile alerts
-  - agent: swarm-8
-  - attempts: 1
+- [x] FIX-METRICS-PERCENTILES · Expose latency distributions for OPS-03 percentile alerts
+  - pr: #1215
+  - attempts: 2
   - requirements: OPS-03, WEB-06
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/web, apps/api/src/test/java/com/aurevia/smartclinic/web, docs/operations/production-readiness/README.md
   - depends: READY-44

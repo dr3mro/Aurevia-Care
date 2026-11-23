@@ -1,5 +1,5 @@
-- [-] FIX-PATIENT-APPOINTMENT-ACTIONS · Wire appointment details and device revocation in the patient app
-  - agent: swarm-8
+- [x] FIX-PATIENT-APPOINTMENT-ACTIONS · Wire appointment details and device revocation in the patient app
+  - pr: #1093
   - attempts: 4
   - requirements: PAT-01
   - scope: apps/patient-mobile/src/app, apps/patient-mobile/src/features/appointments

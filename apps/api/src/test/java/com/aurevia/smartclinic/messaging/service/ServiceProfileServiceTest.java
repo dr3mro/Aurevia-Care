@@ -56,6 +56,8 @@ class ServiceProfileServiceTest {
     private static final String DRAFT_ID = "11111111-2222-3333-4444-666666666666";
     private static final String FUTURE_ID = "11111111-2222-3333-4444-777777777777";
     private static final String UNKNOWN_ID = "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee";
+    private static final String URGENT_CHANNELS_KEY = "msg06.approved_urgent_channels";
+    private static final String DOWNTIME_CHANNELS_KEY = "msg06.approved_downtime_channels";
 
     private InMemoryServiceProfileStore store;
     private ServiceProfileService service;
@@ -74,6 +76,10 @@ class ServiceProfileServiceTest {
         store.addUnit(ORG, UNIT);
         store.addUnit(ORG, OTHER_UNIT);
         store.addUnit(OTHER_ORG, UNIT);
+        // Publish now fails closed on unapproved channels; these legacy fixture
+        // codes are the tenant's approved site policy for this test class.
+        store.seedApprovedChannels(ORG, URGENT_CHANNELS_KEY, "urgent");
+        store.seedApprovedChannels(ORG, DOWNTIME_CHANNELS_KEY, "downtime");
         store.linkPatient(ORG, PATIENT_SUBJECT, PATIENT);
         store.addConnection(ORG, PATIENT, UNIT, true);
         store.addProfile(approvedProfile(PROFILE_ID, 1, ORG, UNIT, ADMIN, NOW.minusSeconds(3600)));
@@ -166,6 +172,28 @@ class ServiceProfileServiceTest {
     void aStalePublishVersionIsRejected() {
         TenantContext.set(new TenantContext(ORG, ADMIN, "ADMIN", "corr-5"));
         assertEquals(412, assertThrows(ApiException.class, () -> service.publish(publishRequest(9))).status());
+    }
+
+    @Test
+    void anUnapprovedUrgentChannelIsRefusedAndAudited() {
+        TenantContext.set(new TenantContext(ORG, ADMIN, "ADMIN", "corr-unapproved-channel"));
+        PublishProfileRequest request = publishRequestWithChannels(UNIT, "FREE_TEXT_URGENT", "downtime", 1);
+        ApiException denial = assertThrows(ApiException.class, () -> service.publish(request));
+        assertEquals(422, denial.status());
+        assertEquals("UNAPPROVED_CHANNEL", denial.code());
+        assertEquals(0, store.versions(ORG, UNIT).stream().filter(p -> p.version() == 2).count());
+        assertTrue(store.auditEvents(ORG).stream().anyMatch(audit -> "PROFILE_PUBLISH".equals(audit.action())
+                && "DENIED".equals(audit.outcome()) && UNIT.equals(audit.resourceId())));
+    }
+
+    @Test
+    void aBlankDowntimeChannelIsRefusedAndAudited() {
+        TenantContext.set(new TenantContext(ORG, ADMIN, "ADMIN", "corr-blank-channel"));
+        PublishProfileRequest request = publishRequestWithChannels(UNIT, "urgent", "  ", 1);
+        assertEquals(422, assertThrows(ApiException.class, () -> service.publish(request)).status());
+        assertEquals(0, store.versions(ORG, UNIT).stream().filter(p -> p.version() == 2).count());
+        assertTrue(store.auditEvents(ORG).stream().anyMatch(audit -> "PROFILE_PUBLISH".equals(audit.action())
+                && "DENIED".equals(audit.outcome()) && UNIT.equals(audit.resourceId())));
     }
 
     @Test
@@ -352,8 +380,13 @@ class ServiceProfileServiceTest {
     }
 
     private static PublishProfileRequest publishRequest(int expectedVersion) {
-        return new PublishProfileRequest(UNIT, "UTC", List.of("FRIDAY|09:00|17:00"), 30L,
-                "nurse", List.of("backup"), "escalation", "urgent", "downtime",
+        return publishRequestWithChannels(UNIT, "urgent", "downtime", expectedVersion);
+    }
+
+    private static PublishProfileRequest publishRequestWithChannels(String unit, String urgent,
+                                                                   String downtime, int expectedVersion) {
+        return new PublishProfileRequest(unit, "UTC", List.of("FRIDAY|09:00|17:00"), 30L,
+                "nurse", List.of("backup"), "escalation", urgent, downtime,
                 List.of("collection"), instructions(), "2026-11-19T12:00:00Z", expectedVersion);
     }
 

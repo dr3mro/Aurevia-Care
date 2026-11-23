@@ -13,6 +13,8 @@ import '../../index';
 import { clearToken } from '../api/tokenStore';
 import { TransportError } from '../api/transport';
 import type { Transport } from '../api/transport';
+import type { DeviceWriteClient } from '../features/appointments/deviceClient';
+import type { DeviceToken } from '../features/appointments/types';
 import { appText } from './messages';
 import { RootNavigator } from './RootNavigator';
 import { TAB_DEFINITIONS } from './tabs';
@@ -159,6 +161,18 @@ describe('four-tab navigation', () => {
     await waitFor(() => expect(view.getByTestId('appointment-list')).toBeTruthy());
   });
 
+  it('opens the selected appointment detail from the installed signed-in tab', async () => {
+    const view = await render(<RootNavigator locale="en" />);
+    await waitFor(() => expect(view.getByTestId('details-apt-1')).toBeTruthy());
+
+    await fireEvent.press(view.getByTestId('details-apt-1'));
+
+    expect(view.getByTestId('appointment-detail')).toBeTruthy();
+    expect(view.getByTestId('detail-status')).toHaveTextContent('booked');
+    await fireEvent.press(view.getByTestId('appointment-detail-back'));
+    expect(view.queryByTestId('appointment-detail')).toBeNull();
+  });
+
   it('renders each tab screen when that tab is pressed', async () => {
     const view = await render(<RootNavigator locale="en" />);
 
@@ -298,5 +312,78 @@ describe('session expiry', () => {
 
     await fireEvent.press(view.getByTestId('sign-in-action'));
     await waitFor(() => expect(view.getByTestId('tab-button-appointments')).toBeTruthy());
+  });
+});
+
+/**
+ * PAT-01 acceptance for the installed shell: the signed-in session's registered
+ * device must reach the appointments tab as a real revoke control. All fixtures
+ * are synthetic; the write port is injected so no request leaves the harness.
+ */
+describe('installed device revocation', () => {
+  /** Device registered for the synthetic signed-in session fixture. */
+  const signedInDevice: DeviceToken = {
+    id: 'dev-1',
+    patientId: 'synthetic-patient',
+    state: 'active',
+    token: 'synthetic-device-token',
+  };
+
+  /** Build a device write port that records scoped DELETEs without a network call. */
+  function writePort() {
+    const remove = jest.fn(async () => undefined) as unknown as jest.Mock;
+    return {
+      remove,
+      client: { delete: remove as unknown as DeviceWriteClient['delete'] } satisfies DeviceWriteClient,
+    };
+  }
+
+  it('offers the signed-in device for revocation on the installed appointments tab', async () => {
+    const view = await render(<RootNavigator locale="en" />);
+    await waitFor(() => expect(view.getByTestId('revoke-dev-1')).toBeTruthy());
+  });
+
+  it('does not offer a device registered to another patient', async () => {
+    const foreign: DeviceToken = { ...signedInDevice, patientId: 'other-patient' };
+    const view = await render(<RootNavigator locale="en" registeredDevice={foreign} />);
+    await waitFor(() => expect(view.getByTestId('appointment-list')).toBeTruthy());
+    expect(view.queryByTestId('revoke-dev-1')).toBeNull();
+  });
+
+  it('does not offer a revoked device', async () => {
+    const revoked: DeviceToken = { ...signedInDevice, state: 'revoked' };
+    const view = await render(<RootNavigator locale="en" registeredDevice={revoked} />);
+    await waitFor(() => expect(view.getByTestId('appointment-list')).toBeTruthy());
+    expect(view.queryByTestId('revoke-dev-1')).toBeNull();
+  });
+
+  it('sends no DELETE when the patient cancels on the installed tab', async () => {
+    const { client, remove } = writePort();
+    const view = await render(<RootNavigator locale="en" deviceClient={client} />);
+    await waitFor(() => expect(view.getByTestId('revoke-dev-1')).toBeTruthy());
+
+    await fireEvent.press(view.getByTestId('revoke-dev-1'));
+    expect(view.getByTestId('device-revocation-dev-1')).toBeTruthy();
+    await fireEvent.press(view.getByTestId('device-revoke-cancel'));
+
+    expect(view.queryByTestId('device-revocation-dev-1')).toBeNull();
+    expect(view.getByTestId('revoke-dev-1')).toBeTruthy();
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  it('sends one scoped DELETE and refreshes devices from the installed tab', async () => {
+    const { client, remove } = writePort();
+    const view = await render(<RootNavigator locale="en" deviceClient={client} />);
+    await waitFor(() => expect(view.getByTestId('revoke-dev-1')).toBeTruthy());
+
+    await fireEvent.press(view.getByTestId('revoke-dev-1'));
+    expect(view.getByTestId('device-revocation-dev-1')).toBeTruthy();
+    await fireEvent.press(view.getByTestId('device-revoke-confirm'));
+
+    await waitFor(() => expect(remove).toHaveBeenCalledTimes(1));
+    expect(remove).toHaveBeenCalledWith(
+      '/api/v1/patient/appointments/devices/dev-1?patientId=synthetic-patient',
+    );
+    await waitFor(() => expect(view.queryByTestId('revoke-dev-1')).toBeNull());
   });
 });

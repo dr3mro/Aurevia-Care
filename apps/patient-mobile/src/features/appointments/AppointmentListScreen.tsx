@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import type { ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -25,7 +26,12 @@ export interface AppointmentListScreenProps {
   readonly notice: GenericNotice;
   /** Verified patient whose devices may be shown and revoked (PRD-03). */
   readonly patientId: string;
-  /** Registered devices for the active organization. */
+  /**
+   * Registered devices for the active organization. The host passes an
+   * already tenant-scoped projection; this presentational screen filters only
+   * delivery state and verified patient, so it never re-derives tenant scope
+   * from a bare local id.
+   */
   readonly devices: readonly DeviceToken[];
   /**
    * Called with the whole read row when the patient confirms an appointment.
@@ -42,6 +48,10 @@ export interface AppointmentListScreenProps {
   readonly onOpenDetails: (appointmentId: string) => void;
   /** Called when the patient revokes one device. */
   readonly onRevokeDevice: (deviceId: string) => void;
+  /** Row whose details are open, so the chosen control can expose its state. */
+  readonly selectedAppointmentId?: string | null;
+  /** Detail or confirmation content supplied by the page for the detail pane. */
+  readonly detailContent?: ReactNode;
   /** Active display locale; defaults to English for embedders without a locale prop. */
   readonly locale?: Locale;
   /** Render the standalone phone-frame tab bar for a design review. */
@@ -182,6 +192,8 @@ export function AppointmentListScreen({
   pendingAppointmentId,
   onOpenDetails,
   onRevokeDevice,
+  selectedAppointmentId = null,
+  detailContent,
   locale = resolveScreenLocale(),
   showTabBar = false,
   activeTab = 'appointments',
@@ -255,6 +267,7 @@ export function AppointmentListScreen({
                   accessibilityRole="button"
                   accessibilityLabel={screenText(locale, 'viewDetails')}
                   accessibilityLanguage={locale}
+                  accessibilityState={{ selected: row.id === selectedAppointmentId }}
                   onPress={() => onOpenDetails(row.id)}
                   style={styles.details}>
                   <Text accessibilityLanguage={locale}>{screenText(locale, 'viewDetails')}</Text>
@@ -264,6 +277,7 @@ export function AppointmentListScreen({
           })}
         </View>
         <View testID="appointment-detail-pane" style={panes.detailPane}>
+          {detailContent}
           {devices
             .filter((device) => device.state === 'active' && device.patientId === patientId)
             .map((device) => (

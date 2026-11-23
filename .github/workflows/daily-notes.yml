@@ -23,9 +23,16 @@ env:
   SWARM_ISSUES: ${{ vars.SWARM_ISSUES }}
 
 jobs:
+  admission:
+    uses: ./.github/workflows/swarm-daily-admission.yml
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
   collect:
+    needs: admission
     name: Collect the notes
-    if: vars.SWARM_NOTES != 'off'
+    if: vars.SWARM_NOTES != 'off' && needs.admission.outputs.ready == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
