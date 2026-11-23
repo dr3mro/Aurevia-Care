@@ -10,7 +10,7 @@ TEXT = ("repo", "todo", "archive", "total", "commits")  # plain-text results; ev
 # Sections that change slowly are re-read every SLOW_EVERY seconds, not on every refresh, and the jobs of a
 # finished run never change, so they are looked up once. This keeps the GitHub rate limit for other work.
 SLOW = ("archive", "total", "closed", "merged", "commits", "runs_more")
-SLOW_EVERY = 300
+SLOW_EVERY = 60
 CACHE = {"jobs": {}, "slow_at": 0.0}
 CALLS = {
     "repo": ["repo", "view", "--json", "nameWithOwner", "-q", ".nameWithOwner"],
