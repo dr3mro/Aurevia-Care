@@ -3716,10 +3716,13 @@ def refresh_wiring_baseline(checker, base):
     """Validate the candidate against the first parent and prune only resolved entries.
 
     The checker is loaded from main before any PR merge. Return an error message
-    to reject a candidate, or an empty string when its baseline is ready to gate.
+    to reject a candidate, an empty string when it is ready to gate, or None
+    when the PR head was already integrated and no merge commit was created.
     Amend the merge itself so a single first-parent reset rolls back both changes.
     Git and filesystem errors propagate and stop publication.
     """
+    if git("rev-parse", "HEAD").strip() == base:
+        return None
     path = checker.BASELINE
     if git("diff", "--name-only", base, "HEAD", "--", path).strip():
         return f"The PR changes {path}; the integrator owns automatic baseline cleanup"
@@ -3734,7 +3737,7 @@ def refresh_wiring_baseline(checker, base):
     return ""
 
 
-def integrate_batch(queue, gate="scripts/quick-check.sh", check_delivery=None, wiring_checker=None):
+def integrate_batch(queue, gate="scripts/quick-check.sh", check_delivery=None):
     """Merge every ready PR in one job, gate each, then push main once.
 
     One cache/Java setup serves the whole batch. A PR whose gate fails is sent
@@ -3743,11 +3746,12 @@ def integrate_batch(queue, gate="scripts/quick-check.sh", check_delivery=None, w
     integrator job in GitHub Actions, where a current-head Delivery verdict is
     a precondition for staging a merge; direct callers that only exercise merge
     mechanics have no CI evidence to check. ``check_delivery`` overrides that
-    default. The CLI supplies a trusted wiring checker for candidate validation
-    and cleanup before gating. Returns the number of merged PRs."""
+    default. The wiring checker is loaded before merging any candidate.
+    Returns the number of merged PRs."""
     merged, conflicted, gates = [], [], {}
     require_evidence = (os.environ.get("GITHUB_ACTIONS") == "true") \
         if check_delivery is None else check_delivery
+    wiring_checker = _checker("check-wiring")
     migrate_tasks()
     for pr in queue:
         blocked = guard(pr, is_repair(pr))
@@ -3777,9 +3781,9 @@ def integrate_batch(queue, gate="scripts/quick-check.sh", check_delivery=None, w
             fail(pr, "the branch changed after planning; it will be retested", simple=True)
             git("reset", "--hard", base)
             continue
-        if wiring_checker is not None and git("rev-parse", "HEAD").strip() == base:
-            continue  # An already-integrated head produced no merge commit to gate or amend.
-        wiring_error = refresh_wiring_baseline(wiring_checker, base) if wiring_checker is not None else ""
+        wiring_error = refresh_wiring_baseline(wiring_checker, base)
+        if wiring_error is None:
+            continue
         if wiring_error:
             fail(pr, "Wiring baseline validation failed on the merge of main and this branch", wiring_error)
             git("reset", "--hard", base)
@@ -4202,7 +4206,7 @@ def main(argv=None):
     elif a.cmd == "migrate-tasks":
         print(f"moved {migrate_tasks()} task(s)")
     elif a.cmd == "integrate-batch":
-        integrate_batch(json.loads(a.queue), a.gate, wiring_checker=_checker("check-wiring"))
+        integrate_batch(json.loads(a.queue), a.gate)
     elif a.cmd == "resolve-publish":
         resolve_publish(a.dir)
     elif a.cmd == "guard":

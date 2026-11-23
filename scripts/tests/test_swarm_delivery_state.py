@@ -294,6 +294,7 @@ class IntegratorWiringTest(unittest.TestCase):
              mock.patch.object(swarm, "delivery_gate", return_value="merge"), \
              mock.patch.object(swarm, "migrate_tasks", return_value=0), \
              mock.patch.object(swarm, "merge_local", return_value=(HEAD, "WQUALITY-01", [])), \
+             mock.patch.object(swarm, "refresh_wiring_baseline", return_value=""), \
              mock.patch.object(swarm, "gate_for", return_value=("gate.sh", {})), \
              mock.patch.object(swarm, "run_gate", return_value=(True, "ok")), \
              mock.patch.object(swarm, "record_merges",
@@ -323,6 +324,7 @@ class IntegratorWiringTest(unittest.TestCase):
              mock.patch.object(swarm, "is_repair", return_value=False), \
              mock.patch.object(swarm, "delivery_gate") as gate, \
              mock.patch.object(swarm, "merge_local", return_value=(HEAD, "WQUALITY-01", [])), \
+             mock.patch.object(swarm, "refresh_wiring_baseline", return_value=""), \
              mock.patch.object(swarm, "migrate_tasks", return_value=0), \
              mock.patch.object(swarm, "gate_for", return_value=("gate.sh", {})), \
              mock.patch.object(swarm, "run_gate", return_value=(True, "ok")), \
@@ -341,6 +343,7 @@ class IntegratorWiringTest(unittest.TestCase):
              mock.patch.object(swarm, "is_repair", return_value=False), \
              mock.patch.object(swarm, "delivery_gate") as gate, \
              mock.patch.object(swarm, "merge_local", return_value=(HEAD, "WQUALITY-01", [])), \
+             mock.patch.object(swarm, "refresh_wiring_baseline", return_value=""), \
              mock.patch.object(swarm, "migrate_tasks", return_value=0), \
              mock.patch.object(swarm, "gate_for", return_value=("gate.sh", {})), \
              mock.patch.object(swarm, "run_gate", return_value=(True, "ok")), \

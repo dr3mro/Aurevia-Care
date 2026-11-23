@@ -3088,6 +3088,7 @@ class TwoTierTests(unittest.TestCase):
         with mock.patch.object(swarm, "gh", Gh()) as fake, \
              mock.patch.object(swarm, "guard", return_value=[]), \
              mock.patch.object(swarm, "merge_local", return_value=("abc", "CW-001", [])), \
+             mock.patch.object(swarm, "refresh_wiring_baseline", return_value=""), \
              mock.patch.object(swarm, "run_gate", return_value=(True, "ok")), \
              mock.patch.object(swarm, "git") as gitmock, mock.patch.object(swarm, "authed_git"):
             count = swarm.integrate_batch([1, 2], "scripts/quick-check.sh")
@@ -3117,6 +3118,7 @@ class TwoTierTests(unittest.TestCase):
         with mock.patch.object(swarm, "gh", fake), \
              mock.patch.object(swarm, "guard", return_value=[]), \
              mock.patch.object(swarm, "merge_local", side_effect=lambda *a, **k: next(order)), \
+             mock.patch.object(swarm, "refresh_wiring_baseline", return_value=""), \
              mock.patch.object(swarm, "record_merge", side_effect=record), \
              mock.patch.object(swarm, "run_gate", return_value=(True, "ok")), \
              mock.patch.object(swarm, "close_merged_issues"), \
@@ -3156,6 +3158,7 @@ class TwoTierTests(unittest.TestCase):
         with mock.patch.object(swarm, "gh", Gh()), \
              mock.patch.object(swarm, "guard", return_value=[]), \
              mock.patch.object(swarm, "merge_local", return_value=("abc", "CW-001", [])), \
+             mock.patch.object(swarm, "refresh_wiring_baseline", return_value=""), \
              mock.patch.object(swarm, "run_gate", return_value=(True, "ok")) as gate, \
              mock.patch.object(swarm, "git") as gitmock, \
              mock.patch.object(swarm, "authed_git", side_effect=authed) as authedmock:
@@ -3202,6 +3205,7 @@ class TwoTierTests(unittest.TestCase):
         with mock.patch.object(swarm, "gh", Gh()), \
              mock.patch.object(swarm, "guard", return_value=[]), \
              mock.patch.object(swarm, "merge_local", return_value=("abc", "CW-001", [])), \
+             mock.patch.object(swarm, "refresh_wiring_baseline", return_value=""), \
              mock.patch.object(swarm, "run_gate", return_value=(True, "ok")), \
              mock.patch.object(swarm, "git", side_effect=git) as gitmock, \
              mock.patch.object(swarm, "authed_git", side_effect=authed):
@@ -3249,6 +3253,7 @@ class TwoTierTests(unittest.TestCase):
         with mock.patch.object(swarm, "gh", Gh()), \
              mock.patch.object(swarm, "guard", return_value=[]), \
              mock.patch.object(swarm, "merge_local", return_value=("abc", "CW-001", [])), \
+             mock.patch.object(swarm, "refresh_wiring_baseline", return_value=""), \
              mock.patch.object(swarm, "run_gate", side_effect=lambda *a, **k: next(results)), \
              mock.patch.object(swarm, "git"), \
              mock.patch.object(swarm, "fail") as failed, \
@@ -3289,6 +3294,7 @@ class TwoTierTests(unittest.TestCase):
         with mock.patch.object(swarm, "gh", Gh()), \
              mock.patch.object(swarm, "guard", return_value=[]), \
              mock.patch.object(swarm, "merge_local", return_value=("abc", "CW-001", [])), \
+             mock.patch.object(swarm, "refresh_wiring_baseline", return_value=""), \
              mock.patch.object(swarm, "run_gate", return_value=(True, "ok")), \
              mock.patch.object(swarm, "git", side_effect=gitmock) as gitcalls, \
              mock.patch.object(swarm, "authed_git", side_effect=authed):
