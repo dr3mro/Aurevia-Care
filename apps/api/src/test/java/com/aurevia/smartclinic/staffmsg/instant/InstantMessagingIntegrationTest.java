@@ -121,18 +121,49 @@ class InstantMessagingIntegrationTest {
         context(ACTOR);
         // Drive the real controller and real service against the same real database
         // so a request is proven to reach the durable store through every layer.
-        MockEnvironment environment = new MockEnvironment();
-        environment.setActiveProfiles("synthetic-auth");
-        mvc = MockMvcBuilders.standaloneSetup(new InstantMessagingController(service))
-                .setControllerAdvice(new ApiErrorHandler())
-                .addInterceptors(new TenantContextInterceptor(environment))
-                .build();
+        mvc = newMvc(store);
         mapper = new ObjectMapper();
     }
 
+    /** Build a fresh store over the same tenant-guarded physical connection. */
+    private JdbcInstantConversationStore newStore() {
+        return new JdbcInstantConversationStore(new NamedParameterJdbcTemplate(dataSource),
+                new TransactionTemplate(new DataSourceTransactionManager(dataSource)));
+    }
+
+    /** Mount the real controller and service over a chosen store instance. */
+    private MockMvc newMvc(InstantConversationStore conversationStore) {
+        return newMvc(conversationStore, Clock.fixed(NOW, ZoneOffset.UTC));
+    }
+
+    /** Mount the real controller over a store and an explicit application clock. */
+    private MockMvc newMvc(InstantConversationStore conversationStore, Clock clock) {
+        InstantMessagingService mounted = new InstantMessagingService(conversationStore, clock);
+        MockEnvironment environment = new MockEnvironment();
+        environment.setActiveProfiles("synthetic-auth");
+        return MockMvcBuilders.standaloneSetup(new InstantMessagingController(mounted))
+                .setControllerAdvice(new ApiErrorHandler())
+                .addInterceptors(new TenantContextInterceptor(environment))
+                .build();
+    }
+
     private static MockHttpServletRequestBuilder headers(MockHttpServletRequestBuilder request) {
-        return request.header("X-Synthetic-Subject", ACTOR)
+        return headersFor(request, ACTOR);
+    }
+
+    /** Bind a different synthetic subject to a request while keeping the active organization. */
+    private static MockHttpServletRequestBuilder headersFor(MockHttpServletRequestBuilder request, String subject) {
+        return request.header("X-Synthetic-Subject", subject)
                 .header("X-Active-Organization", ORG_A);
+    }
+
+    /** Rebind the physical connection's tenant GUCs; callers restore them in a finally block. */
+    private void setOrg(String org, String actor) throws Exception {
+        try (Connection connection = dataSource.getConnection();
+             Statement statement = connection.createStatement()) {
+            statement.execute("SET app.current_org = '" + org + "'");
+            statement.execute("SET app.actor = '" + actor + "'");
+        }
     }
 
     @AfterEach
@@ -226,20 +257,188 @@ class InstantMessagingIntegrationTest {
     }
 
     /**
-     * A stale read acknowledgement must not move a cursor backwards: otherwise
-     * messages already marked read would reappear as unread for that person.
+     * A stale or repeated read acknowledgement must not move a cursor backwards:
+     * otherwise messages already marked read would reappear as unread. The fresh
+     * store proves the cursor is durable state, not a process-local maximum.
      */
     @Test
-    void aLowerReadAcknowledgementDoesNotMoveTheCursorBackwards() {
+    void staleAndRepeatedMarkReadDoNotMoveTheCursorBackwards() {
         String conversation = direct();
         service.send(new SendRequest(FACILITY, conversation, "first"), "m1");
         service.send(new SendRequest(FACILITY, conversation, "second"), "m2");
 
         context(PEER);
         service.markRead(new MarkReadRequest(FACILITY, conversation, 2L));
-        assertEquals(0L, service.unreadCounts(FACILITY).get(0).unreadCount());
         service.markRead(new MarkReadRequest(FACILITY, conversation, 1L));
+        service.markRead(new MarkReadRequest(FACILITY, conversation, 2L));
+        assertEquals(2L, store.readSequence(ORG_A, conversation, PEER));
+        assertEquals(2L, newStore().readSequence(ORG_A, conversation, PEER));
         assertEquals(0L, service.unreadCounts(FACILITY).get(0).unreadCount());
+    }
+
+    /** A later, higher acknowledgement raises the persisted cursor. */
+    @Test
+    void aHigherReadAcknowledgementRaisesTheCursor() {
+        String conversation = direct();
+        service.send(new SendRequest(FACILITY, conversation, "first"), "raise-1");
+        service.send(new SendRequest(FACILITY, conversation, "second"), "raise-2");
+
+        context(PEER);
+        service.markRead(new MarkReadRequest(FACILITY, conversation, 1L));
+        assertEquals(1L, store.readSequence(ORG_A, conversation, PEER));
+        assertEquals(1L, service.unreadCounts(FACILITY).get(0).unreadCount());
+
+        service.markRead(new MarkReadRequest(FACILITY, conversation, 2L));
+        assertEquals(2L, newStore().readSequence(ORG_A, conversation, PEER));
+        assertEquals(0L, service.unreadCounts(FACILITY).get(0).unreadCount());
+    }
+
+    /** A cursor written by one store instance must be readable by a new one. */
+    @Test
+    void readCursorSurvivesANewStoreInstance() {
+        String conversation = direct();
+        service.send(new SendRequest(FACILITY, conversation, "first"), "persist-1");
+        service.send(new SendRequest(FACILITY, conversation, "second"), "persist-2");
+
+        context(PEER);
+        service.markRead(new MarkReadRequest(FACILITY, conversation, 2L));
+
+        assertEquals(2L, newStore().readSequence(ORG_A, conversation, PEER));
+    }
+
+    /**
+     * A future acknowledgement must be clamped to the last appended sequence;
+     * a plain maximum would silently mark not-yet-sent messages as read.
+     */
+    @Test
+    void futureCursorIsClampedSoTheNextMessageBecomesUnread() {
+        String conversation = direct();
+        service.send(new SendRequest(FACILITY, conversation, "first"), "clamp-1");
+
+        context(PEER);
+        service.markRead(new MarkReadRequest(FACILITY, conversation, Long.MAX_VALUE));
+        assertEquals(1L, store.readSequence(ORG_A, conversation, PEER));
+
+        context(ACTOR);
+        service.send(new SendRequest(FACILITY, conversation, "second"), "clamp-2");
+        context(PEER);
+        assertEquals(1L, service.unreadCounts(FACILITY).get(0).unreadCount());
+    }
+
+    /** With no message yet, even a future acknowledgement clamps to zero. */
+    @Test
+    void markReadOnAnEmptyConversationIsClampedToZero() {
+        String conversation = direct();
+        context(PEER);
+        service.markRead(new MarkReadRequest(FACILITY, conversation, Long.MAX_VALUE));
+        assertEquals(0L, store.readSequence(ORG_A, conversation, PEER));
+
+        context(ACTOR);
+        service.send(new SendRequest(FACILITY, conversation, "later"), "clamp-empty");
+        context(PEER);
+        assertEquals(1L, service.unreadCounts(FACILITY).get(0).unreadCount());
+    }
+
+    /**
+     * A cursor is keyed by participant and tenant: another participant's read,
+     * and a foreign tenant's write, cannot change this person's cursor.
+     */
+    @Test
+    void cursorIsIsolatedByTenantAndParticipant() throws Exception {
+        String conversation = direct();
+        service.send(new SendRequest(FACILITY, conversation, "first"), "iso-1");
+        service.send(new SendRequest(FACILITY, conversation, "second"), "iso-2");
+
+        context(PEER);
+        service.markRead(new MarkReadRequest(FACILITY, conversation, 2L));
+        assertEquals(2L, store.readSequence(ORG_A, conversation, PEER));
+        assertEquals(0L, store.readSequence(ORG_A, conversation, ACTOR));
+
+        try {
+            setOrg(ORG_B, "foreign-b");
+            // The other tenant has no row under ORG_A's conversation key.
+            assertEquals(0L, store.readSequence(ORG_B, conversation, PEER));
+            // Seed a valid ORG_B conversation so a foreign write has a real key.
+            String foreign = store.createConversation(ORG_B, OTHER_FACILITY,
+                    com.aurevia.smartclinic.staffmsg.model.StaffMessagingContract.ConversationKind.DIRECT,
+                    null, "foreign-b").id();
+            store.markRead(ORG_B, foreign, "foreign-b", 1L);
+            assertEquals(0L, store.readSequence(ORG_B, foreign, PEER));
+        } finally {
+            setOrg(ORG_A, ACTOR);
+        }
+        assertEquals(2L, newStore().readSequence(ORG_A, conversation, PEER));
+    }
+
+    /** Denied mark-read attempts leave the durable cursor untouched. */
+    @Test
+    void markReadDenialsDoNotMoveTheCursor() throws Exception {
+        String conversation = direct();
+        service.send(new SendRequest(FACILITY, conversation, "first"), "deny-1");
+        service.send(new SendRequest(FACILITY, conversation, "second"), "deny-2");
+
+        mvc.perform(headersFor(post(BASE + "/read"), PEER)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(new MarkReadRequest(FACILITY, conversation, -1L))))
+                .andExpect(status().isUnprocessableEntity());
+        mvc.perform(headersFor(post(BASE + "/read"), PEER)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(
+                                new MarkReadRequest(OTHER_FACILITY, conversation, 2L))))
+                .andExpect(status().isForbidden());
+        mvc.perform(post(BASE + "/read")
+                        .header("X-Synthetic-Subject", PEER)
+                        .header("X-Active-Organization", ORG_B)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(new MarkReadRequest(FACILITY, conversation, 2L))))
+                .andExpect(status().is4xxClientError());
+        assertEquals(0L, store.readSequence(ORG_A, conversation, PEER));
+
+        // The interceptor clears the thread-local context after each request.
+        context(ACTOR);
+        Clock later = Clock.fixed(NOW.plusSeconds(5), ZoneOffset.UTC);
+        service = new InstantMessagingService(store, later);
+        service.removeParticipant(FACILITY, conversation, PEER);
+        mvc = newMvc(store, later);
+        mvc.perform(headersFor(post(BASE + "/read"), PEER)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(new MarkReadRequest(FACILITY, conversation, 2L))))
+                .andExpect(status().isForbidden());
+        assertEquals(0L, newStore().readSequence(ORG_A, conversation, PEER));
+    }
+
+    /** The HTTP mark-read path persists the cursor and the unread projection. */
+    @Test
+    void httpMarkReadUpdatesUnreadCounts() throws Exception {
+        String created = mvc.perform(headers(post(BASE + "/direct"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(new OpenDirectRequest(FACILITY, PEER))))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String conversation = mapper.readTree(created).get("id").asText();
+        for (int i = 1; i <= 2; i++) {
+            mvc.perform(headers(post(BASE + "/{id}/messages", conversation))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .header("Idempotency-Key", "http-read-" + i)
+                            .content(mapper.writeValueAsString(
+                                    new SendRequest(FACILITY, conversation, "message " + i))))
+                    .andExpect(status().isOk());
+        }
+
+        mvc.perform(headersFor(get(BASE + "/unread"), PEER).param("facilityId", FACILITY))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].unreadCount").value(2));
+        mvc.perform(headersFor(post(BASE + "/read"), PEER)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(new MarkReadRequest(FACILITY, conversation, 2L))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.unreadCount").value(0));
+
+        // A fresh store behind a fresh controller must read the durable cursor.
+        mvc = newMvc(newStore());
+        mvc.perform(headersFor(get(BASE + "/unread"), PEER).param("facilityId", FACILITY))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].unreadCount").value(0));
     }
 
     @Test

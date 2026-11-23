@@ -9,6 +9,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -139,6 +140,38 @@ class StaffDirectoryServiceTest {
         assertEquals("MISSING_TENANT_CONTEXT", facilitiesDenial.code());
         assertEquals(403, staffDenial.status());
         assertEquals("MISSING_TENANT_CONTEXT", staffDenial.code());
+    }
+
+    @Test
+    void findFacilityByIdResolvesTheTenantFacilityInsideTheGuardedTransaction() {
+        when(facilities.query(isNull(), isNull(), eq(Integer.MAX_VALUE)))
+                .thenReturn(List.of(new FacilityRow(facility(), "id-a")));
+
+        Optional<Facility> found = service.findFacilityById("id-a");
+
+        assertTrue(found.isPresent());
+        assertEquals("FAC-A", found.orElseThrow().code());
+        verify(transactions).execute(any());
+    }
+
+    @Test
+    void findFacilityByIdFailsClosedForUnknownAndMissingIds() {
+        when(facilities.query(isNull(), isNull(), eq(Integer.MAX_VALUE)))
+                .thenReturn(List.of(new FacilityRow(facility(), "id-a")));
+
+        assertTrue(service.findFacilityById("missing").isEmpty());
+        assertTrue(service.findFacilityById(null).isEmpty());
+    }
+
+    @Test
+    void findFacilityByIdFailsClosedWithoutTenantContext() {
+        TenantContext.clear();
+
+        ApiException denial = assertThrows(ApiException.class, () -> service.findFacilityById("id-a"));
+
+        assertEquals(403, denial.status());
+        assertEquals("MISSING_TENANT_CONTEXT", denial.code());
+        verifyNoInteractions(facilities);
     }
 
     private void whenActiveStaff(List<StaffRow> rows) {

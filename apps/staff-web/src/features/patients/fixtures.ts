@@ -1,10 +1,10 @@
+import { defined } from '../../components/invariant';
 import { syntheticOrganizations } from '../../fixtures/synthetic';
 import type { PatientResponse, PatientViewResponse, RegistrationDraft } from './domain';
-import { defined } from '../../components/invariant';
 
 /** The two synthetic tenants; their local MRNs intentionally collide. */
-export const alphaOrganizationId = defined(syntheticOrganizations[0], 'fixture value').id;
-export const betaOrganizationId = defined(syntheticOrganizations[1], 'fixture value').id;
+export const alphaOrganizationId = defined(syntheticOrganizations[0], 'alpha organization').id;
+export const betaOrganizationId = defined(syntheticOrganizations[1], 'beta organization').id;
 
 /** Synthetic alpha patients with mixed-script and unknown-date identities. */
 export const syntheticAlphaPatients: readonly PatientResponse[] = [
@@ -57,17 +57,20 @@ export const syntheticBetaPatients: readonly PatientResponse[] = [
 ];
 
 /** The Arabic-script patient used by the mixed-script rendering tests. */
-export const arabicPatientResponse: PatientResponse = defined(syntheticAlphaPatients[1], 'fixture value');
+export const arabicPatientResponse: PatientResponse = defined(
+  syntheticAlphaPatients[1],
+  'second alpha patient',
+);
 
 /** A patient view whose likely-duplicate warning is present. */
 export const syntheticPatientView: PatientViewResponse = {
-  patient: defined(syntheticAlphaPatients[0], 'fixture value'),
-  duplicates: [defined(syntheticAlphaPatients[1], 'fixture value')],
+  patient: defined(syntheticAlphaPatients[0], 'alpha patient'),
+  duplicates: [defined(syntheticAlphaPatients[1], 'second alpha patient')],
 };
 
 /** A patient view with no likely-duplicate warning. */
 export const syntheticPatientViewNoDuplicates: PatientViewResponse = {
-  patient: defined(syntheticAlphaPatients[0], 'fixture value'),
+  patient: defined(syntheticAlphaPatients[0], 'alpha patient'),
   duplicates: [],
 };
 

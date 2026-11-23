@@ -6,8 +6,8 @@ import type { TransportErrorKind } from '../../api/transport';
 import { useApi } from '../../api/useApi';
 import { useRoute } from '../../app/router';
 import { Button } from '../../components/Button';
-import { defined } from '../../components/invariant';
 import { ConflictState, LoadingState, StateView } from '../../components/StateViews';
+import { defined } from '../../components/invariant';
 import { MixedScriptText } from '../../components/MixedScriptText';
 import { displayLocalName } from '../../i18n/format';
 import { useI18n } from '../../i18n/I18nProvider';
@@ -161,16 +161,14 @@ function useNoteCommands(ctx: NoteCommandContext) {
   const { setReason, setSignedAttestation } = ctx;
 
   async function handleSave(): Promise<void> {
-    // Commands are exposed only after the note has loaded; defined() records
-    // that invariant instead of leaving an unreachable early-return branch.
-    const current = defined(draft, 'note draft');
-    const currentSource = defined(source, 'note source');
+    const current = defined(draft, 'loaded note draft');
+    const origin = defined(source, 'loaded note source');
     setStatus(chartText(locale, 'saving'));
     try {
       await updateNote(
         noteId,
         current.version,
-        { title: currentSource.title, content: soapToContent(current.content) },
+        { title: origin.title, content: soapToContent(current.content) },
         organizationId,
       );
       setDirty(false);
@@ -184,7 +182,7 @@ function useNoteCommands(ctx: NoteCommandContext) {
   }
 
   async function handleSign(): Promise<void> {
-    const current = defined(draft, 'note draft');
+    const current = defined(draft, 'loaded note draft');
     const attestation = chartText(locale, 'attestation');
     try {
       const signed =
@@ -207,7 +205,7 @@ function useNoteCommands(ctx: NoteCommandContext) {
   }
 
   async function handleAmend(): Promise<void> {
-    const current = defined(draft, 'note draft');
+    const current = defined(draft, 'loaded note draft');
     try {
       await amendNote(noteId, current.version, organizationId);
       setCommandError(undefined);
@@ -219,13 +217,13 @@ function useNoteCommands(ctx: NoteCommandContext) {
   }
 
   async function handleEnteredInError(): Promise<void> {
-    const current = defined(draft, 'note draft');
-    const currentSource = defined(source, 'note source');
+    const current = defined(draft, 'loaded note draft');
+    const origin = defined(source, 'loaded note source');
     try {
       await markEnteredInError(
         noteId,
         current.version,
-        { reason, affectedRecipients: [currentSource.dataEntrySubject] },
+        { reason, affectedRecipients: [origin.dataEntrySubject] },
         organizationId,
       );
       setConfirm(undefined);
@@ -286,7 +284,7 @@ function useNoteWorkflow(
   }
 
   function handleContentChange(field: keyof SoapContent, value: string): void {
-    const current = defined(draft, 'note draft');
+    const current = defined(draft, 'loaded note draft');
     setDraft({ ...current, content: { ...current.content, [field]: value } });
     setDirty(true);
     setStatus('');
@@ -320,7 +318,7 @@ function useNoteWorkflow(
   }
 
   function handleCopy(): void {
-    const current = defined(draft, 'note draft');
+    const current = defined(draft, 'loaded note draft');
     if ('clipboard' in navigator) {
       void navigator.clipboard.writeText(soapToContent(current.content));
     }
@@ -419,13 +417,13 @@ function NoteConfirmations({
 }: {
   workflow: NoteWorkflow;
   draft: NoteRevision;
-  source: ClinicalNoteRevisionResponse | undefined;
+  source: ClinicalNoteRevisionResponse;
   locale: Locale;
 }) {
   const { confirm, reason } = workflow;
   const title = (
     <p>
-      <MixedScriptText text={defined(source, 'note source').title} lang={locale} /> · {chartText(locale, 'revision')}{' '}
+      <MixedScriptText text={source.title} lang={locale} /> · {chartText(locale, 'revision')}{' '}
       {draft.version}
     </p>
   );
@@ -580,7 +578,12 @@ export function NotePage() {
         </Button>
       </div>
 
-      <NoteConfirmations workflow={workflow} draft={draft} source={source} locale={locale} />
+      <NoteConfirmations
+        workflow={workflow}
+        draft={draft}
+        source={defined(source, 'loaded note source')}
+        locale={locale}
+      />
     </div>
   );
 }

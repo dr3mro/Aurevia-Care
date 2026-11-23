@@ -46,11 +46,9 @@ const wrappingStyle = {
  * @returns The wrapped title, each labelled field, the status and void state.
  */
 function documentValues(document: DocumentAssociation, locale: Locale): DocumentValues {
-  // Resolve the local title once. The empty-string fallback is a real state:
-  // an Arabic-locale document without a local title falls back to the Latin one.
-  const titleLocal = document.titleLocal ?? '';
+  const localTitle = document.titleLocal ?? '';
   return {
-    title: locale === 'ar' && titleLocal !== '' ? titleLocal : document.title,
+    title: locale === 'ar' && localTitle !== '' ? localTitle : document.title,
     kind: document.kind.toUpperCase(),
     version: document.version,
     language: chartText(locale, document.language === 'ar' ? 'languageAr' : 'languageEn'),

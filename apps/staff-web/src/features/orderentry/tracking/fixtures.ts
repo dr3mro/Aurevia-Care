@@ -1,10 +1,10 @@
+import { defined } from '../../../components/invariant';
 import { syntheticOrganizations } from '../../../fixtures/synthetic';
 import type { DeliveryEvidence, OrderResultLink, TrackedOrder } from './domain';
-import { defined } from '../../../components/invariant';
 
 /** Two synthetic tenants; the same local order ids are reused across them. */
-export const alphaOrganizationId = defined(syntheticOrganizations[0], 'fixture value').id;
-export const betaOrganizationId = defined(syntheticOrganizations[1], 'fixture value').id;
+export const alphaOrganizationId = defined(syntheticOrganizations[0], 'alpha organization').id;
+export const betaOrganizationId = defined(syntheticOrganizations[1], 'beta organization').id;
 
 /** Deterministic, clearly synthetic delivery proof in UTC. */
 const deliveredEvidence: DeliveryEvidence = {

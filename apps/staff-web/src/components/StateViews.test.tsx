@@ -209,4 +209,56 @@ describe('StateView.forTransportError', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
     screen.getByRole('alert');
   });
+
+  it('wires every supplied recovery action to the mapped button', () => {
+    const onCompare = vi.fn();
+    const onReload = vi.fn();
+    const onCopy = vi.fn();
+    const onRetry = vi.fn();
+    const onSignIn = vi.fn();
+    const actions = { onCompare, onReload, onCopy, onRetry, onSignIn };
+    const error = (kind: TransportErrorKind) =>
+      new TransportError(kind, {
+        correlationId: undefined,
+        code: undefined,
+        retryAfterSeconds: undefined,
+      });
+
+    const conflict = renderView(
+      'en',
+      <>{StateView.forTransportError(error('conflict'), actions)}</>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Compare' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Reload' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Copy my changes' }));
+    expect(onCompare).toHaveBeenCalledTimes(1);
+    expect(onReload).toHaveBeenCalledTimes(1);
+    expect(onCopy).toHaveBeenCalledTimes(1);
+    expect(onRetry).not.toHaveBeenCalled();
+    expect(onSignIn).not.toHaveBeenCalled();
+    conflict.unmount();
+
+    const expired = renderView(
+      'en',
+      <>{StateView.forTransportError(error('session-expired'), actions)}</>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    expect(onSignIn).toHaveBeenCalledTimes(1);
+    expect(onCompare).toHaveBeenCalledTimes(1);
+    expect(onReload).toHaveBeenCalledTimes(1);
+    expect(onCopy).toHaveBeenCalledTimes(1);
+    expect(onRetry).not.toHaveBeenCalled();
+    expired.unmount();
+
+    for (const kind of ['server', 'timeout'] as const) {
+      const failed = renderView('en', <>{StateView.forTransportError(error(kind), actions)}</>);
+      fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+      failed.unmount();
+    }
+    expect(onRetry).toHaveBeenCalledTimes(2);
+    expect(onCompare).toHaveBeenCalledTimes(1);
+    expect(onReload).toHaveBeenCalledTimes(1);
+    expect(onCopy).toHaveBeenCalledTimes(1);
+    expect(onSignIn).toHaveBeenCalledTimes(1);
+  });
 });

@@ -1,10 +1,10 @@
+import { defined } from '../../components/invariant';
 import { syntheticOrganizations } from '../../fixtures/synthetic';
 import type { CollectionOrder, LabelData, PresentedIdentity } from './domain';
-import { defined } from '../../components/invariant';
 
 /** The two synthetic tenants; their local identifiers intentionally collide. */
-export const alphaOrganizationId = defined(syntheticOrganizations[0], 'fixture value').id;
-export const betaOrganizationId = defined(syntheticOrganizations[1], 'fixture value').id;
+export const alphaOrganizationId = defined(syntheticOrganizations[0], 'alpha organization').id;
+export const betaOrganizationId = defined(syntheticOrganizations[1], 'beta organization').id;
 
 /** A synthetic alpha accession with both name forms for the two-name check. */
 export const alphaOrder: CollectionOrder = {

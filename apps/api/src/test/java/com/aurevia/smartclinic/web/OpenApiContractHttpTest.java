@@ -135,7 +135,7 @@ class OpenApiContractHttpTest {
     private static WebApplicationContextRunner newRunner() {
         return new WebApplicationContextRunner()
                 .withUserConfiguration(SecurityConfiguration.class,
-                        StaffWebLoginConfiguration.class, Stubs.class)
+                        StaffWebLoginConfiguration.class, DocsEnabled.class, Stubs.class)
                 .withPropertyValues(
                         ISSUER_PROPERTY + "=" + ISSUER,
                         AUDIENCE_PROPERTY + "=" + AUDIENCE,

@@ -92,10 +92,8 @@ function CodedEntryTable({
         ) : (
           entries.map((entry) => {
             const key = `${entry.organizationId}:${entry.id}`;
-            // An entry without a local name is a normal state; resolve the
-            // fallback once so both sides of ?? are exercised by the fixtures.
-            const displayLocal = entry.displayLocal ?? '';
-            const shown = locale === 'ar' && displayLocal !== '' ? displayLocal : entry.display;
+            const localDisplay = entry.displayLocal ?? '';
+            const shown = locale === 'ar' && localDisplay !== '' ? localDisplay : entry.display;
             return (
               <tr key={key}>
                 <th scope="row" style={{ ...WRAPPING_STYLE, border }}>

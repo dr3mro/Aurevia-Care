@@ -1,11 +1,17 @@
+import { defined } from '../../../components/invariant';
 import { syntheticOrganizations } from '../../../fixtures/synthetic';
 import type { CodedEntry } from '../../chart/domain';
 import type { ActiveOrder, CatalogItem, SavedOrderDraft } from './domain';
-import { defined } from '../../../components/invariant';
 
 /** Two synthetic tenants; the same local identifiers are reused across them. */
-export const entryAlphaOrganizationId = defined(syntheticOrganizations[0], 'fixture value').id;
-export const entryBetaOrganizationId = defined(syntheticOrganizations[1], 'fixture value').id;
+export const entryAlphaOrganizationId = defined(
+  syntheticOrganizations[0],
+  'entry alpha organization',
+).id;
+export const entryBetaOrganizationId = defined(
+  syntheticOrganizations[1],
+  'entry beta organization',
+).id;
 
 /** Opaque local identifiers used only by synthetic fixtures. */
 export const syntheticPatientLocalId = 'patient-001';

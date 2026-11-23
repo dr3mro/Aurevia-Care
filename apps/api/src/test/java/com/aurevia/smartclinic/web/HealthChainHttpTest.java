@@ -118,7 +118,7 @@ class HealthChainHttpTest {
 
     private static WebApplicationContextRunner newRunner() {
         return new WebApplicationContextRunner()
-                .withUserConfiguration(SecurityConfiguration.class,
+                .withUserConfiguration(SecurityConfiguration.class, DocsEnabled.class,
                         StaffWebLoginConfiguration.class, Stubs.class)
                 .withPropertyValues(
                         ISSUER_PROPERTY + "=" + ISSUER,

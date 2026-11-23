@@ -213,11 +213,13 @@ These are code and migration facts in this checkout, not approvals:
   clause notes for the requirements cited here come from `SPEC-ADM-01-C01`
   (ADM-01 tenant configuration) and `SPEC-CLN-04-C02` (CLN-04 operative note
   fields). These `SPEC-*` evidence-note tasks write under `docs/spec/clauses/`.
-  That directory exists, but no ADM-01 or CLN-04 clause note is present in this
-  checkout, so their notes are not yet available as evidence. The authoritative
-  clause text is in sections 9 and 10 of
-  [SMARTCLINIC_V1_SPEC.md](../../SMARTCLINIC_V1_SPEC.md). Nothing here depends
-  on those notes being present.
+  ADM-01 and CLN-04 clause notes are present in that directory, including the
+  [ADM-01 tenant-configuration note](../spec/clauses/configuration/tenant-admins-configure-facilities-referral-partner-directory.md)
+  and the [CLN-04 field-dictionary note](../spec/clauses/chart/clinical-governance-approves-field-dictionaries-requiredness.md).
+  A note being present does not close the task that produced it, and none of these
+  notes records a site approval. The authoritative clause text is in sections 9
+  and 10 of [SMARTCLINIC_V1_SPEC.md](../../SMARTCLINIC_V1_SPEC.md). The decision
+  here depends on a named human approval, not on those notes.
 
 ## Questions for the owner
 

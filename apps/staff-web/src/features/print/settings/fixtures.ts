@@ -1,7 +1,7 @@
+import { defined } from '../../../components/invariant';
 /** Synthetic, non-patient fixtures for the print profile settings screen. */
 
 import type { ApprovedLogoAsset, PrintProfileVersion } from './domain';
-import { defined } from '../../../components/invariant';
 
 /** Active tenant used by every synthetic print profile fixture. */
 export const settingsOrganizationId = '00000000-0000-4000-8000-000000000091';
@@ -32,7 +32,7 @@ export const syntheticVersions: readonly PrintProfileVersion[] = [
     version: 1,
     facilityName: 'Synthetic Main Clinic v1',
     address: '1 Synthetic Way, Test City',
-    logoReference: defined(approvedLogoAssets[0], 'fixture value').reference,
+    logoReference: defined(approvedLogoAssets[0], 'approved logo asset').reference,
     footerText: 'Synthetic footer v1 — not a real notice',
     defaultLanguage: 'en',
     paperSize: 'A4',
@@ -46,7 +46,7 @@ export const syntheticVersions: readonly PrintProfileVersion[] = [
     version: 2,
     facilityName: 'Synthetic Main Clinic v2',
     address: '2 Synthetic Way, Test City',
-    logoReference: defined(approvedLogoAssets[1], 'fixture value').reference,
+    logoReference: defined(approvedLogoAssets[1], 'other approved logo asset').reference,
     footerText: 'Synthetic footer v2 — not a real notice',
     defaultLanguage: 'ar',
     paperSize: 'LETTER',
@@ -59,7 +59,7 @@ export const syntheticVersions: readonly PrintProfileVersion[] = [
     version: 1,
     facilityName: 'Other tenant clinic',
     address: '9 Other Way, Test City',
-    logoReference: defined(approvedLogoAssets[0], 'fixture value').reference,
+    logoReference: defined(approvedLogoAssets[0], 'approved logo asset').reference,
     footerText: 'Other tenant synthetic footer',
     defaultLanguage: 'en',
     paperSize: 'A4',

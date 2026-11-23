@@ -1,14 +1,14 @@
+import { defined } from '../../components/invariant';
 import type { PersonName } from '../../i18n/format';
 import { syntheticOrganizations } from '../../fixtures/synthetic';
 import type { Appointment, BookingRequest } from './domain';
-import { defined } from '../../components/invariant';
 
 /** Monday anchor used by the day and week worklist fixtures. */
 export const schedulingAnchorCivilDate = '2026-03-09';
 
 /** The two synthetic tenants; their local identifiers intentionally collide. */
-export const alphaOrganizationId = defined(syntheticOrganizations[0], 'fixture value').id;
-export const betaOrganizationId = defined(syntheticOrganizations[1], 'fixture value').id;
+export const alphaOrganizationId = defined(syntheticOrganizations[0], 'alpha organization').id;
+export const betaOrganizationId = defined(syntheticOrganizations[1], 'beta organization').id;
 
 /** Synthetic walk-in used when the form creates a local booking. */
 const syntheticWalkInPatient: PersonName = {

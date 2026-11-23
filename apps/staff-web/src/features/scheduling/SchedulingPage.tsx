@@ -105,10 +105,9 @@ export function SchedulingPage({ anchorCivilDate }: SchedulingPageProps) {
   }, [refetch, setCursor, setAccumulated, setNextCursor, setCommandError]);
 
   async function handleCheckIn(id: string) {
-    // Row actions only exist for ids present in the loaded projection.
     const target = defined(
       loaded.find((appointment) => appointment.id === id),
-      'checked-in appointment',
+      'check-in target',
     );
     try {
       await checkIn(id, target.version, organizationId);

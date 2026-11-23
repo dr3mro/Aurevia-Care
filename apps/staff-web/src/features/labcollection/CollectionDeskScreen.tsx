@@ -98,8 +98,8 @@ export function CollectionDeskScreen({
     accessionConfirmed,
   ]);
 
-  // The command controls only render with a selected order; defined() records
-  // that invariant without an unreachable early-return branch.
+  // The command controls are only rendered with a selected order, so narrowing
+  // here is a defensive assertion rather than a visible empty state.
   function handleCollect() {
     const order = defined(selected, 'selected collection order');
     onCollect(order, {

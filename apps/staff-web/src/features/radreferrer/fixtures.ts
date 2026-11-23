@@ -1,11 +1,11 @@
+import { defined } from '../../components/invariant';
 import { syntheticOrganizations } from '../../fixtures/synthetic';
 import type { AddendumAcknowledgment, SignedReport } from './domain';
-import { defined } from '../../components/invariant';
 
 /** The synthetic tenant whose signed report is shown in tests. */
-export const alphaOrganizationId = defined(syntheticOrganizations[0], 'fixture value').id;
+export const alphaOrganizationId = defined(syntheticOrganizations[0], 'alpha organization').id;
 /** The second synthetic tenant; its local identifiers deliberately collide. */
-export const betaOrganizationId = defined(syntheticOrganizations[1], 'fixture value').id;
+export const betaOrganizationId = defined(syntheticOrganizations[1], 'beta organization').id;
 /** Synthetic order the report and its addenda belong to. */
 export const syntheticOrderId = 'rad-004';
 

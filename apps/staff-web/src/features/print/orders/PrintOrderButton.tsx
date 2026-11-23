@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import { Button } from '../../../components/Button';
+import { focusableItems } from '../../../components/focusableItems';
 import { useI18n } from '../../../i18n/I18nProvider';
 import type { HandoutLanguage, PrintReason } from '../components/messages';
 import { printReasonKey, printText } from '../components/messages';
-import { focusableItems } from '../focus';
 import { printStylesheet } from '../styles/printStyles';
 import { buildSheets, printableOrders } from './domain';
 import { orderPrintText } from './labels';
@@ -19,6 +19,9 @@ const reasonOptions: readonly PrintReason[] = ['give-to-patient', 'referral', 'p
 
 /** Stable order of the clinician's sheet-layout choices. */
 const layoutOptions: readonly SheetLayout[] = ['combined', 'separate'];
+
+/** Native controls only; sheets and static text are not tab stops. */
+const focusableSelector = 'button:not([disabled]), select:not([disabled]), input:not([disabled])';
 
 /** Props for the lab and imaging order print button. */
 export interface PrintOrderButtonProps {
@@ -55,7 +58,7 @@ function useDialogFocus(
       }
       // The dialog declares aria-modal, so Tab must not reach the controls
       // behind it. Wrap focus among this dialog's own controls.
-      const items = focusableItems(dialogRef.current);
+      const items = focusableItems(dialogRef.current, focusableSelector);
       const index = items.indexOf(document.activeElement as HTMLElement);
       event.preventDefault();
       if (event.shiftKey) {

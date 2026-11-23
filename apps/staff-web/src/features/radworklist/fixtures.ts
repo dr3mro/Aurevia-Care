@@ -1,12 +1,12 @@
+import { defined } from '../../components/invariant';
 import { syntheticOrganizations } from '../../fixtures/synthetic';
 import type { ImagingWorklistOrder } from './domain';
-import { defined } from '../../components/invariant';
 
 /** The tenant whose synthetic radiology orders are shown in tests and previews. */
-export const alphaOrganizationId = defined(syntheticOrganizations[0], 'fixture value').id;
+export const alphaOrganizationId = defined(syntheticOrganizations[0], 'alpha organization').id;
 
 /** The second synthetic tenant; its local order ids deliberately collide. */
-export const betaOrganizationId = defined(syntheticOrganizations[1], 'fixture value').id;
+export const betaOrganizationId = defined(syntheticOrganizations[1], 'beta organization').id;
 
 /** Synthetic performing sites used by the worklist screen. */
 export const syntheticPerformingSite = 'site-rad-main';

@@ -22,18 +22,29 @@ import jakarta.servlet.http.HttpServletResponse;
  * actually arrived over TLS; the framework forward-header strategy in the
  * application configuration keeps that accurate behind a TLS-terminating load
  * balancer. Versioned API responses additionally opt out of caching, while the
- * unauthenticated health probes do not.</p>
+ * unauthenticated health probes do not. The in-repository documentation subtree
+ * alone receives a same-origin CSP so its local bundles can load; that branch
+ * still forbids inline and remote scripts (WEB-02).</p>
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class SecurityHeadersFilter extends OncePerRequestFilter {
 
     private static final String API_PREFIX = "/api/";
+    private static final String DOCS_PATH = "/swagger-ui";
+    private static final String DEFAULT_CSP = "default-src 'none'; frame-ancestors 'none'";
+
+    /** Same-origin bundles, styles, images and the local contract; no inline or remote sources. */
+    private static final String DOCS_CSP = "default-src 'none'; script-src 'self'; style-src 'self'; "
+            + "img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; "
+            + "base-uri 'none'; object-src 'none'";
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
             FilterChain chain) throws ServletException, IOException {
-        response.setHeader("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'");
+        String path = request.getRequestURI();
+        boolean docsPath = path.equals(DOCS_PATH) || path.startsWith(DOCS_PATH + "/");
+        response.setHeader("Content-Security-Policy", docsPath ? DOCS_CSP : DEFAULT_CSP);
         response.setHeader("X-Content-Type-Options", "nosniff");
         response.setHeader("Referrer-Policy", "no-referrer");
         response.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
