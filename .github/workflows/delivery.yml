@@ -52,6 +52,7 @@ jobs:
 
   script-tests:
     name: Delivery tooling tests
+    needs: policy
     timeout-minutes: 10
     runs-on: ubuntu-24.04
     steps:
@@ -63,6 +64,7 @@ jobs:
 
   frontend:
     name: Frontend standards
+    needs: script-tests
     timeout-minutes: 15
     runs-on: ubuntu-latest
     steps:
@@ -83,7 +85,7 @@ jobs:
   # that is green here cannot turn main red, whoever merges it.
   java-verify:
     name: Java and database verification
-    needs: policy
+    needs: frontend
     timeout-minutes: 30
     runs-on: ubuntu-24.04
     services:
@@ -107,6 +109,7 @@ jobs:
 
   docs:
     name: Developer reference
+    needs: java-verify
     timeout-minutes: 10
     runs-on: ubuntu-24.04
     steps:
@@ -136,7 +139,7 @@ jobs:
   verify:
     name: Verify and smoke image (${{ matrix.arch }})
     if: github.event_name != 'pull_request'
-    needs: java-verify
+    needs: docs
     timeout-minutes: 30
     strategy:
       fail-fast: false
