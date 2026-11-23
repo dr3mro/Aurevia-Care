@@ -19,6 +19,7 @@ CALLS = {
     "merged": ["pr", "list", "--state", "merged", "--limit", "300", "--search", "merged:>={since}", "--json", "number,title,mergedAt"],
     "closed": ["pr", "list", "--state", "closed", "--limit", "300", "--search", "closed:>={since}", "--json", "number,title,closedAt,mergedAt"],
     "runs": ["run", "list", "--limit", "100", "--json", FIELDS],  # first page: shows quickly
+    "runs_live": ["run", "list", "--workflow", "Agent swarm", "--status", "in_progress", "--limit", "100", "--json", FIELDS],  # live waves: never lost in pagination
     "runs_more": ["run", "list", "--limit", "300", "--json", FIELDS],  # three pages, merged in when it arrives
     "total": ["api", "graphql", "-F", "o={owner}", "-F", "n={repo}", "-q", ".data.repository.defaultBranchRef.target.history.totalCount",
               "-f", "query=query($o:String!,$n:String!){repository(owner:$o,name:$n){defaultBranchRef{target{... on Commit{history{totalCount}}}}}}"],
@@ -169,7 +170,7 @@ def fetch(emit=None, full=True):
                 timed("compare", t1, "what the day's commits changed")
                 churn = dict(got, commits=len(commits)) if isinstance(got, dict) else None
             return put({"churn": churn})
-        if k in ("runs", "runs_more"):  # the quick first page shows at once; the full list merges in when it lands
+        if k in ("runs", "runs_live", "runs_more"):  # the quick first page shows at once; the full list merges in when it lands
             with guard:
                 merged = merge_runs(val, out.get("runs") or [])
             put({"runs": merged})
