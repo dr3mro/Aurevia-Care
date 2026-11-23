@@ -1,8 +1,14 @@
 #!/usr/bin/env bash
 # Build and test the whole project locally.
+# Build artifacts go to their module default dirs (apps/api/target, apps/staff-web/dist,
+# apps/staff-web/coverage), all of which are gitignored. A top-level build/ summary
+# is written for convenience.
 # Usage: bash scripts/build-and-test.sh [--skip-docker] [--skip-frontend]
 set -euo pipefail
 cd "$(dirname "$0")/.."
+
+BUILD_DIR="build"
+mkdir -p "$BUILD_DIR"
 
 SKIP_DOCKER=0
 SKIP_FRONTEND=0
