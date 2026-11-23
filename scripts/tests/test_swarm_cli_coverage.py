@@ -210,6 +210,7 @@ class MainDispatchCoverageTests(CliTestCase):
                    {"id": "FIX-9", "kind": "fix", "slot": 2, "title": "secret",
                     "body": "secret", "fix": "secret"}]
         with mock.patch.object(swarm, "gh_json", side_effect=[prs, []]), \
+                mock.patch.object(swarm, "main_is_red", return_value=False), \
                 mock.patch.object(swarm, "live_workers", return_value=[]), \
                 mock.patch.object(swarm, "load_slots", return_value=SLOTS), \
                 mock.patch.object(swarm, "todo_read", return_value="current TODO text"), \
@@ -262,14 +263,14 @@ class MainDispatchCoverageTests(CliTestCase):
         self.assertIn("A title", self.stdout.getvalue())
 
     def run_continue(self, go, waiting, live):
-        """Dispatch `continue` with controlled readiness, wave counts and gh calls."""
+        """Dispatch `continue` with controlled readiness, worker counts and gh calls."""
         with mock.patch.object(swarm, "gh_json", side_effect=[[], []]), \
+                mock.patch.object(swarm, "main_is_red", return_value=False), \
                 mock.patch.object(swarm, "todo_read", return_value="text"), \
                 mock.patch.object(swarm, "reclaim", return_value="text"), \
-                mock.patch.object(swarm, "live_workers", return_value=[]), \
+                mock.patch.object(swarm, "live_workers", return_value=[f"task-{n}" for n in range(live)]), \
                 mock.patch.object(swarm, "continue_swarm", return_value=go), \
                 mock.patch.object(swarm, "waiting_waves", return_value=waiting), \
-                mock.patch.object(swarm, "live_waves", return_value=live), \
                 mock.patch.object(swarm, "gh") as gh:
             self.assertEqual(swarm.main(["continue", "--file", str(self.dir / "TODO.md")]), 0)
         return gh
@@ -277,13 +278,13 @@ class MainDispatchCoverageTests(CliTestCase):
     def test_main_continue_does_not_queue_a_waiting_wave(self):
         gh = self.run_continue(go=True, waiting=1, live=0)
         gh.assert_not_called()
-        self.assertIn("A wave is already waiting; not queueing another.", self.stdout.getvalue())
+        self.assertIn("No free workers or a wave is already waiting.", self.stdout.getvalue())
         self.assertIn("No further wave to start now.", self.stdout.getvalue())
 
-    def test_main_continue_does_not_queue_when_max_waves_run(self):
-        gh = self.run_continue(go=True, waiting=0, live=swarm.MAX_LIVE_WAVES + 1)
+    def test_main_continue_does_not_queue_when_all_worker_slots_are_occupied(self):
+        gh = self.run_continue(go=True, waiting=0, live=swarm.MAX_ACTIVE_WORKERS)
         gh.assert_not_called()
-        self.assertIn(f"{swarm.MAX_LIVE_WAVES} waves are already running", self.stdout.getvalue())
+        self.assertIn("No free workers or a wave is already waiting.", self.stdout.getvalue())
 
     def test_main_continue_starts_a_wave_when_ready(self):
         gh = self.run_continue(go=True, waiting=0, live=0)
