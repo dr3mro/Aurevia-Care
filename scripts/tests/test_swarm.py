@@ -3520,6 +3520,34 @@ class ArchiveTodoTest(unittest.TestCase):
             self.assertNotIn("[x]", todo.read_text())
 
 
+class FailureReportTests(unittest.TestCase):
+    def test_a_failing_policy_command_outranks_frontend_noise(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp, "check.log").write_text(
+                "> patient-mobile@0.1.0 typecheck\n> tsc --noEmit\n"
+                "point.coverage.test.tsx 2 tests 48ms\n"
+                "frontend standards: policy and tool commands passed\n"
+                "env -u CHECK_SCRIPT bash scripts/worker-check.sh\n"
+                "check-pack: opencode.json is stale: run scripts/gen-opencode.py\n")
+            text = swarm.failure_report(tmp)
+        self.assertIn("failing commands and final lines", text)
+        self.assertIn("check-pack: opencode.json is stale", text)
+        self.assertNotIn("point.coverage.test.tsx", text)
+
+    def test_frontend_lines_are_used_when_no_strong_signature_exists(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp, "frontend-typecheck.log").write_text(
+                "some noise\nerror TS2322: Type 'string' is not assignable\n")
+            text = swarm.failure_report(tmp)
+        self.assertIn("failing commands and final lines", text)
+        self.assertIn("error TS2322", text)
+
+    def test_no_log_is_reported_as_such(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            text = swarm.failure_report(tmp)
+        self.assertIn("no check log was kept", text)
+
+
 class ReconcileTasksTests(unittest.TestCase):
     def test_merged_task_is_marked_with_evidence_and_pushed(self):
         with tempfile.TemporaryDirectory() as tmp:
