@@ -737,10 +737,10 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False, loading=frozenset()):
     queue = sorted((t for t in todo if t["status"] == "todo"), key=lambda t: PRIORITY_RANK[priority_of(t)])
     mark = {"high": ("H", "b_red"), "low": ("L", "dim")}
     right = [dict(title="Swarm Tasks Taken", total=len(taken), col="cyan", border="gray", prio=2,
-                  items=[cells(iw, (">", "yellow", 1), (t["agent"] or "-", "magenta", 9), (t["id"] + "  ", "b_cyan", None), (t["title"], "", None))
+                  items=[cells(iw, (">", "yellow", 1), (t["agent"] or "-", "magenta", 9), (t["id"] + "  ", "b_cyan", len(t["id"]) + 2), (t["title"], "", None))
                          for t in taken]),
              dict(title="Next Up", total=len(queue), col="blue", border="gray", prio=1,
-                  items=[cells(iw, mark.get(priority_of(t), ("-", "gray")) + (1,), (t["id"] + "  ", "b_cyan", None), (t["title"], "", None))
+                  items=[cells(iw, mark.get(priority_of(t), ("-", "gray")) + (1,), (t["id"] + "  ", "b_cyan", len(t["id"]) + 2), (t["title"], "", None))
                          for t in sorted((t for t in todo if t["status"] == "todo"), key=lambda t: PRIORITY_RANK[priority_of(t)])[:12]]),
              dict(title="Merged PRs 24h", total=len(merged_day), col="green", border="gray", prio=3,
                   items=[merged_row(p) for p in merged_day]),
