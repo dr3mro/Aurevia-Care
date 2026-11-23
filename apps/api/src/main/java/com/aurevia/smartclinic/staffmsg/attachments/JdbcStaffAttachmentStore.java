@@ -148,6 +148,46 @@ public class JdbcStaffAttachmentStore implements StaffAttachmentStore {
     }
 
     @Override
+    public boolean bindToMessage(StaffAttachment attachment) {
+        return transactions.execute(status -> {
+            // A pending link still carries the draft identifier. Conditional update
+            // on that value makes the pending-to-sent transition a compare-and-set:
+            // a same-key replay cannot bind the row twice.
+            int changed = jdbc.update("""
+                    UPDATE public.staff_attachment_link
+                       SET message_id = CAST(:messageId AS uuid), scan_state = :scanState,
+                           checksum = :checksum
+                     WHERE organization_id = CAST(:organizationId AS uuid)
+                       AND id = CAST(:id AS uuid)
+                       AND message_id = CAST(:draftId AS uuid)
+                    """, new MapSqlParameterSource()
+                            .addValue("organizationId", attachment.organizationId())
+                            .addValue("id", attachment.id())
+                            .addValue("draftId", attachment.draftId())
+                            .addValue("messageId", attachment.messageId())
+                            .addValue("scanState", attachment.scanState().wire())
+                            .addValue("checksum", attachment.checksum()));
+            if (changed == 1) {
+                putMetadata(attachment);
+                return true;
+            }
+            // No row changed: distinguish a replay of this message from a file
+            // already bound elsewhere, so a retry cannot widen or steal an audience.
+            List<String> bound = jdbc.query("""
+                    SELECT message_id::text FROM public.staff_attachment_link
+                     WHERE organization_id = CAST(:organizationId AS uuid) AND id = CAST(:id AS uuid)
+                    """, new MapSqlParameterSource()
+                            .addValue("organizationId", attachment.organizationId())
+                            .addValue("id", attachment.id()),
+                    (resultSet, rowNumber) -> resultSet.getString("message_id"));
+            if (bound.stream().anyMatch(attachment.messageId()::equals)) {
+                return false;
+            }
+            throw new ApiException(409, "ALREADY_SENT", "the file has already been sent");
+        });
+    }
+
+    @Override
     public int countForDraft(String organizationId, String draftId) {
         return transactions.execute(status -> jdbc.queryForObject("""
                 SELECT count(*) FROM public.staff_attachment_link

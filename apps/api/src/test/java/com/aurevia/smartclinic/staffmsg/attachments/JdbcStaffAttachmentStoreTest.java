@@ -187,6 +187,33 @@ class JdbcStaffAttachmentStoreTest {
                 () -> store.putAttachment(attachment(ScanState.PENDING, false))).code());
     }
 
+    private void stubBoundMessage(String messageId) {
+        when(jdbc.query(anyString(), any(SqlParameterSource.class), any(RowMapper.class)))
+                .thenAnswer(invocation -> {
+                    RowMapper<?> mapper = (RowMapper<?>) invocation.getArgument(2);
+                    ResultSet resultSet = mock(ResultSet.class);
+                    when(resultSet.getString("message_id")).thenReturn(messageId);
+                    return List.of(mapper.mapRow(resultSet, 0));
+                });
+    }
+
+    @Test
+    void bindToMessageReportsOnlyTheWinningConditionalWrite() {
+        StaffAttachment binding = attachment(ScanState.CLEAN, true);
+        when(jdbc.update(anyString(), any(SqlParameterSource.class))).thenReturn(1);
+        when(documents.artifact(ORG, "22222222-2222-2222-2222-222222222222")).thenReturn(Optional.empty());
+        assertTrue(store.bindToMessage(binding));
+        verify(documents).putArtifact(any(Artifact.class));
+
+        when(jdbc.update(anyString(), any(SqlParameterSource.class))).thenReturn(0);
+        stubBoundMessage("message-1");
+        assertFalse(store.bindToMessage(binding));
+
+        stubBoundMessage("other-message");
+        assertEquals("ALREADY_SENT", assertThrows(ApiException.class,
+                () -> store.bindToMessage(binding)).code());
+    }
+
     @Test
     void countAndRecipientChecksReturnDatabaseResults() {
         when(jdbc.queryForObject(anyString(), any(SqlParameterSource.class),

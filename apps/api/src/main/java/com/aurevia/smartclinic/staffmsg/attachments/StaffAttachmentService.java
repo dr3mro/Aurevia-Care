@@ -201,10 +201,11 @@ public final class StaffAttachmentService {
     /**
      * Bind files validated by a message send's preflight to the committed message.
      *
-     * <p>The fresh state is re-read before each write: a file that another
-     * publication already bound to this same message is skipped, so a retry race
-     * cannot emit a second SENT fact. A file that became unclean after preflight
-     * is refused rather than published (fail closed).</p>
+     * <p>The fresh state is re-read before each write, and the store performs a
+     * conditional pending-to-sent transition: only the caller that actually bound
+     * the row records a SENT fact, so a same-key race cannot double-audit. A file
+     * that became unclean after preflight is refused rather than published (fail
+     * closed).</p>
      *
      * @param actor         freshly derived sender identity
      * @param messageId     identifier returned by the message store
@@ -217,7 +218,7 @@ public final class StaffAttachmentService {
                                                  List<String> attachmentIds, Set<String> recipients) {
         String message = StaffAttachmentInputs.key(messageId, "messageId");
         authorize(actor, StaffAttachmentActions.SEND, message);
-        List<StaffAttachment> prepared = new ArrayList<>();
+        List<StaffAttachment> bound = new ArrayList<>();
         for (String id : attachmentIds) {
             StaffAttachment fresh = load(actor, id);
             if (fresh.sent()) {
@@ -229,19 +230,23 @@ public final class StaffAttachmentService {
             if (fresh.scanState() != ScanState.CLEAN || !fresh.uploaderSubject().equals(actor.subject())) {
                 throw conflict(actor, fresh.id(), "NOT_CLEAN", "the file changed after publication preflight");
             }
-            prepared.add(fresh);
+            StaffAttachment updated = withMessage(fresh, message);
+            // A conditional store write decides the winner. Only the caller that
+            // changed the row records SENT, so a same-key race cannot double-audit.
+            if (store.bindToMessage(updated)) {
+                audit(actor, fresh.id(), AuditType.SENT, "success", null);
+                bound.add(updated);
+            }
         }
-        return markSent(actor, message, prepared, recipients);
+        store.grantRecipients(actor.organizationId(), message, recipients);
+        return List.copyOf(bound);
     }
 
     private List<StaffAttachment> markSent(StaffActor actor, String messageId,
                                            List<StaffAttachment> validated, Set<String> recipients) {
         List<StaffAttachment> sent = new ArrayList<>();
         for (StaffAttachment current : validated) {
-            StaffAttachment updated = new StaffAttachment(current.organizationId(), current.id(),
-                    current.uploaderSubject(), current.draftId(), current.documentId(), current.fileName(),
-                    current.contentType(), current.sizeBytes(), current.checksum(), current.objectKey(),
-                    current.objectVersion(), current.scanState(), messageId, true, current.createdAt());
+            StaffAttachment updated = withMessage(current, messageId);
             store.putAttachment(updated);
             audit(actor, current.id(), AuditType.SENT, "success", null);
             sent.add(updated);
@@ -354,6 +359,13 @@ public final class StaffAttachmentService {
                 current.draftId(), current.documentId(), current.fileName(), current.contentType(),
                 current.sizeBytes(), current.checksum(), current.objectKey(), current.objectVersion(),
                 next, current.messageId(), current.sent(), current.createdAt());
+    }
+
+    private static StaffAttachment withMessage(StaffAttachment current, String messageId) {
+        return new StaffAttachment(current.organizationId(), current.id(), current.uploaderSubject(),
+                current.draftId(), current.documentId(), current.fileName(), current.contentType(),
+                current.sizeBytes(), current.checksum(), current.objectKey(), current.objectVersion(),
+                current.scanState(), messageId, true, current.createdAt());
     }
 
     private void authorize(StaffActor actor, String action, String resourceId) {

@@ -44,6 +44,20 @@ public interface StaffAttachmentStore {
     void putAttachment(StaffAttachment attachment);
 
     /**
+     * Bind one pending attachment to a published message with a conditional write.
+     *
+     * <p>The transition is atomic so two senders racing on one idempotency key
+     * cannot both bind the same file: only the caller that changed the row should
+     * record a SENT fact. A file already bound to this message is a replay and
+     * returns {@code false}; a file bound to another message is refused.</p>
+     *
+     * @param attachment pending attachment carrying the target message identifier
+     * @return {@code true} when this call performed the transition
+     * @throws ApiException when the file is bound to a different message
+     */
+    boolean bindToMessage(StaffAttachment attachment);
+
+    /**
      * Count the attachments bound to one draft.
      *
      * @param organizationId active organization
