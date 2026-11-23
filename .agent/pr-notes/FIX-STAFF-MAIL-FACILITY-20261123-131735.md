@@ -138,6 +138,66 @@ Branch-to-test map for the new/changed production code:
 No production guard was added that no input can trigger; no threshold, exclusion, `@Disabled`,
 `.skip`, `xit` or coverage-ignore comment was added. The full bundle-level JaCoCo check is integrator-owned.
 
+## Coverage repair — attempt 1 of 2 (2026-11-23T14:12Z)
+
+Evidence provenance: **tool** (executed Maven commands and JaCoCo CSV) plus **git history**;
+no human, clinical or patient-participant evidence.
+
+- Reported failure was a **test error, not a coverage miss**: `bash scripts/coverage-check.sh`
+  (full `mvn -Pno-security verify`, 5797 tests) exited 1 with
+  `SurfaceBacklogUnassignedWorkFailedNotificationsOverdueTest.prepare:138->seedApprovedChannelPolicy:162
+  ? PSQL ERROR: duplicate key value violates unique constraint
+  "config_approval_organization_id_entry_id_key"`.
+- Root cause (git history evidence): two ancestor commits seed the same approved-channel policy
+  into the same test. `0fdc9ae3` added the seed inline in `seedOwningTenant()`; the later
+  "repair" commit `7e6f5933` re-added it via the documented `seedApprovedChannelPolicy()`
+  helper called from `prepare()`. Both run in `@BeforeAll`; the second `config_approval`
+  `INSERT ... SELECT ... WHERE version = 1` selects the same version-1 `config_entry` already
+  approved by the first, violating the unique constraint. Deterministic on every run.
+- Fix (test-only, no production change): removed the redundant inline seed block from
+  `seedOwningTenant()` and replaced it with a comment pointing to the single authoritative
+  helper in `prepare()`. No threshold, exclusion, suppression, skip or lowered rule was added.
+- RED confirmation: `mvn -q -B -f apps/api/pom.xml -Pno-security
+  -Dtest=SurfaceBacklogUnassignedWorkFailedNotificationsOverdueTest test` — exit 1, 1 error,
+  the exact duplicate-key error above.
+- GREEN: same targeted command — exit 0, Surefire `tests="4" errors="0" failures="0" skipped="0"`.
+- GREEN full gate: `bash scripts/coverage-check.sh origin/main` — exit 0, final line
+  `coverage check: passed`. The tail warning `[ERROR] Surefire is going to kill self fork JVM.
+  The exit has elapsed 30 seconds after System.exit(0).` is the Surefire shutdown notice, not a
+  test failure; no `<<< ERROR`/`<<< FAILURE` line exists in the log and the gate reported passed.
+- JaCoCo (`apps/api/target/site/jacoco/jacoco.csv`) after the full verify — every touched
+  production class 0 missed: `StaffRecipientDirectory` instr 0/105, branch 0/4, line 0/22;
+  `StaffDirectoryService` instr 0/175, branch 0/6, line 0/35; `MailService` instr 0/963,
+  branch 0/52, line 0/160; `MailController` instr 0/227, branch 0/2, line 0/42.
+
+Branch-to-test list (unchanged — the repair touched test setup only, so every production
+line and branch still has its named test from the `## Coverage` section above):
+- `StaffRecipientDirectory.holders` missing TenantContext (403) → `failsClosedWhenFacilityMissingOrContextAbsent`
+  (null side); context present → every other test.
+- `findFacilityById(...).orElseThrow` empty (404) → `failsClosedWhenFacilityMissingOrContextAbsent`;
+  present → all other tests.
+- `DirectoryPolicy.requireSameOrganization` mismatch (403) → `inactiveStaffAndOtherOrganizationsExcluded`;
+  match → all successful cases.
+- role predicate `roles().contains(role)` false → `nurse-a/reception` row in
+  `expandsOnlyActiveHoldersOfTheRole`; true → `nurse-b`/`doctor-a` rows.
+- facility fold `outsideAssignedFacilities` false/true → both sides in
+  `twoFacilitiesSharingARoleReturnDifferentHolders`; all-excluded empty in
+  `returnsEmptyWhenEveryHolderIsOutsideTheFacilityScope`; V93 legacy exception in
+  `unassignedLegacyHoldersRemainInScopeByTheAuthoritativeFold`.
+- `distinct` → `deduplicatesHolders`; empty staff → `returnsEmptyWhenNobodyHoldsRole`;
+  single-transaction ordering → `resolvesTheFacilityInsideTheTenantTransaction` (InOrder).
+- `StaffDirectoryService.findFacilityById` id match → `findFacilityByIdResolvesTheTenantFacilityInsideTheGuardedTransaction`;
+  mismatch and null → `findFacilityByIdFailsClosedForUnknownAndMissingIds`; missing context →
+  `findFacilityByIdFailsClosedWithoutTenantContext`.
+- `MailService` 7-arg constructor → `productionConstructorResolvesRolesThroughTheStaffRepository`.
+- 428/409 send contract → `MailControllerHttpTest.sendRequiresReconfirmationWhenFacilityHoldersChange`
+  plus existing confirmation tests.
+- The repaired `SurfaceBacklogUnassignedWorkFailedNotificationsOverdueTest` is a test fixture,
+  not production code: its four `@Test` methods pass over real PostgreSQL, Flyway V1–V95 and
+  forced RLS after the fixture fix; no branch-to-test obligation was added. Also, per the
+  AGENTS.md "known false positives", `mvn -Pno-security,fast -Dgroups=integration` does not run
+  integration tests — this repair used the unmodified `verify` gate instead.
+
 ## Findings
 - Brief correction (recorded above): the advisor's `findFacility(String code)` reuse is wrong for
   mail's facility row id; resolved in scope with `findFacilityById` and recorded in this note.
