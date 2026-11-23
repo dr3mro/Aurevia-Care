@@ -84,6 +84,13 @@ class DeliveryStateTest(unittest.TestCase):
         # Newest first is the contract: reversing the list makes the stale run win.
         self.assertEqual(swarm.delivery_state(list(reversed(runs)), HEAD), "failed")
 
+    def test_cancelled_stale_head_does_not_mask_the_current_head(self):
+        """Delivery cancels stale PR runs; only the current head can be merged."""
+        runs = [delivery_run(sha=OLD, conclusion="cancelled")]
+        self.assertEqual(swarm.delivery_state(runs, HEAD), "missing")
+        self.assertEqual(swarm.delivery_state(
+            [delivery_run(conclusion="success")] + runs, HEAD), "passed")
+
     def test_skipped_run_has_no_verification_evidence(self):
         # The documentation exception is applied by the gate from the changed
         # files, never from a bare "skipped" label which can have other causes.

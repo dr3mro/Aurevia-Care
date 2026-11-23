@@ -1,8 +1,10 @@
 name: Delivery
 on:
   workflow_dispatch:
+  # Every PR must report the required "Delivery gate" check. A path-filtered
+  # PR never starts this workflow, so branch protection waits forever for a
+  # check that cannot be created.
   pull_request:
-    paths-ignore: ['docs/**', '**/*.md']
   push:
     branches: [main]
     tags: ['v*']
@@ -10,12 +12,15 @@ on:
   merge_group:
 permissions:
   contents: read
-# Branch protection checks the exact SHA. Queue per ref instead of cancelling:
-# every pushed commit gets a verdict, while main pushes and each PR's pushes
-# stay serialized so expensive full verification cannot multiply in parallel.
+# Branch protection checks the exact SHA, so a push to main or a tag must keep
+# every verdict: never cancel it. A PR can only merge its current head, and an
+# older head is never merged, so a new push cancels the stale run instead of
+# queueing behind it -- otherwise the current head's "Delivery gate" check is
+# never reported and branch protection blocks the PR. queue:max still applies
+# to the non-cancelling triggers and keeps one queued run per ref.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
   queue: max
 
 jobs:
