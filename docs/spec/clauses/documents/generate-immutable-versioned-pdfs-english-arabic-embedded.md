@@ -39,6 +39,17 @@ chart and the synthetic provenance pair `SYNTHETIC-LAB/REQ-1`.
 - `refusesAnUnsupportedRenderLocale` (negative) — a locale outside the approved
   `en`/`ar` set is refused with HTTP 422 and code `INVALID_LOCALE` rather than
   silently choosing a layout direction.
+- `embedsARealFontProgramAndShapesArabicGlyphs` (acceptance gap; complete but
+  intentionally not compiled or enabled) — carried verbatim in this story's
+  hand-off notes. It reuses the same `registerChart` / `render` / `content`
+  HTTP path and asserts that the object-7 `/FontFile2` stream is a real,
+  non-placeholder sfnt/OpenType program with a matching `/Length1`, and that
+  the Arabic title's `Tj` operand carries shaped glyph ids with a six-letter
+  subset tag rather than its raw UTF-16BE code units. Every assertion fails
+  against today's 32-zero-byte font program, so the case is recorded rather
+  than committed as a skipped test: `scripts/check-constraints.py` rejects any
+  added `@Disabled` in Java and AGENTS.md forbids skipping tests. The four
+  live methods above remain green and unchanged.
 
 Entry-point-to-test trace:
 
@@ -85,14 +96,30 @@ The embedded `/FontFile2` program is a synthetic placeholder: `PdfRenderer.FONT_
 is 32 zero bytes, and the class Javadoc states that this slice validates
 structure and direction only. No real font glyphs are subset or embedded, there
 is no Arabic glyph shaping or bidi shaping engine beyond word-run reordering,
-and no approved font licence or rendering library is integrated. The tests above
-therefore prove the immutable versioning, locale direction, page numbering,
+and no approved font licence or rendering library is integrated. The four live
+tests above therefore prove the immutable versioning, locale direction, page numbering,
 provenance, print-profile and structural markers, not production Arabic
 typography.
 
+The complete failing case for this gap is `embedsARealFontProgramAndShapesArabicGlyphs`,
+carried (not compiled) in this story's hand-off notes. It replaces the
+structural-only font assertions at lines 262-263 and the original-script
+assertion at line 269 of the test class with assertions on the real embedded
+program bytes and shaped Arabic glyph runs. Each of those assertions fails
+today because `PdfRenderer.FONT_HEX` is `"00".repeat(32)` and `visualOrder()`
+only reorders word runs without shaping or subsetting. The case is left
+disabled-by-location so this evidence change stays green without skipping a
+test or weakening a gate; a later task enables it by copying it into the test
+class and deleting its `@Disabled` line.
+
 Closing the gap needs **two** separate production tasks, both outside this
 test-only story's scope: (1) select and integrate an approved, licensed PDF
-rendering library with a real embedded font pipeline, adding its security,
-dependency and coverage review; (2) implement verified Arabic glyph shaping and
-font subsetting with synthetic visual-regression fixtures and clinical/UX
-review. No file is changed by this clause note.
+rendering library with a real embedded font pipeline — changing
+`apps/api/pom.xml` (the vetted dependency) and
+`apps/api/src/main/java/com/aurevia/smartclinic/documents/PdfRenderer.java`
+(`FONT_HEX`, the object-7 stream and its `/Length1`, and a subset `/BaseFont`
+tag), with security, dependency and coverage review; (2) implement verified
+Arabic glyph shaping and font subsetting in `PdfRenderer.visualOrder()` and the
+render path, with synthetic visual-regression fixtures and clinical/UX review.
+This clause-note change records that evidence; it changes no test, production
+code, migration or contract.
