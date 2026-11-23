@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -23,6 +24,7 @@ import java.util.function.Consumer;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.namedparam.SqlParameterSource;
@@ -197,6 +199,27 @@ class JdbcStaffAttachmentStoreTest {
         assertTrue(store.isRecipient(ORG, "message-1", "clinician-b"));
         assertFalse(store.isRecipient(ORG, "message-1", "stranger"));
         assertFalse(store.isRecipient(ORG, "message-1", "unknown"));
+    }
+
+    @Test
+    void recipientQueryDerivesTheAudiencePerMessageAndRejectsFormerParticipants() {
+        when(jdbc.queryForObject(anyString(), any(SqlParameterSource.class), eq(Boolean.class)))
+                .thenReturn(true);
+        assertTrue(store.isRecipient(ORG, "message-1", "clinician-b"));
+        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
+        verify(jdbc).queryForObject(sql.capture(), any(SqlParameterSource.class), eq(Boolean.class));
+        assertTrue(sql.getValue().contains("resolved_recipients @> ARRAY[CAST(:subject AS text)]"));
+        assertTrue(sql.getValue().contains("left_at IS NULL"));
+        assertTrue(sql.getValue().contains("mail.message_id = msg.id"));
+        assertTrue(sql.getValue().contains(" OR EXISTS ("));
+        assertTrue(sql.getValue().contains("part.conversation_id = msg.conversation_id"));
+        assertTrue(sql.getValue().contains("part.staff_subject = CAST(:subject AS text)"));
+    }
+
+    @Test
+    void grantRecipientsPerformsNoDurableWrite() {
+        store.grantRecipients(ORG, "message-1", Set.of("clinician-b"));
+        org.mockito.Mockito.verifyNoInteractions(jdbc);
     }
 
     @Test

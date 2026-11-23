@@ -2,6 +2,7 @@ package com.aurevia.smartclinic.staffmsg.attachments;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import com.aurevia.smartclinic.staffmsg.attachments.StaffAttachmentContract.AttachmentAudit;
 import com.aurevia.smartclinic.staffmsg.attachments.StaffAttachmentContract.StaffAttachment;
@@ -60,6 +61,17 @@ public interface StaffAttachmentStore {
      * @return {@code true} only for a message recipient
      */
     boolean isRecipient(String organizationId, String messageId, String subject);
+
+    /**
+     * Record the audience frozen on a published message so the synthetic tier
+     * can authorize downloads without a database. The durable tier resolves the
+     * same audience from persisted message data at read time and needs no write.
+     *
+     * @param organizationId active organization
+     * @param messageId      published message identifier
+     * @param subjects       recipient subjects authorized to download
+     */
+    void grantRecipients(String organizationId, String messageId, Set<String> subjects);
 
     /**
      * Store the original bytes of one private object.

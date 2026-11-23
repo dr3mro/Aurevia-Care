@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -158,20 +159,41 @@ public class JdbcStaffAttachmentStore implements StaffAttachmentStore {
 
     @Override
     public boolean isRecipient(String organizationId, String messageId, String subject) {
+        // The audience is resolved per message, not per conversation: a mail reply
+        // shares its thread with earlier messages, and a departed participant must
+        // not keep a download grant. Mail recipients are frozen on the published
+        // message; instant recipients come from still-open conversation membership.
         return transactions.execute(status -> Boolean.TRUE.equals(jdbc.queryForObject("""
                 SELECT EXISTS (
                     SELECT 1 FROM public.staff_message msg
-                      JOIN public.staff_participant part
-                        ON part.organization_id = msg.organization_id
-                       AND part.conversation_id = msg.conversation_id
                      WHERE msg.organization_id = CAST(:organizationId AS uuid)
                        AND msg.id = CAST(:messageId AS uuid)
-                       AND part.staff_subject = :subject
+                       AND (
+                            EXISTS (
+                                SELECT 1 FROM public.staff_mail_metadata mail
+                                 WHERE mail.organization_id = msg.organization_id
+                                   AND mail.message_id = msg.id
+                                   AND mail.resolved_recipients @> ARRAY[CAST(:subject AS text)])
+                            OR EXISTS (
+                                SELECT 1 FROM public.staff_participant part
+                                 WHERE part.organization_id = msg.organization_id
+                                   AND part.conversation_id = msg.conversation_id
+                                   AND part.staff_subject = CAST(:subject AS text)
+                                   AND part.left_at IS NULL)
+                       )
                 )
                 """, new MapSqlParameterSource()
                         .addValue("organizationId", organizationId)
                         .addValue("messageId", messageId)
                         .addValue("subject", subject), Boolean.class)));
+    }
+
+    @Override
+    public void grantRecipients(String organizationId, String messageId, Set<String> subjects) {
+        // There is no separate grant row: isRecipient derives the audience from the
+        // message's frozen mail recipients or its active conversation participants.
+        // Recording it here would grant a whole reply thread a single message's
+        // audience, so the durable tier intentionally performs no write.
     }
 
     @Override

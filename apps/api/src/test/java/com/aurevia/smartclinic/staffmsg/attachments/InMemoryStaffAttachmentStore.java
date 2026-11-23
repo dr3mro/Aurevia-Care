@@ -54,6 +54,11 @@ public final class InMemoryStaffAttachmentStore implements StaffAttachmentStore 
         return recipients.getOrDefault(key(organizationId, messageId), Set.of()).contains(subject);
     }
 
+    @Override
+    public void grantRecipients(String organizationId, String messageId, Set<String> subjects) {
+        putRecipients(organizationId, messageId, subjects);
+    }
+
     /**
      * Seed the recipients allowed to download a published message (synthetic only).
      *
