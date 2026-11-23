@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Laboratory browser harness (synthetic data only)</title>
+  </head>
+  <body>
+    <!-- Dev-only browser harness for the bilingual lab journey (WEB-10). Vite
+         dev serves this at /e2e/labflow/lab-harness.html. The real collection and
+         result-entry pages are mounted with their production providers. The
+         pre-login shell hard-codes a reception role, so the lab screens cannot be
+         reached through its route gate; this harness mounts them directly. -->
+    <main>
+      <div id="lab-harness" data-testid="lab-harness"></div>
+    </main>
+    <script type="module" src="./lab-harness.tsx"></script>
+  </body>
+</html>
