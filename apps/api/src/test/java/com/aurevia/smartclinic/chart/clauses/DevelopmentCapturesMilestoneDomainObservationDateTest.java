@@ -6,24 +6,16 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
-import org.flywaydb.core.Flyway;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
 
 import com.aurevia.smartclinic.api.ApiException;
 import com.aurevia.smartclinic.clinical.templates.BaselineTemplates;
+import com.aurevia.smartclinic.clinical.templates.FieldDefinition;
+import com.aurevia.smartclinic.clinical.templates.FieldType;
 import com.aurevia.smartclinic.clinical.templates.FieldValue;
 import com.aurevia.smartclinic.clinical.templates.InMemoryTemplateStore;
 import com.aurevia.smartclinic.clinical.templates.SavedNoteRevision;
@@ -31,223 +23,187 @@ import com.aurevia.smartclinic.clinical.templates.TemplateActor;
 import com.aurevia.smartclinic.clinical.templates.TemplateKind;
 import com.aurevia.smartclinic.clinical.templates.TemplateNoteRevision;
 import com.aurevia.smartclinic.clinical.templates.TemplateService;
+import com.aurevia.smartclinic.clinical.templates.TemplateVersion;
 import com.aurevia.smartclinic.clinical.templates.ValidationReport;
 
 /**
- * CLN-04 clause 5 proof: a pediatric development note captures milestone domain,
- * observation and date. The tests drive the real
- * {@link com.aurevia.smartclinic.clinical.templates.TemplateService} over a synthetic
- * in-memory store, because the rule is implemented in the domain and persistence
- * layers. The HTTP entry point does not exist yet; the missing surface is described
- * in the clause note's gap. Synthetic fixtures only; this suite adds no production
- * code and changes no existing test.
+ * CLN-04 clause 5 acceptance: the pediatric development template captures a
+ * milestone domain, an observation and a date. The clause is exercised through
+ * the public template domain entry points with the same synthetic fixtures and
+ * in-memory store used by the neighbouring CLN-04 tests. One positive test
+ * proves the three fields are defined, validated and saved; negative tests show
+ * a note is refused when a required field is missing, a milestone domain code is
+ * outside the approved dictionary, the observation lacks a language tag, the date
+ * is malformed, or the author is not a clinician. A companion integration-tagged
+ * suite, DevelopmentCapturesMilestoneDomainObservationDateIntegrationTest, proves
+ * the same rule against a real PostgreSQL schema, including cross-tenant concealment.
  */
-@Tag("integration")
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = "spring.datasource.url=jdbc:postgresql://127.0.0.1:5432/smartclinic_cln04_development_c05_it")
-@ActiveProfiles("synthetic-auth")
 class DevelopmentCapturesMilestoneDomainObservationDateTest {
 
-    static final String ORG_A = "11111111-1111-1111-1111-111111111111";
-    static final String ORG_B = "22222222-2222-2222-2222-222222222222";
-    static final String PATIENT = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
-    static final String URL = "jdbc:postgresql://127.0.0.1:5432/smartclinic_cln04_development_c05_it";
-    static final String ADMIN = System.getenv().getOrDefault(
-            "SMARTCLINIC_PG_ADMIN", System.getProperty("user.name"));
+    private static final String ORG = "11111111-1111-1111-1111-111111111111";
+    private static final String DICTIONARY = "milestone_domain";
+    private static final List<String> CODES = List.of("gross_motor", "fine_motor", "language");
 
-    private final TemplateActor adminA = TemplateActor.of(ORG_A, "admin-a", TemplateService.TENANT_ADMIN);
-    private final TemplateActor governorA = TemplateActor.of(ORG_A, "gov-a", TemplateService.CLINICAL_GOVERNANCE);
-    private final TemplateActor clinicianA = TemplateActor.of(ORG_A, "clinician-a", TemplateService.CLINICIAN);
-    private final TemplateActor receptionA = TemplateActor.of(ORG_A, "reception-a", "reception");
-    private final TemplateActor clinicianB = TemplateActor.of(ORG_B, "clinician-b", TemplateService.CLINICIAN);
+    private final TemplateActor admin = TemplateActor.of(ORG, "admin-a", TemplateService.TENANT_ADMIN);
+    private final TemplateActor governor = TemplateActor.of(ORG, "gov-a", TemplateService.CLINICAL_GOVERNANCE);
+    private final TemplateActor clinician = TemplateActor.of(ORG, "clin-a", TemplateService.CLINICIAN);
 
-    TemplateService service;
+    private InMemoryTemplateStore store;
+    private TemplateService service;
 
-    @BeforeAll
-    static void prepare() throws Exception {
-        try (Connection root = DriverManager.getConnection(
-                     "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
-             Statement statement = root.createStatement()) {
-            statement.execute("DO $$ BEGIN "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='smartclinic_migrate') THEN "
-                    + "CREATE ROLE smartclinic_migrate LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; "
-                    + "IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='smartclinic_app') THEN "
-                    + "CREATE ROLE smartclinic_app LOGIN NOBYPASSRLS NOCREATEDB NOCREATEROLE; END IF; END $$;");
-            statement.execute("DROP DATABASE IF EXISTS smartclinic_cln04_development_c05_it WITH (FORCE)");
-            statement.execute("CREATE DATABASE smartclinic_cln04_development_c05_it OWNER smartclinic_migrate");
-        }
-        Flyway.configure()
-                .dataSource(URL, "smartclinic_migrate", "")
-                .locations("filesystem:../../db/migrations")
-                .load().migrate();
-        try (Connection connection = DriverManager.getConnection(URL, "smartclinic_migrate", "");
-             Statement statement = connection.createStatement()) {
-            seedUser(statement, ORG_A, "clinician-a", "clinician");
-            seedUser(statement, ORG_A, "reception-a", "reception");
-            seedUser(statement, ORG_A, "admin-a", "tenant_admin");
-            seedUser(statement, ORG_A, "gov-a", "clinical_governance");
-            seedUser(statement, ORG_B, "clinician-b", "clinician");
-            seedUser(statement, ORG_B, "reception-b", "reception");
-            seedPatient(statement, ORG_A, "Synthetic Development Alpha");
-            seedPatient(statement, ORG_B, "Synthetic Development Beta");
-        }
-    }
-
-    @AfterAll
-    static void cleanUp() throws Exception {
-        try (Connection root = DriverManager.getConnection(
-                     "jdbc:postgresql://127.0.0.1:5432/postgres", ADMIN, "");
-             Statement statement = root.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS smartclinic_cln04_development_c05_it WITH (FORCE)");
-        }
-    }
-
-    private static void seedUser(Statement statement, String org, String subject, String role)
-            throws Exception {
-        statement.execute("SET app.current_org = '" + org + "'");
-        statement.execute("SET app.actor = '" + subject + "'");
-        statement.execute("INSERT INTO public.organization (organization_id, display_name) "
-                + "SELECT '" + org + "', 'Org " + subject + "' "
-                + "WHERE NOT EXISTS (SELECT 1 FROM public.organization WHERE organization_id = '" + org + "')");
-        statement.execute("INSERT INTO public.user_identity (organization_id, subject, display_name) "
-                + "VALUES ('" + org + "', '" + subject + "', '" + subject + "')");
-        statement.execute("INSERT INTO public.membership (organization_id, user_id, status) "
-                + "SELECT '" + org + "', id, 'active' FROM public.user_identity WHERE subject = '" + subject + "'");
-        statement.execute("INSERT INTO public.role_assignment (organization_id, membership_id, role_key, granted_by) "
-                + "SELECT '" + org + "', m.id, '" + role + "', u.id FROM public.membership m "
-                + "JOIN public.user_identity u ON u.organization_id = m.organization_id AND u.id = m.user_id "
-                + "WHERE u.subject = '" + subject + "'");
-    }
-
-    private static void seedPatient(Statement statement, String org, String name) throws Exception {
-        statement.execute("SET app.current_org = '" + org + "'");
-        statement.execute("SET app.actor = 'reception-" + (ORG_A.equals(org) ? "a" : "b") + "'");
-        // V7 requires exactly one of dob / dob_unknown_reason; a synthetic civil
-        // date satisfies that append-only invariant before any behaviour runs.
-        statement.execute("INSERT INTO public.patient_record "
-                + "(organization_id, id, version, mrn, mrn_issuer, display_name, normalized_name, dob) "
-                + "VALUES ('" + org + "', '" + PATIENT + "', 1, 'MRN-DEVELOPMENT', 'CLINIC', '"
-                + name + "', '" + name.toLowerCase() + "', DATE '1990-05-20')");
-    }
-
+    /** Fresh tenant-scoped store and service for each test. */
     @BeforeEach
-    void init() {
-        service = new TemplateService(new InMemoryTemplateStore());
+    void setUp() {
+        store = new InMemoryTemplateStore();
+        service = new TemplateService(store);
     }
 
+    /** Define and approve the synthetic milestone dictionary and development baseline. */
     private void approveDevelopmentBaseline() {
-        service.defineDictionary(adminA, "milestone_domain",
-                List.of("gross_motor", "fine_motor", "language"));
-        service.approveDictionary(governorA, "milestone_domain");
-        service.defineVersion(adminA, TemplateKind.PEDIATRIC_DEVELOPMENT,
+        service.defineDictionary(admin, DICTIONARY, CODES);
+        service.approveDictionary(governor, DICTIONARY);
+        service.defineVersion(admin, TemplateKind.PEDIATRIC_DEVELOPMENT,
                 BaselineTemplates.fieldsFor(TemplateKind.PEDIATRIC_DEVELOPMENT));
-        service.approveVersion(governorA, TemplateKind.PEDIATRIC_DEVELOPMENT, 1);
+        service.approveVersion(governor, TemplateKind.PEDIATRIC_DEVELOPMENT, 1);
     }
 
-    private static TemplateNoteRevision developmentNote(
-            int version, String domain, String observation, String language, String date) {
-        return new TemplateNoteRevision(TemplateKind.PEDIATRIC_DEVELOPMENT, version, PATIENT, "clinician-a",
-                List.of(new FieldValue("milestoneDomain", domain, null),
-                        new FieldValue("observation", observation, language),
-                        new FieldValue("date", date, null)));
+    /**
+     * Build a pediatric development note from the three clause fields. A null
+     * value or language leaves the field out, which lets the negative tests
+     * exercise the missing and untagged paths.
+     */
+    private static TemplateNoteRevision developmentNote(String domain, String observation,
+                                                        String observationLanguage, String date) {
+        List<FieldValue> values = new ArrayList<>();
+        if (domain != null) {
+            values.add(new FieldValue("milestoneDomain", domain, null));
+        }
+        if (observation != null) {
+            values.add(new FieldValue("observation", observation, observationLanguage));
+        }
+        if (date != null) {
+            values.add(new FieldValue("date", date, null));
+        }
+        return new TemplateNoteRevision(TemplateKind.PEDIATRIC_DEVELOPMENT, 1, "PAT-001", "clin-a", values);
     }
 
-    private static Map<String, FieldValue> values(SavedNoteRevision saved) {
-        return saved.note().values().stream()
-                .collect(Collectors.toMap(FieldValue::fieldKey, value -> value));
+    private static FieldDefinition field(List<FieldDefinition> fields, String key) {
+        return fields.stream().filter(candidate -> key.equals(candidate.key())).findFirst().orElseThrow();
     }
 
-    @Test
-    void capturesMilestoneDomainObservationAndDateInAPediatricDevelopmentNote() {
-        approveDevelopmentBaseline();
-        TemplateNoteRevision note = developmentNote(1, "gross_motor", "sits unsupported", "en", "2026-10-03");
-
-        ValidationReport report = service.validate(clinicianA, note);
-        assertTrue(report.valid(), "the full development note must validate: " + report.violations());
-        assertTrue(report.violations().isEmpty());
-
-        SavedNoteRevision saved = service.saveNote(clinicianA, "DEV-001", note);
-        Map<String, FieldValue> values = values(saved);
-        assertEquals("gross_motor", values.get("milestoneDomain").value());
-        assertEquals("sits unsupported", values.get("observation").value());
-        assertEquals("2026-10-03", values.get("date").value());
-        assertEquals("en", values.get("observation").language(), "the free-text observation keeps its language");
-
-        assertEquals(BaselineTemplates.fieldsFor(TemplateKind.PEDIATRIC_DEVELOPMENT), saved.fieldMeanings());
-        assertEquals(List.of("gross_motor", "fine_motor", "language"),
-                saved.dictionaries().get("milestone_domain"), "the approved dictionary is frozen with the note");
-        assertEquals(ORG_A, saved.organizationId());
-        assertEquals(saved, service.savedNote(clinicianA, "DEV-001"),
-                "the saved revision must round-trip through the tenant-scoped store");
-    }
-
-    @Test
-    void refusesNoteOmittingTheObservation() {
-        approveDevelopmentBaseline();
-        TemplateNoteRevision incomplete = new TemplateNoteRevision(TemplateKind.PEDIATRIC_DEVELOPMENT, 1,
-                PATIENT, "clinician-a", List.of(
-                        new FieldValue("milestoneDomain", "gross_motor", null),
-                        new FieldValue("date", "2026-10-03", null)));
-
-        ValidationReport report = service.validate(clinicianA, incomplete);
-        assertFalse(report.valid());
-        assertTrue(report.violations().contains("missing:observation"),
-                "the required observation must be named: " + report.violations());
-
-        ApiException denied = assertThrows(ApiException.class,
-                () -> service.saveNote(clinicianA, "DEV-PARTIAL", incomplete));
-        assertEquals(422, denied.status());
-        assertEquals("INVALID_NOTE", denied.code());
-        assertEquals(404, status(() -> service.savedNote(clinicianA, "DEV-PARTIAL")),
-                "an incomplete note must not be persisted");
-    }
-
-    @Test
-    void refusesMilestoneCodeOutsideTheApprovedDictionary() {
-        approveDevelopmentBaseline();
-        TemplateNoteRevision note =
-                developmentNote(1, "unapproved_milestone", "sits unsupported", "en", "2026-10-03");
-
-        ValidationReport report = service.validate(clinicianA, note);
-        assertFalse(report.valid());
-        assertTrue(report.violations().contains("dictionary:milestoneDomain"),
-                "a milestone code outside the approved dictionary must be refused: " + report.violations());
-        assertEquals(422, status(() -> service.saveNote(clinicianA, "DEV-BAD-CODE", note)));
-    }
-
-    @Test
-    void refusesNoteSaveByNonClinicianRole() {
-        approveDevelopmentBaseline();
-        TemplateNoteRevision note = developmentNote(1, "gross_motor", "sits unsupported", "en", "2026-10-03");
-
-        ApiException denied = assertThrows(ApiException.class,
-                () -> service.saveNote(receptionA, "DEV-BAD-ROLE", note));
-        assertEquals(403, denied.status());
-        assertEquals("FORBIDDEN", denied.code());
-        assertEquals(404, status(() -> service.savedNote(clinicianA, "DEV-BAD-ROLE")),
-                "a refused role must not persist a note");
-    }
-
-    @Test
-    void concealsATemplateVersionFromAnotherTenant() {
-        approveDevelopmentBaseline();
-        assertEquals(1, service.effective(clinicianA, TemplateKind.PEDIATRIC_DEVELOPMENT).version(),
-                "the version must exist in the authoring tenant before isolation is tested");
-        assertEquals(404, status(() -> service.effective(clinicianB, TemplateKind.PEDIATRIC_DEVELOPMENT)));
-        assertEquals(404, status(() -> service.validate(clinicianB,
-                developmentNote(1, "gross_motor", "sits unsupported", "en", "2026-10-03"))));
-        assertEquals(404, status(() -> service.saveNote(clinicianB, "DEV-CROSS-TENANT",
-                developmentNote(1, "gross_motor", "sits unsupported", "en", "2026-10-03"))));
-    }
-
-    private static int status(ThrowingRunnable action) {
+    /** Assert that a refused command carries the expected HTTP-style status. */
+    private static int statusOf(ThrowingRunnable action) {
         ApiException exception = assertThrows(ApiException.class, action::run);
         assertNotNull(exception.code());
         return exception.status();
     }
 
+    /** Runnable that may throw for the status assertion helper. */
     @FunctionalInterface
     private interface ThrowingRunnable {
         void run();
+    }
+
+    /** The development baseline defines exactly a milestone domain, observation and date. */
+    @Test
+    void developmentTemplateDefinesExactlyMilestoneDomainObservationAndDate() {
+        approveDevelopmentBaseline();
+
+        TemplateVersion effective = service.effective(clinician, TemplateKind.PEDIATRIC_DEVELOPMENT);
+
+        List<FieldDefinition> fields = effective.fields();
+        assertEquals(List.of("milestoneDomain", "observation", "date"),
+                fields.stream().map(FieldDefinition::key).toList());
+        assertEquals(FieldType.CODE, field(fields, "milestoneDomain").type());
+        assertEquals(DICTIONARY, field(fields, "milestoneDomain").dictionaryKey());
+        assertEquals(FieldType.FREE_TEXT, field(fields, "observation").type());
+        assertEquals("en", field(fields, "observation").language());
+        assertEquals(FieldType.DATE, field(fields, "date").type());
+    }
+
+    /** A complete development note validates and saves all three clause fields. */
+    @Test
+    void completeDevelopmentNoteValidatesAndSavesAllThreeFields() {
+        approveDevelopmentBaseline();
+        TemplateNoteRevision note = developmentNote("gross_motor", "sits unsupported", "en", "2026-10-03");
+
+        ValidationReport report = service.validate(clinician, note);
+        assertTrue(report.valid(), report.violations().toString());
+        assertTrue(report.violations().isEmpty());
+
+        SavedNoteRevision saved = service.saveNote(clinician, "DEV-NOTE-1", note);
+        assertEquals(List.of("milestoneDomain", "observation", "date"),
+                saved.fieldMeanings().stream().map(FieldDefinition::key).toList());
+        assertEquals("gross_motor", valueOf(saved.note(), "milestoneDomain"));
+        assertEquals("sits unsupported", valueOf(saved.note(), "observation"));
+        assertEquals("2026-10-03", valueOf(saved.note(), "date"));
+        assertEquals(CODES, saved.dictionaries().get(DICTIONARY));
+
+        SavedNoteRevision reloaded = service.savedNote(clinician, "DEV-NOTE-1");
+        assertEquals(List.of("milestoneDomain", "observation", "date"),
+                reloaded.fieldMeanings().stream().map(FieldDefinition::key).toList());
+    }
+
+    /** A note missing the required date is refused and never saved. */
+    @Test
+    void developmentNoteMissingDateIsRefused() {
+        approveDevelopmentBaseline();
+        TemplateNoteRevision note = developmentNote("gross_motor", "sits unsupported", "en", null);
+
+        ValidationReport report = service.validate(clinician, note);
+        assertFalse(report.valid());
+        assertTrue(report.violations().contains("missing:date"), report.violations().toString());
+        assertEquals(422, statusOf(() -> service.saveNote(clinician, "DEV-NOTE-NO-DATE", note)));
+        assertTrue(store.noteRevision(ORG, "DEV-NOTE-NO-DATE").isEmpty());
+    }
+
+    /** A milestone domain code outside the approved dictionary is refused. */
+    @Test
+    void developmentNoteWithUnknownMilestoneDomainIsRefused() {
+        approveDevelopmentBaseline();
+        TemplateNoteRevision note = developmentNote("unapproved_domain", "sits unsupported", "en", "2026-10-03");
+
+        ValidationReport report = service.validate(clinician, note);
+        assertFalse(report.valid());
+        assertTrue(report.violations().contains("dictionary:milestoneDomain"), report.violations().toString());
+        assertEquals(422, statusOf(() -> service.saveNote(clinician, "DEV-NOTE-BAD-DOMAIN", note)));
+    }
+
+    /** An observation without a language tag is refused. */
+    @Test
+    void developmentObservationWithoutLanguageIsRefused() {
+        approveDevelopmentBaseline();
+        TemplateNoteRevision note = developmentNote("gross_motor", "sits unsupported", null, "2026-10-03");
+
+        ValidationReport report = service.validate(clinician, note);
+        assertFalse(report.valid());
+        assertTrue(report.violations().contains("language:observation"), report.violations().toString());
+    }
+
+    /** A non-ISO date is refused as a malformed clinical fact. */
+    @Test
+    void developmentNoteWithMalformedDateIsRefused() {
+        approveDevelopmentBaseline();
+        TemplateNoteRevision note = developmentNote("gross_motor", "sits unsupported", "en", "03/10/2026");
+
+        ValidationReport report = service.validate(clinician, note);
+        assertFalse(report.valid());
+        assertTrue(report.violations().contains("format:date"), report.violations().toString());
+    }
+
+    /** Only a clinician may save a development note. */
+    @Test
+    void developmentNoteCannotBeSavedByNonClinician() {
+        approveDevelopmentBaseline();
+        TemplateNoteRevision note = developmentNote("gross_motor", "sits unsupported", "en", "2026-10-03");
+
+        assertEquals(403, statusOf(() -> service.saveNote(admin, "DEV-NOTE-WRONG-ROLE", note)));
+        assertTrue(store.noteRevision(ORG, "DEV-NOTE-WRONG-ROLE").isEmpty());
+    }
+
+    private static String valueOf(TemplateNoteRevision note, String key) {
+        return note.values().stream()
+                .filter(value -> key.equals(value.fieldKey()))
+                .findFirst().orElseThrow().value();
     }
 }

@@ -3,6 +3,10 @@ package com.aurevia.smartclinic.staffmsg.instant;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -18,17 +22,26 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.MediaType;
+import org.springframework.mock.env.MockEnvironment;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.SingleConnectionDataSource;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import com.aurevia.smartclinic.api.ApiErrorHandler;
 import com.aurevia.smartclinic.api.ApiException;
 import com.aurevia.smartclinic.staffmsg.instant.InstantMessagingContract.CreateGroupRequest;
 import com.aurevia.smartclinic.staffmsg.instant.InstantMessagingContract.MarkReadRequest;
 import com.aurevia.smartclinic.staffmsg.instant.InstantMessagingContract.OpenDirectRequest;
 import com.aurevia.smartclinic.staffmsg.instant.InstantMessagingContract.SendRequest;
 import com.aurevia.smartclinic.tenant.TenantContext;
+import com.aurevia.smartclinic.web.TenantContextInterceptor;
+
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * SMSG-03 acceptance on real PostgreSQL: a retry publishes one message, a removed
@@ -44,6 +57,7 @@ class InstantMessagingIntegrationTest {
     private static final String OTHER_FACILITY = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
     private static final String ACTOR = "nurse-a";
     private static final String PEER = "nurse-b";
+    private static final String BASE = "/api/v1/staff/instant";
     private static final String DATABASE = "smartclinic_instant_it";
     private static final String PREFIX = "jdbc:postgresql://127.0.0.1:5432/";
     private static final String MIGRATE = "smartclinic_migrate";
@@ -55,6 +69,8 @@ class InstantMessagingIntegrationTest {
     private SingleConnectionDataSource dataSource;
     private JdbcInstantConversationStore store;
     private InstantMessagingService service;
+    private MockMvc mvc;
+    private ObjectMapper mapper;
 
     @BeforeAll
     static void createRoles() throws Exception {
@@ -103,6 +119,20 @@ class InstantMessagingIntegrationTest {
         store = new JdbcInstantConversationStore(new NamedParameterJdbcTemplate(dataSource), transactions);
         service = new InstantMessagingService(store, Clock.fixed(NOW, ZoneOffset.UTC));
         context(ACTOR);
+        // Drive the real controller and real service against the same real database
+        // so a request is proven to reach the durable store through every layer.
+        MockEnvironment environment = new MockEnvironment();
+        environment.setActiveProfiles("synthetic-auth");
+        mvc = MockMvcBuilders.standaloneSetup(new InstantMessagingController(service))
+                .setControllerAdvice(new ApiErrorHandler())
+                .addInterceptors(new TenantContextInterceptor(environment))
+                .build();
+        mapper = new ObjectMapper();
+    }
+
+    private static MockHttpServletRequestBuilder headers(MockHttpServletRequestBuilder request) {
+        return request.header("X-Synthetic-Subject", ACTOR)
+                .header("X-Active-Organization", ORG_A);
     }
 
     @AfterEach
@@ -134,6 +164,10 @@ class InstantMessagingIntegrationTest {
                 + "WHERE organization_id = '" + org + "' AND subject = '" + subject + "'");
         statement.execute("INSERT INTO public.role_assignment (organization_id, membership_id, role_key, granted_by) "
                 + "SELECT '" + org + "', m.id, 'nurse', u.id FROM public.membership m "
+                + "JOIN public.user_identity u ON u.organization_id = m.organization_id AND u.id = m.user_id "
+                + "WHERE u.subject = '" + subject + "'");
+        statement.execute("INSERT INTO public.membership_facility (organization_id, membership_id, facility_id) "
+                + "SELECT '" + org + "', m.id, '" + facility + "' FROM public.membership m "
                 + "JOIN public.user_identity u ON u.organization_id = m.organization_id AND u.id = m.user_id "
                 + "WHERE u.subject = '" + subject + "'");
     }
@@ -191,6 +225,23 @@ class InstantMessagingIntegrationTest {
         assertEquals(0L, service.unreadCounts(FACILITY).get(0).unreadCount());
     }
 
+    /**
+     * A stale read acknowledgement must not move a cursor backwards: otherwise
+     * messages already marked read would reappear as unread for that person.
+     */
+    @Test
+    void aLowerReadAcknowledgementDoesNotMoveTheCursorBackwards() {
+        String conversation = direct();
+        service.send(new SendRequest(FACILITY, conversation, "first"), "m1");
+        service.send(new SendRequest(FACILITY, conversation, "second"), "m2");
+
+        context(PEER);
+        service.markRead(new MarkReadRequest(FACILITY, conversation, 2L));
+        assertEquals(0L, service.unreadCounts(FACILITY).get(0).unreadCount());
+        service.markRead(new MarkReadRequest(FACILITY, conversation, 1L));
+        assertEquals(0L, service.unreadCounts(FACILITY).get(0).unreadCount());
+    }
+
     @Test
     void aWrongFacilityOrTenantIsRefused() throws Exception {
         String conversation = direct();
@@ -204,6 +255,18 @@ class InstantMessagingIntegrationTest {
             assertTrue(store.conversation(ORG_A, conversation).isEmpty());
             statement.execute("SET app.current_org = '" + ORG_A + "'");
         }
+    }
+
+    /**
+     * The tenant's membership-facility fold confines an assigned subject to the
+     * facilities they were invited to, even when they have an active staff role.
+     */
+    @Test
+    void aStaffMemberAssignedElsewhereCannotOpenAConversationInAnotherFacility() {
+        assertTrue(store.facilityWithinScope(ORG_A, ACTOR, FACILITY));
+        assertTrue(!store.facilityWithinScope(ORG_A, ACTOR, OTHER_FACILITY));
+        assertEquals(403, assertThrows(ApiException.class,
+                () -> service.openDirect(new OpenDirectRequest(OTHER_FACILITY, PEER))).status());
     }
 
     @Test
@@ -220,5 +283,52 @@ class InstantMessagingIntegrationTest {
         assertEquals(2, store.participants(ORG_A, conversation).size());
         assertTrue(store.participants(ORG_A, conversation).stream().anyMatch(
                 participant -> participant.subject().equals(PEER) && participant.leftAt() != null));
+    }
+
+    /**
+     * A request travels through the thin controller, the real domain service and
+     * the JDBC store into the ledger: opening, sending, reading and the unread
+     * projection all succeed over HTTP, and the published row is durable.
+     */
+    @Test
+    void anHttpRequestReachesTheRealServiceAndDurableStore() throws Exception {
+        String created = mvc.perform(headers(post(BASE + "/direct"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(new OpenDirectRequest(FACILITY, PEER))))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String conversation = mapper.readTree(created).get("id").asText();
+
+        mvc.perform(headers(post(BASE + "/{id}/messages", conversation))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("Idempotency-Key", "http-key")
+                        .content(mapper.writeValueAsString(new SendRequest(FACILITY, conversation, "over-http"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sequence").value(1))
+                .andExpect(jsonPath("$.body").value("over-http"));
+
+        mvc.perform(headers(get(BASE + "/{id}/messages", conversation)).param("facilityId", FACILITY))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].body").value("over-http"));
+        mvc.perform(headers(get(BASE + "/unread")).param("facilityId", FACILITY))
+                .andExpect(status().isOk());
+        mvc.perform(headers(get(BASE + "/conversations")).param("facilityId", FACILITY))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(conversation));
+
+        assertEquals(1, store.messages(ORG_A, conversation, 0L, null).size());
+    }
+
+    /**
+     * The same HTTP entry point refuses a facility the caller is assigned
+     * elsewhere to, proving the facility fold runs on the request path.
+     */
+    @Test
+    void anHttpRequestOutsideTheFacilityIsRefused() throws Exception {
+        mvc.perform(headers(post(BASE + "/direct"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(new OpenDirectRequest(OTHER_FACILITY, PEER))))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
     }
 }
