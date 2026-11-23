@@ -4,6 +4,8 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 
 import org.springframework.stereotype.Service;
 
@@ -31,9 +33,20 @@ import com.aurevia.smartclinic.tenant.TenantContext;
  * named approver approved it and its effective date has been reached. All
  * decisions and denials are audited in the same slice, and cross-tenant or
  * unrelated units are concealed with 404.</p>
+ *
+ * <p>Publish also enforces the site's approved urgent and downtime channels
+ * (MSG-06): both values must appear in an effective, named-approved tenant
+ * policy before a draft can be stored. A missing policy or an unapproved code
+ * fails closed through the audited denial path.</p>
  */
 @Service
 public class ServiceProfileService {
+
+    /** Tenant configuration key holding the comma-separated approved urgent channels. */
+    private static final String URGENT_CHANNELS_KEY = "msg06.approved_urgent_channels";
+
+    /** Tenant configuration key holding the comma-separated approved downtime channels. */
+    private static final String DOWNTIME_CHANNELS_KEY = "msg06.approved_downtime_channels";
 
     /**
      * Conservative response target used only for supervisor surfacing when a
@@ -125,9 +138,15 @@ public class ServiceProfileService {
     /**
      * Publish a new, unapproved service-profile version.
      *
+     * <p>The urgent and downtime channels must be approved for this tenant by
+     * an effective named configuration approval. An unapproved or blank code is
+     * refused with a structured {@code 422 UNAPPROVED_CHANNEL} and an audited
+     * denial before any draft row is written.</p>
+     *
      * @param request validated publish command
      * @return the stored draft profile
-     * @throws ApiException on invalid input, denial, concealment or a stale version
+     * @throws ApiException on invalid input, an unapproved channel, denial,
+     *                      concealment or a stale version
      */
     public ServiceProfile publish(PublishProfileRequest request) {
         TenantContext context = requireContext();
@@ -142,6 +161,10 @@ public class ServiceProfileService {
             throw deny(context, ServiceProfileActions.PROFILE_PUBLISH, unit, 412, "STALE_VERSION",
                     "the profile version changed");
         }
+        // Check channels before parsing free text: a blank or unapproved value
+        // must reach the audited denial path, not escape from the input parser.
+        requireApprovedChannel(context, unit, request.urgentChannel(), URGENT_CHANNELS_KEY, "urgentChannel");
+        requireApprovedChannel(context, unit, request.downtimeChannel(), DOWNTIME_CHANNELS_KEY, "downtimeChannel");
         ZoneId zone = ServiceProfileInputs.zone(request.timeZone());
         List<ServiceWindow> windows = ServiceProfileInputs.windows(request.windows());
         List<String> topics = ServiceProfileInputs.list(request.topics(), "topics", 20, 64);
@@ -223,6 +246,32 @@ public class ServiceProfileService {
                 target, store.workItems(context.organizationId(), unit), clock.instant());
         audit(context, ServiceProfileActions.SUPERVISOR_VIEW, unit, "SUCCESS");
         return snapshot;
+    }
+
+    /**
+     * Require a time-sensitive care channel to be one the site approved in its
+     * versioned configuration fold.
+     *
+     * <p>Fails closed: a blank code, an absent policy or any code outside the
+     * approved set is refused through the service's audited denial path, which
+     * records a {@code DENIED} audit for the unit. Time-sensitive care must never
+     * be directed at an unapproved channel.</p>
+     *
+     * @param context   authenticated tenant context
+     * @param unit      recipient unit used as the audit resource
+     * @param channel   supplied channel code, possibly absent
+     * @param policyKey tenant-local approved-channel configuration key
+     * @param field     request field name used in the denial message
+     * @throws ApiException when the channel is blank or not site-approved
+     */
+    private void requireApprovedChannel(TenantContext context, String unit, String channel,
+                                        String policyKey, String field) {
+        String candidate = Objects.toString(channel, "").strip();
+        Set<String> approved = store.approvedChannels(context.organizationId(), policyKey);
+        if (candidate.isEmpty() || !approved.contains(candidate)) {
+            throw deny(context, ServiceProfileActions.PROFILE_PUBLISH, unit, 422,
+                    "UNAPPROVED_CHANNEL", field + " is not an approved site channel");
+        }
     }
 
     private String validateUnit(String unitId) {

@@ -1,4 +1,4 @@
-import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '../components/Button';
 import { MixedScriptText } from '../components/MixedScriptText';
 import { syntheticOrganizations, syntheticStaff } from '../fixtures/synthetic';
@@ -8,6 +8,7 @@ import { useBreakpoint } from '../theme/useBreakpoint';
 import { ErrorBoundary } from './ErrorBoundary';
 import { NavigationDrawer } from './NavigationDrawer';
 import {
+  canAccessRoute,
   groupLabelKey,
   navigationGroupsFor,
   navigationLabel,
@@ -21,6 +22,14 @@ import { useRole } from './useRole';
 
 /** Hold duration before a touch press reveals an icon-rail tooltip (WEB-07). */
 const LONG_PRESS_MS = 400;
+
+/**
+ * The fixed denial page stays lazy like the other system screens, so a direct
+ * link denied by role does not pull the forbidden page into the shell's chunk.
+ */
+const ForbiddenPage = lazy(() =>
+  import('../features/system/ForbiddenPage').then(({ ForbiddenPage: Page }) => ({ default: Page })),
+);
 
 /**
  * Decorative glyph per screen-map group for the medium icon rail. Every item is
@@ -199,6 +208,10 @@ export function AppShell({ role, onSignOut }: AppShellProps) {
   );
   const catchAll = routes.find((candidate) => candidate.pattern === '*');
   const ActivePage = (matched ?? catchAll)!.component;
+  // A direct link must be as restricted as the rail: when the role cannot use
+  // the matched route, render the fixed forbidden page instead of the screen.
+  // Unrestricted routes (system pages, detail pages, the catch-all) stay open.
+  const accessDenied = matched !== undefined && !canAccessRoute(activeRole, matched.pattern);
   const isActive = (pattern: string): boolean => matchRoute(pattern, path) !== null;
 
   const compact = breakpoint === 'compact';
@@ -329,7 +342,7 @@ export function AppShell({ role, onSignOut }: AppShellProps) {
           />
           <main id="main" tabIndex={-1} ref={mainRef} className="page">
             <Suspense fallback={<p role="status">Loading</p>}>
-              <ActivePage />
+              {accessDenied ? <ForbiddenPage /> : <ActivePage />}
             </Suspense>
           </main>
         </div>

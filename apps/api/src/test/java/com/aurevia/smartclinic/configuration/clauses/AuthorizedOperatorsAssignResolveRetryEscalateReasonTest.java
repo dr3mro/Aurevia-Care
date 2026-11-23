@@ -1,0 +1,157 @@
+package com.aurevia.smartclinic.configuration.clauses;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+
+import java.time.Instant;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
+
+import com.aurevia.smartclinic.api.ApiException;
+import com.aurevia.smartclinic.config.queues.OperationalQueueItem;
+import com.aurevia.smartclinic.config.queues.OperationalWorkState;
+import com.aurevia.smartclinic.config.queues.QueueAction;
+import com.aurevia.smartclinic.tenant.TenantContext;
+
+/**
+ * ADM-02 clause 2 (API test): authorized operators assign, resolve, retry or
+ * escalate with reason.
+ *
+ * <p>The active tests exercise the only built part of this clause: the
+ * tenant-scoped, immutable {@link com.aurevia.smartclinic.config.queues.OperationalQueueItem}
+ * kernel that retains a mandatory reason on every assign and resolve action.
+ * They use synthetic identifiers and a fixed instant, set a synthetic tenant
+ * context, and run each action through a mocked transaction template that
+ * executes the real callback, matching the neighbouring
+ * {@code scheduling.clauses.TransferHandoffRequiresActiveAssigneeTest} style.</p>
+ *
+ * <p>The authorized-operator HTTP command boundary, the retry and escalate
+ * verbs, persistence and audit do not exist yet, so this class proves only the
+ * kernel. The missing behaviour is specified in the clause document for a later
+ * task; no test here claims behaviour that has no route, service or audit row.</p>
+ */
+class AuthorizedOperatorsAssignResolveRetryEscalateReasonTest {
+
+    private static final String ORG = "11111111-1111-1111-1111-111111111111";
+    private static final String SUBJECT = "operator-a";
+    private static final String ITEM = "33333333-3333-3333-3333-333333333333";
+    private static final String QUEUE = "unsigned_encounters";
+    private static final String OWNER = "nurse-1";
+    private static final String REASON = "handover to day shift";
+    private static final Instant CREATED = Instant.parse("2026-11-21T09:00:00Z");
+    private static final Instant ACTION_AT = CREATED.plusSeconds(600);
+
+    private TransactionTemplate transactions;
+
+    /** Install the synthetic tenant context and the transaction helper for the clause. */
+    @BeforeEach
+    void setUp() {
+        TenantContext.set(new TenantContext(ORG, SUBJECT, "OPERATIONAL_QUEUES", "corr-adm-02-c02"));
+        transactions = transactions();
+    }
+
+    /** Remove the synthetic tenant context so other tests are unaffected. */
+    @AfterEach
+    void tearDown() {
+        TenantContext.clear();
+    }
+
+    /** Transaction template that runs the guarded callback synchronously, as production does. */
+    private TransactionTemplate transactions() {
+        TransactionTemplate template = mock(TransactionTemplate.class);
+        doAnswer(invocation -> {
+            TransactionCallback<?> callback = invocation.getArgument(0);
+            return callback.doInTransaction(mock(TransactionStatus.class));
+        }).when(template).execute(any());
+        return template;
+    }
+
+    /** Capture the ApiException raised by a refused action. */
+    private static ApiException reject(Runnable action) {
+        return assertThrows(ApiException.class, action::run);
+    }
+
+    /** A fresh synthetic open item in the unsigned-encounters queue. */
+    private OperationalQueueItem openItem() {
+        return OperationalQueueItem.open(ORG, ITEM, QUEUE, CREATED);
+    }
+
+    /** Assign records the owner and retains the reason on the action without mutating the source item. */
+    @Test
+    void assignRecordsOwnerAndReasonWithoutMutatingTheOriginal() {
+        OperationalQueueItem open = openItem();
+
+        OperationalQueueItem assigned = transactions.execute(
+                status -> open.assign(SUBJECT, OWNER, REASON, ACTION_AT));
+
+        assertEquals(OperationalWorkState.ASSIGNED, assigned.state());
+        assertEquals(OWNER, assigned.owner());
+        assertEquals(REASON, assigned.reason());
+        assertEquals(1, assigned.actions().size());
+        QueueAction action = assigned.actions().get(0);
+        assertEquals("assign", action.type());
+        assertEquals(SUBJECT, action.actor());
+        assertEquals(REASON, action.reason());
+        assertEquals(ACTION_AT, action.at());
+        assertEquals(OperationalWorkState.OPEN, open.state());
+        assertNull(open.owner());
+        assertNull(open.reason());
+        assertTrue(open.actions().isEmpty());
+        assertEquals(ORG, assigned.organizationId());
+        assertEquals(ITEM, assigned.id());
+        assertEquals(QUEUE, assigned.queue());
+        assertEquals(CREATED, assigned.createdAt());
+    }
+
+    /** A resolved item is terminal: neither resolve nor assign may act on it again. */
+    @Test
+    void resolveIsRefusedOnAnAlreadyResolvedItem() {
+        Instant resolvedAt = ACTION_AT.plusSeconds(1);
+        OperationalQueueItem resolved = openItem()
+                .assign(SUBJECT, OWNER, REASON, ACTION_AT)
+                .resolve(SUBJECT, "encounter signed", resolvedAt);
+
+        ApiException secondResolve = reject(() -> transactions.execute(
+                status -> resolved.resolve(SUBJECT, "close again", resolvedAt.plusSeconds(1))));
+        ApiException assignAfterResolve = reject(() -> transactions.execute(
+                status -> resolved.assign(SUBJECT, OWNER, "reopen", resolvedAt.plusSeconds(1))));
+
+        assertEquals(409, secondResolve.status());
+        assertEquals("INVALID_TRANSITION", secondResolve.code());
+        assertEquals(409, assignAfterResolve.status());
+        assertEquals("INVALID_TRANSITION", assignAfterResolve.code());
+        assertEquals(OperationalWorkState.RESOLVED, resolved.state());
+        assertEquals("encounter signed", resolved.reason());
+        assertEquals(2, resolved.actions().size());
+        assertEquals(REASON, resolved.actions().get(0).reason());
+        assertEquals("encounter signed", resolved.actions().get(1).reason());
+    }
+
+    /** A reason is mandatory: both a null and a blank assign reason are refused. */
+    @Test
+    void assignIsRefusedWithoutAReason() {
+        OperationalQueueItem open = openItem();
+
+        ApiException missing = reject(() -> transactions.execute(
+                status -> open.assign(SUBJECT, OWNER, null, ACTION_AT)));
+        ApiException blank = reject(() -> transactions.execute(
+                status -> open.assign(SUBJECT, OWNER, " \t ", ACTION_AT)));
+
+        assertEquals(422, missing.status());
+        assertEquals("REASON_REQUIRED", missing.code());
+        assertEquals(422, blank.status());
+        assertEquals("REASON_REQUIRED", blank.code());
+        assertTrue(open.actions().isEmpty());
+        assertEquals(OperationalWorkState.OPEN, open.state());
+    }
+}

@@ -1,6 +1,7 @@
 package com.aurevia.smartclinic.web;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -30,6 +31,8 @@ class MetricsControllerTest {
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(MediaType.TEXT_PLAIN, response.getHeaders().getContentType());
         assertEquals(metrics.scrape(), response.getBody());
+        assertTrue(response.getBody().contains("# TYPE smartclinic_http_request_duration_seconds histogram"));
+        assertTrue(response.getBody().contains("smartclinic_http_request_duration_seconds_bucket{"));
     }
 
     @Test
@@ -42,5 +45,6 @@ class MetricsControllerTest {
         ResponseEntity<String> response = controller.scrape(request);
 
         assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+        assertTrue(response.getBody() == null || response.getBody().isEmpty());
     }
 }

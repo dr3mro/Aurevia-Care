@@ -7,9 +7,11 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -141,6 +143,41 @@ public class JdbcServiceProfileStore implements ServiceProfileStore {
                                   AND unit_id = CAST(:unitId AS uuid))
                 """, new MapSqlParameterSource().addValue("organizationId", organizationId)
                         .addValue("subject", subject).addValue("unitId", unitId), Boolean.class)));
+    }
+
+    /**
+     * Read the effective, named-approved channel codes of one tenant policy.
+     *
+     * @param organizationId active tenant identifier
+     * @param key            tenant-local approved-channel configuration key
+     * @return approved codes, or an empty set when no version is effective
+     */
+    @Override
+    public Set<String> approvedChannels(String organizationId, String key) {
+        // Read the authoritative fold rather than a copied catalog, so an
+        // approval or revocation takes effect on the next publish. The outer
+        // organization predicate is a second fail-closed constraint: if the
+        // bound GUC and this argument ever disagree, no policy is visible and
+        // the caller denies the channel instead of serving a foreign one.
+        return transactions.execute(status -> {
+            List<String> values = jdbc.queryForList("""
+                    SELECT value FROM public.effective_config(:key)
+                     WHERE organization_id = CAST(:organizationId AS uuid)
+                    """, new MapSqlParameterSource().addValue("key", key)
+                            .addValue("organizationId", organizationId), String.class);
+            Set<String> channels = new HashSet<>();
+            for (String value : values) {
+                for (String code : value.split(",")) {
+                    String trimmed = code.strip();
+                    // An empty token from a stray comma must never become an
+                    // approvable code; an empty channel is refused upstream.
+                    if (!trimmed.isEmpty()) {
+                        channels.add(trimmed);
+                    }
+                }
+            }
+            return Set.copyOf(channels);
+        });
     }
 
     @Override

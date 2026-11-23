@@ -1,5 +1,6 @@
 package com.aurevia.smartclinic.web;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -94,13 +95,23 @@ class MetricsHttpTest {
                     .andExpect(status().isOk())
                     .andReturn().getResponse().getContentAsString();
             assertTrue(body.contains("smartclinic_http_requests_total"), body);
+            assertTrue(body.contains("# TYPE smartclinic_http_request_duration_seconds histogram"), body);
 
-            mvc.perform(get("/health/metrics")
+            // The filter records after the response is written, so the first scrape
+            // has only metadata; a second scrape exposes its bucket samples.
+            String secondBody = mvc.perform(get("/health/metrics"))
+                    .andExpect(status().isOk())
+                    .andReturn().getResponse().getContentAsString();
+            assertTrue(secondBody.contains("smartclinic_http_request_duration_seconds_bucket{"), secondBody);
+
+            String deniedBody = mvc.perform(get("/health/metrics")
                             .with(request -> {
                                 request.setRemoteAddr("198.51.100.10");
                                 return request;
                             }))
-                    .andExpect(status().isNotFound());
+                    .andExpect(status().isNotFound())
+                    .andReturn().getResponse().getContentAsString();
+            assertEquals("", deniedBody);
 
             // We did not loosen the protected API while permitting the metrics route.
             mvc.perform(get("/api/v1/patients/patient-777"))
@@ -123,6 +134,16 @@ class MetricsHttpTest {
                             .content().contentTypeCompatibleWith(MediaType.TEXT_PLAIN))
                     .andReturn().getResponse().getContentAsString();
             assertTrue(body.contains("route=\"/api/v1/patients/{id}\",status=\"2xx\"} 2"), body);
+            assertFalse(body.contains("patient-777"), body);
+            assertFalse(body.contains("patient-888"), body);
+
+            // Timed requests increment cumulative buckets with +Inf equal to the counter,
+            // and no raw id reaches any bucket line.
+            assertTrue(body.contains("smartclinic_http_request_duration_seconds_bucket{"), body);
+            assertTrue(body.contains("smartclinic_http_request_duration_seconds_bucket{method=\"GET\","
+                    + "route=\"/api/v1/patients/{id}\",status=\"2xx\",le=\"+Inf\"} 2\n"), body);
+            assertTrue(body.contains("smartclinic_http_request_duration_seconds_count{method=\"GET\","
+                    + "route=\"/api/v1/patients/{id}\",status=\"2xx\"} 2\n"), body);
             assertFalse(body.contains("patient-777"), body);
             assertFalse(body.contains("patient-888"), body);
         });
