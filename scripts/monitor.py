@@ -733,16 +733,14 @@ def compose(data, W, H, alarm_ids=frozenset(), busy=False, loading=frozenset()):
     # The id column is as wide as the longest id on screen, at most ID_MAX: one very long id used to
     # pad every row and push the titles to the right edge, where they were cut off.
     ID_MAX = 20
-    idw = min(max([len(t["id"]) for t in taken[:12]] or [8]), ID_MAX)
+    # Compact id column: id plus a fixed two-space gap, no padding to the longest id.
     queue = sorted((t for t in todo if t["status"] == "todo"), key=lambda t: PRIORITY_RANK[priority_of(t)])
-    mark = {"high": ("H", "b_red"), "low": ("L", "dim")}
-    qw = min(max([len(t["id"]) for t in queue[:12]] or [8]), ID_MAX)
     right = [dict(title="Swarm Tasks Taken", total=len(taken), col="cyan", border="gray", prio=2,
-                  items=[cells(iw, (">", "yellow", 1), (t["agent"] or "-", "magenta", 9), (t["id"], "b_cyan", idw), (t["title"], "", None))
+                  items=[cells(iw, (">", "yellow", 1), (t["agent"] or "-", "magenta", 9), (t["id"] + "  ", "b_cyan", None), (t["title"], "", None))
                          for t in taken]),
              dict(title="Next Up", total=len(queue), col="blue", border="gray", prio=1,
-                  items=[cells(iw, mark.get(priority_of(t), ("-", "gray")) + (1,), (t["id"], "b_cyan", qw), (t["title"], "", None))
-                         for t in queue[:12]]),
+                  items=[cells(iw, mark.get(priority_of(t), ("-", "gray")) + (1,), (t["id"] + "  ", "b_cyan", None), (t["title"], "", None))
+                         for t in sorted((t for t in todo if t["status"] == "todo"), key=lambda t: PRIORITY_RANK[priority_of(t)])[:12]]),
              dict(title="Merged PRs 24h", total=len(merged_day), col="green", border="gray", prio=3,
                   items=[merged_row(p) for p in merged_day]),
              dict(title="Open PRs", total=len(prs), col="blue", border="gray", prio=0,
