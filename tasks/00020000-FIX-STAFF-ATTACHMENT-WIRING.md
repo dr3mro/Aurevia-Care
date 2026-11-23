@@ -1,5 +1,6 @@
-- [ ] FIX-STAFF-ATTACHMENT-WIRING · Verify attachment authorization and send end to end for both staff messaging modes
-  - attempts: 0
+- [-] FIX-STAFF-ATTACHMENT-WIRING · Verify attachment authorization and send end to end for both staff messaging modes
+  - agent: swarm-6
+  - attempts: 1
   - requirements: MSG-03, CLN-07
   - scope: apps/api/src/main/java/com/aurevia/smartclinic/staffmsg, apps/api/src/test/java/com/aurevia/smartclinic/staffmsg, contracts/openapi.yaml, apps/staff-web/src/api/generated/openapi.d.ts
   - depends: SMSG-05, SMSG-07, FIX-STAFF-MAIL-PERSISTENCE
