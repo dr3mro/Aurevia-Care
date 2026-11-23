@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -16,7 +17,9 @@ import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.transaction.TransactionStatus;
@@ -24,9 +27,14 @@ import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.aurevia.smartclinic.api.ApiException;
+import com.aurevia.smartclinic.authz.access.AccessRepository;
 import com.aurevia.smartclinic.staff.StaffMember;
 import com.aurevia.smartclinic.staff.StaffRepository;
 import com.aurevia.smartclinic.staff.StaffRepository.StaffRow;
+import com.aurevia.smartclinic.staffmsg.directory.DirectoryPolicy;
+import com.aurevia.smartclinic.staffmsg.directory.StaffDirectoryService;
+import com.aurevia.smartclinic.tenancy.Facility;
+import com.aurevia.smartclinic.tenant.TenantContext;
 import com.aurevia.smartclinic.staffmsg.mail.MailCommands.CreateDraftCommand;
 import com.aurevia.smartclinic.staffmsg.mail.MailCommands.FlagCommand;
 import com.aurevia.smartclinic.staffmsg.mail.MailCommands.ForwardCommand;
@@ -55,6 +63,11 @@ class MailServiceTest {
     void setUp() {
         directory = new MutableDirectory();
         service = new MailService(Clock.fixed(NOW, ZoneOffset.UTC), directory, new InMemoryMailStore());
+    }
+
+    @AfterEach
+    void tearDown() {
+        TenantContext.clear();
     }
 
     @Test
@@ -304,12 +317,19 @@ class MailServiceTest {
     @Test
     void productionConstructorResolvesRolesThroughTheStaffRepository() {
         StaffRepository staff = mock(StaffRepository.class);
-        when(staff.query(isNull(), isNull(), org.mockito.ArgumentMatchers.eq("active"),
-                org.mockito.ArgumentMatchers.eq(Integer.MAX_VALUE)))
+        when(staff.query(isNull(), isNull(), eq("active"), eq(Integer.MAX_VALUE)))
                 .thenReturn(List.of(new StaffRow(new StaffMember("nurse-b", "B", "active",
                         List.of("nurse")), "id-b")));
+        StaffDirectoryService directoryService = mock(StaffDirectoryService.class);
+        when(directoryService.findFacilityById(FACILITY))
+                .thenReturn(Optional.of(new Facility(ORG, "FAC-A", "North Clinic", "Europe/London")));
+        AccessRepository access = mock(AccessRepository.class);
+        when(access.outsideAssignedFacilities("nurse-b", "FAC-A")).thenReturn(false);
+        TenantContext.set(new TenantContext(ORG, "nurse-a", "MAIL", "corr-1"));
+
         MailService production = new MailService(Clock.fixed(NOW, ZoneOffset.UTC), staff,
-                guardedTransactions(), new InMemoryMailStore());
+                guardedTransactions(), directoryService, access, new DirectoryPolicy(),
+                new InMemoryMailStore());
         assertNotNull(production);
 
         DraftView draft = production.createDraft(new CreateDraftCommand(ORG, FACILITY, "nurse-a",

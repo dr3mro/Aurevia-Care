@@ -306,19 +306,10 @@ class SurfaceBacklogUnassignedWorkFailedNotificationsOverdueTest {
         seedMember(statement, ORG_A, UNASSIGNED_SUPERVISOR, "unit_supervisor");
         seedConnectedPatient(statement, ORG_A, PATIENT, CHART_A);
 
-        // Seed the site-approved urgent and downtime channels the publish command requires.
-        statement.execute("SET app.current_org = '" + ORG_A + "'");
-        statement.execute("SET app.actor = '" + APPROVER + "'");
-        statement.execute("INSERT INTO public.config_entry (organization_id, key, version, value) VALUES ('"
-                + ORG_A + "', 'msg06.approved_urgent_channels', public.next_config_version('msg06.approved_urgent_channels'), 'urgent')");
-        statement.execute("INSERT INTO public.config_approval (organization_id, entry_id, note) "
-                + "SELECT '" + ORG_A + "', id, 'synthetic approval' FROM public.config_entry "
-                + "WHERE key = 'msg06.approved_urgent_channels' AND version = 1");
-        statement.execute("INSERT INTO public.config_entry (organization_id, key, version, value) VALUES ('"
-                + ORG_A + "', 'msg06.approved_downtime_channels', public.next_config_version('msg06.approved_downtime_channels'), 'downtime')");
-        statement.execute("INSERT INTO public.config_approval (organization_id, entry_id, note) "
-                + "SELECT '" + ORG_A + "', id, 'synthetic approval' FROM public.config_entry "
-                + "WHERE key = 'msg06.approved_downtime_channels' AND version = 1");
+        // Site-approved channel policy is seeded once in prepare() via
+        // seedApprovedChannelPolicy. Seeding it here as well would insert a second
+        // approval for the same version-1 config_entry and violate the
+        // config_approval_organization_id_entry_id_key unique constraint.
 
         statement.execute("SET app.current_org = '" + ORG_A + "'");
         statement.execute("SET app.actor = '" + SEEDER + "'");
