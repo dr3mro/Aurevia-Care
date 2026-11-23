@@ -44,7 +44,7 @@ describe('staff web indexability (WEB-13)', () => {
     const robotsMetas = [...head.matchAll(/<meta\b[^>]*\bname=["']robots["'][^>]*>/gi)].map(
       (match) => match[0],
     );
-    expect(robotsMetas).toEqual(['<meta name="robots" content="noindex, nofollow">']);
+    expect(robotsMetas).toEqual(['<meta name="robots" content="noindex, nofollow" />']);
   });
 
   it('disallows all crawling with exactly two robots.txt rules', () => {
