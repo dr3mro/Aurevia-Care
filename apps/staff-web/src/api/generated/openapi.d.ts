@@ -912,6 +912,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/staff/instant/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Poll identifier-only message and read events for the caller's conversations
+         * @description Returns the same identifier set as the SSE stream for a given cursor. nextCursor is the hub high-water sequence, so an invisible or empty page still advances; a cursor above the high-water mark signals resynchronisation.
+         */
+        get: operations["pollInstantEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/staff/instant/events/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stream identifier-only message and read events over server-sent events
+         * @description Replays missed events after Last-Event-ID and then delivers live ones. Events carry identifiers only, never message text. Revocation closes the stream on the next event. This transport is instance-scoped; the durable shared outbox is a separate story.
+         */
+        get: operations["streamInstantEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/staff/mail/drafts": {
         parameters: {
             query?: never;
@@ -1836,6 +1876,35 @@ export interface components {
         InstantUnreadList: components["schemas"]["InstantUnread"][];
         /** @description Conversations visible to the caller; not a cursor-paginated page. */
         InstantConversationList: components["schemas"]["InstantConversation"][];
+        /**
+         * @description Stable wire value of an identifier-only realtime event; never carries clinical content.
+         * @enum {string}
+         */
+        RealtimeEventType: "message" | "read";
+        /** @description Identifier-only notification about a change in a staff conversation. */
+        RealtimeEvent: {
+            /** @description Stable identifier of the changed message or read cursor */
+            id?: string;
+            /**
+             * Format: int64
+             * @description Monotonic hub sequence used for resume
+             */
+            sequence?: number;
+            type?: components["schemas"]["RealtimeEventType"];
+            /** @description Owning conversation identifier */
+            conversationId?: string;
+            /** @description Acting staff subject */
+            subject?: string;
+        };
+        /** @description Bounded polling page of identifier-only events with the high-water cursor. */
+        RealtimeEventPage: {
+            events?: components["schemas"]["RealtimeEvent"][];
+            /**
+             * Format: int64
+             * @description Hub high-water sequence for the next poll
+             */
+            nextCursor?: number;
+        };
         /** @description A visible recipient; blind copy is deliberately absent from the wire vocabulary. */
         MailRecipient: {
             /** @enum {string} */
@@ -4563,6 +4632,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InstantConversationList"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    pollInstantEvents: {
+        parameters: {
+            query: {
+                /** @description Facility filter for the caller's conversations */
+                facilityId: string;
+                /** @description Exclusive sequence lower bound; omit to replay from the start */
+                cursor?: string;
+                /** @description Maximum number of events to return */
+                limit?: number;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Identifier-only events in sequence order and the high-water cursor */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RealtimeEventPage"];
+                };
+            };
+            401: components["responses"]["AuthenticationRequired"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["InvalidRequest"];
+        };
+    };
+    streamInstantEvents: {
+        parameters: {
+            query: {
+                /** @description Facility filter for the caller's conversations */
+                facilityId: string;
+            };
+            header: {
+                /** @description Explicit active organization UUID; membership is verified server-side. */
+                "X-Active-Organization": components["parameters"]["ActiveOrganization"];
+                /** @description Generated and echoed when absent. */
+                "X-Correlation-Id"?: components["parameters"]["CorrelationId"];
+                /** @description Sequence of the last received event for resume */
+                "Last-Event-ID"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description An SSE stream whose data is one identifier-only event per message */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": components["schemas"]["RealtimeEvent"];
                 };
             };
             401: components["responses"]["AuthenticationRequired"];
