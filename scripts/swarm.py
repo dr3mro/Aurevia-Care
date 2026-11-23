@@ -3747,16 +3747,22 @@ def pr_already_in_main(pr, head, base):
     """
     if not head:
         return False
-    if subprocess.run(["git", "merge-base", "--is-ancestor", head, base],
-                      capture_output=True).returncode == 0:
+
+    def run(*args):
+        return subprocess.run(["git", *args], capture_output=True, text=True)
+
+    if run("merge-base", "--is-ancestor", head, base).returncode == 0:
         return True
     # Three-way merge of the PR into main; if the result equals main's tree,
     # the PR is already fully present (all its content is on main).
     try:
-        tree = git("merge-tree", "--write-tree", base, head).strip().splitlines()[0].strip()
-        main_tree = git("rev-parse", base + "^{tree}").strip()
-        return tree == main_tree
-    except (subprocess.CalledProcessError, IndexError):
+        merged = run("merge-tree", "--write-tree", base, head)
+        if merged.returncode != 0:
+            return False
+        tree = merged.stdout.strip().splitlines()[0].strip()
+        current = run("rev-parse", base + "^{tree}")
+        return current.returncode == 0 and tree == current.stdout.strip()
+    except (IndexError, OSError):
         return False
 
 
