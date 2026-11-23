@@ -28,6 +28,58 @@ export interface ConfigurationEditorProps {
   onApprove?: (version: number) => void;
 }
 
+interface ConfigVersionRowProps {
+  entry: ConfigurationVersion;
+  isEffective: boolean;
+  onApprove: ((version: number) => void) | undefined;
+}
+
+function ConfigVersionRow({ entry, isEffective, onApprove }: ConfigVersionRowProps) {
+  const { locale } = useI18n();
+  const { tokens } = useTheme();
+  const text = (key: Parameters<typeof adminText>[1]) => adminText(locale, key);
+  return (
+    <tr>
+      <th scope="row">{entry.version}</th>
+      <td>
+        <MixedScriptText text={entry.value} lang="en" />
+      </td>
+      <td>
+        {entry.effectiveFrom === '' ? (
+          <span>{text('notApplicable')}</span>
+        ) : (
+          <time dateTime={entry.effectiveFrom}>{formatCivilDate(entry.effectiveFrom, locale)}</time>
+        )}
+      </td>
+      <td>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: tokens.spacing.sm }}>
+          {entry.approved ? (
+            <StateBadge glyph="✓" label={text('approved')} tone="approved" />
+          ) : (
+            <>
+              <StateBadge glyph="○" label={text('pending')} tone="pending" />
+              {onApprove === undefined ? null : (
+                <Button variant="secondary" onClick={() => onApprove(entry.version)}>
+                  {text('approve')}
+                </Button>
+              )}
+            </>
+          )}
+          {isEffective ? (
+            <StateBadge glyph="*" label={text('effectiveBadge')} tone="effective" />
+          ) : null}
+        </span>
+      </td>
+      <td>
+        <MixedScriptText
+          text={entry.approver ?? text('unknown')}
+          lang={(entry.approver ?? '') === '' ? locale : 'en'}
+        />
+      </td>
+    </tr>
+  );
+}
+
 /**
  * Show versioned, effective-dated configuration and collect a local draft.
  *
@@ -121,52 +173,12 @@ export function ConfigEditor({
               </tr>
             ) : (
               versions.map((entry) => (
-                <tr key={`${entry.organizationId}:${entry.version}`}>
-                  <th scope="row">{entry.version}</th>
-                  <td>
-                    <MixedScriptText text={entry.value} lang="en" />
-                  </td>
-                  <td>
-                    {entry.effectiveFrom === '' ? (
-                      <span>{text('notApplicable')}</span>
-                    ) : (
-                      <time dateTime={entry.effectiveFrom}>
-                        {formatCivilDate(entry.effectiveFrom, locale)}
-                      </time>
-                    )}
-                  </td>
-                  <td>
-                    <span
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: tokens.spacing.sm,
-                      }}
-                    >
-                      {entry.approved ? (
-                        <StateBadge glyph="✓" label={text('approved')} tone="approved" />
-                      ) : (
-                        <>
-                          <StateBadge glyph="○" label={text('pending')} tone="pending" />
-                          {onApprove === undefined ? null : (
-                            <Button variant="secondary" onClick={() => onApprove(entry.version)}>
-                              {text('approve')}
-                            </Button>
-                          )}
-                        </>
-                      )}
-                      {entry.version === effective?.version ? (
-                        <StateBadge glyph="*" label={text('effectiveBadge')} tone="effective" />
-                      ) : null}
-                    </span>
-                  </td>
-                  <td>
-                    <MixedScriptText
-                      text={entry.approver ?? text('unknown')}
-                      lang={(entry.approver ?? '') === '' ? locale : 'en'}
-                    />
-                  </td>
-                </tr>
+                <ConfigVersionRow
+                  key={`${entry.organizationId}:${entry.version}`}
+                  entry={entry}
+                  isEffective={entry.version === effective?.version}
+                  onApprove={onApprove}
+                />
               ))
             )}
           </tbody>

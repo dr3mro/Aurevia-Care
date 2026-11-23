@@ -343,14 +343,14 @@ describe('NotePage save and conflict', () => {
   });
 });
 
-describe('NotePage clinical commands', () => {
-  async function openSignDialog(view = noteView()) {
-    await loadedEditor(view);
-    fireEvent.click(screen.getByRole('checkbox', { name: chartText('en', 'attestation') }));
-    fireEvent.click(screen.getByRole('button', { name: chartText('en', 'sign') }));
-    return screen.findByRole('dialog', { name: chartText('en', 'signConfirmTitle') });
-  }
+async function openSignDialog(view = noteView()) {
+  await loadedEditor(view);
+  fireEvent.click(screen.getByRole('checkbox', { name: chartText('en', 'attestation') }));
+  fireEvent.click(screen.getByRole('button', { name: chartText('en', 'sign') }));
+  return screen.findByRole('dialog', { name: chartText('en', 'signConfirmTitle') });
+}
 
+describe('NotePage clinical commands', () => {
   it('asks for a confirmation naming the note, the effect and the attestation', async () => {
     const dialog = await openSignDialog();
     expect(dialog.textContent).toContain('Follow-up note');
@@ -459,7 +459,9 @@ describe('NotePage clinical commands', () => {
       await screen.findByRole('heading', { name: stateViewText('en', 'conflict') }),
     ).toBeTruthy();
   });
+});
 
+describe('NotePage amendment and entered-in-error commands', () => {
   it('opens a separate amendment draft', async () => {
     await loadedEditor(noteView(revision({ state: 'signed' })));
     fireEvent.click(screen.getByRole('button', { name: chartText('en', 'amend') }));

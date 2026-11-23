@@ -398,7 +398,9 @@ describe('ConfigPage catalog section', () => {
     ).toBeTruthy();
     expect(sendMock).toHaveBeenCalledTimes(2);
   });
+});
 
+describe('ConfigPage catalog section commands', () => {
   it('sends a supplied catalog effective date as a UTC instant', async () => {
     sendMock.mockResolvedValueOnce(history());
     sendMock.mockResolvedValueOnce([catalogEntry('SYN')]);

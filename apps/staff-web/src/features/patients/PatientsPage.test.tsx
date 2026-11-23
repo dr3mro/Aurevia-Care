@@ -293,7 +293,9 @@ describe('PatientsPage registration', () => {
     expect(descriptorAt(0).body?.dob).toBeNull();
     expect(descriptorAt(0).body?.dobUnknownReason).toBe('not_known');
   });
+});
 
+describe('PatientsPage registration failures', () => {
   it('sends only one registration for two rapid submits', async () => {
     const pending = deferred<(typeof syntheticAlphaPatients)[number]>();
     sendMock.mockReturnValueOnce(pending.promise);

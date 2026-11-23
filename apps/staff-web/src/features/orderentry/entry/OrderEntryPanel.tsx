@@ -341,6 +341,31 @@ function CompareSection({ conflict, content }: CompareSectionProps) {
   );
 }
 
+interface CatalogSearchProps {
+  query: string;
+  onChange: (next: string) => void;
+}
+
+function CatalogSearch({ query, onChange }: CatalogSearchProps) {
+  const { tokens, text } = useEntryView();
+  return (
+    <div style={{ display: 'grid', gap: tokens.spacing.sm }}>
+      <label htmlFor="entry-catalog-search">{text('catalogSearch')}</label>
+      <input
+        id="entry-catalog-search"
+        type="text"
+        value={query}
+        aria-describedby="entry-catalog-hint"
+        style={controlStyle}
+        onChange={(event) => onChange(event.target.value)}
+      />
+      <p id="entry-catalog-hint" style={{ marginBlock: 0 }}>
+        {text('catalogHint')}
+      </p>
+    </div>
+  );
+}
+
 /**
  * Order entry surface embedded in the patient chart (LAB-01, RAD-01, WEB-09).
  *
@@ -474,20 +499,10 @@ export function OrderEntryPanel(props: OrderEntryPanelProps) {
           handleSave();
         }}
       >
-        <div style={{ display: 'grid', gap: tokens.spacing.sm }}>
-          <label htmlFor="entry-catalog-search">{text('catalogSearch')}</label>
-          <input
-            id="entry-catalog-search"
-            type="text"
-            value={query}
-            aria-describedby="entry-catalog-hint"
-            style={controlStyle}
-            onChange={(event) => setState((current) => ({ ...current, query: event.target.value }))}
-          />
-          <p id="entry-catalog-hint" style={{ marginBlock: 0 }}>
-            {text('catalogHint')}
-          </p>
-        </div>
+        <CatalogSearch
+          query={query}
+          onChange={(next) => setState((current) => ({ ...current, query: next }))}
+        />
 
         <CatalogResults
           results={results}
