@@ -1,6 +1,6 @@
 import { SecureCredentialStore } from './credentials';
 import type { SecureStoreAdapter } from './credentials';
-import { confirmAndAuthorizeDownload } from './downloadFlow';
+import { confirmAndAuthorizeDownload, downloadWithHandoff } from './downloadFlow';
 import { correctionLabel, isRtl } from './presentation';
 import { ReleasedReportClient, loadReleasedReports } from './reportClient';
 import type { DownloadAuthorizer } from './reportClient';
@@ -72,10 +72,11 @@ function secureAdapter(initial: string | null = null) {
   };
 }
 
-function transport(getResult: unknown, postResult: unknown) {
+/** Synthetic protected transport: GET returns the canned body; POST is recorded but never used. */
+function transport(getResult: unknown) {
   const get = recorder(async (_path: string, _token: string): Promise<unknown> => getResult);
   const post = recorder(
-    async (_path: string, _token: string, _body: unknown): Promise<unknown> => postResult,
+    async (_path: string, _token: string, _body: unknown): Promise<unknown> => undefined,
   );
   return {
     api: { getJson: get.fn, postJson: post.fn } satisfies ReportTransport,
@@ -113,14 +114,14 @@ describe('SecureCredentialStore (PAT-02)', () => {
 
 describe('ReleasedReportClient (PAT-02)', () => {
   it('refuses an unverified patient identity at construction', () => {
-    expect(() => new ReleasedReportClient(transport([], authorization).api, tokens('token-1'), ''))
+    expect(() => new ReleasedReportClient(transport(authorization).api, tokens('token-1'), ''))
       .toThrow('INVALID_PATIENT');
-    expect(() => new ReleasedReportClient(transport([], authorization).api, tokens('token-1'), '   '))
+    expect(() => new ReleasedReportClient(transport(authorization).api, tokens('token-1'), '   '))
       .toThrow('INVALID_PATIENT');
   });
 
   it('requires a protected credential for both commands', async () => {
-    const fake = transport([], authorization);
+    const fake = transport(authorization);
     const client = new ReleasedReportClient(fake.api, tokens(null), 'patient-1');
 
     await expect(client.listReleasedReports()).rejects.toThrow('NOT_AUTHENTICATED');
@@ -130,17 +131,17 @@ describe('ReleasedReportClient (PAT-02)', () => {
   });
 
   it('lists reports with the stored token and no local clinical cache', async () => {
-    const fake = transport([report], undefined);
+    const fake = transport([report]);
     const client = new ReleasedReportClient(fake.api, tokens('token-1'), 'patient-1');
 
     await expect(client.listReleasedReports()).resolves.toEqual([report]);
-    expect(fake.getCalls[0]).toEqual(['/api/v1/released-reports', 'token-1']);
+    expect(fake.getCalls[0]).toEqual(['/api/v1/patient/reports', 'token-1']);
     await expect(client.listReleasedReports()).resolves.toEqual([report]);
     expect(fake.getCalls.length).toBe(2);
   });
 
   it('rejects a non-array list response', async () => {
-    const client = new ReleasedReportClient(transport({}, undefined).api, tokens('token-1'), 'patient-1');
+    const client = new ReleasedReportClient(transport({}).api, tokens('token-1'), 'patient-1');
     await expect(client.listReleasedReports()).rejects.toThrow('MALFORMED_RESPONSE');
   });
 
@@ -163,7 +164,7 @@ describe('ReleasedReportClient (PAT-02)', () => {
       { ...report, correctionReason: '' },
     ];
     for (const payload of invalid) {
-      const client = new ReleasedReportClient(transport([payload], undefined).api, tokens('token-1'), 'patient-1');
+      const client = new ReleasedReportClient(transport([payload]).api, tokens('token-1'), 'patient-1');
       await expect(client.listReleasedReports()).rejects.toThrow('MALFORMED_REPORT');
     }
   });
@@ -171,27 +172,39 @@ describe('ReleasedReportClient (PAT-02)', () => {
   it('accepts an original report without correction context and an Arabic report', async () => {
     const original: ReleasedReport = { ...report, correctionReason: null, supersedesRevision: null };
     const arabic: ReleasedReport = { ...report, language: 'ar', reportId: 'report-2', revision: 1 };
-    const client = new ReleasedReportClient(transport([original, arabic], undefined).api, tokens('token-1'), 'patient-1');
+    const client = new ReleasedReportClient(transport([original, arabic]).api, tokens('token-1'), 'patient-1');
     await expect(client.listReleasedReports()).resolves.toEqual([original, arabic]);
   });
 
   it('validates download inputs before any request', async () => {
-    const fake = transport([], authorization);
+    const fake = transport(authorization);
     const client = new ReleasedReportClient(fake.api, tokens('token-1'), 'patient-1');
     await expect(client.authorizeDownload('', 1)).rejects.toThrow('INVALID_REPORT_ID');
     await expect(client.authorizeDownload('report-1', 0)).rejects.toThrow('INVALID_REVISION');
     await expect(client.authorizeDownload('report-1', 1.2)).rejects.toThrow('INVALID_REVISION');
+    expect(fake.getCalls.length).toBe(0);
     expect(fake.postCalls.length).toBe(0);
   });
 
-  it('authorizes a download through the server with the exact revision', async () => {
-    const fake = transport([], authorization);
+  it('authorizes a download through the deployed GET route with the exact revision', async () => {
+    const fake = transport(authorization);
     const client = new ReleasedReportClient(fake.api, tokens('token-1'), 'patient-1');
     await expect(client.authorizeDownload('report-1', 2)).resolves.toEqual(authorization);
-    expect(fake.postCalls[0]).toEqual([
-      '/api/v1/released-reports/report-1/download',
+    expect(fake.getCalls[0]).toEqual([
+      '/api/v1/patient/reports/report-1/download?revision=2',
       'token-1',
-      { revision: 2 },
+    ]);
+    expect(fake.postCalls.length).toBe(0);
+  });
+
+  it('encodes a report identifier used in the download path', async () => {
+    const granted: DownloadAuthorization = { ...authorization, reportId: 'report/1 2' };
+    const fake = transport(granted);
+    const client = new ReleasedReportClient(fake.api, tokens('token-1'), 'patient-1');
+    await expect(client.authorizeDownload('report/1 2', 2)).resolves.toEqual(granted);
+    expect(fake.getCalls[0]).toEqual([
+      '/api/v1/patient/reports/report%2F1%202/download?revision=2',
+      'token-1',
     ]);
   });
 
@@ -209,21 +222,21 @@ describe('ReleasedReportClient (PAT-02)', () => {
       { ...authorization, releaseState: null },
     ];
     for (const payload of invalid) {
-      const client = new ReleasedReportClient(transport([], payload).api, tokens('token-1'), 'patient-1');
+      const client = new ReleasedReportClient(transport(payload).api, tokens('token-1'), 'patient-1');
       await expect(client.authorizeDownload('report-1', 2)).rejects.toThrow('MALFORMED_AUTHORIZATION');
     }
   });
 
   it('rejects a well-formed authorization for another report or revision', async () => {
     const otherReport = new ReleasedReportClient(
-      transport([], { ...authorization, reportId: 'report-2' }).api,
+      transport({ ...authorization, reportId: 'report-2' }).api,
       tokens('token-1'),
       'patient-1',
     );
     await expect(otherReport.authorizeDownload('report-1', 2)).rejects.toThrow('AUTHORIZATION_MISMATCH');
 
     const otherRevision = new ReleasedReportClient(
-      transport([], { ...authorization, revision: 3 }).api,
+      transport({ ...authorization, revision: 3 }).api,
       tokens('token-1'),
       'patient-1',
     );
@@ -231,19 +244,21 @@ describe('ReleasedReportClient (PAT-02)', () => {
   });
 
   it('stops download access when the current release has been withdrawn', async () => {
-    const fake = transport([], { ...authorization, releaseState: 'withdrawn' });
+    const fake = transport({ ...authorization, releaseState: 'withdrawn' });
     const client = new ReleasedReportClient(fake.api, tokens('token-1'), 'patient-1');
 
     await expect(client.authorizeDownload('report-1', 2)).rejects.toThrow('RELEASE_WITHDRAWN');
-    expect(fake.postCalls.length).toBe(1);
+    expect(fake.getCalls.length).toBe(1);
+    expect(fake.postCalls.length).toBe(0);
   });
 
   it('denies a download authorized for a different linked patient', async () => {
-    const fake = transport([], { ...authorization, patientId: 'patient-2' });
+    const fake = transport({ ...authorization, patientId: 'patient-2' });
     const client = new ReleasedReportClient(fake.api, tokens('token-1'), 'patient-1');
 
     await expect(client.authorizeDownload('report-1', 2)).rejects.toThrow('WRONG_PATIENT');
-    expect(fake.postCalls.length).toBe(1);
+    expect(fake.getCalls.length).toBe(1);
+    expect(fake.postCalls.length).toBe(0);
   });
 
   it('reports a load failure without keeping partial clinical data', async () => {
@@ -259,7 +274,7 @@ describe('ReleasedReportClient (PAT-02)', () => {
   });
 
   it('returns loaded reports without an error', async () => {
-    const client = new ReleasedReportClient(transport([report], undefined).api, tokens('token-1'), 'patient-1');
+    const client = new ReleasedReportClient(transport([report]).api, tokens('token-1'), 'patient-1');
     await expect(loadReleasedReports(client)).resolves.toEqual({ reports: [report], error: null });
   });
 });
@@ -307,5 +322,46 @@ describe('download confirmation (PAT-02)', () => {
       authorization,
     );
     expect(fake.calls[0]).toEqual(['report-1', 2]);
+  });
+
+  it('hands off the exact authorization once after confirmation', async () => {
+    const fake = authorizer();
+    const handoff = recorder((granted: DownloadAuthorization): void => {
+      expect(granted).toEqual(authorization);
+    });
+    await expect(
+      downloadWithHandoff(fake.client, report, async () => true, handoff.fn),
+    ).resolves.toBeUndefined();
+    expect(fake.calls).toEqual([['report-1', 2]]);
+    expect(handoff.calls).toEqual([[authorization]]);
+  });
+
+  it('does not hand off a document when the patient cancels', async () => {
+    const fake = authorizer();
+    const handoff = recorder((_granted: DownloadAuthorization): void => undefined);
+    await expect(
+      downloadWithHandoff(fake.client, report, async () => false, handoff.fn),
+    ).resolves.toBeUndefined();
+    expect(fake.calls.length).toBe(0);
+    expect(handoff.calls.length).toBe(0);
+  });
+
+  it.each([
+    'MALFORMED_AUTHORIZATION',
+    'AUTHORIZATION_MISMATCH',
+    'WRONG_PATIENT',
+    'RELEASE_WITHDRAWN',
+    'NOT_AUTHENTICATED',
+  ])('does not hand off a document when authorization fails with %s', async (code) => {
+    const handoff = recorder((_granted: DownloadAuthorization): void => undefined);
+    const client: DownloadAuthorizer = {
+      authorizeDownload: async () => {
+        throw new Error(code);
+      },
+    };
+    await expect(
+      downloadWithHandoff(client, report, async () => true, handoff.fn),
+    ).rejects.toThrow(code);
+    expect(handoff.calls.length).toBe(0);
   });
 });
