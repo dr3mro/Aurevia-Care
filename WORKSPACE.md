@@ -2,7 +2,7 @@
 
 | Field | Current value |
 |---|---|
-| Working tree and remote | Branch `main`, HEAD `928d886`, `0/0` with `origin/main` (`github.com/dr3mro/Aurevia-Care.git`). `delivery/g0` retired; all scoped work commits to `main`. Remote swarm workers and auto-merges are active — always `git fetch origin main` and reconcile before editing trackers or pushing. Task state lives in `tasks/`; `TODO.md` is a generated view, not tracked. |
+| Working tree and remote | Branch `main`, HEAD `928d886`, `0/0` with `origin/main` (`github.com/dr3mro/Aurevia-Care.git`). `delivery/g0` retired; all scoped work commits to `main`. Remote swarm workers and auto-merges are active — always `git fetch origin main` and reconcile before editing trackers or pushing. Task state lives in `tasks/`; `tasks/` is a generated view, not tracked. |
 | Active story | None claimed. Standing directive: watch **every** non-successful Actions run (failure, cancelled, skipped, stuck), fetch logs, fix, commit, push until green; pull remote updates and resolve conflicts; keep local exactly 1:1 with `origin/main`. |
 | Approved delivery branch | `main` |
 | Stable commands | `scripts/check.sh`, `scripts/quick-check.sh`, `scripts/docs.sh`, `scripts/frontend-check.sh`, `python3 -I -m unittest discover -s scripts/tests -q`, `python3 -I scripts/gen-opencode.py --check`, `bash apps/api/check.sh`, `bash db/check.sh` |

@@ -66,7 +66,7 @@ Files that would change, without changing code to produce the approval itself:
    site's integration sign-off (owned by `S-G5-04`, a human decision).
 3. `contracts/` partner-specific profiles/conformance fixtures and the
    `exchange/conformance` fixture catalog — extend with each real partner's approved interface
-   once a contract is signed (follow-up tasks, not yet in TODO.md).
+   once a contract is signed (follow-up tasks, not yet in tasks/).
 
 Number of separate tasks: at least two tracked tasks remain — `GATE-DECISION-PARTNER-INTERFACES`
 (prepare the decision pack) and `S-G5-04` (the accountable people approve at G5) — plus one

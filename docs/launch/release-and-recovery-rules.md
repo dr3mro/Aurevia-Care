@@ -2,7 +2,7 @@
 
 Status: Not approved
 
-This pack prepares a decision for the accountable roles named in section 10 of the [SmartClinic Cloud V1 specification](../../SMARTCLINIC_V1_SPEC.md). It sets out the choices, what the repository already enforces, what is still missing and the evidence a site must hold. It decides nothing: no option is selected, no jurisdiction, region, partner, name or date is supplied, and every cell of the approval record is empty. The human decision it prepares is `S-G5-03` in `TODO.md`; acceptance is a person's decision and is not implied by anything in this file.
+This pack prepares a decision for the accountable roles named in section 10 of the [SmartClinic Cloud V1 specification](../../SMARTCLINIC_V1_SPEC.md). It sets out the choices, what the repository already enforces, what is still missing and the evidence a site must hold. It decides nothing: no option is selected, no jurisdiction, region, partner, name or date is supplied, and every cell of the approval record is empty. The human decision it prepares is `S-G5-03` in tasks/; acceptance is a person's decision and is not implied by anything in this file.
 
 ## Decision needed
 

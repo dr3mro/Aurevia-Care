@@ -15,5 +15,5 @@
     3. Add a new test file (named in `scope`) that renders the component at each window class and font scale and asserts the structure, the accessibility labels and the right-to-left case. Existing tests must still pass.
     4. Do not change behaviour, text, API calls or exported names, and do not add a dependency.
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
-    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+    Before you start read the "Instructions for every agent" in tasks/_head.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 

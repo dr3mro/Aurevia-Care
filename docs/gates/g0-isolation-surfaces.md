@@ -8,7 +8,7 @@
 
 The G0 row of section 9 of `SMARTCLINIC_V1_SPEC.md` requires that two tenants with identical
 local IDs remain isolated across API, search, files, workers and exports. `S-G0-04` in
-`TODO.md` was blocked because several of those surfaces did not exist. This note records which
+tasks/ was blocked because several of those surfaces did not exist. This note records which
 surfaces exist today, the test that proves each one, and the stories still needed for the rest.
 
 ## Synthetic fixtures
@@ -104,4 +104,4 @@ OPS-CW-003-01 skip-worktree artifact, not a defect from this change; `opencode.j
 - `docs/decisions/0001-g0-tenant-isolation.md` — tenant derivation, forced RLS, fail-closed context.
 - `docs/decisions/0003-persistence-of-in-memory-stores.md` — inventory of in-memory stores and the persistence programme; the attachment store has since been replaced by `JdbcAttachmentStore` and V82.
 - `docs/gates/g0-evidence-pack.md` (when written by GATE-PACK-G0) — aggregate G0 verdict; this note supplies its isolation row.
-- `TODO.md` entry `S-G0-04` — original blocked isolation story.
+- tasks/ entry `S-G0-04` — original blocked isolation story.

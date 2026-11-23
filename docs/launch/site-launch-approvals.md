@@ -24,7 +24,7 @@ there and whether final G5 acceptance is granted. The decision has three parts:
    tenant-isolation, record-integrity or critical-escalation defect in the enabled
    scope.
 
-Each part is a human decision in [TODO.md](../../TODO.md) task `S-G5-12`; this
+Each part is a human decision in [tasks/](../../tasks/) task `S-G5-12`; this
 pack supplies the material for it and decides none of it.
 
 ## Why it matters

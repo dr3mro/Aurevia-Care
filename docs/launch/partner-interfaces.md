@@ -108,13 +108,13 @@ exercise; none is partner evidence, a credential record or an approval.
 
 ## What is missing
 
-Task IDs below refer to `TODO.md` and are recorded as open, taken or done at the
+Task IDs below refer to tasks/ and are recorded as open, taken or done at the
 time of writing; a task is not evidence that its artifact exists at a site.
 `NO TASK` means no tracked task supplies that artifact. A PRD-02 partner-interface
 clause note is tracked as `SPEC-PRD-02-C02` on the delivery line; it was not
 present in this worker's branch when the pack was prepared, so the authoritative
 specification sections above were used instead. Re-check the states below against
-`TODO.md` before the approval meeting: they are a snapshot, not evidence.
+tasks/ before the approval meeting: they are a snapshot, not evidence.
 
 | Artifact a person needs | Laboratory | PACS / imaging | Pharmacy |
 |---|---|---|---|

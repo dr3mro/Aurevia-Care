@@ -1,6 +1,6 @@
 # Running the agent team in GitHub Actions
 
-The agent team runs as the swarm: OpenCode workers on GitHub-hosted runners, coordinated only through `TODO.md`, pull requests and GitHub issues. [SWARM.md](SWARM.md) describes the whole flow; this page covers the image, the setup and the safeguards. The earlier issue-label team workflow (`story` label, `/oc` comments) has been retired.
+The agent team runs as the swarm: OpenCode workers on GitHub-hosted runners, coordinated only through `tasks/`, pull requests and GitHub issues. [SWARM.md](SWARM.md) describes the whole flow; this page covers the image, the setup and the safeguards. The earlier issue-label team workflow (`story` label, `/oc` comments) has been retired.
 
 ## Files
 
@@ -31,7 +31,7 @@ Follow the setup in [SWARM.md](SWARM.md#setup): run **Agent image** once, save `
 | 47 past every hour | `swarm-debugger.yml` (safety net; normally dispatched at the first failure; up to four pull requests debugged side by side) |
 | 04:17 on the 1st | `agent-image.yml` refresh |
 
-Everything else is event driven: a push to `TODO.md`, a finished wave, a pull request event or a manual dispatch.
+Everything else is event driven: a push to `tasks/`, a finished wave, a pull request event or a manual dispatch.
 
 ## Safeguards
 

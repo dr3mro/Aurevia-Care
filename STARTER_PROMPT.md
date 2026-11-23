@@ -9,7 +9,7 @@ The SmartClinic V1 delivery loop runs as the agent swarm. Setup is in [docs/SWAR
 
 ## Give it work
 
-- **A task:** add a `[ ]` entry to `TODO.md` with a `scope` (and `requirements`, `depends` or `reserved` when they apply) and push it. A push to `TODO.md` starts a wave.
+- **A task:** add a `[ ]` entry to `tasks/` with a `scope` (and `requirements`, `depends` or `reserved` when they apply) and push it. A push to `tasks/` starts a wave.
 - **A problem:** open a GitHub issue, describe the problem and the evidence, and label it `swarm-issue` and `agent-fixable`. Within an hour the issue monitor sends it to a triage worker, which turns it into task `ISS-<n>`; the worker's findings are posted on the issue, and the issue closes when the fix merges.
 - **An audit:** run **Daily audit** with a `focus`, for example `the messaging module`.
 

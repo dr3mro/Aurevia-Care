@@ -8,7 +8,7 @@ Swarm worker 2. Local checks: passed. Agent result: ok.
 
 # BUILD-19 — Patient app: appointments with the facility time zone and confirmation
 
-Worker branch: `swarm/BUILD-19-418` (commit made on this branch, no push/tag/`gh`). The orchestrator had already marked the task `[-]` in TODO.md; this worker did **not** edit TODO.md, MEMORY.md, WORKSPACE.md, BUGS.md, PROJECT.md, `docs/swarm`, `.opencode/`, `scripts/` or workflows. All fixtures are synthetic (`org-a`, `patient-1`, `America/New_York`, `synthetic-token`); no patient data, credential or real domain appears in code, tests or this note.
+Worker branch: `swarm/BUILD-19-418` (commit made on this branch, no push/tag/`gh`). The orchestrator had already marked the task `[-]` in tasks/; this worker did **not** edit a task in tasks/, MEMORY.md, WORKSPACE.md, BUGS.md, PROJECT.md, `docs/swarm`, `.opencode/`, `scripts/` or workflows. All fixtures are synthetic (`org-a`, `patient-1`, `America/New_York`, `synthetic-token`); no patient data, credential or real domain appears in code, tests or this note.
 
 ## Summary
 

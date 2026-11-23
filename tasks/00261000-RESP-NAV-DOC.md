@@ -12,5 +12,5 @@
     2. Replace the statement that below 768 px the staff web shows a "use a larger screen" notice with the responsive rules from the decision: drawer on phones, icon rail from 768 to 1279 px, full rail from 1280 px. Update the navigation row and the supported widths paragraph only; keep every other line.
     3. Run `python3 -I scripts/check-docs.py` and paste the result.
     If you cannot finish because something you need is missing, write what is missing under `## Why this is not finished` in your notes and stop; do not guess.
-    Before you start read the "Instructions for every agent" at the top of TODO.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
+    Before you start read the "Instructions for every agent" in tasks/_head.md. Finish with the check in step 6 there and paste the result into `.agent/pr-notes/<task-id>.md`. Use synthetic data only; do NOT add a dependency or change files outside `scope`.
 

@@ -263,7 +263,7 @@ scratch copies, with stable `a/` and `b/` labels. It contains exactly one
            GH_TOKEN: ${{ github.token }}
 -        run: python3 -I scripts/swarm.py images-ready
 +        run: python3 -I scripts/swarm.py images-ready --generations "$(cat generations.json)"
-       # Marks every task it starts as [-] in TODO.md and pushes that to main
+       # Marks every task it starts as [-] in tasks/ and pushes that to main
        # (GITHUB_TOKEN pushes do not trigger another run).
        - id: plan
 @@ -118,6 +142,8 @@

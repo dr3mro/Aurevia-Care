@@ -6,7 +6,7 @@ name: Swarm issue monitor
 # Daily at 2:00 AM New York: issues with no progress for 24 hours get a worker again.
 # Cron is UTC only, so the daily job is scheduled at 06:00 UTC (summer, EDT) and 07:00 UTC
 # (winter, EST); each runs only in its own season, so a delayed run still counts. A read-only triage worker derives
-# the scope for an issue with no task; a trusted job validates it and adds the task to TODO.md.
+# the scope for an issue with no task; a trusted job validates it and adds a task file under tasks/.
 # Workers comment on the issue when they receive it and when they stop or finish.
 on:
   issues:
@@ -142,7 +142,7 @@ jobs:
           path: triage
       - name: Add tasks, requeue pull requests, start a wave
         env:
-          # The job's own token: it can push TODO.md (as the plan job does), write issues and
+          # The job's own token: it can push tasks/ (as the plan job does), write issues and
           # labels, and dispatch a wave. No dependency on SWARM_TOKEN's scopes.
           GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
         run: python3 -I scripts/swarm.py monitor-assign --selection monitor/selection.json --triage triage

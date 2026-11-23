@@ -66,7 +66,7 @@ The acceptance actions and related open defects below are not evidence gaps and 
    the protected-slot criterion: `BUGS.md` entries `QA-SOURCE-05` (reschedule omits creation-path
    booking-window checks) and `QA-SOURCE-06` (a slot can span time outside the resource window).
    Reproductions are pending.
-4. **CLN-07 render-path reachability.** `TODO.md` entry `AUD-20261121-19` (PR #504) tracked the
+4. **CLN-07 render-path reachability.** tasks/ entry `AUD-20261121-19` (PR #504) tracked the
    unreachable `QuarantineService` / `PdfBindingService` command APIs and is marked `[x]` on `main`.
    The bilingual-rendering evidence above is the behaviour proven by the reachable document endpoints;
    audit and quarantine of uploads remain separate concerns.
