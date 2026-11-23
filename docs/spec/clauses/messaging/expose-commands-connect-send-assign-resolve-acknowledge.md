@@ -87,11 +87,14 @@ adjacent gaps prevent the clause from being called fully proven:
    add `JdbcInstructionStore`, a Flyway migration with RLS and FORCE RLS for
    threads, revisions and facts, replace the bean, and move the HTTP assertions
    above onto the durable store.
-2. Every route family is baselined as undocumented in
-   `contracts/openapi/missing-routes.txt` (lines 163-169, 223, 226-227 and
-   257-262)
-   and is absent from `contracts/openapi.yaml`, so no generated client
-   exposes these commands. One bounded task: publish the routes with their
-   tags, command headers and route-parity entries, then regenerate the clients.
+2. The connection and instruction route families are baselined as undocumented in
+   `contracts/openapi/missing-routes.txt` (lines 64-66, 202, 206, 236 and
+   238-240)
+   and are absent from `contracts/openapi.yaml`, so no generated client exposes
+   connect, instruction send/withdraw/replace or publish/acknowledge. The
+   conversation open/reply/assign/resolve routes are already published
+   (`contracts/openapi.yaml:738, 818, 847, 905`). One bounded task: publish the
+   connection and instruction routes with their tags and command headers, add
+   their route-parity entries and regenerate the clients.
 
 Total: two bounded tasks. Neither touches this story's two-file scope.
