@@ -110,11 +110,6 @@ class RequireNamedQueueOwnerBackupCoverageOverdueTest {
                 .addInterceptors(new TenantContextInterceptor(environment))
                 .build();
 
-        // Publishing first checks the site-approved urgent and downtime channels.
-        // Seed the codes publishBody uses so the HTTP publish assertions below reach
-        // the queue-owner and backup-coverage rules they are meant to prove.
-        profileStore.seedApprovedChannels(ORG_A, "msg06.approved_urgent_channels", "urgent-phone");
-        profileStore.seedApprovedChannels(ORG_A, "msg06.approved_downtime_channels", "downtime-phone");
         profileStore.addMember(ORG_A, PUBLISHER, "tenant_admin", true);
         profileStore.addMember(ORG_A, APPROVER, "tenant_admin", true);
         profileStore.addMember(ORG_A, PATIENT_USER, "patient", true);
@@ -122,16 +117,14 @@ class RequireNamedQueueOwnerBackupCoverageOverdueTest {
         profileStore.addMember(ORG_B, PATIENT_USER, "patient", true);
         profileStore.addUnit(ORG_A, UNIT);
         profileStore.addUnit(ORG_B, UNIT);
+        // Publish enforces site-approved urgent and downtime channels before the
+        // queue-owner and backup validators this clause proves. Seed the synthetic
+        // codes carried by publishBody so those validators are actually reached.
         profileStore.seedApprovedChannels(ORG_A, "msg06.approved_urgent_channels", "urgent-phone");
         profileStore.seedApprovedChannels(ORG_A, "msg06.approved_downtime_channels", "downtime-phone");
         profileStore.linkPatient(ORG_A, PATIENT_USER, PATIENT);
         profileStore.addConnection(ORG_A, PATIENT, UNIT, true);
         profileStore.addProfile(namedProfile(1, "nurse-lead", List.of("nurse-backup")));
-        // Publish rejects time-sensitive channels that are not site-approved. Seed
-        // the two codes this clause's HTTP fixtures use so the tests keep proving
-        // named-owner and backup validation rather than the channel gate.
-        profileStore.seedApprovedChannels(ORG_A, "msg06.approved_urgent_channels", "urgent-phone");
-        profileStore.seedApprovedChannels(ORG_A, "msg06.approved_downtime_channels", "downtime-phone");
 
         factStore.addMember(ORG_A, STAFF, "lab_collector", true);
         factStore.addMember(ORG_A, UNASSIGNED_STAFF, "lab_collector", true);
@@ -139,11 +132,6 @@ class RequireNamedQueueOwnerBackupCoverageOverdueTest {
         factStore.addMember(ORG_B, STAFF, "lab_collector", true);
         factStore.assignStaffUnit(ORG_A, STAFF, UNIT);
         factStore.addConnection(ORG_A, PATIENT, UNIT, true);
-        // Publish now fails closed on unapproved time-sensitive channels. The
-        // codes published below are the tenant's approved site policy so the
-        // owner/backup refusals are the ones actually exercised by this class.
-        profileStore.seedApprovedChannels(ORG_A, "msg06.approved_urgent_channels", "urgent-phone");
-        profileStore.seedApprovedChannels(ORG_A, "msg06.approved_downtime_channels", "downtime-phone");
     }
 
     /** Clear the thread-bound tenant context after each test. */

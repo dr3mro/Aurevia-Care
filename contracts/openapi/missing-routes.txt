@@ -99,6 +99,9 @@ GET /api/v1/specialty/attestations
 GET /api/v1/specialty/attestations/{}
 GET /api/v1/specialty/permissions
 GET /api/v1/staff-invitations/pending
+GET /api/v1/staff-messages/governance/audit
+GET /api/v1/staff-messages/governance/retention/{}
+GET /api/v1/staff-messages/governance/search
 GET /api/v1/tenant/exports/{}
 GET /api/v1/therapy/episodes/{}
 GET /api/v1/trends/{}
@@ -294,6 +297,11 @@ POST /api/v1/specialty/attestations
 POST /api/v1/staff-invitations
 POST /api/v1/staff-invitations/accept
 POST /api/v1/staff-invitations/{}/revoke
+POST /api/v1/staff-messages/governance/actions
+POST /api/v1/staff-messages/governance/exports
+POST /api/v1/staff-messages/governance/legal-holds
+POST /api/v1/staff-messages/governance/legal-holds/{}/release
+POST /api/v1/staff-messages/governance/messages/{}/hide
 POST /api/v1/tenant/exports
 POST /api/v1/tenant/exports/{}/expire
 POST /api/v1/tenant/imports/commit
