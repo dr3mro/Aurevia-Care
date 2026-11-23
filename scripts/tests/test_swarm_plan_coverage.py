@@ -1,5 +1,5 @@
 """Coverage for the planning half of scripts/swarm.py (constants, issues, reports,
-watchdog issue closure and hand-offs).
+failure proposals, watchdog issue closure and hand-offs).
 
 Every GitHub call is scripted through the fake below and every test uses synthetic
 identifiers, so the suite never touches the network or a real repository. The fake
@@ -23,12 +23,14 @@ swarm = load("swarm")
 class Gh:
     """A scripted gh CLI: records calls and answers the queries the planning code makes."""
 
-    def __init__(self, run_info=None, issue_lists=None, delivery_runs=None, fail_on=None):
+    def __init__(self, run_info=None, issue_lists=None, delivery_runs=None, fail_on=None, log=""):
         self.calls = []
         self.run_info = run_info or {}
         self.issue_lists = issue_lists or {}
         self.delivery_runs = delivery_runs if delivery_runs is not None else []
         self.fail_on = fail_on
+        self.log = log
+        self.created = []
 
     def __call__(self, *args, check=True):
         self.calls.append(args)
@@ -37,7 +39,11 @@ class Gh:
         if args[0] == "api":
             return "[]"
         if args[:2] == ("run", "view"):
-            return "" if "--log-failed" in args else json.dumps(self.run_info)
+            return self.log if "--log-failed" in args else json.dumps(self.run_info)
+        if args[:2] == ("issue", "create"):
+            # A created issue must look real to record_issue, which parses its URL.
+            self.created.append(args)
+            return "https://github.com/example/repo/issues/42"
         if args[:2] == ("run", "list"):
             if "--workflow" in args and args[args.index("--workflow") + 1] == "Delivery":
                 return json.dumps(self.delivery_runs)
@@ -183,6 +189,37 @@ class WatchdogRepairIssueTests(unittest.TestCase):
     def test_a_gh_error_is_reported_and_does_not_stop_the_watchdog(self):
         fake, err = self.run_dog([], fail_on=lambda args: args[:2] == ("run", "list"))
         self.assertIn("repair-gave-up close check skipped", err)
+
+
+class FailureProposalTests(unittest.TestCase):
+    """A failed run's issue names the failure class and the fix the next worker should try."""
+
+    FAILED = {**SUCCESS, "conclusion": "failure",
+              "jobs": [{"name": "Java", "conclusion": "failure",
+                        "steps": [{"name": "Coverage", "conclusion": "failure"}]}]}
+
+    def run_failed_event(self, log=""):
+        """Run a failed Delivery event and return its result and the fake gh."""
+        fake = Gh(run_info=self.FAILED, log=log)
+        with mock.patch.object(swarm, "gh", fake):
+            result = swarm.run_event(5)
+        return result, fake
+
+    def test_a_quota_failure_proposes_waiting_for_the_quota(self):
+        result, fake = self.run_failed_event("gh: API rate limit exceeded for this token")
+        self.assertEqual(result, "issue 42")
+        self.assertEqual(len(fake.created), 1)
+        create = fake.created[0]
+        body = create[create.index("--body") + 1]
+        labels = [create[i + 1] for i, arg in enumerate(create) if arg == "--label"]
+        self.assertIn("**Class:** quota", body)
+        self.assertIn("**Proposed fix:** Wait for the quota to reset or reduce concurrency; "
+                      "no code change needed.", body)
+        self.assertIn("(a person must fix this: a token, permission or limit)", body)
+        self.assertNotIn("Inspect the failed step", body)
+        self.assertIn("ci-failure", labels)
+        self.assertIn("needs-human", labels)
+        self.assertFalse(fake.said("run", "rerun", "--failed"))
 
 
 if __name__ == "__main__":
