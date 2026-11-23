@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
@@ -9,13 +10,14 @@ import { BookingForm } from './BookingForm';
 import { VisitStateBadge } from './VisitStateBadge';
 import {
   alphaOrganizationId,
+  receptionUnassignedCheckedIn,
   schedulingAnchorCivilDate,
   syntheticAlphaAppointments,
   syntheticAppointments,
 } from './fixtures';
-import { schedulingText, visitStateMessageKey } from './messages';
+import { schedulingText, schedulingTextWithValue, visitStateMessageKey } from './messages';
 import { selectWorklist } from './domain';
-import type { VisitState } from './domain';
+import type { VisitState, WorklistFilter } from './domain';
 
 function wrap(ui: ReactElement, locale: Locale = 'en') {
   return render(
@@ -161,13 +163,44 @@ describe('BookingForm', () => {
   });
 });
 
+/** Rows used by the filter-chip test, including a no-show and an unassigned check-in. */
+const filterRows = [
+  ...dayAppointments,
+  required(syntheticAlphaAppointments.find((item) => item.id === 'apt-006')),
+  receptionUnassignedCheckedIn,
+];
+
+/** Own the filter chip state so the test observes controlled filtering. */
+function FilterHarness() {
+  const [filter, setFilter] = useState<WorklistFilter>('all');
+  return (
+    <AppointmentWorklist
+      appointments={filterRows}
+      range="day"
+      onRangeChange={vi.fn()}
+      filter={filter}
+      onFilterChange={setFilter}
+      onCheckIn={vi.fn()}
+      onAssign={vi.fn()}
+      onHandoff={vi.fn()}
+      onOpenChart={vi.fn()}
+      onRebook={vi.fn()}
+    />
+  );
+}
+
 describe('AppointmentWorklist', () => {
   const baseProps = {
     appointments: dayAppointments,
     range: 'day' as const,
     onRangeChange: vi.fn(),
+    filter: 'all' as const,
+    onFilterChange: vi.fn(),
     onCheckIn: vi.fn(),
     onAssign: vi.fn(),
+    onHandoff: vi.fn(),
+    onOpenChart: vi.fn(),
+    onRebook: vi.fn(),
   };
 
   it('renders a captioned, time-ordered table with accessible row headers', () => {
@@ -176,7 +209,7 @@ describe('AppointmentWorklist', () => {
     expect(
       screen.getAllByRole('columnheader').every((cell) => cell.getAttribute('scope') === 'col'),
     ).toBe(true);
-    expect(screen.getAllByRole('rowheader').map((cell) => cell.textContent)).toEqual([
+    expect(screen.getAllByRole('rowheader').map((cell) => cell.querySelector('bdi')?.textContent)).toEqual([
       'Synthetic Sara',
       'Synthetic Omar',
       'Synthetic Layla',
@@ -191,16 +224,42 @@ describe('AppointmentWorklist', () => {
     expect(screen.getAllByText(schedulingText('en', 'unassigned')).length).toBeGreaterThan(0);
   });
 
-  it('enables check-in only for booked visits and reports the chosen row', () => {
+  it('shows one lifecycle action per row and reports the chosen row', () => {
     const onCheckIn = vi.fn();
-    wrap(<AppointmentWorklist {...baseProps} onCheckIn={onCheckIn} />);
-    const buttons = screen.getAllByRole('button', { name: schedulingText('en', 'checkIn') });
-    expect(buttons).toHaveLength(3);
-    expect((buttons[0] as HTMLButtonElement).disabled).toBe(true);
-    expect((buttons[1] as HTMLButtonElement).disabled).toBe(true);
-    expect((buttons[2] as HTMLButtonElement).disabled).toBe(false);
-    fireEvent.click(required(buttons[2]));
+    const onHandoff = vi.fn();
+    const onOpenChart = vi.fn();
+    wrap(
+      <AppointmentWorklist
+        {...baseProps}
+        onCheckIn={onCheckIn}
+        onHandoff={onHandoff}
+        onOpenChart={onOpenChart}
+      />,
+    );
+    expect(screen.getAllByRole('button', { name: schedulingText('en', 'checkIn') })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: schedulingText('en', 'handoff') })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: schedulingText('en', 'openChart') })).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: schedulingText('en', 'checkIn') }));
     expect(onCheckIn).toHaveBeenCalledWith('apt-001');
+    fireEvent.click(screen.getByRole('button', { name: schedulingText('en', 'handoff') }));
+    expect(onHandoff).toHaveBeenCalledWith('apt-002');
+    fireEvent.click(screen.getByRole('button', { name: schedulingText('en', 'openChart') }));
+    expect(onOpenChart).toHaveBeenCalledWith('apt-003');
+  });
+
+  it('filters rows by chip and disables handoff without an active assignee', () => {
+    wrap(<FilterHarness />);
+    expect(screen.getAllByRole('rowheader')).toHaveLength(5);
+    fireEvent.click(screen.getByRole('button', { name: schedulingText('en', 'filterNeedsCheckIn') }));
+    expect(screen.getAllByRole('rowheader')).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: schedulingText('en', 'filterWaiting') }));
+    expect(screen.getAllByRole('rowheader')).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: schedulingText('en', 'filterAll') }));
+    expect(screen.getAllByRole('rowheader')).toHaveLength(5);
+    const handoffs = screen.getAllByRole('button', { name: schedulingText('en', 'handoff') });
+    expect(handoffs).toHaveLength(2);
+    expect((handoffs[1] as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getAllByTestId('handoff-hint')).toHaveLength(1);
   });
 
   it('disables assignment for terminal visits and reports an assignment', () => {
@@ -271,6 +330,65 @@ describe('AppointmentWorklist', () => {
         schedulingText('ar', 'checkIn'),
       ),
     ).toBeTruthy();
+  });
+});
+
+/** Reception-specific worklist assertions, kept small for the lint budget. */
+describe('AppointmentWorklist reception contract', () => {
+  const props = {
+    appointments: dayAppointments,
+    range: 'day' as const,
+    onRangeChange: vi.fn(),
+    filter: 'all' as const,
+    onFilterChange: vi.fn(),
+    onCheckIn: vi.fn(),
+    onAssign: vi.fn(),
+    onHandoff: vi.fn(),
+    onOpenChart: vi.fn(),
+    onRebook: vi.fn(),
+  };
+
+  it('stays usable when an embedding host omits the optional callbacks', () => {
+    wrap(
+      <AppointmentWorklist
+        appointments={dayAppointments}
+        range="day"
+        onRangeChange={vi.fn()}
+        onCheckIn={vi.fn()}
+        onAssign={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: schedulingText('en', 'filterNeedsCheckIn') }));
+    // Without a controlled host the filter stays on 'all'; the click is inert,
+    // not a crash, and the clinical table is still present.
+    expect(screen.getByRole('button', { name: schedulingText('en', 'filterAll') }).getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(screen.getByRole('button', { name: schedulingText('en', 'handoff') }));
+    fireEvent.click(screen.getByRole('button', { name: schedulingText('en', 'openChart') }));
+    expect(screen.getByRole('table', { name: schedulingText('en', 'appointments') })).toBeTruthy();
+  });
+
+  it('shows a time-in-state note under each state badge', () => {
+    const completed = required(syntheticAlphaAppointments.find((item) => item.id === 'apt-004'));
+    const noShow = required(syntheticAlphaAppointments.find((item) => item.id === 'apt-006'));
+    wrap(<AppointmentWorklist {...props} appointments={[...dayAppointments, completed, noShow]} />);
+    const note = (name: string): string =>
+      required(required(screen.getByRole('rowheader', { name }).closest('tr')).textContent ?? '');
+    expect(note('Synthetic Sara')).toContain(schedulingText('en', 'noteSince').replace('{value}', ''));
+    expect(note('Synthetic Omar')).toContain(schedulingTextWithValue('en', 'noteWaiting', 30));
+    expect(note('Synthetic Layla')).toContain(schedulingTextWithValue('en', 'noteArrivesIn', 60));
+    expect(note('Synthetic Nadia')).toContain(schedulingText('en', 'noteDone').replace('{value}', ''));
+    expect(note('Synthetic Hana')).toContain(schedulingText('en', 'noteNoShow'));
+  });
+
+  it('keeps handoff disabled when the assignee is a blank string', () => {
+    const blank = {
+      ...required(syntheticAlphaAppointments.find((item) => item.id === 'apt-002')),
+      assignee: '',
+    };
+    wrap(<AppointmentWorklist {...props} appointments={[blank]} />);
+    const handoff = screen.getByRole<HTMLButtonElement>('button', { name: schedulingText('en', 'handoff') });
+    expect(handoff.disabled).toBe(true);
+    expect(screen.getByTestId('handoff-hint')).toBeTruthy();
   });
 });
 

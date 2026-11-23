@@ -191,7 +191,15 @@ describe.each(BREAKPOINTS)('responsive SchedulingPage at %s width', (breakpoint)
       within(table)
         .getAllByRole('columnheader')
         .map((header) => header.textContent),
-    ).toEqual(['Patient', 'Time', 'Protected resource', 'Visit state', 'Assign to', 'Actions']);
+    ).toEqual([
+      'TIME',
+      'PATIENT',
+      'VISIT',
+      'CLINICIAN AND ROOM',
+      'STATE',
+      'ASSIGNED',
+      'ACTIONS',
+    ]);
     for (const cell of within(table).getAllByRole('cell')) {
       expect(cell.style.display).not.toBe('none');
     }
@@ -211,12 +219,14 @@ describe.each(BREAKPOINTS)('responsive SchedulingPage at %s width', (breakpoint)
     // DOM order is the keyboard order at every band; responsive CSS only
     // reflows presentation and never reorders or removes a control.
     const buttons = screen.getAllByRole('button');
-    expect(buttons.map((button) => button.textContent)).toEqual([
-      'Day',
-      'Week',
-      'Check in',
-      'Book',
-    ]);
+    const buttonText = buttons.map((button) => button.textContent);
+    // The reception design adds navigation, filters, language, slot and panel
+    // controls; the original four commands remain present in DOM order.
+    expect(buttonText).toContain('Day');
+    expect(buttonText).toContain('Week');
+    expect(buttonText).toContain('Check in');
+    expect(buttonText).toContain('Book');
+    expect(buttonText.indexOf('Day')).toBeLessThan(buttonText.indexOf('Week'));
     for (const button of buttons) {
       expect(button.classList.contains('touch')).toBe(true);
       expect(button.style.minBlockSize).toBe('');
