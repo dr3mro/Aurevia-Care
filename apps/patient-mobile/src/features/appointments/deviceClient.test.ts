@@ -161,7 +161,10 @@ describe('createDeviceWriteClient adapter', () => {
         }),
       ).toThrow(/HTTPS/);
     } finally {
-      (globalThis as { __DEV__?: boolean }).__DEV__ = previous;
+      // `previous` was read from an optional flag, so it may be undefined;
+      // restore it through a type that admits that value under strict
+      // optional-property typing rather than widening production types.
+      (globalThis as { __DEV__?: boolean | undefined }).__DEV__ = previous;
     }
   });
 

@@ -73,9 +73,13 @@ describe('AppointmentDetail presentation', () => {
   });
 
   it('falls back to the status when no facility line was supplied', async () => {
+    // The property must be absent rather than present with `undefined`: the
+    // display row declares an optional string, so omitting the key is the only
+    // way to exercise the fallback under strict optional-property typing.
+    const { facilityLine: _omitted, ...withoutFacility } = row;
     const view = await render(
       <AppointmentDetail
-        appointment={{ ...row, facilityLine: undefined }}
+        appointment={withoutFacility}
         locale="en"
         backLabel="Back"
         onBack={() => undefined}
