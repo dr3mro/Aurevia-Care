@@ -119,4 +119,3 @@ No new or changed production line/branch/method/class was introduced by this rep
 | Tenant/participant keys and RLS | `cursorIsIsolatedByTenantAndParticipant`, `markReadDenialsDoNotMoveTheCursor` |
 
 No suppression, exclusion, `@Disabled`/`.skip`, pragma or threshold change was added; the full `mvn verify` remains the integrator's gate.
-

@@ -254,4 +254,3 @@ needed one re-check each because they read a stale notes snapshot before `## Tes
   the active tenant; set both `app.current_org` and `app.actor` in the fixture before the insert.
 - `verifyNoInteractions(mock)` fails if an earlier successful call in the same test already used that
   mock; assert an exact invocation count after the denied call instead.
-
