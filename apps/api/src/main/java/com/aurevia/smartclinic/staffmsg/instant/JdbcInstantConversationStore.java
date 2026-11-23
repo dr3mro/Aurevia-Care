@@ -7,8 +7,8 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -31,9 +31,11 @@ import com.aurevia.smartclinic.staffmsg.model.StaffMessagingContract.StaffPartic
  * the database triggers for the creator, sender and gap-free sequence. The
  * immutable message ledger is only ever inserted and selected here.</p>
  *
- * <p>Read cursors are a process-local projection because V91 has no durable
- * read-state column and no migration is in this story's scope. They are never
- * used as a clinical record; see the story notes for the follow-up task.</p>
+ * <p>V96 adds the durable read-cursor table. A cursor is tenant-scoped by forced
+ * row-level security, keyed by conversation and participant, raised only by a
+ * monotonic upsert and clamped to the last sequence appended to the immutable
+ * ledger so it can never hide a future message. It is per-person read state,
+ * not a clinical record.</p>
  */
 @Repository
 public class JdbcInstantConversationStore implements InstantConversationStore {
@@ -46,7 +48,6 @@ public class JdbcInstantConversationStore implements InstantConversationStore {
 
     private final NamedParameterJdbcTemplate jdbc;
     private final TransactionTemplate transactions;
-    private final ConcurrentHashMap<String, Long> readCursors = new ConcurrentHashMap<>();
 
     /**
      * Create the store with the shared JDBC and transaction templates.
@@ -252,16 +253,44 @@ public class JdbcInstantConversationStore implements InstantConversationStore {
 
     @Override
     public void markRead(String organizationId, String conversationId, String subject, long upToSequence) {
-        readCursors.merge(cursorKey(organizationId, conversationId, subject), upToSequence, Math::max);
+        // One upsert keeps the cursor durable and monotonic without a Java
+        // compare-and-set: the conflict target serializes concurrent readers and
+        // GREATEST ignores a stale acknowledgement. The inserted value is bounded
+        // by the last message appended under the same tenant and conversation, so
+        // an over-large acknowledgement cannot swallow a future message.
+        transactions.executeWithoutResult(status -> jdbc.update("""
+                INSERT INTO public.staff_message_read_cursor
+                    (organization_id, conversation_id, participant_subject, last_read_sequence)
+                VALUES (CAST(:organizationId AS uuid), CAST(:conversationId AS uuid), :subject,
+                        LEAST(:upToSequence, (SELECT COALESCE(MAX(m.sequence), 0)
+                                                FROM public.staff_message m
+                                               WHERE m.organization_id = CAST(:organizationId AS uuid)
+                                                 AND m.conversation_id = CAST(:conversationId AS uuid))))
+                ON CONFLICT (organization_id, conversation_id, participant_subject) DO UPDATE
+                    SET last_read_sequence = GREATEST(excluded.last_read_sequence,
+                                                      public.staff_message_read_cursor.last_read_sequence),
+                        updated_at = clock_timestamp()
+                  WHERE excluded.last_read_sequence > public.staff_message_read_cursor.last_read_sequence
+                """, new MapSqlParameterSource().addValue("organizationId", organizationId)
+                        .addValue("conversationId", conversationId)
+                        .addValue("subject", subject)
+                        .addValue("upToSequence", upToSequence)));
     }
 
     @Override
     public long readSequence(String organizationId, String conversationId, String subject) {
-        return readCursors.getOrDefault(cursorKey(organizationId, conversationId, subject), 0L);
-    }
-
-    private static String cursorKey(String organizationId, String conversationId, String subject) {
-        return organizationId + "|" + conversationId + "|" + subject;
+        // COALESCE guarantees one row even before the first acknowledgement, so
+        // an unread participant reads zero instead of an empty-result exception.
+        return transactions.execute(status -> Objects.requireNonNull(jdbc.queryForObject("""
+                SELECT COALESCE(MAX(last_read_sequence), 0)
+                  FROM public.staff_message_read_cursor
+                 WHERE organization_id = CAST(:organizationId AS uuid)
+                   AND conversation_id = CAST(:conversationId AS uuid)
+                   AND participant_subject = :subject
+                """, new MapSqlParameterSource().addValue("organizationId", organizationId)
+                        .addValue("conversationId", conversationId)
+                        .addValue("subject", subject), Long.class),
+                "the cursor aggregate always returns one row"));
     }
 
     private static StaffConversation mapConversation(ResultSet resultSet, int rowNumber) throws SQLException {

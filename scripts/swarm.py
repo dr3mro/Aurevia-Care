@@ -579,10 +579,8 @@ def run_event(run_id):
         proposed = "Check that the required secrets/permissions are configured for this workflow (token, OIDC env, NVD key)."
     elif kind == "quota":
         proposed = "Wait for the quota to reset or reduce concurrency; no code change needed."
-    elif kind == "unknown":
-        proposed = "Inspect the failed step and log above; fix the underlying code or test, then re-run."
     else:
-        proposed = "Investigate the failing job/step and apply the smallest fix; re-run the workflow."
+        proposed = "Inspect the failed step and log above; fix the underlying code or test, then re-run."
     body = (f"**Workflow:** {name} · **Event:** {info.get('event')} · **Branch:** {info.get('headBranch')} "
             f"· **Commit:** {str(info.get('headSha'))[:7]}\n**Run:** {info.get('url')}\n"
             f"**Failed:** {where}\n**Class:** {kind}"

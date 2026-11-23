@@ -1,5 +1,6 @@
 package com.aurevia.smartclinic.staffmsg.directory;
 
+import java.util.Objects;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
@@ -61,6 +62,25 @@ public class StaffDirectoryService {
     public Optional<Facility> findFacility(String facilityCode) {
         requireContext();
         return transactions.execute(status -> facilities.findByCode(facilityCode));
+    }
+
+    /**
+     * Resolve a facility by the tenant-local identifier carried on a mail draft.
+     *
+     * <p>The browse API selects facilities by code, but stored drafts carry the
+     * facility row id. This lookup uses the same forced-RLS repository and the same
+     * context guard as {@link com.aurevia.smartclinic.staffmsg.directory.StaffDirectoryService#findFacility(String)}:
+     * an id outside the active organization is invisible and fails closed.</p>
+     *
+     * @param facilityId tenant-local facility identifier, possibly null or unknown
+     * @return the facility when visible, otherwise empty so callers fail closed
+     */
+    public Optional<Facility> findFacilityById(String facilityId) {
+        requireContext();
+        return transactions.execute(status -> facilities.query(null, null, Integer.MAX_VALUE).stream()
+                .filter(row -> Objects.equals(row.id(), facilityId))
+                .map(FacilityRow::facility)
+                .findFirst());
     }
 
     /**
