@@ -209,7 +209,7 @@ class TuiCase(unittest.TestCase):
     def payload(self, **overrides):
         base = {"repo": "o/r", "issues": [], "prs": [], "merged": [], "closed": [],
                 "total": "123", "archive": "", "todo": "", "commits": [],
-                "jobs": {}, "churn": {}, "runs": [], "runs_more": []}
+                "jobs": {}, "churn": {}, "runs": [], "runs_live": [], "runs_more": []}
         base.update(overrides)
         return base
 
@@ -547,7 +547,7 @@ class DrawTests(TuiCase):
         partial = {k: v for k, v in self.payload().items()
                    if k not in ("issues", "prs", "merged")}
         self.run_tui([(lambda: self.arrive(partial, complete=False), -1), (None, ord("q"))])
-        self.assertIn("loading 10/13...", self.screen.text())
+        self.assertIn("loading 11/14...", self.screen.text())
 
         self.run_tui([(lambda: self.arrive(self.payload(), complete=False), -1), (None, ord("q"))])
         self.assertIn("refreshing...", self.screen.text())
