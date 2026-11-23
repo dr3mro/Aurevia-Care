@@ -1,0 +1,5 @@
+- [-] OPS-WIRING-REFRESH · Prune resolved wiring exemptions in the trusted integrator before verification.
+  - agent: Codex
+  - requirements: OPS-06
+  - scope: scripts/swarm.py, scripts/tests/test_swarm.py, docs/SWARM.md
+  - details: Reject candidate-owned baseline edits and new findings. Amend only the baseline in the merge commit before normal or repair verification. Preserve merge ancestry and rollback.

@@ -1706,6 +1706,60 @@ class IntegrationTests(unittest.TestCase):
 
 
 class WorkflowTests(unittest.TestCase):
+    def test_worker_preflight_installs_dev_tools_and_stops_on_failure(self):
+        import yaml
+
+        workflow = yaml.safe_load((ROOT / ".github/workflows/swarm-worker.yml").read_text())
+        preflight = next(
+            step["run"] for step in workflow["jobs"]["work"]["steps"]
+            if step.get("name", "").startswith("Preflight checks")
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for module in ("staff-web", "patient-mobile"):
+                (root / "apps" / module).mkdir(parents=True)
+            bin_dir = root / "bin"
+            bin_dir.mkdir()
+            commands = {
+                "python3": '#!/bin/bash\n[[ "$FAIL_AT" != wiring ]]\n',
+                "npm": """#!/bin/bash
+echo "${PWD##*/} $*" >> "$CALLS"
+case "$*" in
+  'ci --include=dev --no-audit --no-fund')
+    [[ "$FAIL_AT" != install ]] && touch .compiler
+    ;;
+  'run typecheck')
+    [[ -f .compiler && "$FAIL_AT" != typecheck ]] || exit 127
+    ;;
+  *) exit 2 ;;
+esac
+""",
+            }
+            for name, content in commands.items():
+                command = bin_dir / name
+                command.write_text(content)
+                command.chmod(0o755)
+
+            install = "ci --include=dev --no-audit --no-fund"
+            calls = root / "calls"
+            for failure, expected in (
+                ("wiring", []),
+                ("install", [f"staff-web {install}"]),
+                ("typecheck", [f"staff-web {install}", "staff-web run typecheck"]),
+                ("", [f"staff-web {install}", "staff-web run typecheck",
+                      f"patient-mobile {install}", "patient-mobile run typecheck"]),
+            ):
+                with self.subTest(failure=failure):
+                    calls.write_text("")
+                    result = subprocess.run(
+                        ["bash", "-e", "-c", preflight], cwd=root,
+                        env={**os.environ, "PATH": f"{bin_dir}:{os.defpath}",
+                             "CALLS": str(calls), "FAIL_AT": failure, "NODE_ENV": "production"},
+                        capture_output=True, text=True, check=False,
+                    )
+                    self.assertEqual(result.returncode == 0, not failure, result.stderr)
+                    self.assertEqual(calls.read_text().splitlines(), expected)
+
     def test_workflows_only_call_real_subcommands(self):
         import re
         calls = set()
@@ -2937,6 +2991,71 @@ class TwoTierTests(unittest.TestCase):
         env = run.call_args.kwargs["env"]
         self.assertNotIn("GH_TOKEN", env)
         self.assertNotIn("GITHUB_TOKEN", env)
+
+    def test_integrator_prunes_wiring_before_gating_the_merge_commit(self):
+        wiring = load("check-wiring")
+        original = Path.cwd()
+        for case in ("stale", "current", "forged", "new finding", "gate failure", "moved head"):
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as directory:
+                os.chdir(directory)
+                try:
+                    swarm.git("init", "-qb", "main")
+                    baseline = Path(wiring.BASELINE)
+                    baseline.parent.mkdir()
+                    source = Path(wiring.MAIN) / "GrandfatheredService.java"
+                    source.parent.mkdir(parents=True)
+                    source.write_text("class GrandfatheredService {}")
+                    baseline.write_text(json.dumps({"unreferenced-service": [str(source)]}))
+                    swarm.git("add", ".")
+                    swarm.git(*swarm.IDENTITY, "commit", "-qm", "trusted base")
+                    base = swarm.git("rev-parse", "HEAD").strip()
+
+                    swarm.git("checkout", "-qb", "candidate")
+                    Path("feature.txt").write_text("candidate")
+                    if case in ("stale", "gate failure"):
+                        source.unlink()
+                    if case == "forged":
+                        baseline.write_text(json.dumps({"unreferenced-service": [str(source), "forged.java"]}))
+                    if case == "new finding":
+                        source.with_name("NewService.java").write_text("class NewService {}")
+                    swarm.git("add", "-A")
+                    swarm.git(*swarm.IDENTITY, "commit", "-qm", "candidate")
+                    head = swarm.git("rev-parse", "HEAD").strip()
+                    swarm.git("checkout", "-q", "main")
+
+                    def merge(_):
+                        swarm.git(*swarm.IDENTITY, "merge", "--no-ff", "-qm", "merge", "candidate")
+                        return base if case == "moved head" else head, "CW-001", []
+
+                    def gate(*_):
+                        parents = swarm.git("show", "-s", "--format=%P", "HEAD").split()
+                        self.assertEqual(parents, [base, head])
+                        entries = json.loads(swarm.git("show", f"HEAD:{baseline}"))
+                        expected = [str(source)] if case == "current" else []
+                        self.assertEqual(entries["unreferenced-service"], expected)
+                        return case != "gate failure", "gate result"
+
+                    with mock.patch.object(swarm, "gh_json", return_value={"headRefOid": head}), \
+                         mock.patch.object(swarm, "guard", return_value=[]), \
+                         mock.patch.object(swarm, "is_repair", return_value=False), \
+                         mock.patch.object(swarm, "merge_local", side_effect=merge), \
+                         mock.patch.object(swarm, "gate_for", return_value=("gate", {})), \
+                         mock.patch.object(swarm, "run_gate", side_effect=gate) as verify, \
+                         mock.patch.object(swarm, "record_merges", return_value=([], [], [])), \
+                         mock.patch.object(swarm, "todo_paths", return_value=[str(baseline)]), \
+                         mock.patch.object(swarm, "emit"), mock.patch.object(swarm, "authed_git"), \
+                         mock.patch.object(swarm, "dispatch_delivery"), \
+                         mock.patch.object(swarm, "close_merged_issues"), \
+                         mock.patch.object(swarm, "fail") as fail:
+                        swarm.main(["integrate-batch", "--queue", "[1]"])
+                    blocked_before_gate = case in ("forged", "new finding", "moved head")
+                    rejected = blocked_before_gate or case == "gate failure"
+                    self.assertEqual(fail.call_count, int(rejected))
+                    self.assertEqual(verify.call_count, int(not blocked_before_gate))
+                    self.assertEqual(swarm.git("rev-parse", "HEAD").strip() == base, rejected)
+                    self.assertEqual(swarm.git("status", "--porcelain"), "")
+                finally:
+                    os.chdir(original)
 
     def test_integrate_batch_pushes_once(self):
         self.repo = Path(tempfile.mkdtemp())

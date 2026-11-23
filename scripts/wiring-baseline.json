@@ -1,36 +1,17 @@
 {
   "controller-builds": [
     "apps/api/src/main/java/com/aurevia/smartclinic/messaging/appointments/PatientAppointmentController.java",
-    "apps/api/src/main/java/com/aurevia/smartclinic/messaging/attachments/AttachmentController.java",
-    "apps/api/src/main/java/com/aurevia/smartclinic/messaging/reports/ReleasedReportController.java",
-    "apps/api/src/main/java/com/aurevia/smartclinic/radiology/ImagingController.java",
-    "apps/api/src/main/java/com/aurevia/smartclinic/therapy/TherapyController.java"
+    "apps/api/src/main/java/com/aurevia/smartclinic/radiology/ImagingController.java"
   ],
   "fb-suppression": [
-    "apps/api/src/main/java/com/aurevia/smartclinic/messaging/evidence/G3EvidenceService.java",
     "apps/api/src/main/java/com/aurevia/smartclinic/web/TenantContextInterceptor.java"
   ],
   "inmemory-in-main": [
     "apps/api/src/main/java/com/aurevia/smartclinic/api/authorization/InMemoryDecisionSink.java",
     "apps/api/src/main/java/com/aurevia/smartclinic/clinical/templates/InMemoryTemplateStore.java",
-    "apps/api/src/main/java/com/aurevia/smartclinic/documents/InMemoryDocumentStore.java",
-    "apps/api/src/main/java/com/aurevia/smartclinic/messaging/acknowledgment/InMemoryInstructionFactStore.java",
-    "apps/api/src/main/java/com/aurevia/smartclinic/messaging/attachments/InMemoryAttachmentStore.java",
-    "apps/api/src/main/java/com/aurevia/smartclinic/messaging/enrollment/InMemoryPatientAccessStore.java",
-    "apps/api/src/main/java/com/aurevia/smartclinic/messaging/flows/InMemoryFlowPolicyStore.java",
-    "apps/api/src/main/java/com/aurevia/smartclinic/messaging/governance/InMemoryMessagingGovernanceStore.java",
-    "apps/api/src/main/java/com/aurevia/smartclinic/messaging/reports/InMemoryReportReleaseStore.java",
-    "apps/api/src/main/java/com/aurevia/smartclinic/messaging/service/InMemoryServiceProfileStore.java",
-    "apps/api/src/main/java/com/aurevia/smartclinic/therapy/InMemoryTherapyStore.java"
+    "apps/api/src/main/java/com/aurevia/smartclinic/messaging/enrollment/InMemoryPatientAccessStore.java"
   ],
   "requirement-id-name": [
-    "apps/api/src/main/java/com/aurevia/smartclinic/exchange/response/Xch03ActionPolicy.java",
-    "apps/api/src/main/java/com/aurevia/smartclinic/exchange/response/Xch03Commands.java",
-    "apps/api/src/main/java/com/aurevia/smartclinic/exchange/response/Xch03Controller.java",
-    "apps/api/src/main/java/com/aurevia/smartclinic/exchange/response/Xch03Inputs.java",
-    "apps/api/src/main/java/com/aurevia/smartclinic/exchange/response/Xch03Repository.java",
-    "apps/api/src/main/java/com/aurevia/smartclinic/exchange/response/Xch03Service.java",
-    "apps/api/src/main/java/com/aurevia/smartclinic/messaging/evidence/G3EvidenceService.java",
     "db/migrations/V21__xch03_order_response.sql:xch03_event",
     "db/migrations/V21__xch03_order_response.sql:xch03_notification",
     "db/migrations/V21__xch03_order_response.sql:xch03_order",
@@ -46,29 +27,11 @@
     "db/migrations/V44__rx02_prescription_transmission.sql:rx02_submission"
   ],
   "store-without-durable": [
-    "apps/api/src/main/java/com/aurevia/smartclinic/clinical/templates/TemplateStore.java",
-    "apps/api/src/main/java/com/aurevia/smartclinic/documents/DocumentStore.java",
-    "apps/api/src/main/java/com/aurevia/smartclinic/messaging/acknowledgment/InstructionFactStore.java",
     "apps/api/src/main/java/com/aurevia/smartclinic/messaging/appointments/DeviceTokenStore.java",
     "apps/api/src/main/java/com/aurevia/smartclinic/messaging/appointments/PatientAppointmentStore.java",
-    "apps/api/src/main/java/com/aurevia/smartclinic/messaging/attachments/AttachmentStore.java",
-    "apps/api/src/main/java/com/aurevia/smartclinic/messaging/enrollment/PatientAccessStore.java",
-    "apps/api/src/main/java/com/aurevia/smartclinic/messaging/flows/FlowPolicyStore.java",
-    "apps/api/src/main/java/com/aurevia/smartclinic/messaging/governance/MessagingGovernanceStore.java",
-    "apps/api/src/main/java/com/aurevia/smartclinic/messaging/instructions/InstructionStore.java",
-    "apps/api/src/main/java/com/aurevia/smartclinic/messaging/service/ServiceProfileStore.java",
-    "apps/api/src/main/java/com/aurevia/smartclinic/scheduling/followup/FollowUpStore.java",
-    "apps/api/src/main/java/com/aurevia/smartclinic/therapy/TherapyStore.java"
+    "apps/api/src/main/java/com/aurevia/smartclinic/messaging/instructions/InstructionStore.java"
   ],
   "unreferenced-service": [
-    "apps/api/src/main/java/com/aurevia/smartclinic/catalog/dictionary/ClinicalDictionaryService.java",
-    "apps/api/src/main/java/com/aurevia/smartclinic/catalog/dictionary/DiagnosisCatalogService.java",
-    "apps/api/src/main/java/com/aurevia/smartclinic/clinical/templates/TemplateService.java",
-    "apps/api/src/main/java/com/aurevia/smartclinic/documents/PdfBindingService.java",
-    "apps/api/src/main/java/com/aurevia/smartclinic/documents/QuarantineService.java",
-    "apps/api/src/main/java/com/aurevia/smartclinic/lab/result/LabResultService.java",
-    "apps/api/src/main/java/com/aurevia/smartclinic/messaging/enrollment/PatientAccessService.java",
-    "apps/api/src/main/java/com/aurevia/smartclinic/messaging/flows/PatientFlowPresentationService.java",
-    "apps/api/src/main/java/com/aurevia/smartclinic/scheduling/followup/FollowUpService.java"
+    "apps/api/src/main/java/com/aurevia/smartclinic/clinical/templates/TemplateService.java"
   ]
 }

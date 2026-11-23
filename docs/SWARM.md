@@ -21,6 +21,14 @@ Up to 20 OpenCode workers run in parallel on GitHub-hosted runners. An orchestra
 
 **Repair gate.** While main is red the full gate fails every pull request on classes other repair tasks still have to fix, so repairs (`FIX-` and `DLV-` PRs) merge through `scripts/repair-gate.sh` instead: the quick gate, the PostgreSQL integration tier judged by `scripts/worker_gate.py` on the classes the task names (PostgreSQL is mandatory there), `db/check.sh` and the developer reference. OWASP, SpotBugs and JaCoCo run in Delivery right after the merge; a red result becomes the next repair task. Ordinary PRs keep the full gate.
 
+**Worker preflight.** Before launching the first implementation segment, the work job checks Java wiring, installs each present frontend app from its lockfile with development dependencies, and runs its typecheck. Any failure stops the job at preflight.
+
+Maintainers can refresh the wiring baseline from a stable checkout by running
+`python3 -I scripts/check-wiring.py && python3 -I scripts/check-wiring.py --write-baseline`.
+The first command rejects new wiring violations before the second rewrites the
+file. Review the diff for removals, then verify with
+`python3 -I scripts/check-wiring.py --fail-on-stale`.
+
 **Two-tier checks.** The worker runs `scripts/worker-check.sh` (the quick gate plus the PostgreSQL integration suites and `db/check.sh`; the agent image carries PostgreSQL 17 and `start-postgres` starts it; `scripts/worker_gate.py` only fails an ordinary task on integration suites related to its change, so red suites already on `main` do not turn every PR into a draft, while `FIX-` and `DLV-` repair tasks are strict) for fast feedback, and the trusted integrator runs the full `scripts/integrator-gate.sh` (`scripts/check.sh` plus the developer reference) on each ordinary PR's merge result with a PostgreSQL service and cached NVD data, so SpotBugs, OWASP, JaCoCo and DB policy failures cannot reach `main`. Repairs use `scripts/repair-gate.sh` at merge time and Delivery runs OWASP, SpotBugs and JaCoCo on `main` right after the push (see **Repair gate** above). Delivery re-verifies the merged commit on main. The expensive checks run once per batch, not once per worker.
 
 **Batching.** The integrator sets up Java/Maven once, merges every ready PR in one job, pushes once, and Delivery verifies the pushed commit on main. Each worker has its own publish job, so a PR opens as soon as its worker ends; the worker keeps no GitHub token and only the trusted publish job holds one.
