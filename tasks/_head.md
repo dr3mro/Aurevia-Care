@@ -8,6 +8,8 @@ The single task file. Every agent, the swarm orchestrator and the integrator rea
 | `[-]` | Taken. An agent is working it (`agent:` names who). |
 | `[x]` | Done. Evidence and the PR or commit are on the entry. |
 
+Acceptance criteria ask "did we build this thing?"; the Definition of Done asks "is it ready?". A task needs both. A merged pull request alone is not done: it also needs the gate evidence and the tracker entry. The standing bar is in `AGENTS.md` and `CONSTRAINTS.md`; branching and merge bookkeeping follow `docs/reference/git-workflow.md`.
+
 Rules for agents:
 - Pick the first open task whose `depends` are all done. Change `[ ]` to `[-]` and add `- agent: <your name>` before you start. Keep WIP one per agent.
 - When the task passes every gate, change it to `[x]`, add `- evidence:` (commands, CI run, SHA) and `- pr:` in the same change. Never mark `[x]` without evidence.

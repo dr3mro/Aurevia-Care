@@ -5,6 +5,14 @@ Start with [Maintainer guide](maintainer.md). The class, package, file, and sear
 - [Staff web TypeScript reference](staff-web/index.html)
 - [Patient mobile TypeScript reference](patient-mobile/index.html)
 
+## On-demand checklists
+
+- [Git workflow and conflict policy](git-workflow.md) — branch discipline, refresh before the final gate, conflict resolution and merge bookkeeping.
+- [Deprecation and removal checklist](deprecation-checklist.md) — remove a route, flag, field or module without leaving stale consumers.
+- [Runtime UI verification](browser-verification.md) — what to observe in a browser, or assert deterministically when none is available.
+- [Observability checklist](observability-checklist.md) — the signals a new critical path must emit, and the on-call questions they answer.
+- [Performance checklist](performance-checklist.md) — web Core Web Vitals targets, bundle budget and backend query expectations.
+
 ## Design and decisions
 
 - [Responsive layout patterns](../design/responsive-layout.md) — the staff-web layout contract from 320 px upward: breakpoints, navigation, tables, touch targets, right-to-left and its verification matrix.

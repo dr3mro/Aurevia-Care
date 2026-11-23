@@ -64,6 +64,9 @@ These failures are environmental in a cloud worker, not defects of the change. C
 
 ## Engineering quality bar
 
+`CONSTRAINTS.md` is the written, machine-checked form of this bar. Do not lower a
+number there or in a gate to make a change pass; fix the code and add the test.
+
 Every change must meet all of the following before it is called done:
 
 - **Notes go only to the file your prompt names**, `.agent/pr-notes/<task-id>-<timestamp>.md` (a fix pass: `<task-id>-fix-<timestamp>.md`; the path in your prompt wins over any older `<task-id>.md` wording in a task), one new file per run. Never create, edit or commit the shared `.agent/pr-notes.md` or any other file directly under `.agent/`: parallel workers overwrite it and every pull request then conflicts.
