@@ -252,6 +252,32 @@ describe('NotePage save and conflict', () => {
     expect(descriptorAt(putIndex).method).toBe('PUT');
   });
 
+  it('keeps the conflict recovery surface inside the note card and keeps typed text', async () => {
+    await loadedEditor();
+    const field = screen.getByRole<HTMLTextAreaElement>('textbox', {
+      name: chartText('en', 'subjective'),
+    });
+    fireEvent.change(field, { target: { value: 'kept through conflict' } });
+    sendMock.mockRejectedValueOnce(transportFailure('conflict'));
+    fireEvent.click(screen.getByRole('button', { name: chartText('en', 'saveDraft') }));
+    const noteCard = await screen.findByRole('region', { name: chartText('en', 'clinicalNote') });
+    expect(
+      within(noteCard).getByRole('heading', { name: stateViewText('en', 'conflict') }),
+    ).toBeTruthy();
+    expect(field.value).toBe('kept through conflict');
+    for (const key of ['compare', 'reload', 'copyMyChanges'] as const) {
+      expect(
+        within(noteCard).getByRole('button', { name: stateViewText('en', key) }),
+      ).toBeTruthy();
+    }
+  });
+
+  it('shows the sign help text for an editable wire-backed draft', async () => {
+    await loadedEditor();
+    expect(screen.getByText(chartText('en', 'signHelp'))).toBeTruthy();
+    expect(screen.queryByText(chartText('en', 'planError'))).toBeNull();
+  });
+
   it('treats a 428 precondition failure as a conflict', async () => {
     await loadedEditor();
     fireEvent.change(screen.getByRole('textbox', { name: chartText('en', 'assessment') }), {

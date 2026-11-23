@@ -83,6 +83,8 @@ export interface NoteRevision {
   enteredInError?: EnteredInError;
   /** Set when a later amendment has superseded this signed revision. */
   supersededBy?: string;
+  /** UTC instant of the last draft save, shown in the note card header. */
+  savedAt?: string | undefined;
 }
 
 /** Supported synthetic document formats (CLN-07). */
@@ -128,6 +130,68 @@ export interface Chart {
   vitals: readonly Vital[];
   revisions: readonly NoteRevision[];
   documents: readonly DocumentAssociation[];
+  /** Synthetic-only demographics; absent on API-backed charts. */
+  patientSummary?: PatientSummary | undefined;
+  /** Synthetic-only recent results; absent on API-backed charts. */
+  recentResults?: readonly RecentResult[] | undefined;
+  /** Synthetic-only follow-up suggestion; absent on API-backed charts. */
+  followUp?: FollowUpSuggestion | undefined;
+}
+
+/**
+ * Synthetic banner demographics for the chart preview. These values are never
+ * present on `PatientViewResponse`; nothing here is inferred from the wire.
+ */
+export interface PatientSummary {
+  /** Patient name in Latin and optional local script. */
+  name: PersonName;
+  /** Display-ready age with its unit, for example `63 y`. */
+  age: string;
+  /** Display-ready administrative sex. */
+  sex: string;
+  /** Civil date of birth, formatted only at the point of display. */
+  dateOfBirth: string;
+  /** Issuer-scoped medical record number. */
+  mrn: string;
+  /** Organization that issued the MRN. */
+  mrnIssuer: string;
+  /** Locale used by the language chip. */
+  language: DocumentLanguage;
+  /** Active allergy with a reaction; absent means there is no chip to show. */
+  allergy?:
+    | {
+        display: string;
+        reaction: string;
+        verification: ChartVerification;
+      }
+    | undefined;
+  /** Count of outstanding results shown in the review chip. */
+  resultsToReview: number;
+}
+
+/** A synthetic laboratory observation with its source units and flag. */
+export interface RecentResult {
+  organizationId: string;
+  id: string;
+  test: string;
+  value: number;
+  unit: string;
+  referenceLow: number;
+  referenceHigh: number;
+  /** Civil date on which the observation was issued. */
+  observedOn: string;
+  /** Coded flag; the UI always shows a word as well as a boundary. */
+  flag: 'high' | 'normal';
+}
+
+/** A synthetic follow-up suggestion whose rule is explained before booking. */
+export interface FollowUpSuggestion {
+  organizationId: string;
+  id: string;
+  /** Suggested civil date of the follow-up visit. */
+  suggestedOn: string;
+  /** Human-readable configuration rule that produced the suggestion. */
+  rule: string;
 }
 
 /** Command that signs a draft after checking context, fields and attestation. */
