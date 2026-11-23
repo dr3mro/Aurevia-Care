@@ -578,7 +578,7 @@ def run_event(run_id):
             f"· **Commit:** {str(info.get('headSha'))[:7]}\n**Run:** {info.get('url')}\n"
             f"**Failed:** {where}\n**Class:** {kind}"
             + (" (a person must fix this: a token, permission or limit)" if kind != "unknown" else "")
-            + f"\n\n```text\n{clean(log)}\n```")
+            + f"\n\n```text\n{clean(log, limit=60000, lines=2000)}\n```")
     number = record_issue("ci", [name, *[f"{j}::{s}" for j, s in failed], f"error::{first_error(log)}"],
                           f"{name} failed: {where}"[:200], body,
                           # Not agent-fixable: a red main already becomes a repair task, and the
