@@ -357,6 +357,11 @@ $(tail -n 40 "$out/quality.log")" "$out/quality-fix-${attempt}.log" > /dev/null
     # result and Delivery runs OWASP, SpotBugs, coverage and PostgreSQL on every
     # pull request and on main, so the agent never pays for the expensive checks.
     gate=${CHECK_SCRIPT:-scripts/check.sh}
+    # Sync with main BEFORE checking: a worker that finishes in this segment
+    # would otherwise check a stale base and get handed failures already fixed
+    # on main (for example test fixtures that main repaired while this branch
+    # was working). cmd_merge_main is a no-op when the branch is current.
+    SYNC_ONLY=1 cmd_merge_main || true
     if bash "$gate" > "$out/check.log" 2>&1; then checks=passed; else checks=failed; fi
     # A coverage or typecheck miss that survived repair keeps the pull request a draft.
     if grep -q 'still failing after two repair' "$out/coverage.log" 2>/dev/null; then
