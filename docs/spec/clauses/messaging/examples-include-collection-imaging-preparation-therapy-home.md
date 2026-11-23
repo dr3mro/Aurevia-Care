@@ -19,8 +19,8 @@ Fast, database-free unit proof (synthetic fixtures only):
   `PHARMACY_PICKUP`) through `InstructionService.send`. Each returned `Revision` keeps its `kind()` and is
   `SENT`, and `listForPatient` returns exactly those five kinds.
 - `refusesAnUnsupportedExampleInstructionKind` — negative proof. `Kind.from("unsupported_example")` throws,
-  and each named kind's stable wire key round-trips through `Kind.from`, so the example set is a closed typed
-  vocabulary rather than arbitrary free text.
+  and each named kind's stable wire key round-trips through `Kind.from`, so the five named examples are members
+  of a bounded, typed `Kind` enum and arbitrary wire strings are refused rather than accepted as free text.
 
 Production classes exercised:
 
