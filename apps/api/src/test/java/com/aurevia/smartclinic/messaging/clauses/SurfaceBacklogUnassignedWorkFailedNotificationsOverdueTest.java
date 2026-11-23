@@ -131,7 +131,37 @@ class SurfaceBacklogUnassignedWorkFailedNotificationsOverdueTest {
              Statement statement = connection.createStatement()) {
             seedOwningTenant(statement);
             seedOtherTenant(statement);
+            // The publish endpoint only accepts site-approved channel codes. Seed the
+            // owning tenant's fold so the positive snapshot proof can publish a profile;
+            // the values match this class's publishBody literals. ORG_B stays unseeded so
+            // the cross-tenant concealment assertion keeps its premise.
+            seedApprovedChannelPolicy(statement, ORG_A, "msg06.approved_urgent_channels", "urgent");
+            seedApprovedChannelPolicy(statement, ORG_A, "msg06.approved_downtime_channels", "downtime");
         }
+    }
+
+    /**
+     * Seed one site-approved channel policy through the versioned config fold.
+     *
+     * <p>Approval is what makes a config entry visible to
+     * {@code public.effective_config}, which the publish path reads to decide
+     * whether a supplied channel code is approved for the tenant.</p>
+     *
+     * @param statement the seed statement
+     * @param org       owning tenant identifier
+     * @param key       tenant-local approved-channel policy key
+     * @param value     synthetic approved channel code
+     * @throws Exception when a seed statement fails
+     */
+    private static void seedApprovedChannelPolicy(Statement statement, String org, String key,
+                                                  String value) throws Exception {
+        statement.execute("SET app.current_org = '" + org + "'");
+        statement.execute("SET app.actor = '" + APPROVER + "'");
+        statement.execute("INSERT INTO public.config_entry (organization_id, key, version, value) VALUES ('"
+                + org + "', '" + key + "', public.next_config_version('" + key + "'), '" + value + "')");
+        statement.execute("INSERT INTO public.config_approval (organization_id, entry_id, note) "
+                + "SELECT '" + org + "', id, 'synthetic approval' FROM public.config_entry "
+                + "WHERE key = '" + key + "' AND version = 1");
     }
 
     /** Drop the scratch database so the class can be run repeatedly.
