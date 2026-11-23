@@ -41,6 +41,61 @@ export interface BookingRequest {
   scheduledAt: string;
 }
 
+/** A synthetic facility that supplies a display name and an IANA time zone. */
+export interface ReceptionFacility {
+  code: string;
+  name: string;
+  timeZone: string;
+}
+
+/** Identity context shown by the check-in panel; keyed by tenant and local id. */
+export interface PatientIdentity {
+  /** Tenant-local medical record number; never an opaque cross-tenant id. */
+  mrn: string;
+  ageYears: number;
+  /** Civil `YYYY-MM-DD` displayed through the shared date formatter. */
+  dateOfBirth: string;
+  language: 'en' | 'ar';
+  identifier: string;
+  issuer: string;
+  verified: boolean;
+  /** Synthetic self-pay balance in a single currency unit. */
+  selfPayBalance: number;
+  clinician: string;
+  room: string;
+}
+
+/** A single nearest-free-slot choice in the booking-check panel. */
+export interface FreeSlot {
+  label: string;
+  resourceId: string;
+  scheduledAt: string;
+}
+
+/** A protected slot another user just took, with nearby alternatives. */
+export interface StaleSlot {
+  label: string;
+  takenBy: string;
+  freeSlots: readonly FreeSlot[];
+}
+
+/** The local record written when a receptionist checks a patient in. */
+export interface CheckInRecord {
+  checker: string;
+  at: string;
+  facilityCode: string;
+}
+
+/** The local record written when a no-show reason is supplied. */
+export interface NoShowRecord {
+  reason: string;
+  actor: string;
+  at: string;
+}
+
+/** Worklist filter chips; range selection remains a separate page concern. */
+export type WorklistFilter = 'all' | 'needs-check-in' | 'waiting-over-15';
+
 /** A command applied to a synthetic appointment. */
 export type SchedulingCommand = { kind: 'check-in' } | { kind: 'assign'; assignee: string };
 
