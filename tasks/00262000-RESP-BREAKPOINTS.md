@@ -1,4 +1,5 @@
 - [x] RESP-BREAKPOINTS · Staff web: breakpoint tokens and a `useBreakpoint` hook (new files)
+  - evidence: PR #515 merged to main (reconciled 2026-11-23)
   - pr: #515
   - attempts: 1
   - requirements: WEB-07, UX-01

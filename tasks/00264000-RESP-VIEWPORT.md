@@ -1,4 +1,5 @@
 - [x] RESP-VIEWPORT · Staff web: viewport meta, theme colour and safe-area support in `index.html`
+  - evidence: PR #526 merged to main (reconciled 2026-11-23)
   - pr: #526
   - attempts: 1
   - requirements: WEB-07, UX-01

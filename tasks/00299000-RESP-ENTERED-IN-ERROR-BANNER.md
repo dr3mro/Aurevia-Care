@@ -1,4 +1,5 @@
 - [x] RESP-ENTERED-IN-ERROR-BANNER · Staff web: responsive `EnteredInErrorBanner` (features-chart)
+  - evidence: PR #773 merged to main (reconciled 2026-11-23)
   - pr: #773
   - attempts: 1
   - requirements: WEB-07, UX-01

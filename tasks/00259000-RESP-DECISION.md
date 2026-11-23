@@ -1,4 +1,5 @@
 - [x] RESP-DECISION · Decision record: the staff web works on phones and tablets, not only 768 px and wider
+  - evidence: PR #370 merged to main (reconciled 2026-11-23)
   - pr: #370
   - attempts: 1
   - requirements: WEB-07, UX-01

@@ -1,4 +1,5 @@
 - [x] RESP-SYSTEM-NOTICE · Staff web: responsive `SystemNotice` (features-system)
+  - evidence: PR #809 merged to main (reconciled 2026-11-23)
   - pr: #809
   - attempts: 1
   - requirements: WEB-07, UX-01

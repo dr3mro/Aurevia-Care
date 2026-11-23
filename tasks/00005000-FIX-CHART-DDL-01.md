@@ -1,4 +1,5 @@
 - [x] FIX-CHART-DDL-01 · Move the chart_entry schema into db/migrations so production Flyway creates it (CLN-03)
+  - evidence: PR #510 merged to main (reconciled 2026-11-23)
   - pr: #510
   - attempts: 1
   - requirements: CLN-03, ARC-04

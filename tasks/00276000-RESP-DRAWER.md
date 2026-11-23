@@ -1,4 +1,5 @@
 - [x] RESP-DRAWER · Staff web: off-canvas navigation drawer component for phones (new files)
+  - evidence: PR #608 merged to main (reconciled 2026-11-23)
   - pr: #608
   - attempts: 1
   - requirements: WEB-07, UX-01

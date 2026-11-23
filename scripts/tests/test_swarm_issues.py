@@ -328,6 +328,17 @@ class RunEventTests(unittest.TestCase):
             with self.assertRaises(subprocess.CalledProcessError):
                 swarm.run_event(5)
 
+    def test_a_protected_branch_rejection_is_not_reported_as_quota(self):
+        log = ("error: GH013: Repository rule violations found for refs/heads/main.\n"
+               "3 of 3 required status checks are expected.\n"
+               "! [remote rejected] HEAD -> main")
+        result, fake = self.event(self.FAILED, log=log)
+        body = fake.created_args()[fake.created_args().index("--body") + 1]
+        self.assertIn("**Class:** repository-rules", body)
+        self.assertNotIn("**Class:** quota", body)
+        self.assertIn("waiting for a quota will not help", body)
+        self.assertIn("route tracker updates through the PR workflow", body)
+
     def test_pull_request_runs_are_ignored(self):
         result, fake = self.event({**self.FAILED, "event": "pull_request"})
         self.assertIn("integrator", result)
@@ -390,6 +401,12 @@ class RunEventTests(unittest.TestCase):
         gate = failed + [("Delivery gate", "Require every verification job to pass")]
         self.assertEqual(swarm.classify_failure(log, gate), "unknown")
         self.assertEqual(swarm.classify_failure(log, [("Publish", "Push the branch")]), "credentials")
+
+    def test_test_output_is_not_a_quota_failure(self):
+        log = "FAIL: test_budget_gate_allows_well_under_cap\nProcess completed with exit code 1"
+        failed = [("Delivery tooling tests", "Run python3 -I -m unittest discover -s scripts/tests -q")]
+        self.assertEqual(swarm.classify_failure(log, failed), "unknown")
+        self.assertEqual(swarm.classify_failure(log, [("Publish", "Push the branch")]), "quota")
 
 
 class WatchdogTests(unittest.TestCase):

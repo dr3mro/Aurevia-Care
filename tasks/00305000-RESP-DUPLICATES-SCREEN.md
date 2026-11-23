@@ -1,4 +1,5 @@
 - [x] RESP-DUPLICATES-SCREEN · Staff web: responsive `DuplicatesScreen` (features-duplicates)
+  - evidence: PR #775 merged to main (reconciled 2026-11-23)
   - pr: #775
   - attempts: 1
   - requirements: WEB-07, UX-01

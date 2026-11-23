@@ -1,4 +1,5 @@
 - [x] RESP-APP-DECISION · Decision record: the patient app supports tablets and landscape
+  - evidence: PR #362 merged to main (reconciled 2026-11-23)
   - pr: #362
   - attempts: 1
   - requirements: PAT-01, PAT-02, UX-01

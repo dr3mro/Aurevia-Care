@@ -1,4 +1,5 @@
 - [x] RESP-SESSION-EXPIRED-PAGE · Staff web: responsive `SessionExpiredPage` (features-system)
+  - evidence: PR #803 merged to main (reconciled 2026-11-23)
   - pr: #803
   - attempts: 1
   - requirements: WEB-07, UX-01

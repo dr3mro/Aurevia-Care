@@ -1,4 +1,5 @@
 - [x] RESP-E2E-PROJECTS · Staff web end-to-end: add phone, tablet and desktop device projects to Playwright
+  - pr: #1348
   - evidence: merged on main 716b1751 (#891)
   - agent: swarm-6
   - attempts: 3

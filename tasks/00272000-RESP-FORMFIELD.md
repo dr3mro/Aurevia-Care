@@ -1,4 +1,5 @@
 - [x] RESP-FORMFIELD · Staff web: responsive `FormField` component
+  - evidence: PR #617 merged to main (reconciled 2026-11-23)
   - pr: #617
   - attempts: 2
   - requirements: WEB-07, UX-01

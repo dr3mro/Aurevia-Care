@@ -72,7 +72,8 @@ jobs:
       run:
         shell: bash
     env:
-      MODEL: opencode-go/hy4-flash-free
+      # A repository variable lets an operator change the agent model without editing workflows.
+      MODEL: ${{ vars.SWARM_MODEL || 'opencode-go/hy4-flash-free' }}
       SWARM: '1'
       AGENT_TIMEOUT: 75m
     steps:

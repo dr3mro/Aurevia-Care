@@ -1,4 +1,5 @@
 - [x] RESP-BUTTON · Staff web: responsive `Button` component
+  - evidence: PR #619 merged to main (reconciled 2026-11-23)
   - pr: #619
   - attempts: 2
   - requirements: WEB-07, UX-01

@@ -1,4 +1,5 @@
 - [x] RESP-MIXEDSCRIPTTEXT · Staff web: responsive `MixedScriptText` component
+  - evidence: PR #611 merged to main (reconciled 2026-11-23)
   - pr: #611
   - attempts: 1
   - requirements: WEB-07, UX-01

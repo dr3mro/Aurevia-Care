@@ -1,4 +1,5 @@
 - [x] RESP-INDEX · Docs: link the responsive layout guide and the two decision records
+  - evidence: PR #543 merged to main (reconciled 2026-11-23)
   - pr: #543
   - attempts: 1
   - requirements: WEB-07, UX-01

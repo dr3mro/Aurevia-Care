@@ -1,4 +1,5 @@
 - [x] RESP-APP-ACCESSIBILITY-EVIDENCE-SUMMARY · Patient app: tablet, landscape and large-text layout for `AccessibilityEvidenceSummary` (evidence)
+  - evidence: PR #653 merged to main (reconciled 2026-11-23)
   - pr: #653
   - attempts: 1
   - requirements: PAT-01, PAT-02, UX-01

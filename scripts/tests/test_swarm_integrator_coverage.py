@@ -331,7 +331,7 @@ class RulesPullRequestTest(unittest.TestCase):
         result, _, git, _, labeled, err = self.open(returncode=1)
         self.assertEqual(result, "")
         labeled.assert_not_called()
-        self.assertIn("fails the docs check", err)
+        self.assertIn("fails check-docs.py", err)
         self.assertTrue(any("reset" in c.args for c in git.call_args_list))
 
     def test_a_clean_patch_opens_a_draft_and_asks_for_review(self):

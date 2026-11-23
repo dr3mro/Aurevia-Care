@@ -1,4 +1,5 @@
 - [x] GATE-DECISION-CLINICAL-APPROVALS · Decision pack for a person to approve: Clinical templates, code sets, interpreting privileges and result escalation approvals
+  - evidence: PR #371 merged to main (reconciled 2026-11-23)
   - pr: #371
   - attempts: 1
   - requirements: ADM-01, CLN-04

@@ -1,4 +1,5 @@
 - [x] RESP-APPOINTMENT-WORKLIST · Staff web: responsive `AppointmentWorklist` (features-scheduling)
+  - evidence: PR #789 merged to main (reconciled 2026-11-23)
   - pr: #789
   - attempts: 1
   - requirements: WEB-07, UX-01
