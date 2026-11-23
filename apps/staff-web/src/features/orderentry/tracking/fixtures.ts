@@ -1,10 +1,9 @@
-import { defined } from '../../../components/invariant';
 import { syntheticOrganizations } from '../../../fixtures/synthetic';
 import type { DeliveryEvidence, OrderResultLink, TrackedOrder } from './domain';
 
 /** Two synthetic tenants; the same local order ids are reused across them. */
-export const alphaOrganizationId = defined(syntheticOrganizations[0], 'alpha organization').id;
-export const betaOrganizationId = defined(syntheticOrganizations[1], 'beta organization').id;
+export const alphaOrganizationId = required(syntheticOrganizations[0]).id;
+export const betaOrganizationId = required(syntheticOrganizations[1]).id;
 
 /** Deterministic, clearly synthetic delivery proof in UTC. */
 const deliveredEvidence: DeliveryEvidence = {
@@ -103,3 +102,10 @@ export const cancelledOrder: TrackedOrder = {
   result: null,
   cancelRequested: false,
 };
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

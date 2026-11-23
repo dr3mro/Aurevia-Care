@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Button } from '../../components/Button';
-import { defined } from '../../components/invariant';
 import { useI18n } from '../../i18n/I18nProvider';
 import { useTheme } from '../../theme/ThemeProvider';
 import { CollectionForm } from './CollectionForm';
@@ -98,10 +97,13 @@ export function CollectionDeskScreen({
     accessionConfirmed,
   ]);
 
-  // The command controls are only rendered with a selected order; `defined`
-  // narrows that invariant to the type checker instead of adding a dead branch.
+  // The command controls are only rendered with a selected order, so the
+  // guards below only narrow the type.
   function handleCollect() {
-    const order = defined(selected, 'selected collection order');
+    if (selected === undefined) {
+      return;
+    }
+    const order = selected;
     onCollect(order, {
       patientId: presented.patientId,
       accessionNo: presented.accessionNo,
@@ -116,11 +118,17 @@ export function CollectionDeskScreen({
   }
 
   function handlePrint() {
-    onPrint(defined(selected, 'selected collection order'));
+    if (selected === undefined) {
+      return;
+    }
+    onPrint(selected);
   }
 
   function handleReject() {
-    const order = defined(selected, 'selected collection order');
+    if (selected === undefined) {
+      return;
+    }
+    const order = selected;
     onReject(order, {
       reason: rejection.reason,
       detail: rejection.detail,

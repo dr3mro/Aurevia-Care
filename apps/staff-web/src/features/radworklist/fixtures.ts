@@ -1,12 +1,11 @@
-import { defined } from '../../components/invariant';
 import { syntheticOrganizations } from '../../fixtures/synthetic';
 import type { ImagingWorklistOrder } from './domain';
 
 /** The tenant whose synthetic radiology orders are shown in tests and previews. */
-export const alphaOrganizationId = defined(syntheticOrganizations[0], 'alpha organization').id;
+export const alphaOrganizationId = required(syntheticOrganizations[0]).id;
 
 /** The second synthetic tenant; its local order ids deliberately collide. */
-export const betaOrganizationId = defined(syntheticOrganizations[1], 'beta organization').id;
+export const betaOrganizationId = required(syntheticOrganizations[1]).id;
 
 /** Synthetic performing sites used by the worklist screen. */
 export const syntheticPerformingSite = 'site-rad-main';
@@ -105,3 +104,10 @@ export const syntheticOrders: readonly ImagingWorklistOrder[] = [
     studyInstanceUid: null,
   },
 ];
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

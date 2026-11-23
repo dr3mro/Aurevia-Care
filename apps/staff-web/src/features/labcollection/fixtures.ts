@@ -1,10 +1,9 @@
-import { defined } from '../../components/invariant';
 import { syntheticOrganizations } from '../../fixtures/synthetic';
 import type { CollectionOrder, LabelData, PresentedIdentity } from './domain';
 
 /** The two synthetic tenants; their local identifiers intentionally collide. */
-export const alphaOrganizationId = defined(syntheticOrganizations[0], 'alpha organization').id;
-export const betaOrganizationId = defined(syntheticOrganizations[1], 'beta organization').id;
+export const alphaOrganizationId = required(syntheticOrganizations[0]).id;
+export const betaOrganizationId = required(syntheticOrganizations[1]).id;
 
 /** A synthetic alpha accession with both name forms for the two-name check. */
 export const alphaOrder: CollectionOrder = {
@@ -71,3 +70,10 @@ export const specimenDetailsAlpha = {
   collectedAt: '2026-03-09T09:00:00Z',
   quality: 'ACCEPTABLE',
 };
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

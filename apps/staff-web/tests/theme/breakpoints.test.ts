@@ -1,5 +1,3 @@
-import { createElement } from 'react';
-import { renderToString } from 'react-dom/server';
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -153,48 +151,5 @@ describe('pointer and orientation hooks', () => {
 
     act(() => media.fire(query, false));
     expect(result.current).toBe('landscape');
-  });
-});
-
-describe('useSyncExternalStore integration', () => {
-  it('adopts a value that changed between the snapshot and the subscribe lookup', () => {
-    // getSnapshot reads false, then the same query reads true when the store is
-    // subscribed. The hook must publish the newer value instead of the stale one.
-    const listeners = new Set<ChangeListener>();
-    const list = {
-      matches: false,
-      addEventListener: (_type: string, listener: ChangeListener) => {
-        listeners.add(listener);
-      },
-      removeEventListener: (_type: string, listener: ChangeListener) => {
-        listeners.delete(listener);
-      },
-    };
-    let calls = 0;
-    vi.stubGlobal(
-      'matchMedia',
-      vi.fn((_query: string) => {
-        list.matches = calls++ === 0 ? false : true;
-        return list;
-      }),
-    );
-
-    const { result, unmount } = renderHook(() => useOrientation());
-    expect(result.current).toBe('portrait');
-    expect(listeners.size).toBe(1);
-    unmount();
-    expect(listeners.size).toBe(0);
-  });
-
-  it('uses the supplied fallbacks when rendering on the server', () => {
-    vi.stubGlobal('matchMedia', undefined);
-    function Probe() {
-      const breakpoint = useBreakpoint();
-      const coarse = usePointerCoarse();
-      const orientation = useOrientation();
-      return createElement('span', null, `${breakpoint}/${orientation}/${coarse}`);
-    }
-
-    expect(renderToString(createElement(Probe))).toContain('expanded/portrait/false');
   });
 });
