@@ -965,6 +965,7 @@ def monitor_assign(directory, prs=(), nudge=(), exhausted=(), todo="TODO.md", tr
         update_todo(edit, "Issue monitor: add tasks", todo)
     for number, scope in ids:
         shown = ", ".join("`" + s + "`" for s in scope)
+        add_labels(number, "worker-assigned")
         comment_issue(number, f"<!-- swarm-assigned -->\n**{stamp_now()}** Triage done. Assigned task `ISS-{number}` with scope "
                               f"{shown}. A wave will pick it up; the worker comments here when it "
                               "takes it and when it finishes a pass.")
@@ -1000,6 +1001,7 @@ def monitor_assign(directory, prs=(), nudge=(), exhausted=(), todo="TODO.md", tr
                                   "with no progress for a day. It got a fresh round and a wave was started; "
                                   "the next worker continues from the findings here.")
     for number in close:
+        remove_label(number, "worker-assigned")
         gh("issue", "close", str(number), "--comment",
            f"{MARK}\nThe work for this issue is finished (its task is done or its pull request merged).",
            check=False)
