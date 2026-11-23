@@ -142,7 +142,8 @@ jobs:
       # Bring main into the branch between segments so the work never drifts far
       # from it. The only token step after the agent has run is this inline fetch:
       # it runs no workspace script, ignores repository hooks and sends the
-      # read-only token to github.com only.
+      # read-only token to github.com only. Inside the container the host-mounted
+      # workspace has a different owner, so the fetch marks it safe explicitly.
       - name: Fetch main (after segment 1)
         if: steps.s1.outputs.more == 'true'
         env:
@@ -150,7 +151,7 @@ jobs:
           BASE_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           header=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 | tr -d '\n')
-          git -c core.hooksPath=/dev/null -c core.fsmonitor=false \
+          git -c safe.directory='*' -c core.hooksPath=/dev/null -c core.fsmonitor=false \
             -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $header" \
             fetch -q "https://github.com/$GITHUB_REPOSITORY" \
             "+refs/heads/$BASE_BRANCH:refs/remotes/origin/$BASE_BRANCH" || true
@@ -178,7 +179,8 @@ jobs:
       # Bring main into the branch between segments so the work never drifts far
       # from it. The only token step after the agent has run is this inline fetch:
       # it runs no workspace script, ignores repository hooks and sends the
-      # read-only token to github.com only.
+      # read-only token to github.com only. Inside the container the host-mounted
+      # workspace has a different owner, so the fetch marks it safe explicitly.
       - name: Fetch main (after segment 2)
         if: steps.s2.outputs.more == 'true'
         env:
@@ -186,7 +188,7 @@ jobs:
           BASE_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           header=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 | tr -d '\n')
-          git -c core.hooksPath=/dev/null -c core.fsmonitor=false \
+          git -c safe.directory='*' -c core.hooksPath=/dev/null -c core.fsmonitor=false \
             -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $header" \
             fetch -q "https://github.com/$GITHUB_REPOSITORY" \
             "+refs/heads/$BASE_BRANCH:refs/remotes/origin/$BASE_BRANCH" || true
@@ -214,7 +216,8 @@ jobs:
       # Bring main into the branch between segments so the work never drifts far
       # from it. The only token step after the agent has run is this inline fetch:
       # it runs no workspace script, ignores repository hooks and sends the
-      # read-only token to github.com only.
+      # read-only token to github.com only. Inside the container the host-mounted
+      # workspace has a different owner, so the fetch marks it safe explicitly.
       - name: Fetch main (after segment 3)
         if: steps.s3.outputs.more == 'true'
         env:
@@ -222,7 +225,7 @@ jobs:
           BASE_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           header=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 | tr -d '\n')
-          git -c core.hooksPath=/dev/null -c core.fsmonitor=false \
+          git -c safe.directory='*' -c core.hooksPath=/dev/null -c core.fsmonitor=false \
             -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $header" \
             fetch -q "https://github.com/$GITHUB_REPOSITORY" \
             "+refs/heads/$BASE_BRANCH:refs/remotes/origin/$BASE_BRANCH" || true
@@ -255,7 +258,7 @@ jobs:
           BASE_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           header=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 | tr -d '\n')
-          git -c core.hooksPath=/dev/null -c core.fsmonitor=false \
+          git -c safe.directory='*' -c core.hooksPath=/dev/null -c core.fsmonitor=false \
             -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $header" \
             fetch -q "https://github.com/$GITHUB_REPOSITORY" \
             "+refs/heads/$BASE_BRANCH:refs/remotes/origin/$BASE_BRANCH" || true

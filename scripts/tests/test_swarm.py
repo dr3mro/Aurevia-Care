@@ -3574,6 +3574,20 @@ class TrustedCopyTests(unittest.TestCase):
             for line in copies:
                 self.assertIn("safe.directory='*'", line, (name, line))
 
+    def test_every_inline_fetch_in_a_container_marks_the_repo_safe(self):
+        # A container worker owns neither the host-mounted workspace nor its git
+        # config, so an inline fetch before any workspace script runs is refused
+        # unless the command marks the repository safe itself.
+        import yaml
+        text = (ROOT / ".github/workflows/swarm-worker.yml").read_text()
+        steps = yaml.safe_load(text)["jobs"]["work"]["steps"]
+        fetches = [step for step in steps
+                   if 'fetch -q "https://github.com/$GITHUB_REPOSITORY"'
+                   in step.get("run", "")]
+        self.assertEqual(len(fetches), 4)
+        for step in fetches:
+            self.assertIn("-c safe.directory='*'", step["run"], step["name"])
+
 
 class ModelOverrideTests(unittest.TestCase):
     def test_every_opencode_workflow_honours_the_swarm_model_variable(self):
