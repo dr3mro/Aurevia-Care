@@ -398,6 +398,856 @@ paths:
         '401': { description: Authentication required }
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { description: Invalid cursor, limit, status, patientId or tenant selection }
+    post:
+      operationId: createFinanceInvoice
+      summary: Create an itemized self-pay draft invoice
+      tags: [finance]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/RetryKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateInvoiceRequest' }
+      responses:
+        '201':
+          description: Created draft invoice
+          headers:
+            Location: { schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InvoiceView' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+  /api/v1/finance/invoices/{id}:
+    get:
+      operationId: getFinanceInvoice
+      summary: Read one invoice with its lines and immutable ledger trail
+      tags: [finance]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - { name: id, in: path, required: true, description: Tenant-local invoice identifier, schema: { type: string } }
+      responses:
+        '200':
+          description: The invoice with its items and ledger entries
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InvoiceView' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+  /api/v1/finance/invoices/{id}/issue:
+    post:
+      operationId: issueFinanceInvoice
+      summary: Issue a draft invoice under an If-Match version precondition
+      tags: [finance]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/RetryKey'
+        - $ref: '#/components/parameters/IfMatch'
+        - { name: id, in: path, required: true, description: Tenant-local invoice identifier, schema: { type: string } }
+      responses:
+        '200':
+          description: The issued invoice
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InvoiceView' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+        '412': { $ref: '#/components/responses/StaleVersion' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+        '428':
+          description: If-Match precondition required
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /api/v1/finance/invoices/{id}/payments:
+    post:
+      operationId: recordFinancePayment
+      summary: Record a payment against an invoice under an If-Match version precondition
+      tags: [finance]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/RetryKey'
+        - $ref: '#/components/parameters/IfMatch'
+        - { name: id, in: path, required: true, description: Tenant-local invoice identifier, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EntryRequest' }
+      responses:
+        '200':
+          description: The invoice with its updated balance and ledger trail
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InvoiceView' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+        '412': { $ref: '#/components/responses/StaleVersion' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+        '428':
+          description: If-Match precondition required
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /api/v1/finance/invoices/{id}/credits:
+    post:
+      operationId: recordFinanceCredit
+      summary: Record an approved credit against an invoice under an If-Match version precondition
+      tags: [finance]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/RetryKey'
+        - $ref: '#/components/parameters/IfMatch'
+        - { name: id, in: path, required: true, description: Tenant-local invoice identifier, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EntryRequest' }
+      responses:
+        '200':
+          description: The invoice with its updated balance and ledger trail
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InvoiceView' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+        '412': { $ref: '#/components/responses/StaleVersion' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+        '428':
+          description: If-Match precondition required
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /api/v1/finance/invoices/{id}/refunds:
+    post:
+      operationId: recordFinanceRefund
+      summary: Record an approved refund against an invoice under an If-Match version precondition
+      tags: [finance]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/RetryKey'
+        - $ref: '#/components/parameters/IfMatch'
+        - { name: id, in: path, required: true, description: Tenant-local invoice identifier, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EntryRequest' }
+      responses:
+        '200':
+          description: The invoice with its updated balance and ledger trail
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InvoiceView' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+        '412': { $ref: '#/components/responses/StaleVersion' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+        '428':
+          description: If-Match precondition required
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /api/v1/finance/invoices/{id}/void:
+    post:
+      operationId: voidFinanceInvoice
+      summary: Void an unposted invoice with a reason and independent approver
+      tags: [finance]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/RetryKey'
+        - $ref: '#/components/parameters/IfMatch'
+        - { name: id, in: path, required: true, description: Tenant-local invoice identifier, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VoidRequest' }
+      responses:
+        '200':
+          description: The void invoice
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InvoiceView' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+        '412': { $ref: '#/components/responses/StaleVersion' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+        '428':
+          description: If-Match precondition required
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /api/v1/finance/reconciliation:
+    get:
+      operationId: getFinanceReconciliation
+      summary: Read the finance-only daily reconciliation report for the active tenant
+      tags: [finance]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+      responses:
+        '200':
+          description: Daily totals by currency with no clinical narrative
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Reconciliation' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/v1/prescription-drafts:
+    post:
+      operationId: createPrescriptionDraft
+      summary: Create a prescription draft for a verified patient of the active tenant
+      tags: [prescription-drafts]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/RetryKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateDraftRequest' }
+      responses:
+        '201':
+          description: Created draft at version one
+          headers:
+            Location: { schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Draft' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+  /api/v1/prescription-drafts/{id}:
+    get:
+      operationId: getPrescriptionDraft
+      summary: Read one prescription draft with its immutable override
+      tags: [prescription-drafts]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - { name: id, in: path, required: true, description: Tenant-local draft identifier, schema: { type: string } }
+      responses:
+        '200':
+          description: The draft and its optional override
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DraftView' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+  /api/v1/prescription-drafts/{id}/catalog-version:
+    get:
+      operationId: getDraftCatalogVersion
+      summary: Read the immutable catalog version this draft was built from
+      tags: [prescription-drafts]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - { name: id, in: path, required: true, description: Tenant-local draft identifier, schema: { type: string } }
+      responses:
+        '200':
+          description: The draft-to-catalog binding, with a null version before selection
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DraftCatalogVersion' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+  /api/v1/prescription-drafts/{id}/allergy-check:
+    post:
+      operationId: checkDraftAllergies
+      summary: Check a candidate catalog entry against the patient's verified allergies
+      tags: [prescription-drafts]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/RetryKey'
+        - { name: id, in: path, required: true, description: Tenant-local draft identifier, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AllergyCheckRequest' }
+      responses:
+        '200':
+          description: The versioned allergy check with retained findings
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AllergyCheck' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+  /api/v1/prescription-drafts/{id}/select-medication:
+    post:
+      operationId: selectDraftMedication
+      summary: Select a medication under an If-Match version, recording any override reason
+      tags: [prescription-drafts]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/RetryKey'
+        - $ref: '#/components/parameters/IfMatch'
+        - { name: id, in: path, required: true, description: Tenant-local draft identifier, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SelectMedicationRequest' }
+      responses:
+        '200':
+          description: The updated draft bound to the effective catalog version
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Draft' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+        '412': { $ref: '#/components/responses/StaleVersion' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+        '428':
+          description: If-Match precondition required
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /api/v1/prescriptions:
+    post:
+      operationId: createPrescription
+      summary: Register a transmission record for an RX-01 prescription draft
+      tags: [prescriptions]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/RetryKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreatePrescriptionRequest' }
+      responses:
+        '201':
+          description: Created transmission record at version one
+          headers:
+            Location: { schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Prescription' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+  /api/v1/prescriptions/{id}:
+    get:
+      operationId: getPrescription
+      summary: Read one prescription with its immutable event trail
+      tags: [prescriptions]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - { name: id, in: path, required: true, description: Tenant-local prescription identifier, schema: { type: string } }
+      responses:
+        '200':
+          description: The prescription and its facts
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrescriptionView' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+  /api/v1/prescriptions/{id}/printable:
+    get:
+      operationId: getPrintablePrescription
+      summary: Produce the locally printable prescription with the prescriber attestation
+      tags: [prescriptions]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - { name: id, in: path, required: true, description: Tenant-local prescription identifier, schema: { type: string } }
+      responses:
+        '200':
+          description: The immutable print-ready prescription; no electronic delivery is implied
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrintablePrescription' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+  /api/v1/prescriptions/{id}/attest:
+    post:
+      operationId: attestPrescription
+      summary: Record the prescriber's attestation under an If-Match version
+      tags: [prescriptions]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/RetryKey'
+        - $ref: '#/components/parameters/IfMatch'
+        - { name: id, in: path, required: true, description: Tenant-local prescription identifier, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AttestRequest' }
+      responses:
+        '200':
+          description: The attested prescription
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Prescription' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+        '412': { $ref: '#/components/responses/StaleVersion' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+        '428':
+          description: If-Match precondition required
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /api/v1/prescriptions/{id}/transmit:
+    post:
+      operationId: transmitPrescription
+      summary: Route an attested prescription through an approved channel
+      tags: [prescriptions]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/RetryKey'
+        - $ref: '#/components/parameters/IfMatch'
+        - { name: id, in: path, required: true, description: Tenant-local prescription identifier, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TransmitRequest' }
+      responses:
+        '200':
+          description: The transmitted prescription with its stable submission id
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Prescription' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+        '412': { $ref: '#/components/responses/StaleVersion' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+        '428':
+          description: If-Match precondition required
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /api/v1/prescriptions/{id}/confirm-delivery:
+    post:
+      operationId: confirmPrescriptionDelivery
+      summary: Confirm delivery of the exact stable submission id
+      tags: [prescriptions]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/RetryKey'
+        - $ref: '#/components/parameters/IfMatch'
+        - { name: id, in: path, required: true, description: Tenant-local prescription identifier, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConfirmDeliveryRequest' }
+      responses:
+        '200':
+          description: The prescription awaiting a pharmacy response
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Prescription' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+        '412': { $ref: '#/components/responses/StaleVersion' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+        '428':
+          description: If-Match precondition required
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /api/v1/prescriptions/{id}/verify-partner-status:
+    post:
+      operationId: verifyPrescriptionPartnerStatus
+      summary: Verify partner status for an ambiguous submission before any retry
+      tags: [prescriptions]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/RetryKey'
+        - $ref: '#/components/parameters/IfMatch'
+        - { name: id, in: path, required: true, description: Tenant-local prescription identifier, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VerifyPartnerStatusRequest' }
+      responses:
+        '200':
+          description: The reconciled prescription
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Prescription' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+        '412': { $ref: '#/components/responses/StaleVersion' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+        '428':
+          description: If-Match precondition required
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /api/v1/prescriptions/{id}/retry:
+    post:
+      operationId: retryPrescription
+      summary: Retry a verified-absent submission reusing the original submission id
+      tags: [prescriptions]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/RetryKey'
+        - $ref: '#/components/parameters/IfMatch'
+        - { name: id, in: path, required: true, description: Tenant-local prescription identifier, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RetryTransmissionRequest' }
+      responses:
+        '200':
+          description: The resubmitted prescription
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Prescription' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+        '412': { $ref: '#/components/responses/StaleVersion' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+        '428':
+          description: If-Match precondition required
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /api/v1/prescriptions/{id}/pharmacy-response:
+    post:
+      operationId: recordPharmacyResponse
+      summary: Record a pharmacy acceptance, rejection or clarification request
+      tags: [prescriptions]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/RetryKey'
+        - $ref: '#/components/parameters/IfMatch'
+        - { name: id, in: path, required: true, description: Tenant-local prescription identifier, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PharmacyResponseRequest' }
+      responses:
+        '200':
+          description: The prescription in the pharmacy-response state
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Prescription' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+        '412': { $ref: '#/components/responses/StaleVersion' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+        '428':
+          description: If-Match precondition required
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /api/v1/prescriptions/{id}/dispensing:
+    post:
+      operationId: recordDispensingEvidence
+      summary: Record partner-supplied dispensing evidence, distinct from acceptance
+      tags: [prescriptions]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/RetryKey'
+        - $ref: '#/components/parameters/IfMatch'
+        - { name: id, in: path, required: true, description: Tenant-local prescription identifier, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DispensingRequest' }
+      responses:
+        '200':
+          description: The dispensed prescription
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Prescription' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+        '412': { $ref: '#/components/responses/StaleVersion' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+        '428':
+          description: If-Match precondition required
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /api/v1/prescriptions/{id}/renew:
+    post:
+      operationId: renewPrescription
+      summary: Record a renewal linked to the original submission
+      tags: [prescriptions]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/RetryKey'
+        - $ref: '#/components/parameters/IfMatch'
+        - { name: id, in: path, required: true, description: Tenant-local prescription identifier, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RenewRequest' }
+      responses:
+        '200':
+          description: The prescription with its renewal fact
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Prescription' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+        '412': { $ref: '#/components/responses/StaleVersion' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+        '428':
+          description: If-Match precondition required
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /api/v1/prescriptions/{id}/cancel:
+    post:
+      operationId: cancelPrescription
+      summary: Cancel a live prescription with a recorded reason
+      tags: [prescriptions]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/RetryKey'
+        - $ref: '#/components/parameters/IfMatch'
+        - { name: id, in: path, required: true, description: Tenant-local prescription identifier, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CancelPrescriptionRequest' }
+      responses:
+        '200':
+          description: The cancelled prescription
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Prescription' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+        '412': { $ref: '#/components/responses/StaleVersion' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+        '428':
+          description: If-Match precondition required
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /api/v1/drug-catalog/search:
+    get:
+      operationId: searchDrugCatalog
+      summary: Search the approved effective drug catalog by name and formulation
+      tags: [drug-catalog]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - { name: query, in: query, required: false, description: Generic or trade name fragment, schema: { type: string } }
+        - { name: formulation, in: query, required: false, description: Exact formulation filter, schema: { type: string } }
+      responses:
+        '200':
+          description: Effective entries with tagged, review-only alternatives
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DrugCatalogHits' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+  /api/v1/drug-catalog/search-with-version:
+    get:
+      operationId: searchDrugCatalogWithVersion
+      summary: Search the approved catalog and report the publication version used
+      tags: [drug-catalog]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - { name: query, in: query, required: false, description: Generic or trade name fragment, schema: { type: string } }
+        - { name: formulation, in: query, required: false, description: Exact formulation filter, schema: { type: string } }
+      responses:
+        '200':
+          description: Versioned route-bearing items tagged with the catalog publication
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/VersionedCatalogSearch' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+  /api/v1/pharmacy/substitutions/{proposalId}:
+    get:
+      operationId: getSubstitutionProposal
+      summary: Read one substitution proposal visible to one of its two parties
+      tags: [substitutions]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - { name: proposalId, in: path, required: true, description: Tenant-local substitution proposal identifier, schema: { type: string } }
+      responses:
+        '200':
+          description: The proposal with side-by-side entries and optional signed revision
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProposalView' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+  /api/v1/pharmacy/substitutions/{prescriptionId}/proposals:
+    post:
+      operationId: proposeSubstitution
+      summary: Propose a tagged catalog alternative for a prescription's medication
+      tags: [substitutions]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/RetryKey'
+        - { name: prescriptionId, in: path, required: true, description: Tenant-local prescription identifier, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProposeSubstitutionRequest' }
+      responses:
+        '200':
+          description: The pending proposal with side-by-side entries
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProposalView' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+  /api/v1/pharmacy/substitutions/{proposalId}/approve:
+    post:
+      operationId: approveSubstitution
+      summary: Approve a pending proposal, creating its signed prescription revision
+      tags: [substitutions]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/RetryKey'
+        - $ref: '#/components/parameters/IfMatch'
+        - { name: proposalId, in: path, required: true, description: Tenant-local substitution proposal identifier, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DecideSubstitutionRequest' }
+      responses:
+        '200':
+          description: The approved proposal and its signed revision
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProposalView' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+        '412': { $ref: '#/components/responses/StaleVersion' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+        '428':
+          description: If-Match precondition required
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /api/v1/pharmacy/substitutions/{proposalId}/decline:
+    post:
+      operationId: declineSubstitution
+      summary: Decline a pending proposal, keeping the originally prescribed medication
+      tags: [substitutions]
+      parameters:
+        - $ref: '#/components/parameters/ActiveOrganization'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/RetryKey'
+        - $ref: '#/components/parameters/IfMatch'
+        - { name: proposalId, in: path, required: true, description: Tenant-local substitution proposal identifier, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DecideSubstitutionRequest' }
+      responses:
+        '200':
+          description: The declined proposal without a revision
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProposalView' }
+        '401': { $ref: '#/components/responses/AuthenticationRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '409': { $ref: '#/components/responses/StateConflict' }
+        '412': { $ref: '#/components/responses/StaleVersion' }
+        '422': { $ref: '#/components/responses/InvalidRequest' }
+        '428':
+          description: If-Match precondition required
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
   /api/v1/orders:
     get:
       operationId: listOrders
@@ -2198,6 +3048,395 @@ components:
         placedBy: { type: string }
         placedAt: { type: string, format: date-time }
         idempotencyKey: { type: string }
+    CreateInvoiceRequest:
+      type: object
+      required: [patientId, currency, items]
+      description: Itemized self-pay invoice creation command; money is an integer count of currency minor units.
+      properties:
+        patientId: { type: string, format: uuid }
+        currency: { type: string, minLength: 3, maxLength: 3 }
+        serviceReference: { type: string, nullable: true }
+        items:
+          type: array
+          minItems: 1
+          items: { $ref: '#/components/schemas/InvoiceLineRequest' }
+    InvoiceLineRequest:
+      type: object
+      required: [description, quantity, unitAmountMinor]
+      properties:
+        description: { type: string, minLength: 1 }
+        quantity: { type: integer, minimum: 1 }
+        unitAmountMinor: { type: integer, format: int64, minimum: 0 }
+    EntryRequest:
+      type: object
+      required: [amountMinor, reference]
+      description: Ledger entry command; the entry type comes from the route, never the request body.
+      properties:
+        amountMinor: { type: integer, format: int64, minimum: 1 }
+        reference: { type: string, minLength: 1 }
+        reason: { type: string, nullable: true }
+        approverSubject: { type: string, nullable: true }
+    VoidRequest:
+      type: object
+      required: [reason, approverSubject]
+      description: Void command with a recorded reason and an approver distinct from the actor.
+      properties:
+        reason: { type: string, minLength: 1 }
+        approverSubject: { type: string, minLength: 1 }
+    DailyTotal:
+      type: object
+      properties:
+        day: { type: string }
+        currency: { type: string }
+        issuedMinor: { type: integer, format: int64 }
+        paymentMinor: { type: integer, format: int64 }
+        refundMinor: { type: integer, format: int64 }
+        creditMinor: { type: integer, format: int64 }
+        netMinor: { type: integer, format: int64 }
+        entryCount: { type: integer }
+    Reconciliation:
+      type: object
+      description: Finance-only daily totals by currency; no clinical field is present.
+      properties:
+        days:
+          type: array
+          items: { $ref: '#/components/schemas/DailyTotal' }
+    CreateDraftRequest:
+      type: object
+      required: [patientId]
+      description: Draft creation command for a verified patient of the active tenant.
+      properties:
+        patientId: { type: string, minLength: 1 }
+        encounterReference: { type: string, nullable: true }
+        destination: { type: string, nullable: true }
+    Draft:
+      type: object
+      description: Current projection of a prescription draft.
+      properties:
+        id: { type: string }
+        version: { type: integer }
+        patientId: { type: string }
+        state: { type: string }
+        selectedEntryId: { type: string, nullable: true }
+        selectedEntryVersion: { type: integer, nullable: true }
+        drugGenericName: { type: string, nullable: true }
+        doseValue: { type: string, nullable: true }
+        doseUnit: { type: string, nullable: true }
+        route: { type: string, nullable: true }
+        frequency: { type: string, nullable: true }
+        quantity: { type: string, nullable: true }
+        quantityUnit: { type: string, nullable: true }
+        refills: { type: integer, nullable: true }
+        instructions: { type: string, nullable: true }
+        destination: { type: string, nullable: true }
+        encounterReference: { type: string, nullable: true }
+        prescriberSubject: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+    OverrideRecord:
+      type: object
+      description: Immutable override binding a reason, its author and the matched data snapshot.
+      properties:
+        draftId: { type: string }
+        draftVersion: { type: integer }
+        reason: { type: string }
+        authorSubject: { type: string }
+        matchedSnapshot: { type: string }
+        occurredAt: { type: string, format: date-time }
+    DraftView:
+      type: object
+      properties:
+        draft: { $ref: '#/components/schemas/Draft' }
+        override: { $ref: '#/components/schemas/OverrideRecord', nullable: true }
+    DraftCatalogVersion:
+      type: object
+      description: Immutable draft-to-catalog binding; the version is null until a medication is selected.
+      properties:
+        draftId: { type: string }
+        catalogVersion: { type: integer, nullable: true }
+    AllergyCheckRequest:
+      type: object
+      required: [catalogEntryId]
+      properties:
+        catalogEntryId: { type: string, minLength: 1 }
+    AllergyFinding:
+      type: object
+      properties:
+        kind: { type: string, enum: [exact_match, cross_reactivity, unresolved_ingredient, incomplete_assessment] }
+        substanceId: { type: string, nullable: true }
+        group: { type: string, nullable: true }
+        groupVersion: { type: integer }
+        detail: { type: string }
+    AllergyCheck:
+      type: object
+      description: Versioned allergy check; an unresolved or unverified assessment is never silently safe.
+      properties:
+        outcome: { type: string, enum: [no_conflict, conflict, warning, unresolved] }
+        allergyStatus: { type: string, enum: [verified_list, verified_none, unknown, unverified] }
+        findings:
+          type: array
+          items: { $ref: '#/components/schemas/AllergyFinding' }
+        catalogVersion: { type: string }
+    SelectMedicationRequest:
+      type: object
+      required: [catalogEntryId, doseValue, doseUnit, route, frequency, quantity, quantityUnit, instructions]
+      description: Medication selection with an override reason required when a verified conflict exists.
+      properties:
+        catalogEntryId: { type: string, minLength: 1 }
+        doseValue: { type: string, minLength: 1 }
+        doseUnit: { type: string, minLength: 1 }
+        route: { type: string, minLength: 1 }
+        frequency: { type: string, minLength: 1 }
+        quantity: { type: string, minLength: 1 }
+        quantityUnit: { type: string, minLength: 1 }
+        refills: { type: integer, nullable: true }
+        instructions: { type: string, minLength: 1 }
+        overrideReason: { type: string, nullable: true }
+    Ingredient:
+      type: object
+      properties:
+        substanceId: { type: string, nullable: true }
+        group: { type: string, nullable: true }
+        groupVersion: { type: integer }
+    DrugEntry:
+      type: object
+      description: One approved effective catalog entry; suggestions never change a clinician's selection.
+      properties:
+        entryId: { type: string }
+        version: { type: integer }
+        genericName: { type: string }
+        tradeName: { type: string }
+        formulation: { type: string }
+        strengthValue: { type: string }
+        strengthUnit: { type: string }
+        ingredients:
+          type: array
+          items: { $ref: '#/components/schemas/Ingredient' }
+        approved: { type: boolean }
+        effectiveFrom: { type: string, format: date-time }
+        effectiveTo: { type: string, format: date-time, nullable: true }
+        approvalProvenance: { type: string }
+    Alternative:
+      type: object
+      description: Review-only tagged alternative with its source catalog version.
+      properties:
+        kind: { type: string, enum: [suggestion] }
+        entry: { $ref: '#/components/schemas/DrugEntry' }
+        reason: { type: string }
+        sourceCatalogVersion: { type: string }
+        requiresClinicianSelection: { type: boolean }
+    CatalogHit:
+      type: object
+      properties:
+        entry: { $ref: '#/components/schemas/DrugEntry' }
+        alternatives:
+          type: array
+          items: { $ref: '#/components/schemas/Alternative' }
+    DrugCatalogHits:
+      type: array
+      description: Effective catalog entries with tagged alternatives; not a cursor-paginated page.
+      items: { $ref: '#/components/schemas/CatalogHit' }
+    MedicationCatalogVersion:
+      type: object
+      properties:
+        version: { type: integer }
+        market: { type: string }
+        publishedAt: { type: string, format: date-time }
+        provenance: { type: string }
+    MedicationCatalogItem:
+      type: object
+      properties:
+        drug: { $ref: '#/components/schemas/DrugEntry' }
+        route: { type: string }
+    VersionedCatalogSearch:
+      type: object
+      description: Catalog hits paired with the publication version that produced them.
+      properties:
+        version: { $ref: '#/components/schemas/MedicationCatalogVersion' }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/MedicationCatalogItem' }
+    CreatePrescriptionRequest:
+      type: object
+      required: [prescriptionId, patientId, medication, prescriberSubject]
+      description: Transmission registration for an RX-01 draft; the local id is supplied by the caller.
+      properties:
+        prescriptionId: { type: string, minLength: 1 }
+        patientId: { type: string, minLength: 1 }
+        medication: { type: string }
+        strength: { type: string, nullable: true }
+        dose: { type: string, nullable: true }
+        route: { type: string, nullable: true }
+        frequency: { type: string, nullable: true }
+        quantity: { type: integer, nullable: true }
+        prescriberSubject: { type: string }
+        destinationPharmacy: { type: string, nullable: true }
+    Prescription:
+      type: object
+      properties:
+        id: { type: string }
+        version: { type: integer }
+        patientId: { type: string }
+        medication: { type: string }
+        strength: { type: string, nullable: true }
+        dose: { type: string, nullable: true }
+        route: { type: string, nullable: true }
+        frequency: { type: string, nullable: true }
+        quantity: { type: integer }
+        prescriberSubject: { type: string }
+        destinationPharmacy: { type: string, nullable: true }
+        state: { type: string, enum: [draft, attested, submitted, ambiguous, delivery_confirmed, accepted, rejected, clarification, dispensed, printed, cancelled] }
+        channel: { type: string, nullable: true }
+        submissionId: { type: string, nullable: true }
+        retryAllowed: { type: boolean }
+        createdAt: { type: string, format: date-time }
+    PrescriptionEvent:
+      type: object
+      description: Immutable transmission fact; acceptance and dispensing are deliberately distinct.
+      properties:
+        id: { type: string }
+        prescriptionId: { type: string }
+        prescriptionVersion: { type: integer }
+        eventType: { type: string, enum: [attested, submitted, delivery_confirmed, partner_status_verified, printed, pharmacy_accepted, pharmacy_rejected, clarification, renewal, cancelled, dispensing_evidence] }
+        actorId: { type: string, nullable: true }
+        channel: { type: string, nullable: true }
+        submissionId: { type: string, nullable: true }
+        outcome: { type: string, nullable: true }
+        detail: { type: string, nullable: true }
+        occurredAt: { type: string, format: date-time }
+    PrescriptionView:
+      type: object
+      properties:
+        prescription: { $ref: '#/components/schemas/Prescription' }
+        events:
+          type: array
+          items: { $ref: '#/components/schemas/PrescriptionEvent' }
+    PrintablePrescription:
+      type: object
+      description: Locally printed prescription carrying the attestation; no electronic delivery is implied.
+      properties:
+        prescriptionId: { type: string }
+        patientId: { type: string }
+        medication: { type: string }
+        strength: { type: string, nullable: true }
+        dose: { type: string, nullable: true }
+        route: { type: string, nullable: true }
+        frequency: { type: string, nullable: true }
+        quantity: { type: integer }
+        prescriberSubject: { type: string }
+        destinationPharmacy: { type: string, nullable: true }
+        attestationNote: { type: string, nullable: true }
+        attestedAt: { type: string, format: date-time }
+        channel: { type: string }
+    AttestRequest:
+      type: object
+      properties:
+        note: { type: string, nullable: true }
+    TransmitRequest:
+      type: object
+      required: [channel]
+      properties:
+        channel: { type: string, minLength: 1 }
+        outcome: { type: string, nullable: true }
+    ConfirmDeliveryRequest:
+      type: object
+      required: [submissionId]
+      properties:
+        submissionId: { type: string, minLength: 1 }
+    VerifyPartnerStatusRequest:
+      type: object
+      required: [submissionId, status]
+      description: Three-valued status; only absent authorizes a retry.
+      properties:
+        submissionId: { type: string, minLength: 1 }
+        status: { type: string, enum: [present, absent, unknown] }
+    RetryTransmissionRequest:
+      type: object
+      required: [submissionId, outcome]
+      description: Retry reuses the original stable submission id.
+      properties:
+        submissionId: { type: string, minLength: 1 }
+        outcome: { type: string, enum: [submitted, ambiguous] }
+    PharmacyResponseRequest:
+      type: object
+      required: [submissionId, outcome]
+      properties:
+        submissionId: { type: string, minLength: 1 }
+        outcome: { type: string, enum: [accepted, rejected, clarification] }
+        note: { type: string, nullable: true }
+    DispensingRequest:
+      type: object
+      required: [submissionId]
+      properties:
+        submissionId: { type: string, minLength: 1 }
+        note: { type: string, nullable: true }
+    RenewRequest:
+      type: object
+      properties:
+        note: { type: string, nullable: true }
+    CancelPrescriptionRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 1 }
+    ProposeSubstitutionRequest:
+      type: object
+      required: [currentEntryId, proposedEntryId, reason]
+      description: Pharmacy-proposed alternative; the reason is a bounded, auditable key.
+      properties:
+        currentEntryId: { type: string, minLength: 1 }
+        proposedEntryId: { type: string, minLength: 1 }
+        reason: { type: string, enum: [stock, brand, formulation] }
+        note: { type: string, nullable: true }
+        overrideReason: { type: string, nullable: true }
+    DecideSubstitutionRequest:
+      type: object
+      required: [attestation]
+      properties:
+        attestation: { type: string, minLength: 1 }
+        note: { type: string, nullable: true }
+    SubstitutionProposal:
+      type: object
+      properties:
+        id: { type: string }
+        organizationId: { type: string }
+        prescriptionId: { type: string }
+        patientId: { type: string }
+        prescriberSubject: { type: string }
+        proposedBy: { type: string }
+        original: { $ref: '#/components/schemas/DrugEntry' }
+        proposed: { $ref: '#/components/schemas/DrugEntry' }
+        reason: { type: string, enum: [stock, brand, formulation] }
+        note: { type: string, nullable: true }
+        overrideReason: { type: string, nullable: true }
+        allergyCheck: { $ref: '#/components/schemas/AllergyCheck' }
+        state: { type: string, enum: [pending, approved, declined] }
+        version: { type: integer }
+        proposedAt: { type: string, format: date-time }
+    SignedSubstitutionRevision:
+      type: object
+      description: Immutable signed revision created only on approval, with full catalog provenance.
+      properties:
+        id: { type: string }
+        prescriptionId: { type: string }
+        proposalId: { type: string }
+        revisionNumber: { type: integer }
+        replaced: { $ref: '#/components/schemas/DrugEntry' }
+        replacement: { $ref: '#/components/schemas/DrugEntry' }
+        reason: { type: string, enum: [stock, brand, formulation] }
+        approvedBy: { type: string }
+        allergyCheck: { $ref: '#/components/schemas/AllergyCheck' }
+        attestation: { type: string }
+        catalogProvenance: { type: string }
+        signedAt: { type: string, format: date-time }
+    ProposalView:
+      type: object
+      description: Review-only side-by-side proposal with its optional signed revision.
+      properties:
+        proposal: { $ref: '#/components/schemas/SubstitutionProposal' }
+        appliedRevision: { $ref: '#/components/schemas/SignedSubstitutionRevision', nullable: true }
+        alternatives:
+          type: array
+          items: { $ref: '#/components/schemas/Alternative' }
     Error:
       type: object
       properties:
