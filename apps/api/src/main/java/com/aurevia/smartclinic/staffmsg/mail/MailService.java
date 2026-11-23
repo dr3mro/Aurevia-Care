@@ -13,7 +13,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.aurevia.smartclinic.api.ApiException;
+import com.aurevia.smartclinic.authz.access.AccessRepository;
 import com.aurevia.smartclinic.staff.StaffRepository;
+import com.aurevia.smartclinic.staffmsg.directory.DirectoryPolicy;
+import com.aurevia.smartclinic.staffmsg.directory.StaffDirectoryService;
 import com.aurevia.smartclinic.staffmsg.mail.MailCommands.CreateDraftCommand;
 import com.aurevia.smartclinic.staffmsg.mail.MailCommands.FlagCommand;
 import com.aurevia.smartclinic.staffmsg.mail.MailCommands.ForwardCommand;
@@ -59,11 +62,16 @@ public final class MailService {
      * @param clock        application clock for server timestamps
      * @param staff        authoritative staff membership and role source
      * @param transactions tenant-guarded transaction template for role lookups
+     * @param directory    tenant-scoped facility resolver for the selected draft facility
+     * @param access       authoritative facility-scope fold for candidate role holders
+     * @param policy       same-organization authorization rule
      * @param store        durable mail persistence port
      */
     @Autowired
-    public MailService(Clock clock, StaffRepository staff, TransactionTemplate transactions, MailStore store) {
-        this(clock, new StaffRecipientDirectory(staff, transactions), store);
+    public MailService(Clock clock, StaffRepository staff, TransactionTemplate transactions,
+                       StaffDirectoryService directory, AccessRepository access, DirectoryPolicy policy,
+                       MailStore store) {
+        this(clock, new StaffRecipientDirectory(staff, transactions, directory, access, policy), store);
     }
 
     /**

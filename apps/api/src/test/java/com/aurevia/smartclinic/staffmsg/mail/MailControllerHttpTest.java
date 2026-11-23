@@ -2,6 +2,7 @@ package com.aurevia.smartclinic.staffmsg.mail;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -11,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -51,12 +53,16 @@ class MailControllerHttpTest {
     private MailService service;
     private MailController controller;
     private Map<String, List<String>> holders;
+    private List<String> queriedFacilities;
 
     @BeforeEach
     void setUp() {
         holders = new HashMap<>();
-        RecipientDirectory directory = (organizationId, facilityId, role) ->
-                holders.getOrDefault(role, List.of());
+        queriedFacilities = new ArrayList<>();
+        RecipientDirectory directory = (organizationId, facilityId, role) -> {
+            queriedFacilities.add(facilityId);
+            return holders.getOrDefault(role, List.of());
+        };
         service = new MailService(Clock.fixed(Instant.parse("2026-11-21T10:00:00Z"), ZoneOffset.UTC), directory,
                 new InMemoryMailStore());
         controller = new MailController(service);
@@ -227,6 +233,20 @@ class MailControllerHttpTest {
                                 List.of(), List.of(), List.of(), List.of()))))
                 .andExpect(status().isPreconditionRequired())
                 .andExpect(jsonPath("$.code").value("PRECONDITION_REQUIRED"));
+    }
+
+    @Test
+    void sendRequiresReconfirmationWhenFacilityHoldersChange() throws Exception {
+        holders.put("nurse", List.of("nurse-b", "nurse-c"));
+        String draftId = idOf(compose("nurse-a", "Handover", List.of(Recipient.role("nurse")),
+                List.of(), List.of(), List.of()));
+        assertTrue(queriedFacilities.isEmpty(), "role holders resolve at send time, not at compose time");
+
+        holders.put("nurse", List.of("nurse-b", "nurse-d"));
+        send(draftId, "nurse-a", List.of("nurse-b", "nurse-c"), "http-reconfirm")
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("RECIPIENT_CONFIRMATION_MISMATCH"));
+        assertEquals(List.of(FACILITY), queriedFacilities);
     }
 
     @Test
