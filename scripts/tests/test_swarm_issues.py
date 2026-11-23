@@ -129,6 +129,17 @@ class RecordTests(unittest.TestCase):
         self.assertFalse(any(c[:2] == ("issue", "reopen") for c in fake.calls))
         self.assertEqual(fake.created, 1)
 
+    def test_an_unchanged_cause_does_not_comment_on_every_poll(self):
+        tag = "<!-- swarm-fingerprint:%s -->" % swarm.fingerprint("pr-stuck", "7")
+        existing = [{"number": 9, "body": tag + " **Cause:** green and still not merged"}]
+        fake = Gh()
+        with mock.patch.object(swarm, "trusted_issues", return_value=existing), \
+                mock.patch.object(swarm, "gh", fake):
+            number = swarm.record_issue("pr-stuck", ["7"], "Title", "Body",
+                                        repeat_key="**Cause:** green and still not merged")
+        self.assertEqual(number, "9")
+        self.assertFalse(any(call[:2] == ("issue", "comment") for call in fake.calls))
+
     def test_a_new_cause_opens_an_issue_with_markers_and_labels(self):
         fake = Gh()
         number = self.record(fake, labels=("ci-failure",), markers={"run": 5})
@@ -327,6 +338,12 @@ class RunEventTests(unittest.TestCase):
         with mock.patch.object(swarm, "gh", broken):
             with self.assertRaises(subprocess.CalledProcessError):
                 swarm.run_event(5)
+
+    def test_a_prose_mention_of_a_protected_branch_is_not_a_rule_rejection(self):
+        log = ("Fetch main\n"
+               "Use a repository variable for the protected branch model override.\n"
+               "fatal: detected dubious ownership in repository at '/__w/Aurevia-Care/Aurevia-Care'\n")
+        self.assertNotIn(swarm.classify_failure(log), ("repository-rules", "quota"))
 
     def test_a_protected_branch_rejection_is_not_reported_as_quota(self):
         log = ("error: GH013: Repository rule violations found for refs/heads/main.\n"

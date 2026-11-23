@@ -23,6 +23,7 @@ permissions:
 concurrency:
   group: agent-image
   cancel-in-progress: false
+  queue: max
 jobs:
   build:
     runs-on: ubuntu-latest

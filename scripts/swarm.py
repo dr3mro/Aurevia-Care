@@ -248,8 +248,10 @@ TEST_STEP = re.compile(r"unittest|pytest|\bmvn\b|vitest|jest|npm (?:run )?test|c
 QUOTA = re.compile(r"rate limit|quota|insufficient balance|budget", re.I)
 # Repository rules are policy, not a usage limit: the action must stop rather
 # than retry or wait for a quota that is not exhausted.
+# Require the concrete rejection evidence. A bare "protected branch" appears in
+# step names and prose and must not misclassify an unrelated worker failure.
 REPO_RULES = re.compile(r"GH013|repository rule violations|push declined due to repository rule|"
-                       r"required status checks are expected|protected branch", re.I)
+                       r"required status checks are expected|remote rejected.*repository rule", re.I)
 TRUSTED_ASSOCIATIONS = {"OWNER", "MEMBER", "COLLABORATOR"}
 ISSUE_LABELS = {
     "swarm-issue": ("5319e7", "Opened and kept up to date by the swarm"),
@@ -319,10 +321,13 @@ def issues_with(kind, value):
     return [i for i in trusted_issues() if tag in (i.get("body") or "")]
 
 
-def record_issue(kind, parts, title, body, labels=(), markers=None):
+def record_issue(kind, parts, title, body, labels=(), markers=None, repeat_key=""):
     """Open one issue for a cause, or comment on the open one. Returns its number or ''.
 
-    A closed issue is never reopened: a person closed it on purpose, so a repeat opens a new one."""
+    ``repeat_key`` keeps an unchanged cause from producing a new comment on every
+    poll: a long-running condition must stay one quiet issue, not hundreds of
+    "seen again" comments. A changed cause still comments. A closed issue is
+    never reopened: a person closed it on purpose, so a repeat opens a new one."""
     if not issues_enabled():
         return ""
     fp = fingerprint(kind, *parts)
@@ -330,6 +335,8 @@ def record_issue(kind, parts, title, body, labels=(), markers=None):
     existing = issues_with("fingerprint", fp)
     if existing:
         number = str(min(i["number"] for i in existing))
+        if repeat_key and any(repeat_key in (i.get("body") or "") for i in existing):
+            return number
         text = clip_to(f"{MARK}\n**{stamp}** seen again.\n\n{body}", ISSUE_BODY_LIMIT)
         gh("issue", "comment", number, "--body", text, check=False)
         return number
@@ -377,7 +384,7 @@ def report_pr_stuck(pr, cause, detail, review=False, log_text=""):
             "when the pull request is merged or closed.")
     return record_issue("pr-stuck", [str(pr)], f"PR #{pr} needs a person: {cause}"[:200], body,
                         labels=("needs-review" if review else "needs-human",),
-                        markers={"pr": pr, "task": task})
+                        markers={"pr": pr, "task": task}, repeat_key=f"**Cause:** {cause}")
 
 
 def notes_section(text, heading="Why this is not finished"):
@@ -3522,9 +3529,11 @@ def pr_flow(now=None, dispatch_wave=True):
         acted.append(("-", f"integrator started for {len(ready)} ready pull request(s)"))
     for pr, idle in ready:
         if idle >= PR_STUCK_MINUTES:
-            report_pr_stuck(pr, f"green for {int(idle)} minutes and still not merged",
-                            "Delivery passed and no label blocks it, but the integrator has not merged it. "
-                            "Check the latest Swarm integrator run.")
+            # The cause must be stable: a per-minute number would post a new
+            # comment on every poll instead of keeping one actionable issue.
+            report_pr_stuck(pr, "green and still not merged",
+                            f"Delivery passed {int(idle)} minutes ago and no label blocks it, but the "
+                            "integrator has not merged it. Check the latest Swarm integrator run.")
             acted.append((pr, "stuck alert"))
     return acted
 
@@ -4062,7 +4071,19 @@ def integrate_batch(queue, gate="scripts/quick-check.sh", check_delivery=None):
         try:
             authed_git("push", "origin", "HEAD:main")
             break
-        except subprocess.CalledProcessError:
+        except subprocess.CalledProcessError as exc:
+            if repo_rule_rejection(exc.stderr):
+                # Policy rejection is permanent: three identical pushes would
+                # only fail three times and leave every PR waiting in silence.
+                print("integrator: protected-main push rejected by repository rules; "
+                      "batch was not merged", file=sys.stderr)
+                for pr, _, _ in merged:
+                    gh("pr", "comment", str(pr),
+                       "--body", f"{MARK}\nIntegration could not push to main: repository rules rejected "
+                       "the protected-branch write. The batch stays open for the next integrator run.",
+                       check=False)
+                emit("merged", 0)
+                return 0
             if attempt == 2:
                 raise
             authed_git("fetch", "origin", "main")
@@ -4442,6 +4463,14 @@ def main(argv=None):
         emit("start", "true" if start else "false")
     elif a.cmd == "plan-integration":
         queue = plan_integration(main_is_red())
+        # Each PR is gated with the full check.sh (~10 min) and the integrator
+        # pushes only once at the end. An unbounded batch exceeds the 120-min
+        # job timeout, so no PR merges at all. Merge in bounded waves; the next
+        # plan picks up the remainder after this batch pushes.
+        limit = max(1, int(os.environ.get("SWARM_INTEGRATE_BATCH", "4")))
+        if len(queue) > limit:
+            print(f"integration batch capped at {limit} of {len(queue)} ready PRs")
+            queue = queue[:limit]
         emit("queue", json.dumps(queue))
         emit("count", len(queue))
     elif a.cmd == "budget-gate":
@@ -4458,7 +4487,13 @@ def main(argv=None):
         # A wave never starts more workers than the remaining budget can pay for.
         emit("workers", affordable_workers(used, a.cap))
     elif a.cmd == "reconcile-tasks":
-        print(f"reconciled {reconcile_tasks(a.dir, a.file, persist=True)} task(s)")
+        try:
+            print(f"reconciled {reconcile_tasks(a.dir, a.file, persist=True)} task(s)")
+        except TrackerPushBlocked as exc:
+            # Reconciliation is best effort after a merge: report the policy
+            # block without failing the whole integrator job again.
+            print(f"reconcile: {exc.reason}", file=sys.stderr)
+            return 0
     elif a.cmd == "draft-triage":
         emit("drafts", draft_triage())
     elif a.cmd == "migrate-tasks":
