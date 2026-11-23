@@ -227,6 +227,11 @@
         },
         {
           "action": "subagent",
+          "resource": "smartclinic-merge-conflict",
+          "effect": "allow"
+        },
+        {
+          "action": "subagent",
           "resource": "smartclinic-patient-user",
           "effect": "allow"
         },
@@ -730,6 +735,50 @@
       ]
     },
     "smartclinic-memory-manager": {
+      "permissions": [
+        {
+          "action": "*",
+          "resource": "*",
+          "effect": "deny"
+        },
+        {
+          "action": "read",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "read",
+          "resource": "*.env",
+          "effect": "deny"
+        },
+        {
+          "action": "read",
+          "resource": "*.env.*",
+          "effect": "deny"
+        },
+        {
+          "action": "read",
+          "resource": "*.env.example",
+          "effect": "allow"
+        },
+        {
+          "action": "glob",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "grep",
+          "resource": "*",
+          "effect": "allow"
+        },
+        {
+          "action": "skill",
+          "resource": "*",
+          "effect": "allow"
+        }
+      ]
+    },
+    "smartclinic-merge-conflict": {
       "permissions": [
         {
           "action": "*",

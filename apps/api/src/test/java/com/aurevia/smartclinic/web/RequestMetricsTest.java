@@ -37,6 +37,42 @@ class RequestMetricsTest {
         assertTrue(scrape.contains(
                 "smartclinic_http_request_seconds_sum{method=\"GET\",route=\"/api/v1/patients/{id}\",status=\"5xx\"} 0.5\n"),
                 scrape);
+        // The histogram's sum and count must agree with the existing counter families.
+        assertTrue(scrape.contains(
+                "smartclinic_http_request_duration_seconds_sum{method=\"GET\",route=\"/api/v1/patients/{id}\",status=\"2xx\"} 1.5\n"),
+                scrape);
+        assertTrue(scrape.contains(
+                "smartclinic_http_request_duration_seconds_count{method=\"GET\",route=\"/api/v1/patients/{id}\",status=\"2xx\"} 1\n"),
+                scrape);
+        assertTrue(scrape.contains(
+                "smartclinic_http_request_duration_seconds_bucket{method=\"GET\",route=\"/api/v1/patients/{id}\",status=\"2xx\",le=\"+Inf\"} 1\n"),
+                scrape);
+    }
+
+    @Test
+    void recordsCumulativeHistogramBucketsAtBoundaries() {
+        RequestMetrics metrics = new RequestMetrics();
+        metrics.record("GET", "/api/v1/patients/{id}", 200, 1_000_000L);      // below first bound (0.005 s)
+        metrics.record("GET", "/api/v1/patients/{id}", 200, 500_000_000L);    // exactly the 0.5 s bound
+        metrics.record("GET", "/api/v1/patients/{id}", 200, 900_000_000L);    // exactly the 0.9 s bound
+        metrics.record("GET", "/api/v1/patients/{id}", 200, 11_000_000_000L); // above last bound (10 s)
+
+        String scrape = metrics.scrape();
+        String series = "method=\"GET\",route=\"/api/v1/patients/{id}\",status=\"2xx\"";
+        // Cumulative: a sample in a bucket is in every higher bucket, and <= includes equality.
+        assertTrue(scrape.contains("smartclinic_http_request_duration_seconds_bucket{" + series + ",le=\"0.005\"} 1\n"), scrape);
+        assertTrue(scrape.contains("smartclinic_http_request_duration_seconds_bucket{" + series + ",le=\"0.5\"} 2\n"), scrape);
+        assertTrue(scrape.contains("smartclinic_http_request_duration_seconds_bucket{" + series + ",le=\"0.9\"} 3\n"), scrape);
+        assertTrue(scrape.contains("smartclinic_http_request_duration_seconds_bucket{" + series + ",le=\"10.0\"} 3\n"), scrape);
+        assertTrue(scrape.contains("smartclinic_http_request_duration_seconds_bucket{" + series + ",le=\"+Inf\"} 4\n"), scrape);
+        assertTrue(scrape.contains("smartclinic_http_request_duration_seconds_count{" + series + "} 4\n"), scrape);
+        // le labels are emitted in ascending order with +Inf last.
+        int first = scrape.indexOf("le=\"0.005\"");
+        int half = scrape.indexOf("le=\"0.5\"");
+        int nine = scrape.indexOf("le=\"0.9\"");
+        int ten = scrape.indexOf("le=\"10.0\"");
+        int infinity = scrape.indexOf("le=\"+Inf\"");
+        assertTrue(first >= 0 && half > first && nine > half && ten > nine && infinity > ten, scrape);
     }
 
     @Test
@@ -47,6 +83,9 @@ class RequestMetricsTest {
         String scrape = metrics.scrape();
         assertTrue(scrape.contains("route=\"/route/with\\\"quote\\\\slash\\nnewline\""), scrape);
         assertFalse(scrape.contains("\nnewline"), scrape);
+        // The same escaping applies to the bucket label built from the same key.
+        assertTrue(scrape.contains("smartclinic_http_request_duration_seconds_bucket{method=\"GET\","
+                + "route=\"/route/with\\\"quote\\\\slash\\nnewline\",status=\"2xx\",le=\"0.005\"} 1\n"), scrape);
     }
 
     @Test
@@ -56,6 +95,9 @@ class RequestMetricsTest {
         assertTrue(scrape.startsWith("# HELP smartclinic_http_requests_total"), scrape);
         assertTrue(scrape.contains("# TYPE smartclinic_http_requests_total counter"), scrape);
         assertTrue(scrape.contains("# TYPE smartclinic_http_request_seconds_sum counter"), scrape);
+        assertTrue(scrape.contains("# HELP smartclinic_http_request_duration_seconds"), scrape);
+        assertTrue(scrape.contains("# TYPE smartclinic_http_request_duration_seconds histogram"), scrape);
         assertFalse(scrape.contains("method="), scrape);
+        assertFalse(scrape.contains("le="), scrape);
     }
 }

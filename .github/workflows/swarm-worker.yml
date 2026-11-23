@@ -15,9 +15,9 @@ on:
 permissions:
   contents: read
 # Not the swarm's own group: the calling wave already holds it, so reusing it
-# here would wait on itself forever. One group per worker slot of this run.
+# here would wait on itself forever. One group per task of this run.
 concurrency:
-  group: swarm-worker-${{ github.run_id }}-${{ inputs.slot }}
+  group: swarm-worker-${{ github.run_id }}-${{ fromJSON(inputs.task).id }}
   cancel-in-progress: false
 env:
   SWARM_GIT_NAME: ${{ vars.SWARM_GIT_NAME }}
@@ -82,17 +82,26 @@ jobs:
           AGENT_TIMEOUT: 15m
           SYNC_ONLY: '1'
         timeout-minutes: 20
-        run: scripts/agent-run.sh merge-main || true
+        run: |
+          # Older PR branches may lack the conflict skill loader.
+          runner=$(mktemp)
+          trap 'rm -f "$runner"' EXIT
+          git show "origin/$BASE_BRANCH:scripts/agent-run.sh" > "$runner"
+          bash "$runner" merge-main || true
       # What earlier workers and the integrator wrote about this task in trusted
       # issues. Read here with the read-only token; the agent only sees the file.
       - name: Read earlier findings about this task
         env:
           GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
           SWARM_ISSUES: ${{ vars.SWARM_ISSUES }}
+          BASE_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
-          python3 -I scripts/swarm.py issue-context --task "$STORY_ID" || true
+          context=$(mktemp)
+          trap 'rm -f "$context"' EXIT
+          git show "origin/$BASE_BRANCH:scripts/swarm.py" > "$context"
+          python3 -I "$context" issue-context --task "$STORY_ID" || true
           if [[ "$MODE" == fix && "$PR_NUMBER" =~ ^[1-9][0-9]*$ ]]; then
-            python3 -I scripts/swarm.py pr-context --pr "$PR_NUMBER" || true
+            python3 -I "$context" pr-context --pr "$PR_NUMBER" || true
           fi
       # PostgreSQL ships in the agent image; the integration suites need it.
       - name: Start PostgreSQL for the worker checks
@@ -104,6 +113,12 @@ jobs:
           else
             echo "start-postgres missing - older agent image" >&2
           fi
+      - name: Preflight checks (fail fast before the agent runs)
+        run: |
+          set -e
+          python3 -I scripts/check-wiring.py
+          if [[ -d apps/staff-web ]]; then (cd apps/staff-web && npx tsc --noEmit); fi
+          if [[ -d apps/patient-mobile ]]; then (cd apps/patient-mobile && npx tsc --noEmit); fi
       - id: s1
         name: Work the task, segment 1 of 4 (no GitHub token in this step)
         env:
@@ -249,7 +264,7 @@ jobs:
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: always()
         with:
-          name: worker-${{ inputs.slot }}
+          name: worker-${{ fromJSON(inputs.task).id }}
           path: |
             .agent/result
             .agent/commits
@@ -286,8 +301,8 @@ jobs:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         continue-on-error: true
         with:
-          name: worker-${{ inputs.slot }}
-          path: results/worker-${{ inputs.slot }}
+          name: worker-${{ fromJSON(inputs.task).id }}
+          path: results/worker-${{ fromJSON(inputs.task).id }}
       - name: Warn when SWARM_TOKEN is not configured
         env:
           HAS_SWARM_TOKEN: ${{ secrets.SWARM_TOKEN != '' }}
@@ -303,9 +318,9 @@ jobs:
           # Set only when SWARM_TOKEN exists: that token can push workflow files.
           SWARM_WORKFLOW_PUSH: ${{ secrets.SWARM_TOKEN != '' }}
           TASK: ${{ inputs.task }}
-          SLOT: ${{ inputs.slot }}
+          TASK_ID: ${{ fromJSON(inputs.task).id }}
           BASE_BRANCH: ${{ github.event.repository.default_branch }}
-        run: python3 -I scripts/swarm.py publish --task "$TASK" --dir "results/worker-$SLOT"
+        run: python3 -I scripts/swarm.py publish --task "$TASK" --dir "results/worker-$TASK_ID"
       # This worker's slot is free: start the next wave now instead of waiting for the slowest
       # worker of this wave. The planner still applies the worker cap, scopes and the budget.
       - name: Fill the free slot

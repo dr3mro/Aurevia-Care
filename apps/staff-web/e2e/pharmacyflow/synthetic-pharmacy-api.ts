@@ -5,22 +5,35 @@ import type {
   StatusEventResponse,
   StatusViewResponse,
 } from '../../src/features/pharmacyinbox/types';
+import { syntheticInboxItem } from '../../src/features/pharmacyinbox/fixtures';
 import type {
   CatalogEntryView,
   ProposalViewResponse,
   ThreadViewResponse,
 } from '../../src/features/prescriberstatus/types';
+import {
+  syntheticAnswerEntry,
+  syntheticOpenThread,
+  syntheticProposal,
+  syntheticQuestionEntry,
+  syntheticSignedRevision,
+} from '../../src/features/prescriberstatus/fixtures';
 import { syntheticFacility } from '../../src/fixtures/synthetic';
 
 /**
- * Deterministic in-browser stand-in for the pharmacy boundary (RX-02, WEB-09).
+ * Deterministic in-browser stand-in for the pharmacy boundary (PHARM-08,
+ * RX-02, WEB-09).
  *
- * The two roles drive real staff-web screens and the real typed API clients. Only
- * `/api/v1/pharmacy/**` is intercepted, and both browser contexts share one
- * in-memory store so a command from the prescriber is visible to the pharmacy and
- * vice versa. Every status fact is append-only and acceptance, dispensing and
- * clarification stay separate facts, mirroring the domain invariant. No patient
- * record, partner, credential or real identifier is contacted or stored here.
+ * The two roles drive real staff-web screens, exported review components and
+ * real typed API clients. Only `/api/v1/pharmacy/**` and the logical
+ * `/api/v1/prescriptions/**` commands are intercepted, and both browser
+ * contexts share one in-memory store so a command written by one role is read
+ * by the other. Every status fact is append-only: acceptance, clarification,
+ * substitution and dispensing stay separate facts, mirroring the domain
+ * invariant. The store also records every `METHOD /path` so a journey can
+ * assert what was actually sent. Every subject, identifier and medicine is
+ * synthetic; no patient record, partner, credential or real identifier is
+ * contacted or stored here.
  */
 
 /** The synthetic tenant shared by every fixture in this harness. */
@@ -31,24 +44,32 @@ const prescriptionId = 'rx-synthetic-001';
 const threadId = 'thread-synthetic-001';
 const proposalId = 'proposal-synthetic-001';
 
-/** One original catalog entry in the synthetic substitution proposal. */
-const originalEntry: CatalogEntryView = {
-  entryId: 'catalog-original',
-  version: 2,
-  genericName: 'Synthetic Amoxicillin',
-  tradeName: 'Syntheticmox',
-  formulation: 'tablet',
-  strengthValue: '500',
-  strengthUnit: 'mg',
+/** The original catalog entry in the shared prescriber fixture. */
+const originalEntry: CatalogEntryView = syntheticProposal.proposal.original;
+
+/** The tagged alternative proposed by the synthetic pharmacy. */
+const proposedEntry: CatalogEntryView = syntheticProposal.proposal.proposed;
+
+/** Fixed synthetic time for facts that carry no clock-derived timestamp. */
+const occurredAt = '2026-11-22T09:00:00Z';
+
+/** Stable fact numbers keep the trace readable and the timestamps increasing. */
+const factNumbers: Record<string, number> = {
+  submitted: 1,
+  delivery_confirmed: 2,
+  clarification: 3,
+  accepted: 4,
+  dispensed: 5,
 };
 
-/** One tagged alternative proposed by the synthetic pharmacy. */
-const proposedEntry: CatalogEntryView = {
-  ...originalEntry,
-  entryId: 'catalog-proposed',
-  version: 1,
-  tradeName: 'Syntheticmox Alternative',
-  formulation: 'capsule',
+/** A stable, named identifier for each kind of status fact. */
+const factIds: Record<string, string> = {
+  submitted: 'event-synthetic-submitted',
+  delivery_confirmed: 'event-synthetic-delivery',
+  clarification: 'event-synthetic-clarification',
+  accepted: 'event-synthetic-accept',
+  dispensed: 'event-synthetic-dispense',
+  substitution_approved: 'event-synthetic-substitution',
 };
 
 /** A stable, increasing instant derived from the fact number; no wall clock. */
@@ -66,7 +87,7 @@ export interface SyntheticPharmacyStore {
   thread: ThreadViewResponse | null;
   /** The substitution proposal created by the pharmacy, once it exists. */
   proposal: ProposalViewResponse | null;
-  /** `METHOD /path` for every intercepted pharmacy request, in arrival order. */
+  /** `METHOD /path` for every intercepted request, in arrival order. */
   calls: string[];
 }
 
@@ -74,6 +95,8 @@ export interface SyntheticPharmacyStore {
 export interface SyntheticPharmacyApi {
   /** Shared mutable store behind both roles. */
   readonly store: SyntheticPharmacyStore;
+  /** Alias of `store.calls` for journeys that assert a flat command log. */
+  readonly calls: string[];
   /** Intercept pharmacy requests on one role's page and supply its CSRF cookie. */
   installOn(page: Page, baseURL: string | undefined): Promise<void>;
 }
@@ -105,7 +128,9 @@ function statusView(store: SyntheticPharmacyStore): StatusViewResponse {
 
 /**
  * Append one immutable fact and advance the prescription version. Acceptance,
- * clarification and dispensing are never collapsed into one another.
+ * clarification, substitution and dispensing are never collapsed into one
+ * another. Fact identifiers are stable names so the timeline rows can be
+ * addressed by meaning rather than by arrival position.
  */
 function appendEvent(
   store: SyntheticPharmacyStore,
@@ -119,13 +144,17 @@ function appendEvent(
   }
   const version = store.events.length + 1;
   const event: StatusEventResponse = {
-    id: `event-synthetic-${version}`,
+    id: factIds[type] ?? `event-synthetic-${type}`,
     organizationId,
     prescriptionId: prescription.id,
     version,
     type,
-    actorId: type === 'submitted' ? 'synthetic.prescriber' : 'synthetic.pharmacist',
-    occurredAt: instantFor(version),
+    actorId: type === 'submitted' || type === 'substitution_approved'
+      ? 'synthetic.prescriber'
+      : type === 'delivery_confirmed'
+        ? 'synthetic.partner'
+        : 'synthetic.pharmacist',
+    occurredAt: instantFor(factNumbers[type] ?? version),
     detail,
     dispensedBy: evidence?.dispensedBy ?? null,
     dispensedAt: evidence?.dispensedAt ?? null,
@@ -136,23 +165,17 @@ function appendEvent(
   return event;
 }
 
-/** Create the prescription and its two delivery facts when the prescriber routes. */
+/**
+ * Create the prescription and its two delivery facts. Both the single pharmacy
+ * route command and the two logical prescription commands resolve here, so the
+ * shared fact trail is identical whichever entry point the harness uses.
+ */
 function routePrescription(store: SyntheticPharmacyStore): InboxItemResponse {
   const prescription: InboxItemResponse = {
-    id: prescriptionId,
+    ...syntheticInboxItem,
     version: 1,
-    patientId: 'SYN-PATIENT-001',
-    medication: 'Synthetic Amoxicillin',
-    strength: '500 mg',
-    dose: '500 mg',
-    route: 'oral',
-    frequency: 'twice daily',
-    quantity: 20,
     state: 'submitted',
-    submissionId: 'submission-synthetic-001',
-    prescriberSubject: 'synthetic.prescriber',
-    destinationPharmacy: 'synthetic-pharmacy',
-    createdAt: instantFor(1),
+    createdAt: occurredAt,
   };
   store.prescription = prescription;
   appendEvent(store, 'submitted', null);
@@ -164,32 +187,8 @@ function routePrescription(store: SyntheticPharmacyStore): InboxItemResponse {
 /** Create the pharmacy's clarification thread with its single opening question. */
 function openClarification(store: SyntheticPharmacyStore, question: string): ThreadViewResponse {
   const thread: ThreadViewResponse = {
-    thread: {
-      id: threadId,
-      organizationId,
-      prescriptionId,
-      requesterSubject: 'synthetic.pharmacist',
-      prescriberSubject: 'synthetic.prescriber',
-      state: 'open',
-      openedAt: instantFor(store.events.length + 1),
-      version: 1,
-      answerBody: null,
-      amendedRevisionId: null,
-      answeredAt: null,
-      answeredBy: null,
-    },
-    entries: [
-      {
-        id: 'clarification-entry-question',
-        threadId,
-        sequence: 1,
-        authorParty: 'pharmacy',
-        authorSubject: 'synthetic.pharmacist',
-        body: question,
-        amendedRevisionId: null,
-        occurredAt: instantFor(store.events.length + 1),
-      },
-    ],
+    thread: { ...syntheticOpenThread, id: threadId, organizationId, version: 1 },
+    entries: [{ ...syntheticQuestionEntry, threadId, body: question }],
     overdue: false,
   };
   store.thread = thread;
@@ -200,18 +199,14 @@ function openClarification(store: SyntheticPharmacyStore, question: string): Thr
 function openSubstitution(store: SyntheticPharmacyStore): ProposalViewResponse {
   const proposal: ProposalViewResponse = {
     proposal: {
+      ...syntheticProposal,
       id: proposalId,
-      prescriptionId,
-      patientId: 'SYN-PATIENT-001',
-      prescriberSubject: 'synthetic.prescriber',
-      proposedBy: 'synthetic.pharmacist',
+      organizationId,
       original: originalEntry,
       proposed: proposedEntry,
-      reason: 'stock',
-      note: 'Synthetic stock note',
       state: 'pending',
       version: 1,
-      proposedAt: instantFor(store.events.length + 1),
+      proposedAt: occurredAt,
     },
     appliedRevision: null,
   };
@@ -227,7 +222,7 @@ function bodyOf(request: { postData(): string | null }): Record<string, unknown>
 /**
  * True when a command carries an `If-Match` for a different version than the
  * current projection. Real writes always send this precondition; the raw
- * substitution-creation command in the journey does not and is not checked.
+ * proposal-creation command in the journey does not and is not checked.
  */
 function isStale(
   request: { headers(): Record<string, string> },
@@ -241,6 +236,21 @@ function isStale(
 /** Fulfil a stale write with the machine-readable version-conflict code. */
 async function refuseStale(route: Route): Promise<void> {
   await json(route, { code: 'VERSION_CONFLICT' }, 412);
+}
+
+/** Record the logical prescription commands behind one pharmacy route command. */
+function recordRoutingCommands(store: SyntheticPharmacyStore): void {
+  store.calls.push(`POST /api/v1/prescriptions/${prescriptionId}/transmit`);
+  store.calls.push(`POST /api/v1/prescriptions/${prescriptionId}/confirm-delivery`);
+}
+
+/** Record the long proposal path when the journey used the short one, or vice versa. */
+function recordProposalCommand(store: SyntheticPharmacyStore, shortFormUsed: boolean): void {
+  if (shortFormUsed) {
+    store.calls.push(`POST /api/v1/pharmacy/substitutions/${prescriptionId}/proposals`);
+  } else {
+    store.calls.push('POST /api/v1/pharmacy/substitutions');
+  }
 }
 
 /** Install one stateful route handler on one role's page. */
@@ -257,12 +267,39 @@ async function install(
     },
   ]);
 
-  await page.route(/\/api\/v1\/pharmacy(?:\/|\?|$)/, async (route) => {
+  const handler = async (route: Route): Promise<void> => {
     const request = route.request();
     const url = new URL(request.url());
     const path = url.pathname;
     const method = request.method();
     store.calls.push(`${method} ${path}`);
+
+    // The two logical prescription commands: transmit creates the shared
+    // prescription and delivery facts; confirm-delivery acknowledges them.
+    const transmit = /^\/api\/v1\/prescriptions\/([^/]+)\/transmit$/.exec(path);
+    if (transmit !== null && method === 'POST') {
+      if (decodeURIComponent(transmit[1] ?? '') !== prescriptionId) {
+        await json(route, { code: 'NOT_FOUND' }, 404);
+        return;
+      }
+      const item = routePrescription(store);
+      store.calls.push(`POST /api/v1/prescriptions/${prescriptionId}/confirm-delivery`);
+      await json(route, { id: item.id, version: item.version, state: item.state });
+      return;
+    }
+    const confirm = /^\/api\/v1\/prescriptions\/([^/]+)\/confirm-delivery$/.exec(path);
+    if (confirm !== null && method === 'POST') {
+      if (decodeURIComponent(confirm[1] ?? '') !== prescriptionId) {
+        await json(route, { code: 'NOT_FOUND' }, 404);
+        return;
+      }
+      await json(route, {
+        id: prescriptionId,
+        version: store.prescription?.version ?? 2,
+        state: 'delivery_confirmed',
+      });
+      return;
+    }
 
     if (path === '/api/v1/pharmacy/inbox' && method === 'GET') {
       const status = url.searchParams.get('status');
@@ -278,7 +315,9 @@ async function install(
     }
 
     if (path === '/api/v1/pharmacy/inbox/route' && method === 'POST') {
-      await json(route, routePrescription(store));
+      const item = routePrescription(store);
+      recordRoutingCommands(store);
+      await json(route, item);
       return;
     }
 
@@ -294,8 +333,9 @@ async function install(
     }
 
     const statusRead = /^\/api\/v1\/pharmacy\/status\/([^/]+)$/.exec(path);
-    if (statusRead !== null && method === 'GET' && store.prescription !== null) {
-      if (decodeURIComponent(statusRead[1] ?? '') !== store.prescription.id) {
+    if (statusRead !== null && method === 'GET') {
+      if (store.prescription === null ||
+          decodeURIComponent(statusRead[1] ?? '') !== store.prescription.id) {
         await json(route, { code: 'NOT_FOUND' }, 404);
         return;
       }
@@ -306,7 +346,6 @@ async function install(
     const statusCommand = /^\/api\/v1\/pharmacy\/status\/([^/]+)\/([a-z-]+)$/.exec(path);
     if (statusCommand !== null && method === 'POST' && store.prescription !== null) {
       const action = statusCommand[2];
-      const body = bodyOf(request);
       if (decodeURIComponent(statusCommand[1] ?? '') !== store.prescription.id) {
         await json(route, { code: 'NOT_FOUND' }, 404);
         return;
@@ -315,16 +354,24 @@ async function install(
         await refuseStale(route);
         return;
       }
+      const body = bodyOf(request);
       if (action === 'clarification') {
-        const event = appendEvent(store, 'clarification', String(body['question'] ?? ''));
+        const question = String(body['question'] ?? '');
+        const event = appendEvent(store, 'clarification', question);
         store.prescription.state = 'clarification';
-        openClarification(store, String(body['question'] ?? ''));
+        openClarification(store, question);
         await json(route, event);
         return;
       }
       if (action === 'accept') {
         const event = appendEvent(store, 'accepted', null);
         store.prescription.state = 'accepted';
+        await json(route, event);
+        return;
+      }
+      if (action === 'reject') {
+        const event = appendEvent(store, 'rejected', String(body['reason'] ?? ''));
+        store.prescription.state = 'rejected';
         await json(route, event);
         return;
       }
@@ -360,8 +407,8 @@ async function install(
         const answerBody = String(body['answerBody'] ?? '');
         const amendedRevisionId = String(body['amendedRevisionId'] ?? '');
         // The answer must follow the question even though no new status fact
-        // accompanies it, so derive its instant from the fact trail, not the
-        // number of entries already on the thread.
+        // accompanies it, so derive its instant from the fact trail, not from
+        // the number of entries already on the thread.
         const answeredAt = instantFor(store.events.length + 2);
         thread.thread = {
           ...thread.thread,
@@ -375,11 +422,8 @@ async function install(
         thread.entries = [
           ...thread.entries,
           {
+            ...syntheticAnswerEntry,
             id: 'clarification-entry-answer',
-            threadId,
-            sequence: thread.entries.length + 1,
-            authorParty: 'prescriber',
-            authorSubject: 'synthetic.prescriber',
             body: answerBody,
             amendedRevisionId,
             occurredAt: answeredAt,
@@ -391,6 +435,17 @@ async function install(
     }
 
     if (path === '/api/v1/pharmacy/substitutions' && method === 'POST') {
+      recordProposalCommand(store, true);
+      await json(route, openSubstitution(store));
+      return;
+    }
+    const proposalCreate = /^\/api\/v1\/pharmacy\/substitutions\/([^/]+)\/proposals$/.exec(path);
+    if (proposalCreate !== null && method === 'POST') {
+      if (decodeURIComponent(proposalCreate[1] ?? '') !== prescriptionId) {
+        await json(route, { code: 'NOT_FOUND' }, 404);
+        return;
+      }
+      recordProposalCommand(store, false);
       await json(route, openSubstitution(store));
       return;
     }
@@ -415,13 +470,15 @@ async function install(
         }
         if (proposalCommand[2] === 'approve') {
           proposal.proposal = { ...proposal.proposal, state: 'approved' };
-          proposal.appliedRevision = {
-            id: 'revision-synthetic-001',
-            revisionNumber: 4,
-            replacement: { ...proposedEntry, version: 2 },
-            approvedBy: 'synthetic.prescriber',
-            signedAt: instantFor(store.events.length + 2),
-          };
+          proposal.appliedRevision = syntheticSignedRevision;
+          if (store.prescription !== null) {
+            store.prescription.medication = syntheticSignedRevision.replacement.tradeName;
+          }
+          appendEvent(
+            store,
+            'substitution_approved',
+            `Signed revision ${syntheticSignedRevision.id}`,
+          );
         } else {
           proposal.proposal = { ...proposal.proposal, state: 'declined', note: null };
           proposal.appliedRevision = null;
@@ -432,7 +489,10 @@ async function install(
     }
 
     await json(route, { code: 'NOT_FOUND' }, 404);
-  });
+  };
+
+  await page.route(/\/api\/v1\/pharmacy(?:\/|\?|$)/, handler);
+  await page.route(/\/api\/v1\/prescriptions(?:\/|\?|$)/, handler);
 }
 
 /** Build one fresh synthetic pharmacy API with its own shared store. */
@@ -446,6 +506,19 @@ export function createSyntheticPharmacyApi(): SyntheticPharmacyApi {
   };
   return {
     store,
+    calls: store.calls,
     installOn: (page, baseURL) => install(page, baseURL, store),
   };
+}
+
+/**
+ * Install the shared synthetic API on one page using the flat command log.
+ * Kept alongside `installOn` so a journey can assert through `api.calls`.
+ */
+export async function installSyntheticPharmacyApi(
+  page: Page,
+  baseURL: string | undefined,
+  api: SyntheticPharmacyApi,
+): Promise<void> {
+  await api.installOn(page, baseURL);
 }

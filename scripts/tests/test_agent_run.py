@@ -136,6 +136,7 @@ class AgentRunTests(unittest.TestCase):
         if not other.exists():
             subprocess.run(["git", "clone", "-q", str(self.tmp / "origin.git"), str(other)],
                            check=True, capture_output=True)
+        (other / name).parent.mkdir(parents=True, exist_ok=True)
         (other / name).write_text(text)
         for args in (("add", name), ("commit", "-qm", f"main {name}"), ("push", "-q", "origin", "main")):
             subprocess.run(["git", *args], cwd=other, check=True, capture_output=True,
@@ -165,6 +166,17 @@ class AgentRunTests(unittest.TestCase):
                                 capture_output=True, text=True).stdout
         self.assertEqual(status.strip(), "")
         self.assertTrue((self.repo / ".git/MERGE_HEAD").exists() is False)
+
+    def test_conflict_prompt_loads_the_dedicated_merge_skill(self):
+        script = (ROOT / "scripts/agent-run.sh").read_text()
+        skill = ROOT / ".opencode/skills/smartclinic-merge-conflict/SKILL.md"
+        self.assertIn(str(skill.relative_to(ROOT)), script)
+        self.push_to_main(str(skill.relative_to(ROOT)), skill.read_text())
+        self.push_to_main("feature.txt", "main version\n")
+        prompt = self.tmp / "merge-prompt"
+        self.assertEqual(self.merge_main("resolve", PROMPT_LOG=str(prompt)).returncode, 0)
+        self.assertIn("git ls-files -u", prompt.read_text())
+        self.assertEqual(self.outputs()["merge"], "merged")
 
     def test_unresolved_conflict_is_rolled_back_after_the_attempt_limit(self):
         self.push_to_main("feature.txt", "main version\n")
