@@ -442,6 +442,16 @@ class MainDispatchCoverageTests(CliTestCase):
         self.assertEqual(emitted.get("queue"), "[7, 8]")
         self.assertEqual(emitted.get("count"), "2")
 
+    def test_main_plan_integration_caps_the_batch_for_the_job_timeout(self):
+        queue = list(range(1, 10))
+        with mock.patch.object(swarm, "main_is_red", return_value=False), \
+                mock.patch.object(swarm, "plan_integration", return_value=queue), \
+                mock.patch.dict(os.environ, {"SWARM_INTEGRATE_BATCH": "3"}):
+            self.assertEqual(swarm.main(["plan-integration"]), 0)
+        emitted = self.emitted()
+        self.assertEqual(emitted.get("queue"), "[1, 2, 3]")
+        self.assertEqual(emitted.get("count"), "3")
+
     def test_main_resolve_publish_routes_to_resolve_publish(self):
         with mock.patch.object(swarm, "resolve_publish") as resolve:
             self.assertEqual(swarm.main(["resolve-publish", "--dir", str(self.dir)]), 0)

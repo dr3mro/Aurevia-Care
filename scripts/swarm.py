@@ -4463,6 +4463,14 @@ def main(argv=None):
         emit("start", "true" if start else "false")
     elif a.cmd == "plan-integration":
         queue = plan_integration(main_is_red())
+        # Each PR is gated with the full check.sh (~10 min) and the integrator
+        # pushes only once at the end. An unbounded batch exceeds the 120-min
+        # job timeout, so no PR merges at all. Merge in bounded waves; the next
+        # plan picks up the remainder after this batch pushes.
+        limit = max(1, int(os.environ.get("SWARM_INTEGRATE_BATCH", "4")))
+        if len(queue) > limit:
+            print(f"integration batch capped at {limit} of {len(queue)} ready PRs")
+            queue = queue[:limit]
         emit("queue", json.dumps(queue))
         emit("count", len(queue))
     elif a.cmd == "budget-gate":
