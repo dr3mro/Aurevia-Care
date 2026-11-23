@@ -1,8 +1,8 @@
-# IAM-06 clause 3 — It cannot unlock other organizations' data
+# IAM-06 clause 3 — It cannot unlock other organizations’ data
 
 ## Clause
 
-It cannot unlock other organizations' data.
+It cannot unlock other organizations’ data.
 
 ## Status
 
@@ -35,8 +35,9 @@ Production classes and files exercised by these requests:
 
 - `com.aurevia.smartclinic.authz.access.AccessController` — thin HTTP adapter for
   `POST /api/v1/access/emergency`, `GET /api/v1/access/emergency/active` and
-  `POST /api/v1/access/emergency/{id}/review`; no organization, actor or facility is
-  taken from the request body.
+  `POST /api/v1/access/emergency/{id}/review`; the organization and actor come only
+  from request headers, and the body-supplied facility code is validated and scoped
+  to the active organization by the domain service and forced RLS.
 - `com.aurevia.smartclinic.authz.access.EmergencyAccessService` — re-reads active
   membership, the clinician role, site approval and facility scope inside each guarded
   transaction, and persists the grant under the active organization only.

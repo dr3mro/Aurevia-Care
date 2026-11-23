@@ -70,6 +70,51 @@ a CI job that installs Chromium and runs it. The unit scripts deliberately pass
 `--exclude 'e2e/**'` so Vitest collects only the jsdom unit tests and leaves the
 Playwright specs to their own runner.
 
+## Responsive layout
+
+The staff web adapts layout to viewport width; presentation changes never alter
+the data, the available actions or what the server authorizes (WEB-07, UX-01).
+
+- **Width classes.** `Breakpoint` in `src/theme/breakpoints.ts` has three values:
+  `compact` (0 to 767 px, phone), `medium` (768 to 1279 px, tablet) and
+  `expanded` (1280 px and above, desktop). `BREAKPOINT_WIDTHS` holds the two
+  `min-width` edges (768 and 1280), and `breakpointFor(width)` maps a measured
+  width to one of the three classes. `compact` is the absence of both queries,
+  so it has no media query of its own.
+- **Shared stylesheet and hook.** `src/theme/responsive.css` holds the layout
+  rules at `min-width: 768px` and `min-width: 1280px`. Components read the active
+  class from the `useBreakpoint()` hook in `src/theme/useBreakpoint.ts` and let
+  that stylesheet supply the rules. Screens mirror the resolved class onto
+  `data-breakpoint`, so a DOM test can assert the active band and a Playwright
+  test can check the painted layout.
+- **Device projects.** `e2e/playwright.config.ts` defines one Chromium project
+  per device class and viewport. Run a single project with a real, exact name:
+
+```sh
+npx playwright install chromium        # once per machine
+npm run e2e -- --project=phone-portrait-390x844
+```
+
+  Other real names include `phone-portrait-360x740`, `phone-landscape-844x390`,
+  `tablet-portrait-768x1024`, `tablet-landscape-1024x768`, `laptop-1280x720` and
+  `desktop-1920x1080`; `npm run e2e` without `--project` runs them all. The
+  shorter names in `docs/design/responsive-layout.md` (`phone-portrait`,
+  `tablet-portrait`, `desktop-en`, ...) describe the planned family, not
+  runnable project names: Playwright matches names exactly. WebKit and Firefox
+  variants (`...-webkit`, `...-firefox`) are added only when those browser
+  binaries are installed; keep the design doc and the config together when
+  changing a name.
+- **Emulating a phone on desktop.** In Chromium, open DevTools, toggle the device
+  toolbar and set a 390 x 844 viewport with touch and mobile emulation enabled;
+  this matches the `phone-portrait-390x844` project. Rotate to 844 x 390 for the
+  landscape class and repeat in Arabic to check the RTL mirror. For an
+  automated run use the project instead of the toolbar.
+- **No hidden clinical fields.** A feature must never hide a clinical field or
+  table column on a small screen: no `display: none` on clinical content and no
+  `.hide-compact` on a field or column. Reflow into a scroll region, a card or a
+  wrapping row instead. `.hide-compact` exists for non-clinical chrome only; a
+  breakpoint changes density and layout, not which values a clinician can see.
+
 ## Design notes
 
 - Tokens live in `src/theme/tokens.ts` and are resolved by `ThemeProvider`,

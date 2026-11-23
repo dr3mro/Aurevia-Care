@@ -27,6 +27,79 @@ The approval must be accompanied by an **enrollment rehearsal** (a site-run walk
 - **G5 (section 9)** — each site approves its release policy and identity procedures; the gate requires no unresolved patient-safety, tenant-isolation, record-integrity or critical-escalation defect in enabled scope.
 - **Section 10** — the decision "Result release, sensitive information handling and patient identity recovery" is accountable to the **privacy lead and clinical safety lead**, with "Approved rules, enrollment rehearsal and access review" as its evidence.
 
+## Approval register
+
+The three rule areas and the two rehearsal artifacts named in
+[Decision needed](#decision-needed) are the single decision that section 10 of
+[SMARTCLINIC_V1_SPEC.md](../../SMARTCLINIC_V1_SPEC.md) assigns to the
+**privacy lead and clinical safety lead**. Each row names the accountable owner role, where
+the repository evidence lives, the human artifact that must be attached, and the
+current status. The evidence locations are code and document facts, not
+approvals; they do not change who is accountable. Status values are:
+
+- `approved` — a named person has signed and effective dates are recorded;
+- `open` — human approval is not yet supplied, and the repository can hold the
+  data once it is;
+- `blocked` — human approval is not yet supplied and a named engineering gap
+  prevents a durable, versioned approval record.
+
+All five rows are `open` in this checkout: the durable stores, services, HTTP
+entry point and tests that can hold this data exist, so the only thing
+outstanding is the named human decision. No row is `blocked` by a persistence or
+reachability gap. A passing repository check, a synthetic screen or a simulated
+review cannot move a row to `approved`.
+
+| Item | Spec clause | Owner role | Evidence location (repository) | Human evidence to attach (open item) | Status |
+|---|---|---|---|---|---|
+| 1. Result release policy | OPS-01; XCH-06; ADM-01 | Privacy lead and clinical safety lead | `apps/api/src/main/java/com/aurevia/smartclinic/exchange/release/ReleaseKind.java`, `ReleaseService.java`, `PatientReleaseController.java`; `db/migrations/V24__patient_release.sql`, `db/migrations/V84__report_release_store.sql`; `apps/api/src/test/java/com/aurevia/smartclinic/it/exchangerelease/ReleasePolicyTest.java`, `PatientReleaseControllerHttpTest.java` | Approved release policy version with permitted kinds, named approver and effective date; hold reason, reviewer, review/expiry and lift notes; withdrawal and correction records showing current access updated, history retained and recipients notified | `open` |
+| 2. Sensitive-information handling | OPS-01; OPS-02; PRD-06 | Privacy lead and clinical safety lead | `apps/api/src/test/java/com/aurevia/smartclinic/web/LogRedactionTest.java`; `apps/api/src/main/java/com/aurevia/smartclinic/authz/access/EmergencyAccessService.java`; `db/migrations/V11__emergency_and_support_access.sql`; `docs/operations/tenant-lifecycle/retention-and-offboarding.md`; `docs/operations/delivery-safety/rollout-and-production-access.md` | Approved field allowlist for notifications, logs, URLs, analytics and downloads; redaction test results and sanitized samples; emergency/support grant with business purpose, separate approver, scope and expiry; retention period and legal-hold scope for released material | `open` |
+| 3. Patient identity recovery and re-verification | OPS-01; IAM-05; PAT-02; PAT-03 | Privacy lead and clinical safety lead | `apps/api/src/main/java/com/aurevia/smartclinic/messaging/enrollment/PatientAccessService.java`, `EnrollmentContract.java`, `JdbcPatientAccessStore.java`; `db/migrations/V83__patient_access_store.sql`; `apps/patient-mobile/src/features/enrollment/screens.tsx` | Site-verified enrollment rule; invitation issue and single-use consume records; recovery re-verification evidence; named lockout-clearing authority; disputed-link suspension and restoration review; staff contact-change and unlink records preserving ownership and ending future access | `open` |
+| 4. Enrollment rehearsal | OPS-01; IAM-05; section 9 G5 row; section 10 | Privacy lead and clinical safety lead | `apps/api/src/main/java/com/aurevia/smartclinic/messaging/enrollment/PatientAccessService.java`, [enrollment screens](../../apps/patient-mobile/src/features/enrollment/screens.tsx); `docs/operations/production-readiness/README.md`, `docs/operations/production-readiness/launch-checklist.md` | Site-run walkthrough record covering enrollment, failed proofing, lockout and recovery with re-verification, with named roles, date and outcome | `open` |
+| 5. Access review | OPS-01; OPS-02; section 10 | Privacy lead and clinical safety lead | `docs/operations/production-readiness/README.md`, `docs/operations/production-readiness/launch-checklist.md`, `docs/operations/tenant-lifecycle/retention-and-offboarding.md` | Named review record with scope, reviewer, date, findings and dispositions for release approvals and holds, emergency/support access and account links | `open` |
+
+The owner role is the same for all five rows because they are one section 10
+decision, "Result release, sensitive information handling and patient identity
+recovery", whose required evidence is "approved rules, enrollment rehearsal and
+access review". The G5 row of section 9 additionally requires each site to
+approve its release policy and identity procedures and to have no unresolved
+patient-safety, tenant-isolation, record-integrity or critical-escalation defect.
+The two rehearsal artifacts (rows 4 and 5) are section 10 evidence, not
+additional decisions. Cross-cutting market topics that this pack does not
+choose — hosting region, applicable law, incident notification, supplier
+obligations and prescribing constraints — are recorded in
+[policy-pack.md](policy-pack.md); this register stays scoped to the three areas
+and the two rehearsal artifacts.
+
+## Synthetic example (illustrative shape only — not an approval)
+
+The row below shows only the *shape* a completed approval takes. Every value is
+a placeholder token, not a person, date, jurisdiction, region, partner or
+credential. It records no decision and must not be copied into the
+[Approval record](#approval-record).
+
+| Item | Policy version (synthetic) | Approver (synthetic) | Effective from (synthetic) | Effective to (synthetic) | Status |
+|---|---|---|---|---|---|
+| 1. Result release policy | `SYNTHETIC-RELEASE-POLICY-VERSION` | `SYNTHETIC-APPROVER-PRIVACY-CLINICAL-SAFETY` | `SYNTHETIC-DATE-FROM` | `SYNTHETIC-DATE-TO` | `open` |
+
+A real row replaces each token with the approved value and attaches the evidence
+named in the [Approval register](#approval-register). Until then the item stays
+`open`.
+
+## Requirement mapping
+
+| Requirement / clause | What it requires | Where this pack addresses it | Status |
+|---|---|---|---|
+| OPS-01 | Approved policy pack defines patient release rules, retention and legal-hold rules and incident notification before live pilot; jurisdiction-specific requirements and owners recorded | [Decision needed](#decision-needed), [Approval register](#approval-register) rows 1-5, [Evidence checklist](#evidence-checklist) | `open` — human approval and signed policy pack pending |
+| XCH-06 | Patient release is a separate authorization on an immutable revision, release policy version and effective time; immediate, timed and held releases with reason, expiry and audit; correction or withdrawal updates current access, retains history and notifies recipients | [Decision needed](#decision-needed) item 1, [Options](#options), [Approval register](#approval-register) row 1, [Why it matters](#why-it-matters) | `open` — site-approved policy version and named approver pending |
+| IAM-05 | Site-verified enrollment, expiring single-use invitations and re-verification for lost access or disputed identity; several independently verified charts may link to one account; unlinking ends future access and a staff contact change does not change ownership | [Decision needed](#decision-needed) item 3, [Approval register](#approval-register) rows 3-4 | `open` — site procedures and enrollment rehearsal pending |
+| OPS-02 | Least privilege and regular access review; audited clinical reads, downloads and disclosures with actor, purpose, scope, role, facility, user and outcome | [Decision needed](#decision-needed) item 2, [Approval register](#approval-register) rows 2 and 5 | `open` — named field allowlist and access review pending |
+| PAT-02 | Released reports authorized against the linked patient and the current release; no persistent clinical caches; confirmed intent for a local copy | [Decision needed](#decision-needed) item 1, [Approval register](#approval-register) row 2 | `open` — patient-facing policy approval pending |
+| PAT-03 | Privacy-safe enrollment, recovery and account lockout; renewed authentication for sensitive account changes; support channel for identity disputes and record requests | [Decision needed](#decision-needed) item 3, [Approval register](#approval-register) row 3 | `open` — site procedure approval pending |
+| ADM-01 | Tenant admins configure patient release policies; clinical and market policies require named approval, effective dates, audit and version history | [Approval register](#approval-register) row 1, [Evidence checklist](#evidence-checklist), [Questions for the owner](#questions-for-the-owner) | `open` — no named approval or effective dates recorded |
+| PRD-06 | Clinical users decide and attest to release; no autonomous care decision or controlled electronic prescribing | [Decision needed](#decision-needed) item 1, [Why it matters](#why-it-matters) | `open` — clinical authority to release not yet approved |
+| Section 9 G5 row | Each site approves its release policy and identity procedures; no unresolved patient-safety, tenant-isolation, record-integrity or critical-escalation defect in enabled scope | [Approval register](#approval-register) rows 4-5, [What is missing](#what-is-missing) | `open` |
+| Section 10 decision row | Privacy lead and clinical safety lead accountable; approved rules, enrollment rehearsal and access review as evidence | [Approval register](#approval-register), [Approval record](#approval-record) | `open` — all Approval record Name, Date and Decision cells empty |
+
 ## Options
 
 The rows are alternatives for the owner to consider; none is selected or recommended here.

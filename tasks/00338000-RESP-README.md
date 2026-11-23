@@ -1,4 +1,4 @@
-- [-] RESP-README · Staff web README: how to test and develop responsive layouts
+- [x] RESP-README · Staff web README: how to test and develop responsive layouts
   - agent: swarm-2
   - attempts: 1
   - requirements: WEB-07, UX-01
