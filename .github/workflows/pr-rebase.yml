@@ -1,0 +1,51 @@
+name: Rebase PR onto main
+# First step for a freshly opened PR: bring its branch up to date with main so
+# the PR starts conflict-free. Triggered only on `opened` (not `synchronize`) so
+# the rebase push cannot loop. Conflicts are reported, never auto-resolved.
+on:
+  pull_request:
+    types: [opened]
+permissions:
+  contents: read
+concurrency:
+  group: pr-rebase-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+jobs:
+  rebase:
+    name: Rebase ${{ github.event.pull_request.head.ref }} onto main
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Rebase onto main and push
+        env:
+          GH_TOKEN: ${{ secrets.SWARM_TOKEN || github.token }}
+          BASE: ${{ github.event.repository.default_branch }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          git config user.name "${SWARM_GIT_NAME:-github-actions[bot]}"
+          git config user.email "${SWARM_GIT_EMAIL:-41898282+github-actions[bot]@users.noreply.github.com}"
+          header=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 | tr -d '\n')
+          fetch="git -c core.hooksPath=/dev/null -c http.https://github.com/.extraheader=AUTHORIZATION:basic\ $header fetch -q origin"
+          $fetch "+refs/heads/$BASE:refs/remotes/origin/$BASE"
+          if git merge-base --is-ancestor "origin/$BASE" HEAD; then
+            echo "Already contains main; nothing to rebase."; exit 0
+          fi
+          if git rebase "origin/$BASE"; then
+            git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $header" \
+              push --force-with-lease origin "HEAD:$(git rev-parse --abbrev-ref HEAD)"
+            gh pr comment "$PR" --body "Rebased this branch onto \`$BASE\` so it starts conflict-free."
+          else
+            git rebase --abort || true
+            gh pr comment "$PR" --body "⚠️ Rebase onto \`$BASE\` hit conflicts. Resolve them manually or let a fix worker handle it."
+            exit 0
+          fi
