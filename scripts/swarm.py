@@ -574,10 +574,20 @@ def run_event(run_id):
         # A red main is repaired by the next plan. Start it now instead of waiting for the
         # watchdog's half hour, because nothing else merges while main is red.
         gh("workflow", "run", "swarm.yml", "--ref", "main", check=False)
+    suspected = first_error(log) or where
+    if kind == "credentials":
+        proposed = "Check that the required secrets/permissions are configured for this workflow (token, OIDC env, NVD key)."
+    elif kind == "quota":
+        proposed = "Wait for the quota to reset or reduce concurrency; no code change needed."
+    elif kind == "unknown":
+        proposed = "Inspect the failed step and log above; fix the underlying code or test, then re-run."
+    else:
+        proposed = "Investigate the failing job/step and apply the smallest fix; re-run the workflow."
     body = (f"**Workflow:** {name} · **Event:** {info.get('event')} · **Branch:** {info.get('headBranch')} "
             f"· **Commit:** {str(info.get('headSha'))[:7]}\n**Run:** {info.get('url')}\n"
             f"**Failed:** {where}\n**Class:** {kind}"
             + (" (a person must fix this: a token, permission or limit)" if kind != "unknown" else "")
+            + f"\n\n**Suspected cause:** {suspected}\n**Proposed fix:** {proposed}"
             + f"\n\n```text\n{clean(log, limit=60000, lines=2000)}\n```")
     number = record_issue("ci", [name, *[f"{j}::{s}" for j, s in failed], f"error::{first_error(log)}"],
                           f"{name} failed: {where}"[:200], body,
