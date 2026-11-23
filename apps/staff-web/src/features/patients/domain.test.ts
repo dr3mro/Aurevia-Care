@@ -106,11 +106,29 @@ describe('search validation', () => {
 
 describe('registration validation', () => {
   it('accepts a draft with a civil date of birth', () => {
-    expect(validateRegistration({ ...EMPTY_REGISTRATION, displayName: 'Layla Haddad', mrn: 'MRN-1001', issuer: 'SYNTHETIC', dob: '1990-05-12', language: 'en' })).toEqual({});
+    expect(
+      validateRegistration({
+        ...EMPTY_REGISTRATION,
+        displayName: 'Layla Haddad',
+        mrn: 'MRN-1001',
+        issuer: 'SYNTHETIC',
+        dob: '1990-05-12',
+        language: 'en',
+      }),
+    ).toEqual({});
   });
 
   it('accepts a draft with a coded unknown-date reason', () => {
-    expect(validateRegistration({ ...EMPTY_REGISTRATION, displayName: 'ليلى حداد', mrn: 'MRN-1002', issuer: 'SYNTHETIC', dobUnknownReason: 'not_known', language: 'ar' })).toEqual({});
+    expect(
+      validateRegistration({
+        ...EMPTY_REGISTRATION,
+        displayName: 'ليلى حداد',
+        mrn: 'MRN-1002',
+        issuer: 'SYNTHETIC',
+        dobUnknownReason: 'not_known',
+        language: 'ar',
+      }),
+    ).toEqual({});
   });
 
   it('reports every invalid field on an empty draft', () => {
@@ -132,7 +150,11 @@ describe('registration validation', () => {
       dob: '1990-05-12',
       language: 'en',
     });
-    expect(errors).toEqual({ displayName: 'errorDisplayName', mrn: 'errorMrn', issuer: 'errorIssuer' });
+    expect(errors).toEqual({
+      displayName: 'errorDisplayName',
+      mrn: 'errorMrn',
+      issuer: 'errorIssuer',
+    });
   });
 
   it('rejects a date of birth supplied together with an unknown reason', () => {
@@ -202,8 +224,8 @@ describe('registration body', () => {
       ...EMPTY_REGISTRATION,
       dobUnknownReason: 'not_known',
     });
-    expect(body['dob']).toBeNull();
-    expect(body['dobUnknownReason']).toBe('not_known');
+    expect(body.dob).toBeNull();
+    expect(body.dobUnknownReason).toBe('not_known');
   });
 });
 

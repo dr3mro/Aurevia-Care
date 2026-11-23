@@ -22,12 +22,24 @@ export interface NoteEditorProps {
 }
 
 /** SOAP field labels in display order; each maps to a typed content key. */
-const soapFields: ReadonlyArray<{ field: keyof SoapContent; key: Parameters<typeof chartText>[1] }> = [
+const soapFields: readonly { field: keyof SoapContent; key: Parameters<typeof chartText>[1] }[] = [
   { field: 'subjective', key: 'subjective' },
   { field: 'objective', key: 'objective' },
   { field: 'assessment', key: 'assessment' },
   { field: 'plan', key: 'plan' },
 ];
+
+/** The amendment pointer, shown only for a revision that amends another. */
+function AmendmentNotice({ amends, locale }: { amends: string | undefined; locale: Locale }) {
+  if ((amends ?? '') === '') {
+    return null;
+  }
+  return (
+    <p data-testid="amendment-notice">
+      {chartText(locale, 'amendmentOf')} {amends}
+    </p>
+  );
+}
 
 /**
  * Render an editable draft or an immutable signed revision with an amendment
@@ -102,11 +114,7 @@ export function NoteEditor({
           </span>
         ) : null}
       </p>
-      {revision.amends ? (
-        <p data-testid="amendment-notice">
-          {chartText(locale, 'amendmentOf')} {revision.amends}
-        </p>
-      ) : null}
+      <AmendmentNotice amends={revision.amends} locale={locale} />
       {revision.enteredInError ? (
         <EnteredInErrorBanner detail={revision.enteredInError} locale={locale} />
       ) : null}
@@ -120,7 +128,9 @@ export function NoteEditor({
               aria-label={chartText(locale, key)}
               readOnly={!editable}
               value={revision.content[field]}
-              onChange={editable ? (event) => onContentChange(field, event.target.value) : undefined}
+              onChange={
+                editable ? (event) => onContentChange(field, event.target.value) : undefined
+              }
               rows={2}
             />
           </div>
@@ -148,7 +158,9 @@ export function NoteEditor({
       ) : null}
       {editable ? (
         <div className="touch" data-part="signature" style={signatureStyle}>
-          <label htmlFor={`note-attestation-${revision.id}`}>{chartText(locale, 'attestation')}</label>
+          <label htmlFor={`note-attestation-${revision.id}`}>
+            {chartText(locale, 'attestation')}
+          </label>
           <input
             id={`note-attestation-${revision.id}`}
             className="touch"

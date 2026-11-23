@@ -24,7 +24,7 @@ import {
 const validDraft: PrintProfileDraft = {
   facilityName: 'Synthetic Main Clinic',
   address: '1 Synthetic Way, Test City',
-  logoReference: approvedLogoAssets[0]!.reference,
+  logoReference: required(approvedLogoAssets[0]).reference,
   footerText: 'Synthetic footer — not a real notice',
   defaultLanguage: 'en',
   paperSize: 'A4',
@@ -51,7 +51,9 @@ describe('print settings permissions', () => {
 
 describe('approved logo assets', () => {
   it('accepts a trimmed reference from the approved asset list', () => {
-    expect(isApprovedLogo(`  ${approvedLogoAssets[1]!.reference}  `, approvedLogoAssets)).toBe(true);
+    expect(
+      isApprovedLogo(`  ${required(approvedLogoAssets[1]).reference}  `, approvedLogoAssets),
+    ).toBe(true);
   });
 
   it('refuses an unapproved reference and an empty reference', () => {
@@ -62,10 +64,16 @@ describe('approved logo assets', () => {
 
 describe('print profile version history', () => {
   it('returns one tenant and facility newest version first', () => {
-    const rows = versionsForFacility(syntheticVersions, settingsOrganizationId, settingsFacilityCode);
+    const rows = versionsForFacility(
+      syntheticVersions,
+      settingsOrganizationId,
+      settingsFacilityCode,
+    );
     expect(rows.map((row) => row.version)).toEqual([2, 1]);
     expect(rows.every((row) => row.organizationId === settingsOrganizationId)).toBe(true);
-    expect(versionsForFacility(syntheticVersions, otherOrganizationId, settingsFacilityCode)).toHaveLength(1);
+    expect(
+      versionsForFacility(syntheticVersions, otherOrganizationId, settingsFacilityCode),
+    ).toHaveLength(1);
     expect(versionsForFacility(syntheticVersions, settingsOrganizationId, 'MISSING')).toEqual([]);
   });
 
@@ -75,31 +83,57 @@ describe('print profile version history', () => {
       { ...findVersion(1), effectiveFrom: '2026-01-01' },
     ];
     expect(
-      versionsForFacility(tied, settingsOrganizationId, settingsFacilityCode).map((row) => row.effectiveFrom),
+      versionsForFacility(tied, settingsOrganizationId, settingsFacilityCode).map(
+        (row) => row.effectiveFrom,
+      ),
     ).toEqual(['2026-02-01', '2026-01-01']);
   });
 
   it('selects the newest approved version already effective on the anchor date', () => {
     expect(
-      effectiveProfile(syntheticVersions, settingsOrganizationId, settingsFacilityCode, anchorCivilDate)?.version,
+      effectiveProfile(
+        syntheticVersions,
+        settingsOrganizationId,
+        settingsFacilityCode,
+        anchorCivilDate,
+      )?.version,
     ).toBe(1);
     const withApprovedPending = syntheticVersions.map((entry) =>
       entry.version === 2 ? approveProfile(entry, 'Synthetic administrator') : entry,
     );
     expect(
-      effectiveProfile(withApprovedPending, settingsOrganizationId, settingsFacilityCode, '2030-01-01')?.version,
+      effectiveProfile(
+        withApprovedPending,
+        settingsOrganizationId,
+        settingsFacilityCode,
+        '2030-01-01',
+      )?.version,
     ).toBe(2);
-    const other = effectiveProfile(syntheticVersions, otherOrganizationId, settingsFacilityCode, anchorCivilDate);
+    const other = effectiveProfile(
+      syntheticVersions,
+      otherOrganizationId,
+      settingsFacilityCode,
+      anchorCivilDate,
+    );
     expect(other?.facilityName).toBe('Other tenant clinic');
     expect(other?.organizationId).toBe(otherOrganizationId);
     expect(
-      effectiveProfile(syntheticVersions, '00000000-0000-4000-8000-000000000099', settingsFacilityCode, anchorCivilDate),
+      effectiveProfile(
+        syntheticVersions,
+        '00000000-0000-4000-8000-000000000099',
+        settingsFacilityCode,
+        anchorCivilDate,
+      ),
     ).toBeUndefined();
-    expect(effectiveProfile(syntheticVersions, settingsOrganizationId, 'MISSING', anchorCivilDate)).toBeUndefined();
+    expect(
+      effectiveProfile(syntheticVersions, settingsOrganizationId, 'MISSING', anchorCivilDate),
+    ).toBeUndefined();
   });
 
   it('allocates the next tenant and facility local version', () => {
-    expect(nextProfileVersion(syntheticVersions, settingsOrganizationId, settingsFacilityCode)).toBe(3);
+    expect(
+      nextProfileVersion(syntheticVersions, settingsOrganizationId, settingsFacilityCode),
+    ).toBe(3);
     expect(nextProfileVersion(syntheticVersions, settingsOrganizationId, 'MISSING')).toBe(1);
   });
 });
@@ -110,7 +144,12 @@ describe('print profile draft validation', () => {
   });
 
   it('refuses a logo that is not an approved asset', () => {
-    expect(validateProfileDraft({ ...validDraft, logoReference: unapprovedLogoReference }, approvedLogoAssets)).toEqual({
+    expect(
+      validateProfileDraft(
+        { ...validDraft, logoReference: unapprovedLogoReference },
+        approvedLogoAssets,
+      ),
+    ).toEqual({
       logoReference: 'logoNotApproved',
     });
     expect(validateProfileDraft({ ...validDraft, logoReference: '' }, approvedLogoAssets)).toEqual({
@@ -165,3 +204,10 @@ describe('append-only print profile commands', () => {
     expect(pending.approved).toBe(false);
   });
 });
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

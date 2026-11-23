@@ -31,7 +31,7 @@ function recordFor(error: unknown): FailureRecord {
     };
     // Only the opaque ID and the type name: props, state and error text may
     // hold clinical data and are never logged (WEB-06, WEB-09).
-    console.error(`${activeFailure.correlationId} ${activeFailure.errorName}`);
+    globalThis.console.error(`${activeFailure.correlationId} ${activeFailure.errorName}`);
   }
   return activeFailure;
 }

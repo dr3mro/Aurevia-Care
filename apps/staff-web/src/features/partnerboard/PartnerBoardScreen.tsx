@@ -4,13 +4,7 @@ import { MixedScriptText } from '../../components/MixedScriptText';
 import { formatInstant } from '../../i18n/format';
 import type { Locale } from '../../i18n/messages';
 import { useTheme } from '../../theme/ThemeProvider';
-import {
-  fallbackFor,
-  isStuck,
-  scriptForName,
-  stuckCount,
-  waitingCount,
-} from './domain';
+import { fallbackFor, isStuck, scriptForName, stuckCount, waitingCount } from './domain';
 import type { PartnerBoardWire, PartnerKind, WaitingItemWire } from './domain';
 import {
   fallbackDetailKey,
@@ -69,9 +63,16 @@ export function WaitingTable({ items, locale }: WaitingTableProps) {
               <code dir="ltr">{item.reference}</code>
             </td>
             <td>
-              {partnerText(locale, item.itemType === 'order' ? 'itemTypeOrder' : 'itemTypePrescription')}
+              {partnerText(
+                locale,
+                item.itemType === 'order' ? 'itemTypeOrder' : 'itemTypePrescription',
+              )}
             </td>
-            <td>{partnerMessage(locale, 'waitAge', { minutes: waitMinutesText(item.ageMinutes, locale) })}</td>
+            <td>
+              {partnerMessage(locale, 'waitAge', {
+                minutes: waitMinutesText(item.ageMinutes, locale),
+              })}
+            </td>
             <td>{partnerText(locale, workflowKey(item.workflow))}</td>
             <td>{partnerText(locale, transmissionKey(item.transmission))}</td>
             <td>{partnerText(locale, reviewKey(item.review))}</td>

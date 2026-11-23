@@ -14,6 +14,7 @@ import { ThemeProvider } from '../../theme/ThemeProvider';
 import type { FacilityPageResponse } from './api';
 import { alphaOrganizationId, betaOrganizationId } from './fixtures';
 import { FacilitiesPage } from './FacilitiesPage';
+import { must } from '../../../tests/must';
 
 vi.mock('../../api/transport', async (importOriginal) => {
   const actual = await importOriginal<typeof TransportModule>();
@@ -22,7 +23,10 @@ vi.mock('../../api/transport', async (importOriginal) => {
 
 const sendMock = vi.mocked(send);
 
-function facilityPage(items: FacilityPageResponse['items'] = [], nextCursor: string | null = null): FacilityPageResponse {
+function facilityPage(
+  items: FacilityPageResponse['items'] = [],
+  nextCursor: string | null = null,
+): FacilityPageResponse {
   return { items, nextCursor };
 }
 
@@ -37,7 +41,7 @@ function facility(overrides: Partial<FacilityPageResponse['items'][number]> = {}
 }
 
 function descriptorAt(call: number): RequestDescriptor {
-  return sendMock.mock.calls[call]![0] as RequestDescriptor;
+  return must(sendMock.mock.calls[call])[0];
 }
 
 function element(ui: ReactElement, organizationId: string, locale: Locale = 'en') {
@@ -151,7 +155,9 @@ describe('FacilitiesPage commands', () => {
     wrap(<FacilitiesPage />);
     await screen.findByText('Synthetic Main Facility');
     fillCreateForm();
-    sendMock.mockResolvedValueOnce(facility({ code: 'LAB', name: 'Synthetic Lab', timeZone: 'UTC' }));
+    sendMock.mockResolvedValueOnce(
+      facility({ code: 'LAB', name: 'Synthetic Lab', timeZone: 'UTC' }),
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Create facility' }));
 
@@ -163,7 +169,7 @@ describe('FacilitiesPage commands', () => {
     expect(command.headers['Idempotency-Key']).toMatch(/^[0-9a-f-]{36}$/);
     expect(descriptorAt(2).method).toBe('GET');
     expect(await screen.findByText('Created facility Synthetic Lab')).toBeTruthy();
-    expect((screen.getByLabelText('Facility code') as HTMLInputElement).value).toBe('');
+    expect(screen.getByLabelText<HTMLInputElement>('Facility code').value).toBe('');
   });
 
   it('shows a linked error summary and sends no command for an invalid draft', async () => {
@@ -191,7 +197,7 @@ describe('FacilitiesPage commands', () => {
     expect(await screen.findByRole('alert', { name: 'Fix the following fields' })).toBeTruthy();
     expect(screen.getByLabelText('Facility code').getAttribute('aria-invalid')).toBe('true');
     expect(screen.getByLabelText('Facility name').getAttribute('aria-invalid')).toBeNull();
-    expect((screen.getByLabelText('Facility name') as HTMLInputElement).value).toBe('Synthetic Lab');
+    expect(screen.getByLabelText<HTMLInputElement>('Facility name').value).toBe('Synthetic Lab');
     expect(screen.queryByText(stateViewText('en', 'error'))).toBeNull();
   });
 
@@ -218,7 +224,7 @@ describe('FacilitiesPage commands', () => {
 
     expect(await screen.findByText(stateViewText('en', 'conflict'))).toBeTruthy();
     expect(screen.getByRole('table')).toBeTruthy();
-    expect((screen.getByLabelText('Facility name') as HTMLInputElement).value).toBe('Synthetic Lab');
+    expect(screen.getByLabelText<HTMLInputElement>('Facility name').value).toBe('Synthetic Lab');
     expect(sendMock).toHaveBeenCalledTimes(2);
   });
 
@@ -239,9 +245,9 @@ describe('FacilitiesPage commands', () => {
     await screen.findByText('Synthetic Main Facility');
     fillCreateForm();
 
-    const submit = screen.getByRole('button', { name: 'Create facility' }) as HTMLButtonElement;
+    const submit = screen.getByRole<HTMLButtonElement>('button', { name: 'Create facility' });
     expect(submit.type).toBe('submit');
-    fireEvent.submit(submit.closest('form')!);
+    fireEvent.submit(must(submit.closest<HTMLElement>('form')));
 
     await waitFor(() => expect(sendMock).toHaveBeenCalledTimes(3));
   });
@@ -250,7 +256,9 @@ describe('FacilitiesPage commands', () => {
 describe('FacilitiesPage paging and tenant switching', () => {
   it('appends the next page while a cursor exists', async () => {
     sendMock.mockResolvedValueOnce(facilityPage([facility({ code: 'MAIN' })], 'cursor-2'));
-    sendMock.mockResolvedValueOnce(facilityPage([facility({ code: 'LAB', name: 'Synthetic Lab' })]));
+    sendMock.mockResolvedValueOnce(
+      facilityPage([facility({ code: 'LAB', name: 'Synthetic Lab' })]),
+    );
 
     wrap(<FacilitiesPage />);
     expect(await screen.findByText('Synthetic Main Facility')).toBeTruthy();
@@ -287,7 +295,9 @@ describe('admin facilities routes', () => {
 
   it('lazily loads the registered facilities page with live data', async () => {
     sendMock.mockResolvedValue(facilityPage([facility()]));
-    const route = createRoutes(false).find((candidate) => candidate.pattern === '/admin/facilities')!;
+    const route = must(
+      createRoutes(false).find((candidate) => candidate.pattern === '/admin/facilities'),
+    );
     const Page = route.component;
 
     render(

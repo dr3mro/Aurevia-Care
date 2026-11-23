@@ -7,6 +7,7 @@ import { I18nProvider } from '../../../src/i18n/I18nProvider';
 import type { Locale } from '../../../src/i18n/messages';
 import { BREAKPOINT_MEDIA_QUERIES } from '../../../src/theme/breakpoints';
 import { ThemeProvider } from '../../../src/theme/ThemeProvider';
+import { must } from '../../must';
 
 type ChangeListener = (event: MediaQueryListEvent) => void;
 type Breakpoint = 'compact' | 'medium' | 'expanded';
@@ -21,7 +22,9 @@ interface QueryState {
  * object is reused per query so the breakpoint hook's initializer and effect
  * observe the same listeners. All text below is synthetic clinical free text.
  */
-function installMatchMedia(initial: Record<string, boolean>): (query: string, matches: boolean) => void {
+function installMatchMedia(
+  initial: Record<string, boolean>,
+): (query: string, matches: boolean) => void {
   const states = new Map<string, QueryState>();
   const state = (query: string): QueryState => {
     let current = states.get(query);
@@ -72,7 +75,8 @@ const layouts: Record<Breakpoint, Record<string, boolean>> = {
 
 const LONG_ENGLISH =
   'A deliberately long synthetic access-review label that must wrap at 320 px and at 200 percent zoom without clipping, truncation or overlap';
-const LONG_ARABIC = 'تسمية مراجعة وصول تجريبية طويلة جداً يجب أن تلتف دون قص أو تداخل عند العرض الضيق';
+const LONG_ARABIC =
+  'تسمية مراجعة وصول تجريبية طويلة جداً يجب أن تلتف دون قص أو تداخل عند العرض الضيق';
 
 /** Render one notice under the real providers with a synthetic viewport. */
 function renderNotice(
@@ -118,7 +122,7 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
         // The two fields stack on a phone and sit inline from the medium band up.
         expect(region.className).toContain(breakpoint === 'compact' ? 'stack' : 'cluster');
 
-        const badge = region.querySelector('[data-state]') as HTMLElement;
+        const badge = must(region.querySelector<HTMLElement>('[data-state]'));
         expect(badge).toBeTruthy();
         expect(badge.getAttribute('data-state')).toBe(state);
         expect(badge.querySelector('[aria-hidden="true"]')?.textContent).toBe(
@@ -186,14 +190,14 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
 
         const region = notice();
         expect(region.getAttribute('data-breakpoint')).toBe(breakpoint);
-        const value = region.querySelectorAll('bdi')[1] as HTMLElement;
+        const value = must(region.querySelectorAll('bdi')[1]);
         expect(value.textContent).toBe(label);
         expect(value.tagName).toBe('BDI');
         expect(value.getAttribute('dir')).toBe('auto');
         // The reviewed label keeps its authored `lang="en"` at every locale;
         // the translated message run below carries the active locale instead.
         expect(value.getAttribute('lang')).toBe('en');
-        expect((region.querySelectorAll('bdi')[0] as HTMLElement).getAttribute('lang')).toBe(locale);
+        expect(must(region.querySelectorAll('bdi')[0]).getAttribute('lang')).toBe(locale);
         expect(value.style.whiteSpace).toBe('normal');
         expect(value.style.overflowWrap).toBe('anywhere');
         expect(value.getAttribute('style')).not.toContain('display: none');
@@ -214,7 +218,7 @@ describe('responsive AccessStateNotice direction and continuity (WEB-07, UX-01)'
       const region = notice();
       expect(region.getAttribute('role')).toBe('alert');
       expect(region.getAttribute('data-breakpoint')).toBe(breakpoint);
-      const message = region.querySelectorAll('bdi')[0] as HTMLElement;
+      const message = must(region.querySelectorAll('bdi')[0]);
       expect(message.textContent).toBe(adminText('ar', 'accessDenied'));
       expect(message.getAttribute('dir')).toBe('auto');
       expect(message.style.direction).toBe('');
@@ -240,7 +244,7 @@ describe('responsive AccessStateNotice direction and continuity (WEB-07, UX-01)'
     const initial = notice();
     expect(initial.getAttribute('data-breakpoint')).toBe('compact');
     expect(initial.className).toContain('stack');
-    expect((initial.querySelectorAll('bdi')[1] as HTMLElement).textContent).toBe(LONG_ENGLISH);
+    expect(must(initial.querySelectorAll('bdi')[1]).textContent).toBe(LONG_ENGLISH);
 
     act(() => fire(BREAKPOINT_MEDIA_QUERIES.medium, true));
     expect(notice()).toBe(initial);
@@ -250,7 +254,7 @@ describe('responsive AccessStateNotice direction and continuity (WEB-07, UX-01)'
     act(() => fire(BREAKPOINT_MEDIA_QUERIES.expanded, true));
     expect(notice()).toBe(initial);
     expect(initial.getAttribute('data-breakpoint')).toBe('expanded');
-    expect((initial.querySelectorAll('bdi')[1] as HTMLElement).textContent).toBe(LONG_ENGLISH);
+    expect(must(initial.querySelectorAll('bdi')[1]).textContent).toBe(LONG_ENGLISH);
     expect(container.querySelectorAll('bdi')).toHaveLength(2);
   });
 });

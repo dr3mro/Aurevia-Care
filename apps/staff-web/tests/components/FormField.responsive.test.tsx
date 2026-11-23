@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { ThemeProvider } from '../../src/theme/ThemeProvider';
 import { FormField } from '../../src/components/FormField';
 import { BREAKPOINT_MEDIA_QUERIES } from '../../src/theme/breakpoints';
+import { must } from '../must';
 
 type ChangeListener = (event: MediaQueryListEvent) => void;
 
@@ -95,14 +96,14 @@ describe('responsive FormField (WEB-07, UX-01)', () => {
       expect(stack.getAttribute('data-breakpoint')).toBe(breakpoint);
       expect(stack.getAttribute('data-coarse-pointer')).toBe(String(coarse));
 
-      const input = screen.getByLabelText('Clinical note') as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>('Clinical note');
       expect(input.classList.contains('field')).toBe(true);
       expect(input.classList.contains('touch')).toBe(true);
       expect(input.style.direction).toBe('');
       expect(stack.style.direction).toBe('');
       expect(container.querySelector('[style*="display: none"]')).toBeNull();
 
-      const label = container.querySelector('label') as HTMLLabelElement;
+      const label = must(container.querySelector<HTMLLabelElement>('label'));
       expect(label.htmlFor).toBe(input.id);
       expect(label.compareDocumentPosition(input) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     },
@@ -120,7 +121,7 @@ describe('responsive FormField (WEB-07, UX-01)', () => {
     const input = screen.getByLabelText(label);
     expect(input.getAttribute('aria-invalid')).toBe('true');
     expect(input.getAttribute('aria-describedby')).toBe('long-note-error');
-    const alert = screen.getByRole('alert') as HTMLElement;
+    const alert = screen.getByRole('alert');
     expect(alert.id).toBe('long-note-error');
     expect(alert.textContent).toBe(error);
     // The alert is a direct child of .stack, whose rule supplies
@@ -136,15 +137,21 @@ describe('responsive FormField (WEB-07, UX-01)', () => {
     const error = 'هذه رسالة خطأ عربية طويلة يجب أن تلتف ولا تُقتطع على شاشة الهاتف';
     const { container } = renderField(
       <div dir="rtl" lang="ar">
-        <FormField id="arabic-note" label={label} value="" onChange={() => undefined} error={error} />
+        <FormField
+          id="arabic-note"
+          label={label}
+          value=""
+          onChange={() => undefined}
+          error={error}
+        />
       </div>,
     );
 
-    const input = screen.getByLabelText(label) as HTMLInputElement;
+    const input = screen.getByLabelText<HTMLInputElement>(label);
     expect(input.classList.contains('field')).toBe(true);
     expect(input.classList.contains('touch')).toBe(true);
     expect(screen.getByRole('alert').textContent).toBe(error);
-    const stack = container.querySelector('.stack') as HTMLElement;
+    const stack = must(container.querySelector<HTMLElement>('.stack'));
     expect(stack.getAttribute('data-breakpoint')).toBe('compact');
     expect(stack.style.direction).toBe('');
     expect(input.style.direction).toBe('');
@@ -156,7 +163,7 @@ describe('responsive FormField (WEB-07, UX-01)', () => {
     const { container } = renderField(
       <FormField id="focus-note" label="Focus note" value="" onChange={() => undefined} />,
     );
-    const input = screen.getByLabelText('Focus note') as HTMLInputElement;
+    const input = screen.getByLabelText<HTMLInputElement>('Focus note');
     const focusable = container.querySelectorAll(
       'input, button, select, textarea, [tabindex]:not([tabindex="-1"])',
     );
@@ -178,7 +185,7 @@ describe('responsive FormField (WEB-07, UX-01)', () => {
         placeholder="name@example.test"
       />,
     );
-    const input = screen.getByLabelText('Email') as HTMLInputElement;
+    const input = screen.getByLabelText<HTMLInputElement>('Email');
     expect(input.getAttribute('inputmode')).toBeNull();
     expect(input.getAttribute('autocomplete')).toBeNull();
     expect(input.type).toBe('email');

@@ -18,12 +18,14 @@ function renderSwitcher(organizations = syntheticOrganizations) {
 describe('tenant/organization switcher placeholder', () => {
   it('lists synthetic organizations and reflects the active selection', () => {
     renderSwitcher();
-    const select = screen.getByLabelText('Organization') as HTMLSelectElement;
-    const options = screen.getAllByRole('option') as HTMLOptionElement[];
+    const select = screen.getByLabelText<HTMLSelectElement>('Organization');
+    const options = screen.getAllByRole<HTMLOptionElement>('option');
     expect(options).toHaveLength(syntheticOrganizations.length);
     expect(select.value).toBe(syntheticOrganizations[0]?.id);
     const second = syntheticOrganizations[1];
-    if (!second) throw new Error('fixture needs a second organization');
+    if (!second) {
+      throw new Error('fixture needs a second organization');
+    }
     fireEvent.change(select, { target: { value: second.id } });
     expect(screen.getByRole('status').textContent).toBe(second.name);
   });

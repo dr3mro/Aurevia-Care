@@ -17,7 +17,12 @@ import { existsSync } from 'node:fs';
  * omitted rather than failing the whole matrix, so a Chromium-only CI job stays
  * green while a full browser-matrix job exercises every engine.
  */
-const baseURL = process.env['E2E_BASE_URL'] ?? 'http://127.0.0.1:5173';
+const baseURL = process.env.E2E_BASE_URL ?? 'http://127.0.0.1:5173';
+
+/** True when an environment variable is set to a non-empty value. */
+function isSet(name: string): boolean {
+  return (process.env[name] ?? '') !== '';
+}
 
 /** Playwright engine identifiers used by the `browserName` use option. */
 type BrowserName = 'chromium' | 'firefox' | 'webkit';
@@ -91,9 +96,13 @@ function isBrowserInstalled(browser: Exclude<BrowserName, 'chromium'>): boolean 
 function crossBrowserProjects(): Project[] {
   const projects: Project[] = [];
   for (const device of deviceViewports) {
-    if (!crossBrowserViewportNames.has(device.name)) continue;
+    if (!crossBrowserViewportNames.has(device.name)) {
+      continue;
+    }
     for (const browser of ['webkit', 'firefox'] as const) {
-      if (isBrowserInstalled(browser)) projects.push(projectFor(device, browser));
+      if (isBrowserInstalled(browser)) {
+        projects.push(projectFor(device, browser));
+      }
     }
   }
   return projects;
@@ -121,7 +130,7 @@ export default defineConfig({
   // so starting and probing a local server would race or fail in CI. The key is
   // omitted rather than set to undefined so the config stays valid under
   // exactOptionalPropertyTypes.
-  ...(process.env['E2E_BASE_URL']
+  ...(isSet('E2E_BASE_URL')
     ? {}
     : {
         webServer: {
@@ -130,7 +139,7 @@ export default defineConfig({
           command: 'npm run dev -- --host 127.0.0.1',
           url: baseURL,
           cwd: '..',
-          reuseExistingServer: !process.env['CI'],
+          reuseExistingServer: !isSet('CI'),
           timeout: 120_000,
         },
       }),

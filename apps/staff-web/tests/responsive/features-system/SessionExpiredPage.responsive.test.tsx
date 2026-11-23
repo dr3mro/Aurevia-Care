@@ -28,7 +28,7 @@ const layouts: Record<Layout, Record<string, boolean>> = {
 };
 
 /** Every supported viewport width and the band its min-width queries select. */
-const widths: ReadonlyArray<readonly [number, Layout]> = [
+const widths: readonly (readonly [number, Layout])[] = [
   [320, 'compact'],
   [360, 'compact'],
   [390, 'compact'],

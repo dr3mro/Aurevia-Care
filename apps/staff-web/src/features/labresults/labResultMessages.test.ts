@@ -15,7 +15,7 @@ import {
 
 /** Named placeholder tokens in a message, sorted for comparison. */
 function placeholders(value: string): string[] {
-  return [...value.matchAll(/\{(\w+)\}/g)].map((match) => match[1]!).sort();
+  return [...value.matchAll(/\{(\w+)\}/g)].map((match) => required(match[1])).sort();
 }
 
 describe('LAB-02 bilingual result-entry bundle', () => {
@@ -33,12 +33,15 @@ describe('LAB-02 bilingual result-entry bundle', () => {
 
   it('uses the same named placeholders in both locales', () => {
     for (const key of labResultKeys) {
-      expect(placeholders(labResultMessages.ar[key])).toEqual(placeholders(labResultMessages.en[key]));
+      expect(placeholders(labResultMessages.ar[key])).toEqual(
+        placeholders(labResultMessages.en[key]),
+      );
     }
   });
 
   it('translates every Arabic label into Arabic script', () => {
-    const arabicLetter = /[\u0621-\u063A\u0641-\u064A\u066E-\u066F\u0671-\u06D3\u06D5\u06FA-\u06FC\u06FF]/;
+    const arabicLetter =
+      /[\u0621-\u063A\u0641-\u064A\u066E-\u066F\u0671-\u06D3\u06D5\u06FA-\u06FC\u06FF]/;
     for (const key of labResultKeys) {
       expect(arabicLetter.test(labResultMessages.ar[key])).toBe(true);
     }
@@ -89,3 +92,10 @@ describe('LAB-02 clinical value formatting', () => {
     expect(formatPreviousDate('2026-09-14', 'ar')).toContain('2026');
   });
 });
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

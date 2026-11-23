@@ -7,6 +7,9 @@ import { useBreakpoint } from '../../theme/useBreakpoint';
 import type { CodedEntry, Chart, Vital } from './domain';
 import { chartText, verificationMessageKey } from './messages';
 
+/** Keyboard-focusable scroll regions join the natural tab order. */
+const FOCUSABLE_TAB_INDEX = 0;
+
 /** Props for the longitudinal problems/allergies/medications/vitals view. */
 export interface LongitudinalChartProps {
   chart: Chart;
@@ -89,7 +92,10 @@ function CodedEntryTable({
         ) : (
           entries.map((entry) => {
             const key = `${entry.organizationId}:${entry.id}`;
-            const shown = locale === 'ar' && entry.displayLocal ? entry.displayLocal : entry.display;
+            const shown =
+              locale === 'ar' && (entry.displayLocal ?? '') !== ''
+                ? (entry.displayLocal ?? '')
+                : entry.display;
             return (
               <tr key={key}>
                 <th scope="row" style={{ ...WRAPPING_STYLE, border }}>
@@ -128,7 +134,7 @@ function CodedEntryTable({
         className="table-region"
         role="region"
         aria-label={caption}
-        tabIndex={0}
+        tabIndex={FOCUSABLE_TAB_INDEX}
         data-part="coded-entries"
         data-breakpoint={breakpoint}
       >

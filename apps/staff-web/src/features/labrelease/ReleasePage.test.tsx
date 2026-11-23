@@ -14,14 +14,16 @@ import {
 } from './fixtures';
 import { ReleasePage } from './ReleasePage';
 
-function renderPage(options: {
-  locale?: Locale;
-  state?: ReleaseState;
-  withdrawal?: typeof withdrawalDetail | null;
-  after?: typeof emptyRevision;
-  actor?: string;
-  withdrawalAt?: string;
-} = {}) {
+function renderPage(
+  options: {
+    locale?: Locale;
+    state?: ReleaseState;
+    withdrawal?: typeof withdrawalDetail | null;
+    after?: typeof emptyRevision;
+    actor?: string;
+    withdrawalAt?: string;
+  } = {},
+) {
   return render(
     <ThemeProvider>
       <I18nProvider initialLocale={options.locale ?? 'en'}>
@@ -41,9 +43,13 @@ describe('LAB-02 release page', () => {
   it('loads the synthetic revisions and prefills the proposed change', () => {
     renderPage();
     expect(screen.getByText('Laboratory report release and corrections')).toBeTruthy();
-    expect((screen.getByLabelText('What changed') as HTMLTextAreaElement).value).toBe(proposedChange);
-    expect((screen.getByLabelText('Reason for correction (required)') as HTMLTextAreaElement).value).toBe('');
-    expect((screen.getByRole('button', { name: 'Record correction' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByLabelText<HTMLTextAreaElement>('What changed').value).toBe(proposedChange);
+    expect(
+      screen.getByLabelText<HTMLTextAreaElement>('Reason for correction (required)').value,
+    ).toBe('');
+    expect(
+      screen.getByRole<HTMLButtonElement>('button', { name: 'Record correction' }).disabled,
+    ).toBe(true);
   });
 
   it('records a correction with a reason and announces who recorded it', () => {
@@ -73,10 +79,12 @@ describe('LAB-02 release page', () => {
       target: { value: 'My edited change' },
     });
     expect(screen.queryByTestId('correction-status')).toBeNull();
-    expect((screen.getByLabelText('What changed') as HTMLTextAreaElement).value).toBe('My edited change');
-    expect((screen.getByLabelText('Reason for correction (required)') as HTMLTextAreaElement).value).toBe(
-      'Transcription error',
+    expect(screen.getByLabelText<HTMLTextAreaElement>('What changed').value).toBe(
+      'My edited change',
     );
+    expect(
+      screen.getByLabelText<HTMLTextAreaElement>('Reason for correction (required)').value,
+    ).toBe('Transcription error');
   });
 
   it('withdraws a report with a reason and shows the withdrawal state', () => {
@@ -87,9 +95,9 @@ describe('LAB-02 release page', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Withdraw report' }));
     expect(screen.getByTestId('withdrawn-notice').textContent).toContain('Wrong accession');
     expect(screen.getByTestId('withdrawn-notice').textContent).toContain(correctorSubject);
-    expect(screen.getByTestId('withdrawn-notice').querySelector('time')?.getAttribute('datetime')).toBe(
-      WITHDRAWN_AT,
-    );
+    expect(
+      screen.getByTestId('withdrawn-notice').querySelector('time')?.getAttribute('datetime'),
+    ).toBe(WITHDRAWN_AT);
     expect(screen.getByTestId('release-state').textContent).toContain('Withdrawn');
     expect(screen.getByTestId('release-status-patient').textContent).toContain('Not visible');
     expect(screen.queryByRole('button', { name: 'Withdraw report' })).toBeNull();

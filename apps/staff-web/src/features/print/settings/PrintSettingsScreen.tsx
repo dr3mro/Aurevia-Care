@@ -67,6 +67,197 @@ const paperMessageKey: Record<PaperSize, SettingsMessageKey> = {
   LETTER: 'paperLetter',
 };
 
+interface HistorySectionProps {
+  rows: readonly PrintProfileVersion[];
+  onApprove: (version: number) => void;
+}
+
+interface DraftFieldsProps {
+  draft: PrintProfileDraft;
+  errors: ProfileErrors;
+  onChange: (patch: Partial<PrintProfileDraft>) => void;
+}
+
+/** Shared locale, tokens and translator for the settings sections. */
+function useSettingsView() {
+  const { locale } = useI18n();
+  const { tokens } = useTheme();
+  const text = (key: SettingsMessageKey) => settingsText(locale, key);
+  return { locale, tokens, text };
+}
+
+function CurrentProfileSection({ effective }: { effective: PrintProfileVersion | undefined }) {
+  const { locale, tokens, text } = useSettingsView();
+  return (
+    <section
+      aria-label={text('currentProfile')}
+      style={{ display: 'grid', gap: tokens.spacing.sm }}
+    >
+      <h3>{text('currentProfile')}</h3>
+      {effective === undefined ? (
+        <p>{text('noEffectiveProfile')}</p>
+      ) : (
+        <dl style={{ display: 'grid', gap: tokens.spacing.sm }}>
+          <dt>{text('facilityName')}</dt>
+          <dd>
+            <MixedScriptText text={effective.facilityName} lang="en" />
+          </dd>
+          <dt>{text('address')}</dt>
+          <dd>
+            <MixedScriptText text={effective.address} lang={locale} />
+          </dd>
+          <dt>{text('logoReference')}</dt>
+          <dd>
+            <MixedScriptText text={effective.logoReference} lang="en" />
+          </dd>
+          <dt>{text('footerText')}</dt>
+          <dd>
+            <MixedScriptText text={effective.footerText} lang={locale} />
+          </dd>
+          <dt>{text('defaultLanguage')}</dt>
+          <dd>{text(languageMessageKey[effective.defaultLanguage])}</dd>
+          <dt>{text('paperSize')}</dt>
+          <dd>{text(paperMessageKey[effective.paperSize])}</dd>
+          <dt>{text('effectiveFrom')}</dt>
+          <dd>
+            <time dateTime={effective.effectiveFrom}>
+              {formatCivilDate(effective.effectiveFrom, locale)}
+            </time>
+          </dd>
+        </dl>
+      )}
+    </section>
+  );
+}
+
+function HistorySection({ rows, onApprove }: HistorySectionProps) {
+  const { locale, tokens, text } = useSettingsView();
+  return (
+    <section aria-label={text('history')} style={{ display: 'grid', gap: tokens.spacing.sm }}>
+      <h3>{text('history')}</h3>
+      <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+        <caption style={{ textAlign: 'start', paddingBlock: tokens.spacing.sm }}>
+          {text('history')}
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">{text('version')}</th>
+            <th scope="col">{text('effectiveFrom')}</th>
+            <th scope="col">{text('defaultLanguage')}</th>
+            <th scope="col">{text('paperSize')}</th>
+            <th scope="col">{text('approver')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.length === 0 ? (
+            <tr>
+              <td colSpan={5}>{text('noHistory')}</td>
+            </tr>
+          ) : (
+            rows.map((entry) => (
+              <tr key={`${entry.organizationId}:${entry.version}`}>
+                <th scope="row">{entry.version}</th>
+                <td>
+                  <time dateTime={entry.effectiveFrom}>
+                    {formatCivilDate(entry.effectiveFrom, locale)}
+                  </time>
+                </td>
+                <td>{text(languageMessageKey[entry.defaultLanguage])}</td>
+                <td>{text(paperMessageKey[entry.paperSize])}</td>
+                <td>
+                  {entry.approved ? text('approved') : text('pending')}{' '}
+                  {entry.approved ? null : (
+                    <Button variant="secondary" onClick={() => onApprove(entry.version)}>
+                      {text('approve')}
+                    </Button>
+                  )}
+                  {entry.approver === undefined ? null : (
+                    <MixedScriptText text={entry.approver} lang="en" />
+                  )}
+                </td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
+function DraftFields({ draft, errors, onChange }: DraftFieldsProps) {
+  const { tokens, text } = useSettingsView();
+  return (
+    <div style={{ display: 'grid', gap: tokens.spacing.md }}>
+      <FormField
+        id="print-settings-facility-name"
+        label={text('facilityName')}
+        value={draft.facilityName}
+        onChange={(value) => onChange({ facilityName: value })}
+        {...(errors.facilityName === undefined ? {} : { error: text(errors.facilityName) })}
+      />
+      <FormField
+        id="print-settings-address"
+        label={text('address')}
+        value={draft.address}
+        onChange={(value) => onChange({ address: value })}
+        {...(errors.address === undefined ? {} : { error: text(errors.address) })}
+      />
+      <FormField
+        id="print-settings-logo"
+        label={text('logoReference')}
+        value={draft.logoReference}
+        onChange={(value) => onChange({ logoReference: value })}
+        {...(errors.logoReference === undefined ? {} : { error: text(errors.logoReference) })}
+      />
+      <FormField
+        id="print-settings-footer"
+        label={text('footerText')}
+        value={draft.footerText}
+        onChange={(value) => onChange({ footerText: value })}
+        {...(errors.footerText === undefined ? {} : { error: text(errors.footerText) })}
+      />
+      <div style={{ display: 'grid', gap: tokens.spacing.sm }}>
+        <label htmlFor="print-settings-language">{text('defaultLanguage')}</label>
+        <select
+          id="print-settings-language"
+          value={draft.defaultLanguage}
+          onChange={(event) => onChange({ defaultLanguage: event.target.value as HandoutLanguage })}
+          style={{ minHeight: '32px' }}
+        >
+          {languageOptions.map((option) => (
+            <option key={option} value={option}>
+              {text(languageMessageKey[option])}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div style={{ display: 'grid', gap: tokens.spacing.sm }}>
+        <label htmlFor="print-settings-paper">{text('paperSize')}</label>
+        <select
+          id="print-settings-paper"
+          value={draft.paperSize}
+          onChange={(event) => onChange({ paperSize: event.target.value as PaperSize })}
+          style={{ minHeight: '32px' }}
+        >
+          {paperOptions.map((option) => (
+            <option key={option} value={option}>
+              {text(paperMessageKey[option])}
+            </option>
+          ))}
+        </select>
+      </div>
+      <FormField
+        id="print-settings-effective"
+        label={text('effectiveFrom')}
+        value={draft.effectiveFrom}
+        placeholder="2026-07-01"
+        onChange={(value) => onChange({ effectiveFrom: value })}
+        {...(errors.effectiveFrom === undefined ? {} : { error: text(errors.effectiveFrom) })}
+      />
+    </div>
+  );
+}
+
 /**
  * Admin screen for per-facility letterhead, footer text and print profile
  * settings. Proposals and approvals append versions; the effective profile is
@@ -93,7 +284,7 @@ export function PrintSettingsScreen(props: PrintSettingsScreenProps) {
     props.facilityCode,
     props.anchorCivilDate,
   );
-  const errorKeys = Object.values(errors) as SettingsMessageKey[];
+  const errorKeys = Object.values<SettingsMessageKey>(errors);
 
   function submit() {
     const nextErrors = validateProfileDraft(draft, props.approvedAssets);
@@ -119,7 +310,8 @@ export function PrintSettingsScreen(props: PrintSettingsScreenProps) {
     props.onApprove(version);
   }
 
-  function clearError() {
+  function changeDraft(patch: Partial<PrintProfileDraft>) {
+    setDraft((current) => ({ ...current, ...patch }));
     setErrors({});
   }
 
@@ -129,85 +321,9 @@ export function PrintSettingsScreen(props: PrintSettingsScreenProps) {
       <p>{text('intro')}</p>
       <p>{text('syntheticNotice')}</p>
 
-      <section
-        aria-label={text('currentProfile')}
-        style={{ display: 'grid', gap: tokens.spacing.sm }}
-      >
-        <h3>{text('currentProfile')}</h3>
-        {effective === undefined ? (
-          <p>{text('noEffectiveProfile')}</p>
-        ) : (
-          <dl style={{ display: 'grid', gap: tokens.spacing.sm }}>
-            <dt>{text('facilityName')}</dt>
-            <dd><MixedScriptText text={effective.facilityName} lang="en" /></dd>
-            <dt>{text('address')}</dt>
-            <dd><MixedScriptText text={effective.address} lang={locale} /></dd>
-            <dt>{text('logoReference')}</dt>
-            <dd><MixedScriptText text={effective.logoReference} lang="en" /></dd>
-            <dt>{text('footerText')}</dt>
-            <dd><MixedScriptText text={effective.footerText} lang={locale} /></dd>
-            <dt>{text('defaultLanguage')}</dt>
-            <dd>{text(languageMessageKey[effective.defaultLanguage])}</dd>
-            <dt>{text('paperSize')}</dt>
-            <dd>{text(paperMessageKey[effective.paperSize])}</dd>
-            <dt>{text('effectiveFrom')}</dt>
-            <dd>
-              <time dateTime={effective.effectiveFrom}>
-                {formatCivilDate(effective.effectiveFrom, locale)}
-              </time>
-            </dd>
-          </dl>
-        )}
-      </section>
+      <CurrentProfileSection effective={effective} />
 
-      <section aria-label={text('history')} style={{ display: 'grid', gap: tokens.spacing.sm }}>
-        <h3>{text('history')}</h3>
-        <table style={{ borderCollapse: 'collapse', width: '100%' }}>
-          <caption style={{ textAlign: 'start', paddingBlock: tokens.spacing.sm }}>
-            {text('history')}
-          </caption>
-          <thead>
-            <tr>
-              <th scope="col">{text('version')}</th>
-              <th scope="col">{text('effectiveFrom')}</th>
-              <th scope="col">{text('defaultLanguage')}</th>
-              <th scope="col">{text('paperSize')}</th>
-              <th scope="col">{text('approver')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 ? (
-              <tr>
-                <td colSpan={5}>{text('noHistory')}</td>
-              </tr>
-            ) : (
-              rows.map((entry) => (
-                <tr key={`${entry.organizationId}:${entry.version}`}>
-                  <th scope="row">{entry.version}</th>
-                  <td>
-                    <time dateTime={entry.effectiveFrom}>
-                      {formatCivilDate(entry.effectiveFrom, locale)}
-                    </time>
-                  </td>
-                  <td>{text(languageMessageKey[entry.defaultLanguage])}</td>
-                  <td>{text(paperMessageKey[entry.paperSize])}</td>
-                  <td>
-                    {entry.approved ? text('approved') : text('pending')}{' '}
-                    {entry.approved ? null : (
-                      <Button variant="secondary" onClick={() => approve(entry.version)}>
-                        {text('approve')}
-                      </Button>
-                    )}
-                    {entry.approver === undefined ? null : (
-                      <MixedScriptText text={entry.approver} lang="en" />
-                    )}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </section>
+      <HistorySection rows={rows} onApprove={approve} />
 
       <section aria-label={text('editor')} style={{ display: 'grid', gap: tokens.spacing.md }}>
         <h3>{text('editor')}</h3>
@@ -219,98 +335,7 @@ export function PrintSettingsScreen(props: PrintSettingsScreenProps) {
           </ul>
         )}
         <Form label={text('editor')} submitLabel={text('propose')} onSubmit={submit}>
-          <div style={{ display: 'grid', gap: tokens.spacing.md }}>
-            <FormField
-              id="print-settings-facility-name"
-              label={text('facilityName')}
-              value={draft.facilityName}
-              onChange={(value) => {
-                setDraft((current) => ({ ...current, facilityName: value }));
-                clearError();
-              }}
-              {...(errors.facilityName === undefined ? {} : { error: text(errors.facilityName) })}
-            />
-            <FormField
-              id="print-settings-address"
-              label={text('address')}
-              value={draft.address}
-              onChange={(value) => {
-                setDraft((current) => ({ ...current, address: value }));
-                clearError();
-              }}
-              {...(errors.address === undefined ? {} : { error: text(errors.address) })}
-            />
-            <FormField
-              id="print-settings-logo"
-              label={text('logoReference')}
-              value={draft.logoReference}
-              onChange={(value) => {
-                setDraft((current) => ({ ...current, logoReference: value }));
-                clearError();
-              }}
-              {...(errors.logoReference === undefined ? {} : { error: text(errors.logoReference) })}
-            />
-            <FormField
-              id="print-settings-footer"
-              label={text('footerText')}
-              value={draft.footerText}
-              onChange={(value) => {
-                setDraft((current) => ({ ...current, footerText: value }));
-                clearError();
-              }}
-              {...(errors.footerText === undefined ? {} : { error: text(errors.footerText) })}
-            />
-            <div style={{ display: 'grid', gap: tokens.spacing.sm }}>
-              <label htmlFor="print-settings-language">{text('defaultLanguage')}</label>
-              <select
-                id="print-settings-language"
-                value={draft.defaultLanguage}
-                onChange={(event) => {
-                  setDraft((current) => ({
-                    ...current,
-                    defaultLanguage: event.target.value as HandoutLanguage,
-                  }));
-                  clearError();
-                }}
-                style={{ minHeight: '32px' }}
-              >
-                {languageOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {text(languageMessageKey[option])}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div style={{ display: 'grid', gap: tokens.spacing.sm }}>
-              <label htmlFor="print-settings-paper">{text('paperSize')}</label>
-              <select
-                id="print-settings-paper"
-                value={draft.paperSize}
-                onChange={(event) => {
-                  setDraft((current) => ({ ...current, paperSize: event.target.value as PaperSize }));
-                  clearError();
-                }}
-                style={{ minHeight: '32px' }}
-              >
-                {paperOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {text(paperMessageKey[option])}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <FormField
-              id="print-settings-effective"
-              label={text('effectiveFrom')}
-              value={draft.effectiveFrom}
-              placeholder="2026-07-01"
-              onChange={(value) => {
-                setDraft((current) => ({ ...current, effectiveFrom: value }));
-                clearError();
-              }}
-              {...(errors.effectiveFrom === undefined ? {} : { error: text(errors.effectiveFrom) })}
-            />
-          </div>
+          <DraftFields draft={draft} errors={errors} onChange={changeDraft} />
         </Form>
         <p role="status" data-testid="print-settings-status">
           {status ?? ''}

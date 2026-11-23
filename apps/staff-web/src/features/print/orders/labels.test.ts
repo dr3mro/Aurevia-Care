@@ -7,7 +7,8 @@ import {
 } from './labels';
 
 /** Arabic letters only, matching the global message-parity registry's rule. */
-const arabicLetter = /[\u0621-\u063A\u0641-\u064A\u066E-\u066F\u0671-\u06D3\u06D5\u06FA-\u06FC\u06FF]/;
+const arabicLetter =
+  /[\u0621-\u063A\u0641-\u064A\u066E-\u066F\u0671-\u06D3\u06D5\u06FA-\u06FC\u06FF]/;
 
 describe('order requisition messages', () => {
   it('keeps identical key sets in English and Arabic', () => {

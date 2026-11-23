@@ -65,7 +65,9 @@ describe('PrintChartButton', () => {
     fireEvent.click(button);
     expect(button.getAttribute('aria-expanded')).toBe('true');
     const panel = screen.getByRole('region', { name: chartPrintText('en', 'preview') });
-    const leftOut = screen.getAllByRole('list', { name: chartPrintText('en', 'leftOut') })[0]!;
+    const leftOut = required(
+      screen.getAllByRole('list', { name: chartPrintText('en', 'leftOut') })[0],
+    );
     expect(leftOut.textContent).toContain('Synthetic unsigned draft note');
     expect(leftOut.textContent).toContain(chartPrintText('en', 'reasonUnsigned'));
     expect(leftOut.textContent).toContain('Synthetic withheld result');
@@ -76,7 +78,9 @@ describe('PrintChartButton', () => {
   it('persists section choices across a close and a re-preview', () => {
     renderButton(chartTarget);
     fireEvent.click(trigger('en', chartTarget));
-    const problems = screen.getByRole('checkbox', { name: chartPrintText('en', 'sectionProblems') });
+    const problems = screen.getByRole('checkbox', {
+      name: chartPrintText('en', 'sectionProblems'),
+    });
     expect((problems as HTMLInputElement).checked).toBe(true);
     fireEvent.click(problems);
     expect((problems as HTMLInputElement).checked).toBe(false);
@@ -86,10 +90,14 @@ describe('PrintChartButton', () => {
     expect(document.activeElement).toBe(trigger('en', chartTarget));
     fireEvent.click(trigger('en', chartTarget));
     expect(
-      (screen.getByRole('checkbox', { name: chartPrintText('en', 'sectionProblems') }) as HTMLInputElement).checked,
+      screen.getByRole<HTMLInputElement>('checkbox', {
+        name: chartPrintText('en', 'sectionProblems'),
+      }).checked,
     ).toBe(false);
     expect(screen.queryByText(`${chartPrintText('en', 'sectionProblems')}: 2`)).toBeNull();
-    fireEvent.click(screen.getByRole('checkbox', { name: chartPrintText('en', 'sectionProblems') }));
+    fireEvent.click(
+      screen.getByRole('checkbox', { name: chartPrintText('en', 'sectionProblems') }),
+    );
     expect(screen.getByText(`${chartPrintText('en', 'sectionProblems')}: 2`)).toBeTruthy();
   });
 
@@ -103,7 +111,7 @@ describe('PrintChartButton', () => {
     fireEvent.click(screen.getByRole('radio', { name: printText('en', 'reasonGiveToPatient') }));
     fireEvent.click(screen.getByRole('button', { name: chartPrintText('en', 'print') }));
     expect(onPrint).toHaveBeenCalledTimes(1);
-    const [model, reason] = onPrint.mock.calls[0]!;
+    const [model, reason] = required(onPrint.mock.calls[0]);
     expect(reason).toBe('give-to-patient');
     expect(model.kind).toBe('chart');
     expect(model.leftOut.map((item) => item.reason)).toEqual(['unsigned', 'withheld']);
@@ -120,7 +128,7 @@ describe('PrintChartButton', () => {
     fireEvent.click(screen.getByRole('radio', { name: printText('en', 'reasonReferral') }));
     fireEvent.click(screen.getByRole('button', { name: chartPrintText('en', 'print') }));
     expect(onPrint).toHaveBeenCalledTimes(1);
-    const [model, reason] = onPrint.mock.calls[0]!;
+    const [model, reason] = required(onPrint.mock.calls[0]);
     expect(reason).toBe('referral');
     if (model.kind !== 'report') {
       throw new Error('Expected a signed-report preview');
@@ -133,7 +141,9 @@ describe('PrintChartButton', () => {
     const { onPrint } = renderButton(target);
     fireEvent.click(trigger('en', target));
     expect(screen.getByText(chartPrintText('en', 'notPrintable'))).toBeTruthy();
-    const leftOut = screen.getAllByRole('list', { name: chartPrintText('en', 'leftOut') })[0]!;
+    const leftOut = required(
+      screen.getAllByRole('list', { name: chartPrintText('en', 'leftOut') })[0],
+    );
     expect(leftOut.textContent).toContain(chartPrintText('en', 'reasonUnsigned'));
     fireEvent.click(screen.getByRole('radio', { name: printText('en', 'reasonReferral') }));
     expect(screen.queryByRole('button', { name: chartPrintText('en', 'print') })).toBeNull();
@@ -158,18 +168,28 @@ describe('PrintChartButton', () => {
     );
     const buttons = screen.getAllByRole('button', { name: chartPrintText('en', 'chartPrint') });
     expect(buttons).toHaveLength(2);
-    fireEvent.click(buttons[0]!);
-    fireEvent.click(buttons[1]!);
-    const selectors = screen.getAllByLabelText(chartPrintText('en', 'visitId')) as HTMLSelectElement[];
+    fireEvent.click(required(buttons[0]));
+    fireEvent.click(required(buttons[1]));
+    const selectors = screen.getAllByLabelText<HTMLSelectElement>(chartPrintText('en', 'visitId'));
     expect(selectors).toHaveLength(2);
-    expect(selectors[0]!.id).not.toBe(selectors[1]!.id);
-    const firstReason = screen.getAllByRole('radio', { name: printText('en', 'reasonGiveToPatient') })[0]!;
-    const secondReason = screen.getAllByRole('radio', { name: printText('en', 'reasonReferral') })[1]!;
+    expect(required(selectors[0]).id).not.toBe(required(selectors[1]).id);
+    const firstReason = required(
+      screen.getAllByRole('radio', { name: printText('en', 'reasonGiveToPatient') })[0],
+    );
+    const secondReason = required(
+      screen.getAllByRole('radio', { name: printText('en', 'reasonReferral') })[1],
+    );
     fireEvent.click(firstReason);
     fireEvent.click(secondReason);
     expect((firstReason as HTMLInputElement).checked).toBe(true);
     expect((secondReason as HTMLInputElement).checked).toBe(true);
-    expect((screen.getAllByRole('radio', { name: printText('en', 'reasonGiveToPatient') })[1] as HTMLInputElement).checked).toBe(false);
+    expect(
+      (
+        screen.getAllByRole('radio', {
+          name: printText('en', 'reasonGiveToPatient'),
+        })[1] as HTMLInputElement
+      ).checked,
+    ).toBe(false);
   });
 
   it('renders the button, the omissions and the reason in Arabic', () => {
@@ -177,12 +197,21 @@ describe('PrintChartButton', () => {
     fireEvent.click(trigger('ar', chartTarget));
     expect(document.documentElement.lang).toBe('ar');
     expect(document.documentElement.dir).toBe('rtl');
-    const leftOut = screen.getAllByRole('list', { name: chartPrintText('ar', 'leftOut') })[0]!;
+    const leftOut = required(
+      screen.getAllByRole('list', { name: chartPrintText('ar', 'leftOut') })[0],
+    );
     expect(leftOut.textContent).toContain(chartPrintText('ar', 'reasonUnsigned'));
     expect(leftOut.textContent).toContain(chartPrintText('ar', 'reasonWithheld'));
     fireEvent.click(screen.getByRole('radio', { name: printText('ar', 'reasonReferral') }));
     fireEvent.click(screen.getByRole('button', { name: chartPrintText('ar', 'print') }));
     expect(onPrint).toHaveBeenCalledTimes(1);
-    expect(onPrint.mock.calls[0]![1]).toBe('referral');
+    expect(required(onPrint.mock.calls[0])[1]).toBe('referral');
   });
 });
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

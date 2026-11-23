@@ -145,7 +145,8 @@ export type AdminMessageKey = (typeof adminKeys)[number];
 const adminMessages: Record<Locale, Record<AdminMessageKey, string>> = {
   en: {
     admin: 'Administration and audit review',
-    syntheticNotice: 'Synthetic fixtures only. No real endpoint, credential or patient record is used.',
+    syntheticNotice:
+      'Synthetic fixtures only. No real endpoint, credential or patient record is used.',
     accessReview: 'Access review states',
     accessPermitted: 'Access permitted for this active organization and role.',
     accessDenied: 'Permission denied: active membership or a reviewing role is missing.',
@@ -225,7 +226,8 @@ const adminMessages: Record<Locale, Record<AdminMessageKey, string>> = {
     loadMore: 'Load more',
     deactivate: 'Deactivate',
     deactivateTitle: 'Deactivate {name}?',
-    deactivateDetail: 'This appends a revocation and denies this staff member access on the next request. It cannot be undone here.',
+    deactivateDetail:
+      'This appends a revocation and denies this staff member access on the next request. It cannot be undone here.',
     deactivateReason: 'Reason for deactivation',
     deactivateReasonRequired: 'Enter a reason before deactivating.',
     deactivated: 'Deactivated {name}. Reason entered: {reason} (not stored by the API)',
@@ -246,12 +248,14 @@ const adminMessages: Record<Locale, Record<AdminMessageKey, string>> = {
     approveConfirm: 'Approve',
     approve: 'Approve version',
     approveTitle: 'Approve version {version} of {key}?',
-    approveDetail: 'This appends a named approval and makes this immutable version eligible to take effect. It cannot be undone here.',
+    approveDetail:
+      'This appends a named approval and makes this immutable version eligible to take effect. It cannot be undone here.',
     approvalNote: 'Approval note (optional)',
     approvedNotice: 'Approved version {version} of {key}',
     catalogFamily: 'Catalog family',
     catalogFamilyLookup: 'List catalog family',
-    invalidCatalogFamily: 'Enter a family of 2-32 lowercase letters, digits or underscores, starting with a letter.',
+    invalidCatalogFamily:
+      'Enter a family of 2-32 lowercase letters, digits or underscores, starting with a letter.',
     catalogEntries: 'Effective catalog entries',
     catalogCode: 'Entry code',
     catalogValue: 'Entry value',
@@ -269,8 +273,10 @@ const adminMessages: Record<Locale, Record<AdminMessageKey, string>> = {
     auditApplyFilters: 'Apply filters',
     auditClearFilters: 'Clear filters',
     auditNoEvents: 'No audit events',
-    auditNoEventsHint: 'No events match these filters in this organization. Clear the filters to see the full trail.',
-    auditFacilityZone: 'Times are shown in the facility zone {zone}; hover or focus a time for the UTC instant.',
+    auditNoEventsHint:
+      'No events match these filters in this organization. Clear the filters to see the full trail.',
+    auditFacilityZone:
+      'Times are shown in the facility zone {zone}; hover or focus a time for the UTC instant.',
     utcLabel: 'UTC',
     invalidAuditInstant: 'Enter a real UTC instant such as 2026-03-08T06:30:00Z.',
     outcomeNotFound: 'Not found',
@@ -358,7 +364,8 @@ const adminMessages: Record<Locale, Record<AdminMessageKey, string>> = {
     loadMore: 'تحميل المزيد',
     deactivate: 'إلغاء التنشيط',
     deactivateTitle: 'إلغاء تنشيط {name}؟',
-    deactivateDetail: 'سيتم إضافة حدث إلغاء ورفض وصول هذا الموظف في الطلب التالي. لا يمكن التراجع هنا.',
+    deactivateDetail:
+      'سيتم إضافة حدث إلغاء ورفض وصول هذا الموظف في الطلب التالي. لا يمكن التراجع هنا.',
     deactivateReason: 'سبب إلغاء التنشيط',
     deactivateReasonRequired: 'أدخل سببًا قبل إلغاء التنشيط.',
     deactivated: 'تم إلغاء تنشيط {name}. السبب المُدخل: {reason} (لا تخزنه الخدمة)',
@@ -372,14 +379,16 @@ const adminMessages: Record<Locale, Record<AdminMessageKey, string>> = {
     configLookup: 'البحث عن تكوين',
     configurationKeyLookup: 'مفتاح التكوين',
     configLookupIntro: 'أدخل مفتاحًا خاصًا بالمؤسسة لقراءة إصداراته وحالة اعتماده.',
-    invalidConfigKey: 'أدخل مفتاحًا من ٢ إلى ٢٠٠ حرف أو رقم أو نقطة أو نقطتين أو شرطة أو شرطة سفلية.',
+    invalidConfigKey:
+      'أدخل مفتاحًا من ٢ إلى ٢٠٠ حرف أو رقم أو نقطة أو نقطتين أو شرطة أو شرطة سفلية.',
     configKeyRequired: 'أدخل مفتاح التكوين قبل البحث.',
     noVersionsForKey: 'لم يتم تحديد إصدارات لهذا المفتاح في هذه المؤسسة.',
     defineVersion: 'تم تحديد إصدار بانتظار الاعتماد لـ {key}',
     approveConfirm: 'اعتماد',
     approve: 'اعتماد الإصدار',
     approveTitle: 'اعتماد الإصدار {version} من {key}؟',
-    approveDetail: 'سيتم إضافة اعتماد باسمك ويصبح هذا الإصدار غير القابل للتعديل مؤهلاً للسريان. لا يمكن التراجع هنا.',
+    approveDetail:
+      'سيتم إضافة اعتماد باسمك ويصبح هذا الإصدار غير القابل للتعديل مؤهلاً للسريان. لا يمكن التراجع هنا.',
     approvalNote: 'ملاحظة الاعتماد (اختيارية)',
     approvedNotice: 'تم اعتماد الإصدار {version} من {key}',
     catalogFamily: 'عائلة الكتالوج',
@@ -402,8 +411,10 @@ const adminMessages: Record<Locale, Record<AdminMessageKey, string>> = {
     auditApplyFilters: 'تطبيق المرشحات',
     auditClearFilters: 'مسح المرشحات',
     auditNoEvents: 'لا توجد أحداث تدقيق',
-    auditNoEventsHint: 'لا توجد أحداث تطابق هذه المرشحات في هذه المؤسسة. امسح المرشحات لعرض السجل كاملًا.',
-    auditFacilityZone: 'تُعرض الأوقات في منطقة المرفق {zone}؛ مرّر على الوقت أو ركّز عليه لعرض لحظة UTC.',
+    auditNoEventsHint:
+      'لا توجد أحداث تطابق هذه المرشحات في هذه المؤسسة. امسح المرشحات لعرض السجل كاملًا.',
+    auditFacilityZone:
+      'تُعرض الأوقات في منطقة المرفق {zone}؛ مرّر على الوقت أو ركّز عليه لعرض لحظة UTC.',
     utcLabel: 'UTC',
     invalidAuditInstant: 'أدخل لحظة UTC حقيقية مثل 2026-03-08T06:30:00Z.',
     outcomeNotFound: 'غير موجود',
@@ -439,7 +450,11 @@ export function adminText(locale: Locale, key: AdminMessageKey): string {
 }
 
 /** Build the localized, revision-specific announcement for a local proposal. */
-export function proposalAnnouncement(locale: Locale, facilityCode: string, version: number): string {
+export function proposalAnnouncement(
+  locale: Locale,
+  facilityCode: string,
+  version: number,
+): string {
   return adminText(locale, 'proposalAnnounced')
     .replace('{facility}', facilityCode)
     .replace('{version}', String(version));

@@ -9,6 +9,7 @@ import { chartText } from './messages';
 import { ChartScreen } from './ChartScreen';
 import type { NoteEditorProps } from './NoteEditor';
 import type * as NoteEditorModule from './NoteEditor';
+import { must } from '../../../tests/must';
 
 /** Records the tenant of every note revision the screen renders, including interim renders. */
 const observed = vi.hoisted(() => ({ noteEditorTenants: [] as string[] }));
@@ -41,11 +42,9 @@ describe('ChartScreen', () => {
     screenFor(alphaOrganizationId);
     expect(screen.getAllByText('Synthetic Layla').length).toBeGreaterThan(0);
     expect(screen.queryByText('Synthetic Reem')).toBeNull();
+    expect(screen.getByRole('heading', { level: 2, name: chartText('en', 'chart') })).toBeTruthy();
     expect(
-      screen.getByRole('heading', { level: 2, name: chartText('en', 'chart') }),
-    ).toBeTruthy();
-    expect(
-      (screen.getByRole('textbox', { name: chartText('en', 'plan') }) as HTMLTextAreaElement).readOnly,
+      screen.getByRole<HTMLTextAreaElement>('textbox', { name: chartText('en', 'plan') }).readOnly,
     ).toBe(true);
     expect(screen.getByRole('button', { name: chartText('en', 'amend') })).toBeTruthy();
     expect(screen.getByRole('list', { name: chartText('en', 'history') })).toBeTruthy();
@@ -56,13 +55,15 @@ describe('ChartScreen', () => {
     screenFor(betaOrganizationId);
     expect(screen.getAllByText('Synthetic Reem').length).toBeGreaterThan(0);
     expect(screen.queryByText('Synthetic Layla')).toBeNull();
-    const sign = screen.getByRole('button', { name: chartText('en', 'sign') }) as HTMLButtonElement;
+    const sign = screen.getByRole<HTMLButtonElement>('button', { name: chartText('en', 'sign') });
     expect(sign.disabled).toBe(true);
     fireEvent.click(screen.getByRole('checkbox', { name: chartText('en', 'attestation') }));
     fireEvent.click(sign);
-    expect(screen.getByTestId('chart-status').textContent).toContain(chartText('en', 'signedNotice'));
+    expect(screen.getByTestId('chart-status').textContent).toContain(
+      chartText('en', 'signedNotice'),
+    );
     expect(
-      (screen.getByRole('textbox', { name: chartText('en', 'plan') }) as HTMLTextAreaElement).readOnly,
+      screen.getByRole<HTMLTextAreaElement>('textbox', { name: chartText('en', 'plan') }).readOnly,
     ).toBe(true);
     expect(screen.queryByRole('button', { name: chartText('en', 'sign') })).toBeNull();
   });
@@ -72,14 +73,18 @@ describe('ChartScreen', () => {
     fireEvent.change(screen.getByRole('textbox', { name: chartText('en', 'assessment') }), {
       target: { value: 'Synthetic amended assessment' },
     });
-    expect(screen.getByTestId('chart-status').textContent).toContain(chartText('en', 'updateNotice'));
+    expect(screen.getByTestId('chart-status').textContent).toContain(
+      chartText('en', 'updateNotice'),
+    );
     fireEvent.click(screen.getByRole('checkbox', { name: chartText('en', 'attestation') }));
     fireEvent.click(screen.getByRole('button', { name: chartText('en', 'sign') }));
     fireEvent.click(screen.getByRole('button', { name: chartText('en', 'amend') }));
-    expect(screen.getByTestId('chart-status').textContent).toContain(chartText('en', 'amendNotice'));
+    expect(screen.getByTestId('chart-status').textContent).toContain(
+      chartText('en', 'amendNotice'),
+    );
     expect(screen.getByText(chartText('en', 'noteAmendment'))).toBeTruthy();
     expect(
-      (screen.getByRole('textbox', { name: chartText('en', 'plan') }) as HTMLTextAreaElement).readOnly,
+      screen.getByRole<HTMLTextAreaElement>('textbox', { name: chartText('en', 'plan') }).readOnly,
     ).toBe(false);
     expect(screen.queryByRole('button', { name: chartText('en', 'amend') })).toBeNull();
   });
@@ -93,13 +98,14 @@ describe('ChartScreen', () => {
     // The signed source is retained in the append-only history, never edited,
     // and the new amendment draft names the exact revision it supersedes (CLN-05).
     const history = screen.getByRole('list', { name: chartText('en', 'history') });
-    expect(within(history).getAllByRole('listitem').map((item) => item.getAttribute('data-revision-id'))).toEqual([
-      'rev-001',
-      'rev-002',
-    ]);
+    expect(
+      within(history)
+        .getAllByRole('listitem')
+        .map((item) => item.getAttribute('data-revision-id')),
+    ).toEqual(['rev-001', 'rev-002']);
     expect(screen.getByTestId('amendment-notice').textContent).toContain('rev-002');
     expect(
-      (screen.getByRole('textbox', { name: chartText('en', 'plan') }) as HTMLTextAreaElement).readOnly,
+      screen.getByRole<HTMLTextAreaElement>('textbox', { name: chartText('en', 'plan') }).readOnly,
     ).toBe(false);
   });
 
@@ -121,9 +127,11 @@ describe('ChartScreen', () => {
     const table = screen.getByRole('table', { name: chartText('en', 'documentList') });
     const rows = within(table).getAllByRole('row');
     expect(rows).toHaveLength(5);
-    const liveRow = rows[1]!;
+    const liveRow = must(rows[1]);
     fireEvent.click(within(liveRow).getByRole('button', { name: chartText('en', 'rotate') }));
-    expect(screen.getByTestId('chart-status').textContent).toContain(chartText('en', 'rotateNotice'));
+    expect(screen.getByTestId('chart-status').textContent).toContain(
+      chartText('en', 'rotateNotice'),
+    );
     fireEvent.click(within(liveRow).getByRole('button', { name: chartText('en', 'void') }));
     expect(screen.getByTestId('chart-status').textContent).toContain(chartText('en', 'voidNotice'));
     expect(
@@ -133,11 +141,13 @@ describe('ChartScreen', () => {
       ),
     ).toBeTruthy();
     expect(
-      (within(liveRow).getByRole('button', { name: chartText('en', 'void') }) as HTMLButtonElement)
+      within(liveRow).getByRole<HTMLButtonElement>('button', { name: chartText('en', 'void') })
         .disabled,
     ).toBe(true);
   });
+});
 
+describe('ChartScreen tenant switching and empty states', () => {
   it('resets local state when the active tenant changes', () => {
     const { rerender } = screenFor(alphaOrganizationId);
     fireEvent.click(screen.getByRole('button', { name: chartText('en', 'markEnteredInError') }));
@@ -160,9 +170,7 @@ describe('ChartScreen', () => {
   it('renders bilingual RTL copy and local names under the Arabic locale', () => {
     screenFor(alphaOrganizationId, 'ar');
     expect(document.documentElement.dir).toBe('rtl');
-    expect(
-      screen.getByRole('heading', { level: 2, name: chartText('ar', 'chart') }),
-    ).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: chartText('ar', 'chart') })).toBeTruthy();
     expect(screen.getByRole('table', { name: chartText('ar', 'vitals') })).toBeTruthy();
     expect(screen.getAllByText('ليلى تجريبية')[0]?.getAttribute('dir')).toBe('auto');
     expect(screen.getByRole('button', { name: chartText('ar', 'amend') })).toBeTruthy();
@@ -175,7 +183,7 @@ describe('ChartScreen', () => {
   });
 
   it('shows a note empty state when the visible chart has no revisions', () => {
-    const chartWithoutNotes = { ...syntheticCharts[0]!, revisions: [] };
+    const chartWithoutNotes = { ...must(syntheticCharts[0]), revisions: [] };
     wrap(<ChartScreen charts={[chartWithoutNotes]} organizationId={alphaOrganizationId} />);
     expect(screen.getByText(chartText('en', 'noRevisions'))).toBeTruthy();
     expect(screen.queryByRole('button', { name: chartText('en', 'amend') })).toBeNull();
@@ -213,8 +221,7 @@ describe('ChartScreen', () => {
     expect(screen.getByRole('alert').textContent).toContain(chartText('en', 'signError'));
     expect(screen.getByTestId('chart-status').textContent).toBe('');
     expect(
-      (screen.getByRole('textbox', { name: chartText('en', 'plan') }) as HTMLTextAreaElement)
-        .readOnly,
+      screen.getByRole<HTMLTextAreaElement>('textbox', { name: chartText('en', 'plan') }).readOnly,
     ).toBe(false);
   });
 });

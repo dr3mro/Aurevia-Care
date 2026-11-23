@@ -15,19 +15,16 @@ import { ThemeProvider } from '../../../src/theme/ThemeProvider';
 
 /** Render the real shell at a path, with the same providers the app mounts. */
 function renderShellAt(path: string) {
+  const routerProps = {
+    patterns: routes.map((route) => route.pattern),
+    initialPath: path,
+    children: createElement(AppShell, {}),
+  };
   return render(
     createElement(
       ThemeProvider,
       null,
-      createElement(
-        I18nProvider,
-        null,
-        createElement(RouterProvider, {
-          patterns: routes.map((route) => route.pattern),
-          initialPath: path,
-          children: createElement(AppShell, {}),
-        }),
-      ),
+      createElement(I18nProvider, null, createElement(RouterProvider, routerProps)),
     ),
   );
 }

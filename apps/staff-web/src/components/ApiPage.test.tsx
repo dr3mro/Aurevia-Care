@@ -26,10 +26,7 @@ function resource<T>(value: T | Promise<T>, deps: readonly unknown[] = []) {
   return { label: 'Synthetic rows', load: async () => value, deps };
 }
 
-function wrap(
-  view: ReactNode,
-  options: { sessionExpired?: () => void; locale?: Locale } = {},
-) {
+function wrap(view: ReactNode, options: { sessionExpired?: () => void; locale?: Locale } = {}) {
   return render(
     <ThemeProvider>
       <I18nProvider initialLocale={options.locale ?? 'en'}>
@@ -68,12 +65,14 @@ const EXPECTED_TEXT: Record<TransportErrorKind, string> = {
 const ALL_KINDS = Object.keys(EXPECTED_TEXT) as TransportErrorKind[];
 
 function failure(kind: TransportErrorKind) {
-  return async () => {
-    throw new TransportError(kind, {
-      correlationId: kind,
-      code: kind,
-      retryAfterSeconds: undefined,
-    });
+  return () => {
+    return Promise.reject(
+      new TransportError(kind, {
+        correlationId: kind,
+        code: kind,
+        retryAfterSeconds: undefined,
+      }),
+    );
   };
 }
 
@@ -127,7 +126,11 @@ describe('ApiPage', () => {
   });
 
   it.each(ALL_KINDS)('maps the %s transport error to its required state view', async (kind) => {
-    wrap(<ApiPage resource={{ label: 'Synthetic rows', load: failure(kind), deps: [] }}>{children}</ApiPage>);
+    wrap(
+      <ApiPage resource={{ label: 'Synthetic rows', load: failure(kind), deps: [] }}>
+        {children}
+      </ApiPage>,
+    );
 
     await waitFor(() => expect(screen.getByText(EXPECTED_TEXT[kind])).toBeTruthy());
     expect(screen.queryByTestId('rows')).toBeNull();
@@ -136,9 +139,7 @@ describe('ApiPage', () => {
   it('calls onSessionExpired once when a session-expired error is shown', async () => {
     const onSessionExpired = vi.fn();
     const view = wrap(
-      <ApiPage
-        resource={{ label: 'Synthetic rows', load: failure('session-expired'), deps: [] }}
-      >
+      <ApiPage resource={{ label: 'Synthetic rows', load: failure('session-expired'), deps: [] }}>
         {children}
       </ApiPage>,
       { sessionExpired: onSessionExpired },
@@ -163,16 +164,12 @@ describe('ApiPage', () => {
 
   it('uses the no-op session callback when no provider is mounted', async () => {
     withoutSessionProvider(
-      <ApiPage
-        resource={{ label: 'Synthetic rows', load: failure('session-expired'), deps: [] }}
-      >
+      <ApiPage resource={{ label: 'Synthetic rows', load: failure('session-expired'), deps: [] }}>
         {children}
       </ApiPage>,
     );
 
-    await waitFor(() =>
-      expect(screen.getByText('Your session has expired')).toBeTruthy(),
-    );
+    await waitFor(() => expect(screen.getByText('Your session has expired')).toBeTruthy());
   });
 
   it('renders the Arabic loading state in right-to-left direction', () => {

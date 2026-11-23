@@ -22,14 +22,14 @@ const hasClass = (css: string, name: string): boolean =>
 
 /** Rule body of a top-level selector, for example `.grid-2 { ... }`. */
 const ruleBody = (css: string, selector: string): string =>
-  css.match(new RegExp(`(?:^|\\n)\\s*${escapeRegExp(selector)}\\s*\\{([^}]*)\\}`))?.[1] ?? '';
+  new RegExp(`(?:^|\\n)\\s*${escapeRegExp(selector)}\\s*\\{([^}]*)\\}`).exec(css)?.[1] ?? '';
 
 /** Map each `@media` feature list to its body, using brace depth to find the end. */
 const mediaBlocks = (css: string): Map<string, string> => {
   const blocks = new Map<string, string>();
   for (const match of css.matchAll(/@media\s+([^{]+)\{/g)) {
     const query = (match[1] ?? '').trim();
-    const start = (match.index ?? 0) + match[0].length;
+    const start = match.index + match[0].length;
     let depth = 1;
     let end = start;
     while (end < css.length && depth > 0) {
@@ -50,7 +50,7 @@ const mediaBlocks = (css: string): Map<string, string> => {
 const tokenFallbacks = (css: string): Map<string, string> => {
   const pairs = new Map<string, string>();
   for (const match of css.matchAll(/var\(--sc-/g)) {
-    const start = (match.index ?? 0) + 'var('.length;
+    const start = match.index + 'var('.length;
     let depth = 1;
     let end = start;
     while (end < css.length && depth > 0) {
@@ -113,8 +113,8 @@ describe('WEB-07 / UX-01 responsive base stylesheet', () => {
 
   it('declares only the 768 and 1280 layout widths', () => {
     const css = withoutComments(readStylesheet());
-    const queries = [...css.matchAll(/@media\s+([^{]+)\{/g)].map(
-      (match) => (match[1] ?? '').trim(),
+    const queries = [...css.matchAll(/@media\s+([^{]+)\{/g)].map((match) =>
+      (match[1] ?? '').trim(),
     );
     expect(queries.length).toBeGreaterThan(0);
     const widths: string[] = [];
@@ -165,9 +165,7 @@ describe('WEB-07 / UX-01 responsive base stylesheet', () => {
     const css = withoutComments(readStylesheet());
     expect(ruleBody(css, '.skip-link')).toMatch(/inset-inline-start:\s*-9999px/);
     expect(ruleBody(css, '.skip-link:focus')).toMatch(/inset-inline-start:/);
-    expect(ruleBody(css, ':focus-visible')).toMatch(
-      /outline:\s*var\(--sc-border-width-focus/,
-    );
+    expect(ruleBody(css, ':focus-visible')).toMatch(/outline:\s*var\(--sc-border-width-focus/);
     expect(ruleBody(css, ':focus-visible')).toMatch(
       /outline-offset:\s*var\(--sc-border-width-focus/,
     );

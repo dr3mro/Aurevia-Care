@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useActiveOrganization } from '../../api/activeOrganization';
 import { listPrescriptions } from './api';
 import { useApi } from '../../api/useApi';
@@ -18,12 +18,19 @@ import type { InboxItemResponse, InboxPageResponse, StatusFilter } from './types
  */
 export function PharmacyInboxPage() {
   const organizationId = useActiveOrganization();
+  // A tenant switch remounts the inbox, which invalidates every accumulated
+  // page before the new request can respond.
+  return <PharmacyInboxContent key={organizationId} organizationId={organizationId} />;
+}
+
+function PharmacyInboxContent({ organizationId }: { organizationId: string }) {
   const { locale } = useI18n();
   const { tokens } = useTheme();
   const [filter, setFilter] = useState<StatusFilter>('all');
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [accumulated, setAccumulated] = useState<readonly InboxItemResponse[]>([]);
   const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
+  const [appliedPage, setAppliedPage] = useState<InboxPageResponse | undefined>(undefined);
 
   const result = useApi<InboxPageResponse>(
     () => listPrescriptions(filter, cursor, organizationId),
@@ -32,22 +39,12 @@ export function PharmacyInboxPage() {
 
   // Append each resolved page. The dependency is the page itself, so an
   // unrelated render can never duplicate the same rows.
-  useEffect(() => {
-    if (result.status !== 'ready') {
-      return;
-    }
+  if (result.status === 'ready' && result.data !== appliedPage) {
     const page = result.data;
+    setAppliedPage(page);
     setAccumulated((current) => [...current, ...page.items]);
     setNextCursor(page.nextCursor ?? undefined);
-  }, [result.status, result.data]);
-
-  // A tenant switch invalidates every accumulated page before the new request
-  // can respond, so one organization's rows are never painted for another.
-  useEffect(() => {
-    setCursor(undefined);
-    setAccumulated([]);
-    setNextCursor(undefined);
-  }, [organizationId]);
+  }
 
   function handleFilter(next: StatusFilter) {
     setFilter(next);
@@ -121,9 +118,7 @@ export function PharmacyInboxPage() {
                   <td>{item.quantity}</td>
                   <td>{stateLabel}</td>
                   <td>
-                    <Button
-                      onClick={() => navigate(`/pharmacy/${encodeURIComponent(item.id)}`)}
-                    >
+                    <Button onClick={() => navigate(`/pharmacy/${encodeURIComponent(item.id)}`)}>
                       {openLabel}
                     </Button>
                   </td>
@@ -131,11 +126,11 @@ export function PharmacyInboxPage() {
               ))}
             </tbody>
           </table>
-          {nextCursor !== undefined && (
+          {nextCursor !== undefined ? (
             <Button onClick={handleLoadMore} disabled={result.status === 'loading'}>
               {pharmacyText(locale, 'loadMore')}
             </Button>
-          )}
+          ) : null}
         </>
       )}
     </div>

@@ -22,8 +22,8 @@ import {
   syntheticSavedDraft,
 } from './fixtures';
 
-const imaging = syntheticCatalog.find((item) => item.id === 'rad-ct')!;
-const lab = syntheticCatalog.find((item) => item.id === 'lab-cbc')!;
+const imaging = required(syntheticCatalog.find((item) => item.id === 'rad-ct'));
+const lab = required(syntheticCatalog.find((item) => item.id === 'lab-cbc'));
 
 describe('order entry domain', () => {
   it('searches only the active tenant and excludes retired items', () => {
@@ -98,9 +98,9 @@ describe('order entry domain', () => {
     const imagingDraft = selectCatalogItem(labOnly, imaging);
     expect(hasImaging(imagingDraft)).toBe(true);
     expect(validateContent(imagingDraft)).toEqual(['clinicalQuestion']);
-    expect(validateContent({ ...imagingDraft, clinicalQuestion: '  Synthetic question  ' })).toEqual(
-      [],
-    );
+    expect(
+      validateContent({ ...imagingDraft, clinicalQuestion: '  Synthetic question  ' }),
+    ).toEqual([]);
   });
 
   it('reports an empty selection before any clinical question check', () => {
@@ -119,9 +119,9 @@ describe('order entry domain', () => {
       entryAlphaOrganizationId,
     );
     expect(matches.map((order) => order.id)).toEqual(['order-existing']);
-    expect(duplicateActiveOrders(withImaging, syntheticActiveOrders, entryBetaOrganizationId)).toEqual(
-      [],
-    );
+    expect(
+      duplicateActiveOrders(withImaging, syntheticActiveOrders, entryBetaOrganizationId),
+    ).toEqual([]);
     expect(duplicateActiveOrders(withImaging, [], entryAlphaOrganizationId)).toEqual([]);
 
     const otherTenantOrder: ActiveOrder = {
@@ -131,9 +131,9 @@ describe('order entry domain', () => {
       display: 'Other',
       status: 'draft',
     };
-    expect(duplicateActiveOrders(withImaging, [otherTenantOrder], entryAlphaOrganizationId)).toEqual(
-      [],
-    );
+    expect(
+      duplicateActiveOrders(withImaging, [otherTenantOrder], entryAlphaOrganizationId),
+    ).toEqual([]);
   });
 
   it('reserves ordering to the clinician role', () => {
@@ -149,3 +149,10 @@ describe('order entry domain', () => {
     expect(conflict.message).toContain('Stale order draft');
   });
 });
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

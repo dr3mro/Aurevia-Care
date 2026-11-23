@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { MouseEvent, ReactNode } from 'react';
+import { defined } from '../components/invariant';
 
 /**
  * Named segments extracted from a matched route pattern. Values are opaque
@@ -37,8 +38,8 @@ export function matchRoute(pattern: string, path: string): RouteParams | null {
 
   const params: RouteParams = {};
   for (let index = 0; index < expected.length; index += 1) {
-    const segment = expected[index]!;
-    const value = actual[index]!;
+    const segment = defined(expected[index], 'pattern segment');
+    const value = defined(actual[index], 'path segment');
     if (segment.startsWith(':')) {
       if (value.length === 0) {
         return null;
@@ -74,11 +75,7 @@ export interface RouterProviderProps {
  * Own the current pathname from `window.location.pathname` and follow browser
  * history changes. No router dependency and no state in the URL beyond the path.
  */
-export function RouterProvider({
-  children,
-  patterns = [],
-  initialPath,
-}: RouterProviderProps) {
+export function RouterProvider({ children, patterns = [], initialPath }: RouterProviderProps) {
   const [path, setPath] = useState(() => initialPath ?? window.location.pathname);
 
   useEffect(() => {

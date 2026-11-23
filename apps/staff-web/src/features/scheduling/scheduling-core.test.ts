@@ -41,8 +41,12 @@ describe('tenant-scoped scheduling selection', () => {
 
     expect(alpha.length).toBe(syntheticAlphaAppointments.length);
     expect(beta.length).toBe(syntheticBetaAppointments.length);
-    expect(alpha.some((appointment) => appointment.organizationId === betaOrganizationId)).toBe(false);
-    expect(beta.some((appointment) => appointment.organizationId === alphaOrganizationId)).toBe(false);
+    expect(alpha.some((appointment) => appointment.organizationId === betaOrganizationId)).toBe(
+      false,
+    );
+    expect(beta.some((appointment) => appointment.organizationId === alphaOrganizationId)).toBe(
+      false,
+    );
     expect(alpha.map((appointment) => appointment.id)).toContain('apt-001');
     expect(beta.map((appointment) => appointment.id)).toContain('apt-001');
     expect(alpha.find((appointment) => appointment.id === 'apt-001')?.patientName.latinName).toBe(
@@ -70,14 +74,15 @@ describe('tenant-scoped scheduling selection', () => {
       { ...findAlpha('apt-001'), id: 'b', scheduledAt: '2026-03-09T10:30:00Z' },
       { ...findAlpha('apt-002'), id: 'a', scheduledAt: '2026-03-09T10:30:00Z' },
     ];
-    expect(appointmentsForTenant(tied, alphaOrganizationId).map((appointment) => appointment.id)).toEqual([
-      'a',
-      'b',
-    ]);
+    expect(
+      appointmentsForTenant(tied, alphaOrganizationId).map((appointment) => appointment.id),
+    ).toEqual(['a', 'b']);
   });
 
   it('returns no appointments for an organization with no fixtures', () => {
-    expect(appointmentsForTenant(syntheticAppointments, '00000000-0000-0000-0000-000000000000')).toEqual([]);
+    expect(
+      appointmentsForTenant(syntheticAppointments, '00000000-0000-0000-0000-000000000000'),
+    ).toEqual([]);
   });
 });
 
@@ -94,23 +99,39 @@ describe('worklist day and week ranges', () => {
   });
 
   it('anchors the week correctly when the anchor is a Sunday', () => {
-    const beforeAnchor: Appointment = { ...findAlpha('apt-001'), scheduledAt: '2026-03-05T09:00:00Z' };
+    const beforeAnchor: Appointment = {
+      ...findAlpha('apt-001'),
+      scheduledAt: '2026-03-05T09:00:00Z',
+    };
     expect(withinRange(beforeAnchor, 'week', '2026-03-08')).toBe(true);
     expect(withinRange(findAlpha('apt-001'), 'week', '2026-03-08')).toBe(false);
   });
 
   it('composes tenant selection, range filtering and time ordering', () => {
-    expect(selectWorklist(syntheticAppointments, alphaOrganizationId, 'day', schedulingAnchorCivilDate).map((a) => a.id)).toEqual([
-      'apt-003',
-      'apt-002',
-      'apt-001',
-    ]);
-    const week = selectWorklist(syntheticAppointments, alphaOrganizationId, 'week', schedulingAnchorCivilDate);
+    expect(
+      selectWorklist(
+        syntheticAppointments,
+        alphaOrganizationId,
+        'day',
+        schedulingAnchorCivilDate,
+      ).map((a) => a.id),
+    ).toEqual(['apt-003', 'apt-002', 'apt-001']);
+    const week = selectWorklist(
+      syntheticAppointments,
+      alphaOrganizationId,
+      'week',
+      schedulingAnchorCivilDate,
+    );
     expect(week.map((a) => a.id)).toContain('apt-007');
     expect(week.map((a) => a.id)).not.toContain('apt-008');
-    expect(selectWorklist(syntheticAppointments, betaOrganizationId, 'day', schedulingAnchorCivilDate).map((a) => a.id)).toEqual([
-      'apt-001',
-    ]);
+    expect(
+      selectWorklist(
+        syntheticAppointments,
+        betaOrganizationId,
+        'day',
+        schedulingAnchorCivilDate,
+      ).map((a) => a.id),
+    ).toEqual(['apt-001']);
   });
 });
 
@@ -154,14 +175,21 @@ describe('scheduling commands', () => {
   });
 
   it('assigns a non-terminal visit and bumps its version', () => {
-    const result = applyCommand(findAlpha('apt-002'), { kind: 'assign', assignee: 'synthetic.nurse' });
+    const result = applyCommand(findAlpha('apt-002'), {
+      kind: 'assign',
+      assignee: 'synthetic.nurse',
+    });
     expect(result.assignee).toBe('synthetic.nurse');
     expect(result.version).toBe(findAlpha('apt-002').version + 1);
   });
 
   it('refuses to assign or check in a terminal visit', () => {
-    expect(() => applyCommand(findAlpha('apt-004'), { kind: 'assign', assignee: 'x' })).toThrow(/terminal/);
-    expect(() => applyCommand(findAlpha('apt-004'), { kind: 'check-in' })).toThrow(IllegalVisitTransition);
+    expect(() => applyCommand(findAlpha('apt-004'), { kind: 'assign', assignee: 'x' })).toThrow(
+      /terminal/,
+    );
+    expect(() => applyCommand(findAlpha('apt-004'), { kind: 'check-in' })).toThrow(
+      IllegalVisitTransition,
+    );
   });
 
   it('replaces only the matching tenant and identifier', () => {
@@ -172,12 +200,16 @@ describe('scheduling commands', () => {
       (appointment) => ({ ...appointment, state: 'completed' }),
     );
     expect(updated).toHaveLength(syntheticAppointments.length);
-    expect(updated.find((a) => a.organizationId === alphaOrganizationId && a.id === 'apt-001')?.state).toBe('completed');
-    expect(updated.find((a) => a.organizationId === betaOrganizationId && a.id === 'apt-001')?.state).toBe('booked');
+    expect(
+      updated.find((a) => a.organizationId === alphaOrganizationId && a.id === 'apt-001')?.state,
+    ).toBe('completed');
+    expect(
+      updated.find((a) => a.organizationId === betaOrganizationId && a.id === 'apt-001')?.state,
+    ).toBe('booked');
 
-    expect(replaceAppointment(syntheticAppointments, alphaOrganizationId, 'missing', (a) => a)).toEqual(
-      syntheticAppointments,
-    );
+    expect(
+      replaceAppointment(syntheticAppointments, alphaOrganizationId, 'missing', (a) => a),
+    ).toEqual(syntheticAppointments);
     expect(replaceAppointment(syntheticAppointments, 'unknown', 'apt-001', (a) => a)).toEqual(
       syntheticAppointments,
     );
@@ -253,7 +285,14 @@ describe('synthetic fixtures and localized labels', () => {
       expect(appointment.patientName.latinName).toContain('Synthetic');
     }
     expect(new Set(syntheticAppointments.map((a) => a.state))).toEqual(
-      new Set<VisitState>(['booked', 'checked-in', 'in-progress', 'completed', 'cancelled', 'no-show']),
+      new Set<VisitState>([
+        'booked',
+        'checked-in',
+        'in-progress',
+        'completed',
+        'cancelled',
+        'no-show',
+      ]),
     );
   });
 

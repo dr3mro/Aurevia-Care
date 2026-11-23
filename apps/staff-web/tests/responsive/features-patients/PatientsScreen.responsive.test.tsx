@@ -104,13 +104,17 @@ function renderScreen({
 
 /** Assert every header and value is present, unhidden and logically wrapping. */
 function expectFullUnhiddenTable(table: HTMLElement, caption: string, headers: string[]) {
-  expect(within(table).getAllByRole('columnheader').map((node) => node.textContent)).toEqual(headers);
+  expect(
+    within(table)
+      .getAllByRole('columnheader')
+      .map((node) => node.textContent),
+  ).toEqual(headers);
   for (const header of within(table).getAllByRole('columnheader')) {
     expect(header.getAttribute('scope')).toBe('col');
-    expect((header as HTMLElement).tabIndex).toBe(-1);
+    expect(header.tabIndex).toBe(-1);
   }
   for (const cell of within(table).getAllByRole('cell')) {
-    const element = cell as HTMLElement;
+    const element = cell;
     expect(element.tabIndex).toBe(-1);
     expect(element.style.display).not.toBe('none');
     expect(element.style.overflowWrap).toBe('anywhere');
@@ -133,7 +137,7 @@ describe('responsive PatientsScreen (WEB-07, UX-01)', () => {
       installMatchMedia(queriesForWidth(width));
       renderScreen();
 
-      const region = screen.getByRole('region', { name: CAPTION_EN }) as HTMLElement;
+      const region = screen.getByRole('region', { name: CAPTION_EN });
       expect(region.className).toContain('table-region');
       expect(region.getAttribute('tabindex')).toBe('0');
       expect(region.tabIndex).toBe(0);
@@ -146,12 +150,12 @@ describe('responsive PatientsScreen (WEB-07, UX-01)', () => {
 
       const rowHeader = within(table).getByRole('rowheader', { name: LONG_ENGLISH });
       expect(rowHeader.getAttribute('scope')).toBe('row');
-      const link = within(rowHeader).getByRole('link', { name: LONG_ENGLISH }) as HTMLElement;
+      const link = within(rowHeader).getByRole('link', { name: LONG_ENGLISH });
       expect(link.getAttribute('href')).toBe('/patients/patient-responsive-1');
       // The shared Link primitive does not take a className; a grid wrapper
       // carries the stylesheet's coarse-pointer target floor and stretches the
       // anchor to fill it (the StateAction pattern).
-      const touchWrapper = link.parentElement as HTMLElement;
+      const touchWrapper = required(link.parentElement);
       expect(touchWrapper.className).toContain('touch');
       expect(touchWrapper.style.display).toBe('grid');
       expect(link.tabIndex).toBe(0);
@@ -162,22 +166,27 @@ describe('responsive PatientsScreen (WEB-07, UX-01)', () => {
       const stops = [
         region,
         ...Array.from(
-          region.querySelectorAll<HTMLElement>('a[href], button, input, select, textarea, [tabindex="0"]'),
+          region.querySelectorAll<HTMLElement>(
+            'a[href], button, input, select, textarea, [tabindex="0"]',
+          ),
         ),
       ];
       expect(stops).toEqual([region, link]);
     },
   );
 
-  it.each([768, 820, 1024] as const)('keeps the full table without a scroll region at %ipx', (width) => {
-    installMatchMedia(queriesForWidth(width));
-    renderScreen();
+  it.each([768, 820, 1024] as const)(
+    'keeps the full table without a scroll region at %ipx',
+    (width) => {
+      installMatchMedia(queriesForWidth(width));
+      renderScreen();
 
-    expect(screen.queryByRole('region', { name: CAPTION_EN })).toBeNull();
-    const table = screen.getByRole('table', { name: CAPTION_EN });
-    expectFullUnhiddenTable(table, CAPTION_EN, ['Name', 'MRN', 'Issuer', 'Date of birth']);
-    expect(screen.getByText(LONG_ENGLISH).getAttribute('data-breakpoint')).toBe('medium');
-  });
+      expect(screen.queryByRole('region', { name: CAPTION_EN })).toBeNull();
+      const table = screen.getByRole('table', { name: CAPTION_EN });
+      expectFullUnhiddenTable(table, CAPTION_EN, ['Name', 'MRN', 'Issuer', 'Date of birth']);
+      expect(screen.getByText(LONG_ENGLISH).getAttribute('data-breakpoint')).toBe('medium');
+    },
+  );
 
   it('keeps the full table on expanded desktops', () => {
     installMatchMedia(queriesForWidth(1280));
@@ -215,11 +224,16 @@ describe('responsive PatientsScreen (WEB-07, UX-01)', () => {
 
     expect(document.documentElement.dir).toBe('rtl');
     expect(document.documentElement.lang).toBe('ar');
-    const region = screen.getByRole('region', { name: CAPTION_AR }) as HTMLElement;
+    const region = screen.getByRole('region', { name: CAPTION_AR });
     const table = within(region).getByRole('table', { name: CAPTION_AR });
-    expectFullUnhiddenTable(table, CAPTION_AR, ['الاسم', 'رقم الملف', 'الجهة المُصدرة', 'تاريخ الميلاد']);
+    expectFullUnhiddenTable(table, CAPTION_AR, [
+      'الاسم',
+      'رقم الملف',
+      'الجهة المُصدرة',
+      'تاريخ الميلاد',
+    ]);
 
-    const run = screen.getByText(LONG_ARABIC) as HTMLElement;
+    const run = screen.getByText(LONG_ARABIC);
     expect(run.tagName).toBe('BDI');
     expect(run.getAttribute('dir')).toBe('auto');
     expect(run.getAttribute('lang')).toBe('ar');
@@ -238,6 +252,13 @@ describe('responsive PatientsScreen (WEB-07, UX-01)', () => {
       expect(element.style.direction).toBe('');
     }
     expect((table.querySelector('caption') as HTMLElement).style.textAlign).toBe('start');
-    expect((table as HTMLElement).style.inlineSize).toBe('100%');
+    expect(table.style.inlineSize).toBe('100%');
   });
 });
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

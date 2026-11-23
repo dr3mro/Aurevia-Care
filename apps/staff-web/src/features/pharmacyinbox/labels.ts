@@ -79,7 +79,8 @@ export type PharmacyMessageKey = (typeof pharmacyKeys)[number];
 export const pharmacyMessages: Record<Locale, Record<PharmacyMessageKey, string>> = {
   en: {
     pharmacy: 'Pharmacy inbox',
-    syntheticNotice: 'Synthetic data only. Prescriptions are read from and written to the connected API.',
+    syntheticNotice:
+      'Synthetic data only. Prescriptions are read from and written to the connected API.',
     worklistCaption: 'Prescriptions routed to your pharmacy',
     filterLabel: 'Filter by status',
     filterAll: 'All',
@@ -132,7 +133,8 @@ export const pharmacyMessages: Record<Locale, Record<PharmacyMessageKey, string>
     submitReject: 'Reject prescription',
     submitClarify: 'Send clarification request',
     dispensingTitle: 'Dispensing evidence',
-    dispensingHint: 'Record who dispensed, when and what was handed over. This is separate from acceptance.',
+    dispensingHint:
+      'Record who dispensed, when and what was handed over. This is separate from acceptance.',
     dispensedBy: 'Dispensed by',
     dispensedAt: 'Dispensed at (ISO instant)',
     handedOver: 'Handed over',

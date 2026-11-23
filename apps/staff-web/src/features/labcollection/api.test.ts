@@ -20,7 +20,9 @@ vi.mock('../../api/transport', async (importOriginal) => {
 const sendMock = vi.mocked(send);
 
 /** Build one synthetic API accession view with every contract field populated. */
-function apiView(overrides: Partial<AccessionViewResponse['accession']> = {}): AccessionViewResponse {
+function apiView(
+  overrides: Partial<AccessionViewResponse['accession']> = {},
+): AccessionViewResponse {
   return {
     accession: {
       id: 'accession-100',
@@ -46,7 +48,7 @@ function apiView(overrides: Partial<AccessionViewResponse['accession']> = {}): A
 }
 
 function descriptorAt(call: number): RequestDescriptor {
-  return sendMock.mock.calls[call]![0] as RequestDescriptor;
+  return required(sendMock.mock.calls[call])[0];
 }
 
 describe('lab accession API client', () => {
@@ -66,7 +68,10 @@ describe('lab accession API client', () => {
   it('includes optional cursor, state and limit filters', async () => {
     sendMock.mockResolvedValueOnce({ items: [], nextCursor: null });
 
-    await listAccessions({ cursor: 'cursor-2', state: 'collected', limit: 25 }, alphaOrganizationId);
+    await listAccessions(
+      { cursor: 'cursor-2', state: 'collected', limit: 25 },
+      alphaOrganizationId,
+    );
 
     const url = descriptorAt(0).url;
     expect(url).toContain('cursor=cursor-2');
@@ -161,3 +166,10 @@ describe('toCollectionOrder', () => {
     });
   });
 });
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

@@ -72,7 +72,7 @@ export function isTerminal(status: TrackedOrderStatus): boolean {
 
 /** Cancel is refused for terminal orders and while a request is already pending. */
 export function canCancel(order: TrackedOrder): boolean {
-  return !isTerminal(order.status) && order.cancelRequested === false;
+  return !isTerminal(order.status) && !order.cancelRequested;
 }
 
 /** Amend opens a linked revision only while the order is not terminal. */

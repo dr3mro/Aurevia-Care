@@ -29,7 +29,12 @@ describe('accessible DataTable', () => {
   it('preserves an empty cell and shows an empty state without rows', () => {
     const { rerender } = render(
       <ThemeProvider>
-        <DataTable caption="Facilities" columns={columns} rows={[{ code: 'MAIN' }]} emptyLabel="None" />
+        <DataTable
+          caption="Facilities"
+          columns={columns}
+          rows={[{ code: 'MAIN' }]}
+          emptyLabel="None"
+        />
       </ThemeProvider>,
     );
     expect(screen.getAllByRole('cell')).toHaveLength(2);

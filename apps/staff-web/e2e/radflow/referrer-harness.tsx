@@ -45,9 +45,7 @@ function ReferrerView(): ReactElement {
           : item,
       ),
     );
-    setLastAcknowledged(
-      `${receipt.organizationId}:${receipt.orderId}:${receipt.version}`,
-    );
+    setLastAcknowledged(`${receipt.organizationId}:${receipt.orderId}:${receipt.version}`);
   }
 
   return (

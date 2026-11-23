@@ -4,11 +4,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { I18nProvider } from '../../i18n/I18nProvider';
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import type { Locale } from '../../i18n/messages';
-import {
-  createAmendment,
-  currentRevision,
-  markEnteredInError,
-} from './domain';
+import { createAmendment, currentRevision, markEnteredInError } from './domain';
 import type { NoteRevision } from './domain';
 import {
   alphaOrganizationId,
@@ -23,6 +19,7 @@ import { EnteredInErrorBanner } from './EnteredInErrorBanner';
 import { LongitudinalChart } from './LongitudinalChart';
 import { NoteEditor } from './NoteEditor';
 import { RevisionHistory } from './RevisionHistory';
+import { must } from '../../../tests/must';
 
 function wrap(ui: ReactElement, locale: Locale = 'en') {
   return render(
@@ -65,9 +62,7 @@ function editorProps(revision: NoteRevision) {
 describe('LongitudinalChart', () => {
   it('renders coded problems, allergies, medications and measured vitals with units', () => {
     wrap(<LongitudinalChart chart={syntheticAlphaChart} locale="en" />);
-    expect(
-      screen.getByRole('region', { name: chartText('en', 'longitudinalChart') }),
-    ).toBeTruthy();
+    expect(screen.getByRole('region', { name: chartText('en', 'longitudinalChart') })).toBeTruthy();
     for (const label of ['problems', 'allergies', 'medications', 'vitals'] as const) {
       expect(screen.getByRole('table', { name: chartText('en', label) })).toBeTruthy();
     }
@@ -101,9 +96,7 @@ describe('LongitudinalChart', () => {
   it('uses Arabic labels, local names and logical layout under RTL', () => {
     wrap(<LongitudinalChart chart={syntheticAlphaChart} locale="ar" />, 'ar');
     expect(document.documentElement.dir).toBe('rtl');
-    expect(
-      screen.getByRole('region', { name: chartText('ar', 'longitudinalChart') }),
-    ).toBeTruthy();
+    expect(screen.getByRole('region', { name: chartText('ar', 'longitudinalChart') })).toBeTruthy();
     const localName = screen.getByText('ليلى تجريبية');
     expect(localName.tagName).toBe('BDI');
     expect(localName.getAttribute('lang')).toBe('ar');
@@ -116,17 +109,15 @@ describe('NoteEditor', () => {
     const onContentChange = vi.fn();
     const onSign = vi.fn();
     wrap(
-      <NoteEditor
-        {...editorProps(draft())}
-        onContentChange={onContentChange}
-        onSign={onSign}
-      />,
+      <NoteEditor {...editorProps(draft())} onContentChange={onContentChange} onSign={onSign} />,
     );
-    const subjective = screen.getByRole('textbox', { name: chartText('en', 'subjective') }) as HTMLTextAreaElement;
+    const subjective = screen.getByRole<HTMLTextAreaElement>('textbox', {
+      name: chartText('en', 'subjective'),
+    });
     expect(subjective.readOnly).toBe(false);
     fireEvent.change(subjective, { target: { value: 'Synthetic new concern' } });
     expect(onContentChange).toHaveBeenCalledWith('subjective', 'Synthetic new concern');
-    const sign = screen.getByRole('button', { name: chartText('en', 'sign') }) as HTMLButtonElement;
+    const sign = screen.getByRole<HTMLButtonElement>('button', { name: chartText('en', 'sign') });
     expect(sign.disabled).toBe(true);
     fireEvent.click(screen.getByRole('checkbox', { name: chartText('en', 'attestation') }));
     expect(sign.disabled).toBe(false);
@@ -148,9 +139,9 @@ describe('NoteEditor', () => {
       />,
     );
     for (const field of ['subjective', 'objective', 'assessment', 'plan'] as const) {
-      const control = screen.getByRole('textbox', {
+      const control = screen.getByRole<HTMLTextAreaElement>('textbox', {
         name: chartText('en', field),
-      }) as HTMLTextAreaElement;
+      });
       expect(control.readOnly).toBe(true);
       fireEvent.change(control, { target: { value: 'must not change' } });
       expect(control.value).not.toBe('must not change');
@@ -179,7 +170,7 @@ describe('NoteEditor', () => {
     expect(alert.textContent).toContain('synthetic.referrer');
     expect(screen.queryByRole('button', { name: chartText('en', 'amend') })).toBeNull();
     expect(
-      (screen.getByRole('textbox', { name: chartText('en', 'plan') }) as HTMLTextAreaElement).readOnly,
+      screen.getByRole<HTMLTextAreaElement>('textbox', { name: chartText('en', 'plan') }).readOnly,
     ).toBe(true);
   });
 
@@ -194,9 +185,7 @@ describe('NoteEditor', () => {
   it('uses Arabic SOAP labels and RTL direction', () => {
     wrap(<NoteEditor {...editorProps(signed())} locale="ar" />, 'ar');
     expect(document.documentElement.dir).toBe('rtl');
-    expect(
-      screen.getByRole('textbox', { name: chartText('ar', 'subjective') }),
-    ).toBeTruthy();
+    expect(screen.getByRole('textbox', { name: chartText('ar', 'subjective') })).toBeTruthy();
     expect(screen.getByRole('button', { name: chartText('ar', 'amend') })).toBeTruthy();
   });
 });
@@ -277,9 +266,9 @@ describe('DocumentList', () => {
     expect(screen.getAllByText(/°/).length).toBeGreaterThan(0);
     const voidButtons = screen.getAllByRole('button', { name: chartText('en', 'void') });
     expect((voidButtons[3] as HTMLButtonElement).disabled).toBe(true);
-    fireEvent.click(voidButtons[0]!);
+    fireEvent.click(must(voidButtons[0]));
     expect(onVoid).toHaveBeenCalledWith('doc-001');
-    fireEvent.click(screen.getAllByRole('button', { name: chartText('en', 'rotate') })[0]!);
+    fireEvent.click(must(screen.getAllByRole('button', { name: chartText('en', 'rotate') })[0]));
     expect(onRotate).toHaveBeenCalledWith('doc-001');
   });
 

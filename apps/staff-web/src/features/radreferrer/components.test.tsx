@@ -16,11 +16,11 @@ import {
 } from './fixtures';
 
 /** The open alpha addendum shown by the banner tests. */
-const openAddendum = syntheticAddenda[0]!;
+const openAddendum = required(syntheticAddenda[0]);
 /** The acknowledged alpha addendum used by the negative test. */
-const acknowledgedAddendum = syntheticAddenda[1]!;
+const acknowledgedAddendum = required(syntheticAddenda[1]);
 /** An open addendum from another tenant and another order. */
-const foreignAddenda = [syntheticAddenda[2]!, syntheticAddenda[3]!];
+const foreignAddenda = [required(syntheticAddenda[2]), required(syntheticAddenda[3])];
 
 /** Mount a component with the theme and locale providers the chart uses. */
 function wrap(ui: ReactElement, locale: Locale = 'en') {
@@ -81,7 +81,9 @@ describe('ImagingReportCard', () => {
 
     expect(document.documentElement.lang).toBe('ar');
     expect(document.documentElement.dir).toBe('rtl');
-    expect(screen.getByTestId('imaging-report-card').getAttribute('aria-label')).toBe('تقرير الأشعة');
+    expect(screen.getByTestId('imaging-report-card').getAttribute('aria-label')).toBe(
+      'تقرير الأشعة',
+    );
     expect(screen.getByTestId('report-signed-by').textContent).toContain('موقّع بواسطة');
     expect(screen.getByTestId('report-sections').textContent).toContain('النتائج');
 
@@ -91,7 +93,7 @@ describe('ImagingReportCard', () => {
       expect(body.tagName).toBe('BDI');
       expect(body.getAttribute('dir')).toBe('auto');
     }
-    expect(bodies[3]!.textContent).toBe(mixedReport.impression);
+    expect(required(bodies[3]).textContent).toBe(mixedReport.impression);
     expect(screen.getByTestId('report-signed-by').querySelector('bdi')?.getAttribute('dir')).toBe(
       'auto',
     );
@@ -141,7 +143,9 @@ describe('AddendumBanner', () => {
     const second: AddendumAcknowledgment = { ...openAddendum, version: openAddendum.version + 1 };
     wrap(banner([openAddendum, second], onAcknowledge));
 
-    fireEvent.click(screen.getByRole('button', { name: `Acknowledge version ${openAddendum.version}` }));
+    fireEvent.click(
+      screen.getByRole('button', { name: `Acknowledge version ${openAddendum.version}` }),
+    );
     fireEvent.click(screen.getByRole('button', { name: `Acknowledge version ${second.version}` }));
     expect(onAcknowledge).toHaveBeenCalledTimes(2);
     expect(onAcknowledge).toHaveBeenNthCalledWith(1, openAddendum);
@@ -172,3 +176,10 @@ describe('AddendumBanner', () => {
     ).toBeTruthy();
   });
 });
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

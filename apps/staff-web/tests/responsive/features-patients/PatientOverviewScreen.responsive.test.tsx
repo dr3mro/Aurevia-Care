@@ -78,11 +78,7 @@ const LONG_ARABIC_NAME = 'اسم مريض تجريبي طويل جداً يجب 
 const LONG_ENGLISH_ISSUER = 'SYNTHETIC ISSUER WITH A DELIBERATELY LONG NAME THAT WRAPS';
 
 /** Build a synthetic overview with optional duplicate warnings. */
-function overview(
-  displayName: string,
-  language: string,
-  withDuplicates: boolean,
-): PatientOverview {
+function overview(displayName: string, language: string, withDuplicates: boolean): PatientOverview {
   return {
     patient: {
       organizationId: '00000000-0000-0000-0000-000000000001',
@@ -133,21 +129,18 @@ describe('responsive PatientOverviewScreen (WEB-07, UX-01)', () => {
     (breakpoint) => {
       installMatchMedia(LAYOUTS[breakpoint]);
       wrap(
-        <PatientOverviewScreen
-          overview={overview(LONG_ENGLISH_NAME, 'en', true)}
-          locale="en"
-        />,
+        <PatientOverviewScreen overview={overview(LONG_ENGLISH_NAME, 'en', true)} locale="en" />,
       );
 
       const identity = screen.getByRole('region', { name: 'Identity' });
-      const page = identity.closest('.page') as HTMLElement;
+      const page = required(identity.closest<HTMLElement>('.page'));
       expect(page).not.toBeNull();
       expect(page.classList.contains('page')).toBe(true);
       expect(page.getAttribute('data-breakpoint')).toBe(breakpoint);
 
       // One DOM at every band: the identity fields stack on a phone through
       // .grid-2's single column and sit side by side from the medium breakpoint.
-      const fields = identity.querySelector('[data-part="identity-fields"]') as HTMLElement;
+      const fields = required(identity.querySelector<HTMLElement>('[data-part="identity-fields"]'));
       expect(fields).not.toBeNull();
       expect(fields.classList.contains('grid-2')).toBe(true);
       for (const label of ['MRN', 'Issuer', 'Date of birth', 'Language', 'Version']) {
@@ -155,7 +148,7 @@ describe('responsive PatientOverviewScreen (WEB-07, UX-01)', () => {
       }
 
       // Long clinical values wrap; they are never hidden to make them fit.
-      const name = screen.getByText(LONG_ENGLISH_NAME) as HTMLElement;
+      const name = screen.getByText(LONG_ENGLISH_NAME);
       expect(name.tagName).toBe('BDI');
       expect(name.getAttribute('dir')).toBe('auto');
       expect(name.getAttribute('data-breakpoint')).toBe(breakpoint);
@@ -175,10 +168,7 @@ describe('responsive PatientOverviewScreen (WEB-07, UX-01)', () => {
     for (const breakpoint of BREAKPOINTS) {
       installMatchMedia(LAYOUTS[breakpoint]);
       const view = wrap(
-        <PatientOverviewScreen
-          overview={overview(LONG_ENGLISH_NAME, 'en', true)}
-          locale="en"
-        />,
+        <PatientOverviewScreen overview={overview(LONG_ENGLISH_NAME, 'en', true)} locale="en" />,
       );
 
       expect(screen.getByRole('heading', { level: 2, name: 'Patient overview' })).toBeTruthy();
@@ -187,11 +177,11 @@ describe('responsive PatientOverviewScreen (WEB-07, UX-01)', () => {
       expect(within(alert).getByText(LONG_ARABIC_NAME)).toBeTruthy();
       expect(within(alert).getByText('MRN-SYN-1002')).toBeTruthy();
 
-      const link = screen.getByRole('link', { name: 'Open chart' }) as HTMLAnchorElement;
+      const link = screen.getByRole<HTMLAnchorElement>('link', { name: 'Open chart' });
       expect(link.getAttribute('href')).toBe('/patients/patient-synthetic-1/chart');
       // The shared .touch class owns the 24px fine and 44px coarse target
       // floors; a wrapper span makes the anchor's clickable box the target.
-      const target = link.querySelector('.touch') as HTMLElement;
+      const target = required(link.querySelector<HTMLElement>('.touch'));
       expect(target).not.toBeNull();
       expect(target.textContent).toBe('Open chart');
       expect(target.style.display).toBe('inline-flex');
@@ -212,10 +202,7 @@ describe('responsive PatientOverviewScreen (WEB-07, UX-01)', () => {
     for (const breakpoint of BREAKPOINTS) {
       installMatchMedia(LAYOUTS[breakpoint]);
       const view = wrap(
-        <PatientOverviewScreen
-          overview={overview(LONG_ENGLISH_NAME, 'en', false)}
-          locale="en"
-        />,
+        <PatientOverviewScreen overview={overview(LONG_ENGLISH_NAME, 'en', false)} locale="en" />,
       );
 
       expect(screen.getByText('No likely duplicate records.')).toBeTruthy();
@@ -230,12 +217,12 @@ describe('responsive PatientOverviewScreen (WEB-07, UX-01)', () => {
 
   it('follows a viewport change without remounting or hiding clinical values', () => {
     const media = installMatchMedia(LAYOUTS.compact);
-    wrap(
-      <PatientOverviewScreen overview={overview(LONG_ENGLISH_NAME, 'en', true)} locale="en" />,
-    );
+    wrap(<PatientOverviewScreen overview={overview(LONG_ENGLISH_NAME, 'en', true)} locale="en" />);
 
-    const page = screen.getByRole('region', { name: 'Identity' }).closest('.page') as HTMLElement;
-    const name = screen.getByText(LONG_ENGLISH_NAME) as HTMLElement;
+    const page = required(
+      screen.getByRole('region', { name: 'Identity' }).closest<HTMLElement>('.page'),
+    );
+    const name = screen.getByText(LONG_ENGLISH_NAME);
     expect(page.getAttribute('data-breakpoint')).toBe('compact');
 
     act(() => media.fire(BREAKPOINT_MEDIA_QUERIES.medium, true));
@@ -253,32 +240,37 @@ describe('responsive PatientOverviewScreen (WEB-07, UX-01)', () => {
     document.documentElement.setAttribute('dir', 'rtl');
     document.documentElement.setAttribute('lang', 'ar');
     installMatchMedia(LAYOUTS.compact);
-    wrap(
-      <PatientOverviewScreen overview={overview(LONG_ARABIC_NAME, 'ar', true)} locale="ar" />,
-    );
+    wrap(<PatientOverviewScreen overview={overview(LONG_ARABIC_NAME, 'ar', true)} locale="ar" />);
 
     expect(document.documentElement.dir).toBe('rtl');
     expect(screen.getByRole('heading', { level: 2, name: 'نظرة عامة على المريض' })).toBeTruthy();
     const identity = screen.getByRole('region', { name: 'الهوية' });
-    const page = identity.closest('.page') as HTMLElement;
+    const page = required(identity.closest<HTMLElement>('.page'));
     expect(page.getAttribute('data-breakpoint')).toBe('compact');
-    expect(identity.querySelector('[data-part="identity-fields"]')?.classList.contains('grid-2')).toBe(
-      true,
-    );
+    expect(
+      identity.querySelector('[data-part="identity-fields"]')?.classList.contains('grid-2'),
+    ).toBe(true);
 
     // The same synthetic Arabic value is shown as the patient name and as a
     // duplicate candidate; either isolated run proves the wrapping contract.
-    const arabicName = screen.getAllByText(LONG_ARABIC_NAME)[0] as HTMLElement;
+    const arabicName = required(screen.getAllByText(LONG_ARABIC_NAME)[0]);
     expect(arabicName.tagName).toBe('BDI');
     expect(arabicName.getAttribute('dir')).toBe('auto');
     expect(arabicName.getAttribute('lang')).toBe('ar');
     expect(arabicName.style.whiteSpace).toBe('normal');
     expect(arabicName.style.overflowWrap).toBe('anywhere');
 
-    const link = screen.getByRole('link', { name: 'فتح الملف الطبي' }) as HTMLAnchorElement;
+    const link = screen.getByRole<HTMLAnchorElement>('link', { name: 'فتح الملف الطبي' });
     expect(link.getAttribute('href')).toBe('/patients/patient-synthetic-1/chart');
     expect(link.querySelector('.touch')).not.toBeNull();
 
     expectLogicalOnly(allElements(page));
   });
 });
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

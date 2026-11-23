@@ -15,6 +15,9 @@ export interface PatientsScreenProps {
   embeddedInScrollRegion?: boolean;
 }
 
+// A horizontally scrolling region must be reachable by keyboard (WCAG 2.1.1).
+const SCROLL_REGION_TAB_INDEX = 0;
+
 /**
  * Render the patient results as an accessible table. Names are isolated as
  * bidirectional runs and the opaque id is the only value placed in a URL.
@@ -26,7 +29,11 @@ export interface PatientsScreenProps {
  * UX-01). Headers and cells wrap long English and Arabic values and keep no
  * fixed block size, so text stays readable at 200 percent zoom.
  */
-export function PatientsScreen({ patients, locale, embeddedInScrollRegion = false }: PatientsScreenProps) {
+export function PatientsScreen({
+  patients,
+  locale,
+  embeddedInScrollRegion = false,
+}: PatientsScreenProps) {
   const { tokens } = useTheme();
   const breakpoint = useBreakpoint();
   const caption = patientsText(locale, 'resultsCaption');
@@ -92,7 +99,12 @@ export function PatientsScreen({ patients, locale, embeddedInScrollRegion = fals
   // headers and every clinical column at each breakpoint.
   if (breakpoint === 'compact' && !embeddedInScrollRegion) {
     return (
-      <div className="table-region" role="region" aria-label={caption} tabIndex={0}>
+      <div
+        className="table-region"
+        role="region"
+        aria-label={caption}
+        tabIndex={SCROLL_REGION_TAB_INDEX}
+      >
         {table}
       </div>
     );

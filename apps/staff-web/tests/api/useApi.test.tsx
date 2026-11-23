@@ -4,6 +4,7 @@ import { ActiveOrganizationProvider } from '../../src/api/activeOrganization';
 import { TransportError } from '../../src/api/transport';
 import type { TransportErrorKind } from '../../src/api/transport';
 import { useApi } from '../../src/api/useApi';
+import { must } from '../must';
 
 const ALPHA = '11111111-1111-1111-1111-111111111111';
 const BETA = '22222222-2222-2222-2222-222222222222';
@@ -110,9 +111,7 @@ describe('useApi', () => {
   });
 
   it.each(ALL_KINDS)('preserves the %s transport error kind', async (kind) => {
-    const load = vi.fn<Loader>(async () => {
-      throw new TransportError(kind, errorDetails(kind));
-    });
+    const load = vi.fn<Loader>(() => Promise.reject(new TransportError(kind, errorDetails(kind))));
 
     renderHarness(load, []);
 
@@ -221,11 +220,11 @@ describe('useApi', () => {
     const signals: AbortSignal[] = [];
     const load = vi.fn<Loader>((signal) => {
       signals.push(signal);
-      return gates[signals.length - 1]!.promise;
+      return must(gates[signals.length - 1]).promise;
     });
 
     renderHarness(load, []);
-    await settle(gates[0]!, 'first');
+    await settle(must(gates[0]), 'first');
     expect(data()).toBe('first');
 
     fireEvent.click(screen.getByRole('button', { name: 'reload' }));
@@ -233,14 +232,12 @@ describe('useApi', () => {
     expect(signals[0]?.aborted).toBe(true);
     expect(status()).toBe('loading');
 
-    await settle(gates[1]!, 'second');
+    await settle(must(gates[1]), 'second');
     expect(data()).toBe('second');
   });
 
   it('normalises an unexpected rejection into a server transport error', async () => {
-    const load = vi.fn<Loader>(async () => {
-      throw new Error('unexpected failure');
-    });
+    const load = vi.fn<Loader>(() => Promise.reject(new Error('unexpected failure')));
 
     renderHarness(load, []);
 

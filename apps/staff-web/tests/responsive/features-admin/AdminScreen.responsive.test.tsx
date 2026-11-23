@@ -2,10 +2,7 @@ import { act, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Locale } from '../../../src/i18n/messages';
 import { I18nProvider } from '../../../src/i18n/I18nProvider';
-import {
-  AdminScreen,
-  type AdminScreenProps,
-} from '../../../src/features/admin/AdminScreen';
+import { AdminScreen, type AdminScreenProps } from '../../../src/features/admin/AdminScreen';
 import {
   adminAnchorCivilDate,
   adminConfigurationKey,
@@ -19,6 +16,7 @@ import { adminText } from '../../../src/features/admin/messages';
 import type { Breakpoint } from '../../../src/theme/breakpoints';
 import { BREAKPOINT_MEDIA_QUERIES } from '../../../src/theme/breakpoints';
 import { ThemeProvider } from '../../../src/theme/ThemeProvider';
+import { must } from '../../must';
 
 type ChangeListener = (event: MediaQueryListEvent) => void;
 
@@ -140,7 +138,7 @@ describe('responsive AdminScreen (WEB-07, UX-01)', () => {
 
       const page = screen.getByRole('region', {
         name: adminText('en', 'admin'),
-      }) as HTMLElement;
+      });
       expect(page.classList.contains('page')).toBe(true);
       expect(page.getAttribute('data-breakpoint')).toBe(breakpoint);
       expect(page.getAttribute('style')).toBeNull();
@@ -148,7 +146,9 @@ describe('responsive AdminScreen (WEB-07, UX-01)', () => {
 
       // One DOM and one accessibility tree at every band: all headings, the
       // live status and the three labelled tables stay in the document.
-      expect(screen.getByRole('heading', { level: 2, name: adminText('en', 'admin') })).toBeTruthy();
+      expect(
+        screen.getByRole('heading', { level: 2, name: adminText('en', 'admin') }),
+      ).toBeTruthy();
       expect(screen.getByText(adminText('en', 'syntheticNotice'))).toBeTruthy();
       expect(screen.getByTestId('admin-status').getAttribute('role')).toBe('status');
       for (const label of SECTION_LABEL_KEYS) {
@@ -159,15 +159,16 @@ describe('responsive AdminScreen (WEB-07, UX-01)', () => {
 
       const accessReview = screen.getByRole('region', {
         name: adminText('en', 'accessReview'),
-      }) as HTMLElement;
+      });
       expect(accessReview.classList.contains('stack')).toBe(true);
       expect(accessReview.getAttribute('style')).toBeNull();
 
       for (const key of TABLE_LABEL_KEYS) {
         const label = adminText('en', key);
         if (breakpoint === 'compact' && key === 'auditEvents') {
-          expect(within(screen.getByRole('list', { name: label })).getAllByRole('listitem').length)
-            .toBeGreaterThan(0);
+          expect(
+            within(screen.getByRole('list', { name: label })).getAllByRole('listitem').length,
+          ).toBeGreaterThan(0);
           continue;
         }
         const region = screen
@@ -175,8 +176,9 @@ describe('responsive AdminScreen (WEB-07, UX-01)', () => {
           .find((element) => element.getAttribute('tabindex') === '0');
         expect(region).toBeDefined();
         const tableName = breakpoint === 'compact' && key === 'staffHistory' ? /^Seq / : label;
-        expect(within(region as HTMLElement).getAllByRole('table', { name: tableName }).length)
-          .toBeGreaterThan(0);
+        expect(
+          within(must(region)).getAllByRole('table', { name: tableName }).length,
+        ).toBeGreaterThan(0);
       }
 
       // Every responsive descendant agrees on the active layout band, so a
@@ -202,9 +204,9 @@ describe('responsive AdminScreen (WEB-07, UX-01)', () => {
     expect(status.getAttribute('role')).toBe('status');
     expect(status.hasAttribute('aria-label')).toBe(false);
 
-    const value = screen.getByLabelText(adminText('en', 'proposedValue')) as HTMLInputElement;
-    const effectiveFrom = screen.getByLabelText(adminText('en', 'effectiveFrom')) as HTMLInputElement;
-    const propose = screen.getByRole('button', { name: adminText('en', 'propose') }) as HTMLElement;
+    const value = screen.getByLabelText<HTMLInputElement>(adminText('en', 'proposedValue'));
+    const effectiveFrom = screen.getByLabelText<HTMLInputElement>(adminText('en', 'effectiveFrom'));
+    const propose = screen.getByRole('button', { name: adminText('en', 'propose') });
     expect([value.id, effectiveFrom.id]).toEqual(['admin-config-value', 'admin-config-effective']);
     expect(propose.textContent).toBe(adminText('en', 'propose'));
 
@@ -215,7 +217,9 @@ describe('responsive AdminScreen (WEB-07, UX-01)', () => {
       Number(element.getAttribute('tabindex')),
     );
     expect(tabStops.every((index) => index >= 0)).toBe(true);
-    expect([...container.querySelectorAll('[role="region"][tabindex="0"]')]).toHaveLength(breakpoint === 'compact' ? 2 : 3);
+    expect([...container.querySelectorAll('[role="region"][tabindex="0"]')]).toHaveLength(
+      breakpoint === 'compact' ? 2 : 3,
+    );
     const focusable = [...container.querySelectorAll('button, input, [tabindex="0"]')];
     expect(focusable.indexOf(value)).toBeLessThan(focusable.indexOf(propose));
     expect(focusable.indexOf(effectiveFrom)).toBeLessThan(focusable.indexOf(propose));
@@ -228,19 +232,19 @@ describe('responsive AdminScreen (WEB-07, UX-01)', () => {
     installMatchMedia('compact', true);
     wrap(screenProps());
 
-    const value = screen.getByLabelText(adminText('en', 'proposedValue')) as HTMLInputElement;
-    const effectiveFrom = screen.getByLabelText(adminText('en', 'effectiveFrom')) as HTMLInputElement;
+    const value = screen.getByLabelText<HTMLInputElement>(adminText('en', 'proposedValue'));
+    const effectiveFrom = screen.getByLabelText<HTMLInputElement>(adminText('en', 'effectiveFrom'));
     for (const input of [value, effectiveFrom]) {
       expect(input.classList.contains('field')).toBe(true);
       expect(input.classList.contains('touch')).toBe(true);
     }
-    const propose = screen.getByRole('button', { name: adminText('en', 'propose') }) as HTMLElement;
+    const propose = screen.getByRole('button', { name: adminText('en', 'propose') });
     expect(propose.classList.contains('touch')).toBe(true);
     expect(propose.closest('[data-part="actions"]')?.classList.contains('touch')).toBe(true);
 
     // No clinical column is hidden to make the narrow layout fit.
     for (const header of screen.getAllByRole('columnheader')) {
-      expect((header as HTMLElement).style.display).not.toBe('none');
+      expect(header.style.display).not.toBe('none');
     }
   });
 
@@ -280,15 +284,13 @@ describe('responsive AdminScreen (WEB-07, UX-01)', () => {
 
     expect(document.documentElement.dir).toBe('rtl');
     expect(document.documentElement.lang).toBe('ar');
-    expect(
-      screen.getByRole('heading', { level: 2, name: adminText('ar', 'admin') }),
-    ).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: adminText('ar', 'admin') })).toBeTruthy();
     expect(screen.getByText(LONG_ENGLISH)).toBeTruthy();
     expect(screen.getByText(LONG_ARABIC)).toBeTruthy();
     expect(screen.getByRole('list', { name: adminText('ar', 'auditEvents') })).toBeTruthy();
 
     for (const run of document.querySelectorAll('bdi')) {
-      const isolated = run as HTMLElement;
+      const isolated = run;
       expect(isolated.getAttribute('dir')).toBe('auto');
       expect(isolated.hasAttribute('lang')).toBe(true);
       expect(isolated.style.overflowWrap).toBe('anywhere');
@@ -298,7 +300,10 @@ describe('responsive AdminScreen (WEB-07, UX-01)', () => {
 
     // Direction is owned by the document; no subtree sets a physical side, a
     // physical alignment or a direction override.
-    for (const element of [...document.querySelectorAll('section[aria-label]'), ...document.querySelectorAll('bdi')] as HTMLElement[]) {
+    for (const element of [
+      ...document.querySelectorAll('section[aria-label]'),
+      ...document.querySelectorAll('bdi'),
+    ] as HTMLElement[]) {
       const style = element.getAttribute('style') ?? '';
       expect(style).not.toMatch(/(?:margin|padding|border)-(?:left|right)\s*:/);
       expect(style).not.toMatch(/text-align\s*:\s*(?:left|right)/);
@@ -309,11 +314,11 @@ describe('responsive AdminScreen (WEB-07, UX-01)', () => {
   it('follows a width change without losing the page wrapper or the rendered data', () => {
     const media = installMatchMedia('compact');
     wrap(screenProps());
-    let page = screen.getByRole('region', { name: adminText('en', 'admin') }) as HTMLElement;
+    let page = screen.getByRole('region', { name: adminText('en', 'admin') });
     expect(page.getAttribute('data-breakpoint')).toBe('compact');
 
     act(() => media.fire(BREAKPOINT_MEDIA_QUERIES.medium, true));
-    page = screen.getByRole('region', { name: adminText('en', 'admin') }) as HTMLElement;
+    page = screen.getByRole('region', { name: adminText('en', 'admin') });
     expect(page.classList.contains('page')).toBe(true);
     expect(page.getAttribute('data-breakpoint')).toBe('medium');
     expect(screen.getByText('Synthetic alpha revised booking rule')).toBeTruthy();

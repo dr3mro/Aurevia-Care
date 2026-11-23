@@ -17,9 +17,11 @@ describe('delivery choice bilingual bundle', () => {
 
   it('translates every Arabic label into Arabic script', () => {
     for (const key of deliveryKeys) {
-      expect(/[\u0621-\u063A\u0641-\u064A\u066E-\u066F\u0671-\u06D3\u06D5\u06FA-\u06FC\u06FF]/.test(
-        deliveryMessages.ar[key],
-      )).toBe(true);
+      expect(
+        /[\u0621-\u063A\u0641-\u064A\u066E-\u066F\u0671-\u06D3\u06D5\u06FA-\u06FC\u06FF]/.test(
+          deliveryMessages.ar[key],
+        ),
+      ).toBe(true);
     }
   });
 });

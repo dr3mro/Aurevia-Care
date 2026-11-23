@@ -5,7 +5,11 @@ import type { Role } from '../../src/app/navigation';
 import { I18nProvider, useI18n } from '../../src/i18n/I18nProvider';
 import { ThemeProvider } from '../../src/theme/ThemeProvider';
 import { DeliveryChoice, OrderEntryPanel, OrdersTab } from '../../src/features/orderentry';
-import type { DeliveryMode, OrderDraftContent, SavedOrderDraft } from '../../src/features/orderentry/entry/domain';
+import type {
+  DeliveryMode,
+  OrderDraftContent,
+  SavedOrderDraft,
+} from '../../src/features/orderentry/entry/domain';
 import {
   entryAlphaOrganizationId,
   syntheticAllergies,
@@ -56,6 +60,43 @@ async function post(path: string, body: Record<string, unknown>): Promise<Respon
   });
 }
 
+/** Build the tenant-scoped tracking record for a placed order from its saved draft. */
+function buildTrackedOrder(
+  saved: SavedOrderDraft,
+  sentMode: DeliveryMode,
+  status: TrackedOrderStatus,
+): TrackedOrder {
+  return {
+    organizationId: saved.organizationId,
+    id: saved.id,
+    display: saved.content.items.map((item) => item.name).join(', '),
+    status,
+    // A printed order has no partner transmission proof; an electronic one has
+    // a copyable reference. The distinction is the delivery-status wording.
+    delivery: {
+      mode: sentMode,
+      deliveredAt: sentMode === 'print' ? null : deliveredAt,
+      partnerReference: sentMode === 'print' ? null : partnerReference,
+      timeZone: 'UTC',
+    },
+    result: null,
+    cancelRequested: false,
+  };
+}
+
+/** Rebuild a saved draft from the API's opaque id and version. */
+function savedDraftFrom(
+  payload: { id: string; version: number },
+  content: OrderDraftContent,
+): SavedOrderDraft {
+  return {
+    organizationId: entryAlphaOrganizationId,
+    id: payload.id,
+    version: payload.version,
+    content,
+  };
+}
+
 /** The workstation that owns entry, delivery confirmation and order tracking. */
 function OrderWorkstation(): ReactElement {
   const { locale, toggleLocale } = useI18n();
@@ -73,22 +114,7 @@ function OrderWorkstation(): ReactElement {
     sentMode: DeliveryMode,
     status: TrackedOrderStatus,
   ): Promise<void> {
-    const order: TrackedOrder = {
-      organizationId: saved.organizationId,
-      id: saved.id,
-      display: saved.content.items.map((item) => item.name).join(', '),
-      status,
-      // A printed order has no partner transmission proof; an electronic one has
-      // a copyable reference. The distinction is the delivery-status wording.
-      delivery: {
-        mode: sentMode,
-        deliveredAt: sentMode === 'print' ? null : deliveredAt,
-        partnerReference: sentMode === 'print' ? null : partnerReference,
-        timeZone: 'UTC',
-      },
-      result: null,
-      cancelRequested: false,
-    };
+    const order = buildTrackedOrder(saved, sentMode, status);
     await post(`/api/v1/orders/${order.id}/place`, { mode: sentMode });
     setOrders((current) => [...current, order]);
   }
@@ -100,12 +126,7 @@ function OrderWorkstation(): ReactElement {
   ): Promise<SavedOrderDraft> {
     const response = await post('/api/v1/orders/drafts', { content, expectedVersion });
     const payload = (await response.json()) as { id: string; version: number };
-    const saved: SavedOrderDraft = {
-      organizationId: entryAlphaOrganizationId,
-      id: payload.id,
-      version: payload.version,
-      content,
-    };
+    const saved = savedDraftFrom(payload, content);
     setDraft(saved);
     setMode(content.deliveryMode);
     setResult({ state: 'idle' });
@@ -120,12 +141,7 @@ function OrderWorkstation(): ReactElement {
     }
     const response = await fetch(`/api/v1/orders/drafts/${draft.id}`);
     const payload = (await response.json()) as { id: string; version: number };
-    const saved: SavedOrderDraft = {
-      organizationId: entryAlphaOrganizationId,
-      id: payload.id,
-      version: payload.version,
-      content: draft.content,
-    };
+    const saved = savedDraftFrom(payload, draft.content);
     setDraft(saved);
     return saved;
   }
@@ -234,7 +250,9 @@ function OrderWorkstation(): ReactElement {
         onAmend={amendOrder}
         onOpenResult={openResult}
       />
-      <output data-testid="orderentry-print">{printOpened ? `print:${draft?.id ?? ''}` : ''}</output>
+      <output data-testid="orderentry-print">
+        {printOpened ? `print:${draft?.id ?? ''}` : ''}
+      </output>
       <output data-testid="orderentry-last-action">{lastAction}</output>
       <output data-testid="orderentry-result">{openedResult}</output>
     </>

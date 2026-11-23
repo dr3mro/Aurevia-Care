@@ -1,3 +1,4 @@
+import { defined } from '../../components/invariant';
 import { syntheticOrganizations } from '../../fixtures/synthetic';
 import { ADMIN_CHAIN_GENESIS, recomputeHash } from './domain';
 import type {
@@ -12,8 +13,8 @@ import type {
 export const adminAnchorCivilDate = '2026-03-09';
 
 /** The two synthetic tenants; their local identifiers intentionally collide. */
-export const alphaOrganizationId = syntheticOrganizations[0]!.id;
-export const betaOrganizationId = syntheticOrganizations[1]!.id;
+export const alphaOrganizationId = defined(syntheticOrganizations[0], 'alpha organization').id;
+export const betaOrganizationId = defined(syntheticOrganizations[1], 'beta organization').id;
 
 /** The tenant whose stored audit chain is deliberately tampered for review. */
 export const tamperedAuditOrganizationId = betaOrganizationId;

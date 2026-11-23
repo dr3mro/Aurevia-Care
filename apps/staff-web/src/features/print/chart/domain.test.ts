@@ -33,7 +33,7 @@ describe('chart print section contract', () => {
 });
 
 describe('note scope predicate', () => {
-  const note: PrintableNote = syntheticNotes[0]!;
+  const note: PrintableNote = required(syntheticNotes[0]);
 
   it('matches the visit identifier exactly', () => {
     expect(noteInScope(note, visitScope)).toBe(true);
@@ -196,3 +196,10 @@ describe('signed report print preview', () => {
     expect('provenance' in preview).toBe(false);
   });
 });
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

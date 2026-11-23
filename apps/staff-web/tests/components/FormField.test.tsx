@@ -11,7 +11,7 @@ describe('accessible FormField', () => {
         <FormField id="note" label="Note" value="draft" onChange={onChange} />
       </ThemeProvider>,
     );
-    const input = screen.getByLabelText('Note') as HTMLInputElement;
+    const input = screen.getByLabelText<HTMLInputElement>('Note');
     expect(input.getAttribute('type')).toBe('text');
     expect(input.value).toBe('draft');
     expect(input.getAttribute('aria-invalid')).toBeNull();
@@ -23,7 +23,15 @@ describe('accessible FormField', () => {
   it('exposes an error with aria-invalid, aria-describedby and an alert role', () => {
     render(
       <ThemeProvider>
-        <FormField id="email" label="Email" value="" onChange={() => undefined} error="Required" type="email" placeholder="name@example.test" />
+        <FormField
+          id="email"
+          label="Email"
+          value=""
+          onChange={() => undefined}
+          error="Required"
+          type="email"
+          placeholder="name@example.test"
+        />
       </ThemeProvider>,
     );
     const input = screen.getByLabelText('Email');

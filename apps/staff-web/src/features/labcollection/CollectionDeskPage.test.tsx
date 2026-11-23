@@ -22,7 +22,9 @@ vi.mock('../../api/transport', async (importOriginal) => {
 
 const sendMock = vi.mocked(send);
 
-function apiView(overrides: Partial<AccessionViewResponse['accession']> = {}): AccessionViewResponse {
+function apiView(
+  overrides: Partial<AccessionViewResponse['accession']> = {},
+): AccessionViewResponse {
   return {
     accession: {
       id: 'accession-100',
@@ -62,10 +64,13 @@ function wrap(ui: ReactElement = <CollectionDeskPage />, organizationId = alphaO
 }
 
 function descriptorAt(call: number): RequestDescriptor {
-  return sendMock.mock.calls[call]![0] as RequestDescriptor;
+  return required(sendMock.mock.calls[call])[0];
 }
 
-function transportFailure(kind: ConstructorParameters<typeof TransportError>[0], correlationId = 'corr-1') {
+function transportFailure(
+  kind: ConstructorParameters<typeof TransportError>[0],
+  correlationId = 'corr-1',
+) {
   return new TransportError(kind, {
     correlationId,
     code: undefined,
@@ -84,9 +89,11 @@ function deferred<T>() {
 }
 
 async function selectOrder() {
-  fireEvent.change(screen.getByLabelText(labText('en', 'search')), { target: { value: 'ACC-100' } });
+  fireEvent.change(screen.getByLabelText(labText('en', 'search')), {
+    target: { value: 'ACC-100' },
+  });
   const list = screen.getByRole('list', { name: labText('en', 'findOrder') });
-  fireEvent.click(within(list).getAllByRole('button')[0]!);
+  fireEvent.click(required(within(list).getAllByRole('button')[0]));
   await screen.findByLabelText(labText('en', 'presentedPatientId'));
 }
 
@@ -105,13 +112,19 @@ function verifyIdentity() {
 }
 
 function fillSpecimen() {
-  fireEvent.change(screen.getByLabelText(labText('en', 'specimenType')), { target: { value: 'SERUM' } });
+  fireEvent.change(screen.getByLabelText(labText('en', 'specimenType')), {
+    target: { value: 'SERUM' },
+  });
   fireEvent.change(screen.getByLabelText(labText('en', 'siteCode')), { target: { value: 'MAIN' } });
-  fireEvent.change(screen.getByLabelText(labText('en', 'collector')), { target: { value: 'synthetic.collector' } });
+  fireEvent.change(screen.getByLabelText(labText('en', 'collector')), {
+    target: { value: 'synthetic.collector' },
+  });
   fireEvent.change(screen.getByLabelText(labText('en', 'collectedAt')), {
     target: { value: '2026-03-09T09:00:00Z' },
   });
-  fireEvent.change(screen.getByLabelText(labText('en', 'quality')), { target: { value: 'ACCEPTABLE' } });
+  fireEvent.change(screen.getByLabelText(labText('en', 'quality')), {
+    target: { value: 'ACCEPTABLE' },
+  });
 }
 
 beforeEach(() => {
@@ -127,7 +140,9 @@ describe('CollectionDeskPage states', () => {
     expect(screen.getByRole('heading', { name: stateViewText('en', 'loading') })).toBeTruthy();
 
     pending.resolve({ items: [apiView()], nextCursor: null });
-    expect(await screen.findByRole('heading', { name: labText('en', 'collectionDesk') })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { name: labText('en', 'collectionDesk') }),
+    ).toBeTruthy();
   });
 
   it('shows the empty state for an empty first page', async () => {
@@ -293,21 +308,33 @@ describe('CollectionDeskPage commands', () => {
 
 describe('CollectionDeskPage paging, tenant switching and routing', () => {
   it('loads the next page while a cursor exists and keeps earlier rows', async () => {
-    sendMock.mockResolvedValueOnce({ items: [apiView({ id: 'accession-100' })], nextCursor: 'cursor-2' });
-    sendMock.mockResolvedValueOnce({ items: [apiView({ id: 'accession-200', accessionNo: 'ACC-200', patientId: 'patient-200' })], nextCursor: null });
+    sendMock.mockResolvedValueOnce({
+      items: [apiView({ id: 'accession-100' })],
+      nextCursor: 'cursor-2',
+    });
+    sendMock.mockResolvedValueOnce({
+      items: [apiView({ id: 'accession-200', accessionNo: 'ACC-200', patientId: 'patient-200' })],
+      nextCursor: null,
+    });
 
     wrap();
-    expect(await screen.findByRole('heading', { name: labText('en', 'collectionDesk') })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { name: labText('en', 'collectionDesk') }),
+    ).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: labText('en', 'loadMore') }));
-    await waitFor(() => expect(screen.queryByRole('button', { name: labText('en', 'loadMore') })).toBeNull());
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: labText('en', 'loadMore') })).toBeNull(),
+    );
     expect(descriptorAt(1).url).toContain('cursor=cursor-2');
 
     // Both pages remain searchable; the earlier accession was not dropped.
     fireEvent.change(screen.getByLabelText(labText('en', 'search')), { target: { value: 'ACC' } });
     const list = screen.getByRole('list', { name: labText('en', 'findOrder') });
-    const labels = within(list).getAllByRole('button').map((button) => button.textContent);
-    expect(labels.some((text) => text?.includes('ACC-100'))).toBe(true);
-    expect(labels.some((text) => text?.includes('ACC-200'))).toBe(true);
+    const labels = within(list)
+      .getAllByRole('button')
+      .map((button) => button.textContent);
+    expect(labels.some((text) => text?.includes('ACC-100') === true)).toBe(true);
+    expect(labels.some((text) => text?.includes('ACC-200') === true)).toBe(true);
   });
 
   it('clears the previous tenant rows before the new tenant responds', async () => {
@@ -315,7 +342,9 @@ describe('CollectionDeskPage paging, tenant switching and routing', () => {
     sendMock.mockResolvedValue({ items: [], nextCursor: null });
 
     const { rerender } = wrap(<CollectionDeskPage />, alphaOrganizationId);
-    expect(await screen.findByRole('heading', { name: labText('en', 'collectionDesk') })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { name: labText('en', 'collectionDesk') }),
+    ).toBeTruthy();
     expect(descriptorAt(0).headers['X-Active-Organization']).toBe(alphaOrganizationId);
 
     rerender(element(<CollectionDeskPage />, betaOrganizationId));
@@ -330,7 +359,9 @@ describe('CollectionDeskPage paging, tenant switching and routing', () => {
     sendMock.mockReturnValueOnce(pending.promise);
 
     const { rerender } = wrap(<CollectionDeskPage />, alphaOrganizationId);
-    expect(await screen.findByRole('heading', { name: labText('en', 'collectionDesk') })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { name: labText('en', 'collectionDesk') }),
+    ).toBeTruthy();
     fireEvent.change(screen.getByLabelText(labText('en', 'search')), { target: { value: 'ACC' } });
     expect(screen.getByRole('list', { name: labText('en', 'findOrder') })).toBeTruthy();
 
@@ -349,9 +380,22 @@ describe('CollectionDeskPage paging, tenant switching and routing', () => {
     expect(patterns).toContain('/lab/accessions');
     expect(patterns.indexOf('/lab/accessions')).toBeLessThan(patterns.indexOf('*'));
 
-    const route = createRoutes(false).find((candidate) => candidate.pattern === '/lab/accessions')!;
+    const route = required(
+      createRoutes(false).find((candidate) => candidate.pattern === '/lab/accessions'),
+    );
     const Page = route.component;
-    render(<Suspense fallback={<p>Loading route</p>}>{element(<Page />, alphaOrganizationId)}</Suspense>);
-    expect(await screen.findByRole('heading', { name: labText('en', 'collectionDesk') })).toBeTruthy();
+    render(
+      <Suspense fallback={<p>Loading route</p>}>{element(<Page />, alphaOrganizationId)}</Suspense>,
+    );
+    expect(
+      await screen.findByRole('heading', { name: labText('en', 'collectionDesk') }),
+    ).toBeTruthy();
   });
 });
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

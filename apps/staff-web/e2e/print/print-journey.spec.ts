@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { installSyntheticPrintApi } from './synthetic-print-api';
 import type { PrintAuditEntry, SyntheticPrintApi } from './synthetic-print-api';
+import { must } from '../../tests/must';
 
 /**
  * Synthetic browser journey for patient handout printing (WEB-09, RX-02, LAB-01).
@@ -109,9 +110,12 @@ const arabic: JourneyWords = {
 /** Wait for the audit POST to reach the stub, then return its entry. */
 async function auditFor(api: SyntheticPrintApi, kind: string): Promise<PrintAuditEntry> {
   await expect
-    .poll(() => api.audit.find((item) => item.kind === kind), `an audit entry for ${kind} should have been recorded`)
+    .poll(
+      () => api.audit.find((item) => item.kind === kind),
+      `an audit entry for ${kind} should have been recorded`,
+    )
     .toBeDefined();
-  return api.audit.find((item) => item.kind === kind) as PrintAuditEntry;
+  return must(api.audit.find((item) => item.kind === kind));
 }
 
 /**

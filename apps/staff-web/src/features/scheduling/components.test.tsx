@@ -173,15 +173,21 @@ describe('AppointmentWorklist', () => {
   it('renders a captioned, time-ordered table with accessible row headers', () => {
     wrap(<AppointmentWorklist {...baseProps} />);
     expect(screen.getByRole('table', { name: schedulingText('en', 'appointments') })).toBeTruthy();
-    expect(screen.getAllByRole('columnheader').every((cell) => cell.getAttribute('scope') === 'col')).toBe(true);
+    expect(
+      screen.getAllByRole('columnheader').every((cell) => cell.getAttribute('scope') === 'col'),
+    ).toBe(true);
     expect(screen.getAllByRole('rowheader').map((cell) => cell.textContent)).toEqual([
       'Synthetic Sara',
       'Synthetic Omar',
       'Synthetic Layla',
     ]);
-    expect(screen.getAllByRole('rowheader')[0]?.closest('tr')?.querySelector('time')?.getAttribute('datetime')).toBe(
-      '2026-03-09T08:15:00Z',
-    );
+    expect(
+      screen
+        .getAllByRole('rowheader')[0]
+        ?.closest('tr')
+        ?.querySelector('time')
+        ?.getAttribute('datetime'),
+    ).toBe('2026-03-09T08:15:00Z');
     expect(screen.getAllByText(schedulingText('en', 'unassigned')).length).toBeGreaterThan(0);
   });
 
@@ -193,7 +199,7 @@ describe('AppointmentWorklist', () => {
     expect((buttons[0] as HTMLButtonElement).disabled).toBe(true);
     expect((buttons[1] as HTMLButtonElement).disabled).toBe(true);
     expect((buttons[2] as HTMLButtonElement).disabled).toBe(false);
-    fireEvent.click(buttons[2]!);
+    fireEvent.click(required(buttons[2]));
     expect(onCheckIn).toHaveBeenCalledWith('apt-001');
   });
 
@@ -202,19 +208,21 @@ describe('AppointmentWorklist', () => {
     wrap(
       <AppointmentWorklist
         {...baseProps}
-        appointments={[syntheticAlphaAppointments.find((a) => a.id === 'apt-005')!]}
+        appointments={[required(syntheticAlphaAppointments.find((a) => a.id === 'apt-005'))]}
         onAssign={onAssign}
       />,
     );
-    expect((screen.getByLabelText(schedulingText('en', 'assign')) as HTMLSelectElement).disabled).toBe(true);
+    expect(screen.getByLabelText<HTMLSelectElement>(schedulingText('en', 'assign')).disabled).toBe(
+      true,
+    );
   });
 
   it('assigns a non-terminal visit from the labeled select', () => {
     const onAssign = vi.fn();
     wrap(<AppointmentWorklist {...baseProps} onAssign={onAssign} />);
-    const selects = screen.getAllByLabelText(schedulingText('en', 'assign')) as HTMLSelectElement[];
+    const selects = screen.getAllByLabelText<HTMLSelectElement>(schedulingText('en', 'assign'));
     expect(selects.every((select) => !select.disabled)).toBe(true);
-    fireEvent.change(selects[2]!, { target: { value: 'synthetic.nurse' } });
+    fireEvent.change(required(selects[2]), { target: { value: 'synthetic.nurse' } });
     expect(onAssign).toHaveBeenCalledWith('apt-001', 'synthetic.nurse');
   });
 
@@ -237,7 +245,11 @@ describe('AppointmentWorklist', () => {
         </I18nProvider>
       </ThemeProvider>,
     );
-    expect(screen.getByRole('button', { name: schedulingText('en', 'week') }).getAttribute('aria-pressed')).toBe('true');
+    expect(
+      screen
+        .getByRole('button', { name: schedulingText('en', 'week') })
+        .getAttribute('aria-pressed'),
+    ).toBe('true');
   });
 
   it('shows an empty state with a defined column span', () => {
@@ -254,8 +266,17 @@ describe('AppointmentWorklist', () => {
     const bdi = screen.getAllByRole('rowheader')[2]?.querySelector('bdi');
     expect(bdi?.getAttribute('dir')).toBe('auto');
     expect(bdi?.getAttribute('lang')).toBe('ar');
-    expect(within(screen.getAllByRole('rowheader')[2]!.closest('tr')!).getByText(
-      schedulingText('ar', 'checkIn'),
-    )).toBeTruthy();
+    expect(
+      within(required(required(screen.getAllByRole('rowheader')[2]).closest('tr'))).getByText(
+        schedulingText('ar', 'checkIn'),
+      ),
+    ).toBeTruthy();
   });
 });
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

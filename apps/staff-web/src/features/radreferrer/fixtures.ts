@@ -2,9 +2,9 @@ import { syntheticOrganizations } from '../../fixtures/synthetic';
 import type { AddendumAcknowledgment, SignedReport } from './domain';
 
 /** The synthetic tenant whose signed report is shown in tests. */
-export const alphaOrganizationId = syntheticOrganizations[0]!.id;
+export const alphaOrganizationId = required(syntheticOrganizations[0]).id;
 /** The second synthetic tenant; its local identifiers deliberately collide. */
-export const betaOrganizationId = syntheticOrganizations[1]!.id;
+export const betaOrganizationId = required(syntheticOrganizations[1]).id;
 /** Synthetic order the report and its addenda belong to. */
 export const syntheticOrderId = 'rad-004';
 
@@ -67,3 +67,10 @@ export const syntheticAddenda: readonly AddendumAcknowledgment[] = [
     acknowledgedBy: null,
   },
 ];
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

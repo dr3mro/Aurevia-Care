@@ -39,18 +39,16 @@ export function ApiPage<T>({ resource, children, isEmpty }: ApiPageProps<T>) {
   const result = useApi<T>(resource.load, resource.deps);
   const breakpoint = useBreakpoint();
   const session = useSession();
-  const onSessionExpired = useRef(session.onSessionExpired);
-  onSessionExpired.current = session.onSessionExpired;
   const handledError = useRef<TransportError | undefined>(undefined);
 
-  // The latest callback is read from a ref, while the error identity is the
+  // The latest callback is read on every run, while the error identity is the
   // deduplication key, so StrictMode's second effect run cannot notify twice.
   useEffect(() => {
     if (result.status === 'error') {
       if (handledError.current !== result.error) {
         handledError.current = result.error;
         if (result.error.kind === 'session-expired') {
-          onSessionExpired.current();
+          session.onSessionExpired();
         }
       }
     } else {

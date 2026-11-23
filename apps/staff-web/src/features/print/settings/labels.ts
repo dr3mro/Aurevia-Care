@@ -50,7 +50,8 @@ export type SettingsMessageKey = (typeof settingsKeys)[number];
 export const settingsMessages: Record<Locale, Record<SettingsMessageKey, string>> = {
   en: {
     title: 'Print profile settings',
-    intro: 'Approved, effective-dated letterhead and footer settings, kept with their full history.',
+    intro:
+      'Approved, effective-dated letterhead and footer settings, kept with their full history.',
     syntheticNotice: 'Synthetic data for demonstration only.',
     editor: 'Edit print profile',
     facilityName: 'Facility name',

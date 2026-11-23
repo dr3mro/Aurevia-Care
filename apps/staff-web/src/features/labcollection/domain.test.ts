@@ -7,12 +7,7 @@ import {
   validateRejection,
 } from './domain';
 import type { CollectionOrder, PresentedIdentity } from './domain';
-import {
-  alphaOrder,
-  betaOrder,
-  labelAlpha,
-  presentedAlpha,
-} from './fixtures';
+import { alphaOrder, betaOrder, labelAlpha, presentedAlpha } from './fixtures';
 
 describe('patient and accession match check', () => {
   it('accepts an exactly presented identity', () => {
@@ -72,9 +67,9 @@ describe('finding an order by accession or patient', () => {
     expect(findOrders([alphaOrder, betaOrder], 'patient', 'patient-100').map((o) => o.id)).toEqual([
       alphaOrder.id,
     ]);
-    expect(findOrders([alphaOrder, betaOrder], 'patient', 'synthetic layla').map((o) => o.id)).toEqual([
-      alphaOrder.id,
-    ]);
+    expect(
+      findOrders([alphaOrder, betaOrder], 'patient', 'synthetic layla').map((o) => o.id),
+    ).toEqual([alphaOrder.id]);
     expect(findOrders([alphaOrder, betaOrder], 'patient', 'ريم').map((o) => o.id)).toEqual([
       betaOrder.id,
     ]);
@@ -83,8 +78,13 @@ describe('finding an order by accession or patient', () => {
   });
 
   it('does not fail when a patient has no local-script name', () => {
-    const withoutLocal: CollectionOrder = { ...alphaOrder, patientName: { latinName: 'Synthetic Layla' } };
-    expect(findOrders([withoutLocal], 'patient', 'layla').map((o) => o.id)).toEqual([alphaOrder.id]);
+    const withoutLocal: CollectionOrder = {
+      ...alphaOrder,
+      patientName: { latinName: 'Synthetic Layla' },
+    };
+    expect(findOrders([withoutLocal], 'patient', 'layla').map((o) => o.id)).toEqual([
+      alphaOrder.id,
+    ]);
     expect(findOrders([withoutLocal], 'patient', 'ليلى')).toEqual([]);
   });
 

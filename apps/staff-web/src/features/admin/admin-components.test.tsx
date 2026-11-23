@@ -23,6 +23,7 @@ import {
   syntheticStaffEvents,
 } from './fixtures';
 import { adminText } from './messages';
+import { must } from '../../../tests/must';
 
 function wrap(ui: ReactElement, locale: Locale = 'en') {
   return render(
@@ -52,7 +53,16 @@ describe('AccessStateNotice', () => {
   it('reports denial as an alert and the other states as status', () => {
     for (const state of ['permitted', 'denied', 'concealed'] as const) {
       const { unmount } = wrap(<AccessStateNotice state={state} label="Synthetic probe" />);
-      const notice = screen.getByText(adminText('en', state === 'permitted' ? 'accessPermitted' : state === 'denied' ? 'accessDenied' : 'accessConcealed'));
+      const notice = screen.getByText(
+        adminText(
+          'en',
+          state === 'permitted'
+            ? 'accessPermitted'
+            : state === 'denied'
+              ? 'accessDenied'
+              : 'accessConcealed',
+        ),
+      );
       const panel = notice.closest('[data-access-state]');
       expect(panel?.getAttribute('data-access-state')).toBe(state);
       expect(panel?.getAttribute('role')).toBe(state === 'denied' ? 'alert' : 'status');
@@ -78,8 +88,15 @@ describe('ConfigEditor', () => {
 
   it('shows tenant-scoped versions, effective dates, approval and approver', () => {
     wrap(<ConfigEditor {...baseProps} onPropose={vi.fn()} />);
-    expect(screen.getByRole('table', { name: adminText('en', 'configurationVersions') })).toBeTruthy();
-    expect(screen.getAllByRole('rowheader').map((cell) => cell.textContent)).toEqual(['4', '3', '2', '1']);
+    expect(
+      screen.getByRole('table', { name: adminText('en', 'configurationVersions') }),
+    ).toBeTruthy();
+    expect(screen.getAllByRole('rowheader').map((cell) => cell.textContent)).toEqual([
+      '4',
+      '3',
+      '2',
+      '1',
+    ]);
     expect(screen.getAllByText(adminText('en', 'effectiveBadge'))).toHaveLength(1);
     expect(screen.getAllByText(adminText('en', 'approved'))).toHaveLength(3);
     expect(screen.getAllByText(adminText('en', 'pending'))).toHaveLength(1);
@@ -160,14 +177,22 @@ describe('ConfigEditor', () => {
   it('renders Arabic labels and dates under RTL', () => {
     wrap(<ConfigEditor {...baseProps} onPropose={vi.fn()} />, 'ar');
     expect(document.documentElement.dir).toBe('rtl');
-    expect(screen.getByRole('table', { name: adminText('ar', 'configurationVersions') })).toBeTruthy();
+    expect(
+      screen.getByRole('table', { name: adminText('ar', 'configurationVersions') }),
+    ).toBeTruthy();
     expect(screen.getByRole('button', { name: adminText('ar', 'propose') })).toBeTruthy();
   });
 });
 
 describe('StaffHistoryView', () => {
   it('shows append-only events and current roles for an active subject', () => {
-    wrap(<StaffHistoryView events={syntheticStaffEvents} organizationId={alphaOrganizationId} subject="synthetic.reception" />);
+    wrap(
+      <StaffHistoryView
+        events={syntheticStaffEvents}
+        organizationId={alphaOrganizationId}
+        subject="synthetic.reception"
+      />,
+    );
     expect(screen.getByRole('table', { name: adminText('en', 'staffHistory') })).toBeTruthy();
     expect(screen.getAllByRole('rowheader').map((cell) => cell.textContent)).toEqual(['1', '2']);
     expect(screen.getAllByText(adminText('en', 'notApplicable')).length).toBeGreaterThan(0);
@@ -180,20 +205,38 @@ describe('StaffHistoryView', () => {
   });
 
   it('shows deactivation as its own event and clears current roles', () => {
-    wrap(<StaffHistoryView events={syntheticStaffEvents} organizationId={betaOrganizationId} subject="synthetic.reception" />);
+    wrap(
+      <StaffHistoryView
+        events={syntheticStaffEvents}
+        organizationId={betaOrganizationId}
+        subject="synthetic.reception"
+      />,
+    );
     expect(screen.getAllByText(adminText('en', 'eventDeactivated')).length).toBeGreaterThan(0);
     expect(screen.getByText('Synthetic tenant offboarding')).toBeTruthy();
     expect(screen.getByText(adminText('en', 'noRoles'))).toBeTruthy();
   });
 
   it('shows the grantor only for role grants and renders effective UTC instants', () => {
-    wrap(<StaffHistoryView events={syntheticStaffEvents} organizationId={alphaOrganizationId} subject="synthetic.reception" />);
+    wrap(
+      <StaffHistoryView
+        events={syntheticStaffEvents}
+        organizationId={alphaOrganizationId}
+        subject="synthetic.reception"
+      />,
+    );
     const rows = screen.getAllByRole('row');
-    const invited = rows.find((row) => within(row).queryByRole('rowheader')?.textContent === '1')!;
-    const granted = rows.find((row) => within(row).queryByRole('rowheader')?.textContent === '2')!;
+    const invited = must(
+      rows.find((row) => within(row).queryByRole('rowheader')?.textContent === '1'),
+    );
+    const granted = must(
+      rows.find((row) => within(row).queryByRole('rowheader')?.textContent === '2'),
+    );
     // The invited row has no grantor; the role-grant row names its grantor.
     expect(within(invited).queryByText('Synthetic alpha admin A')).toBeTruthy();
-    expect(within(invited).getAllByText(adminText('en', 'notApplicable')).length).toBeGreaterThan(0);
+    expect(within(invited).getAllByText(adminText('en', 'notApplicable')).length).toBeGreaterThan(
+      0,
+    );
     expect(within(granted).getAllByText('Synthetic alpha admin A').length).toBeGreaterThan(0);
     expect(within(granted).getByText('reception')).toBeTruthy();
     // OPS-02: the append-only event carries an effective instant in UTC.
@@ -201,12 +244,25 @@ describe('StaffHistoryView', () => {
   });
 
   it('shows an empty state for an unknown subject', () => {
-    wrap(<StaffHistoryView events={syntheticStaffEvents} organizationId={alphaOrganizationId} subject="missing.subject" />);
+    wrap(
+      <StaffHistoryView
+        events={syntheticStaffEvents}
+        organizationId={alphaOrganizationId}
+        subject="missing.subject"
+      />,
+    );
     expect(screen.getByText(adminText('en', 'noHistory'))).toBeTruthy();
   });
 
   it('uses Arabic labels under RTL', () => {
-    wrap(<StaffHistoryView events={syntheticStaffEvents} organizationId={alphaOrganizationId} subject="synthetic.reception" />, 'ar');
+    wrap(
+      <StaffHistoryView
+        events={syntheticStaffEvents}
+        organizationId={alphaOrganizationId}
+        subject="synthetic.reception"
+      />,
+      'ar',
+    );
     expect(document.documentElement.dir).toBe('rtl');
     expect(screen.getByRole('table', { name: adminText('ar', 'staffHistory') })).toBeTruthy();
   });
@@ -224,7 +280,11 @@ describe('AuditEventList', () => {
     // ADM-02: the actor is a distinct required column, not just fixture data.
     expect(screen.getByText('Synthetic alpha privacy auditor')).toBeTruthy();
     expect(screen.getByText('Synthetic alpha reception')).toBeTruthy();
-    expect(screen.getAllByRole('rowheader').map((cell) => cell.textContent)).toEqual(['1', '2', '3']);
+    expect(screen.getAllByRole('rowheader').map((cell) => cell.textContent)).toEqual([
+      '1',
+      '2',
+      '3',
+    ]);
   });
 
   it('shows a broken badge for the tampered tenant chain', () => {
@@ -243,7 +303,10 @@ describe('AuditEventList', () => {
   });
 
   it('uses Arabic labels under RTL', () => {
-    wrap(<AuditEventList events={syntheticAuditEvents} organizationId={alphaOrganizationId} />, 'ar');
+    wrap(
+      <AuditEventList events={syntheticAuditEvents} organizationId={alphaOrganizationId} />,
+      'ar',
+    );
     expect(document.documentElement.dir).toBe('rtl');
     expect(screen.getByText(adminText('ar', 'chainVerified'))).toBeTruthy();
   });
@@ -261,8 +324,12 @@ describe('ConfigEditor real-API adaptations', () => {
   it('offers an approve trigger only when the owner supplies one', () => {
     const onApprove = vi.fn();
     wrap(<ConfigEditor {...baseProps} onApprove={onApprove} />);
-    const pendingRow = screen.getAllByRole('row').find((row) => within(row).queryByText(adminText('en', 'pending')));
-    fireEvent.click(within(pendingRow!).getByRole('button', { name: adminText('en', 'approve') }));
+    const pendingRow = screen
+      .getAllByRole('row')
+      .find((row) => within(row).queryByText(adminText('en', 'pending')));
+    fireEvent.click(
+      within(must(pendingRow)).getByRole('button', { name: adminText('en', 'approve') }),
+    );
     expect(onApprove).toHaveBeenCalledWith(3);
   });
 
@@ -275,7 +342,7 @@ describe('ConfigEditor real-API adaptations', () => {
       target: { value: '2026-07-01' },
     });
     fireEvent.click(screen.getByRole('button', { name: adminText('en', 'propose') }));
-    expect((screen.getByLabelText(adminText('en', 'proposedValue')) as HTMLInputElement).value).toBe(
+    expect(screen.getByLabelText<HTMLInputElement>(adminText('en', 'proposedValue')).value).toBe(
       'Synthetic retained value',
     );
   });
@@ -290,7 +357,7 @@ describe('ConfigEditor real-API adaptations', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: adminText('en', 'propose') }));
     await waitFor(() =>
-      expect((screen.getByLabelText(adminText('en', 'proposedValue')) as HTMLInputElement).value).toBe(
+      expect(screen.getByLabelText<HTMLInputElement>(adminText('en', 'proposedValue')).value).toBe(
         'Synthetic retained draft',
       ),
     );
@@ -351,9 +418,18 @@ describe('AuditEventList real-API adaptations', () => {
   ];
 
   it('omits a fabricated chain verdict and renders the facility zone', () => {
-    wrap(<AuditEventList events={events} organizationId={alphaOrganizationId} showChain={false} timeZone="America/New_York" />);
+    wrap(
+      <AuditEventList
+        events={events}
+        organizationId={alphaOrganizationId}
+        showChain={false}
+        timeZone="America/New_York"
+      />,
+    );
     expect(screen.queryByTestId('chain-badge')).toBeNull();
-    expect(screen.getByText(formatInstant('2026-03-08T06:30:00Z', 'America/New_York', 'en'))).toBeTruthy();
+    expect(
+      screen.getByText(formatInstant('2026-03-08T06:30:00Z', 'America/New_York', 'en')),
+    ).toBeTruthy();
     expect(screen.getByText(adminText('en', 'unknown'))).toBeTruthy();
   });
 
@@ -361,11 +437,15 @@ describe('AuditEventList real-API adaptations', () => {
     wrap(<AuditEventList events={events} organizationId={alphaOrganizationId} showChain={false} />);
     const time = screen.getByText(formatInstant('2026-03-08T06:30:00Z', 'UTC', 'en'));
     fireEvent.focus(time);
-    expect(screen.getByText(`UTC: ${formatInstant('2026-03-08T06:30:00Z', 'UTC', 'en')}`)).toBeTruthy();
+    expect(
+      screen.getByText(`UTC: ${formatInstant('2026-03-08T06:30:00Z', 'UTC', 'en')}`),
+    ).toBeTruthy();
     expect(time.getAttribute('aria-describedby')).toBe('audit-utc-1');
     expect(screen.getByText(adminText('en', 'outcomeNotFound'))).toBeTruthy();
     fireEvent.blur(time);
-    expect(screen.queryByText(`UTC: ${formatInstant('2026-03-08T06:30:00Z', 'UTC', 'en')}`)).toBeNull();
+    expect(
+      screen.queryByText(`UTC: ${formatInstant('2026-03-08T06:30:00Z', 'UTC', 'en')}`),
+    ).toBeNull();
   });
 });
 

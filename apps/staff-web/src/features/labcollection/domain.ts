@@ -107,8 +107,7 @@ export type RejectionReasonCode = (typeof rejectionReasonCodes)[number];
 
 /** Outcome of validating a rejection before it is sent. */
 export type RejectionValidation =
-  | { valid: true }
-  | { valid: false; error: 'reason-required' | 'detail-required' };
+  { valid: true } | { valid: false; error: 'reason-required' | 'detail-required' };
 
 /**
  * Validate a rejection locally so an empty reason or an `other` reason without

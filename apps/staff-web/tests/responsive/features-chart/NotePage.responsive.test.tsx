@@ -2,7 +2,6 @@ import type { ReactElement } from 'react';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ActiveOrganizationProvider } from '../../../src/api/activeOrganization';
-import type { RequestDescriptor } from '../../../src/api/client';
 import { TransportError, send } from '../../../src/api/transport';
 import type * as TransportModule from '../../../src/api/transport';
 import { RouterProvider } from '../../../src/app/router';
@@ -17,6 +16,7 @@ import { chartText } from '../../../src/features/chart/messages';
 import { I18nProvider } from '../../../src/i18n/I18nProvider';
 import { BREAKPOINT_MEDIA_QUERIES, BREAKPOINT_WIDTHS } from '../../../src/theme/breakpoints';
 import { ThemeProvider } from '../../../src/theme/ThemeProvider';
+import { must } from '../../must';
 
 vi.mock('../../../src/api/transport', async (importOriginal) => {
   const actual = await importOriginal<typeof TransportModule>();
@@ -47,29 +47,54 @@ const LONG_ENGLISH_TITLE =
 const LONG_ARABIC_TITLE = 'عنوان تجريبي طويل جداً لملاحظة سريرية يجب أن يلتف دون قص أو تداخل';
 
 /** Build a synthetic note revision; every field is fabricated test data. */
-function revision(overrides: Partial<ClinicalNoteRevisionResponse> = {}): ClinicalNoteRevisionResponse {
+function revision(
+  overrides: Partial<ClinicalNoteRevisionResponse> = {},
+): ClinicalNoteRevisionResponse {
   return {
-    id: 'note-1', version: 1, state: 'draft', patientId: 'patient-1', encounterId: 'encounter-1',
-    title: LONG_ENGLISH_TITLE, content: 'Chief concern text', language: 'en', templateCode: 'soap',
-    templateVersion: 3, clinicalAuthorSubject: 'dr-1', dataEntrySubject: 'reception-1',
-    effectiveAt: '2026-03-09', signedAt: null, signerSubject: null, attestation: null,
-    contentChecksum: null, supersedesVersion: null, enteredErrorReason: null,
-    enteredErrorActor: null, affectedRecipients: null, createdAt: '2026-03-09T09:00:00Z', ...overrides,
+    id: 'note-1',
+    version: 1,
+    state: 'draft',
+    patientId: 'patient-1',
+    encounterId: 'encounter-1',
+    title: LONG_ENGLISH_TITLE,
+    content: 'Chief concern text',
+    language: 'en',
+    templateCode: 'soap',
+    templateVersion: 3,
+    clinicalAuthorSubject: 'dr-1',
+    dataEntrySubject: 'reception-1',
+    effectiveAt: '2026-03-09',
+    signedAt: null,
+    signerSubject: null,
+    attestation: null,
+    contentChecksum: null,
+    supersedesVersion: null,
+    enteredErrorReason: null,
+    enteredErrorActor: null,
+    affectedRecipients: null,
+    createdAt: '2026-03-09T09:00:00Z',
+    ...overrides,
   };
 }
 
-function noteView(current = revision(), history: readonly ClinicalNoteRevisionResponse[] = []): NoteViewResponse {
+function noteView(
+  current = revision(),
+  history: readonly ClinicalNoteRevisionResponse[] = [],
+): NoteViewResponse {
   return { current, history };
 }
 
 function patientView(): PatientViewResponse {
-  return { patient: { id: 'patient-1', displayName: 'Synthetic Long Patient Name For Wrapping' }, duplicates: [] };
+  return {
+    patient: { id: 'patient-1', displayName: 'Synthetic Long Patient Name For Wrapping' },
+    duplicates: [],
+  };
 }
 
 /** Route load reads to their response shape and writes to the command response. */
 function resolveByRequest(view: NoteViewResponse = noteView()): void {
   sendMock.mockImplementation((request) => {
-    const call = request as RequestDescriptor;
+    const call = request;
     if (call.url.startsWith('/api/v1/patients/')) {
       return Promise.resolve(patientView());
     }
@@ -173,8 +198,14 @@ function noteRoot(): HTMLElement {
 }
 
 const physicalStyleKeys = [
-  'marginLeft', 'marginRight', 'paddingLeft', 'paddingRight',
-  'borderLeft', 'borderRight', 'left', 'right',
+  'marginLeft',
+  'marginRight',
+  'paddingLeft',
+  'paddingRight',
+  'borderLeft',
+  'borderRight',
+  'left',
+  'right',
 ];
 
 beforeEach(() => {
@@ -210,7 +241,7 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
         expect(screen.getByRole('textbox', { name: chartText('en', key) })).toBeTruthy();
       }
 
-      const saveBar = root.querySelector('[data-note-save-bar]') as HTMLElement | null;
+      const saveBar = root.querySelector<HTMLElement>('[data-note-save-bar]');
       expect(saveBar).not.toBeNull();
       expect(saveBar?.style.position).toBe(breakpoint === 'compact' ? 'sticky' : '');
       const save = screen.getByRole('button', { name: chartText('en', 'saveDraft') });
@@ -222,7 +253,9 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
       await loadNote();
 
       const root = noteRoot();
-      expect(screen.getByRole('heading', { level: 2, name: chartText('en', 'clinicalNote') })).toBeTruthy();
+      expect(
+        screen.getByRole('heading', { level: 2, name: chartText('en', 'clinicalNote') }),
+      ).toBeTruthy();
       const textboxes = screen.getAllByRole('textbox');
       expect(textboxes.map((node) => node.getAttribute('aria-label'))).toEqual([
         chartText('en', 'subjective'),
@@ -233,11 +266,11 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
       const focusables = Array.from(
         root.querySelectorAll<HTMLElement>('textarea, input, button:not([disabled])'),
       );
-      expect(focusables.indexOf(textboxes[0] as HTMLElement)).toBeLessThan(
+      expect(focusables.indexOf(must(textboxes[0]))).toBeLessThan(
         focusables.indexOf(screen.getByRole('checkbox', { name: chartText('en', 'attestation') })),
       );
       for (const field of textboxes) {
-        expect((field as HTMLElement).tabIndex).toBe(0);
+        expect(field.tabIndex).toBe(0);
         field.focus();
         expect(document.activeElement).toBe(field);
       }
@@ -248,7 +281,9 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
       await loadNote();
 
       const root = noteRoot();
-      for (const element of Array.from(root.querySelectorAll<HTMLElement>('[style]')).concat(root)) {
+      for (const element of Array.from(root.querySelectorAll<HTMLElement>('[style]')).concat(
+        root,
+      )) {
         expect(element.style.direction).toBe('');
         expect(element.style.display).not.toBe('none');
         for (const key of physicalStyleKeys) {
@@ -258,7 +293,9 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
       expect(root.querySelector('.hide-compact')).toBeNull();
       expect(root.querySelector('.only-compact')).toBeNull();
       for (const key of ['subjective', 'objective', 'assessment', 'plan'] as const) {
-        expect(screen.getByRole('textbox', { name: chartText('en', key) }).style.display).not.toBe('none');
+        expect(screen.getByRole('textbox', { name: chartText('en', key) }).style.display).not.toBe(
+          'none',
+        );
       }
     });
 
@@ -266,7 +303,7 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
       installMatchMedia(VIEWPORTS[breakpoint]);
       await loadNote();
 
-      const identity = noteRoot().querySelector('header > p') as HTMLElement;
+      const identity = must(noteRoot().querySelector<HTMLElement>('header > p'));
       expect(identity.textContent).toContain('Synthetic Long Patient Name For Wrapping');
       expect(identity.style.overflowWrap).toBe('anywhere');
       expect(identity.style.whiteSpace).not.toBe('nowrap');
@@ -287,11 +324,12 @@ describe('responsive NotePage viewport matrix', () => {
     });
     await loadNote();
 
-    const expected = width >= BREAKPOINT_WIDTHS.expanded
-      ? 'expanded'
-      : width >= BREAKPOINT_WIDTHS.medium
-        ? 'medium'
-        : 'compact';
+    const expected =
+      width >= BREAKPOINT_WIDTHS.expanded
+        ? 'expanded'
+        : width >= BREAKPOINT_WIDTHS.medium
+          ? 'medium'
+          : 'compact';
     expect(noteRoot().getAttribute('data-breakpoint')).toBe(expected);
   });
 });
@@ -304,7 +342,9 @@ describe('responsive NotePage transitions, RTL and confirmations', () => {
 
     act(() => media.fire(BREAKPOINT_MEDIA_QUERIES.medium, true));
     expect(noteRoot().getAttribute('data-note-page-view')).toBe('inline-save-action');
-    expect((noteRoot().querySelector('[data-note-save-bar]') as HTMLElement).style.position).toBe('');
+    expect(must(noteRoot().querySelector<HTMLElement>('[data-note-save-bar]')).style.position).toBe(
+      '',
+    );
   });
 
   it('mirrors under RTL with a long Arabic note without a local direction override', async () => {
@@ -328,7 +368,7 @@ describe('responsive NotePage transitions, RTL and confirmations', () => {
         expect(element.style.getPropertyValue(key)).toBe('');
       }
     }
-    const identity = root.querySelector('header > p') as HTMLElement;
+    const identity = must(root.querySelector<HTMLElement>('header > p'));
     expect(identity.style.overflowWrap).toBe('anywhere');
   });
 
@@ -337,7 +377,7 @@ describe('responsive NotePage transitions, RTL and confirmations', () => {
     const dialog = await openSignDialog();
 
     expect(dialog.getAttribute('data-note-confirmation-view')).toBe('sheet-actions');
-    const actionRow = dialog.querySelector('[data-note-confirm-actions]') as HTMLElement;
+    const actionRow = must(dialog.querySelector<HTMLElement>('[data-note-confirm-actions]'));
     expect(actionRow.style.position).toBe('sticky');
     expect(actionRow.style.insetBlockEnd).toBe('0px');
     const cancel = within(dialog).getByRole('button', { name: chartText('en', 'cancel') });
@@ -356,7 +396,7 @@ describe('responsive NotePage transitions, RTL and confirmations', () => {
     const dialog = await openSignDialog();
 
     expect(dialog.getAttribute('data-note-confirmation-view')).toBe('inline-actions');
-    const actionRow = dialog.querySelector('[data-note-confirm-actions]') as HTMLElement;
+    const actionRow = must(dialog.querySelector<HTMLElement>('[data-note-confirm-actions]'));
     expect(actionRow.style.position).toBe('');
   });
 

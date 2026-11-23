@@ -48,6 +48,15 @@ export interface DryRunReportResponse {
   errors: string[];
 }
 
+/** A dry-run report as received from the wire, where any collection may be absent. */
+export interface UntrustedDryRunReport {
+  counts?: Partial<DryRunCountsResponse> | undefined;
+  unsupported_fields?: DryRunReportResponse['unsupported_fields'] | undefined;
+  duplicate_risk?: DryRunReportResponse['duplicate_risk'] | undefined;
+  missing_attachments?: DryRunReportResponse['missing_attachments'] | undefined;
+  errors?: DryRunReportResponse['errors'] | undefined;
+}
+
 /** Outcome of an authorized sign-off attempt. */
 export interface SignOffResultResponse {
   accepted: boolean;
@@ -144,7 +153,7 @@ export interface DryRunView {
  * @param report report returned by the import API
  * @returns a view whose collections are always present
  */
-export function toDryRunView(report: DryRunReportResponse): DryRunView {
+export function toDryRunView(report: UntrustedDryRunReport): DryRunView {
   return {
     totalRecords: report.counts?.total_records ?? 0,
     batchCount: report.counts?.batch_count ?? 0,

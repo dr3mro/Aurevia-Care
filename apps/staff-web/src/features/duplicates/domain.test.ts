@@ -22,6 +22,7 @@ import {
   secondReviewerSubject,
   syntheticDetail,
 } from './fixtures';
+import { must } from '../../../tests/must';
 
 describe('identifier references', () => {
   it('builds an issuer-scoped reference from a patient', () => {
@@ -171,7 +172,7 @@ describe('approvalBody', () => {
 /** Compile-time guard: dependency flags are the exact wire shape the guard reads. */
 describe('dependency wire shape', () => {
   it('carries the ambiguous and resolved flags used by the blocker', () => {
-    const dependency: DependencyWire = depsUnresolved[0]!;
+    const dependency: DependencyWire = must(depsUnresolved[0]);
     expect(dependency.ambiguous).toBe(true);
     expect(dependency.resolved).toBe(false);
   });

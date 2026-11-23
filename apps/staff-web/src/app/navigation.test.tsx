@@ -35,9 +35,7 @@ function idsFor(role: Role): string[] {
 function renderShell(role?: Role) {
   return render(
     <ThemeProvider>
-      <I18nProvider>
-        {role === undefined ? <AppShell /> : <AppShell role={role} />}
-      </I18nProvider>
+      <I18nProvider>{role === undefined ? <AppShell /> : <AppShell role={role} />}</I18nProvider>
     </ThemeProvider>,
   );
 }
@@ -107,7 +105,9 @@ describe('staff web navigation model (screen map section 2)', () => {
   });
 
   it('keeps identical English and Arabic key sets', () => {
-    expect(Object.keys(navigationLabels.en).sort()).toEqual(Object.keys(navigationLabels.ar).sort());
+    expect(Object.keys(navigationLabels.en).sort()).toEqual(
+      Object.keys(navigationLabels.ar).sort(),
+    );
   });
 
   it('groups items in the table order', () => {
@@ -144,7 +144,9 @@ describe('staff web navigation rail', () => {
   it('renders the reception rail from navigationFor(role) and hides Administration', () => {
     renderShell('reception');
     const rail = screen.getByRole('group', { name: 'Sections' });
-    const links = within(rail).getAllByRole('link').map((link) => link.textContent);
+    const links = within(rail)
+      .getAllByRole('link')
+      .map((link) => link.textContent);
     expect(links).toContain('Schedule');
     expect(links).toContain('Check-in');
     expect(links).toContain('Patients');
@@ -156,18 +158,19 @@ describe('staff web navigation rail', () => {
     renderShell('tenant_admin');
     const rail = screen.getByRole('group', { name: 'Sections' });
     const admin = within(rail).getByRole('region', { name: 'Administration' });
-    expect(within(admin).getAllByRole('link').map((link) => link.textContent)).toEqual([
-      'Facilities',
-      'Staff',
-      'Configuration',
-      'Audit',
-    ]);
+    expect(
+      within(admin)
+        .getAllByRole('link')
+        .map((link) => link.textContent),
+    ).toEqual(['Facilities', 'Staff', 'Configuration', 'Audit']);
   });
 
   it('renders only the audit, import and account links for a privacy auditor', () => {
     renderShell('privacy_auditor');
     const rail = screen.getByRole('group', { name: 'Sections' });
-    const links = within(rail).getAllByRole('link').map((link) => link.textContent);
+    const links = within(rail)
+      .getAllByRole('link')
+      .map((link) => link.textContent);
     expect(links).toEqual(['Today', 'Audit', 'Onboarding import', 'Sessions']);
   });
 

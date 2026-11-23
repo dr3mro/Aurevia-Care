@@ -47,7 +47,10 @@ export interface FlagBadgeProps {
 export function FlagBadge({ flag, locale }: FlagBadgeProps) {
   const { tokens } = useTheme();
   return (
-    <span data-flag={flag} style={{ display: 'inline-flex', alignItems: 'center', gap: tokens.spacing.sm }}>
+    <span
+      data-flag={flag}
+      style={{ display: 'inline-flex', alignItems: 'center', gap: tokens.spacing.sm }}
+    >
       <span aria-hidden="true">{flagGlyph[flag]}</span>
       <MixedScriptText text={labText(locale, flagKey(flag))} lang={locale} />
     </span>
@@ -104,7 +107,11 @@ export function ResultGrid({ report, drafts, locale, onValueChange }: ResultGrid
       <thead>
         <tr>
           {COLUMNS.map((key) => (
-            <th key={key} scope="col" style={{ textAlign: 'start', paddingInline: tokens.spacing.sm }}>
+            <th
+              key={key}
+              scope="col"
+              style={{ textAlign: 'start', paddingInline: tokens.spacing.sm }}
+            >
               {labText(locale, key)}
             </th>
           ))}
@@ -150,7 +157,10 @@ export function ResultGrid({ report, drafts, locale, onValueChange }: ResultGrid
                 )}
               </td>
               <td style={{ paddingInline: tokens.spacing.sm }}>
-                <ChangeIndicator row={{ ...row, value: enteredValue(row, draft) }} locale={locale} />
+                <ChangeIndicator
+                  row={{ ...row, value: enteredValue(row, draft) }}
+                  locale={locale}
+                />
               </td>
             </tr>
           );
@@ -184,7 +194,12 @@ export function VerificationPanel({
   return (
     <section
       aria-label={labText(locale, 'verifyRegion')}
-      style={{ border: `1px solid ${tokens.border}`, padding: tokens.spacing.md, display: 'grid', gap: tokens.spacing.sm }}
+      style={{
+        border: `1px solid ${tokens.border}`,
+        padding: tokens.spacing.md,
+        display: 'grid',
+        gap: tokens.spacing.sm,
+      }}
     >
       <h3>{labText(locale, 'verifyRegion')}</h3>
       <p>{labText(locale, statusKey(report.status))}</p>
@@ -206,17 +221,17 @@ export function VerificationPanel({
           );
         })}
       </ul>
-      {critical && (
+      {critical ? (
         <div role="note" data-testid="critical-notification-step">
           <h4>{labText(locale, 'notifyStepTitle')}</h4>
           <p>{labText(locale, 'notifyStepDetail')}</p>
         </div>
-      )}
-      {!allowed && (
+      ) : null}
+      {!allowed ? (
         <p role="alert" data-testid="verify-blocked">
           {labText(locale, 'sameUserBlocked')}
         </p>
-      )}
+      ) : null}
       <button
         type="button"
         onClick={onVerify}
@@ -266,11 +281,11 @@ export function ResultEntryScreen({
         locale={locale}
         onVerify={onVerify}
       />
-      {verified && (
+      {verified ? (
         <p role="status" data-testid="verification-status">
           {labMessage(locale, 'verifiedStatus', { subject: verifier })}
         </p>
-      )}
+      ) : null}
     </div>
   );
 }

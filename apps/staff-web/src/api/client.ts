@@ -40,10 +40,10 @@ export function buildRequestDescriptor(
   const headers: Record<string, string> = {
     'X-Active-Organization': meta.activeOrganization,
   };
-  if (meta.correlationId) {
+  if (meta.correlationId !== undefined && meta.correlationId !== '') {
     headers['X-Correlation-Id'] = meta.correlationId;
   }
-  if (meta.idempotencyKey) {
+  if (meta.idempotencyKey !== undefined && meta.idempotencyKey !== '') {
     headers['Idempotency-Key'] = meta.idempotencyKey;
   }
   if (meta.ifMatch !== undefined) {

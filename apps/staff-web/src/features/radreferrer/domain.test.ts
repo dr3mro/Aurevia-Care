@@ -9,13 +9,13 @@ import {
 } from './fixtures';
 
 /** The open alpha addendum used by the single-receipt checks. */
-const openAddendum = syntheticAddenda[0]!;
+const openAddendum = required(syntheticAddenda[0]);
 /** The acknowledged alpha addendum used by the negative checks. */
-const acknowledgedAddendum = syntheticAddenda[1]!;
+const acknowledgedAddendum = required(syntheticAddenda[1]);
 /** The open beta addendum used by the cross-tenant check. */
-const otherTenantAddendum = syntheticAddenda[2]!;
+const otherTenantAddendum = required(syntheticAddenda[2]);
 /** The open addendum addressed to another order. */
-const otherOrderAddendum = syntheticAddenda[3]!;
+const otherOrderAddendum = required(syntheticAddenda[3]);
 
 describe('reportSections', () => {
   it('returns the five signed sections in canonical clinical order', () => {
@@ -78,3 +78,10 @@ describe('openAddenda', () => {
     expect(openAddenda(addenda, alphaOrganizationId, syntheticOrderId)).toEqual([]);
   });
 });
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

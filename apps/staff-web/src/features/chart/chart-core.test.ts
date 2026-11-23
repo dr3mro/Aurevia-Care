@@ -39,6 +39,7 @@ import {
   syntheticVoidReason,
 } from './fixtures';
 import { chartKeys, chartText, verificationMessageKey } from './messages';
+import { must } from '../../../tests/must';
 
 const alphaCurrent = (): NoteRevision => {
   const revision = currentRevision(syntheticAlphaChart.revisions);
@@ -80,9 +81,9 @@ describe('tenant-scoped chart selection', () => {
   });
 
   it('finds a chart only by the composite tenant key and local id', () => {
-    expect(findChart(syntheticCharts, alphaOrganizationId, 'chart-001')?.patientName.latinName).toBe(
-      'Synthetic Layla',
-    );
+    expect(
+      findChart(syntheticCharts, alphaOrganizationId, 'chart-001')?.patientName.latinName,
+    ).toBe('Synthetic Layla');
     expect(findChart(syntheticCharts, betaOrganizationId, 'chart-001')?.patientName.latinName).toBe(
       'Synthetic Reem',
     );
@@ -95,8 +96,8 @@ describe('tenant-scoped chart selection', () => {
 describe('note revision state and guards', () => {
   it('allows editing only draft revisions and amending only clean signed ones', () => {
     const draft = betaCurrent();
-    const signed = syntheticAlphaChart.revisions[1]!;
-    const enteredInError = syntheticAlphaChart.revisions[0]!;
+    const signed = must(syntheticAlphaChart.revisions[1]);
+    const enteredInError = must(syntheticAlphaChart.revisions[0]);
 
     expect(isEditable(draft)).toBe(true);
     expect(isEditable(signed)).toBe(false);
@@ -112,7 +113,7 @@ describe('note revision state and guards', () => {
     expect(updated.content.assessment).toBe('Synthetic revised assessment');
     expect(updated.version).toBe(draft.version);
     expect(draft.content.assessment).not.toBe('Synthetic revised assessment');
-    expect(() => updateDraft(syntheticAlphaChart.revisions[1]!, 'plan', 'x')).toThrow(
+    expect(() => updateDraft(must(syntheticAlphaChart.revisions[1]), 'plan', 'x')).toThrow(
       SignedRevisionLocked,
     );
   });
@@ -147,16 +148,16 @@ describe('note revision state and guards', () => {
         encounterLocalId: 'enc-wrong',
       }),
     ).toThrow(WrongPatientContext);
-    expect(() => signDraft(draft, { ...signCommand(draft), expectedVersion: draft.version - 1 })).toThrow(
-      StaleDraftVersion,
-    );
-    expect(() => signDraft(syntheticAlphaChart.revisions[1]!, signCommand(alphaCurrent()))).toThrow(
-      SignedRevisionLocked,
-    );
+    expect(() =>
+      signDraft(draft, { ...signCommand(draft), expectedVersion: draft.version - 1 }),
+    ).toThrow(StaleDraftVersion);
+    expect(() =>
+      signDraft(must(syntheticAlphaChart.revisions[1]), signCommand(alphaCurrent())),
+    ).toThrow(SignedRevisionLocked);
   });
 
   it('creates an amendment draft linked to a clean signed revision', () => {
-    const signed = syntheticAlphaChart.revisions[1]!;
+    const signed = must(syntheticAlphaChart.revisions[1]);
     const amendment = createAmendment(signed, 'rev-003');
 
     expect(amendment.id).toBe('rev-003');
@@ -169,7 +170,7 @@ describe('note revision state and guards', () => {
   });
 
   it('records entered-in-error evidence without changing the revision content', () => {
-    const signed = syntheticAlphaChart.revisions[1]!;
+    const signed = must(syntheticAlphaChart.revisions[1]);
     const flagged = markEnteredInError(signed, {
       actor: syntheticSigner,
       reason: syntheticEnteredInErrorReason,
@@ -187,12 +188,14 @@ describe('note revision state and guards', () => {
 
   it('returns the highest version and stays undefined for an empty history', () => {
     expect(currentRevision([])).toBeUndefined();
-    expect(currentRevision([alphaCurrent(), syntheticAlphaChart.revisions[0]!])).toBe(alphaCurrent());
+    expect(currentRevision([alphaCurrent(), must(syntheticAlphaChart.revisions[0])])).toBe(
+      alphaCurrent(),
+    );
   });
 
   it('replaces only the matching tenant and revision id', () => {
     const updated = replaceRevision(
-      syntheticCharts[0]!.revisions,
+      must(syntheticCharts[0]).revisions,
       alphaOrganizationId,
       'rev-002',
       (revision) => ({
@@ -204,7 +207,7 @@ describe('note revision state and guards', () => {
     expect(currentRevision(updated)?.content.plan).toBe('Synthetic replacement');
 
     expect(
-      replaceRevision(syntheticCharts[1]!.revisions, alphaOrganizationId, 'rev-002', (r) => r),
+      replaceRevision(must(syntheticCharts[1]).revisions, alphaOrganizationId, 'rev-002', (r) => r),
     ).toEqual(syntheticBetaChart.revisions);
     expect(
       replaceRevision(syntheticAlphaChart.revisions, alphaOrganizationId, 'missing', (r) => r),
@@ -216,11 +219,13 @@ describe('document associations', () => {
   it('hides voided documents from the live list but keeps them in the source array', () => {
     const visible = visibleDocuments(syntheticAlphaChart.documents);
     expect(visible.map((document) => document.id)).toEqual(['doc-001', 'doc-002', 'doc-003']);
-    expect(syntheticAlphaChart.documents.some((document) => document.void !== undefined)).toBe(true);
+    expect(syntheticAlphaChart.documents.some((document) => document.void !== undefined)).toBe(
+      true,
+    );
   });
 
   it('voids a document with an audited reason', () => {
-    const target = syntheticAlphaChart.documents[0]!;
+    const target = must(syntheticAlphaChart.documents[0]);
     const voided = voidDocument(target, {
       actor: syntheticSigner,
       reason: syntheticVoidReason,
@@ -233,7 +238,7 @@ describe('document associations', () => {
   });
 
   it('normalizes rotation as presentation metadata only', () => {
-    const target = syntheticAlphaChart.documents[2]!;
+    const target = must(syntheticAlphaChart.documents[2]);
     expect(rotateDocument(target, 90).rotationDegrees).toBe(180);
     expect(rotateDocument(target, -180).rotationDegrees).toBe(270);
     expect(rotateDocument(target, 360).rotationDegrees).toBe(90);
@@ -260,23 +265,29 @@ describe('document associations', () => {
 describe('synthetic fixtures and localized labels', () => {
   it('carries units, actors, verification states and tenant-scoped versions', () => {
     for (const chart of syntheticCharts) {
-      expect(chart.vitals.every((vital) => vital.unit.length > 0 && vital.measuredAt.endsWith('Z'))).toBe(
-        true,
-      );
+      expect(
+        chart.vitals.every((vital) => vital.unit.length > 0 && vital.measuredAt.endsWith('Z')),
+      ).toBe(true);
     }
     expect(syntheticAlphaChart.problems[0]?.clinicalAuthor).toBe('synthetic.clinician');
     expect(syntheticAlphaChart.problems[0]?.enteredBy).toBe('synthetic.assistant');
     expect(syntheticAlphaChart.problems[0]?.originalText).toContain('Synthetic');
-    expect(syntheticAlphaChart.problems.some((entry) => entry.verification === 'verified')).toBe(true);
+    expect(syntheticAlphaChart.problems.some((entry) => entry.verification === 'verified')).toBe(
+      true,
+    );
     expect(syntheticAlphaChart.allergies.some((entry) => entry.verification === 'none')).toBe(true);
-    expect(syntheticAlphaChart.allergies.some((entry) => entry.verification === 'unknown')).toBe(true);
+    expect(syntheticAlphaChart.allergies.some((entry) => entry.verification === 'unknown')).toBe(
+      true,
+    );
     expect(syntheticAlphaChart.documents.map((document) => document.language)).toEqual([
       'en',
       'ar',
       'en',
       'en',
     ]);
-    expect(syntheticBetaChart.documents[0]?.version).not.toBe(syntheticAlphaChart.documents[0]?.version);
+    expect(syntheticBetaChart.documents[0]?.version).not.toBe(
+      syntheticAlphaChart.documents[0]?.version,
+    );
   });
 
   it('provides a non-empty label in both bundles for every chart key', () => {
@@ -290,7 +301,9 @@ describe('synthetic fixtures and localized labels', () => {
   });
 
   it('maps every verification state to a defined message key', () => {
-    for (const state of Object.keys(verificationMessageKey) as Array<keyof typeof verificationMessageKey>) {
+    for (const state of Object.keys(
+      verificationMessageKey,
+    ) as (keyof typeof verificationMessageKey)[]) {
       expect(chartKeys).toContain(verificationMessageKey[state]);
     }
   });

@@ -12,6 +12,7 @@ import {
   submitSignOff,
 } from './api';
 import type { DryRunDraft, ImportManifestRequest } from './api';
+import { must } from '../../../tests/must';
 
 vi.mock('../../api/transport', async (importOriginal) => {
   const actual = await importOriginal<typeof TransportModule>();
@@ -31,7 +32,7 @@ const draft: DryRunDraft = {
 
 /** Return the descriptor passed to send at the given call index. */
 function descriptorAt(index: number): RequestDescriptor {
-  return sendMock.mock.calls[index]![0] as RequestDescriptor;
+  return must(sendMock.mock.calls[index])[0];
 }
 
 beforeEach(() => {
@@ -71,7 +72,14 @@ describe('synthetic manifest building', () => {
 
   it('binds a sign-off to the reviewed manifest version with an affirmative decision', () => {
     const manifest: ImportManifestRequest = manifestFromDraft(draft);
-    expect(signOffRequest(manifest, 'Synthetic Reviewer', 'privacy_auditor', 'sha256:digest', '2026-11-22T10:00:00Z')).toEqual({
+    expect(
+      signOffRequest(manifest, {
+        approver: 'Synthetic Reviewer',
+        role: 'privacy_auditor',
+        contentSha256: 'sha256:digest',
+        approvedAt: '2026-11-22T10:00:00Z',
+      }),
+    ).toEqual({
       manifest,
       progress: null,
       sign_off: {
@@ -89,7 +97,12 @@ describe('synthetic manifest building', () => {
 
 describe('data exchange API calls', () => {
   it('starts an export with the active organization and no body', async () => {
-    const expected = { job_id: 'job-9', checksum: 'sha256:abc', record_count: 2, expires_at: '2026-11-22T10:00:00Z' };
+    const expected = {
+      job_id: 'job-9',
+      checksum: 'sha256:abc',
+      record_count: 2,
+      expires_at: '2026-11-22T10:00:00Z',
+    };
     sendMock.mockResolvedValueOnce(expected);
     await expect(startExport(organizationId)).resolves.toEqual(expected);
     const descriptor = descriptorAt(0);
@@ -119,7 +132,12 @@ describe('data exchange API calls', () => {
   });
 
   it('submits a sign-off to the controlled import endpoint', async () => {
-    const request = signOffRequest(manifestFromDraft(draft), 'Synthetic Reviewer', 'tenant_admin', 'sha256:digest', '2026-11-22T10:00:00Z');
+    const request = signOffRequest(manifestFromDraft(draft), {
+      approver: 'Synthetic Reviewer',
+      role: 'tenant_admin',
+      contentSha256: 'sha256:digest',
+      approvedAt: '2026-11-22T10:00:00Z',
+    });
     await submitSignOff(request, organizationId);
     const descriptor = descriptorAt(0);
     expect(descriptor.url).toBe('/api/v1/tenant/imports/sign-off');

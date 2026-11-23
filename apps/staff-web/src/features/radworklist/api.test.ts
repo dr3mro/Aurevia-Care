@@ -2,13 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { RequestDescriptor } from '../../api/client';
 import { send } from '../../api/transport';
 import type * as TransportModule from '../../api/transport';
-import {
-  linkStudy,
-  listWorklist,
-  reportOrder,
-  scheduleOrder,
-  toOrder,
-} from './api';
+import { linkStudy, listWorklist, reportOrder, scheduleOrder, toOrder } from './api';
 import type { WorklistEntryResponse } from './api';
 import { alphaOrganizationId } from './fixtures';
 
@@ -40,7 +34,7 @@ function entry(overrides: Partial<WorklistEntryResponse> = {}): WorklistEntryRes
 
 /** Read the descriptor handed to the transport at a given call index. */
 function descriptorAt(call: number): RequestDescriptor {
-  return sendMock.mock.calls[call]![0] as RequestDescriptor;
+  return required(sendMock.mock.calls[call])[0];
 }
 
 describe('radworklist API requests', () => {
@@ -157,3 +151,10 @@ describe('radworklist wire projection', () => {
     expect(projected.status).toBe('received');
   });
 });
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

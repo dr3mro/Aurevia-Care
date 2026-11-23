@@ -24,7 +24,7 @@ vi.mock('../../api/transport', async (importOriginal) => {
 const sendMock = vi.mocked(send);
 
 function descriptorAt(call: number): RequestDescriptor {
-  return sendMock.mock.calls[call]![0] as RequestDescriptor;
+  return required(sendMock.mock.calls[call])[0];
 }
 
 function wrap(ui: ReactElement, organizationId = alphaOrganizationId, locale: Locale = 'en') {
@@ -69,13 +69,15 @@ beforeEach(() => {
 
 describe('PharmacyInboxPage states', () => {
   it('shows the loading state until the routed page resolves', async () => {
-    const pending = deferred<{ items: typeof syntheticInboxItem[]; nextCursor: string | null }>();
+    const pending = deferred<{ items: (typeof syntheticInboxItem)[]; nextCursor: string | null }>();
     sendMock.mockReturnValueOnce(pending.promise);
     wrap(<PharmacyInboxPage />);
 
     expect(screen.getByRole('heading', { name: stateViewText('en', 'loading') })).toBeTruthy();
     pending.resolve({ items: [syntheticInboxItem], nextCursor: null });
-    expect(await screen.findByRole('table', { name: pharmacyText('en', 'worklistCaption') })).toBeTruthy();
+    expect(
+      await screen.findByRole('table', { name: pharmacyText('en', 'worklistCaption') }),
+    ).toBeTruthy();
   });
 
   it('shows the empty state when no prescriptions are routed here', async () => {
@@ -125,7 +127,9 @@ describe('PharmacyInboxPage worklist', () => {
     sendMock.mockResolvedValueOnce({ items: [syntheticInboxItem], nextCursor: null });
     wrap(<PharmacyInboxPage />);
 
-    expect(await screen.findByRole('table', { name: pharmacyText('en', 'worklistCaption') })).toBeTruthy();
+    expect(
+      await screen.findByRole('table', { name: pharmacyText('en', 'worklistCaption') }),
+    ).toBeTruthy();
     expect(screen.getByText('Synthetic Amoxicillin')).toBeTruthy();
     expect(screen.getByText('500 mg')).toBeTruthy();
     expect(screen.getByText('20')).toBeTruthy();
@@ -193,7 +197,9 @@ describe('PharmacyInboxPage worklist', () => {
     wrap(<PharmacyInboxPage />, alphaOrganizationId, 'ar');
 
     expect(document.documentElement.dir).toBe('rtl');
-    expect(await screen.findByRole('table', { name: pharmacyText('ar', 'worklistCaption') })).toBeTruthy();
+    expect(
+      await screen.findByRole('table', { name: pharmacyText('ar', 'worklistCaption') }),
+    ).toBeTruthy();
     expect(screen.getByText(pharmacyText('ar', 'stateDeliveryConfirmed'))).toBeTruthy();
   });
 
@@ -231,13 +237,22 @@ describe('pharmacy route export', () => {
     const inboxRoute = routes.find((route) => route.pattern === '/pharmacy');
     expect(inboxRoute).toBeDefined();
     sendMock.mockResolvedValueOnce({ items: [], nextCursor: null });
-    const Component = inboxRoute!.component;
+    const Component = required(inboxRoute).component;
     wrap(
       <Suspense fallback={null}>
         <Component />
       </Suspense>,
     );
 
-    expect(await screen.findByRole('heading', { name: pharmacyText('en', 'pharmacy') })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { name: pharmacyText('en', 'pharmacy') }),
+    ).toBeTruthy();
   });
 });
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

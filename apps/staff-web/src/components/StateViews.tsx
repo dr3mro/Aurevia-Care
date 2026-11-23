@@ -17,13 +17,7 @@ const noop = (): void => undefined;
  * (no dedicated state-panel class exists in `responsive.css`) and keep long
  * English and Arabic labels wrappable without a horizontal scroll.
  */
-function StatePanel({
-  role,
-  children,
-}: {
-  role: 'status' | 'alert';
-  children: ReactNode;
-}) {
+function StatePanel({ role, children }: { role: 'status' | 'alert'; children: ReactNode }) {
   const { tokens } = useTheme();
   const breakpoint = useBreakpoint();
   return (
@@ -118,9 +112,7 @@ export function ErrorState({ correlationId, onRetry = noop }: ErrorStateProps) {
       <p>{stateViewText(locale, 'errorDetail')}</p>
       <p>
         {stateViewText(locale, 'correlation')}:{' '}
-        <code dir="ltr">
-          {correlationId ?? stateViewText(locale, 'correlationUnavailable')}
-        </code>
+        <code dir="ltr">{correlationId ?? stateViewText(locale, 'correlationUnavailable')}</code>
       </p>
       <StateActions>
         <StateAction>
@@ -210,7 +202,13 @@ export const StateView = {
       case 'conflict':
       case 'precondition-required':
         return <ConflictState />;
-      default:
+      case 'csrf-missing':
+      case 'not-found':
+      case 'invalid':
+      case 'rate-limited':
+      case 'server':
+      case 'offline':
+      case 'timeout':
         return <ErrorState correlationId={error.correlationId} />;
     }
   },

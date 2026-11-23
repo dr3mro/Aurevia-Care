@@ -21,12 +21,7 @@ export type TransmissionState = 'pending' | 'sent' | 'delivered' | 'failed';
 
 /** Workflow axis (XCH-02), including its rejected and cancelled branches. */
 export type WorkflowState =
-  | 'requested'
-  | 'accepted'
-  | 'processing'
-  | 'completed'
-  | 'rejected'
-  | 'cancelled';
+  'requested' | 'accepted' | 'processing' | 'completed' | 'rejected' | 'cancelled';
 
 /** Clinical review axis (XCH-02); only an authorized human can advance it. */
 export type ReviewState = 'unreviewed' | 'acknowledged' | 'action-pending' | 'resolved';

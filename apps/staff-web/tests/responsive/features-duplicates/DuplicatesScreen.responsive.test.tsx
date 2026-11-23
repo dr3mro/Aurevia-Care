@@ -3,7 +3,11 @@ import { act, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ActiveOrganizationProvider } from '../../../src/api/activeOrganization';
 import type { ApprovalPanelProps } from '../../../src/features/duplicates/DuplicatesScreen';
-import { ApprovalPanel, ReviewScreen, WorklistScreen } from '../../../src/features/duplicates/DuplicatesScreen';
+import {
+  ApprovalPanel,
+  ReviewScreen,
+  WorklistScreen,
+} from '../../../src/features/duplicates/DuplicatesScreen';
 import {
   alphaOrganizationId,
   reviewOpen,
@@ -14,6 +18,7 @@ import { I18nProvider } from '../../../src/i18n/I18nProvider';
 import type { Locale } from '../../../src/i18n/messages';
 import { BREAKPOINT_MEDIA_QUERIES } from '../../../src/theme/breakpoints';
 import { ThemeProvider } from '../../../src/theme/ThemeProvider';
+import { must } from '../../must';
 
 type ChangeListener = (event: MediaQueryListEvent) => void;
 type Band = 'compact' | 'medium' | 'expanded';
@@ -151,20 +156,23 @@ describe('responsive DuplicatesScreen (WEB-07, UX-01)', () => {
     installMatchMedia('compact', true);
     wrap(<WorklistScreen pairs={[longPair]} locale="en" onSelect={() => undefined} />);
 
-    const region = screen.getByRole('region', { name: 'Duplicate review worklist' }) as HTMLElement;
+    const region = screen.getByRole('region', { name: 'Duplicate review worklist' });
     expect(region.className).toContain('table-region');
     expect(region.getAttribute('tabindex')).toBe('0');
     expect(region.tabIndex).toBe(0);
 
     const table = within(region).getByRole('table', { name: 'Duplicate review worklist' });
     expect(table.getAttribute('data-breakpoint')).toBe('compact');
-    expect(within(table).getAllByRole('columnheader').map((cell) => cell.textContent)).toEqual([
-      'Surviving identity',
-      'Duplicate identity',
-      'Action',
-    ]);
-    for (const cell of [...within(table).getAllByRole('columnheader'), ...within(table).getAllByRole('cell')]) {
-      const style = (cell as HTMLElement).style;
+    expect(
+      within(table)
+        .getAllByRole('columnheader')
+        .map((cell) => cell.textContent),
+    ).toEqual(['Surviving identity', 'Duplicate identity', 'Action']);
+    for (const cell of [
+      ...within(table).getAllByRole('columnheader'),
+      ...within(table).getAllByRole('cell'),
+    ]) {
+      const style = cell.style;
       expect(style.overflowWrap).toBe('anywhere');
       expect(style.whiteSpace).toBe('normal');
       expect(style.display).not.toBe('none');
@@ -173,9 +181,9 @@ describe('responsive DuplicatesScreen (WEB-07, UX-01)', () => {
     const arabicName = screen.getByText(LONG_ARABIC);
     expect(arabicName.tagName).toBe('BDI');
     expect(arabicName.getAttribute('lang')).toBe('ar');
-    const review = screen.getByRole('button', {
+    const review = screen.getByRole<HTMLButtonElement>('button', {
       name: 'Review pair SYN-SURVIVOR-LONG and SYN-DUPLICATE-LONG',
-    }) as HTMLButtonElement;
+    });
     expect(review.className).toContain('touch');
     expect(review.style.minHeight).not.toBe('32px');
     expect(focusableTags(region)).toEqual(['BUTTON']);
@@ -185,13 +193,15 @@ describe('responsive DuplicatesScreen (WEB-07, UX-01)', () => {
   it('drops the scroll region and keeps the full table on medium and expanded', () => {
     for (const band of ['medium', 'expanded'] as const) {
       installMatchMedia(band, false);
-      const view = wrap(<WorklistScreen pairs={[syntheticPair]} locale="en" onSelect={() => undefined} />);
+      const view = wrap(
+        <WorklistScreen pairs={[syntheticPair]} locale="en" onSelect={() => undefined} />,
+      );
       const table = screen.getByRole('table', { name: 'Duplicate review worklist' });
       expect(table.getAttribute('data-breakpoint')).toBe(band);
       expect(screen.queryByRole('region', { name: 'Duplicate review worklist' })).toBeNull();
       expect(within(table).getAllByRole('columnheader')).toHaveLength(3);
       for (const cell of within(table).getAllByRole('cell')) {
-        expect((cell as HTMLElement).style.display).not.toBe('none');
+        expect(cell.style.display).not.toBe('none');
       }
       expect(screen.getByText('patient-survivor')).toBeTruthy();
       view.unmount();
@@ -211,22 +221,26 @@ describe('responsive DuplicatesScreen (WEB-07, UX-01)', () => {
     expect(screen.getByRole('region', { name: 'Surviving record' })).toBeTruthy();
     expect(screen.getByRole('region', { name: 'Duplicate record' })).toBeTruthy();
 
-    const conflictRegion = screen
-      .getAllByRole('region', { name: 'Conflicting demographics' })
-      .find((element) => element.className.includes('table-region')) as HTMLElement;
+    const conflictRegion = must(
+      screen
+        .getAllByRole('region', { name: 'Conflicting demographics' })
+        .find((element) => element.className.includes('table-region')),
+    );
     expect(conflictRegion).toBeTruthy();
     expect(conflictRegion.className).toContain('table-region');
     expect(conflictRegion.tabIndex).toBe(0);
-    const conflictTable = within(conflictRegion).getByRole('table', { name: 'Conflicting demographics' });
-    expect(within(conflictTable).getAllByRole('columnheader').map((cell) => cell.textContent)).toEqual([
-      'Field',
-      'Surviving value',
-      'Duplicate value',
-    ]);
+    const conflictTable = within(conflictRegion).getByRole('table', {
+      name: 'Conflicting demographics',
+    });
+    expect(
+      within(conflictTable)
+        .getAllByRole('columnheader')
+        .map((cell) => cell.textContent),
+    ).toEqual(['Field', 'Surviving value', 'Duplicate value']);
     const longCell = within(conflictTable).getByText(LONG_ARABIC);
     expect(longCell.tagName).toBe('BDI');
-    expect((longCell.parentElement as HTMLElement).style.overflowWrap).toBe('anywhere');
-    expect((screen.getByText(/Dry run: move 1 chart visibility association/) as HTMLElement).style.whiteSpace).toBe(
+    expect(must(longCell.parentElement).style.overflowWrap).toBe('anywhere');
+    expect(screen.getByText(/Dry run: move 1 chart visibility association/).style.whiteSpace).toBe(
       'pre-wrap',
     );
     expect(screen.getByText('Not disclosed')).toBeTruthy();
@@ -262,15 +276,15 @@ describe('responsive DuplicatesScreen (WEB-07, UX-01)', () => {
     const root = container.firstElementChild as HTMLElement;
     expect(root.getAttribute('data-breakpoint')).toBe('compact');
 
-    const reason = screen.getByLabelText('Reason for consolidation') as HTMLInputElement;
+    const reason = screen.getByLabelText<HTMLInputElement>('Reason for consolidation');
     expect(reason.className).toContain('field');
     expect(reason.className).toContain('touch');
     for (const reference of ['MRN-1001@SYNTHETIC', 'MRN-1002@SYNTHETIC']) {
-      const checkbox = screen.getByLabelText(reference) as HTMLInputElement;
+      const checkbox = screen.getByLabelText<HTMLInputElement>(reference);
       expect(checkbox.className).toContain('touch');
       expect(checkbox.type).toBe('checkbox');
     }
-    const alternate = screen.getByLabelText('Approved alternate-process code') as HTMLInputElement;
+    const alternate = screen.getByLabelText<HTMLInputElement>('Approved alternate-process code');
     expect(alternate.className).toContain('field');
 
     const form = screen.getByRole('form', { name: 'Second-reviewer approval' });
@@ -339,7 +353,7 @@ describe('responsive DuplicatesScreen (WEB-07, UX-01)', () => {
       expect(screen.getByRole('button', { name: 'الموافقة على الدمج' })).toBeTruthy();
       expect(screen.getByLabelText('سبب الدمج').className).toContain('field');
       for (const reference of ['MRN-1001@SYNTHETIC', 'MRN-1002@SYNTHETIC']) {
-        const checkbox = screen.getByLabelText(reference) as HTMLInputElement;
+        const checkbox = screen.getByLabelText<HTMLInputElement>(reference);
         expect(checkbox.getAttribute('type')).toBe('checkbox');
         expect(checkbox.className).toContain('touch');
       }
@@ -362,7 +376,9 @@ describe('responsive DuplicatesScreen (WEB-07, UX-01)', () => {
 
     act(() => media.fire(BREAKPOINT_MEDIA_QUERIES.medium, true));
     expect(screen.queryByRole('region', { name: 'Duplicate review worklist' })).toBeNull();
-    expect(identities.querySelector('[data-layout]')?.getAttribute('data-layout')).toBe('side-by-side');
+    expect(identities.querySelector('[data-layout]')?.getAttribute('data-layout')).toBe(
+      'side-by-side',
+    );
     expect(container.querySelector('[data-breakpoint="medium"]')).toBeTruthy();
   });
 });

@@ -8,13 +8,10 @@ import { FormField } from '../../components/FormField';
 import { MixedScriptText } from '../../components/MixedScriptText';
 import { StateView } from '../../components/StateViews';
 import { useI18n } from '../../i18n/I18nProvider';
+import type { Locale } from '../../i18n/messages';
 import { patientsMessage, patientsText } from './messages';
 import { useBreakpoint } from '../../theme/useBreakpoint';
-import {
-  asPatientsTransportError,
-  registerPatient,
-  searchPatients,
-} from './api';
+import { asPatientsTransportError, registerPatient, searchPatients } from './api';
 import type { PatientResponse } from './domain';
 import {
   EMPTY_REGISTRATION,
@@ -36,6 +33,63 @@ import { RegisterPatientForm } from './RegisterPatientForm';
 /** Props for the tenant-keyed patient content. */
 interface PatientsContentProps {
   organizationId: string;
+}
+
+// A horizontally scrolling region must be reachable by keyboard (WCAG 2.1.1).
+const SCROLL_REGION_TAB_INDEX = 0;
+
+/** Props for the results table shown under the search form. */
+interface PatientResultsProps {
+  rows: readonly PatientResponse[];
+  organizationId: string;
+  locale: Locale;
+  breakpoint: ReturnType<typeof useBreakpoint>;
+  caption: string;
+}
+
+/** Results table; on a phone it lives in a labelled, keyboard-scrollable region. */
+function PatientResults({
+  rows,
+  organizationId,
+  locale,
+  breakpoint,
+  caption,
+}: PatientResultsProps) {
+  const results = (
+    <PatientsScreen
+      patients={rows.map((row) => toPatient(row, organizationId))}
+      locale={locale}
+      embeddedInScrollRegion={breakpoint === 'compact'}
+    />
+  );
+  // On a phone the table lives in a labelled, keyboard-scrollable region
+  // so every clinical column stays reachable without a page-level
+  // horizontal scroll. Wider layouts show the same table in view.
+  return breakpoint === 'compact' ? (
+    <div
+      className="table-region"
+      role="region"
+      aria-label={caption}
+      tabIndex={SCROLL_REGION_TAB_INDEX}
+      data-part="results"
+      data-layout="scroll-region"
+    >
+      {results}
+    </div>
+  ) : (
+    <div data-part="results" data-layout="table">
+      {results}
+    </div>
+  );
+}
+
+/** Field errors for a server validation failure that names a registration field. */
+function serverFieldErrors(error: TransportError): RegistrationFieldErrors | undefined {
+  if (error.kind !== 'invalid') {
+    return undefined;
+  }
+  const field = serverFieldForCode(error.code);
+  return field === undefined ? undefined : { [field]: validationKeyForField(field) };
 }
 
 /** Form, commands and results for one active organization. */
@@ -106,15 +160,11 @@ function PatientsContent({ organizationId }: PatientsContentProps) {
         setReloadToken((value) => value + 1);
       } catch (failure: unknown) {
         const error = asPatientsTransportError(failure);
-        if (error.kind === 'invalid') {
-          const field = serverFieldForCode(error.code);
-          if (field !== undefined) {
-            setFieldErrors({ [field]: validationKeyForField(field) });
-          } else {
-            setRegisterError(error);
-          }
-        } else {
+        const serverErrors = serverFieldErrors(error);
+        if (serverErrors === undefined) {
           setRegisterError(error);
+        } else {
+          setFieldErrors(serverErrors);
         }
       }
     } finally {
@@ -167,19 +217,21 @@ function PatientsContent({ organizationId }: PatientsContentProps) {
           lang={locale}
         />
       </p>
-      {registerError !== undefined && (
+      {registerError !== undefined ? (
         <div data-testid="patients-command-error">{StateView.forTransportError(registerError)}</div>
-      )}
-      {registerOpen && (
+      ) : null}
+      {registerOpen ? (
         <RegisterPatientForm
           locale={locale}
           draft={draft}
           errors={fieldErrors}
           onFieldChange={handleFieldChange}
-          onSubmit={handleRegister}
+          onSubmit={() => {
+            void handleRegister();
+          }}
           onCancel={handleCancelRegister}
         />
-      )}
+      ) : null}
       <ApiPage
         resource={{
           label: resultsCaption,
@@ -193,34 +245,15 @@ function PatientsContent({ organizationId }: PatientsContentProps) {
         }}
         isEmpty={(rows) => rows.length === 0}
       >
-        {(rows) => {
-          const results = (
-            <PatientsScreen
-              patients={rows.map((row) => toPatient(row, organizationId))}
-              locale={locale}
-              embeddedInScrollRegion={breakpoint === 'compact'}
-            />
-          );
-          // On a phone the table lives in a labelled, keyboard-scrollable region
-          // so every clinical column stays reachable without a page-level
-          // horizontal scroll. Wider layouts show the same table in view.
-          return breakpoint === 'compact' ? (
-            <div
-              className="table-region"
-              role="region"
-              aria-label={resultsCaption}
-              tabIndex={0}
-              data-part="results"
-              data-layout="scroll-region"
-            >
-              {results}
-            </div>
-          ) : (
-            <div data-part="results" data-layout="table">
-              {results}
-            </div>
-          );
-        }}
+        {(rows) => (
+          <PatientResults
+            rows={rows}
+            organizationId={organizationId}
+            locale={locale}
+            breakpoint={breakpoint}
+            caption={resultsCaption}
+          />
+        )}
       </ApiPage>
     </div>
   );

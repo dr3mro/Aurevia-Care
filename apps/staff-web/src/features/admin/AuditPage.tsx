@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
 import { useActiveOrganization } from '../../api/activeOrganization';
 import { ApiPage } from '../../components/ApiPage';
 import { Button } from '../../components/Button';
@@ -7,11 +8,7 @@ import { FormField } from '../../components/FormField';
 import { useI18n } from '../../i18n/I18nProvider';
 import type { Locale } from '../../i18n/messages';
 import { useBreakpoint } from '../../theme/useBreakpoint';
-import {
-  auditEventsFromPage,
-  isValidUtcInstant,
-  queryAuditEvents,
-} from './api';
+import { auditEventsFromPage, isValidUtcInstant, queryAuditEvents } from './api';
 import type { AuditEventResponse, AuditFilters } from './api';
 
 import { AuditEventList } from './AuditEventList';
@@ -51,6 +48,119 @@ function AuditEmpty({ locale, onClear }: AuditEmptyProps) {
       <h3>{adminText(locale, 'auditNoEvents')}</h3>
       <p>{adminText(locale, 'auditNoEventsHint')}</p>
       <Button onClick={onClear}>{adminText(locale, 'auditClearFilters')}</Button>
+    </section>
+  );
+}
+
+type AuditForm = typeof EMPTY_FORM;
+
+/** Props for the filter form section. */
+interface AuditFilterSectionProps {
+  form: AuditForm;
+  setForm: Dispatch<SetStateAction<AuditForm>>;
+  filterErrors: FilterErrors;
+  setFilterErrors: (errors: FilterErrors) => void;
+  breakpoint: ReturnType<typeof useBreakpoint>;
+  onApply: () => void;
+  onClear: () => void;
+}
+
+/** Filter form with its error summary and reset action. */
+function AuditFilterSection({
+  form,
+  setForm,
+  filterErrors,
+  setFilterErrors,
+  breakpoint,
+  onApply,
+  onClear,
+}: AuditFilterSectionProps) {
+  const { locale } = useI18n();
+  const errorLinks: FieldErrorLink[] = [];
+  if (filterErrors.from !== undefined) {
+    errorLinks.push({
+      id: 'audit-from',
+      label: adminText(locale, 'auditFrom'),
+      message: adminText(locale, filterErrors.from),
+    });
+  }
+  if (filterErrors.to !== undefined) {
+    errorLinks.push({
+      id: 'audit-to',
+      label: adminText(locale, 'auditTo'),
+      message: adminText(locale, filterErrors.to),
+    });
+  }
+  const fromError =
+    filterErrors.from === undefined ? undefined : adminText(locale, filterErrors.from);
+  const toError = filterErrors.to === undefined ? undefined : adminText(locale, filterErrors.to);
+
+  // The grid stacks on a phone and gains a second column from the medium
+  // breakpoint; the flag is exposed for jsdom, which cannot evaluate media
+  // queries. Layout never hides a filter or an audit value.
+  const fieldsLayout = breakpoint === 'compact' ? 'stacked' : 'two-column';
+
+  return (
+    <section
+      aria-label={adminText(locale, 'auditFilters')}
+      className="stack"
+      data-audit-part="filters"
+    >
+      <h2>{adminText(locale, 'auditPageTitle')}</h2>
+      <FieldErrorSummary title={adminText(locale, 'errorSummary')} errors={errorLinks} />
+      <Form
+        label={adminText(locale, 'auditFilters')}
+        submitLabel={adminText(locale, 'auditApplyFilters')}
+        onSubmit={onApply}
+      >
+        <div className="grid-2" data-audit-part="filter-fields" data-audit-fields={fieldsLayout}>
+          <FormField
+            id="audit-action"
+            label={adminText(locale, 'auditActionFilter')}
+            value={form.action}
+            onChange={(value) => setForm((current) => ({ ...current, action: value }))}
+          />
+          <FormField
+            id="audit-outcome"
+            label={adminText(locale, 'auditOutcomeFilter')}
+            value={form.outcome}
+            onChange={(value) => setForm((current) => ({ ...current, outcome: value }))}
+          />
+          <FormField
+            id="audit-resource"
+            label={adminText(locale, 'auditResourceFilter')}
+            value={form.resourceType}
+            onChange={(value) => setForm((current) => ({ ...current, resourceType: value }))}
+          />
+          <FormField
+            id="audit-from"
+            label={adminText(locale, 'auditFrom')}
+            value={form.from}
+            onChange={(value) => {
+              setForm((current) => ({ ...current, from: value }));
+              setFilterErrors({});
+            }}
+            placeholder="2026-03-01T00:00:00Z"
+            {...(fromError === undefined ? {} : { error: fromError })}
+          />
+          <FormField
+            id="audit-to"
+            label={adminText(locale, 'auditTo')}
+            value={form.to}
+            onChange={(value) => {
+              setForm((current) => ({ ...current, to: value }));
+              setFilterErrors({});
+            }}
+            placeholder="2026-03-08T00:00:00Z"
+            {...(toError === undefined ? {} : { error: toError })}
+          />
+        </div>
+      </Form>
+      <div className="cluster" data-audit-part="filter-actions">
+        <Button variant="secondary" onClick={onClear}>
+          {adminText(locale, 'auditClearFilters')}
+        </Button>
+      </div>
     </section>
   );
 }
@@ -114,96 +224,17 @@ function AuditContent({ organizationId }: AuditContentProps) {
     setCursor(undefined);
   }
 
-  const errorLinks: FieldErrorLink[] = [];
-  if (filterErrors.from !== undefined) {
-    errorLinks.push({
-      id: 'audit-from',
-      label: adminText(locale, 'auditFrom'),
-      message: adminText(locale, filterErrors.from),
-    });
-  }
-  if (filterErrors.to !== undefined) {
-    errorLinks.push({
-      id: 'audit-to',
-      label: adminText(locale, 'auditTo'),
-      message: adminText(locale, filterErrors.to),
-    });
-  }
-  const fromError = filterErrors.from === undefined ? undefined : adminText(locale, filterErrors.from);
-  const toError = filterErrors.to === undefined ? undefined : adminText(locale, filterErrors.to);
-
-  // The grid stacks on a phone and gains a second column from the medium
-  // breakpoint; the flag is exposed for jsdom, which cannot evaluate media
-  // queries. Layout never hides a filter or an audit value.
-  const fieldsLayout = breakpoint === 'compact' ? 'stacked' : 'two-column';
-
   return (
     <div className="page" data-audit-page="root" data-breakpoint={breakpoint}>
-      <section
-        aria-label={adminText(locale, 'auditFilters')}
-        className="stack"
-        data-audit-part="filters"
-      >
-        <h2>{adminText(locale, 'auditPageTitle')}</h2>
-        <FieldErrorSummary title={adminText(locale, 'errorSummary')} errors={errorLinks} />
-        <Form
-          label={adminText(locale, 'auditFilters')}
-          submitLabel={adminText(locale, 'auditApplyFilters')}
-          onSubmit={applyFilters}
-        >
-          <div
-            className="grid-2"
-            data-audit-part="filter-fields"
-            data-audit-fields={fieldsLayout}
-          >
-            <FormField
-              id="audit-action"
-              label={adminText(locale, 'auditActionFilter')}
-              value={form.action}
-              onChange={(value) => setForm((current) => ({ ...current, action: value }))}
-            />
-            <FormField
-              id="audit-outcome"
-              label={adminText(locale, 'auditOutcomeFilter')}
-              value={form.outcome}
-              onChange={(value) => setForm((current) => ({ ...current, outcome: value }))}
-            />
-            <FormField
-              id="audit-resource"
-              label={adminText(locale, 'auditResourceFilter')}
-              value={form.resourceType}
-              onChange={(value) => setForm((current) => ({ ...current, resourceType: value }))}
-            />
-            <FormField
-              id="audit-from"
-              label={adminText(locale, 'auditFrom')}
-              value={form.from}
-              onChange={(value) => {
-                setForm((current) => ({ ...current, from: value }));
-                setFilterErrors({});
-              }}
-              placeholder="2026-03-01T00:00:00Z"
-              {...(fromError === undefined ? {} : { error: fromError })}
-            />
-            <FormField
-              id="audit-to"
-              label={adminText(locale, 'auditTo')}
-              value={form.to}
-              onChange={(value) => {
-                setForm((current) => ({ ...current, to: value }));
-                setFilterErrors({});
-              }}
-              placeholder="2026-03-08T00:00:00Z"
-              {...(toError === undefined ? {} : { error: toError })}
-            />
-          </div>
-        </Form>
-        <div className="cluster" data-audit-part="filter-actions">
-          <Button variant="secondary" onClick={clearFilters}>
-            {adminText(locale, 'auditClearFilters')}
-          </Button>
-        </div>
-      </section>
+      <AuditFilterSection
+        form={form}
+        setForm={setForm}
+        filterErrors={filterErrors}
+        setFilterErrors={setFilterErrors}
+        breakpoint={breakpoint}
+        onApply={applyFilters}
+        onClear={clearFilters}
+      />
 
       <ApiPage
         resource={{
@@ -221,9 +252,7 @@ function AuditContent({ organizationId }: AuditContentProps) {
           return (
             <div className="stack" data-audit-part="events">
               <PageSink page={page} onPage={append} />
-              <p>
-                {adminMessage(locale, 'auditFacilityZone', { zone: syntheticTimeZone })}
-              </p>
+              <p>{adminMessage(locale, 'auditFacilityZone', { zone: syntheticTimeZone })}</p>
               {accumulated.length === 0 ? (
                 <AuditEmpty locale={locale} onClear={clearFilters} />
               ) : (
@@ -236,7 +265,9 @@ function AuditContent({ organizationId }: AuditContentProps) {
                   />
                   {next !== null && next !== undefined ? (
                     <div className="cluster" data-audit-part="paging">
-                      <Button onClick={() => setCursor(next)}>{adminText(locale, 'loadMore')}</Button>
+                      <Button onClick={() => setCursor(next)}>
+                        {adminText(locale, 'loadMore')}
+                      </Button>
                     </div>
                   ) : null}
                 </>

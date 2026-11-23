@@ -70,7 +70,7 @@ const LONG_ENGLISH =
   'A deliberately long synthetic facility name that must wrap without clipping or overlap';
 const LONG_ARABIC = 'اسم منشأة تجريبي طويل جداً يجب أن يلتف دون قص أو تداخل';
 
-function renderTable(rows: Array<Record<string, string>> = [{ code: 'SYN-0001', name: LONG_ENGLISH }]) {
+function renderTable(rows: Record<string, string>[] = [{ code: 'SYN-0001', name: LONG_ENGLISH }]) {
   return render(
     <ThemeProvider>
       <DataTable caption="Facilities" columns={columns} rows={rows} emptyLabel="No facilities" />
@@ -90,26 +90,30 @@ describe('responsive DataTable (WEB-07, UX-01)', () => {
     installMatchMedia(compactQueries());
     renderTable();
 
-    const region = screen.getByRole('region', { name: 'Facilities' }) as HTMLElement;
+    const region = screen.getByRole('region', { name: 'Facilities' });
     expect(region.className).toContain('table-region');
     expect(region.getAttribute('tabindex')).toBe('0');
     expect(region.tabIndex).toBe(0);
 
     const table = within(region).getByRole('table', { name: 'Facilities' });
-    expect(within(table).getByRole('columnheader', { name: 'Code' }).getAttribute('scope')).toBe('col');
-    expect(within(table).getByRole('columnheader', { name: 'Name' }).getAttribute('scope')).toBe('col');
+    expect(within(table).getByRole('columnheader', { name: 'Code' }).getAttribute('scope')).toBe(
+      'col',
+    );
+    expect(within(table).getByRole('columnheader', { name: 'Name' }).getAttribute('scope')).toBe(
+      'col',
+    );
     expect(within(table).getByRole('cell', { name: 'SYN-0001' })).toBeTruthy();
     expect(within(table).getByRole('cell', { name: LONG_ENGLISH })).toBeTruthy();
 
     // Keyboard order: the labelled region is the only tab stop; native cells
     // and headers keep their semantics and are not independently focusable.
     for (const cell of within(table).getAllByRole('cell')) {
-      expect((cell as HTMLElement).tabIndex).toBe(-1);
-      expect((cell as HTMLElement).style.overflowWrap).toBe('anywhere');
-      expect((cell as HTMLElement).style.whiteSpace).toBe('normal');
+      expect(cell.tabIndex).toBe(-1);
+      expect(cell.style.overflowWrap).toBe('anywhere');
+      expect(cell.style.whiteSpace).toBe('normal');
     }
     for (const header of within(table).getAllByRole('columnheader')) {
-      expect((header as HTMLElement).tabIndex).toBe(-1);
+      expect(header.tabIndex).toBe(-1);
     }
   });
 
@@ -119,7 +123,9 @@ describe('responsive DataTable (WEB-07, UX-01)', () => {
 
     const region = screen.getByRole('region', { name: 'Facilities' });
     const table = within(region).getByRole('table', { name: 'Facilities' });
-    expect(within(table).getByRole('cell', { name: 'No facilities' }).getAttribute('colspan')).toBe('2');
+    expect(within(table).getByRole('cell', { name: 'No facilities' }).getAttribute('colspan')).toBe(
+      '2',
+    );
   });
 
   it('keeps a full, unhidden table on medium tablets', () => {
@@ -131,12 +137,13 @@ describe('responsive DataTable (WEB-07, UX-01)', () => {
 
     expect(screen.queryByRole('region', { name: 'Facilities' })).toBeNull();
     const table = screen.getByRole('table', { name: 'Facilities' });
-    expect(within(table).getAllByRole('columnheader').map((node) => node.textContent)).toEqual([
-      'Code',
-      'Name',
-    ]);
+    expect(
+      within(table)
+        .getAllByRole('columnheader')
+        .map((node) => node.textContent),
+    ).toEqual(['Code', 'Name']);
     for (const cell of within(table).getAllByRole('cell')) {
-      expect((cell as HTMLElement).style.display).not.toBe('none');
+      expect(cell.style.display).not.toBe('none');
     }
   });
 
@@ -168,12 +175,12 @@ describe('responsive DataTable (WEB-07, UX-01)', () => {
     installMatchMedia(compactQueries());
     renderTable([{ code: 'SYN-0002', name: LONG_ARABIC }]);
 
-    const region = screen.getByRole('region', { name: 'Facilities' }) as HTMLElement;
+    const region = screen.getByRole('region', { name: 'Facilities' });
     expect(region.className).toContain('table-region');
     expect(region.tabIndex).toBe(0);
     const table = within(region).getByRole('table', { name: 'Facilities' });
     expect(within(table).getByRole('columnheader', { name: 'Code' })).toBeTruthy();
-    const arabicCell = within(table).getByRole('cell', { name: LONG_ARABIC }) as HTMLElement;
+    const arabicCell = within(table).getByRole('cell', { name: LONG_ARABIC });
     expect(arabicCell.style.overflowWrap).toBe('anywhere');
 
     // No component sets a physical side, a physical alignment or a direction

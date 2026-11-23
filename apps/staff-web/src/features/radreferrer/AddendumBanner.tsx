@@ -50,7 +50,8 @@ export function AddendumBanner({
       {open.map((addendum) => {
         const headingId = `addendum-heading-${addendum.version}`;
         return (
-          <section key={`${addendum.organizationId}:${addendum.orderId}:${addendum.version}`}
+          <section
+            key={`${addendum.organizationId}:${addendum.orderId}:${addendum.version}`}
             data-version={addendum.version}
             aria-labelledby={headingId}
           >
@@ -66,7 +67,7 @@ export function AddendumBanner({
             </div>
             <button
               type="button"
-              aria-label={`${actionLead}${addendum.version}${actionTail!}`}
+              aria-label={`${actionLead}${addendum.version}${actionTail ?? ''}`}
               onClick={() => onAcknowledge(addendum)}
             >
               {radreferrerText(locale, 'acknowledge')}

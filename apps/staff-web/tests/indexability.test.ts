@@ -16,19 +16,15 @@ const read = (path: string) => {
 // Only inspect meta tags inside <head>; a body-level tag must not satisfy a
 // document-level requirement such as the viewport or theme colour.
 const headMetas = (html: string): string[] =>
-  [
-    ...(html.match(/<head\b[^>]*>([\s\S]*?)<\/head>/i)?.[1] ?? '').matchAll(
-      /<meta\b[^>]*>/gi,
-    ),
-  ].map((match) => match[0]);
+  [...(/<head\b[^>]*>([\s\S]*?)<\/head>/i.exec(html)?.[1] ?? '').matchAll(/<meta\b[^>]*>/gi)].map(
+    (match) => match[0],
+  );
 
 const metaContent = (tag: string | undefined): string =>
   tag?.match(/\bcontent=["']([^"']*)["']/i)?.[1] ?? '';
 
 const viewportContent = (html: string): string =>
-  metaContent(
-    headMetas(html).find((tag) => /\bname=["']viewport["']/i.test(tag)),
-  );
+  metaContent(headMetas(html).find((tag) => /\bname=["']viewport["']/i.test(tag)));
 
 const themeColourFor = (html: string, scheme: 'light' | 'dark'): string =>
   metaContent(
@@ -42,7 +38,7 @@ const themeColourFor = (html: string, scheme: 'light' | 'dark'): string =>
 describe('staff web indexability (WEB-13)', () => {
   it('marks the authenticated portal noindex inside the document head', () => {
     const html = read('index.html');
-    const head = html.match(/<head\b[^>]*>([\s\S]*?)<\/head>/i)?.[1] ?? '';
+    const head = /<head\b[^>]*>([\s\S]*?)<\/head>/i.exec(html)?.[1] ?? '';
     // Assert the exact single directive: a later conflicting "index, follow"
     // meta must fail rather than be masked by a lenient containment check.
     const robotsMetas = [...head.matchAll(/<meta\b[^>]*\bname=["']robots["'][^>]*>/gi)].map(
@@ -62,9 +58,7 @@ describe('staff web indexability (WEB-13)', () => {
   it('loads no analytics, tracker or external script', () => {
     const html = read('index.html');
     expect(html).not.toMatch(/<script[^>]+src=["']https?:\/\//i);
-    expect(html.toLowerCase()).not.toMatch(
-      /analytics|googletagmanager|google-analytics/,
-    );
+    expect(html.toLowerCase()).not.toMatch(/analytics|googletagmanager|google-analytics/);
   });
 
   it('sets a zoomable viewport that covers the screen for safe-area insets (WEB-07, UX-01)', () => {
@@ -90,14 +84,10 @@ describe('staff web indexability (WEB-13)', () => {
 
   it('declares a distinct theme colour for light and dark schemes (WEB-07, UX-01)', () => {
     const html = read('index.html');
-    const themes = headMetas(html).filter((tag) =>
-      /\bname=["']theme-color["']/i.test(tag),
-    );
+    const themes = headMetas(html).filter((tag) => /\bname=["']theme-color["']/i.test(tag));
     expect(themes).toHaveLength(2);
     for (const theme of themes) {
-      expect(theme, `theme colour has a media attribute: ${theme}`).toMatch(
-        /\bmedia=/i,
-      );
+      expect(theme, `theme colour has a media attribute: ${theme}`).toMatch(/\bmedia=/i);
     }
     const light = themeColourFor(html, 'light');
     const dark = themeColourFor(html, 'dark');

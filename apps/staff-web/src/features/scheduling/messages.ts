@@ -48,7 +48,8 @@ export type SchedulingMessageKey = (typeof schedulingKeys)[number];
 const schedulingMessages: Record<Locale, Record<SchedulingMessageKey, string>> = {
   en: {
     scheduling: 'Scheduling',
-    syntheticNotice: 'Synthetic data only. Appointments are read from and written to the connected API.',
+    syntheticNotice:
+      'Synthetic data only. Appointments are read from and written to the connected API.',
     status: 'Scheduling status',
     commandSent: 'Command sent to the appointment API',
     worklistRange: 'Worklist range',

@@ -24,9 +24,9 @@ describe('duplicate messages', () => {
   });
 
   it('fills named placeholders and leaves unknown ones visible', () => {
-    expect(
-      duplicatesMessage('en', 'reviewActionNamed', { survivor: 's1', duplicate: 'd1' }),
-    ).toBe('Review pair s1 and d1');
+    expect(duplicatesMessage('en', 'reviewActionNamed', { survivor: 's1', duplicate: 'd1' })).toBe(
+      'Review pair s1 and d1',
+    );
     expect(duplicatesMessage('en', 'reviewActionNamed', { survivor: 's1' })).toBe(
       'Review pair s1 and {duplicate}',
     );

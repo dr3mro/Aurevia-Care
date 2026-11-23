@@ -80,7 +80,8 @@ export type PartnerMessageKey = (typeof partnerKeys)[number];
 export const partnerMessages: Record<Locale, Record<PartnerMessageKey, string>> = {
   en: {
     title: 'Partner interface and outage board',
-    syntheticNotice: 'Synthetic data only. No partner is connected; health and backlog are fixtures.',
+    syntheticNotice:
+      'Synthetic data only. No partner is connected; health and backlog are fixtures.',
     boardRegion: 'Partner board: {partner}',
     healthLabel: 'Interface health',
     healthHealthy: 'Healthy',
@@ -127,8 +128,10 @@ export const partnerMessages: Record<Locale, Record<PartnerMessageKey, string>> 
     fallbackPrint: 'Print',
     fallbackCall: 'Call',
     fallbackManualUpload: 'Manual upload',
-    fallbackPrintDetail: 'Print the locally approved form and record delivery and verification evidence.',
-    fallbackCallDetail: 'Call the approved partner contact, record read-back and verification evidence.',
+    fallbackPrintDetail:
+      'Print the locally approved form and record delivery and verification evidence.',
+    fallbackCallDetail:
+      'Call the approved partner contact, record read-back and verification evidence.',
     fallbackManualUploadDetail:
       'Upload the partner file through the approved channel and record verification evidence before use.',
     evidenceNote: 'Manual workflows must record delivery and verification evidence.',
@@ -136,7 +139,8 @@ export const partnerMessages: Record<Locale, Record<PartnerMessageKey, string>> 
   },
   ar: {
     title: 'لوحة واجهات الشركاء وانقطاع الخدمة',
-    syntheticNotice: 'بيانات توضيحية فقط؛ لا يوجد شريك متصل، والحالة وقائمة الانتظار أمثلة توضيحية.',
+    syntheticNotice:
+      'بيانات توضيحية فقط؛ لا يوجد شريك متصل، والحالة وقائمة الانتظار أمثلة توضيحية.',
     boardRegion: 'لوحة الشريك: {partner}',
     healthLabel: 'حالة الواجهة',
     healthHealthy: 'سليم',
@@ -184,8 +188,10 @@ export const partnerMessages: Record<Locale, Record<PartnerMessageKey, string>> 
     fallbackCall: 'اتصال',
     fallbackManualUpload: 'رفع يدوي',
     fallbackPrintDetail: 'اطبع النموذج المعتمد محليًا وسجّل دليل التسليم والتحقق.',
-    fallbackCallDetail: 'اتصل بجهة الاتصال المعتمدة لدى الشريك وسجّل القراءة المتبادلة ودليل التحقق.',
-    fallbackManualUploadDetail: 'ارفع ملف الشريك عبر القناة المعتمدة وسجّل دليل التحقق قبل استخدامه.',
+    fallbackCallDetail:
+      'اتصل بجهة الاتصال المعتمدة لدى الشريك وسجّل القراءة المتبادلة ودليل التحقق.',
+    fallbackManualUploadDetail:
+      'ارفع ملف الشريك عبر القناة المعتمدة وسجّل دليل التحقق قبل استخدامه.',
     evidenceNote: 'يجب أن تسجّل الإجراءات اليدوية دليل التسليم والتحقق.',
     noWaiting: 'لا توجد طلبات أو وصفات قيد الانتظار لهذا الشريك.',
   },
@@ -202,7 +208,10 @@ export function partnerMessage(
   key: PartnerMessageKey,
   values: Readonly<Record<string, string>> = {},
 ): string {
-  return partnerText(locale, key).replace(/\{(\w+)\}/g, (whole, name: string) => values[name] ?? whole);
+  return partnerText(locale, key).replace(
+    /\{(\w+)\}/g,
+    (whole, name: string) => values[name] ?? whole,
+  );
 }
 
 /** Render a wait duration with Latin digits in both locales. */

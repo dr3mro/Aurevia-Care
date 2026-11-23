@@ -72,7 +72,8 @@ function queriesFor(layout: Layout): Record<string, boolean> {
 
 const LONG_ENGLISH =
   'A deliberately long synthetic verification status that must wrap at 320 px and at 200 percent zoom without clipping or overlap';
-const LONG_ARABIC = 'حالة تحقق سريرية تجريبية طويلة جداً يجب أن تلتف دون قص أو تداخل عند العرض الضيق';
+const LONG_ARABIC =
+  'حالة تحقق سريرية تجريبية طويلة جداً يجب أن تلتف دون قص أو تداخل عند العرض الضيق';
 
 /** Render a badge under the real i18n and theme providers for a locale. */
 function renderBadge(locale: Locale, ui: ReactNode) {
@@ -122,7 +123,7 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
       expect(glyph?.getAttribute('aria-hidden')).toBe('true');
 
       // The state word stays in the accessibility tree as an isolated run.
-      const label = within(root).getByText(LONG_ENGLISH) as HTMLElement;
+      const label = within(root).getByText(LONG_ENGLISH);
       expect(label.tagName).toBe('BDI');
       expect(label.getAttribute('dir')).toBe('auto');
       expect(label.getAttribute('lang')).toBe('en');
@@ -151,7 +152,7 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
       // invented, and the glyph alone is removed from the accessibility tree.
       expect(root.getAttribute('role')).toBeNull();
       expect(root.querySelector('[aria-hidden="true"]')?.textContent).toBe('○');
-      for (const element of [root, within(root).getByText('Synthetic pending') as HTMLElement]) {
+      for (const element of [root, within(root).getByText('Synthetic pending')]) {
         const inline = element.getAttribute('style') ?? '';
         expect(inline).not.toMatch(/(?:margin|padding|border|inset)-(?:left|right)\s*:/);
         expect(inline).not.toMatch(/text-align\s*:\s*(?:left|right)/);
@@ -194,9 +195,9 @@ it('adds no tab stop and preserves the keyboard order of surrounding controls', 
     expect(document.activeElement).toBe(button);
   }
   // The badge introduces no focusable element and never reorders the controls.
-  expect(container.querySelectorAll('a[href], button, input, select, textarea, [tabindex]')).toHaveLength(
-    2,
-  );
+  expect(
+    container.querySelectorAll('a[href], button, input, select, textarea, [tabindex]'),
+  ).toHaveLength(2);
   expect(badge().tabIndex).toBe(-1);
 });
 
@@ -213,7 +214,7 @@ it('mirrors an Arabic RTL badge without hiding or overriding the clinical label'
   expect(document.documentElement.lang).toBe('ar');
   const root = badge();
   expect(root.getAttribute('data-breakpoint')).toBe('compact');
-  const label = within(root).getByText(LONG_ARABIC) as HTMLElement;
+  const label = within(root).getByText(LONG_ARABIC);
   expect(label.tagName).toBe('BDI');
   expect(label.getAttribute('dir')).toBe('auto');
   expect(label.getAttribute('lang')).toBe('ar');

@@ -16,6 +16,7 @@ import type { Locale } from '../../../src/i18n/messages';
 import { BREAKPOINT_MEDIA_QUERIES } from '../../../src/theme/breakpoints';
 import type { Breakpoint } from '../../../src/theme/breakpoints';
 import { ThemeProvider } from '../../../src/theme/ThemeProvider';
+import { must } from '../../must';
 
 vi.mock('../../../src/api/transport', async (importOriginal) => {
   const actual = await importOriginal<typeof TransportModule>();
@@ -86,14 +87,32 @@ const LONG_ARABIC = 'اسم مريض تجريبي طويل جداً يجب أن 
 
 function entry(overrides: Partial<ChartEntryResponse> = {}): ChartEntryResponse {
   return {
-    id: 'entry-1', patientId: 'patient-1', encounterId: null, type: 'PROBLEM',
+    id: 'entry-1',
+    patientId: 'patient-1',
+    encounterId: null,
+    type: 'PROBLEM',
     originalText: 'A synthetic clinical observation long enough to wrap on a phone',
-    originalCode: 'SYN-0001', codeSystem: 'local',
-    mappedCode: null, mappedText: null, catalogVersion: null, source: 'CLINICIAN_OBSERVED',
-    presence: 'PRESENT', unknownReason: null, verification: 'VERIFIED', verifiedBy: 'dr-1',
-    verifiedAt: null, effectiveFrom: '2026-03-09', effectiveTo: null, measuredAt: null,
-    value: null, unit: null, clinicalAuthor: 'dr-1', dataEntryActor: 'reception-1',
-    version: 1, recordedAt: '2026-03-09T09:00:00Z', ...overrides,
+    originalCode: 'SYN-0001',
+    codeSystem: 'local',
+    mappedCode: null,
+    mappedText: null,
+    catalogVersion: null,
+    source: 'CLINICIAN_OBSERVED',
+    presence: 'PRESENT',
+    unknownReason: null,
+    verification: 'VERIFIED',
+    verifiedBy: 'dr-1',
+    verifiedAt: null,
+    effectiveFrom: '2026-03-09',
+    effectiveTo: null,
+    measuredAt: null,
+    value: null,
+    unit: null,
+    clinicalAuthor: 'dr-1',
+    dataEntryActor: 'reception-1',
+    version: 1,
+    recordedAt: '2026-03-09T09:00:00Z',
+    ...overrides,
   };
 }
 
@@ -142,9 +161,36 @@ function renderPage(options: RenderOptions) {
 
 /** The four clinical tables are the same at every breakpoint; none is hidden. */
 const CLINICAL_TABLES = {
-  problems: ['code', 'originalText', 'display', 'verification', 'source', 'effectiveOn', 'clinicalAuthor', 'enteredBy'],
-  allergies: ['code', 'originalText', 'display', 'verification', 'source', 'effectiveOn', 'clinicalAuthor', 'enteredBy'],
-  medications: ['code', 'originalText', 'display', 'verification', 'source', 'effectiveOn', 'clinicalAuthor', 'enteredBy'],
+  problems: [
+    'code',
+    'originalText',
+    'display',
+    'verification',
+    'source',
+    'effectiveOn',
+    'clinicalAuthor',
+    'enteredBy',
+  ],
+  allergies: [
+    'code',
+    'originalText',
+    'display',
+    'verification',
+    'source',
+    'effectiveOn',
+    'clinicalAuthor',
+    'enteredBy',
+  ],
+  medications: [
+    'code',
+    'originalText',
+    'display',
+    'verification',
+    'source',
+    'effectiveOn',
+    'clinicalAuthor',
+    'enteredBy',
+  ],
   vitals: ['kind', 'measurement', 'measuredAt'],
 } as const satisfies Record<string, readonly Parameters<typeof chartText>[1][]>;
 
@@ -176,11 +222,11 @@ describe('responsive ChartPage (WEB-07, UX-01)', () => {
         name: chartText('en', 'problems'),
       });
 
-      const page = problems.closest('.page') as HTMLElement | null;
+      const page = problems.closest<HTMLElement>('.page');
       expect(page).not.toBeNull();
       expect(page?.getAttribute('data-breakpoint')).toBe(breakpoint);
       expect(page?.classList.contains('page')).toBe(true);
-      expectLogicalWrapping(page as HTMLElement);
+      expectLogicalWrapping(must(page));
 
       expect(
         screen.getByRole('heading', { level: 2, name: chartText('en', 'chart') }),
@@ -193,9 +239,9 @@ describe('responsive ChartPage (WEB-07, UX-01)', () => {
         }
         const table = screen.getByRole('table', {
           name: chartText('en', key as Parameters<typeof chartText>[1]),
-        }) as HTMLElement;
+        });
         expect(table.style.display).not.toBe('none');
-        const headers = within(table).getAllByRole('columnheader') as HTMLElement[];
+        const headers = within(table).getAllByRole('columnheader');
         expect(headers.map((header) => header.textContent)).toEqual(
           headerKeys.map((headerKey) => chartText('en', headerKey)),
         );
@@ -215,7 +261,7 @@ describe('responsive ChartPage (WEB-07, UX-01)', () => {
   it('adds a labelled, keyboard-scrollable chart region only on compact', async () => {
     const compact = renderPage({ breakpoint: 'compact' });
     await screen.findByRole('table', { name: chartText('en', 'problems') });
-    const region = screen.getByRole('region', { name: chartText('en', 'chart') }) as HTMLElement;
+    const region = screen.getByRole('region', { name: chartText('en', 'chart') });
     expect(region.className).toContain('table-region');
     expect(region.tabIndex).toBe(0);
     expect(within(region).getByRole('table', { name: chartText('en', 'problems') })).toBeTruthy();
@@ -296,7 +342,7 @@ describe('responsive ChartPage (WEB-07, UX-01)', () => {
     expect(identifier.tagName).toBe('CODE');
     expect(identifier.getAttribute('dir')).toBe('ltr');
 
-    const page = problems.closest('.page') as HTMLElement;
+    const page = must(problems.closest<HTMLElement>('.page'));
     expect(page.getAttribute('data-breakpoint')).toBe('expanded');
     for (const element of [page, ...Array.from(page.querySelectorAll<HTMLElement>('*'))]) {
       const style = element.getAttribute('style') ?? '';

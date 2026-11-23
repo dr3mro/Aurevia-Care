@@ -21,13 +21,19 @@ describe('accessible Button', () => {
 
   it('renders the secondary variant without a click handler', () => {
     renderButton(<Button variant="secondary">Cancel</Button>);
-    expect(screen.getByRole('button', { name: 'Cancel' }).getAttribute('data-variant')).toBe('secondary');
+    expect(screen.getByRole('button', { name: 'Cancel' }).getAttribute('data-variant')).toBe(
+      'secondary',
+    );
   });
 
   it('does not fire when disabled and supports submit forms', () => {
     const onClick = vi.fn();
-    renderButton(<Button disabled onClick={onClick} type="submit">Submit</Button>);
-    const button = screen.getByRole('button', { name: 'Submit' }) as HTMLButtonElement;
+    renderButton(
+      <Button disabled onClick={onClick} type="submit">
+        Submit
+      </Button>,
+    );
+    const button = screen.getByRole<HTMLButtonElement>('button', { name: 'Submit' });
     expect(button.disabled).toBe(true);
     expect(button.getAttribute('type')).toBe('submit');
     fireEvent.click(button);

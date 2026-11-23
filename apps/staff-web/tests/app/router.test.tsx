@@ -1,13 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  Link,
-  matchRoute,
-  navigate,
-  RouterProvider,
-  useRoute,
-} from '../../src/app/router';
+import { Link, matchRoute, navigate, RouterProvider, useRoute } from '../../src/app/router';
 
 let suppressAnchorNavigation: ((event: MouseEvent) => void) | undefined;
 
@@ -171,8 +165,12 @@ describe('Link and navigate', () => {
   it('does not navigate for a new-tab target but does for an explicit self target', () => {
     renderAt(
       <>
-        <Link to="/new-tab" target="_blank">New tab</Link>
-        <Link to="/self" target="_self">Self</Link>
+        <Link to="/new-tab" target="_blank">
+          New tab
+        </Link>
+        <Link to="/self" target="_self">
+          Self
+        </Link>
         <RouteProbe />
       </>,
     );

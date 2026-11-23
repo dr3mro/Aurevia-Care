@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useActiveOrganization } from '../../api/activeOrganization';
 import type { TransportError } from '../../api/transport';
 import { ApiPage } from '../../components/ApiPage';
@@ -85,10 +85,12 @@ function FacilitiesList({ organizationId, locale, reloadToken }: FacilitiesListP
 
   // A command changes the underlying collection: drop every earlier page and
   // the old cursor so the next request reads the first page only.
-  useEffect(() => {
+  const [seenToken, setSeenToken] = useState(reloadToken);
+  if (seenToken !== reloadToken) {
+    setSeenToken(reloadToken);
     setAccumulated([]);
     setCursor(undefined);
-  }, [reloadToken]);
+  }
 
   return (
     <ApiPage
@@ -109,9 +111,7 @@ function FacilitiesList({ organizationId, locale, reloadToken }: FacilitiesListP
                 data-breakpoint={breakpoint}
                 style={{ borderCollapse: 'collapse', inlineSize: '100%' }}
               >
-                <caption style={{ textAlign: 'start' }}>
-                  {adminText(locale, 'facilities')}
-                </caption>
+                <caption style={{ textAlign: 'start' }}>{adminText(locale, 'facilities')}</caption>
                 <thead>
                   <tr>
                     <th scope="col">{adminText(locale, 'facilityCode')}</th>
@@ -136,7 +136,7 @@ function FacilitiesList({ organizationId, locale, reloadToken }: FacilitiesListP
                 </tbody>
               </table>
             </AdminTableRegion>
-            {next !== null && (
+            {next === null ? null : (
               <Button onClick={() => setCursor(next)}>{adminText(locale, 'loadMore')}</Button>
             )}
           </>
@@ -195,8 +195,10 @@ function FacilitiesContent({ organizationId }: FacilitiesContentProps) {
     }
   }
 
-  const codeError = fieldErrors.code === undefined ? undefined : adminText(locale, fieldErrors.code);
-  const nameError = fieldErrors.name === undefined ? undefined : adminText(locale, fieldErrors.name);
+  const codeError =
+    fieldErrors.code === undefined ? undefined : adminText(locale, fieldErrors.code);
+  const nameError =
+    fieldErrors.name === undefined ? undefined : adminText(locale, fieldErrors.name);
 
   return (
     <div className="page" data-breakpoint={breakpoint}>
@@ -210,7 +212,9 @@ function FacilitiesContent({ organizationId }: FacilitiesContentProps) {
         <Form
           label={adminText(locale, 'createFacility')}
           submitLabel={adminText(locale, 'createFacility')}
-          onSubmit={handleSubmit}
+          onSubmit={() => {
+            void handleSubmit();
+          }}
         >
           <div className={breakpoint === 'compact' ? 'stack' : 'grid-2'}>
             <FormField
@@ -232,13 +236,19 @@ function FacilitiesContent({ organizationId }: FacilitiesContentProps) {
         {/* The summary is the single live announcement for a failed submit. */}
         <p role="status" data-testid="facilities-status">
           <MixedScriptText
-            text={createdName === undefined ? '' : adminMessage(locale, 'facilityCreated', { name: createdName })}
+            text={
+              createdName === undefined
+                ? ''
+                : adminMessage(locale, 'facilityCreated', { name: createdName })
+            }
             lang={locale}
           />
         </p>
       </section>
-      {commandError !== undefined && (
-        <div data-testid="facilities-command-error">{StateView.forTransportError(commandError)}</div>
+      {commandError === undefined ? null : (
+        <div data-testid="facilities-command-error">
+          {StateView.forTransportError(commandError)}
+        </div>
       )}
       <FacilitiesList organizationId={organizationId} locale={locale} reloadToken={reloadToken} />
     </div>

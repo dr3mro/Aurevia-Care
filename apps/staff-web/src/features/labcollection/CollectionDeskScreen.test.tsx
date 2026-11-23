@@ -18,9 +18,7 @@ function wrap(ui: ReactElement, locale: Locale = 'en') {
   );
 }
 
-function screenFor(
-  overrides: Partial<CollectionDeskScreenProps> = {},
-): CollectionDeskScreenProps {
+function screenFor(overrides: Partial<CollectionDeskScreenProps> = {}): CollectionDeskScreenProps {
   return {
     orders: [alphaOrder],
     selected: alphaOrder,
@@ -53,17 +51,23 @@ function confirmBoth() {
 }
 
 function fillSpecimen() {
-  fireEvent.change(screen.getByLabelText(labText('en', 'specimenType')), { target: { value: 'SERUM' } });
+  fireEvent.change(screen.getByLabelText(labText('en', 'specimenType')), {
+    target: { value: 'SERUM' },
+  });
   fireEvent.change(screen.getByLabelText(labText('en', 'siteCode')), { target: { value: 'MAIN' } });
-  fireEvent.change(screen.getByLabelText(labText('en', 'collector')), { target: { value: 'synthetic.collector' } });
+  fireEvent.change(screen.getByLabelText(labText('en', 'collector')), {
+    target: { value: 'synthetic.collector' },
+  });
   fireEvent.change(screen.getByLabelText(labText('en', 'collectedAt')), {
     target: { value: '2026-03-09T09:00:00Z' },
   });
-  fireEvent.change(screen.getByLabelText(labText('en', 'quality')), { target: { value: 'ACCEPTABLE' } });
+  fireEvent.change(screen.getByLabelText(labText('en', 'quality')), {
+    target: { value: 'ACCEPTABLE' },
+  });
 }
 
 function collectButton(): HTMLButtonElement {
-  return screen.getByRole('button', { name: labText('en', 'recordCollection') }) as HTMLButtonElement;
+  return screen.getByRole<HTMLButtonElement>('button', { name: labText('en', 'recordCollection') });
 }
 
 describe('CollectionDeskScreen verification gate', () => {
@@ -81,7 +85,9 @@ describe('CollectionDeskScreen verification gate', () => {
     fireEvent.change(screen.getByLabelText(labText('en', 'presentedPatientId')), {
       target: { value: 'wrong-patient' },
     });
-    expect(screen.getByTestId('match-status').textContent).toContain(labText('en', 'mismatchPatient'));
+    expect(screen.getByTestId('match-status').textContent).toContain(
+      labText('en', 'mismatchPatient'),
+    );
     expect(screen.getByText(labText('en', 'verificationRequired'))).toBeTruthy();
     expect(collectButton().disabled).toBe(true);
 
@@ -138,7 +144,10 @@ describe('CollectionDeskScreen verification gate', () => {
     const other: CollectionOrder = { ...alphaOrder, id: 'accession-101', accessionNo: 'ACC-101' };
     const { rerender } = wrap(<CollectionDeskScreen {...screenFor()} />);
     fillPresented();
-    expect(screen.getByLabelText(labText('en', 'presentedPatientId'))).toHaveProperty('value', presentedAlpha.patientId);
+    expect(screen.getByLabelText(labText('en', 'presentedPatientId'))).toHaveProperty(
+      'value',
+      presentedAlpha.patientId,
+    );
 
     const view = screenFor({ selected: other });
     rerender(

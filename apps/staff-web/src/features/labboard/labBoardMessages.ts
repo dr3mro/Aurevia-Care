@@ -92,7 +92,10 @@ export function labBoardMessage(
   key: LabBoardMessageKey,
   values: Readonly<Record<string, string>> = {},
 ): string {
-  return labBoardText(locale, key).replace(/\{(\w+)\}/g, (whole, name: string) => values[name] ?? whole);
+  return labBoardText(locale, key).replace(
+    /\{(\w+)\}/g,
+    (whole, name: string) => values[name] ?? whole,
+  );
 }
 
 /** Render a whole number with Latin digits in both locales (UX-01, D4). */

@@ -22,14 +22,16 @@ function draftsFor(report: typeof syntheticReport): Record<string, string> {
   return Object.fromEntries(report.rows.map((row) => [row.id, String(row.value)]));
 }
 
-function renderScreen(options: {
-  locale?: Locale;
-  verifier?: string;
-  verified?: boolean;
-  report?: typeof syntheticReport;
-  onValueChange?: (rowId: string, value: string) => void;
-  onVerify?: () => void;
-} = {}) {
+function renderScreen(
+  options: {
+    locale?: Locale;
+    verifier?: string;
+    verified?: boolean;
+    report?: typeof syntheticReport;
+    onValueChange?: (rowId: string, value: string) => void;
+    onVerify?: () => void;
+  } = {},
+) {
   const report = options.report ?? syntheticReport;
   const onValueChange = options.onValueChange ?? vi.fn();
   const onVerify = options.onVerify ?? vi.fn();
@@ -62,11 +64,11 @@ describe('LAB-02 result entry grid', () => {
 
   it('shows abnormal flags as a word and a distinct icon', () => {
     renderScreen();
-    const low = within(screen.getByRole('table')).getByText('Low').parentElement!;
+    const low = required(within(screen.getByRole('table')).getByText('Low').parentElement);
     expect(low.getAttribute('data-flag')).toBe('low');
     expect(low.querySelector('[aria-hidden="true"]')?.textContent).toBe('▼');
     const table = screen.getByRole('table');
-    const critical = within(table).getByText('Critical').parentElement!;
+    const critical = required(within(table).getByText('Critical').parentElement);
     expect(critical.querySelector('[aria-hidden="true"]')?.textContent).toBe('‼');
     expect(within(table).getAllByText('Normal')).toHaveLength(2);
     expect(within(table).getByText('High')).toBeTruthy();
@@ -84,8 +86,8 @@ describe('LAB-02 result entry grid', () => {
   it('reports the outcome of the delta check for a zero and an absent previous value', () => {
     renderWithLocale(
       <>
-        <ChangeIndicator row={syntheticReport.rows[3]!} locale="en" />
-        <ChangeIndicator row={syntheticReport.rows[4]!} locale="en" />
+        <ChangeIndicator row={required(syntheticReport.rows[3])} locale="en" />
+        <ChangeIndicator row={required(syntheticReport.rows[4])} locale="en" />
       </>,
     );
     expect(screen.getAllByText('Within change limit')).toHaveLength(1);
@@ -104,7 +106,9 @@ describe('LAB-02 result entry grid', () => {
         onVerify={vi.fn()}
       />,
     );
-    expect((screen.getByLabelText('Result value for Hemoglobin') as HTMLInputElement).value).toBe('7.4');
+    expect(screen.getByLabelText<HTMLInputElement>('Result value for Hemoglobin').value).toBe(
+      '7.4',
+    );
     expect(
       screen.getByRole('region', { name: 'Verification and release summary' }).textContent,
     ).toContain('Hemoglobin: 7.4\u00a0g/dL');
@@ -142,7 +146,9 @@ describe('LAB-02 second-user verification', () => {
 
   it('blocks the enterer from verifying and explains why', () => {
     renderScreen({ verifier: entererSubject });
-    const button = screen.getByRole('button', { name: 'Verify and prepare release' }) as HTMLButtonElement;
+    const button = screen.getByRole<HTMLButtonElement>('button', {
+      name: 'Verify and prepare release',
+    });
     expect(button.disabled).toBe(true);
     expect(screen.getByTestId('verify-blocked').textContent).toContain(
       'The enterer cannot verify this report. A second user must verify.',
@@ -152,7 +158,9 @@ describe('LAB-02 second-user verification', () => {
   it('lets a distinct second user verify and announces the outcome', () => {
     const { onVerify } = renderScreen({ verified: true });
     expect(screen.queryByTestId('verify-blocked')).toBeNull();
-    const button = screen.getByRole('button', { name: 'Verify and prepare release' }) as HTMLButtonElement;
+    const button = screen.getByRole<HTMLButtonElement>('button', {
+      name: 'Verify and prepare release',
+    });
     expect(button.disabled).toBe(false);
     fireEvent.click(button);
     expect(onVerify).toHaveBeenCalledTimes(1);
@@ -185,3 +193,10 @@ describe('UX-01 Arabic result entry', () => {
     expect(screen.getByText('LAB-1042').getAttribute('dir')).toBe('ltr');
   });
 });
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

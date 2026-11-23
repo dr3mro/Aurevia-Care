@@ -19,7 +19,14 @@ import {
   selectCatalogItem,
   validateContent,
 } from './domain';
-import type { ActiveOrder, CatalogItem, DeliveryMode, OrderDraftContent, OrderPriority, SavedOrderDraft } from './domain';
+import type {
+  ActiveOrder,
+  CatalogItem,
+  DeliveryMode,
+  OrderDraftContent,
+  OrderPriority,
+  SavedOrderDraft,
+} from './domain';
 import { entryText } from './messages';
 import type { EntryMessageKey } from './messages';
 
@@ -58,7 +65,10 @@ function initialState(props: OrderEntryPanelProps): PanelState {
     props.savedDraft?.organizationId === props.organizationId ? props.savedDraft : undefined;
   return {
     organizationId: props.organizationId,
-    content: seed === undefined ? emptyContent(props.patientLocalId, props.encounterLocalId, props.facilityId) : contentFromDraft(seed),
+    content:
+      seed === undefined
+        ? emptyContent(props.patientLocalId, props.encounterLocalId, props.facilityId)
+        : contentFromDraft(seed),
     version: seed?.version ?? 0,
     query: '',
     conflict: undefined,
@@ -76,6 +86,260 @@ const controlStyle = {
   color: 'inherit',
   font: 'inherit',
 } as const;
+
+interface PanelHeaderProps {
+  patientLocalId: string;
+  encounterLocalId: string;
+  facilityId: string;
+}
+
+interface ActiveOrdersSectionProps {
+  activeOrders: readonly ActiveOrder[];
+  duplicates: readonly ActiveOrder[];
+}
+
+interface CatalogResultsProps {
+  results: readonly CatalogItem[];
+  content: OrderDraftContent;
+  onAdd: (item: CatalogItem) => void;
+}
+
+interface SelectedItemsProps {
+  content: OrderDraftContent;
+  onRemove: (itemId: string) => void;
+}
+
+interface OrderFormFieldsProps {
+  content: OrderDraftContent;
+  imagingRequired: boolean;
+  onChange: (patch: Partial<OrderDraftContent>) => void;
+}
+
+interface CompareSectionProps {
+  conflict: OrderConflict;
+  content: OrderDraftContent;
+}
+
+/** Shared locale, tokens and translator for the panel's sections. */
+function useEntryView() {
+  const { locale } = useI18n();
+  const { tokens } = useTheme();
+  const text = (key: EntryMessageKey): string => entryText(locale, key);
+  return { locale, tokens, text };
+}
+
+function PanelHeader({ patientLocalId, encounterLocalId, facilityId }: PanelHeaderProps) {
+  const { tokens, text } = useEntryView();
+  return (
+    <header style={{ display: 'grid', gap: tokens.spacing.sm }}>
+      <h2>{text('panelTitle')}</h2>
+      <p style={{ marginBlock: 0 }}>{text('syntheticNotice')}</p>
+      <p style={{ marginBlock: 0 }}>
+        <b>{text('patient')}:</b> <code dir="ltr">{patientLocalId}</code>
+        {' · '}
+        <b>{text('encounter')}:</b> <code dir="ltr">{encounterLocalId}</code>
+        {' · '}
+        <b>{text('facility')}:</b> <code dir="ltr">{facilityId}</code>
+      </p>
+    </header>
+  );
+}
+
+function AllergiesSection({ allergies }: { allergies: readonly CodedEntry[] }) {
+  const { locale, tokens, text } = useEntryView();
+  return (
+    <section aria-label={text('allergies')} style={{ display: 'grid', gap: tokens.spacing.sm }}>
+      <h3>{text('allergies')}</h3>
+      {allergies.length === 0 ? (
+        <p>{text('noAllergies')}</p>
+      ) : (
+        <ul>
+          {allergies.map((allergy) => (
+            <li key={allergy.id}>
+              <MixedScriptText
+                text={displayLocalName(
+                  {
+                    latinName: allergy.display,
+                    ...(allergy.displayLocal === undefined
+                      ? {}
+                      : { localName: allergy.displayLocal }),
+                  },
+                  locale,
+                )}
+                lang={locale}
+              />
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function ActiveOrdersSection({ activeOrders, duplicates }: ActiveOrdersSectionProps) {
+  const { locale, tokens, text } = useEntryView();
+  return (
+    <section aria-label={text('activeOrders')} style={{ display: 'grid', gap: tokens.spacing.sm }}>
+      <h3>{text('activeOrders')}</h3>
+      {activeOrders.length === 0 ? (
+        <p>{text('noActiveOrders')}</p>
+      ) : (
+        <ul>
+          {activeOrders.map((order) => (
+            <li key={order.id}>
+              <MixedScriptText text={order.display} lang={locale} />
+            </li>
+          ))}
+        </ul>
+      )}
+      {duplicates.length > 0 ? (
+        <p role="status" data-testid="entry-duplicate">
+          {text('duplicateWarning')} {duplicates.map((order) => order.display).join(', ')}
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+function CatalogResults({ results, content, onAdd }: CatalogResultsProps) {
+  const { tokens, text } = useEntryView();
+  return (
+    <div style={{ display: 'grid', gap: tokens.spacing.sm }}>
+      {results.length === 0 ? (
+        <p>{text('catalogEmpty')}</p>
+      ) : (
+        <ul>
+          {results.map((item) => {
+            const alreadySelected = content.items.some((selected) => selected.itemId === item.id);
+            return (
+              <li key={item.id}>
+                <code dir="ltr">{item.code}</code> {item.name}
+                {' · '}
+                {item.category === 'imaging' ? text('categoryImaging') : text('categoryLab')}
+                {' · '}
+                <button
+                  type="button"
+                  disabled={alreadySelected}
+                  aria-label={`${text('add')}: ${item.name}`}
+                  style={controlStyle}
+                  onClick={() => onAdd(item)}
+                >
+                  {text('add')}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function SelectedItems({ content, onRemove }: SelectedItemsProps) {
+  const { tokens, text } = useEntryView();
+  return (
+    <section aria-label={text('selectedItems')} style={{ display: 'grid', gap: tokens.spacing.sm }}>
+      <h3>{text('selectedItems')}</h3>
+      {content.items.length === 0 ? (
+        <p>{text('noSelectedItems')}</p>
+      ) : (
+        <ul>
+          {content.items.map((item) => (
+            <li key={item.itemId}>
+              <code dir="ltr">{item.code}</code> {item.name}
+              <button
+                type="button"
+                aria-label={`${text('remove')}: ${item.name}`}
+                style={controlStyle}
+                onClick={() => onRemove(item.itemId)}
+              >
+                {text('remove')}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function OrderFormFields({ content, imagingRequired, onChange }: OrderFormFieldsProps) {
+  const { tokens, text } = useEntryView();
+  return (
+    <>
+      <div style={{ display: 'grid', gap: tokens.spacing.sm }}>
+        <label htmlFor="entry-question">
+          {text('clinicalQuestion')} {imagingRequired ? `(${text('imagingNotice')})` : ''}
+        </label>
+        <textarea
+          id="entry-question"
+          value={content.clinicalQuestion}
+          aria-describedby="entry-question-hint"
+          style={controlStyle}
+          onChange={(event) => onChange({ clinicalQuestion: event.target.value })}
+        />
+        <p id="entry-question-hint" style={{ marginBlock: 0 }}>
+          {text('clinicalQuestionHint')}
+        </p>
+      </div>
+
+      <div style={{ display: 'grid', gap: tokens.spacing.sm }}>
+        <label htmlFor="entry-priority">{text('priority')}</label>
+        <select
+          id="entry-priority"
+          value={content.priority}
+          style={controlStyle}
+          onChange={(event) => onChange({ priority: event.target.value as OrderPriority })}
+        >
+          <option value="routine">{text('routine')}</option>
+          <option value="urgent">{text('urgent')}</option>
+          <option value="stat">{text('stat')}</option>
+        </select>
+      </div>
+
+      <div style={{ display: 'grid', gap: tokens.spacing.sm }}>
+        <label htmlFor="entry-preparation">{text('preparation')}</label>
+        <textarea
+          id="entry-preparation"
+          value={content.preparationInstructions}
+          aria-describedby="entry-preparation-hint"
+          style={controlStyle}
+          onChange={(event) => onChange({ preparationInstructions: event.target.value })}
+        />
+        <p id="entry-preparation-hint" style={{ marginBlock: 0 }}>
+          {text('preparationHint')}
+        </p>
+      </div>
+
+      <div style={{ display: 'grid', gap: tokens.spacing.sm }}>
+        <label htmlFor="entry-delivery">{text('deliveryMode')}</label>
+        <select
+          id="entry-delivery"
+          value={content.deliveryMode}
+          style={controlStyle}
+          onChange={(event) => onChange({ deliveryMode: event.target.value as DeliveryMode })}
+        >
+          <option value="electronic">{text('electronic')}</option>
+          <option value="print">{text('print')}</option>
+          <option value="both">{text('both')}</option>
+        </select>
+      </div>
+    </>
+  );
+}
+
+function CompareSection({ conflict, content }: CompareSectionProps) {
+  const { tokens, text } = useEntryView();
+  return (
+    <section aria-label={text('compareTitle')} style={{ display: 'grid', gap: tokens.spacing.sm }}>
+      <h3>{text('compareTitle')}</h3>
+      <b>{text('savedContent')}</b>
+      <pre>{JSON.stringify(conflict.server.content, null, 2)}</pre>
+      <b>{text('yourContent')}</b>
+      <pre>{JSON.stringify(content, null, 2)}</pre>
+    </section>
+  );
+}
 
 /**
  * Order entry surface embedded in the patient chart (LAB-01, RAD-01, WEB-09).
@@ -181,17 +445,11 @@ export function OrderEntryPanel(props: OrderEntryPanelProps) {
 
   return (
     <section aria-label={text('panelTitle')} style={{ display: 'grid', gap: tokens.spacing.lg }}>
-      <header style={{ display: 'grid', gap: tokens.spacing.sm }}>
-        <h2>{text('panelTitle')}</h2>
-        <p style={{ marginBlock: 0 }}>{text('syntheticNotice')}</p>
-        <p style={{ marginBlock: 0 }}>
-          <b>{text('patient')}:</b> <code dir="ltr">{props.patientLocalId}</code>
-          {' · '}
-          <b>{text('encounter')}:</b> <code dir="ltr">{props.encounterLocalId}</code>
-          {' · '}
-          <b>{text('facility')}:</b> <code dir="ltr">{props.facilityId}</code>
-        </p>
-      </header>
+      <PanelHeader
+        patientLocalId={props.patientLocalId}
+        encounterLocalId={props.encounterLocalId}
+        facilityId={props.facilityId}
+      />
 
       {announcement !== '' ? (
         <p role="status" data-testid="entry-status">
@@ -204,52 +462,9 @@ export function OrderEntryPanel(props: OrderEntryPanelProps) {
         </p>
       ) : null}
 
-      <section aria-label={text('allergies')} style={{ display: 'grid', gap: tokens.spacing.sm }}>
-        <h3>{text('allergies')}</h3>
-        {allergies.length === 0 ? (
-          <p>{text('noAllergies')}</p>
-        ) : (
-          <ul>
-            {allergies.map((allergy) => (
-              <li key={allergy.id}>
-                <MixedScriptText
-                  text={displayLocalName(
-                    {
-                      latinName: allergy.display,
-                      ...(allergy.displayLocal === undefined
-                        ? {}
-                        : { localName: allergy.displayLocal }),
-                    },
-                    locale,
-                  )}
-                  lang={locale}
-                />
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      <AllergiesSection allergies={allergies} />
 
-      <section aria-label={text('activeOrders')} style={{ display: 'grid', gap: tokens.spacing.sm }}>
-        <h3>{text('activeOrders')}</h3>
-        {activeOrders.length === 0 ? (
-          <p>{text('noActiveOrders')}</p>
-        ) : (
-          <ul>
-            {activeOrders.map((order) => (
-              <li key={order.id}>
-                <MixedScriptText text={order.display} lang={locale} />
-              </li>
-            ))}
-          </ul>
-        )}
-        {duplicates.length > 0 ? (
-          <p role="status" data-testid="entry-duplicate">
-            {text('duplicateWarning')}{' '}
-            {duplicates.map((order) => order.display).join(', ')}
-          </p>
-        ) : null}
-      </section>
+      <ActiveOrdersSection activeOrders={activeOrders} duplicates={duplicates} />
 
       <form
         aria-label={text('panelTitle')}
@@ -274,117 +489,22 @@ export function OrderEntryPanel(props: OrderEntryPanelProps) {
           </p>
         </div>
 
-        <div style={{ display: 'grid', gap: tokens.spacing.sm }}>
-          {results.length === 0 ? (
-            <p>{text('catalogEmpty')}</p>
-          ) : (
-            <ul>
-              {results.map((item) => {
-                const alreadySelected = content.items.some(
-                  (selected) => selected.itemId === item.id,
-                );
-                return (
-                  <li key={item.id}>
-                    <code dir="ltr">{item.code}</code> {item.name}
-                    {' · '}
-                    {item.category === 'imaging' ? text('categoryImaging') : text('categoryLab')}
-                    {' · '}
-                    <button
-                      type="button"
-                      disabled={alreadySelected}
-                      aria-label={`${text('add')}: ${item.name}`}
-                      style={controlStyle}
-                      onClick={() => updateContent(selectCatalogItem(content, item))}
-                    >
-                      {text('add')}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
+        <CatalogResults
+          results={results}
+          content={content}
+          onAdd={(item) => updateContent(selectCatalogItem(content, item))}
+        />
 
-        <section aria-label={text('selectedItems')} style={{ display: 'grid', gap: tokens.spacing.sm }}>
-          <h3>{text('selectedItems')}</h3>
-          {content.items.length === 0 ? (
-            <p>{text('noSelectedItems')}</p>
-          ) : (
-            <ul>
-              {content.items.map((item) => (
-                <li key={item.itemId}>
-                  <code dir="ltr">{item.code}</code> {item.name}
-                  <button
-                    type="button"
-                    aria-label={`${text('remove')}: ${item.name}`}
-                    style={controlStyle}
-                    onClick={() => updateContent(removeSelectedItem(content, item.itemId))}
-                  >
-                    {text('remove')}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+        <SelectedItems
+          content={content}
+          onRemove={(itemId) => updateContent(removeSelectedItem(content, itemId))}
+        />
 
-        <div style={{ display: 'grid', gap: tokens.spacing.sm }}>
-          <label htmlFor="entry-question">
-            {text('clinicalQuestion')} {imagingRequired ? `(${text('imagingNotice')})` : ''}
-          </label>
-          <textarea
-            id="entry-question"
-            value={content.clinicalQuestion}
-            aria-describedby="entry-question-hint"
-            style={controlStyle}
-            onChange={(event) => updateContent({ clinicalQuestion: event.target.value })}
-          />
-          <p id="entry-question-hint" style={{ marginBlock: 0 }}>
-            {text('clinicalQuestionHint')}
-          </p>
-        </div>
-
-        <div style={{ display: 'grid', gap: tokens.spacing.sm }}>
-          <label htmlFor="entry-priority">{text('priority')}</label>
-          <select
-            id="entry-priority"
-            value={content.priority}
-            style={controlStyle}
-            onChange={(event) => updateContent({ priority: event.target.value as OrderPriority })}
-          >
-            <option value="routine">{text('routine')}</option>
-            <option value="urgent">{text('urgent')}</option>
-            <option value="stat">{text('stat')}</option>
-          </select>
-        </div>
-
-        <div style={{ display: 'grid', gap: tokens.spacing.sm }}>
-          <label htmlFor="entry-preparation">{text('preparation')}</label>
-          <textarea
-            id="entry-preparation"
-            value={content.preparationInstructions}
-            aria-describedby="entry-preparation-hint"
-            style={controlStyle}
-            onChange={(event) => updateContent({ preparationInstructions: event.target.value })}
-          />
-          <p id="entry-preparation-hint" style={{ marginBlock: 0 }}>
-            {text('preparationHint')}
-          </p>
-        </div>
-
-        <div style={{ display: 'grid', gap: tokens.spacing.sm }}>
-          <label htmlFor="entry-delivery">{text('deliveryMode')}</label>
-          <select
-            id="entry-delivery"
-            value={content.deliveryMode}
-            style={controlStyle}
-            onChange={(event) => updateContent({ deliveryMode: event.target.value as DeliveryMode })}
-          >
-            <option value="electronic">{text('electronic')}</option>
-            <option value="print">{text('print')}</option>
-            <option value="both">{text('both')}</option>
-          </select>
-        </div>
+        <OrderFormFields
+          content={content}
+          imagingRequired={imagingRequired}
+          onChange={updateContent}
+        />
 
         <Button type="submit">{text('saveDraft')}</Button>
       </form>
@@ -398,13 +518,7 @@ export function OrderEntryPanel(props: OrderEntryPanelProps) {
       ) : null}
 
       {conflict !== undefined && comparing ? (
-        <section aria-label={text('compareTitle')} style={{ display: 'grid', gap: tokens.spacing.sm }}>
-          <h3>{text('compareTitle')}</h3>
-          <b>{text('savedContent')}</b>
-          <pre>{JSON.stringify(conflict.server.content, null, 2)}</pre>
-          <b>{text('yourContent')}</b>
-          <pre>{JSON.stringify(state.content, null, 2)}</pre>
-        </section>
+        <CompareSection conflict={conflict} content={state.content} />
       ) : null}
     </section>
   );

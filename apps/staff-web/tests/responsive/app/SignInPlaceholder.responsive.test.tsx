@@ -186,9 +186,7 @@ describe('responsive SignInPlaceholder right-to-left', () => {
     for (const element of styledElements(root)) {
       expect(element.style.direction).toBe('');
       expect(element.style.display).not.toBe('none');
-      expect(element.getAttribute('style') ?? '').not.toMatch(
-        /text-align\s*:\s*(?:left|right)/,
-      );
+      expect(element.getAttribute('style') ?? '').not.toMatch(/text-align\s*:\s*(?:left|right)/);
       for (const key of physicalStyleKeys) {
         expect(element.style.getPropertyValue(key)).toBe('');
       }

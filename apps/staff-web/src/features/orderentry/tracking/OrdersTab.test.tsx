@@ -21,6 +21,8 @@ import { statusMessageKey, trackingText } from './labels';
 import { OrdersTab } from './OrdersTab';
 import type { OrdersTabProps } from './OrdersTab';
 
+const clinicianRole: OrdersTabProps['role'] = 'clinician';
+
 function wrap(ui: ReactElement, locale: Locale = 'en') {
   return render(
     <ThemeProvider>
@@ -34,15 +36,18 @@ function renderTab(overrides: Partial<OrdersTabProps> = {}, locale: Locale = 'en
     organizationId: alphaOrganizationId,
     orders: [deliveredOrder, acceptedOrder, resultedOrder],
     role: 'clinician',
-    onCancel: vi.fn(async () => undefined),
-    onAmend: vi.fn(async () => undefined),
+    onCancel: vi.fn(() => Promise.resolve(undefined)),
+    onAmend: vi.fn(() => Promise.resolve(undefined)),
     onOpenResult: vi.fn(),
     ...overrides,
   };
   return { ...wrap(<OrdersTab {...props} />, locale), props };
 }
 
-function orderWithStatus(status: TrackedOrderStatus, patch: Partial<TrackedOrder> = {}): TrackedOrder {
+function orderWithStatus(
+  status: TrackedOrderStatus,
+  patch: Partial<TrackedOrder> = {},
+): TrackedOrder {
   return { ...draftOrder, status, ...patch };
 }
 
@@ -177,15 +182,21 @@ describe('OrdersTab', () => {
     expect(props.onCancel).not.toHaveBeenCalled();
     expect(props.onAmend).not.toHaveBeenCalled();
   });
+});
 
+describe('OrdersTab command rules', () => {
   it('does not offer cancel for terminal or already-requested orders', () => {
     renderTab({ orders: [resultedOrder, cancelledOrder, cancelRequestedOrder] });
     for (const order of [resultedOrder, cancelledOrder]) {
       expect(
-        within(row(order)).queryByRole('button', { name: `${trackingText('en', 'cancel')}: ${order.id}` }),
+        within(row(order)).queryByRole('button', {
+          name: `${trackingText('en', 'cancel')}: ${order.id}`,
+        }),
       ).toBeNull();
       expect(
-        within(row(order)).queryByRole('button', { name: `${trackingText('en', 'amend')}: ${order.id}` }),
+        within(row(order)).queryByRole('button', {
+          name: `${trackingText('en', 'amend')}: ${order.id}`,
+        }),
       ).toBeNull();
     }
     expect(
@@ -201,16 +212,25 @@ describe('OrdersTab', () => {
   it('hides cancel and amend from roles without ordering privilege', () => {
     renderTab({ orders: [deliveredOrder], role: 'reception' });
     expect(
-      screen.queryByRole('button', { name: `${trackingText('en', 'cancel')}: ${deliveredOrder.id}` }),
+      screen.queryByRole('button', {
+        name: `${trackingText('en', 'cancel')}: ${deliveredOrder.id}`,
+      }),
     ).toBeNull();
     expect(
-      screen.queryByRole('button', { name: `${trackingText('en', 'amend')}: ${deliveredOrder.id}` }),
+      screen.queryByRole('button', {
+        name: `${trackingText('en', 'amend')}: ${deliveredOrder.id}`,
+      }),
     ).toBeNull();
   });
 
   it('sends only one command when confirm is clicked twice while a request is pending', async () => {
     let finish: (() => void) | undefined;
-    const onCancel = vi.fn(() => new Promise<void>((resolve) => { finish = resolve; }));
+    const onCancel = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        }),
+    );
     renderTab({ orders: [deliveredOrder], onCancel });
     fireEvent.click(
       within(row(deliveredOrder)).getByRole('button', {
@@ -222,7 +242,10 @@ describe('OrdersTab', () => {
     fireEvent.click(confirmAction('en', 'cancel'));
     expect(onCancel).toHaveBeenCalledTimes(1);
     expect((confirmAction('en', 'cancel') as HTMLButtonElement).disabled).toBe(true);
-    await act(async () => { finish?.(); });
+    await act(() => {
+      finish?.();
+      return Promise.resolve();
+    });
     expect(screen.getByTestId('tracking-status').textContent).toContain(
       trackingText('en', 'cancelledNotice'),
     );
@@ -230,16 +253,21 @@ describe('OrdersTab', () => {
 
   it('discards a command result that arrives after a tenant switch', async () => {
     let finish: (() => void) | undefined;
-    const onCancel = vi.fn(() => new Promise<void>((resolve) => { finish = resolve; }));
+    const onCancel = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        }),
+    );
     const viewFor = (organizationId: string, orders: readonly TrackedOrder[]) => (
       <ThemeProvider>
         <I18nProvider initialLocale="en">
           <OrdersTab
             organizationId={organizationId}
             orders={orders}
-            role="clinician"
+            role={clinicianRole}
             onCancel={onCancel}
-            onAmend={vi.fn(async () => undefined)}
+            onAmend={vi.fn(() => Promise.resolve(undefined))}
             onOpenResult={vi.fn()}
           />
         </I18nProvider>
@@ -254,7 +282,10 @@ describe('OrdersTab', () => {
     fireEvent.change(reasonField(), { target: { value: 'Collector rejected specimen' } });
     fireEvent.click(confirmAction('en', 'cancel'));
     rerender(viewFor(betaOrganizationId, []));
-    await act(async () => { finish?.(); });
+    await act(() => {
+      finish?.();
+      return Promise.resolve();
+    });
     expect(screen.getByTestId('tracking-status').textContent).toBe('');
     expect(screen.queryByTestId('tracking-error')).toBeNull();
   });
@@ -278,14 +309,20 @@ describe('OrdersTab', () => {
     );
     expect(screen.getByTestId('tracking-status').textContent).toBe('');
   });
+});
 
+describe('OrdersTab tenant scope and locale', () => {
   it('renders an empty state when the chart has no orders', () => {
     renderTab({ orders: [] });
     expect(screen.getByText(trackingText('en', 'noOrders'))).toBeTruthy();
   });
 
   it('scopes the list to the active tenant and clears it on a tenant switch', () => {
-    const betaOrder: TrackedOrder = { ...draftOrder, id: 'beta-order', organizationId: betaOrganizationId };
+    const betaOrder: TrackedOrder = {
+      ...draftOrder,
+      id: 'beta-order',
+      organizationId: betaOrganizationId,
+    };
     const { rerender } = renderTab({ orders: [draftOrder, betaOrder] });
     expect(screen.getByTestId(`order-row-${draftOrder.id}`)).toBeTruthy();
     expect(screen.queryByTestId(`order-row-${betaOrder.id}`)).toBeNull();
@@ -296,9 +333,9 @@ describe('OrdersTab', () => {
           <OrdersTab
             organizationId={betaOrganizationId}
             orders={[draftOrder, betaOrder]}
-            role="clinician"
-            onCancel={vi.fn(async () => undefined)}
-            onAmend={vi.fn(async () => undefined)}
+            role={clinicianRole}
+            onCancel={vi.fn(() => Promise.resolve(undefined))}
+            onAmend={vi.fn(() => Promise.resolve(undefined))}
             onOpenResult={vi.fn()}
           />
         </I18nProvider>
@@ -317,7 +354,9 @@ describe('OrdersTab', () => {
     expect(screen.getByTestId(`order-status-${acceptedOrder.id}`).textContent).toContain(
       trackingText('ar', statusMessageKey(acceptedOrder.status)),
     );
-    expect(within(row(acceptedOrder)).getByText(acceptedOrder.display).getAttribute('dir')).toBe('auto');
+    expect(within(row(acceptedOrder)).getByText(acceptedOrder.display).getAttribute('dir')).toBe(
+      'auto',
+    );
 
     fireEvent.click(
       within(row(acceptedOrder)).getByRole('button', {

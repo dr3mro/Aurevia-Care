@@ -16,13 +16,12 @@ afterEach(() => {
   clearRenderFailure();
 });
 
-function ThrowingChild({ marker, fail }: { marker: string; fail?: boolean }): ReactNode {
+function ThrowingChild({ fail }: { marker: string; fail?: boolean }): ReactNode {
   if (fail === false) {
     return <p>synthetic recovered child</p>;
   }
   const failure = new Error('MARKER-THROW-MESSAGE');
   failure.name = 'BoomFailure';
-  void marker;
   throw failure;
 }
 
@@ -31,7 +30,9 @@ function RecoveryHarness() {
   const [fail, setFail] = useState(true);
   return (
     <>
-      <button type="button" onClick={() => setFail(false)}>clear failure</button>
+      <button type="button" onClick={() => setFail(false)}>
+        clear failure
+      </button>
       <ErrorBoundary>
         <ThrowingChild fail={fail} marker="MARKER-PROP" />
       </ErrorBoundary>
@@ -44,7 +45,9 @@ function RerenderHarness() {
   const [tick, setTick] = useState(0);
   return (
     <>
-      <button type="button" onClick={() => setTick(tick + 1)}>rerender</button>
+      <button type="button" onClick={() => setTick(tick + 1)}>
+        rerender
+      </button>
       <ErrorBoundary>
         <ThrowingChild marker="MARKER-PROP" />
       </ErrorBoundary>
@@ -63,7 +66,9 @@ describe('global ErrorBoundary', () => {
     render(
       <ThemeProvider>
         <I18nProvider>
-          <ErrorBoundary><p>synthetic healthy child</p></ErrorBoundary>
+          <ErrorBoundary>
+            <p>synthetic healthy child</p>
+          </ErrorBoundary>
         </I18nProvider>
       </ThemeProvider>,
     );
@@ -72,9 +77,7 @@ describe('global ErrorBoundary', () => {
   });
 
   it('catches a throwing child, shows the correlation ID and logs only the ID and error name', () => {
-    const randomUuid = vi
-      .spyOn(globalThis.crypto, 'randomUUID')
-      .mockReturnValue(correlationId);
+    const randomUuid = vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue(correlationId);
     const errorLog = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
     render(
@@ -96,7 +99,7 @@ describe('global ErrorBoundary', () => {
     // React logs its own render failure; isolate only this boundary's single
     // one-string call, which must never carry props, state or the error message.
     const ownCalls = errorLog.mock.calls.filter(
-      (args) => typeof args[0] === 'string' && args[0]?.includes(correlationId),
+      (args) => typeof args[0] === 'string' && args[0].includes(correlationId),
     );
     expect(ownCalls).toHaveLength(1);
     expect(ownCalls[0]?.[0]).toBe(`${correlationId} BoomFailure`);
@@ -125,9 +128,7 @@ describe('global ErrorBoundary', () => {
   });
 
   it('reuses one correlation ID across fallback re-renders and logs only once', () => {
-    const randomUuid = vi
-      .spyOn(globalThis.crypto, 'randomUUID')
-      .mockReturnValue(correlationId);
+    const randomUuid = vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue(correlationId);
     const errorLog = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
     render(
@@ -144,7 +145,7 @@ describe('global ErrorBoundary', () => {
     expect(randomUuid).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('alert').textContent).toContain(correlationId);
     const ownCalls = errorLog.mock.calls.filter(
-      (args) => typeof args[0] === 'string' && args[0]?.includes(correlationId),
+      (args) => typeof args[0] === 'string' && args[0].includes(correlationId),
     );
     expect(ownCalls).toHaveLength(1);
   });
@@ -165,7 +166,7 @@ describe('global ErrorBoundary', () => {
     const renderedId = screen.getByRole('alert').querySelector('code')?.textContent ?? '';
     expect(renderedId).not.toBe('');
     const ownCalls = errorLog.mock.calls.filter(
-      (args) => typeof args[0] === 'string' && args[0]?.includes(renderedId),
+      (args) => typeof args[0] === 'string' && args[0].includes(renderedId),
     );
     expect(ownCalls).toHaveLength(1);
     expect(ownCalls[0]?.[0]).toBe(`${renderedId} Error`);
@@ -180,7 +181,10 @@ describe('global ErrorBoundary', () => {
  * these assertions guard the actual decision, including aliased base classes.
  */
 describe('error boundary implementation contract', () => {
-  const source = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'ErrorBoundary.tsx'), 'utf8');
+  const source = readFileSync(
+    join(dirname(fileURLToPath(import.meta.url)), 'ErrorBoundary.tsx'),
+    'utf8',
+  );
 
   it('is implemented without a class component', () => {
     expect(source).not.toMatch(/\bclass\s+[A-Z]\w*/);
@@ -192,7 +196,10 @@ describe('error boundary implementation contract', () => {
 
   it('pins the reviewed dependency to an exact version', () => {
     const manifest = JSON.parse(
-      readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'package.json'), 'utf8'),
+      readFileSync(
+        join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'package.json'),
+        'utf8',
+      ),
     ) as { dependencies: Record<string, string> };
     expect(manifest.dependencies['react-error-boundary']).toMatch(/^\d+\.\d+\.\d+$/);
   });

@@ -84,7 +84,9 @@ describe('SchedulingScreen', () => {
     ]);
     expect(screen.queryByText('Synthetic Reem')).toBeNull();
     expect(screen.queryByText('Synthetic Kareem')).toBeNull();
-    expect(screen.getByRole('heading', { level: 2, name: schedulingText('en', 'scheduling') })).toBeTruthy();
+    expect(
+      screen.getByRole('heading', { level: 2, name: schedulingText('en', 'scheduling') }),
+    ).toBeTruthy();
     expect(screen.getByTestId('scheduling-status').textContent).toBe('');
   });
 
@@ -178,7 +180,9 @@ describe('SchedulingScreen', () => {
   it('renders bilingual RTL copy under the Arabic locale', () => {
     wrap(<Harness />, 'ar');
     expect(document.documentElement.dir).toBe('rtl');
-    expect(screen.getByRole('heading', { level: 2, name: schedulingText('ar', 'scheduling') })).toBeTruthy();
+    expect(
+      screen.getByRole('heading', { level: 2, name: schedulingText('ar', 'scheduling') }),
+    ).toBeTruthy();
     expect(screen.getByRole('button', { name: schedulingText('ar', 'week') })).toBeTruthy();
   });
 });

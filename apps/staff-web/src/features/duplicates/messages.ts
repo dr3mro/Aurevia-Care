@@ -109,13 +109,16 @@ export const duplicateMessages: Record<Locale, Record<DuplicatesMessageKey, stri
     approvalTitle: 'Second-reviewer approval',
     reasonLabel: 'Reason for consolidation',
     confirmTitle: 'Confirm the two identities',
-    confirmHint: 'Tick both issuer-scoped identifiers, or give one approved alternate-process code (not both).',
+    confirmHint:
+      'Tick both issuer-scoped identifiers, or give one approved alternate-process code (not both).',
     alternateLabel: 'Approved alternate-process code',
     alternateHint: 'Lowercase code, 2-32 letters or underscores.',
     approve: 'Approve consolidation',
     approved: 'Consolidation approved and chart visibility moved.',
-    blockerSameReviewer: 'The reviewer who opened this request cannot approve it. A different authorized reviewer must approve.',
-    blockerUnresolved: 'Unresolved dependencies block approval. Resolve the ambiguous orders, links or grants first.',
+    blockerSameReviewer:
+      'The reviewer who opened this request cannot approve it. A different authorized reviewer must approve.',
+    blockerUnresolved:
+      'Unresolved dependencies block approval. Resolve the ambiguous orders, links or grants first.',
     blockerOpenFirst: 'Open a review before approving.',
     refusalSecondReviewer: 'Refused: a different authorized reviewer must approve this request.',
     refusalUnresolved: 'Refused: unresolved dependencies must be resolved before consolidation.',
@@ -164,13 +167,16 @@ export const duplicateMessages: Record<Locale, Record<DuplicatesMessageKey, stri
     approvalTitle: 'موافقة المراجع الثاني',
     reasonLabel: 'سبب الدمج',
     confirmTitle: 'أكّد الهويتين',
-    confirmHint: 'علّم المعرّفين المرتبطين بالجهة المُصدرة، أو أدخل رمز إجراء بديل معتمدًا واحدًا (ليس كلاهما معًا).',
+    confirmHint:
+      'علّم المعرّفين المرتبطين بالجهة المُصدرة، أو أدخل رمز إجراء بديل معتمدًا واحدًا (ليس كلاهما معًا).',
     alternateLabel: 'رمز الإجراء البديل المعتمد',
     alternateHint: 'رمز صغير من ٢ إلى ٣٢ حرفًا أو شرطة سفلية.',
     approve: 'الموافقة على الدمج',
     approved: 'تمت الموافقة على الدمج ونقل ظهور الملف الطبي.',
-    blockerSameReviewer: 'لا يمكن للمراجع الذي فتح الطلب أن يوافق عليه. يجب أن يوافق مراجع مخول آخر.',
-    blockerUnresolved: 'التبعيات غير المحسومة تمنع الموافقة. اسوِ الطلبات أو الروابط أو المنح الغامضة أولًا.',
+    blockerSameReviewer:
+      'لا يمكن للمراجع الذي فتح الطلب أن يوافق عليه. يجب أن يوافق مراجع مخول آخر.',
+    blockerUnresolved:
+      'التبعيات غير المحسومة تمنع الموافقة. اسوِ الطلبات أو الروابط أو المنح الغامضة أولًا.',
     blockerOpenFirst: 'افتح مراجعة قبل الموافقة.',
     refusalSecondReviewer: 'رُفض الطلب: يجب أن يوافق مراجع مخول آخر على هذا الطلب.',
     refusalUnresolved: 'رُفض الطلب: يجب تسوية التبعيات غير المحسومة قبل الدمج.',

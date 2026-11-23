@@ -1,7 +1,8 @@
-/* global console, process, URL */
+import console from 'node:console';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import process from 'node:process';
+import { fileURLToPath, pathToFileURL, URL } from 'node:url';
 import { gzipSync } from 'node:zlib';
 
 /**
@@ -48,7 +49,9 @@ export function assertWithinBudget(contents, label) {
  */
 export function measureAssets(directory) {
   const path = typeof directory === 'string' ? directory : fileURLToPath(directory);
-  const names = readdirSync(path).filter((name) => name.endsWith('.js')).sort();
+  const names = readdirSync(path)
+    .filter((name) => name.endsWith('.js'))
+    .sort();
   const rows = names.map((name) => {
     const size = gzipSize(readFileSync(join(path, name)));
     return { name, size, withinBudget: size <= MAX_CHUNK_GZIP_BYTES };

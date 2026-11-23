@@ -32,7 +32,9 @@ describe('tenant data exchange feature routes', () => {
           </I18nProvider>
         </ThemeProvider>,
       );
-      expect(await screen.findByRole('heading', { name: stateViewText('en', 'forbidden') })).toBeTruthy();
+      expect(
+        await screen.findByRole('heading', { name: stateViewText('en', 'forbidden') }),
+      ).toBeTruthy();
       view.unmount();
     }
   });

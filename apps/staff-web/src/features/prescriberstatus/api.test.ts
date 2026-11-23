@@ -25,7 +25,7 @@ vi.mock('../../api/transport', async (importOriginal) => {
 const sendMock = vi.mocked(send);
 
 function descriptorAt(call: number): RequestDescriptor {
-  return sendMock.mock.calls[call]![0] as RequestDescriptor;
+  return required(sendMock.mock.calls[call])[0];
 }
 
 beforeEach(() => {
@@ -62,8 +62,7 @@ describe('prescriber write commands', () => {
     await answerClarification(
       'thread-synthetic-001',
       1,
-      'Dispense the 500 mg tablet.',
-      'revision-synthetic-002',
+      { answerBody: 'Dispense the 500 mg tablet.', amendedRevisionId: 'revision-synthetic-002' },
       prescriberOrganizationId,
     );
 
@@ -83,12 +82,13 @@ describe('prescriber write commands', () => {
     await approveSubstitution(
       'proposal-synthetic-001',
       1,
-      'I reviewed the alternative for this patient.',
-      'synthetic note',
+      { attestation: 'I reviewed the alternative for this patient.', note: 'synthetic note' },
       prescriberOrganizationId,
     );
 
-    expect(descriptorAt(0).url).toBe('/api/v1/pharmacy/substitutions/proposal-synthetic-001/approve');
+    expect(descriptorAt(0).url).toBe(
+      '/api/v1/pharmacy/substitutions/proposal-synthetic-001/approve',
+    );
     expect(descriptorAt(0).body).toEqual({
       attestation: 'I reviewed the alternative for this patient.',
       note: 'synthetic note',
@@ -107,7 +107,9 @@ describe('prescriber write commands', () => {
       prescriberOrganizationId,
     );
 
-    expect(descriptorAt(0).url).toBe('/api/v1/pharmacy/substitutions/proposal-synthetic-001/decline');
+    expect(descriptorAt(0).url).toBe(
+      '/api/v1/pharmacy/substitutions/proposal-synthetic-001/decline',
+    );
     expect(descriptorAt(0).body).toEqual({ attestation: '', note: 'synthetic decline note' });
     expect(descriptorAt(0).headers['If-Match']).toBe('1');
     expect(descriptorAt(0).headers['Idempotency-Key']).toMatch(/^[0-9a-f-]{36}$/);
@@ -135,3 +137,10 @@ describe('asPrescriberTransportError', () => {
     expect(normalized.retryAfterSeconds).toBeUndefined();
   });
 });
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

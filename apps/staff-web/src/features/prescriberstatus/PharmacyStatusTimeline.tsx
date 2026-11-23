@@ -18,11 +18,7 @@ export interface PharmacyStatusTimelineProps {
  * rejected, clarification and dispensing never collapse into a single state.
  * Dispensing evidence stays on the dispensing row; acceptance never implies it.
  */
-export function PharmacyStatusTimeline({
-  status,
-  locale,
-  timeZone,
-}: PharmacyStatusTimelineProps) {
+export function PharmacyStatusTimeline({ status, locale, timeZone }: PharmacyStatusTimelineProps) {
   const { tokens } = useTheme();
   const rows = timelineRows(status.events);
 
@@ -54,9 +50,7 @@ export function PharmacyStatusTimeline({
                 </td>
                 <th scope="row">{prescriberText(locale, row.labelKey)}</th>
                 <td>
-                  {row.detail === null ? null : (
-                    <MixedScriptText text={row.detail} lang="en" />
-                  )}
+                  {row.detail === null ? null : <MixedScriptText text={row.detail} lang="en" />}
                 </td>
                 <td>
                   <MixedScriptText text={row.actor} lang="en" />
@@ -81,9 +75,7 @@ export function PharmacyStatusTimeline({
                   </div>
                   <div>
                     {prescriberText(locale, 'handedOver')}:{' '}
-                    <code dir="ltr">
-                      {row.handedOver ?? prescriberText(locale, 'notRecorded')}
-                    </code>
+                    <code dir="ltr">{row.handedOver ?? prescriberText(locale, 'notRecorded')}</code>
                   </div>
                 </td>
               </tr>

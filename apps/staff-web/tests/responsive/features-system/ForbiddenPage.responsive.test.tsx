@@ -174,9 +174,7 @@ describe('responsive ForbiddenPage (WEB-07, UX-01)', () => {
       const { unmount } = renderPage('ar', layout);
       expect(document.documentElement.dir).toBe('rtl');
       expect(document.documentElement.lang).toBe('ar');
-      expect(
-        screen.getByRole('heading', { level: 2, name: 'لا تملك صلاحية الوصول' }),
-      ).toBeTruthy();
+      expect(screen.getByRole('heading', { level: 2, name: 'لا تملك صلاحية الوصول' })).toBeTruthy();
       expect(screen.getByText('لا يمكن لدورك تنفيذ هذا الإجراء.')).toBeTruthy();
       expect(screen.getByRole('button', { name: 'الصفحة الرئيسية' })).toBeTruthy();
       expect(screen.queryByText('You do not have access')).toBeNull();

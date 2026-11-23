@@ -11,6 +11,7 @@ import { I18nProvider } from '../../i18n/I18nProvider';
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import { ExportPage } from './ExportPage';
 import { dataExchangeText } from './labels';
+import { must } from '../../../tests/must';
 
 vi.mock('../../api/transport', async (importOriginal) => {
   const actual = await importOriginal<typeof TransportModule>();
@@ -31,7 +32,7 @@ const result = {
 
 /** Descriptor sent to the transport at a given call index. */
 function descriptorAt(index: number): RequestDescriptor {
-  return sendMock.mock.calls[index]![0] as RequestDescriptor;
+  return must(sendMock.mock.calls[index])[0];
 }
 
 /** Typed failure for a denied call. */
@@ -44,13 +45,14 @@ function denied(): TransportError {
 }
 
 /** Render the page under the shared providers. */
-function wrap(ui: ReactElement = <ExportPage role="tenant_admin" now={now} />, locale: Locale = 'en') {
+function wrap(
+  ui: ReactElement = <ExportPage roleOverride="tenant_admin" now={now} />,
+  locale: Locale = 'en',
+) {
   return render(
     <ThemeProvider>
       <I18nProvider initialLocale={locale}>
-        <ActiveOrganizationProvider value={{ organizationId }}>
-          {ui}
-        </ActiveOrganizationProvider>
+        <ActiveOrganizationProvider value={{ organizationId }}>{ui}</ActiveOrganizationProvider>
       </I18nProvider>
     </ThemeProvider>,
   );
@@ -62,9 +64,11 @@ beforeEach(() => {
 
 describe('tenant export screen', () => {
   it('conceals the screen from a role without export permission', () => {
-    wrap(<ExportPage role="reception" now={now} />);
+    wrap(<ExportPage roleOverride="reception" now={now} />);
     expect(screen.getByRole('heading', { name: stateViewText('en', 'forbidden') })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: dataExchangeText('en', 'startExport') })).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: dataExchangeText('en', 'startExport') }),
+    ).toBeNull();
     expect(sendMock).not.toHaveBeenCalled();
   });
 
@@ -93,7 +97,7 @@ describe('tenant export screen', () => {
   });
 
   it('shows an expired export as expired and withholds its download action', async () => {
-    wrap(<ExportPage role="tenant_admin" now="2026-11-22T10:05:00Z" />);
+    wrap(<ExportPage roleOverride="tenant_admin" now="2026-11-22T10:05:00Z" />);
     fireEvent.click(screen.getByRole('button', { name: dataExchangeText('en', 'startExport') }));
     expect(await screen.findByTestId('expired-job-1')).toBeTruthy();
     expect(screen.getByText(dataExchangeText('en', 'expired'))).toBeTruthy();
@@ -130,8 +134,12 @@ describe('tenant export screen', () => {
   });
 
   it('renders the Arabic labels for a permitted role', () => {
-    wrap(<ExportPage role="tenant_admin" now={now} />, 'ar');
-    expect(screen.getByRole('heading', { name: dataExchangeText('ar', 'exportTitle') })).toBeTruthy();
-    expect(screen.getByRole('button', { name: dataExchangeText('ar', 'startExport') })).toBeTruthy();
+    wrap(<ExportPage roleOverride="tenant_admin" now={now} />, 'ar');
+    expect(
+      screen.getByRole('heading', { name: dataExchangeText('ar', 'exportTitle') }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: dataExchangeText('ar', 'startExport') }),
+    ).toBeTruthy();
   });
 });

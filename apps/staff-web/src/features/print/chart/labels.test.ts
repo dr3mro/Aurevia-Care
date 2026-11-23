@@ -30,7 +30,8 @@ describe('chart print messages', () => {
   });
 
   it('uses Arabic script in every Arabic value and no placeholders', () => {
-    const arabicLetter = /[\u0621-\u063A\u0641-\u064A\u066E-\u066F\u0671-\u06D3\u06D5\u06FA-\u06FC\u06FF]/;
+    const arabicLetter =
+      /[\u0621-\u063A\u0641-\u064A\u066E-\u066F\u0671-\u06D3\u06D5\u06FA-\u06FC\u06FF]/;
     for (const key of chartPrintMessageKeys) {
       expect(chartPrintMessages.ar[key]).toMatch(arabicLetter);
       expect(chartPrintMessages.en[key]).not.toMatch(/\{\w+\}/);

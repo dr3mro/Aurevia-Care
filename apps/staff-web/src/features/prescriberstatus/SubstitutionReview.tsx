@@ -118,9 +118,7 @@ export function SubstitutionReview({
       <Button variant="secondary" onClick={handleDecline}>
         {prescriberText(locale, 'decline')}
       </Button>
-      {error === undefined ? null : (
-        <div>{StateView.forTransportError(error)}</div>
-      )}
+      {error === undefined ? null : <div>{StateView.forTransportError(error)}</div>}
     </section>
   );
 }

@@ -73,7 +73,7 @@ const worklist: WorklistEntryResponse[] = [
 
 /** Read the descriptor handed to the transport at a given call index. */
 function descriptorAt(call: number): RequestDescriptor {
-  return sendMock.mock.calls[call]![0] as RequestDescriptor;
+  return required(sendMock.mock.calls[call])[0];
 }
 
 /** Build a typed transport failure for a state test. */
@@ -116,7 +116,7 @@ function wrap(organizationId = alphaOrganizationId, locale: Locale = 'en') {
 
 /** Select the row whose order code is supplied. */
 function openRow(orderCode: string) {
-  const row = screen.getByText(orderCode).closest('tr')!;
+  const row = required(screen.getByText(orderCode).closest('tr'));
   fireEvent.click(within(row).getByRole('button', { name: 'Open order' }));
 }
 
@@ -273,7 +273,7 @@ describe('RadWorklistPage commands', () => {
     });
 
     expect(screen.getByTestId('label-check').getAttribute('data-verdict')).toBe('patient');
-    const link = screen.getByRole('button', { name: 'Link study' }) as HTMLButtonElement;
+    const link = screen.getByRole<HTMLButtonElement>('button', { name: 'Link study' });
     expect(link.disabled).toBe(true);
     fireEvent.click(link);
     expect(sendMock).toHaveBeenCalledTimes(1);
@@ -302,19 +302,17 @@ describe('RadWorklistPage commands', () => {
 
     expect(await screen.findByText(stateViewText('en', 'conflict'))).toBeTruthy();
     expect(screen.getByRole('table')).toBeTruthy();
-    expect((screen.getByLabelText('Accession') as HTMLInputElement).value).toBe('ACC-001');
+    expect(screen.getByLabelText<HTMLInputElement>('Accession').value).toBe('ACC-001');
     expect(sendMock).toHaveBeenCalledTimes(2);
 
     // Conflict recovery controls are live and never discard the typed draft.
     const panel = within(screen.getByTestId('radworklist-command-error'));
     fireEvent.click(panel.getByRole('button', { name: 'Compare' }));
-    const compare = screen.getByTestId('draft-disclosure') as HTMLTextAreaElement;
+    const compare = screen.getByTestId<HTMLTextAreaElement>('draft-disclosure');
     expect(compare.value).toContain('ACC-001');
     expect(compare.readOnly).toBe(true);
     fireEvent.click(panel.getByRole('button', { name: 'Copy my changes' }));
-    expect((screen.getByTestId('draft-disclosure') as HTMLTextAreaElement).value).toContain(
-      'ACC-001',
-    );
+    expect(screen.getByTestId<HTMLTextAreaElement>('draft-disclosure').value).toContain('ACC-001');
     fireEvent.click(panel.getByRole('button', { name: 'Reload' }));
     await waitFor(() => expect(sendMock).toHaveBeenCalledTimes(3));
   });
@@ -355,11 +353,9 @@ describe('RadWorklistPage scoping and navigation', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Scheduled' }));
 
     await waitFor(() =>
-      expect(
-        sendMock.mock.calls.some((call) =>
-          (call[0] as RequestDescriptor).url.includes('status=SCHEDULED'),
-        ),
-      ).toBe(true),
+      expect(sendMock.mock.calls.some((call) => call[0].url.includes('status=SCHEDULED'))).toBe(
+        true,
+      ),
     );
   });
 
@@ -373,17 +369,17 @@ describe('RadWorklistPage scoping and navigation', () => {
     });
 
     await waitFor(() =>
-      expect(
-        sendMock.mock.calls.some((call) =>
-          (call[0] as RequestDescriptor).url.includes('site=site-rad-other'),
-        ),
-      ).toBe(true),
+      expect(sendMock.mock.calls.some((call) => call[0].url.includes('site=site-rad-other'))).toBe(
+        true,
+      ),
     );
   });
 
   it('renders the registered radiology route in Arabic with right-to-left direction', async () => {
     sendMock.mockResolvedValue(worklist);
-    const route = createRoutes(false).find((candidate) => candidate.pattern === '/radiology')!;
+    const route = required(
+      createRoutes(false).find((candidate) => candidate.pattern === '/radiology'),
+    );
     const Page = route.component;
 
     render(
@@ -416,3 +412,10 @@ describe('RadWorklistPage scoping and navigation', () => {
     expect(await screen.findByRole('table')).toBeTruthy();
   });
 });
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

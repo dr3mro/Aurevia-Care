@@ -122,8 +122,7 @@ export const releaseMessages: Record<Locale, Record<ReleaseMessageKey, string>> 
     correctButton: 'تسجيل التصحيح',
     correctedStatus: 'تم التصحيح بواسطة {subject}. السبب: {reason}',
     withdrawalRegion: 'السحب',
-    withdrawalConsequence:
-      'يؤدي السحب إلى إخفاء التقرير عن الطبيب والمريض وتسجيل حالة خطأ طبي.',
+    withdrawalConsequence: 'يؤدي السحب إلى إخفاء التقرير عن الطبيب والمريض وتسجيل حالة خطأ طبي.',
     withdrawReasonLabel: 'سبب السحب (مطلوب)',
     withdrawReasonError: 'اذكر سبب سحب هذا التقرير.',
     withdrawButton: 'سحب التقرير',
@@ -156,7 +155,10 @@ export function releaseMessage(
   key: ReleaseMessageKey,
   values: Readonly<Record<string, string>> = {},
 ): string {
-  return releaseText(locale, key).replace(/\{(\w+)\}/g, (whole, name: string) => values[name] ?? whole);
+  return releaseText(locale, key).replace(
+    /\{(\w+)\}/g,
+    (whole, name: string) => values[name] ?? whole,
+  );
 }
 
 /** Difference-kind label keys, indexed by kind. */

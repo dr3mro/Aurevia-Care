@@ -33,9 +33,7 @@ async function expectNoBlockingViolations(page: Page): Promise<void> {
   const blocking = results.violations.filter(
     (violation) => violation.impact === 'serious' || violation.impact === 'critical',
   );
-  expect(
-    blocking.map((violation) => `${violation.id}: ${violation.help}`),
-  ).toEqual([]);
+  expect(blocking.map((violation) => `${violation.id}: ${violation.help}`)).toEqual([]);
 }
 
 test('home page has the expected title and the skip link is first in tab order', async ({
@@ -63,9 +61,7 @@ test('home page has the expected title and the skip link is first in tab order',
   await expectNoBlockingViolations(page);
 });
 
-test('design preview has no serious or critical accessibility violations', async ({
-  page,
-}) => {
+test('design preview has no serious or critical accessibility violations', async ({ page }) => {
   await page.goto('/design-preview');
   await expect(page.locator('main#main h2').first()).toBeVisible();
   await expectNoBlockingViolations(page);

@@ -9,11 +9,11 @@ import { routes } from './routes';
 describe('LAB-02 result-entry feature route', () => {
   it('registers one laboratory results route', () => {
     expect(routes).toHaveLength(1);
-    expect(routes[0]!.pattern).toBe('/lab/results/entry');
+    expect(required(routes[0]).pattern).toBe('/lab/results/entry');
   });
 
   it('lazily loads a page that renders the entry grid and verification summary', async () => {
-    const Page = routes[0]!.component;
+    const Page = required(routes[0]).component;
     render(
       <ThemeProvider>
         <I18nProvider initialLocale="en">
@@ -28,3 +28,10 @@ describe('LAB-02 result-entry feature route', () => {
     expect(screen.getByRole('region', { name: 'Verification and release summary' })).toBeTruthy();
   });
 });
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

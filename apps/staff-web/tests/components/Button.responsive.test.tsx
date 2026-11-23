@@ -115,7 +115,9 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
       renderButton(
         <>
           <Button pressed>Save patient</Button>
-          <Button variant="secondary" pressed={false} type="submit">Cancel</Button>
+          <Button variant="secondary" pressed={false} type="submit">
+            Cancel
+          </Button>
           <Button disabled>Unavailable</Button>
           <Button>Untouched</Button>
         </>,
@@ -123,7 +125,7 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
 
       const primary = screen.getByRole('button', { name: 'Save patient' });
       const secondary = screen.getByRole('button', { name: 'Cancel' });
-      const unavailable = screen.getByRole('button', { name: 'Unavailable' }) as HTMLButtonElement;
+      const unavailable = screen.getByRole<HTMLButtonElement>('button', { name: 'Unavailable' });
       const untouched = screen.getByRole('button', { name: 'Untouched' });
 
       expect(untouched.hasAttribute('aria-pressed')).toBe(false);
@@ -163,7 +165,7 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
     it('opts into the stylesheet target without an inline size override', () => {
       installMatchMedia(VIEWPORTS[breakpoint]);
       expect(renderHook(() => usePointerCoarse()).result.current).toBe(
-        VIEWPORTS[breakpoint]?.coarse,
+        VIEWPORTS[breakpoint].coarse,
       );
       renderButton(<Button>Save</Button>);
 
@@ -177,7 +179,7 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
       const fire = installMatchMedia(VIEWPORTS[breakpoint]);
       const { result } = renderHook(() => usePointerCoarse());
       act(() => fire('(pointer: coarse)', !result.current));
-      expect(result.current).toBe(!VIEWPORTS[breakpoint]?.coarse);
+      expect(result.current).toBe(!VIEWPORTS[breakpoint].coarse);
 
       renderButton(<Button>Save</Button>);
       const button = screen.getByRole('button', { name: 'Save' });

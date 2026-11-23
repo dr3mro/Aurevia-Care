@@ -98,7 +98,7 @@ const LONG_ARABIC = 'اسم مريض تجريبي طويل جداً يجب أن 
 /** A single synthetic row with deliberately long names in both scripts. */
 function longAppointment(): Appointment {
   return {
-    ...syntheticAlphaAppointments[0]!,
+    ...required(syntheticAlphaAppointments[0]),
     id: 'synthetic-long-name',
     patientName: { latinName: LONG_ENGLISH, localName: LONG_ARABIC },
   };
@@ -132,14 +132,7 @@ function style(node: Element | null): string {
 }
 
 const COLUMNS_EN = ['Patient', 'Time', 'Protected resource', 'Visit state', 'Assign to', 'Actions'];
-const COLUMNS_AR = [
-  'المريض',
-  'الوقت',
-  'المورد المحمي',
-  'حالة الزيارة',
-  'إسناد إلى',
-  'إجراءات',
-];
+const COLUMNS_AR = ['المريض', 'الوقت', 'المورد المحمي', 'حالة الزيارة', 'إسناد إلى', 'إجراءات'];
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -151,16 +144,18 @@ describe('responsive AppointmentWorklist (WEB-07, UX-01)', () => {
   it('shows compact rows as labelled stacked cards with every clinical field', () => {
     renderWorklist('compact');
     const caption = schedulingText('en', 'appointments');
-    const region = screen.getByRole('region', { name: caption }) as HTMLElement;
+    const region = screen.getByRole('region', { name: caption });
     expect(region.className).toContain('table-region');
     expect(region.tabIndex).toBe(0);
     expect(region.getAttribute('data-layout')).toBe('cards');
 
     const table = within(region).getByRole('table', { name: caption });
     expect(table.getAttribute('data-layout')).toBe('cards');
-    expect(within(table).getAllByRole('columnheader').map((node) => node.textContent)).toEqual(
-      COLUMNS_EN,
-    );
+    expect(
+      within(table)
+        .getAllByRole('columnheader')
+        .map((node) => node.textContent),
+    ).toEqual(COLUMNS_EN);
 
     // The card class sits on tbody so the stylesheet's `.card-list > *` rule
     // gives every row a card border and padding; rows stay real table rows.
@@ -180,14 +175,20 @@ describe('responsive AppointmentWorklist (WEB-07, UX-01)', () => {
       }
     }
 
-    const first = cards[0]!;
+    const first = required(cards[0]);
     expect(within(first).getByRole('rowheader').textContent).toContain('Synthetic Sara');
-    expect(within(first).getByRole('rowheader').closest('tr')?.querySelector('time')?.getAttribute('datetime')).toBe(
-      '2026-03-09T08:15:00Z',
-    );
+    expect(
+      within(first)
+        .getByRole('rowheader')
+        .closest('tr')
+        ?.querySelector('time')
+        ?.getAttribute('datetime'),
+    ).toBe('2026-03-09T08:15:00Z');
     // Time, patient, status and the next action are all in the same card.
     expect(within(first).getByText(schedulingText('en', 'stateInProgress'))).toBeTruthy();
-    expect(within(first).getByRole('button', { name: schedulingText('en', 'checkIn') })).toBeTruthy();
+    expect(
+      within(first).getByRole('button', { name: schedulingText('en', 'checkIn') }),
+    ).toBeTruthy();
     expect(within(first).getByLabelText(schedulingText('en', 'assign'))).toBeTruthy();
   });
 
@@ -198,9 +199,11 @@ describe('responsive AppointmentWorklist (WEB-07, UX-01)', () => {
       expect(screen.queryByRole('region', { name: caption })).toBeNull();
       const table = screen.getByRole('table', { name: caption });
       expect(table.getAttribute('data-layout')).toBe('table');
-      expect(within(table).getAllByRole('columnheader').map((node) => node.textContent)).toEqual(
-        COLUMNS_EN,
-      );
+      expect(
+        within(table)
+          .getAllByRole('columnheader')
+          .map((node) => node.textContent),
+      ).toEqual(COLUMNS_EN);
       expect((table.querySelector('tbody') as HTMLElement).className).not.toContain('card-list');
       for (const cell of table.querySelectorAll('th, td')) {
         expect(style(cell)).not.toContain('display: none');
@@ -234,8 +237,11 @@ describe('responsive AppointmentWorklist (WEB-07, UX-01)', () => {
     for (const band of ['compact', 'medium', 'expanded'] as const) {
       const view = renderWorklist(band);
       const stops = Array.from(
-        screen.getByRole('table', { name: schedulingText('en', 'appointments') })
-          .closest('div[style]')!.querySelectorAll('button, select, [tabindex="0"]'),
+        required(
+          screen
+            .getByRole('table', { name: schedulingText('en', 'appointments') })
+            .closest('div[style]'),
+        ).querySelectorAll('button, select, [tabindex="0"]'),
       );
       expect(stops.slice(0, 2).map((node) => node.textContent)).toEqual(['Day', 'Week']);
       const controls = stops
@@ -258,15 +264,15 @@ describe('responsive AppointmentWorklist (WEB-07, UX-01)', () => {
       const checks = screen.getAllByRole('button', { name: schedulingText('en', 'checkIn') });
       expect(checks).toHaveLength(3);
       expect((checks[2] as HTMLButtonElement).disabled).toBe(false);
-      fireEvent.click(checks[2]!);
+      fireEvent.click(required(checks[2]));
       expect(onCheckIn).toHaveBeenCalledWith('apt-001');
 
-      const selects = screen.getAllByLabelText(schedulingText('en', 'assign')) as HTMLSelectElement[];
+      const selects = screen.getAllByLabelText<HTMLSelectElement>(schedulingText('en', 'assign'));
       expect(selects).toHaveLength(3);
       expect(selects.every((select) => select.className.includes('field'))).toBe(true);
       expect(selects.every((select) => select.className.includes('touch'))).toBe(true);
       expect(selects.every((select) => select.style.fontSize === '16px')).toBe(true);
-      fireEvent.change(selects[2]!, { target: { value: 'synthetic.nurse' } });
+      fireEvent.change(required(selects[2]), { target: { value: 'synthetic.nurse' } });
       expect(onAssign).toHaveBeenCalledWith('apt-001', 'synthetic.nurse');
       view.unmount();
     }
@@ -277,16 +283,16 @@ describe('responsive AppointmentWorklist (WEB-07, UX-01)', () => {
     const caption = schedulingText('en', 'appointments');
     expect(screen.getByRole('region', { name: caption })).toBeTruthy();
     const table = screen.getByRole('table', { name: caption });
-    expect(within(table).getByText(schedulingText('en', 'noAppointments')).getAttribute('colspan')).toBe(
-      '6',
-    );
+    expect(
+      within(table).getByText(schedulingText('en', 'noAppointments')).getAttribute('colspan'),
+    ).toBe('6');
     expect((table.querySelector('tbody') as HTMLElement).querySelectorAll('tr')).toHaveLength(1);
 
     fireEvent.click(screen.getByRole('button', { name: schedulingText('en', 'week') }));
     expect(onRangeChange).toHaveBeenCalledWith('week');
     fireEvent.click(screen.getByRole('button', { name: schedulingText('en', 'day') }));
     expect(onRangeChange).toHaveBeenCalledWith('day');
-    view.unmount!();
+    view.unmount();
 
     renderWorklist('medium', []);
     expect(screen.getByRole('table', { name: caption })).toBeTruthy();
@@ -347,13 +353,15 @@ describe('responsive AppointmentWorklist (WEB-07, UX-01)', () => {
     expect(document.documentElement.lang).toBe('ar');
 
     const caption = schedulingText('ar', 'appointments');
-    const region = screen.getByRole('region', { name: caption }) as HTMLElement;
+    const region = screen.getByRole('region', { name: caption });
     expect(region.className).toContain('table-region');
     const table = within(region).getByRole('table', { name: caption });
     expect((table.querySelector('tbody') as HTMLElement).className).toContain('card-list');
-    expect(within(table).getAllByRole('columnheader').map((node) => node.textContent)).toEqual(
-      COLUMNS_AR,
-    );
+    expect(
+      within(table)
+        .getAllByRole('columnheader')
+        .map((node) => node.textContent),
+    ).toEqual(COLUMNS_AR);
     for (const label of [
       schedulingText('ar', 'day'),
       schedulingText('ar', 'week'),
@@ -383,3 +391,10 @@ describe('responsive AppointmentWorklist (WEB-07, UX-01)', () => {
     expect(within(table).getByLabelText(schedulingText('ar', 'assign'))).toBeTruthy();
   });
 });
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

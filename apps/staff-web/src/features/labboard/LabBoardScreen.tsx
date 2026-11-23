@@ -10,12 +10,7 @@ import {
   TURNAROUND_STAGES,
 } from './domain';
 import type { TurnaroundBoard, TurnaroundOrder, TurnaroundStage } from './domain';
-import {
-  labBoardMessage,
-  labBoardText,
-  numberText,
-  stageColumnKey,
-} from './labBoardMessages';
+import { labBoardMessage, labBoardText, numberText, stageColumnKey } from './labBoardMessages';
 
 /**
  * Fixed alert colour for an overdue card. The token set has no danger token yet
@@ -144,7 +139,15 @@ export function TurnaroundColumn({ stage, orders, locale }: TurnaroundColumnProp
       {orders.length === 0 ? (
         <p>{labBoardText(locale, 'noOrders')}</p>
       ) : (
-        <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: tokens.spacing.sm }}>
+        <ol
+          style={{
+            listStyle: 'none',
+            margin: 0,
+            padding: 0,
+            display: 'grid',
+            gap: tokens.spacing.sm,
+          }}
+        >
           {orders.map((order) => (
             <TurnaroundCard key={order.id} order={order} locale={locale} />
           ))}

@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import type { WaitingItemWire } from './domain';
-import { fallbackFor, isStuck, scriptForName, STALE_WAIT_MINUTES, stuckCount, waitingCount } from './domain';
+import {
+  fallbackFor,
+  isStuck,
+  scriptForName,
+  STALE_WAIT_MINUTES,
+  stuckCount,
+  waitingCount,
+} from './domain';
 import { imagingBoard, labBoard, pharmacyBoard } from './fixtures';
 
 /** A settled item; every test overrides only the axis it exercises. */
@@ -32,23 +39,35 @@ describe('partner board counts', () => {
 
 describe('isStuck (XCH-02 and XCH-03)', () => {
   it('treats a failed transmission as stuck even when the workflow looks complete', () => {
-    expect(isStuck(settled({ transmission: 'failed', workflow: 'completed', review: 'resolved' }))).toBe(true);
+    expect(
+      isStuck(settled({ transmission: 'failed', workflow: 'completed', review: 'resolved' })),
+    ).toBe(true);
   });
 
   it('treats a pending transmission at the stale threshold as stuck', () => {
     expect(
-      isStuck(settled({ transmission: 'pending', ageMinutes: STALE_WAIT_MINUTES, review: 'resolved' })),
+      isStuck(
+        settled({ transmission: 'pending', ageMinutes: STALE_WAIT_MINUTES, review: 'resolved' }),
+      ),
     ).toBe(true);
   });
 
   it('does not treat a young pending transmission as stuck', () => {
     expect(
-      isStuck(settled({ transmission: 'pending', ageMinutes: STALE_WAIT_MINUTES - 1, review: 'resolved' })),
+      isStuck(
+        settled({
+          transmission: 'pending',
+          ageMinutes: STALE_WAIT_MINUTES - 1,
+          review: 'resolved',
+        }),
+      ),
     ).toBe(false);
   });
 
   it('does not take the pending branch for a sent transmission', () => {
-    expect(isStuck(settled({ transmission: 'sent', ageMinutes: 999, review: 'resolved' }))).toBe(false);
+    expect(isStuck(settled({ transmission: 'sent', ageMinutes: 999, review: 'resolved' }))).toBe(
+      false,
+    );
   });
 
   it('treats a rejection or a clarification request as stuck, but acceptance or no response as not stuck', () => {
@@ -66,7 +85,11 @@ describe('isStuck (XCH-02 and XCH-03)', () => {
   it('does not let a transmission acknowledgement close a clinical task on track', () => {
     expect(
       isStuck(
-        settled({ transmission: 'delivered', review: 'acknowledged', recipientResponse: 'accepted' }),
+        settled({
+          transmission: 'delivered',
+          review: 'acknowledged',
+          recipientResponse: 'accepted',
+        }),
       ),
     ).toBe(false);
   });

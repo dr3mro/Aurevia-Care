@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useActiveOrganization } from './activeOrganization';
 import { TransportError } from './transport';
 
@@ -58,13 +58,21 @@ export function useApi<T>(load: ApiLoader<T>, deps: readonly unknown[]): ApiResu
   const key = requestKey(organizationId, depsKey, generation);
   const [state, setState] = useState<RequestState<T>>(() => ({ key, status: 'loading' }));
   const loader = useRef(load);
-  loader.current = load;
+
+  // Commit the new key together with a cleared result while rendering; the key
+  // is never updated on its own, so a stale result can never match the current
+  // key, even when the dependencies return to an earlier value.
+  if (state.key !== key) {
+    setState({ key, status: 'loading' });
+  }
+
+  // Keep the latest loader in a ref without writing to it during render.
+  useLayoutEffect(() => {
+    loader.current = load;
+  });
 
   useEffect(() => {
     const controller = new AbortController();
-    // Commit the new key together with a cleared result; the key is never
-    // updated on its own, so a stale result can never match the current key.
-    setState({ key, status: 'loading' });
     loader.current(controller.signal).then(
       (data) => {
         if (!controller.signal.aborted) {
@@ -80,7 +88,7 @@ export function useApi<T>(load: ApiLoader<T>, deps: readonly unknown[]): ApiResu
     return () => controller.abort();
   }, [key]);
 
-  const reload = useCallback(() => setGeneration((value) => value + 1), []);
+  const reload = useCallback(() => setGeneration((value) => value + 1), [setGeneration]);
 
   if (state.key !== key || state.status === 'loading') {
     return { status: 'loading', data: undefined, error: undefined, reload };

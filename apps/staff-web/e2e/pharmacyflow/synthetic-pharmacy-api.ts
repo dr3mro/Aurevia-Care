@@ -1,4 +1,4 @@
-import type { Page, Route } from '@playwright/test';
+import type { Page, Request, Route } from '@playwright/test';
 import type {
   InboxItemResponse,
   InboxPageResponse,
@@ -45,10 +45,10 @@ const threadId = 'thread-synthetic-001';
 const proposalId = 'proposal-synthetic-001';
 
 /** The original catalog entry in the shared prescriber fixture. */
-const originalEntry: CatalogEntryView = syntheticProposal.proposal.original;
+const originalEntry: CatalogEntryView = syntheticProposal.original;
 
 /** The tagged alternative proposed by the synthetic pharmacy. */
-const proposedEntry: CatalogEntryView = syntheticProposal.proposal.proposed;
+const proposedEntry: CatalogEntryView = syntheticProposal.proposed;
 
 /** Fixed synthetic time for facts that carry no clock-derived timestamp. */
 const occurredAt = '2026-11-22T09:00:00Z';
@@ -126,6 +126,19 @@ function statusView(store: SyntheticPharmacyStore): StatusViewResponse {
   };
 }
 
+/** The synthetic actor that records each kind of fact. */
+function actorFor(type: string): string {
+  switch (type) {
+    case 'submitted':
+    case 'substitution_approved':
+      return 'synthetic.prescriber';
+    case 'delivery_confirmed':
+      return 'synthetic.partner';
+    default:
+      return 'synthetic.pharmacist';
+  }
+}
+
 /**
  * Append one immutable fact and advance the prescription version. Acceptance,
  * clarification, substitution and dispensing are never collapsed into one
@@ -149,11 +162,7 @@ function appendEvent(
     prescriptionId: prescription.id,
     version,
     type,
-    actorId: type === 'submitted' || type === 'substitution_approved'
-      ? 'synthetic.prescriber'
-      : type === 'delivery_confirmed'
-        ? 'synthetic.partner'
-        : 'synthetic.pharmacist',
+    actorId: actorFor(type),
     occurredAt: instantFor(factNumbers[type] ?? version),
     detail,
     dispensedBy: evidence?.dispensedBy ?? null,
@@ -201,7 +210,6 @@ function openSubstitution(store: SyntheticPharmacyStore): ProposalViewResponse {
     proposal: {
       ...syntheticProposal,
       id: proposalId,
-      organizationId,
       original: originalEntry,
       proposed: proposedEntry,
       state: 'pending',
@@ -224,10 +232,7 @@ function bodyOf(request: { postData(): string | null }): Record<string, unknown>
  * current projection. Real writes always send this precondition; the raw
  * proposal-creation command in the journey does not and is not checked.
  */
-function isStale(
-  request: { headers(): Record<string, string> },
-  expectedVersion: number,
-): boolean {
+function isStale(request: { headers(): Record<string, string> }, expectedVersion: number): boolean {
   // Playwright exposes route request headers as a lower-cased plain object.
   const header = request.headers()['if-match'];
   return header !== undefined && Number(header) !== expectedVersion;
@@ -253,6 +258,362 @@ function recordProposalCommand(store: SyntheticPharmacyStore, shortFormUsed: boo
   }
 }
 
+/** Everything one intercepted request needs to be answered. */
+interface RequestContext {
+  route: Route;
+  request: Request;
+  url: URL;
+  path: string;
+  method: string;
+  store: SyntheticPharmacyStore;
+}
+
+/** A route handler answers the request and returns true, or declines with false. */
+type RouteHandler = (context: RequestContext) => Promise<boolean>;
+
+/** Render one JSON body field as text, treating an absent field as empty. */
+function textOf(value: unknown): string {
+  switch (typeof value) {
+    case 'string':
+      return value;
+    case 'number':
+    case 'boolean':
+    case 'bigint':
+      return String(value);
+    case 'symbol':
+    case 'undefined':
+    case 'object':
+    case 'function':
+    default:
+      return '';
+  }
+}
+
+/** Answer a request for an object that is not the one held in the store. */
+async function notFound({ route }: RequestContext): Promise<true> {
+  await json(route, { code: 'NOT_FOUND' }, 404);
+  return true;
+}
+
+/** True when the request is `method` and `path` matches; returns the match. */
+function matchPath(
+  { method, path }: RequestContext,
+  verb: string,
+  pattern: RegExp,
+): RegExpExecArray | null {
+  return method === verb ? pattern.exec(path) : null;
+}
+
+/** Decode the first captured path segment. */
+function idFrom(match: RegExpExecArray): string {
+  return decodeURIComponent(match[1] ?? '');
+}
+
+/** transmit creates the shared prescription and delivery facts. */
+const handleTransmit: RouteHandler = async (context) => {
+  const match = matchPath(context, 'POST', /^\/api\/v1\/prescriptions\/([^/]+)\/transmit$/);
+  if (match === null) {
+    return false;
+  }
+  if (idFrom(match) !== prescriptionId) {
+    return notFound(context);
+  }
+  const item = routePrescription(context.store);
+  context.store.calls.push(`POST /api/v1/prescriptions/${prescriptionId}/confirm-delivery`);
+  await json(context.route, { id: item.id, version: item.version, state: item.state });
+  return true;
+};
+
+/** confirm-delivery acknowledges the facts transmit created. */
+const handleConfirmDelivery: RouteHandler = async (context) => {
+  const match = matchPath(context, 'POST', /^\/api\/v1\/prescriptions\/([^/]+)\/confirm-delivery$/);
+  if (match === null) {
+    return false;
+  }
+  if (idFrom(match) !== prescriptionId) {
+    return notFound(context);
+  }
+  await json(context.route, {
+    id: prescriptionId,
+    version: context.store.prescription?.version ?? 2,
+    state: 'delivery_confirmed',
+  });
+  return true;
+};
+
+/** The pharmacy inbox, filtered by the optional status query. */
+const handleInboxList: RouteHandler = async ({ route, url, path, method, store }) => {
+  if (path !== '/api/v1/pharmacy/inbox' || method !== 'GET') {
+    return false;
+  }
+  const status = url.searchParams.get('status');
+  const prescription = store.prescription;
+  const visible =
+    prescription !== null && (status === null || status === 'all' || status === prescription.state);
+  const inboxPage: InboxPageResponse = {
+    items: visible ? [prescription] : [],
+    nextCursor: null,
+  };
+  await json(route, inboxPage);
+  return true;
+};
+
+/** The single pharmacy route command. */
+const handleInboxRoute: RouteHandler = async ({ route, path, method, store }) => {
+  if (path !== '/api/v1/pharmacy/inbox/route' || method !== 'POST') {
+    return false;
+  }
+  const item = routePrescription(store);
+  recordRoutingCommands(store);
+  await json(route, item);
+  return true;
+};
+
+/** One inbox item by id. */
+const handleInboxItem: RouteHandler = async (context) => {
+  const match = matchPath(context, 'GET', /^\/api\/v1\/pharmacy\/inbox\/([^/]+)$/);
+  if (match === null) {
+    return false;
+  }
+  const item = context.store.prescription;
+  if (idFrom(match) !== item?.id) {
+    return notFound(context);
+  }
+  await json(context.route, item);
+  return true;
+};
+
+/** The status projection for one prescription. */
+const handleStatusRead: RouteHandler = async (context) => {
+  const match = matchPath(context, 'GET', /^\/api\/v1\/pharmacy\/status\/([^/]+)$/);
+  if (match === null) {
+    return false;
+  }
+  const { store } = context;
+  if (idFrom(match) !== store.prescription?.id) {
+    return notFound(context);
+  }
+  await json(context.route, statusView(store));
+  return true;
+};
+
+/** Append the status fact for one pharmacy command; undefined when unknown. */
+function applyStatusAction(
+  store: SyntheticPharmacyStore,
+  prescription: InboxItemResponse,
+  action: string | undefined,
+  body: Record<string, unknown>,
+): StatusEventResponse | undefined {
+  switch (action) {
+    case undefined:
+      return undefined;
+    case 'clarification': {
+      const question = textOf(body.question);
+      const event = appendEvent(store, 'clarification', question);
+      prescription.state = 'clarification';
+      openClarification(store, question);
+      return event;
+    }
+    case 'accept': {
+      const event = appendEvent(store, 'accepted', null);
+      prescription.state = 'accepted';
+      return event;
+    }
+    case 'reject': {
+      const event = appendEvent(store, 'rejected', textOf(body.reason));
+      prescription.state = 'rejected';
+      return event;
+    }
+    case 'dispensing-evidence': {
+      const event = appendEvent(store, 'dispensed', null, {
+        dispensedBy: textOf(body.dispensedBy),
+        dispensedAt: textOf(body.dispensedAt),
+        handedOver: textOf(body.handedOver),
+      });
+      prescription.state = 'dispensed';
+      return event;
+    }
+    default:
+      return undefined;
+  }
+}
+
+/** Pharmacy status commands: clarification, accept, reject, dispensing evidence. */
+const handleStatusCommand: RouteHandler = async (context) => {
+  const match = matchPath(context, 'POST', /^\/api\/v1\/pharmacy\/status\/([^/]+)\/([a-z-]+)$/);
+  const { store, request, route } = context;
+  const prescription = store.prescription;
+  if (match === null || prescription === null) {
+    return false;
+  }
+  if (idFrom(match) !== prescription.id) {
+    return notFound(context);
+  }
+  if (isStale(request, prescription.version)) {
+    await refuseStale(route);
+    return true;
+  }
+  const event = applyStatusAction(store, prescription, match[2], bodyOf(request));
+  if (event === undefined) {
+    return false;
+  }
+  await json(route, event);
+  return true;
+};
+
+/** A clarification thread by id; other ids fall through to the 404. */
+const handleThreadRead: RouteHandler = async (context) => {
+  const match = matchPath(context, 'GET', /^\/api\/v1\/pharmacy\/clarifications\/([^/]+)$/);
+  const { thread } = context.store;
+  if (match === null || idFrom(match) !== thread?.thread.id) {
+    return false;
+  }
+  await json(context.route, thread);
+  return true;
+};
+
+/** The prescriber's answer, which follows the question on the thread. */
+const handleThreadAnswer: RouteHandler = async (context) => {
+  const match = matchPath(
+    context,
+    'POST',
+    /^\/api\/v1\/pharmacy\/clarifications\/([^/]+)\/answer$/,
+  );
+  const { store, request, route } = context;
+  const thread = store.thread;
+  if (match === null || idFrom(match) !== thread?.thread.id) {
+    return false;
+  }
+  if (isStale(request, thread.thread.version)) {
+    await refuseStale(route);
+    return true;
+  }
+  const body = bodyOf(request);
+  const answerBody = textOf(body.answerBody);
+  const amendedRevisionId = textOf(body.amendedRevisionId);
+  // The answer must follow the question even though no new status fact
+  // accompanies it, so derive its instant from the fact trail, not from
+  // the number of entries already on the thread.
+  const answeredAt = instantFor(store.events.length + 2);
+  thread.thread = {
+    ...thread.thread,
+    state: 'answered',
+    version: thread.thread.version + 1,
+    answerBody,
+    amendedRevisionId,
+    answeredAt,
+    answeredBy: 'synthetic.prescriber',
+  };
+  thread.entries = [
+    ...thread.entries,
+    {
+      ...syntheticAnswerEntry,
+      id: 'clarification-entry-answer',
+      body: answerBody,
+      amendedRevisionId,
+      occurredAt: answeredAt,
+    },
+  ];
+  await json(route, thread);
+  return true;
+};
+
+/** The short proposal-creation command. */
+const handleProposalShortCreate: RouteHandler = async ({ route, path, method, store }) => {
+  if (path !== '/api/v1/pharmacy/substitutions' || method !== 'POST') {
+    return false;
+  }
+  recordProposalCommand(store, true);
+  await json(route, openSubstitution(store));
+  return true;
+};
+
+/** The long proposal-creation command, scoped to the prescription. */
+const handleProposalCreate: RouteHandler = async (context) => {
+  const match = matchPath(
+    context,
+    'POST',
+    /^\/api\/v1\/pharmacy\/substitutions\/([^/]+)\/proposals$/,
+  );
+  if (match === null) {
+    return false;
+  }
+  if (idFrom(match) !== prescriptionId) {
+    return notFound(context);
+  }
+  recordProposalCommand(context.store, false);
+  await json(context.route, openSubstitution(context.store));
+  return true;
+};
+
+/** A substitution proposal by id; other ids fall through to the 404. */
+const handleProposalRead: RouteHandler = async (context) => {
+  const match = matchPath(context, 'GET', /^\/api\/v1\/pharmacy\/substitutions\/([^/]+)$/);
+  const { proposal } = context.store;
+  if (match === null || idFrom(match) !== proposal?.proposal.id) {
+    return false;
+  }
+  await json(context.route, proposal);
+  return true;
+};
+
+/** Apply the prescriber's decision to the proposal and the prescription. */
+function decideProposal(
+  store: SyntheticPharmacyStore,
+  proposal: ProposalViewResponse,
+  decision: string | undefined,
+): void {
+  if (decision === 'approve') {
+    proposal.proposal = { ...proposal.proposal, state: 'approved' };
+    proposal.appliedRevision = syntheticSignedRevision;
+    if (store.prescription !== null) {
+      store.prescription.medication = syntheticSignedRevision.replacement.tradeName;
+    }
+    appendEvent(store, 'substitution_approved', `Signed revision ${syntheticSignedRevision.id}`);
+  } else {
+    proposal.proposal = { ...proposal.proposal, state: 'declined', note: null };
+    proposal.appliedRevision = null;
+  }
+}
+
+/** Approve or decline a substitution proposal. */
+const handleProposalCommand: RouteHandler = async (context) => {
+  const match = matchPath(
+    context,
+    'POST',
+    /^\/api\/v1\/pharmacy\/substitutions\/([^/]+)\/(approve|decline)$/,
+  );
+  const { store, request, route } = context;
+  const proposal = store.proposal;
+  if (match === null || idFrom(match) !== proposal?.proposal.id) {
+    return false;
+  }
+  if (isStale(request, proposal.proposal.version)) {
+    await refuseStale(route);
+    return true;
+  }
+  decideProposal(store, proposal, match[2]);
+  await json(route, proposal);
+  return true;
+};
+
+/** Handlers in match order; the first one that answers wins. */
+const handlers: readonly RouteHandler[] = [
+  handleTransmit,
+  handleConfirmDelivery,
+  handleInboxList,
+  handleInboxRoute,
+  handleInboxItem,
+  handleStatusRead,
+  handleStatusCommand,
+  handleThreadRead,
+  handleThreadAnswer,
+  handleProposalShortCreate,
+  handleProposalCreate,
+  handleProposalRead,
+  handleProposalCommand,
+];
+
 /** Install one stateful route handler on one role's page. */
 async function install(
   page: Page,
@@ -270,224 +631,14 @@ async function install(
   const handler = async (route: Route): Promise<void> => {
     const request = route.request();
     const url = new URL(request.url());
-    const path = url.pathname;
     const method = request.method();
-    store.calls.push(`${method} ${path}`);
-
-    // The two logical prescription commands: transmit creates the shared
-    // prescription and delivery facts; confirm-delivery acknowledges them.
-    const transmit = /^\/api\/v1\/prescriptions\/([^/]+)\/transmit$/.exec(path);
-    if (transmit !== null && method === 'POST') {
-      if (decodeURIComponent(transmit[1] ?? '') !== prescriptionId) {
-        await json(route, { code: 'NOT_FOUND' }, 404);
-        return;
-      }
-      const item = routePrescription(store);
-      store.calls.push(`POST /api/v1/prescriptions/${prescriptionId}/confirm-delivery`);
-      await json(route, { id: item.id, version: item.version, state: item.state });
-      return;
-    }
-    const confirm = /^\/api\/v1\/prescriptions\/([^/]+)\/confirm-delivery$/.exec(path);
-    if (confirm !== null && method === 'POST') {
-      if (decodeURIComponent(confirm[1] ?? '') !== prescriptionId) {
-        await json(route, { code: 'NOT_FOUND' }, 404);
-        return;
-      }
-      await json(route, {
-        id: prescriptionId,
-        version: store.prescription?.version ?? 2,
-        state: 'delivery_confirmed',
-      });
-      return;
-    }
-
-    if (path === '/api/v1/pharmacy/inbox' && method === 'GET') {
-      const status = url.searchParams.get('status');
-      const items =
-        store.prescription === null
-          ? []
-          : status === null || status === 'all' || status === store.prescription.state
-            ? [store.prescription]
-            : [];
-      const inboxPage: InboxPageResponse = { items, nextCursor: null };
-      await json(route, inboxPage);
-      return;
-    }
-
-    if (path === '/api/v1/pharmacy/inbox/route' && method === 'POST') {
-      const item = routePrescription(store);
-      recordRoutingCommands(store);
-      await json(route, item);
-      return;
-    }
-
-    const inboxMatch = /^\/api\/v1\/pharmacy\/inbox\/([^/]+)$/.exec(path);
-    if (inboxMatch !== null && method === 'GET') {
-      const item = store.prescription;
-      if (item === null || decodeURIComponent(inboxMatch[1] ?? '') !== item.id) {
-        await json(route, { code: 'NOT_FOUND' }, 404);
-        return;
-      }
-      await json(route, item);
-      return;
-    }
-
-    const statusRead = /^\/api\/v1\/pharmacy\/status\/([^/]+)$/.exec(path);
-    if (statusRead !== null && method === 'GET') {
-      if (store.prescription === null ||
-          decodeURIComponent(statusRead[1] ?? '') !== store.prescription.id) {
-        await json(route, { code: 'NOT_FOUND' }, 404);
-        return;
-      }
-      await json(route, statusView(store));
-      return;
-    }
-
-    const statusCommand = /^\/api\/v1\/pharmacy\/status\/([^/]+)\/([a-z-]+)$/.exec(path);
-    if (statusCommand !== null && method === 'POST' && store.prescription !== null) {
-      const action = statusCommand[2];
-      if (decodeURIComponent(statusCommand[1] ?? '') !== store.prescription.id) {
-        await json(route, { code: 'NOT_FOUND' }, 404);
-        return;
-      }
-      if (isStale(request, store.prescription.version)) {
-        await refuseStale(route);
-        return;
-      }
-      const body = bodyOf(request);
-      if (action === 'clarification') {
-        const question = String(body['question'] ?? '');
-        const event = appendEvent(store, 'clarification', question);
-        store.prescription.state = 'clarification';
-        openClarification(store, question);
-        await json(route, event);
-        return;
-      }
-      if (action === 'accept') {
-        const event = appendEvent(store, 'accepted', null);
-        store.prescription.state = 'accepted';
-        await json(route, event);
-        return;
-      }
-      if (action === 'reject') {
-        const event = appendEvent(store, 'rejected', String(body['reason'] ?? ''));
-        store.prescription.state = 'rejected';
-        await json(route, event);
-        return;
-      }
-      if (action === 'dispensing-evidence') {
-        const event = appendEvent(store, 'dispensed', null, {
-          dispensedBy: String(body['dispensedBy'] ?? ''),
-          dispensedAt: String(body['dispensedAt'] ?? ''),
-          handedOver: String(body['handedOver'] ?? ''),
-        });
-        store.prescription.state = 'dispensed';
-        await json(route, event);
+    store.calls.push(`${method} ${url.pathname}`);
+    const context: RequestContext = { route, request, url, path: url.pathname, method, store };
+    for (const candidate of handlers) {
+      if (await candidate(context)) {
         return;
       }
     }
-
-    const threadRead = /^\/api\/v1\/pharmacy\/clarifications\/([^/]+)$/.exec(path);
-    if (threadRead !== null && method === 'GET' && store.thread !== null) {
-      if (decodeURIComponent(threadRead[1] ?? '') === store.thread.thread.id) {
-        await json(route, store.thread);
-        return;
-      }
-    }
-
-    const threadAnswer = /^\/api\/v1\/pharmacy\/clarifications\/([^/]+)\/answer$/.exec(path);
-    if (threadAnswer !== null && method === 'POST' && store.thread !== null) {
-      const thread = store.thread;
-      if (decodeURIComponent(threadAnswer[1] ?? '') === thread.thread.id) {
-        if (isStale(request, thread.thread.version)) {
-          await refuseStale(route);
-          return;
-        }
-        const body = bodyOf(request);
-        const answerBody = String(body['answerBody'] ?? '');
-        const amendedRevisionId = String(body['amendedRevisionId'] ?? '');
-        // The answer must follow the question even though no new status fact
-        // accompanies it, so derive its instant from the fact trail, not from
-        // the number of entries already on the thread.
-        const answeredAt = instantFor(store.events.length + 2);
-        thread.thread = {
-          ...thread.thread,
-          state: 'answered',
-          version: thread.thread.version + 1,
-          answerBody,
-          amendedRevisionId,
-          answeredAt,
-          answeredBy: 'synthetic.prescriber',
-        };
-        thread.entries = [
-          ...thread.entries,
-          {
-            ...syntheticAnswerEntry,
-            id: 'clarification-entry-answer',
-            body: answerBody,
-            amendedRevisionId,
-            occurredAt: answeredAt,
-          },
-        ];
-        await json(route, thread);
-        return;
-      }
-    }
-
-    if (path === '/api/v1/pharmacy/substitutions' && method === 'POST') {
-      recordProposalCommand(store, true);
-      await json(route, openSubstitution(store));
-      return;
-    }
-    const proposalCreate = /^\/api\/v1\/pharmacy\/substitutions\/([^/]+)\/proposals$/.exec(path);
-    if (proposalCreate !== null && method === 'POST') {
-      if (decodeURIComponent(proposalCreate[1] ?? '') !== prescriptionId) {
-        await json(route, { code: 'NOT_FOUND' }, 404);
-        return;
-      }
-      recordProposalCommand(store, false);
-      await json(route, openSubstitution(store));
-      return;
-    }
-
-    const proposalRead = /^\/api\/v1\/pharmacy\/substitutions\/([^/]+)$/.exec(path);
-    if (proposalRead !== null && method === 'GET' && store.proposal !== null) {
-      if (decodeURIComponent(proposalRead[1] ?? '') === store.proposal.proposal.id) {
-        await json(route, store.proposal);
-        return;
-      }
-    }
-
-    const proposalCommand = /^\/api\/v1\/pharmacy\/substitutions\/([^/]+)\/(approve|decline)$/.exec(
-      path,
-    );
-    if (proposalCommand !== null && method === 'POST' && store.proposal !== null) {
-      const proposal = store.proposal;
-      if (decodeURIComponent(proposalCommand[1] ?? '') === proposal.proposal.id) {
-        if (isStale(request, proposal.proposal.version)) {
-          await refuseStale(route);
-          return;
-        }
-        if (proposalCommand[2] === 'approve') {
-          proposal.proposal = { ...proposal.proposal, state: 'approved' };
-          proposal.appliedRevision = syntheticSignedRevision;
-          if (store.prescription !== null) {
-            store.prescription.medication = syntheticSignedRevision.replacement.tradeName;
-          }
-          appendEvent(
-            store,
-            'substitution_approved',
-            `Signed revision ${syntheticSignedRevision.id}`,
-          );
-        } else {
-          proposal.proposal = { ...proposal.proposal, state: 'declined', note: null };
-          proposal.appliedRevision = null;
-        }
-        await json(route, proposal);
-        return;
-      }
-    }
-
     await json(route, { code: 'NOT_FOUND' }, 404);
   };
 

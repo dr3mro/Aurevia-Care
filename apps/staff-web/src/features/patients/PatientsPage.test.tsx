@@ -22,7 +22,7 @@ vi.mock('../../api/transport', async (importOriginal) => {
 const sendMock = vi.mocked(send);
 
 function descriptorAt(call: number): RequestDescriptor {
-  return sendMock.mock.calls[call]![0] as RequestDescriptor;
+  return required(sendMock.mock.calls[call])[0];
 }
 
 function element(ui: ReactElement, organizationId: string, locale: Locale = 'en') {
@@ -56,10 +56,14 @@ function deferred<T>() {
 }
 
 function fillRegistration() {
-  fireEvent.change(screen.getByLabelText('Display name'), { target: { value: 'Synthetic New Patient' } });
+  fireEvent.change(screen.getByLabelText('Display name'), {
+    target: { value: 'Synthetic New Patient' },
+  });
   fireEvent.change(screen.getByLabelText('MRN'), { target: { value: 'MRN-2001' } });
   fireEvent.change(screen.getByLabelText('MRN issuer'), { target: { value: 'SYNTHETIC' } });
-  fireEvent.change(screen.getByLabelText('Date of birth (YYYY-MM-DD)'), { target: { value: '1992-08-03' } });
+  fireEvent.change(screen.getByLabelText('Date of birth (YYYY-MM-DD)'), {
+    target: { value: '1992-08-03' },
+  });
   fireEvent.change(screen.getByLabelText('Language code'), { target: { value: 'en' } });
 }
 
@@ -72,18 +76,22 @@ describe('PatientsPage states', () => {
     const pending = deferred<typeof syntheticAlphaPatients>();
     sendMock.mockReturnValueOnce(pending.promise);
     wrap(<PatientsPage />);
-    fireEvent.change(screen.getByRole('textbox', { name: 'Search by name' }), { target: { value: 'Layla' } });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search by name' }), {
+      target: { value: 'Layla' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Search' }));
 
     expect(screen.getByRole('heading', { name: stateViewText('en', 'loading') })).toBeTruthy();
-    pending.resolve(syntheticAlphaPatients as never);
+    pending.resolve(syntheticAlphaPatients);
     expect(await screen.findByText('Layla Haddad')).toBeTruthy();
   });
 
   it('shows the empty state for an empty search result', async () => {
     sendMock.mockResolvedValueOnce([]);
     wrap(<PatientsPage />);
-    fireEvent.change(screen.getByRole('textbox', { name: 'Search by name' }), { target: { value: 'Nobody' } });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search by name' }), {
+      target: { value: 'Nobody' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Search' }));
 
     expect(await screen.findByText(stateViewText('en', 'empty'))).toBeTruthy();
@@ -95,7 +103,9 @@ describe('PatientsPage states', () => {
     async (kind) => {
       sendMock.mockRejectedValueOnce(transportFailure(kind));
       wrap(<PatientsPage />);
-      fireEvent.change(screen.getByRole('textbox', { name: 'Search by name' }), { target: { value: 'Layla' } });
+      fireEvent.change(screen.getByRole('textbox', { name: 'Search by name' }), {
+        target: { value: 'Layla' },
+      });
       fireEvent.click(screen.getByRole('button', { name: 'Search' }));
 
       expect(await screen.findByText(stateViewText('en', 'error'))).toBeTruthy();
@@ -106,7 +116,9 @@ describe('PatientsPage states', () => {
   it('shows the forbidden state when the API answers 403', async () => {
     sendMock.mockRejectedValueOnce(transportFailure('forbidden'));
     wrap(<PatientsPage />);
-    fireEvent.change(screen.getByRole('textbox', { name: 'Search by name' }), { target: { value: 'Layla' } });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search by name' }), {
+      target: { value: 'Layla' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Search' }));
 
     expect(await screen.findByText(stateViewText('en', 'forbidden'))).toBeTruthy();
@@ -115,7 +127,9 @@ describe('PatientsPage states', () => {
   it('shows the session-expired state for an expired session', async () => {
     sendMock.mockRejectedValueOnce(transportFailure('session-expired'));
     wrap(<PatientsPage />);
-    fireEvent.change(screen.getByRole('textbox', { name: 'Search by name' }), { target: { value: 'Layla' } });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search by name' }), {
+      target: { value: 'Layla' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Search' }));
 
     expect(await screen.findByText(stateViewText('en', 'sessionExpired'))).toBeTruthy();
@@ -125,7 +139,9 @@ describe('PatientsPage states', () => {
 describe('PatientsPage search', () => {
   it('rejects a name shorter than two characters before any request is sent', async () => {
     wrap(<PatientsPage />);
-    fireEvent.change(screen.getByRole('textbox', { name: 'Search by name' }), { target: { value: ' A ' } });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search by name' }), {
+      target: { value: ' A ' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Search' }));
 
     expect(await screen.findByText('Enter at least two characters.')).toBeTruthy();
@@ -135,7 +151,9 @@ describe('PatientsPage search', () => {
   it('renders a result row with name, MRN, issuer and date of birth', async () => {
     sendMock.mockResolvedValueOnce([syntheticAlphaPatients[0]]);
     wrap(<PatientsPage />);
-    fireEvent.change(screen.getByRole('textbox', { name: 'Search by name' }), { target: { value: 'Layla' } });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search by name' }), {
+      target: { value: 'Layla' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Search' }));
 
     const table = await screen.findByRole('table', { name: 'Patient search results' });
@@ -154,7 +172,9 @@ describe('PatientsPage search', () => {
   it('renders an Arabic name as an isolated bidirectional run', async () => {
     sendMock.mockResolvedValueOnce([arabicPatientResponse]);
     wrap(<PatientsPage />);
-    fireEvent.change(screen.getByRole('textbox', { name: 'Search by name' }), { target: { value: 'ليلى' } });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search by name' }), {
+      target: { value: 'ليلى' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Search' }));
 
     const name = await screen.findByText('ليلى حداد');
@@ -167,7 +187,9 @@ describe('PatientsPage search', () => {
   it('renders the table and Arabic labels under RTL', async () => {
     sendMock.mockResolvedValueOnce([syntheticAlphaPatients[0]]);
     wrap(<PatientsPage />, alphaOrganizationId, 'ar');
-    fireEvent.change(screen.getByRole('textbox', { name: 'ابحث بالاسم' }), { target: { value: 'ليلى' } });
+    fireEvent.change(screen.getByRole('textbox', { name: 'ابحث بالاسم' }), {
+      target: { value: 'ليلى' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'بحث' }));
 
     expect(document.documentElement.dir).toBe('rtl');
@@ -177,7 +199,9 @@ describe('PatientsPage search', () => {
   it('clears the previous tenant rows before the new tenant responds', async () => {
     sendMock.mockResolvedValueOnce([syntheticAlphaPatients[0]]);
     const view = wrap(<PatientsPage />, alphaOrganizationId);
-    fireEvent.change(screen.getByRole('textbox', { name: 'Search by name' }), { target: { value: 'Layla' } });
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search by name' }), {
+      target: { value: 'Layla' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Search' }));
     expect(await screen.findByText('Layla Haddad')).toBeTruthy();
 
@@ -188,7 +212,7 @@ describe('PatientsPage search', () => {
 });
 
 describe('PatientsPage registration', () => {
-  it('shows the linked error summary and sends no command for an empty form', async () => {
+  it('shows the linked error summary and sends no command for an empty form', () => {
     wrap(<PatientsPage />);
     fireEvent.click(screen.getByRole('button', { name: 'Register' }));
     fireEvent.click(screen.getByRole('button', { name: 'Save registration' }));
@@ -206,7 +230,7 @@ describe('PatientsPage registration', () => {
     expect(sendMock).not.toHaveBeenCalled();
   });
 
-  it('links a malformed unknown-date reason to its own field', async () => {
+  it('links a malformed unknown-date reason to its own field', () => {
     wrap(<PatientsPage />);
     fireEvent.click(screen.getByRole('button', { name: 'Register' }));
     fillRegistration();
@@ -227,7 +251,10 @@ describe('PatientsPage registration', () => {
   });
 
   it('posts a registration and announces the created patient', async () => {
-    sendMock.mockResolvedValueOnce({ ...syntheticAlphaPatients[0]!, displayName: 'Synthetic New Patient' });
+    sendMock.mockResolvedValueOnce({
+      ...required(syntheticAlphaPatients[0]),
+      displayName: 'Synthetic New Patient',
+    });
     wrap(<PatientsPage />);
     fireEvent.click(screen.getByRole('button', { name: 'Register' }));
     fillRegistration();
@@ -239,15 +266,20 @@ describe('PatientsPage registration', () => {
     const descriptor = descriptorAt(0);
     expect(descriptor.method).toBe('POST');
     expect(descriptor.url).toBe('/api/v1/patients');
-    expect(descriptor.body?.['mrn']).toBe('MRN-2001');
+    expect(descriptor.body?.mrn).toBe('MRN-2001');
     expect(descriptor.headers['Idempotency-Key']).toMatch(/^[0-9a-f-]{36}$/);
   });
 
   it('registers with a coded unknown-date reason instead of a date of birth', async () => {
-    sendMock.mockResolvedValueOnce({ ...syntheticAlphaPatients[0]!, displayName: 'Synthetic Reason Patient' });
+    sendMock.mockResolvedValueOnce({
+      ...required(syntheticAlphaPatients[0]),
+      displayName: 'Synthetic Reason Patient',
+    });
     wrap(<PatientsPage />);
     fireEvent.click(screen.getByRole('button', { name: 'Register' }));
-    fireEvent.change(screen.getByLabelText('Display name'), { target: { value: 'Synthetic Reason Patient' } });
+    fireEvent.change(screen.getByLabelText('Display name'), {
+      target: { value: 'Synthetic Reason Patient' },
+    });
     fireEvent.change(screen.getByLabelText('MRN'), { target: { value: 'MRN-2002' } });
     fireEvent.change(screen.getByLabelText('MRN issuer'), { target: { value: 'SYNTHETIC' } });
     fireEvent.change(screen.getByLabelText('Unknown-date reason (code)'), {
@@ -258,12 +290,12 @@ describe('PatientsPage registration', () => {
 
     await waitFor(() => expect(sendMock).toHaveBeenCalledTimes(1));
     expect(screen.getByText('Registered Synthetic Reason Patient')).toBeTruthy();
-    expect(descriptorAt(0).body?.['dob']).toBeNull();
-    expect(descriptorAt(0).body?.['dobUnknownReason']).toBe('not_known');
+    expect(descriptorAt(0).body?.dob).toBeNull();
+    expect(descriptorAt(0).body?.dobUnknownReason).toBe('not_known');
   });
 
   it('sends only one registration for two rapid submits', async () => {
-    const pending = deferred<typeof syntheticAlphaPatients[number]>();
+    const pending = deferred<(typeof syntheticAlphaPatients)[number]>();
     sendMock.mockReturnValueOnce(pending.promise);
     wrap(<PatientsPage />);
     fireEvent.click(screen.getByRole('button', { name: 'Register' }));
@@ -274,7 +306,10 @@ describe('PatientsPage registration', () => {
 
     expect(sendMock).toHaveBeenCalledTimes(1);
     expect(descriptorAt(0).headers['Idempotency-Key']).toMatch(/^[0-9a-f-]{36}$/);
-    pending.resolve({ ...syntheticAlphaPatients[0]!, displayName: 'Synthetic New Patient' });
+    pending.resolve({
+      ...required(syntheticAlphaPatients[0]),
+      displayName: 'Synthetic New Patient',
+    });
     expect(await screen.findByText('Registered Synthetic New Patient')).toBeTruthy();
   });
 
@@ -288,7 +323,7 @@ describe('PatientsPage registration', () => {
     const summary = await screen.findByRole('alert', { name: 'Fix the following fields' });
     expect(summary.querySelector('a[href="#patient-mrn"]')).toBeTruthy();
     expect(screen.getByLabelText('MRN').getAttribute('aria-invalid')).toBe('true');
-    expect((screen.getByLabelText('Display name') as HTMLInputElement).value).toBe(
+    expect(screen.getByLabelText<HTMLInputElement>('Display name').value).toBe(
       'Synthetic New Patient',
     );
     expect(screen.queryByText(stateViewText('en', 'error'))).toBeNull();
@@ -314,7 +349,7 @@ describe('PatientsPage registration', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save registration' }));
 
     expect(await screen.findByText(stateViewText('en', 'conflict'))).toBeTruthy();
-    expect((screen.getByLabelText('Display name') as HTMLInputElement).value).toBe(
+    expect(screen.getByLabelText<HTMLInputElement>('Display name').value).toBe(
       'Synthetic New Patient',
     );
     expect(sendMock).toHaveBeenCalledTimes(1);
@@ -331,7 +366,7 @@ describe('PatientsPage registration', () => {
     expect(screen.getByText(stateViewText('en', 'correlationUnavailable'))).toBeTruthy();
   });
 
-  it('closes the form without sending when cancelled', async () => {
+  it('closes the form without sending when cancelled', () => {
     wrap(<PatientsPage />);
     fireEvent.click(screen.getByRole('button', { name: 'Register' }));
     fillRegistration();
@@ -346,9 +381,9 @@ describe('PatientsPage registration', () => {
     wrap(<PatientsPage />);
     fireEvent.click(screen.getByRole('button', { name: 'Register' }));
     fillRegistration();
-    const submit = screen.getByRole('button', { name: 'Save registration' }) as HTMLButtonElement;
+    const submit = screen.getByRole<HTMLButtonElement>('button', { name: 'Save registration' });
     expect(submit.type).toBe('submit');
-    fireEvent.submit(submit.closest('form')!);
+    fireEvent.submit(required(submit.closest('form')));
 
     await waitFor(() => expect(sendMock).toHaveBeenCalledTimes(1));
   });
@@ -364,10 +399,21 @@ describe('patients routes', () => {
   });
 
   it('lazily loads the registered patients page', async () => {
-    const route = createRoutes(false).find((candidate) => candidate.pattern === '/patients')!;
+    const route = required(
+      createRoutes(false).find((candidate) => candidate.pattern === '/patients'),
+    );
     const Page = route.component;
-    render(<Suspense fallback={<p>Loading route</p>}>{element(<Page />, alphaOrganizationId)}</Suspense>);
+    render(
+      <Suspense fallback={<p>Loading route</p>}>{element(<Page />, alphaOrganizationId)}</Suspense>,
+    );
 
     expect(await screen.findByRole('textbox', { name: 'Search by name' })).toBeTruthy();
   });
 });
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

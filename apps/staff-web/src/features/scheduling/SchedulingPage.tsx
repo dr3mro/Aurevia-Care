@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useActiveOrganization } from '../../api/activeOrganization';
 import { TransportError } from '../../api/transport';
 import { useApi } from '../../api/useApi';
@@ -34,6 +34,11 @@ function toTransportError(failure: unknown): TransportError {
   });
 }
 
+/** The civil date the worklist is anchored to; today when none is supplied. */
+function resolveAnchor(anchorCivilDate: string | undefined): string {
+  return anchorCivilDate ?? new Date().toISOString().slice(0, 10);
+}
+
 /**
  * Load one day or week of appointments from the real API, page through the
  * cursor, and dispatch commands through callbacks on the presentational screen.
@@ -50,12 +55,14 @@ export function SchedulingPage({ anchorCivilDate }: SchedulingPageProps) {
   const organizationId = useActiveOrganization();
   const { locale } = useI18n();
   const breakpoint = useBreakpoint();
-  const anchor = anchorCivilDate ?? new Date().toISOString().slice(0, 10);
+  const anchor = resolveAnchor(anchorCivilDate);
   const [range, setRange] = useState<WorklistRange>('day');
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [accumulated, setAccumulated] = useState<readonly AppointmentViewResponse[]>([]);
   const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
   const [commandError, setCommandError] = useState<TransportError | undefined>(undefined);
+  const [appliedPage, setAppliedPage] = useState<AppointmentPageResponse | undefined>(undefined);
+  const [appliedScope, setAppliedScope] = useState(`${organizationId}|${anchor}`);
 
   const bounds = rangeWindow(range, anchor);
   const result = useApi<AppointmentPageResponse>(
@@ -65,22 +72,22 @@ export function SchedulingPage({ anchorCivilDate }: SchedulingPageProps) {
 
   // Append each resolved page. The dependency is the page object, not the
   // result wrapper, so an unrelated render never duplicates rows.
-  useEffect(() => {
-    if (result.status !== 'ready') {
-      return;
-    }
+  if (result.status === 'ready' && result.data !== appliedPage) {
     const page = result.data;
+    setAppliedPage(page);
     setAccumulated((current) => [...current, ...page.items]);
     setNextCursor(page.nextCursor ?? undefined);
-  }, [result.status, result.data]);
+  }
 
   // A tenant switch or a different anchor invalidates every accumulated page.
-  useEffect(() => {
+  const scope = `${organizationId}|${anchor}`;
+  if (appliedScope !== scope) {
+    setAppliedScope(scope);
     setCursor(undefined);
     setAccumulated([]);
     setNextCursor(undefined);
     setCommandError(undefined);
-  }, [organizationId, anchor]);
+  }
 
   const loaded = useMemo<Appointment[]>(
     () => accumulated.map((view) => toAppointment(view, organizationId)),
@@ -94,10 +101,13 @@ export function SchedulingPage({ anchorCivilDate }: SchedulingPageProps) {
     setNextCursor(undefined);
     setCommandError(undefined);
     refetch();
-  }, [refetch]);
+  }, [refetch, setCursor, setAccumulated, setNextCursor, setCommandError]);
 
   async function handleCheckIn(id: string) {
-    const target = loaded.find((appointment) => appointment.id === id)!;
+    const target = loaded.find((appointment) => appointment.id === id);
+    if (target === undefined) {
+      return;
+    }
     try {
       await checkIn(id, target.version, organizationId);
       setCommandError(undefined);
@@ -151,11 +161,11 @@ export function SchedulingPage({ anchorCivilDate }: SchedulingPageProps) {
       data-breakpoint={breakpoint}
       style={{ maxInlineSize: 'none' }}
     >
-      {commandError !== undefined && (
+      {commandError !== undefined ? (
         <div data-testid="scheduling-command-error">
           {StateView.forTransportError(commandError)}
         </div>
-      )}
+      ) : null}
       {result.status === 'loading' && loaded.length === 0 ? (
         <LoadingState />
       ) : result.status === 'error' && loaded.length === 0 ? (
@@ -169,14 +179,18 @@ export function SchedulingPage({ anchorCivilDate }: SchedulingPageProps) {
             organizationId={organizationId}
             range={range}
             onRangeChange={handleRangeChange}
-            onCheckIn={handleCheckIn}
-            onBook={handleBook}
+            onCheckIn={(id) => {
+              void handleCheckIn(id);
+            }}
+            onBook={(request) => {
+              void handleBook(request);
+            }}
           />
-          {nextCursor !== undefined && (
+          {nextCursor !== undefined ? (
             <Button onClick={handleLoadMore} disabled={result.status === 'loading'}>
               {schedulingText(locale, 'loadMore')}
             </Button>
-          )}
+          ) : null}
         </>
       )}
     </div>

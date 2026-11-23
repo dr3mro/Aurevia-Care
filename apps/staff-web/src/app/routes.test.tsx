@@ -1,4 +1,3 @@
-import type { ComponentType } from 'react';
 import { describe, expect, it } from 'vitest';
 import {
   collectFeatureRoutes,
@@ -8,10 +7,9 @@ import {
 } from './routes';
 
 /** The feature modules collected exactly as the application collects them. */
-const featureRouteModules = import.meta.glob<FeatureRouteModule>(
-  '../features/*/routes.ts',
-  { eager: true },
-);
+const featureRouteModules = import.meta.glob<FeatureRouteModule>('../features/*/routes.ts', {
+  eager: true,
+});
 
 /** Patterns contributed by the self-registering feature modules. */
 function featurePatterns(): string[] {
@@ -19,7 +17,9 @@ function featurePatterns(): string[] {
 }
 
 /** Inert page used only to exercise route bookkeeping; never rendered here. */
-const Placeholder: ComponentType = () => null;
+function Placeholder(): null {
+  return null;
+}
 
 /** Build an app route with the inert placeholder component. */
 function route(pattern: string): AppRoute {
@@ -53,9 +53,7 @@ describe('createRoutes', () => {
     expect(createRoutes(false).map((candidate) => candidate.pattern)).not.toContain(
       '/design-preview',
     );
-    expect(createRoutes(true).map((candidate) => candidate.pattern)).toContain(
-      '/design-preview',
-    );
+    expect(createRoutes(true).map((candidate) => candidate.pattern)).toContain('/design-preview');
   });
 
   it('keeps the development preview before the catch-all', () => {

@@ -9,11 +9,7 @@ rules in one place.
 Import every button from the single barrel:
 
 ```ts
-import {
-  PrintChartButton,
-  PrintOrderButton,
-  PrintPrescriptionButton,
-} from '../print';
+import { PrintChartButton, PrintOrderButton, PrintPrescriptionButton } from '../print';
 ```
 
 The lines below are from a screen directly under `src/features/<feature>/`.
@@ -99,11 +95,7 @@ Chart summary placement:
 Signed-report placement:
 
 ```tsx
-<PrintChartButton
-  locale={locale}
-  target={{ kind: 'report', report }}
-  onPrint={printSignedReport}
-/>
+<PrintChartButton locale={locale} target={{ kind: 'report', report }} onPrint={printSignedReport} />
 ```
 
 - `locale`: current interface locale; English and Arabic are supported.

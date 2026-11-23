@@ -170,7 +170,9 @@ export function validateFacility(draft: FacilityDraft): FieldErrors<'code' | 'na
  * Validate an invitation before a command is sent. The bounded roles match the
  * invitation contract; an unknown role is refused rather than guessed.
  */
-export function validateInvite(draft: InviteDraft): FieldErrors<'subject' | 'displayName' | 'role'> {
+export function validateInvite(
+  draft: InviteDraft,
+): FieldErrors<'subject' | 'displayName' | 'role'> {
   const errors: FieldErrors<'subject' | 'displayName' | 'role'> = {};
   if (!STAFF_SUBJECT_PATTERN.test(draft.subject)) {
     errors.subject = 'errorStaffSubject';
@@ -312,10 +314,10 @@ export async function deactivateStaff(
   organizationId: string,
 ): Promise<StaffMemberResponse> {
   return send<StaffMemberResponse>(
-    commandDescriptor(
-      `/api/v1/staff/${encodeURIComponent(subject)}/deactivate`,
-      { activeOrganization: organizationId, idempotencyKey: crypto.randomUUID() },
-    ),
+    commandDescriptor(`/api/v1/staff/${encodeURIComponent(subject)}/deactivate`, {
+      activeOrganization: organizationId,
+      idempotencyKey: crypto.randomUUID(),
+    }),
   );
 }
 
@@ -324,11 +326,9 @@ export async function getStaffHistory(
   subject: string,
   organizationId: string,
 ): Promise<StaffHistoryResponse> {
-  const base = buildRequestDescriptor(
-    'GET',
-    '/api/v1/staff/{subject}/history',
-    { activeOrganization: organizationId },
-  );
+  const base = buildRequestDescriptor('GET', '/api/v1/staff/{subject}/history', {
+    activeOrganization: organizationId,
+  });
   return send<StaffHistoryResponse>({
     ...base,
     url: `/api/v1/staff/${encodeURIComponent(subject)}/history`,
@@ -358,7 +358,11 @@ export function toStaffHistoryEvents(
       effectiveFrom: membership.validFrom,
     };
     if (membership.status === 'revoked') {
-      events.push({ ...base, kind: 'deactivated', reason: adminText(locale, 'reasonNotAvailable') });
+      events.push({
+        ...base,
+        kind: 'deactivated',
+        reason: adminText(locale, 'reasonNotAvailable'),
+      });
     } else {
       events.push({ ...base, kind: 'invited' });
     }
@@ -637,9 +641,14 @@ export function configurationVersionsFromHistory(
     facilityCode: key,
     version: entry.version ?? 0,
     value: entry.value ?? '',
-    effectiveFrom: entry.effectiveFrom == null ? '' : entry.effectiveFrom.slice(0, 10),
+    effectiveFrom:
+      entry.effectiveFrom === null || entry.effectiveFrom === undefined
+        ? ''
+        : entry.effectiveFrom.slice(0, 10),
     approved: entry.status === 'approved',
-    ...(entry.approvedBy == null ? {} : { approver: entry.approvedBy }),
+    ...(entry.approvedBy === null || entry.approvedBy === undefined
+      ? {}
+      : { approver: entry.approvedBy }),
   }));
 }
 

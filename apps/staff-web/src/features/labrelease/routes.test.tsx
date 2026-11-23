@@ -9,11 +9,11 @@ import { routes } from './routes';
 describe('LAB-02 release feature route', () => {
   it('registers one laboratory release route', () => {
     expect(routes).toHaveLength(1);
-    expect(routes[0]!.pattern).toBe('/lab/release');
+    expect(required(routes[0]).pattern).toBe('/lab/release');
   });
 
   it('lazily loads a page that renders the comparison and release status', async () => {
-    const Page = routes[0]!.component;
+    const Page = required(routes[0]).component;
     render(
       <ThemeProvider>
         <I18nProvider initialLocale="en">
@@ -28,3 +28,10 @@ describe('LAB-02 release feature route', () => {
     expect(screen.getByTestId('release-status-clinician')).toBeTruthy();
   });
 });
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

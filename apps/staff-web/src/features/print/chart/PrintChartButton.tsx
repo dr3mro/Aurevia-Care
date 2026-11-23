@@ -64,11 +64,7 @@ export interface PrintChartButtonProps {
 }
 
 /** Ordered reason choices, matching the audit reasons the API records (WEB-09). */
-const printReasons: readonly PrintReason[] = [
-  'give-to-patient',
-  'referral',
-  'patient-request',
-];
+const printReasons: readonly PrintReason[] = ['give-to-patient', 'referral', 'patient-request'];
 
 /**
  * Disclosure button that previews a chart summary or a signed report before
@@ -93,7 +89,7 @@ export function PrintChartButton({ locale, target, onPrint }: PrintChartButtonPr
 
   useEffect(() => {
     if (showReasonError) {
-      errorRef.current!.focus();
+      errorRef.current?.focus();
     }
   }, [showReasonError]);
 
@@ -111,13 +107,15 @@ export function PrintChartButton({ locale, target, onPrint }: PrintChartButtonPr
 
   function toggleSection(section: ChartPrintSection): void {
     setSections((current) =>
-      current.includes(section) ? current.filter((item) => item !== section) : [...current, section],
+      current.includes(section)
+        ? current.filter((item) => item !== section)
+        : [...current, section],
     );
   }
 
   function closePanel(): void {
     setOpen(false);
-    triggerRef.current!.focus();
+    triggerRef.current?.focus();
   }
 
   function print(): void {
@@ -153,9 +151,13 @@ export function PrintChartButton({ locale, target, onPrint }: PrintChartButtonPr
       {open ? (
         <section
           id={panelId}
-          role="region"
           aria-label={chartPrintText(locale, 'preview')}
-          style={{ display: 'grid', gap: tokens.spacing.md, border: `1px solid ${tokens.border}`, padding: tokens.spacing.md }}
+          style={{
+            display: 'grid',
+            gap: tokens.spacing.md,
+            border: `1px solid ${tokens.border}`,
+            padding: tokens.spacing.md,
+          }}
         >
           {target.kind === 'chart' ? (
             <ChartSectionPicker

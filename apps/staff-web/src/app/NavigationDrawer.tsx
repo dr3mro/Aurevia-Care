@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { defined } from '../components/invariant';
 import { useI18n } from '../i18n/I18nProvider';
 import { groupLabelKey, navigationGroupsFor, navigationLabel } from './navigation';
 import type { Role } from './navigation';
 import { navigate } from './router';
+import { getMatchMedia } from '../theme/matchMedia';
 
 /** DOM id of the drawer, referenced by the menu button's `aria-controls`. */
 const DRAWER_ID = 'staff-navigation-drawer';
@@ -30,8 +32,7 @@ export interface NavigationDrawerProps {
  * preference is treated as "no preference" and the normal transition applies.
  */
 function prefersReducedMotion(): boolean {
-  const media: ((query: string) => MediaQueryList) | undefined = globalThis.matchMedia;
-  return media?.('(prefers-reduced-motion: reduce)').matches === true;
+  return getMatchMedia()?.('(prefers-reduced-motion: reduce)').matches ?? false;
 }
 
 /**
@@ -57,10 +58,10 @@ export function NavigationDrawer({ role, onNavigate }: NavigationDrawerProps) {
     }
 
     // Lock the page behind the modal and restore the exact prior value on close.
-    const opener = menuRef.current!;
+    const opener = defined(menuRef.current, 'navigation menu button');
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    closeRef.current!.focus();
+    defined(closeRef.current, 'navigation close button').focus();
 
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') {
@@ -71,9 +72,11 @@ export function NavigationDrawer({ role, onNavigate }: NavigationDrawerProps) {
       if (event.key !== 'Tab') {
         return;
       }
-      const focusable = Array.from(drawerRef.current!.querySelectorAll<HTMLElement>(FOCUSABLE));
-      const first = focusable[0]!;
-      const last = focusable[focusable.length - 1]!;
+      const focusable = Array.from(
+        defined(drawerRef.current, 'navigation drawer').querySelectorAll<HTMLElement>(FOCUSABLE),
+      );
+      const first = defined(focusable[0], 'first focusable element');
+      const last = defined(focusable[focusable.length - 1], 'last focusable element');
       if (event.shiftKey) {
         if (document.activeElement === first) {
           event.preventDefault();
@@ -119,7 +122,7 @@ export function NavigationDrawer({ role, onNavigate }: NavigationDrawerProps) {
         <span aria-hidden="true">☰</span>
       </button>
 
-      {open && (
+      {open ? (
         <>
           <div
             data-testid="nav-drawer-backdrop"
@@ -177,7 +180,7 @@ export function NavigationDrawer({ role, onNavigate }: NavigationDrawerProps) {
             ))}
           </div>
         </>
-      )}
+      ) : null}
     </>
   );
 }

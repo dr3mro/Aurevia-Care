@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from 'vitest';
 import type { RequestDescriptor } from '../../api/client';
 import { TransportError, send } from '../../api/transport';
 import type * as TransportModule from '../../api/transport';
-import type { Locale } from '../../i18n/messages';
 import {
   approveConfiguration,
   asAdminTransportError,
@@ -35,6 +34,7 @@ import {
 import type { StaffHistoryResponse } from './api';
 import { adminText } from './messages';
 import { alphaOrganizationId, betaOrganizationId } from './fixtures';
+import { must } from '../../../tests/must';
 
 vi.mock('../../api/transport', async (importOriginal) => {
   const actual = await importOriginal<typeof TransportModule>();
@@ -44,7 +44,7 @@ vi.mock('../../api/transport', async (importOriginal) => {
 const sendMock = vi.mocked(send);
 
 function descriptorAt(call: number): RequestDescriptor {
-  return sendMock.mock.calls[call]![0] as RequestDescriptor;
+  return must(sendMock.mock.calls[call])[0];
 }
 
 function history(overrides: Partial<StaffHistoryResponse> = {}): StaffHistoryResponse {
@@ -98,7 +98,9 @@ describe('facility API client', () => {
     const created = { organizationId: alphaOrganizationId, code: 'LAB', name: 'Synthetic Lab' };
     sendMock.mockResolvedValueOnce(created);
 
-    await expect(createFacility({ code: 'LAB', name: 'Synthetic Lab' }, alphaOrganizationId)).resolves.toEqual(created);
+    await expect(
+      createFacility({ code: 'LAB', name: 'Synthetic Lab' }, alphaOrganizationId),
+    ).resolves.toEqual(created);
 
     const descriptor = descriptorAt(0);
     expect(descriptor.method).toBe('POST');
@@ -151,7 +153,11 @@ describe('staff API client', () => {
     };
     sendMock.mockResolvedValueOnce(member);
 
-    const draft = { subject: 'synthetic.auditor', displayName: 'Synthetic Auditor', role: 'privacy_auditor' };
+    const draft = {
+      subject: 'synthetic.auditor',
+      displayName: 'Synthetic Auditor',
+      role: 'privacy_auditor',
+    };
     await expect(inviteStaff(draft, alphaOrganizationId)).resolves.toEqual(member);
 
     const descriptor = descriptorAt(0);
@@ -170,7 +176,9 @@ describe('staff API client', () => {
     };
     sendMock.mockResolvedValueOnce(member);
 
-    await expect(deactivateStaff('synthetic.auditor', alphaOrganizationId)).resolves.toEqual(member);
+    await expect(deactivateStaff('synthetic.auditor', alphaOrganizationId)).resolves.toEqual(
+      member,
+    );
 
     const descriptor = descriptorAt(0);
     expect(descriptor.method).toBe('POST');
@@ -180,7 +188,12 @@ describe('staff API client', () => {
   });
 
   it('encodes a subject that contains reserved characters', async () => {
-    sendMock.mockResolvedValueOnce({ subject: 'a/b', displayName: 'Synthetic', status: 'active', roles: [] });
+    sendMock.mockResolvedValueOnce({
+      subject: 'a/b',
+      displayName: 'Synthetic',
+      status: 'active',
+      roles: [],
+    });
 
     await deactivateStaff('a/b', alphaOrganizationId);
 
@@ -191,7 +204,9 @@ describe('staff API client', () => {
     const view = history();
     sendMock.mockResolvedValueOnce(view);
 
-    await expect(getStaffHistory('synthetic.reception', alphaOrganizationId)).resolves.toEqual(view);
+    await expect(getStaffHistory('synthetic.reception', alphaOrganizationId)).resolves.toEqual(
+      view,
+    );
 
     const descriptor = descriptorAt(0);
     expect(descriptor.method).toBe('GET');
@@ -219,11 +234,13 @@ describe('admin form validation', () => {
   });
 
   it('accepts a valid invitation and rejects each invalid field', () => {
-    const valid = { subject: 'synthetic.auditor', displayName: 'Synthetic Auditor', role: 'reception' };
+    const valid = {
+      subject: 'synthetic.auditor',
+      displayName: 'Synthetic Auditor',
+      role: 'reception',
+    };
     expect(validateInvite(valid)).toEqual({});
-    expect(
-      validateInvite({ subject: 'Bad Subject', displayName: '', role: 'superuser' }),
-    ).toEqual({
+    expect(validateInvite({ subject: 'Bad Subject', displayName: '', role: 'superuser' })).toEqual({
       subject: 'errorStaffSubject',
       displayName: 'errorStaffDisplayName',
       role: 'errorStaffRole',
@@ -265,8 +282,9 @@ describe('staff history mapping', () => {
     expect(events.map((event) => event.kind)).toEqual(['invited', 'role_granted']);
     expect(events.map((event) => event.sequence)).toEqual([1, 2]);
     expect(events.every((event) => event.organizationId === alphaOrganizationId)).toBe(true);
-    expect(events[1]!.kind === 'role_granted' ? events[1]!.role : '').toBe('reception');
-    expect(events[1]!.actor).toBe('synthetic.admin');
+    const granted = must(events[1]);
+    expect(granted.kind === 'role_granted' ? granted.role : '').toBe('reception');
+    expect(granted.actor).toBe('synthetic.admin');
   });
 
   it('keeps a revoked membership as its own deactivation event with a reason', () => {
@@ -292,7 +310,7 @@ describe('staff history mapping', () => {
 
     const events = toStaffHistoryEvents(view, betaOrganizationId, 'en');
     expect(events.map((event) => event.kind)).toEqual(['invited', 'deactivated']);
-    const deactivation = events[1]!;
+    const deactivation = must(events[1]);
     expect(deactivation.kind === 'deactivated' ? deactivation.reason : '').toBe(
       adminText('en', 'reasonNotAvailable'),
     );
@@ -313,14 +331,17 @@ describe('staff history mapping', () => {
       roleGrants: [],
     });
 
-    const events = toStaffHistoryEvents(view, alphaOrganizationId, 'ar' as Locale);
-    expect(events[0]!.kind === 'deactivated' ? events[0]!.reason : '').toBe(
+    const events = toStaffHistoryEvents(view, alphaOrganizationId, 'ar');
+    const first = must(events[0]);
+    expect(first.kind === 'deactivated' ? first.reason : '').toBe(
       adminText('ar', 'reasonNotAvailable'),
     );
   });
 
   it('returns no events for an empty history', () => {
-    expect(toStaffHistoryEvents(history({ memberships: [], roleGrants: [] }), alphaOrganizationId, 'en')).toEqual([]);
+    expect(
+      toStaffHistoryEvents(history({ memberships: [], roleGrants: [] }), alphaOrganizationId, 'en'),
+    ).toEqual([]);
   });
 });
 
@@ -407,9 +428,7 @@ describe('configuration API client', () => {
 
     const descriptor = descriptorAt(0);
     expect(descriptor.method).toBe('POST');
-    expect(descriptor.url).toBe(
-      '/api/v1/configuration/facility.MAIN.booking/versions/3/approve',
-    );
+    expect(descriptor.url).toBe('/api/v1/configuration/facility.MAIN.booking/versions/3/approve');
     expect(descriptor.body).toEqual({ note: 'synthetic approval' });
     expect(descriptor.headers['Idempotency-Key']).toMatch(/^[0-9a-f-]{36}$/);
   });
@@ -483,7 +502,8 @@ describe('configuration API client', () => {
   it('handles a history response with no key and no entries', () => {
     expect(configurationVersionsFromHistory({}, alphaOrganizationId)).toEqual([]);
     expect(
-      configurationVersionsFromHistory({ entries: [{ version: 1 }] }, alphaOrganizationId)[0]!.key,
+      must(configurationVersionsFromHistory({ entries: [{ version: 1 }] }, alphaOrganizationId)[0])
+        .key,
     ).toBe('');
   });
 
@@ -598,8 +618,8 @@ describe('audit API client', () => {
       actor: adminText('en', 'systemActor'),
       purpose: adminText('en', 'unknown'),
     });
-    expect(events[1]!.outcome).toBe('CONFLICT');
-    expect(events[1]!.occurredAt).toBe('');
+    expect(must(events[1]).outcome).toBe('CONFLICT');
+    expect(must(events[1]).occurredAt).toBe('');
   });
 
   it('returns no rows for an audit page without an events field', () => {
@@ -612,8 +632,8 @@ describe('audit API client', () => {
       alphaOrganizationId,
       'ar',
     );
-    expect(events[0]!.actor).toBe(adminText('ar', 'systemActor'));
-    expect(events[0]!.scope).toBe(adminText('ar', 'unknown'));
-    expect(events[0]!.correlationId).toBe(adminText('ar', 'unknown'));
+    expect(must(events[0]).actor).toBe(adminText('ar', 'systemActor'));
+    expect(must(events[0]).scope).toBe(adminText('ar', 'unknown'));
+    expect(must(events[0]).correlationId).toBe(adminText('ar', 'unknown'));
   });
 });

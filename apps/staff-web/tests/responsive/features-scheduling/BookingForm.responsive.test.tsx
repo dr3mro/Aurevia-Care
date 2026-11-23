@@ -68,11 +68,7 @@ function renderForm(locale: Locale = 'en') {
   const view = render(
     <ThemeProvider>
       <I18nProvider initialLocale={locale}>
-        <BookingForm
-          appointments={[]}
-          organizationId="synthetic-organization-1"
-          onBook={onBook}
-        />
+        <BookingForm appointments={[]} organizationId="synthetic-organization-1" onBook={onBook} />
       </I18nProvider>
     </ThemeProvider>,
   );
@@ -122,7 +118,7 @@ describe('responsive BookingForm (WEB-07, UX-01)', () => {
 
       const form = screen.getByRole('form', {
         name: schedulingText('en', 'bookingForm'),
-      }) as HTMLElement;
+      });
       expect(form.getAttribute('data-breakpoint')).toBe(band);
 
       const fields = bookingFields(form);
@@ -183,7 +179,7 @@ describe('responsive BookingForm (WEB-07, UX-01)', () => {
     installMatchMedia(320, true);
     renderForm();
 
-    const hints = bookingHints(screen.getByRole('form') as HTMLElement);
+    const hints = bookingHints(screen.getByRole('form'));
     expect(hints.classList.contains('stack')).toBe(true);
     for (const paragraph of hints.querySelectorAll('p')) {
       expect(paragraph.style.overflowWrap).toBe('anywhere');
@@ -205,7 +201,7 @@ describe('responsive BookingForm (WEB-07, UX-01)', () => {
     expect(document.documentElement.dir).toBe('rtl');
     const form = screen.getByRole('form', {
       name: schedulingText('ar', 'bookingForm'),
-    }) as HTMLElement;
+    });
     const fields = bookingFields(form);
     expect(fields.getAttribute('data-breakpoint')).toBe('compact');
     expect(fields.getAttribute('data-layout')).toBe('single-column');

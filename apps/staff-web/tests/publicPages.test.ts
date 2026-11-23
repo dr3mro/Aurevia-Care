@@ -79,15 +79,11 @@ describe.each(pages)('public page %s (WEB-13)', (page) => {
     expect(html, `${page} main is a focusable skip target`).toContain(
       '<main id="main" tabindex="-1">',
     );
-    expect(html, `${page} sets viewport`).toMatch(
-      /<meta\b[^>]*\bname=["']viewport["'][^>]*>/i,
-    );
+    expect(html, `${page} sets viewport`).toMatch(/<meta\b[^>]*\bname=["']viewport["'][^>]*>/i);
   });
 
   it('uses only invalid-domain placeholders for contact addresses', () => {
-    const addresses = [...html.matchAll(/mailto:([^"'\s>]+)/gi)].map(
-      (match) => match[1] ?? '',
-    );
+    const addresses = [...html.matchAll(/mailto:([^"'\s>]+)/gi)].map((match) => match[1] ?? '');
     for (const address of addresses) {
       expect(address, `${page} placeholder ${address}`).toMatch(/\.invalid$/i);
     }

@@ -178,21 +178,27 @@ describe('responsive FacilitiesPage (WEB-07, UX-01)', () => {
       expect(createSection?.getAttribute('style')).toBeNull();
       expect(createSection?.getAttribute('aria-label')).toBe(adminText('en', 'createFacility'));
 
-      expect(within(page).getByRole('heading', { level: 2, name: adminText('en', 'facilities') })).toBeTruthy();
+      expect(
+        within(page).getByRole('heading', { level: 2, name: adminText('en', 'facilities') }),
+      ).toBeTruthy();
       expect(within(page).getByText(adminText('en', 'facilitiesIntro'))).toBeTruthy();
 
       const form = within(page).getByRole('form', { name: adminText('en', 'createFacility') });
-      expect(fieldsWrapper(page).classList.contains(breakpoint === 'compact' ? 'stack' : 'grid-2')).toBe(true);
+      expect(
+        fieldsWrapper(page).classList.contains(breakpoint === 'compact' ? 'stack' : 'grid-2'),
+      ).toBe(true);
       expect(form.getAttribute('data-breakpoint')).toBe(breakpoint);
 
       // One DOM and one accessibility tree at every band: the labelled scroll
       // region never disappears and every API column stays reachable.
       const table = await screen.findByRole('table', { name: adminText('en', 'facilities') });
       const region = tableRegion(page, adminText('en', 'facilities'));
-      expect(within(region).getByRole('table', { name: adminText('en', 'facilities') })).toBe(table);
+      expect(within(region).getByRole('table', { name: adminText('en', 'facilities') })).toBe(
+        table,
+      );
       expect(table.getAttribute('data-breakpoint')).toBe(breakpoint);
       for (const key of COLUMN_KEYS) {
-        const header = within(table).getByRole('columnheader', { name: adminText('en', key) }) as HTMLElement;
+        const header = within(table).getByRole('columnheader', { name: adminText('en', key) });
         expect(header.getAttribute('scope')).toBe('col');
         expect(header.style.display).not.toBe('none');
       }
@@ -216,9 +222,9 @@ describe('responsive FacilitiesPage (WEB-07, UX-01)', () => {
     const { container } = wrap();
     await screen.findByRole('table', { name: adminText('en', 'facilities') });
 
-    const code = screen.getByLabelText(adminText('en', 'facilityCode')) as HTMLInputElement;
-    const name = screen.getByLabelText(adminText('en', 'facilityName')) as HTMLInputElement;
-    const submit = screen.getByRole('button', { name: adminText('en', 'createFacility') }) as HTMLElement;
+    const code = screen.getByLabelText<HTMLInputElement>(adminText('en', 'facilityCode'));
+    const name = screen.getByLabelText<HTMLInputElement>(adminText('en', 'facilityName'));
+    const submit = screen.getByRole('button', { name: adminText('en', 'createFacility') });
     const status = screen.getByTestId('facilities-status');
     expect(status.getAttribute('role')).toBe('status');
     expect(status.hasAttribute('aria-label')).toBe(false);
@@ -244,18 +250,18 @@ describe('responsive FacilitiesPage (WEB-07, UX-01)', () => {
     await screen.findByRole('table', { name: adminText('en', 'facilities') });
 
     for (const key of ['facilityCode', 'facilityName'] as const) {
-      const input = screen.getByLabelText(adminText('en', key)) as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>(adminText('en', key));
       expect(input.classList.contains('field')).toBe(true);
       expect(input.classList.contains('touch')).toBe(true);
     }
-    const submit = screen.getByRole('button', { name: adminText('en', 'createFacility') }) as HTMLElement;
+    const submit = screen.getByRole('button', { name: adminText('en', 'createFacility') });
     expect(submit.classList.contains('touch')).toBe(true);
     expect(submit.closest('[data-part="actions"]')?.classList.contains('touch')).toBe(true);
 
     // The `field` class in responsive.css owns the 16px input text; no clinical
     // column is hidden to make the narrow layout fit.
     for (const header of screen.getAllByRole('columnheader')) {
-      expect((header as HTMLElement).style.display).not.toBe('none');
+      expect(header.style.display).not.toBe('none');
     }
   });
 
@@ -278,7 +284,7 @@ describe('responsive FacilitiesPage (WEB-07, UX-01)', () => {
     expect(within(table).getByText(LONG_ARABIC)).toBeTruthy();
 
     for (const run of document.querySelectorAll('bdi')) {
-      const isolated = run as HTMLElement;
+      const isolated = run;
       expect(isolated.getAttribute('dir')).toBe('auto');
       expect(isolated.hasAttribute('lang')).toBe(true);
       expect(isolated.style.overflowWrap).toBe('anywhere');

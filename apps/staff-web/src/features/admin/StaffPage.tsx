@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { Dispatch, RefObject, SetStateAction } from 'react';
 import { useActiveOrganization } from '../../api/activeOrganization';
 import type { TransportError } from '../../api/transport';
 import { ApiPage } from '../../components/ApiPage';
@@ -29,6 +30,9 @@ import { PageSink } from './PageSink';
 import { StaffHistoryView } from './StaffHistoryView';
 import { adminMessage, adminText } from './messages';
 import type { AdminMessageKey } from './messages';
+
+/** Keyboard-focusable scroll regions join the natural tab order. */
+const FOCUSABLE_TAB_INDEX = 0;
 
 /** Empty invitation draft reused after a successful invite. */
 const EMPTY_INVITE = { subject: '', displayName: '', role: '' };
@@ -62,7 +66,11 @@ function inviteErrorLinks(
   };
   const links: FieldErrorLink[] = [];
   if (errors.subject !== undefined) {
-    links.push({ id: 'staff-subject', label: labels.subject, message: adminText(locale, errors.subject) });
+    links.push({
+      id: 'staff-subject',
+      label: labels.subject,
+      message: adminText(locale, errors.subject),
+    });
   }
   if (errors.displayName !== undefined) {
     links.push({
@@ -103,10 +111,12 @@ function StaffList({
     setAccumulated((current) => [...current, ...page.items]);
   }, []);
 
-  useEffect(() => {
+  const [seenToken, setSeenToken] = useState(reloadToken);
+  if (seenToken !== reloadToken) {
+    setSeenToken(reloadToken);
     setAccumulated([]);
     setCursor(undefined);
-  }, [reloadToken]);
+  }
 
   const label = adminText(locale, 'staffAdministration');
   return (
@@ -124,8 +134,13 @@ function StaffList({
         // hidden. Only the labelled, keyboard-scrollable wrapper is compact-only
         // so the page never scrolls horizontally on a phone (WEB-07, UX-01).
         const table = (
-          <table data-breakpoint={breakpoint} style={{ borderCollapse: 'collapse', inlineSize: '100%' }}>
-            <caption style={{ textAlign: 'start', paddingBlock: tokens.spacing.sm }}>{label}</caption>
+          <table
+            data-breakpoint={breakpoint}
+            style={{ borderCollapse: 'collapse', inlineSize: '100%' }}
+          >
+            <caption style={{ textAlign: 'start', paddingBlock: tokens.spacing.sm }}>
+              {label}
+            </caption>
             <thead>
               <tr>
                 <th scope="col" style={wrappingStyle}>
@@ -164,11 +179,11 @@ function StaffList({
                     <Button onClick={() => onHistory(item.subject)}>
                       {adminText(locale, 'history')}
                     </Button>{' '}
-                    {item.status === 'active' && (
+                    {item.status === 'active' ? (
                       <Button onClick={() => onDeactivate(item)}>
                         {adminText(locale, 'deactivate')}
                       </Button>
-                    )}
+                    ) : null}
                   </td>
                 </tr>
               ))}
@@ -183,7 +198,7 @@ function StaffList({
                 className="table-region"
                 role="region"
                 aria-label={label}
-                tabIndex={0}
+                tabIndex={FOCUSABLE_TAB_INDEX}
                 data-breakpoint={breakpoint}
               >
                 {table}
@@ -191,7 +206,7 @@ function StaffList({
             ) : (
               table
             )}
-            {next !== null && (
+            {next === null ? null : (
               <Button onClick={() => setCursor(next)}>{adminText(locale, 'loadMore')}</Button>
             )}
           </>
@@ -239,6 +254,162 @@ function StaffHistoryPanel({ subject, organizationId, locale, onClose }: StaffHi
           />
         )}
       </ApiPage>
+    </section>
+  );
+}
+
+/** Props for the invite form section. */
+interface InviteSectionProps {
+  invite: typeof EMPTY_INVITE;
+  setInvite: Dispatch<SetStateAction<typeof EMPTY_INVITE>>;
+  inviteErrors: ReturnType<typeof validateInvite>;
+  invitedName: string | undefined;
+  onSubmit: () => void;
+}
+
+/** Invite form, its error summary and the status line. */
+function InviteSection({
+  invite,
+  setInvite,
+  inviteErrors,
+  invitedName,
+  onSubmit,
+}: InviteSectionProps) {
+  const { locale } = useI18n();
+  const { tokens } = useTheme();
+  const breakpoint = useBreakpoint();
+  const subjectError =
+    inviteErrors.subject === undefined ? undefined : adminText(locale, inviteErrors.subject);
+  const displayNameError =
+    inviteErrors.displayName === undefined
+      ? undefined
+      : adminText(locale, inviteErrors.displayName);
+  const roleError =
+    inviteErrors.role === undefined ? undefined : adminText(locale, inviteErrors.role);
+  return (
+    <section
+      aria-label={adminText(locale, 'inviteStaff')}
+      className="stack"
+      data-part="invite"
+      style={{ gap: tokens.spacing.md }}
+    >
+      <h2>{adminText(locale, 'staffAdministration')}</h2>
+      <p>{adminText(locale, 'staffIntro')}</p>
+      <FieldErrorSummary
+        title={adminText(locale, 'errorSummary')}
+        errors={inviteErrorLinks(inviteErrors, locale)}
+      />
+      <Form
+        label={adminText(locale, 'inviteStaff')}
+        submitLabel={adminText(locale, 'inviteStaff')}
+        onSubmit={onSubmit}
+      >
+        <div
+          className={breakpoint === 'compact' ? 'stack' : 'grid-2'}
+          data-part="invite-fields"
+          data-layout={breakpoint === 'compact' ? 'single-column' : 'two-column'}
+          style={{ gap: tokens.spacing.md }}
+        >
+          <FormField
+            id="staff-subject"
+            label={adminText(locale, 'staffSubject')}
+            value={invite.subject}
+            onChange={(value) => setInvite((current) => ({ ...current, subject: value }))}
+            {...(subjectError === undefined ? {} : { error: subjectError })}
+          />
+          <FormField
+            id="staff-displayName"
+            label={adminText(locale, 'staffDisplayName')}
+            value={invite.displayName}
+            onChange={(value) => setInvite((current) => ({ ...current, displayName: value }))}
+            {...(displayNameError === undefined ? {} : { error: displayNameError })}
+          />
+          <FormField
+            id="staff-role"
+            label={adminText(locale, 'staffRole')}
+            value={invite.role}
+            onChange={(value) => setInvite((current) => ({ ...current, role: value }))}
+            {...(roleError === undefined ? {} : { error: roleError })}
+          />
+        </div>
+      </Form>
+      <p role="status" data-testid="staff-status">
+        <MixedScriptText
+          text={
+            invitedName === undefined
+              ? ''
+              : adminMessage(locale, 'staffInvited', { name: invitedName })
+          }
+          lang={locale}
+        />
+      </p>
+    </section>
+  );
+}
+
+/** Props for the destructive deactivation confirmation. */
+interface DeactivateDialogProps {
+  member: StaffMemberResponse;
+  reason: string;
+  onReason: (value: string) => void;
+  reasonError: AdminMessageKey | undefined;
+  deactivateError: TransportError | undefined;
+  cancelRef: RefObject<HTMLButtonElement | null>;
+  onCancel: () => void;
+  onConfirm: () => void;
+}
+
+/** Deactivation dialog; cancel takes initial focus as the safe choice. */
+function DeactivateDialog({
+  member,
+  reason,
+  onReason,
+  reasonError,
+  deactivateError,
+  cancelRef,
+  onCancel,
+  onConfirm,
+}: DeactivateDialogProps) {
+  const { locale } = useI18n();
+  const { tokens } = useTheme();
+  const breakpoint = useBreakpoint();
+  const reasonErrorText = reasonError === undefined ? undefined : adminText(locale, reasonError);
+  const reasonLinks: FieldErrorLink[] =
+    reasonError === undefined
+      ? []
+      : [
+          {
+            id: 'deactivate-reason',
+            label: adminText(locale, 'deactivateReason'),
+            message: adminText(locale, reasonError),
+          },
+        ];
+  return (
+    <section
+      role="dialog"
+      aria-label={adminMessage(locale, 'deactivateTitle', { name: member.displayName })}
+      className="stack"
+      data-part="deactivate-dialog"
+      data-breakpoint={breakpoint}
+      style={{ gap: tokens.spacing.md }}
+    >
+      <h3>{adminMessage(locale, 'deactivateTitle', { name: member.displayName })}</h3>
+      <p>{adminText(locale, 'deactivateDetail')}</p>
+      <FieldErrorSummary title={adminText(locale, 'errorSummary')} errors={reasonLinks} />
+      <FormField
+        id="deactivate-reason"
+        label={adminText(locale, 'deactivateReason')}
+        value={reason}
+        onChange={onReason}
+        {...(reasonErrorText === undefined ? {} : { error: reasonErrorText })}
+      />
+      {deactivateError === undefined ? null : StateView.forTransportError(deactivateError)}
+      <div className="cluster" data-part="dialog-actions">
+        <Button variant="secondary" buttonRef={cancelRef} onClick={onCancel}>
+          {adminText(locale, 'cancel')}
+        </Button>{' '}
+        <Button onClick={onConfirm}>{adminText(locale, 'confirm')}</Button>
+      </div>
     </section>
   );
 }
@@ -323,79 +494,26 @@ function StaffContent({ organizationId }: StaffContentProps) {
     }
   }
 
-  const subjectError = inviteErrors.subject === undefined ? undefined : adminText(locale, inviteErrors.subject);
-  const displayNameError =
-    inviteErrors.displayName === undefined ? undefined : adminText(locale, inviteErrors.displayName);
-  const roleError = inviteErrors.role === undefined ? undefined : adminText(locale, inviteErrors.role);
-  const reasonErrorText = reasonError === undefined ? undefined : adminText(locale, reasonError);
-
-  const reasonLinks: FieldErrorLink[] =
-    reasonError === undefined
-      ? []
-      : [
-          {
-            id: 'deactivate-reason',
-            label: adminText(locale, 'deactivateReason'),
-            message: adminText(locale, reasonError),
-          },
-        ];
-
   return (
-    <div className="page" data-part="staff-page" data-breakpoint={breakpoint} style={{ gap: tokens.spacing.lg }}>
-      <section
-        aria-label={adminText(locale, 'inviteStaff')}
-        className="stack"
-        data-part="invite"
-        style={{ gap: tokens.spacing.md }}
-      >
-        <h2>{adminText(locale, 'staffAdministration')}</h2>
-        <p>{adminText(locale, 'staffIntro')}</p>
-        <FieldErrorSummary title={adminText(locale, 'errorSummary')} errors={inviteErrorLinks(inviteErrors, locale)} />
-        <Form
-          label={adminText(locale, 'inviteStaff')}
-          submitLabel={adminText(locale, 'inviteStaff')}
-          onSubmit={handleInvite}
-        >
-          <div
-            className={breakpoint === 'compact' ? 'stack' : 'grid-2'}
-            data-part="invite-fields"
-            data-layout={breakpoint === 'compact' ? 'single-column' : 'two-column'}
-            style={{ gap: tokens.spacing.md }}
-          >
-            <FormField
-              id="staff-subject"
-              label={adminText(locale, 'staffSubject')}
-              value={invite.subject}
-              onChange={(value) => setInvite((current) => ({ ...current, subject: value }))}
-              {...(subjectError === undefined ? {} : { error: subjectError })}
-            />
-            <FormField
-              id="staff-displayName"
-              label={adminText(locale, 'staffDisplayName')}
-              value={invite.displayName}
-              onChange={(value) => setInvite((current) => ({ ...current, displayName: value }))}
-              {...(displayNameError === undefined ? {} : { error: displayNameError })}
-            />
-            <FormField
-              id="staff-role"
-              label={adminText(locale, 'staffRole')}
-              value={invite.role}
-              onChange={(value) => setInvite((current) => ({ ...current, role: value }))}
-              {...(roleError === undefined ? {} : { error: roleError })}
-            />
-          </div>
-        </Form>
-        <p role="status" data-testid="staff-status">
-          <MixedScriptText
-            text={invitedName === undefined ? '' : adminMessage(locale, 'staffInvited', { name: invitedName })}
-            lang={locale}
-          />
-        </p>
-      </section>
-      {inviteError !== undefined && (
+    <div
+      className="page"
+      data-part="staff-page"
+      data-breakpoint={breakpoint}
+      style={{ gap: tokens.spacing.lg }}
+    >
+      <InviteSection
+        invite={invite}
+        setInvite={setInvite}
+        inviteErrors={inviteErrors}
+        invitedName={invitedName}
+        onSubmit={() => {
+          void handleInvite();
+        }}
+      />
+      {inviteError === undefined ? null : (
         <div data-testid="staff-command-error">{StateView.forTransportError(inviteError)}</div>
       )}
-      {deactivated !== undefined && (
+      {deactivated === undefined ? null : (
         <p role="status" data-testid="staff-deactivation-status">
           <MixedScriptText
             text={adminMessage(locale, 'deactivated', {
@@ -413,37 +531,21 @@ function StaffContent({ organizationId }: StaffContentProps) {
         onHistory={setHistorySubject}
         onDeactivate={openConfirmation}
       />
-      {confirming !== undefined && (
-        <section
-          role="dialog"
-          aria-label={adminMessage(locale, 'deactivateTitle', { name: confirming.displayName })}
-          className="stack"
-          data-part="deactivate-dialog"
-          data-breakpoint={breakpoint}
-          style={{ gap: tokens.spacing.md }}
-        >
-          <h3>{adminMessage(locale, 'deactivateTitle', { name: confirming.displayName })}</h3>
-          <p>{adminText(locale, 'deactivateDetail')}</p>
-          <FieldErrorSummary title={adminText(locale, 'errorSummary')} errors={reasonLinks} />
-          <FormField
-            id="deactivate-reason"
-            label={adminText(locale, 'deactivateReason')}
-            value={reason}
-            onChange={setReason}
-            {...(reasonErrorText === undefined ? {} : { error: reasonErrorText })}
-          />
-          {deactivateError !== undefined && StateView.forTransportError(deactivateError)}
-          <div className="cluster" data-part="dialog-actions">
-            <Button variant="secondary" buttonRef={cancelRef} onClick={() => setConfirming(undefined)}>
-              {adminText(locale, 'cancel')}
-            </Button>{' '}
-            <Button onClick={() => handleConfirm(confirming.subject, confirming.displayName)}>
-              {adminText(locale, 'confirm')}
-            </Button>
-          </div>
-        </section>
+      {confirming === undefined ? null : (
+        <DeactivateDialog
+          member={confirming}
+          reason={reason}
+          onReason={setReason}
+          reasonError={reasonError}
+          deactivateError={deactivateError}
+          cancelRef={cancelRef}
+          onCancel={() => setConfirming(undefined)}
+          onConfirm={() => {
+            void handleConfirm(confirming.subject, confirming.displayName);
+          }}
+        />
       )}
-      {historySubject !== undefined && (
+      {historySubject === undefined ? null : (
         <StaffHistoryPanel
           key={`${organizationId}:${historySubject}`}
           subject={historySubject}

@@ -9,6 +9,7 @@ import { routes } from '../../src/app/routes';
 import { I18nProvider } from '../../src/i18n/I18nProvider';
 import type { Locale } from '../../src/i18n/messages';
 import { ThemeProvider } from '../../src/theme/ThemeProvider';
+import { must } from '../must';
 
 const DRAWER_ID = 'staff-navigation-drawer';
 const EN_LABEL = 'Sections';
@@ -28,7 +29,11 @@ function renderDrawer(
   );
 }
 
-function openWith(role: Role = 'reception', onNavigate?: (route: string) => void, locale: Locale = 'en') {
+function openWith(
+  role: Role = 'reception',
+  onNavigate?: (route: string) => void,
+  locale: Locale = 'en',
+) {
   const view = renderDrawer(role, onNavigate, locale);
   const label = locale === 'ar' ? AR_LABEL : EN_LABEL;
   fireEvent.click(screen.getByRole('button', { name: label }));
@@ -41,7 +46,7 @@ function closeButton(label: string) {
 }
 
 function drawerLinks(): HTMLAnchorElement[] {
-  return within(screen.getByRole('dialog')).getAllByRole('link') as HTMLAnchorElement[];
+  return within(screen.getByRole('dialog')).getAllByRole<HTMLAnchorElement>('link');
 }
 
 afterEach(() => {
@@ -49,6 +54,9 @@ afterEach(() => {
   document.body.style.overflow = '';
   window.history.replaceState(null, '', '/');
 });
+
+/** Props shared by the shell rail and the drawer in the contract test. */
+const receptionProps = { role: 'reception' } as const;
 
 describe('NavigationDrawer — menu button and modal lifecycle', () => {
   it('opens from the labelled menu button with aria state and locks page scroll', () => {
@@ -119,7 +127,9 @@ describe('NavigationDrawer — link selection', () => {
     const onNavigate = vi.fn();
     openWith('reception', onNavigate);
     const link = drawerLinks().find((item) => item.textContent === 'Check-in');
-    if (!link) throw new Error('expected the Check-in link');
+    if (!link) {
+      throw new Error('expected the Check-in link');
+    }
     fireEvent.click(link);
     expect(onNavigate).toHaveBeenCalledTimes(1);
     expect(onNavigate).toHaveBeenCalledWith('/checkin');
@@ -131,7 +141,9 @@ describe('NavigationDrawer — link selection', () => {
     const pushState = vi.spyOn(window.history, 'pushState');
     openWith();
     const link = drawerLinks().find((item) => item.textContent === 'Today');
-    if (!link) throw new Error('expected the Today link');
+    if (!link) {
+      throw new Error('expected the Today link');
+    }
     fireEvent.click(link);
     expect(pushState).toHaveBeenCalledWith(null, '', '/');
     expect(screen.queryByRole('dialog')).toBeNull();
@@ -150,9 +162,9 @@ describe('NavigationDrawer — role-scoped navigation', () => {
 
     expected.forEach((group, index) => {
       const heading = navigationLabel('en', groupLabelKey(group.group));
-      const region = regions[index]!;
+      const region = must(regions[index]);
       expect(within(region).getByRole('heading', { name: heading })).toBeTruthy();
-      const links = within(region).getAllByRole('link') as HTMLAnchorElement[];
+      const links = within(region).getAllByRole<HTMLAnchorElement>('link');
       expect(links.map((link) => link.textContent)).toEqual(
         group.items.map((item) => navigationLabel('en', item.labelKey)),
       );
@@ -166,20 +178,19 @@ describe('NavigationDrawer — role-scoped navigation', () => {
     expect(rendered).not.toContain('Check-in');
     expect(rendered).not.toContain('Facilities');
     expect(rendered).not.toContain('Operations queues');
-    expect(drawerLinks()).toHaveLength(expected.reduce((total, group) => total + group.items.length, 0));
+    expect(drawerLinks()).toHaveLength(
+      expected.reduce((total, group) => total + group.items.length, 0),
+    );
   });
 });
 
 describe('NavigationDrawer — focus containment', () => {
   it('keeps Tab focus inside the drawer and wraps at both ends', () => {
     openWith('reception');
-    const focusables = [
-      closeButton(EN_LABEL),
-      ...drawerLinks(),
-    ] as HTMLElement[];
-    const first = focusables[0]!;
-    const last = focusables[focusables.length - 1]!;
-    const middle = focusables[1]!;
+    const focusables = [closeButton(EN_LABEL), ...drawerLinks()] as HTMLElement[];
+    const first = must(focusables[0]);
+    const last = must(focusables[focusables.length - 1]);
+    const middle = must(focusables[1]);
 
     // Initial focus is the first meaningful control.
     expect(document.activeElement).toBe(first);
@@ -224,7 +235,7 @@ describe('NavigationDrawer — direction and motion', () => {
     expect(closeStyle).toContain('margin-inline-start');
     expect(closeStyle).not.toMatch(/left:|right:/);
 
-    const region = within(dialog).getAllByRole('region')[0]!;
+    const region = must(within(dialog).getAllByRole('region')[0]);
     expect(within(region).getByRole('heading', { name: 'اليوم' })).toBeTruthy();
   });
 
@@ -263,8 +274,8 @@ describe('NavigationDrawer — shared contracts with the shell', () => {
       <ThemeProvider>
         <I18nProvider>
           <RouterProvider patterns={routes.map((route) => route.pattern)} initialPath="/">
-            <AppShell role="reception" />
-            <NavigationDrawer role="reception" />
+            <AppShell {...receptionProps} />
+            <NavigationDrawer {...receptionProps} />
           </RouterProvider>
         </I18nProvider>
       </ThemeProvider>,
@@ -278,9 +289,9 @@ describe('NavigationDrawer — shared contracts with the shell', () => {
     expect(railHeading).not.toBe(drawerHeading);
     expect(document.querySelectorAll('[id="nav-heading-Today"]')).toHaveLength(1);
 
-    const section = within(screen.getByRole('dialog')).getAllByRole('region')[0]!;
+    const section = must(within(screen.getByRole('dialog')).getAllByRole('region')[0]);
     const labelledBy = section.getAttribute('aria-labelledby');
     expect(labelledBy).toBe('nav-drawer-heading-Today');
-    expect(document.getElementById(labelledBy!)).toBe(drawerHeading);
+    expect(document.getElementById(must(labelledBy))).toBe(drawerHeading);
   });
 });

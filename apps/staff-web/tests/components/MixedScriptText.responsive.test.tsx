@@ -67,7 +67,8 @@ function queriesFor(layout: Layout): Record<string, boolean> {
 
 const LONG_ENGLISH =
   'A deliberately long synthetic clinical free-text value that must wrap at 320 px and at 200 percent zoom without clipping or overlap';
-const LONG_ARABIC = 'قيمة نصية سريرية تجريبية طويلة جداً يجب أن تلتف دون قص أو تداخل عند العرض الضيق';
+const LONG_ARABIC =
+  'قيمة نصية سريرية تجريبية طويلة جداً يجب أن تلتف دون قص أو تداخل عند العرض الضيق';
 const MIXED_RUN = 'ليلى Haddad · MAIN CLINIC · 5 mg';
 
 afterEach(() => {
@@ -82,7 +83,7 @@ describe('responsive MixedScriptText (WEB-07, UX-01)', () => {
       installMatchMedia(queriesFor(layout));
       const { unmount } = render(<MixedScriptText text={LONG_ENGLISH} lang="en" />);
 
-      const run = screen.getByText(LONG_ENGLISH) as HTMLElement;
+      const run = screen.getByText(LONG_ENGLISH);
       expect(run.tagName).toBe('BDI');
       expect(run.getAttribute('dir')).toBe('auto');
       expect(run.getAttribute('lang')).toBe('en');
@@ -109,7 +110,7 @@ describe('responsive MixedScriptText (WEB-07, UX-01)', () => {
       </>,
     );
 
-    const runs = screen.getAllByText(/Haddad|حداد/) as HTMLElement[];
+    const runs = screen.getAllByText(/Haddad|حداد/);
     expect(runs).toHaveLength(2);
     expect(runs[0]?.textContent).toBe('Layla Haddad');
     expect(runs[1]?.textContent).toBe('ليلى حداد');
@@ -118,14 +119,16 @@ describe('responsive MixedScriptText (WEB-07, UX-01)', () => {
     }
     // A text primitive adds no focusable element of its own; the page keeps
     // exactly the keyboard order of its surrounding controls.
-    expect(container.querySelectorAll('a[href], button, input, select, textarea, [tabindex]')).toHaveLength(0);
+    expect(
+      container.querySelectorAll('a[href], button, input, select, textarea, [tabindex]'),
+    ).toHaveLength(0);
   });
 
   it('follows a viewport change without remounting or altering the clinical text', () => {
     const media = installMatchMedia(queriesFor('compact'));
     render(<MixedScriptText text={LONG_ARABIC} lang="ar" />);
 
-    const run = screen.getByText(LONG_ARABIC) as HTMLElement;
+    const run = screen.getByText(LONG_ARABIC);
     expect(run.getAttribute('data-breakpoint')).toBe('compact');
     expect(run.style.whiteSpace).toBe('normal');
     expect(run.style.overflowWrap).toBe('anywhere');
@@ -147,7 +150,7 @@ describe('responsive MixedScriptText (WEB-07, UX-01)', () => {
 
     expect(document.documentElement.dir).toBe('rtl');
     expect(document.documentElement.lang).toBe('ar');
-    const run = screen.getByText(MIXED_RUN) as HTMLElement;
+    const run = screen.getByText(MIXED_RUN);
     expect(run.tagName).toBe('BDI');
     expect(run.getAttribute('dir')).toBe('auto');
     expect(run.getAttribute('lang')).toBe('ar');

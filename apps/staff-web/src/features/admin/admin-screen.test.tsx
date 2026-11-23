@@ -17,6 +17,7 @@ import {
   syntheticStaffEvents,
 } from './fixtures';
 import { adminText, proposalAnnouncement } from './messages';
+import { must } from '../../../tests/must';
 
 function wrap(ui: ReactElement, locale: Locale = 'en') {
   return render(
@@ -71,8 +72,8 @@ describe('AdminScreen', () => {
         .getAllByRole('region', { name: label })
         .find((element) => element.getAttribute('tabindex') === '0');
       expect(region).toBeDefined();
-      expect((region as HTMLElement).style.overflowX).toBe('auto');
-      expect(within(region as HTMLElement).getByRole('table')).toBeTruthy();
+      expect(must(region).style.overflowX).toBe('auto');
+      expect(within(must(region)).getByRole('table')).toBeTruthy();
     }
   });
 
@@ -94,7 +95,9 @@ describe('AdminScreen', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: adminText('en', 'propose') }));
     expect(screen.getByText('Synthetic proposed value')).toBeTruthy();
-    expect(screen.getByTestId('admin-status').textContent).toBe(proposalAnnouncement('en', 'MAIN', 5));
+    expect(screen.getByTestId('admin-status').textContent).toBe(
+      proposalAnnouncement('en', 'MAIN', 5),
+    );
   });
 
   it('drops prior-tenant local drafts when the active organization switches', () => {
@@ -136,8 +139,8 @@ describe('AdminScreen', () => {
     // otherwise be proposed into a different tenant, whose local identifiers
     // intentionally collide with the previous tenant's (IAM-01, ARC-01).
     const { rerender } = alphaScreen();
-    const value = screen.getByLabelText(adminText('en', 'proposedValue')) as HTMLInputElement;
-    const effectiveFrom = screen.getByLabelText(adminText('en', 'effectiveFrom')) as HTMLInputElement;
+    const value = screen.getByLabelText<HTMLInputElement>(adminText('en', 'proposedValue'));
+    const effectiveFrom = screen.getByLabelText<HTMLInputElement>(adminText('en', 'effectiveFrom'));
     fireEvent.change(value, { target: { value: 'Synthetic alpha unsubmitted draft' } });
     fireEvent.change(effectiveFrom, { target: { value: '2026-08-01' } });
     expect(value.value).toBe('Synthetic alpha unsubmitted draft');
@@ -151,8 +154,12 @@ describe('AdminScreen', () => {
       </ThemeProvider>,
     );
 
-    expect((screen.getByLabelText(adminText('en', 'proposedValue')) as HTMLInputElement).value).toBe('');
-    expect((screen.getByLabelText(adminText('en', 'effectiveFrom')) as HTMLInputElement).value).toBe('');
+    expect(screen.getByLabelText<HTMLInputElement>(adminText('en', 'proposedValue')).value).toBe(
+      '',
+    );
+    expect(screen.getByLabelText<HTMLInputElement>(adminText('en', 'effectiveFrom')).value).toBe(
+      '',
+    );
     expect(screen.getByTestId('admin-status').textContent).toBe('');
   });
 
@@ -163,9 +170,11 @@ describe('AdminScreen', () => {
     const statusAtCommit: string[] = [];
     function CommitObserver({ children }: { children: ReactNode }) {
       useLayoutEffect(() => {
-        statusAtCommit.push(document.querySelector('[data-testid="admin-status"]')?.textContent ?? '');
+        statusAtCommit.push(
+          document.querySelector('[data-testid="admin-status"]')?.textContent ?? '',
+        );
       });
-      return <>{children}</>;
+      return children;
     }
     function frame(organizationId: string) {
       return (
@@ -187,7 +196,9 @@ describe('AdminScreen', () => {
       target: { value: '2026-07-01' },
     });
     fireEvent.click(screen.getByRole('button', { name: adminText('en', 'propose') }));
-    expect(screen.getByTestId('admin-status').textContent).toBe(proposalAnnouncement('en', 'MAIN', 5));
+    expect(screen.getByTestId('admin-status').textContent).toBe(
+      proposalAnnouncement('en', 'MAIN', 5),
+    );
 
     statusAtCommit.length = 0;
     rerender(frame(betaOrganizationId));

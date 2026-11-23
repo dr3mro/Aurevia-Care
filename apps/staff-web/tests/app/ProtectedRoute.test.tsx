@@ -7,7 +7,9 @@ describe('protected route placeholder', () => {
   it('conceals the protected content until an explicit flag is set', () => {
     render(
       <I18nProvider>
-        <ProtectedRoute><span>restricted content</span></ProtectedRoute>
+        <ProtectedRoute>
+          <span>restricted content</span>
+        </ProtectedRoute>
       </I18nProvider>,
     );
     expect(screen.queryByText('restricted content')).toBeNull();
@@ -17,7 +19,9 @@ describe('protected route placeholder', () => {
   it('renders children when explicitly allowed', () => {
     render(
       <I18nProvider>
-        <ProtectedRoute signedIn><span>restricted content</span></ProtectedRoute>
+        <ProtectedRoute signedIn>
+          <span>restricted content</span>
+        </ProtectedRoute>
       </I18nProvider>,
     );
     expect(screen.getByText('restricted content')).toBeTruthy();

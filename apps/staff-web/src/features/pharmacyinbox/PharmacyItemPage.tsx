@@ -22,7 +22,7 @@ import {
 } from './api';
 import { dosingInstructions, hasReason } from './domain';
 import { pharmacyText, stateMessageKey } from './labels';
-import type { InboxItemResponse, PharmacyDetail } from './types';
+import type { InboxItemResponse, PharmacyDetail, StatusEventResponse } from './types';
 
 /** Normalize a command rejection to the typed error the state views present. */
 function toTransportError(failure: unknown): TransportError {
@@ -38,7 +38,9 @@ function PrescriptionCard({ item, locale }: { item: InboxItemResponse; locale: L
       style={{ display: 'grid', gap: tokens.spacing.md }}
     >
       <h3>{pharmacyText(locale, 'detailTitle')}</h3>
-      <dl style={{ display: 'grid', gridTemplateColumns: 'max-content 1fr', gap: tokens.spacing.sm }}>
+      <dl
+        style={{ display: 'grid', gridTemplateColumns: 'max-content 1fr', gap: tokens.spacing.sm }}
+      >
         <dt>{pharmacyText(locale, 'patient')}</dt>
         <dd>
           <MixedScriptText text={item.patientId} lang="en" />
@@ -78,6 +80,36 @@ interface PharmacyWorkflowProps {
   onCommitted: () => void;
 }
 
+/** Append-only status events of one prescription. */
+function EventsSection({
+  events,
+  locale,
+}: {
+  events: readonly StatusEventResponse[];
+  locale: Locale;
+}) {
+  return (
+    <section aria-label={pharmacyText(locale, 'eventsTitle')}>
+      <h3>{pharmacyText(locale, 'eventsTitle')}</h3>
+      {events.length === 0 ? (
+        <p>{pharmacyText(locale, 'noEvents')}</p>
+      ) : (
+        <ul>
+          {events.map((event) => (
+            <li key={event.id}>
+              <code dir="ltr">{event.type}</code>{' '}
+              <MixedScriptText text={event.detail ?? ''} lang="en" />{' '}
+              <time dateTime={event.occurredAt}>
+                {formatInstant(event.occurredAt, 'UTC', locale)}
+              </time>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 /**
  * Owns the four pharmacy commands. Reject and clarify validate a reason before
  * sending; dispensing evidence lives on its own step and never sets acceptance.
@@ -107,7 +139,6 @@ function PharmacyWorkflow({ detail, organizationId, onDone, onCommitted }: Pharm
     }
     const warn = (event: BeforeUnloadEvent): void => {
       event.preventDefault();
-      event.returnValue = '';
     };
     window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);
@@ -174,25 +205,8 @@ function PharmacyWorkflow({ detail, organizationId, onDone, onCommitted }: Pharm
           {pharmacyText(locale, status.dispensed ? 'flagYes' : 'flagNo')}
         </p>
       </section>
-      <section aria-label={pharmacyText(locale, 'eventsTitle')}>
-        <h3>{pharmacyText(locale, 'eventsTitle')}</h3>
-        {status.events.length === 0 ? (
-          <p>{pharmacyText(locale, 'noEvents')}</p>
-        ) : (
-          <ul>
-            {status.events.map((event) => (
-              <li key={event.id}>
-                <code dir="ltr">{event.type}</code>{' '}
-                <MixedScriptText text={event.detail ?? ''} lang="en" />{' '}
-                <time dateTime={event.occurredAt}>
-                  {formatInstant(event.occurredAt, 'UTC', locale)}
-                </time>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-      {commandError !== undefined && <div>{StateView.forTransportError(commandError)}</div>}
+      <EventsSection events={status.events} locale={locale} />
+      {commandError !== undefined ? <div>{StateView.forTransportError(commandError)}</div> : null}
       {step === 'dispensing' ? (
         <section aria-label={pharmacyText(locale, 'dispensingTitle')}>
           <h3>{pharmacyText(locale, 'dispensingTitle')}</h3>
@@ -274,7 +288,7 @@ export function PharmacyItemPage() {
 
   return (
     <>
-      {done !== undefined && <p role="status">{done}</p>}
+      {done !== undefined ? <p role="status">{done}</p> : null}
       {result.status === 'loading' ? (
         <LoadingState />
       ) : result.status === 'error' ? (

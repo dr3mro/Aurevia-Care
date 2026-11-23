@@ -29,16 +29,16 @@ const sendMock = vi.mocked(send);
 const overviewPatterns = ['/patients/:id'];
 
 function descriptorAt(call: number): RequestDescriptor {
-  return sendMock.mock.calls[call]![0] as RequestDescriptor;
+  return required(sendMock.mock.calls[call])[0];
 }
 
 function element(
   ui: ReactElement,
   organizationId: string,
   locale: Locale = 'en',
-  withRouter = true,
-  path = '/patients/patient-a1',
+  routing: { withRouter?: boolean; path?: string } = {},
 ) {
+  const { withRouter = true, path = '/patients/patient-a1' } = routing;
   const routed = withRouter ? (
     <RouterProvider patterns={overviewPatterns} initialPath={path}>
       {ui}
@@ -49,9 +49,7 @@ function element(
   return (
     <ThemeProvider>
       <I18nProvider initialLocale={locale}>
-        <ActiveOrganizationProvider value={{ organizationId }}>
-          {routed}
-        </ActiveOrganizationProvider>
+        <ActiveOrganizationProvider value={{ organizationId }}>{routed}</ActiveOrganizationProvider>
       </I18nProvider>
     </ThemeProvider>
   );
@@ -152,7 +150,7 @@ describe('PatientOverviewPage content', () => {
 
   it('renders the Arabic identity under RTL', async () => {
     const arabicView = {
-      patient: syntheticAlphaPatients[1]!,
+      patient: required(syntheticAlphaPatients[1]),
       duplicates: [],
     };
     sendMock.mockResolvedValueOnce(arabicView);
@@ -166,7 +164,7 @@ describe('PatientOverviewPage content', () => {
 
   it('uses an empty id when no route parameter is bound', async () => {
     sendMock.mockResolvedValueOnce(syntheticPatientViewNoDuplicates);
-    render(element(<PatientOverviewPage />, alphaOrganizationId, 'en', false));
+    render(element(<PatientOverviewPage />, alphaOrganizationId, 'en', { withRouter: false }));
 
     expect(await screen.findByText('Layla Haddad')).toBeTruthy();
     expect(descriptorAt(0).url).toBe('/api/v1/patients/');
@@ -195,11 +193,13 @@ describe('patient overview routes', () => {
 
   it('lazily loads the overview page with the bound patient id', async () => {
     sendMock.mockResolvedValueOnce(syntheticPatientViewNoDuplicates);
-    const route = createRoutes(false).find((candidate) => candidate.pattern === '/patients/:id')!;
+    const route = required(
+      createRoutes(false).find((candidate) => candidate.pattern === '/patients/:id'),
+    );
     const Page = route.component;
     render(
       <Suspense fallback={<p>Loading route</p>}>
-        {element(<Page />, alphaOrganizationId, 'en', true, '/patients/patient-a1')}
+        {element(<Page />, alphaOrganizationId, 'en', { path: '/patients/patient-a1' })}
       </Suspense>,
     );
 
@@ -207,3 +207,10 @@ describe('patient overview routes', () => {
     expect(descriptorAt(0).url).toBe('/api/v1/patients/patient-a1');
   });
 });
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

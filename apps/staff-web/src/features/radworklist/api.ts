@@ -35,30 +35,30 @@ export interface WorklistEntryResponse {
 }
 
 /** Body of a scheduling command; the actor and tenant stay server-owned. */
-export type ScheduleBody = {
+export interface ScheduleBody {
   expectedVersion: number;
   performingSiteId: string;
   scheduledAt: string;
   modality: ApiModality;
   accession: string;
   accessionIssuer: string;
-};
+}
 
 /** Body of a verified study-link command. */
-export type StudyLinkBody = {
+export interface StudyLinkBody {
   expectedVersion: number;
   performingSiteId: string;
   studyInstanceUid: string;
   patientId: string;
   accession: string;
   workstationRef: string;
-};
+}
 
 /** Body of the performed-study handoff command. */
-export type HandoffBody = {
+export interface HandoffBody {
   expectedVersion: number;
   performingSiteId: string;
-};
+}
 
 /** The small projection a command returns to the caller. */
 export interface WorklistCommandResponse {
@@ -115,7 +115,7 @@ export async function scheduleOrder(
         ifMatch: body.expectedVersion,
         idempotencyKey: crypto.randomUUID(),
       },
-      body,
+      { ...body },
     ),
   );
 }
@@ -134,7 +134,7 @@ export async function linkStudy(
         ifMatch: body.expectedVersion,
         idempotencyKey: crypto.randomUUID(),
       },
-      body,
+      { ...body },
     ),
   );
 }
@@ -153,7 +153,7 @@ export async function reportOrder(
         ifMatch: body.expectedVersion,
         idempotencyKey: crypto.randomUUID(),
       },
-      body,
+      { ...body },
     ),
   );
 }

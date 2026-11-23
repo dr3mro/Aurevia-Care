@@ -13,10 +13,9 @@ import { I18nProvider } from '../../src/i18n/I18nProvider';
 import { ThemeProvider } from '../../src/theme/ThemeProvider';
 
 /** The feature modules collected exactly as the application collects them. */
-const featureRouteModules = import.meta.glob<FeatureRouteModule>(
-  '../../src/features/*/routes.ts',
-  { eager: true },
-);
+const featureRouteModules = import.meta.glob<FeatureRouteModule>('../../src/features/*/routes.ts', {
+  eager: true,
+});
 const featurePatterns = collectFeatureRoutes(featureRouteModules).map((route) => route.pattern);
 
 const patterns = routes.map((route) => route.pattern);
@@ -72,8 +71,9 @@ describe('staff web application shell', () => {
     expect(screen.getByLabelText('Organization')).toBeTruthy();
     const banner = screen.getByRole('status', { name: 'Notifications' });
     expect(banner).toBeTruthy();
-    expect(banner.compareDocumentPosition(screen.getByRole('main')) &
-      Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(
+      banner.compareDocumentPosition(screen.getByRole('main')) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it('calls onSignOut from the user menu', () => {
@@ -93,9 +93,9 @@ describe('staff web application shell', () => {
   it('renders the welcome page in the main landmark using an empty state', async () => {
     renderShell();
     expect(await screen.findByRole('heading', { name: 'Welcome' })).toBeTruthy();
-    expect(screen.getAllByRole('status').some((node) => node.textContent?.includes('Nothing'))).toBe(
-      true,
-    );
+    expect(
+      screen.getAllByRole('status').some((node) => node.textContent?.includes('Nothing') === true),
+    ).toBe(true);
   });
 
   it('shows the not-found page for an unknown path', async () => {
@@ -111,9 +111,9 @@ describe('staff web application shell', () => {
     expect(within(rail()).getByRole('link', { name: 'Today' }).getAttribute('aria-current')).toBe(
       'page',
     );
-    expect(within(rail()).getByRole('link', { name: 'Schedule' }).getAttribute('aria-current')).toBe(
-      null,
-    );
+    expect(
+      within(rail()).getByRole('link', { name: 'Schedule' }).getAttribute('aria-current'),
+    ).toBe(null);
   });
 
   it('mirrors the rail in Arabic with logical positioning only', () => {

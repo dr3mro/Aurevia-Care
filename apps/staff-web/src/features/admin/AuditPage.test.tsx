@@ -16,6 +16,7 @@ import { ThemeProvider } from '../../theme/ThemeProvider';
 import { adminText } from './messages';
 import { alphaOrganizationId, betaOrganizationId } from './fixtures';
 import { AuditPage } from './AuditPage';
+import { must } from '../../../tests/must';
 
 vi.mock('../../api/transport', async (importOriginal) => {
   const actual = await importOriginal<typeof TransportModule>();
@@ -46,7 +47,7 @@ function page(events: Record<string, unknown>[] = [event()], nextCursor: string 
 }
 
 function descriptorAt(call: number): RequestDescriptor {
-  return sendMock.mock.calls[call]![0] as RequestDescriptor;
+  return must(sendMock.mock.calls[call])[0];
 }
 
 function element(ui: ReactElement, organizationId: string, locale: Locale = 'en') {
@@ -89,19 +90,19 @@ function fillFilters(overrides: Partial<Record<string, string>> = {}) {
     ...overrides,
   };
   fireEvent.change(screen.getByLabelText(adminText('en', 'auditActionFilter')), {
-    target: { value: values.action! },
+    target: { value: values.action },
   });
   fireEvent.change(screen.getByLabelText(adminText('en', 'auditOutcomeFilter')), {
-    target: { value: values.outcome! },
+    target: { value: values.outcome },
   });
   fireEvent.change(screen.getByLabelText(adminText('en', 'auditResourceFilter')), {
-    target: { value: values.resourceType! },
+    target: { value: values.resourceType },
   });
   fireEvent.change(screen.getByLabelText(adminText('en', 'auditFrom')), {
-    target: { value: values.from! },
+    target: { value: values.from },
   });
   fireEvent.change(screen.getByLabelText(adminText('en', 'auditTo')), {
-    target: { value: values.to! },
+    target: { value: values.to },
   });
   fireEvent.click(screen.getByRole('button', { name: adminText('en', 'auditApplyFilters') }));
 }
@@ -140,7 +141,9 @@ describe('AuditPage states', () => {
     await waitFor(() => expect(sendMock).toHaveBeenCalledTimes(3));
     expect(await screen.findByText('Synthetic configuration review')).toBeTruthy();
     expect(screen.queryByText(adminText('en', 'auditNoEvents'))).toBeNull();
-    expect((screen.getByLabelText(adminText('en', 'auditActionFilter')) as HTMLInputElement).value).toBe('');
+    expect(
+      screen.getByLabelText<HTMLInputElement>(adminText('en', 'auditActionFilter')).value,
+    ).toBe('');
   });
 
   it.each(['server', 'timeout', 'offline', 'invalid', 'rate-limited'] as const)(
@@ -169,8 +172,12 @@ describe('AuditPage states', () => {
     sendMock.mockResolvedValueOnce(page());
     wrap(<AuditPage />);
     expect(await screen.findByText('Synthetic configuration review')).toBeTruthy();
-    expect(screen.getByText(adminText('en', 'auditFacilityZone').replace('{zone}', 'America/New_York'))).toBeTruthy();
-    expect(screen.getByText(formatInstant('2026-03-08T06:30:00Z', 'America/New_York', 'en'))).toBeTruthy();
+    expect(
+      screen.getByText(adminText('en', 'auditFacilityZone').replace('{zone}', 'America/New_York')),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(formatInstant('2026-03-08T06:30:00Z', 'America/New_York', 'en')),
+    ).toBeTruthy();
     expect(screen.queryByTestId('chain-badge')).toBeNull();
   });
 
@@ -244,7 +251,11 @@ describe('AuditPage filters and paging', () => {
 
   it('appends the next page while a cursor exists', async () => {
     sendMock.mockResolvedValueOnce(page([event()], 'seq-2'));
-    sendMock.mockResolvedValueOnce(page([event({ id: 'audit-2', seq: 2, action: 'AUDIT_READ', purpose: 'Synthetic second page' })]));
+    sendMock.mockResolvedValueOnce(
+      page([
+        event({ id: 'audit-2', seq: 2, action: 'AUDIT_READ', purpose: 'Synthetic second page' }),
+      ]),
+    );
     wrap(<AuditPage />);
     await screen.findByText('Synthetic configuration review');
 
@@ -258,7 +269,9 @@ describe('AuditPage filters and paging', () => {
 
   it('drops accumulated rows and the cursor when filters change', async () => {
     sendMock.mockResolvedValueOnce(page([event()], 'seq-2'));
-    sendMock.mockResolvedValueOnce(page([event({ id: 'audit-2', seq: 2, purpose: 'Synthetic second page' })]));
+    sendMock.mockResolvedValueOnce(
+      page([event({ id: 'audit-2', seq: 2, purpose: 'Synthetic second page' })]),
+    );
     sendMock.mockResolvedValueOnce(page([event({ purpose: 'Synthetic filtered page' })]));
     wrap(<AuditPage />);
     await screen.findByText('Synthetic configuration review');
@@ -289,9 +302,13 @@ describe('audit role visibility and routes', () => {
 
   it('lazily loads the registered audit page with live data', async () => {
     sendMock.mockResolvedValueOnce(page());
-    const route = createRoutes(false).find((candidate) => candidate.pattern === '/admin/audit')!;
+    const route = must(
+      createRoutes(false).find((candidate) => candidate.pattern === '/admin/audit'),
+    );
     const Page = route.component;
-    render(<Suspense fallback={<p>Loading route</p>}>{element(<Page />, alphaOrganizationId)}</Suspense>);
+    render(
+      <Suspense fallback={<p>Loading route</p>}>{element(<Page />, alphaOrganizationId)}</Suspense>,
+    );
     expect(await screen.findByText('Synthetic configuration review')).toBeTruthy();
     expect(descriptorAt(0).url).toBe('/api/v1/audit-events');
   });

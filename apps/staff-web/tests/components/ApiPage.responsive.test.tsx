@@ -31,13 +31,10 @@ function installMatchMedia(breakpoint: Breakpoint): void {
 }
 
 function resource(label: string, value: readonly string[]) {
-  return { label, load: async () => value, deps: [] };
+  return { label, load: () => Promise.resolve(value), deps: [] };
 }
 
-function wrap(
-  view: ReactNode,
-  options: { locale?: Locale; sessionExpired?: () => void } = {},
-) {
+function wrap(view: ReactNode, options: { locale?: Locale; sessionExpired?: () => void } = {}) {
   return render(
     <ThemeProvider>
       <I18nProvider initialLocale={options.locale ?? 'en'}>
@@ -60,23 +57,24 @@ afterEach(() => {
 });
 
 describe('responsive ApiPage', () => {
-  it.each(BREAKPOINTS)('uses the page wrapper and keeps the labelled region at %s', async (breakpoint) => {
-    installMatchMedia(breakpoint);
+  it.each(BREAKPOINTS)(
+    'uses the page wrapper and keeps the labelled region at %s',
+    async (breakpoint) => {
+      installMatchMedia(breakpoint);
 
-    wrap(
-      <ApiPage resource={resource('Synthetic rows', ['SYN-0001', 'SYN-0002'])}>
-        {rows}
-      </ApiPage>,
-    );
+      wrap(
+        <ApiPage resource={resource('Synthetic rows', ['SYN-0001', 'SYN-0002'])}>{rows}</ApiPage>,
+      );
 
-    const region = await screen.findByRole('region', { name: 'Synthetic rows' });
-    expect(region.classList.contains('page')).toBe(true);
-    expect(region.getAttribute('data-breakpoint')).toBe(breakpoint);
-    expect(region.getAttribute('aria-label')).toBe('Synthetic rows');
-    expect(region.textContent).toContain('SYN-0001, SYN-0002');
-    expect(region.classList.contains('hide-compact')).toBe(false);
-    expect(region.getAttribute('style')).toBeNull();
-  });
+      const region = await screen.findByRole('region', { name: 'Synthetic rows' });
+      expect(region.classList.contains('page')).toBe(true);
+      expect(region.getAttribute('data-breakpoint')).toBe(breakpoint);
+      expect(region.getAttribute('aria-label')).toBe('Synthetic rows');
+      expect(region.textContent).toContain('SYN-0001, SYN-0002');
+      expect(region.classList.contains('hide-compact')).toBe(false);
+      expect(region.getAttribute('style')).toBeNull();
+    },
+  );
 
   it.each(BREAKPOINTS)('keeps every state inside the page wrapper at %s', async (breakpoint) => {
     installMatchMedia(breakpoint);
@@ -98,14 +96,10 @@ describe('responsive ApiPage', () => {
 
     const failing = {
       label: 'Synthetic rows',
-      load: async () => {
-        throw new Error('synthetic offline');
-      },
+      load: () => Promise.reject(new Error('synthetic offline')),
       deps: [],
     };
-    const error = wrap(
-      <ApiPage resource={failing}>{rows}</ApiPage>,
-    );
+    const error = wrap(<ApiPage resource={failing}>{rows}</ApiPage>);
     const errorMessage = await screen.findByText('Something went wrong');
     const errorRegion = errorMessage.closest('section.page');
     expect(errorRegion).not.toBeNull();
@@ -160,9 +154,7 @@ describe('responsive ApiPage', () => {
     installMatchMedia('compact');
 
     wrap(
-      <ApiPage
-        resource={resource('صفوف تجريبية', ['SYN-0005', 'اسم طويل جدًا باللغة العربية'])}
-      >
+      <ApiPage resource={resource('صفوف تجريبية', ['SYN-0005', 'اسم طويل جدًا باللغة العربية'])}>
         {rows}
       </ApiPage>,
       { locale: 'ar' },

@@ -32,7 +32,7 @@ describe('lab board columns', () => {
       { stage: 'released', label: 'Released', count: 1 },
     ];
     expected.forEach(({ stage, label, count }, index) => {
-      const column = columns[index]!;
+      const column = required(columns[index]);
       expect(column.getAttribute('data-stage')).toBe(stage);
       expect(within(column).getByRole('heading', { level: 3 }).textContent).toContain(label);
       expect(within(column).getAllByTestId('turnaround-card')).toHaveLength(count);
@@ -63,7 +63,7 @@ describe('lab board overdue wording and colour', () => {
     // The word carries the meaning; colour is only an additional cue and is
     // applied to overdue cards, never to on-track cards.
     expect(screen.getByText('Overdue by 25 min').style.color).toBe('rgb(179, 38, 30)');
-    expect(screen.getAllByText('On track')[0]!.style.color).toBe('');
+    expect(required(screen.getAllByText('On track')[0]).style.color).toBe('');
   });
 
   it('shows age against the target on each card with an isolated accession', () => {
@@ -124,3 +124,10 @@ describe('lab board English and Arabic rendering', () => {
     expect(screen.getAllByTestId('turnaround-column')).toHaveLength(5);
   });
 });
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

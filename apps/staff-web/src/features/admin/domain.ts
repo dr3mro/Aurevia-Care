@@ -40,7 +40,10 @@ export interface AccessProbe {
  * Resolve access to a resource. Existence outside the active tenant is always
  * concealed; same-tenant access requires both active membership and a role.
  */
-export function resolveAccess(viewer: ViewerPermission, resourceOrganizationId: string): AccessState {
+export function resolveAccess(
+  viewer: ViewerPermission,
+  resourceOrganizationId: string,
+): AccessState {
   if (resourceOrganizationId !== viewer.organizationId) {
     return 'concealed';
   }
@@ -85,7 +88,10 @@ export function isValidCivilDate(value: string): boolean {
 }
 
 /** The single tenant boundary shared by every admin selection rule. */
-function forTenant<T extends { organizationId: string }>(rows: readonly T[], organizationId: string): T[] {
+function forTenant<T extends { organizationId: string }>(
+  rows: readonly T[],
+  organizationId: string,
+): T[] {
   return rows.filter((row) => row.organizationId === organizationId);
 }
 
@@ -97,7 +103,10 @@ export function versionsFor(
 ): ConfigurationVersion[] {
   return forTenant(entries, organizationId)
     .filter((entry) => entry.key === key)
-    .sort((left, right) => right.version - left.version || right.effectiveFrom.localeCompare(left.effectiveFrom));
+    .sort((left, right) => {
+      const byVersion = right.version - left.version;
+      return byVersion === 0 ? right.effectiveFrom.localeCompare(left.effectiveFrom) : byVersion;
+    });
 }
 
 /** Return the highest approved version already effective on the anchor date. */
@@ -118,19 +127,21 @@ export function nextVersion(
   organizationId: string,
   key: string,
 ): number {
-  return forTenant(entries, organizationId)
-    .filter((entry) => entry.key === key)
-    .reduce((maximum, entry) => Math.max(maximum, entry.version), 0) + 1;
+  return (
+    forTenant(entries, organizationId)
+      .filter((entry) => entry.key === key)
+      .reduce((maximum, entry) => Math.max(maximum, entry.version), 0) + 1
+  );
 }
 
 /** Build a pending draft bound to the requesting tenant and facility. */
 export function proposeVersion(
   entries: readonly ConfigurationVersion[],
   organizationId: string,
-  key: string,
-  facilityCode: string,
+  target: { key: string; facilityCode: string },
   draft: ConfigurationDraft,
 ): ConfigurationVersion {
+  const { key, facilityCode } = target;
   return {
     organizationId,
     key,

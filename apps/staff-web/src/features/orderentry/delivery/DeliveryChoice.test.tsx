@@ -48,12 +48,17 @@ function renderChoice(overrides: Partial<DeliveryChoiceProps> = {}, locale: Loca
 const modes: readonly DeliveryMode[] = ['electronic', 'print', 'both'];
 
 describe('DeliveryChoice modes', () => {
-  it.each(modes)('shows the partner, what the patient receives and a worded confirm for %s', (mode) => {
-    renderChoice({ mode });
-    expect(screen.getByText(syntheticPartnerName)).toBeTruthy();
-    expect(screen.getByText(deliveryText('en', receivesKey[mode]))).toBeTruthy();
-    expect(screen.getByRole('button', { name: deliveryText('en', confirmKey[mode]) })).toBeTruthy();
-  });
+  it.each(modes)(
+    'shows the partner, what the patient receives and a worded confirm for %s',
+    (mode) => {
+      renderChoice({ mode });
+      expect(screen.getByText(syntheticPartnerName)).toBeTruthy();
+      expect(screen.getByText(deliveryText('en', receivesKey[mode]))).toBeTruthy();
+      expect(
+        screen.getByRole('button', { name: deliveryText('en', confirmKey[mode]) }),
+      ).toBeTruthy();
+    },
+  );
 
   it('submits the currently selected mode through the confirm callback', () => {
     const { props } = renderChoice({ mode: 'both' });
@@ -66,7 +71,9 @@ describe('DeliveryChoice modes', () => {
     const { props } = renderChoice({ mode: 'electronic' });
     const radios = screen.getAllByRole('radio');
     expect(radios).toHaveLength(modes.length);
-    fireEvent.click(screen.getByRole('radio', { name: new RegExp(deliveryText('en', 'modePrint')) }));
+    fireEvent.click(
+      screen.getByRole('radio', { name: new RegExp(deliveryText('en', 'modePrint')) }),
+    );
     expect(props.onChangeMode).toHaveBeenCalledTimes(1);
     expect(props.onChangeMode).toHaveBeenCalledWith('print');
     expect(props.onConfirm).not.toHaveBeenCalled();
@@ -153,7 +160,9 @@ describe('DeliveryChoice localization', () => {
     renderChoice({ mode: 'both' });
     expect(document.documentElement.dir).toBe('ltr');
     expect(document.documentElement.lang).toBe('en');
-    expect(screen.getByRole('heading', { level: 2, name: deliveryText('en', 'title') })).toBeTruthy();
+    expect(
+      screen.getByRole('heading', { level: 2, name: deliveryText('en', 'title') }),
+    ).toBeTruthy();
     expect(screen.getByRole('button', { name: deliveryText('en', confirmKey.both) })).toBeTruthy();
   });
 
@@ -161,7 +170,9 @@ describe('DeliveryChoice localization', () => {
     renderChoice({ mode: 'print', partnerName: syntheticArabicPartnerName }, 'ar');
     expect(document.documentElement.dir).toBe('rtl');
     expect(document.documentElement.lang).toBe('ar');
-    expect(screen.getByRole('heading', { level: 2, name: deliveryText('ar', 'title') })).toBeTruthy();
+    expect(
+      screen.getByRole('heading', { level: 2, name: deliveryText('ar', 'title') }),
+    ).toBeTruthy();
     expect(screen.getByText(deliveryText('ar', receivesKey.print))).toBeTruthy();
     expect(screen.getByRole('button', { name: deliveryText('ar', confirmKey.print) })).toBeTruthy();
     expect(screen.getByText(syntheticArabicPartnerName).getAttribute('lang')).toBe('ar');
@@ -169,7 +180,9 @@ describe('DeliveryChoice localization', () => {
 
   it('shows the ambiguous recovery message in Arabic', () => {
     renderChoice({ result: ambiguousSend, partnerName: syntheticArabicPartnerName }, 'ar');
-    expect(screen.getByRole('alert').textContent).toContain(deliveryText('ar', 'sendAmbiguousTitle'));
+    expect(screen.getByRole('alert').textContent).toContain(
+      deliveryText('ar', 'sendAmbiguousTitle'),
+    );
     expect(screen.getByRole('button', { name: deliveryText('ar', 'reconcile') })).toBeTruthy();
     expect(screen.getByRole('button', { name: deliveryText('ar', 'printInstead') })).toBeTruthy();
     expect(screen.queryByRole('button', { name: deliveryText('ar', 'retry') })).toBeNull();

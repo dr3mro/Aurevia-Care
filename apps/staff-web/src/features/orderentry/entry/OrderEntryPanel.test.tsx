@@ -22,6 +22,8 @@ import { entryText } from './messages';
 import { OrderEntryPanel } from './OrderEntryPanel';
 import type { OrderEntryPanelProps } from './OrderEntryPanel';
 
+const clinicianRole: OrderEntryPanelProps['role'] = 'clinician';
+
 const clipboard = vi.hoisted(() => ({ writeText: vi.fn(() => Promise.resolve()) }));
 Object.defineProperty(navigator, 'clipboard', { configurable: true, value: clipboard });
 
@@ -44,8 +46,8 @@ function renderPanel(overrides: Partial<OrderEntryPanelProps> = {}, locale: Loca
     allergies: syntheticAllergies,
     activeOrders: syntheticActiveOrders,
     savedDraft: syntheticSavedDraft,
-    onSaveDraft: vi.fn(async () => syntheticSavedDraft),
-    onReload: vi.fn(async () => syntheticSavedDraft),
+    onSaveDraft: vi.fn(() => Promise.resolve(syntheticSavedDraft)),
+    onReload: vi.fn(() => Promise.resolve(syntheticSavedDraft)),
     ...overrides,
   };
   return { ...wrap(<OrderEntryPanel {...props} />, locale), props };
@@ -64,9 +66,7 @@ function searchField(locale: Locale = 'en') {
 }
 
 function addItem(name: string, locale: Locale = 'en') {
-  fireEvent.click(
-    screen.getByRole('button', { name: `${entryText(locale, 'add')}: ${name}` }),
-  );
+  fireEvent.click(screen.getByRole('button', { name: `${entryText(locale, 'add')}: ${name}` }));
 }
 
 describe('OrderEntryPanel', () => {
@@ -85,8 +85,12 @@ describe('OrderEntryPanel', () => {
     expect(within(orders).getByText('CT abdomen with contrast')).toBeTruthy();
 
     fireEvent.change(searchField(), { target: { value: 'LAB-CBC' } });
-    expect(screen.getByRole('button', { name: `${entryText('en', 'add')}: Complete blood count` })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: `${entryText('en', 'add')}: Retired test` })).toBeNull();
+    expect(
+      screen.getByRole('button', { name: `${entryText('en', 'add')}: Complete blood count` }),
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole('button', { name: `${entryText('en', 'add')}: Retired test` }),
+    ).toBeNull();
     expect(
       screen.queryByRole('button', { name: `${entryText('en', 'add')}: Beta tenant test` }),
     ).toBeNull();
@@ -103,11 +107,15 @@ describe('OrderEntryPanel', () => {
     const { props } = renderPanel();
     fireEvent.click(screen.getByRole('button', { name: entryText('en', 'saveDraft') }));
     await waitFor(() => expect(props.onSaveDraft).toHaveBeenCalledTimes(1));
-    expect(screen.getByTestId('entry-status').textContent).toContain(entryText('en', 'savedNotice'));
+    expect(screen.getByTestId('entry-status').textContent).toContain(
+      entryText('en', 'savedNotice'),
+    );
 
     addItem('CT abdomen with contrast');
     fireEvent.click(screen.getByRole('button', { name: entryText('en', 'saveDraft') }));
-    expect(screen.getByRole('alert').textContent).toContain(entryText('en', 'clinicalQuestionRequired'));
+    expect(screen.getByRole('alert').textContent).toContain(
+      entryText('en', 'clinicalQuestionRequired'),
+    );
     expect(props.onSaveDraft).toHaveBeenCalledTimes(1);
 
     fireEvent.change(questionField(), { target: { value: 'Synthetic question for review.' } });
@@ -117,7 +125,7 @@ describe('OrderEntryPanel', () => {
 
   it('saves a draft with the version it opened and announces the result', async () => {
     const next = { ...syntheticSavedDraft, version: 5 };
-    const onSaveDraft = vi.fn(async () => next);
+    const onSaveDraft = vi.fn(() => Promise.resolve(next));
     const { props } = renderPanel({ onSaveDraft });
     fireEvent.click(screen.getByRole('button', { name: entryText('en', 'saveDraft') }));
     await waitFor(() => expect(props.onSaveDraft).toHaveBeenCalledTimes(1));
@@ -125,7 +133,9 @@ describe('OrderEntryPanel', () => {
       expect.objectContaining({ patientId: syntheticPatientLocalId }),
       syntheticSavedDraft.version,
     );
-    expect(screen.getByTestId('entry-status').textContent).toContain(entryText('en', 'savedNotice'));
+    expect(screen.getByTestId('entry-status').textContent).toContain(
+      entryText('en', 'savedNotice'),
+    );
   });
 
   it('keeps typed work on a stale version and offers compare, reload and copy', async () => {
@@ -135,7 +145,7 @@ describe('OrderEntryPanel', () => {
       content: { ...syntheticSavedDraft.content, preparationInstructions: 'Server preparation.' },
     };
     const onSaveDraft = vi.fn(() => Promise.reject(new OrderConflict(server)));
-    const onReload = vi.fn(async () => server);
+    const onReload = vi.fn(() => Promise.resolve(server));
     const { props } = renderPanel({ onSaveDraft, onReload });
 
     fireEvent.change(preparationField(), { target: { value: 'Clinician typed preparation.' } });
@@ -162,9 +172,13 @@ describe('OrderEntryPanel', () => {
     await waitFor(() => expect(props.onReload).toHaveBeenCalledTimes(1));
     expect((preparationField() as HTMLTextAreaElement).value).toBe('Server preparation.');
     expect(screen.queryByRole('alert')).toBeNull();
-    expect(screen.getByTestId('entry-status').textContent).toContain(entryText('en', 'reloadNotice'));
+    expect(screen.getByTestId('entry-status').textContent).toContain(
+      entryText('en', 'reloadNotice'),
+    );
   });
+});
 
+describe('OrderEntryPanel states and locale', () => {
   it('reports a failed save without clearing the typed draft', async () => {
     const onSaveDraft = vi.fn(() => Promise.reject(new Error('network')));
     renderPanel({ onSaveDraft });
@@ -187,9 +201,11 @@ describe('OrderEntryPanel', () => {
   it('starts with an empty selection when there is no saved draft and submits with the form', () => {
     const { props } = renderPanel({ savedDraft: undefined });
     expect(screen.getByText(entryText('en', 'noSelectedItems'))).toBeTruthy();
-    const save = screen.getByRole('button', { name: entryText('en', 'saveDraft') }) as HTMLButtonElement;
+    const save = screen.getByRole<HTMLButtonElement>('button', {
+      name: entryText('en', 'saveDraft'),
+    });
     expect(save.type).toBe('submit');
-    fireEvent.submit(save.closest('form')!);
+    fireEvent.submit(required(save.closest('form')));
     expect(screen.getByRole('alert').textContent).toContain(entryText('en', 'noItems'));
     expect(props.onSaveDraft).not.toHaveBeenCalled();
   });
@@ -207,13 +223,13 @@ describe('OrderEntryPanel', () => {
             patientLocalId={syntheticPatientLocalId}
             encounterLocalId="enc-001"
             facilityId={syntheticFacilityId}
-            role="clinician"
+            role={clinicianRole}
             catalog={syntheticCatalog}
             allergies={syntheticAllergies}
             activeOrders={syntheticActiveOrders}
             savedDraft={syntheticSavedDraft}
-            onSaveDraft={vi.fn(async () => syntheticSavedDraft)}
-            onReload={vi.fn(async () => syntheticSavedDraft)}
+            onSaveDraft={vi.fn(() => Promise.resolve(syntheticSavedDraft))}
+            onReload={vi.fn(() => Promise.resolve(syntheticSavedDraft))}
           />
         </I18nProvider>
       </ThemeProvider>,
@@ -272,3 +288,10 @@ describe('OrderEntryPanel', () => {
     expect(screen.getByRole('textbox', { name: entryText('ar', 'clinicalQuestion') })).toBeTruthy();
   });
 });
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

@@ -1,3 +1,4 @@
+import { defined } from '../../components/invariant';
 import { syntheticOrganizations } from '../../fixtures/synthetic';
 import type {
   ConflictWire,
@@ -10,8 +11,8 @@ import type {
 } from './domain';
 
 /** The two synthetic tenants; their local MRNs intentionally collide. */
-export const alphaOrganizationId = syntheticOrganizations[0]!.id;
-export const betaOrganizationId = syntheticOrganizations[1]!.id;
+export const alphaOrganizationId = defined(syntheticOrganizations[0], 'alpha organization').id;
+export const betaOrganizationId = defined(syntheticOrganizations[1], 'beta organization').id;
 
 /** Synthetic subjects; the opener and the second reviewer are different people. */
 export const openerSubject = 'synthetic.reviewer.first';
@@ -94,7 +95,8 @@ export const detailWithoutReview: ReviewDetailWire = {
   duplicate: duplicatePatient,
   conflicts: syntheticConflicts,
   dependencies: [],
-  dryRun: 'Dry run: move 1 chart visibility association to the surviving record. Nothing was changed.',
+  dryRun:
+    'Dry run: move 1 chart visibility association to the surviving record. Nothing was changed.',
   chartVisibilityId: duplicatePatient.id,
 };
 

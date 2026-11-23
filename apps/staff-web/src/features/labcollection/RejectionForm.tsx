@@ -31,7 +31,10 @@ export function RejectionForm({ value, onChange, onReject, disabled }: Rejection
   const blocked = disabled || !validation.valid;
 
   return (
-    <section aria-label={labText(locale, 'rejection')} style={{ display: 'grid', gap: tokens.spacing.md }}>
+    <section
+      aria-label={labText(locale, 'rejection')}
+      style={{ display: 'grid', gap: tokens.spacing.md }}
+    >
       <h3>{labText(locale, 'rejection')}</h3>
       <label htmlFor="lab-rejection-reason">{labText(locale, 'rejectionReason')}</label>
       <select
@@ -50,7 +53,7 @@ export function RejectionForm({ value, onChange, onReject, disabled }: Rejection
           </option>
         ))}
       </select>
-      {value.reason === 'other' && (
+      {value.reason === 'other' ? (
         <FormField
           id="lab-rejection-detail"
           label={labText(locale, 'otherDetail')}
@@ -61,7 +64,7 @@ export function RejectionForm({ value, onChange, onReject, disabled }: Rejection
             onChange({ ...value, detail });
           }}
         />
-      )}
+      ) : null}
       <label>
         <input
           type="checkbox"
@@ -70,9 +73,9 @@ export function RejectionForm({ value, onChange, onReject, disabled }: Rejection
         />{' '}
         {labText(locale, 'notifyPatient')}
       </label>
-      {touched && validationError === 'reason-required' && (
+      {touched && validationError === 'reason-required' ? (
         <p role="alert">{labText(locale, 'reasonRequired')}</p>
-      )}
+      ) : null}
       <Button variant="secondary" onClick={onReject} disabled={blocked}>
         {labText(locale, 'rejectSpecimen')}
       </Button>

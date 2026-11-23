@@ -27,7 +27,7 @@ import type { DataExchangeMessageKey } from './labels';
 /** Props for the tenant export screen. */
 export interface ExportPageProps {
   /** Role override for tests and embedding; the session role is the default. */
-  role?: Role;
+  roleOverride?: Role;
   /** Fixed instant used for expiry decisions; the current time is the default. */
   now?: string;
 }
@@ -37,10 +37,10 @@ export interface ExportPageProps {
  *
  * @param props optional role and clock overrides (synthetic values in tests)
  */
-export function ExportPage({ role, now }: ExportPageProps) {
+export function ExportPage({ roleOverride, now }: ExportPageProps) {
   const organizationId = useActiveOrganization();
   const sessionRole = useRole();
-  const activeRole = role ?? sessionRole;
+  const activeRole = roleOverride ?? sessionRole;
   const { locale } = useI18n();
   const { tokens } = useTheme();
   const [jobs, setJobs] = useState<readonly ExportListItem[]>([]);
@@ -96,7 +96,10 @@ export function ExportPage({ role, now }: ExportPageProps) {
       {error === undefined ? null : (
         <div data-testid="export-command-error">{StateView.forTransportError(error)}</div>
       )}
-      <section aria-label={text('downloadList')} style={{ display: 'grid', gap: tokens.spacing.sm }}>
+      <section
+        aria-label={text('downloadList')}
+        style={{ display: 'grid', gap: tokens.spacing.sm }}
+      >
         <h3>{text('downloadList')}</h3>
         {jobs.length === 0 ? (
           <p>{text('noExports')}</p>
@@ -106,16 +109,24 @@ export function ExportPage({ role, now }: ExportPageProps) {
               <li key={job.jobId} style={{ display: 'grid', gap: tokens.spacing.sm }}>
                 <dl style={{ display: 'grid', gap: tokens.spacing.sm }}>
                   <dt>{text('jobId')}</dt>
-                  <dd><code>{job.jobId}</code></dd>
+                  <dd>
+                    <code>{job.jobId}</code>
+                  </dd>
                   <dt>{text('checksum')}</dt>
-                  <dd><code>{job.checksum}</code></dd>
+                  <dd>
+                    <code>{job.checksum}</code>
+                  </dd>
                   <dt>{text('recordCount')}</dt>
                   <dd>{job.recordCount}</dd>
                   <dt>{text('expiresAt')}</dt>
-                  <dd><time dateTime={job.expiresAt}>{job.expiresAt}</time></dd>
+                  <dd>
+                    <time dateTime={job.expiresAt}>{job.expiresAt}</time>
+                  </dd>
                 </dl>
                 {job.state === 'expired' ? (
-                  <p role="status" data-testid={`expired-${job.jobId}`}>{text('expired')}</p>
+                  <p role="status" data-testid={`expired-${job.jobId}`}>
+                    {text('expired')}
+                  </p>
                 ) : (
                   <Button onClick={() => void handleDownload(job)} disabled={busy}>
                     {text('download')}

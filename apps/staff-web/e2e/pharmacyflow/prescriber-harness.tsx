@@ -58,6 +58,23 @@ async function maybeGet<T>(read: () => Promise<T>): Promise<T | null> {
   }
 }
 
+/** The three prescriber-facing projections read together. */
+interface Projections {
+  status: StatusViewResponse | null;
+  thread: ThreadViewResponse | null;
+  proposal: ProposalViewResponse | null;
+}
+
+/** Read all three projections; a missing one is `null`. */
+async function readProjections(organizationId: string): Promise<Projections> {
+  const [status, thread, proposal] = await Promise.all([
+    maybeGet(() => getPharmacyStatus(prescriptionId, organizationId)),
+    maybeGet(() => getClarificationThread('thread-synthetic-001', organizationId)),
+    maybeGet(() => getSubstitutionProposal('proposal-synthetic-001', organizationId)),
+  ]);
+  return { status, thread, proposal };
+}
+
 /** The prescriber's workstation: route, review facts, answer and decide. */
 function PrescriberView(): ReactElement {
   // The active tenant defaults to the synthetic facility, so this matches the
@@ -70,23 +87,31 @@ function PrescriberView(): ReactElement {
   const [proposal, setProposal] = useState<ProposalViewResponse | null>(null);
   const [routeStatus, setRouteStatus] = useState('Not routed');
 
+  /** Publish one read of the three projections into component state. */
+  const apply = useCallback((next: Projections): void => {
+    setStatus(next.status);
+    setThread(next.thread);
+    setProposal(next.proposal);
+  }, []);
+
   /** Re-read all three projections through the real API client. */
   const refresh = useCallback(async (): Promise<void> => {
-    const [nextStatus, nextThread, nextProposal] = await Promise.all([
-      maybeGet(() => getPharmacyStatus(prescriptionId, organizationId)),
-      maybeGet(() => getClarificationThread('thread-synthetic-001', organizationId)),
-      maybeGet(() => getSubstitutionProposal('proposal-synthetic-001', organizationId)),
-    ]);
-    setStatus(nextStatus);
-    setThread(nextThread);
-    setProposal(nextProposal);
-  }, [organizationId]);
+    apply(await readProjections(organizationId));
+  }, [apply, organizationId]);
 
   // Load any already-routed facts on mount; before routing the API returns 404
   // for each projection, which `maybeGet` turns into the empty state below.
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    let active = true;
+    void readProjections(organizationId).then((next) => {
+      if (active) {
+        apply(next);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [apply, organizationId]);
 
   /** Route a synthetic prescription to the pharmacy through the boundary. */
   async function route(): Promise<void> {
@@ -115,13 +140,9 @@ function PrescriberView(): ReactElement {
     if (thread === null) {
       return;
     }
-    void answerClarification(
-      thread.thread.id,
-      thread.thread.version,
-      draft.answerBody,
-      draft.amendedRevisionId,
-      organizationId,
-    ).then(() => refresh());
+    void answerClarification(thread.thread.id, thread.thread.version, draft, organizationId).then(
+      () => refresh(),
+    );
   }
 
   /** Approve the substitution only with the prescriber's explicit attestation. */
@@ -132,8 +153,7 @@ function PrescriberView(): ReactElement {
     void approveSubstitution(
       proposal.proposal.id,
       proposal.proposal.version,
-      draft.attestation,
-      draft.note,
+      draft,
       organizationId,
     ).then(() => refresh());
   }
@@ -156,18 +176,10 @@ function PrescriberView(): ReactElement {
       <button type="button" onClick={toggleLocale}>
         {locale === 'en' ? 'العربية' : 'English'}
       </button>
-      <button
-        type="button"
-        data-testid="prescribe-route"
-        onClick={() => void prescribeAndRoute()}
-      >
+      <button type="button" data-testid="prescribe-route" onClick={() => void prescribeAndRoute()}>
         {labels.route}
       </button>
-      <button
-        type="button"
-        data-testid="refresh"
-        onClick={() => void refresh()}
-      >
+      <button type="button" data-testid="refresh" onClick={() => void refresh()}>
         {labels.refresh}
       </button>
       <output data-testid="route-status">{routeStatus}</output>
@@ -177,12 +189,7 @@ function PrescriberView(): ReactElement {
         <PharmacyStatusTimeline status={status} locale={locale} timeZone="UTC" />
       )}
       {thread === null ? null : (
-        <ClarificationReply
-          thread={thread}
-          locale={locale}
-          timeZone="UTC"
-          onSend={sendAnswer}
-        />
+        <ClarificationReply thread={thread} locale={locale} timeZone="UTC" onSend={sendAnswer} />
       )}
       {proposal === null ? null : (
         <SubstitutionReview

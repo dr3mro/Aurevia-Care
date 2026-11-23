@@ -90,9 +90,7 @@ describe('responsive NotFoundPage (WEB-07, UX-01)', () => {
       installMatchMedia(breakpoint);
       const view = renderNotice();
 
-      expect(
-        screen.getByRole('region', { name: 'Page not found' }),
-      ).toBeTruthy();
+      expect(screen.getByRole('region', { name: 'Page not found' })).toBeTruthy();
       expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Page not found');
       expect(
         screen.getByText('The page you requested does not exist. Go home to continue.'),
@@ -130,13 +128,9 @@ describe('responsive NotFoundPage (WEB-07, UX-01)', () => {
     expect(document.documentElement.lang).toBe('ar');
     expect(noticePage().getAttribute('data-breakpoint')).toBe('compact');
     expect(noticePage().getAttribute('style')).not.toContain('direction:');
-    expect(
-      screen.getByRole('region', { name: 'الصفحة غير موجودة' }),
-    ).toBeTruthy();
+    expect(screen.getByRole('region', { name: 'الصفحة غير موجودة' })).toBeTruthy();
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('الصفحة غير موجودة');
-    expect(
-      screen.getByRole('button', { name: 'الصفحة الرئيسية' }),
-    ).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'الصفحة الرئيسية' })).toBeTruthy();
 
     view.unmount();
   });

@@ -200,11 +200,9 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
 
       const focusables = Array.from(root.querySelectorAll('input, button'));
       expect(focusables).toEqual([search, submit, register]);
-      expect(Array.from(root.querySelectorAll('input, button')).map((node) => node.tagName)).toEqual([
-        'INPUT',
-        'BUTTON',
-        'BUTTON',
-      ]);
+      expect(
+        Array.from(root.querySelectorAll('input, button')).map((node) => node.tagName),
+      ).toEqual(['INPUT', 'BUTTON', 'BUTTON']);
     });
 
     it('keeps the full clinical table and adapts only its scroll treatment', async () => {
@@ -240,14 +238,13 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
       }
 
       // Every API column stays reachable; none is hidden to make room.
-      expect(within(table).getAllByRole('columnheader').map((node) => node.textContent)).toEqual([
-        'Name',
-        'MRN',
-        'Issuer',
-        'Date of birth',
-      ]);
+      expect(
+        within(table)
+          .getAllByRole('columnheader')
+          .map((node) => node.textContent),
+      ).toEqual(['Name', 'MRN', 'Issuer', 'Date of birth']);
       for (const cell of within(table).getAllByRole('cell')) {
-        expect((cell as HTMLElement).style.display).not.toBe('none');
+        expect(cell.style.display).not.toBe('none');
       }
       // Include the row-header name cell: no clinical header, row header or
       // value is hidden by a display utility class at any band.
@@ -259,7 +256,7 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
       for (const node of clinical) {
         expect(node.classList.contains('hide-compact')).toBe(false);
         expect(node.classList.contains('only-compact')).toBe(false);
-        expect((node as HTMLElement).style.display).not.toBe('none');
+        expect(node.style.display).not.toBe('none');
       }
     });
 

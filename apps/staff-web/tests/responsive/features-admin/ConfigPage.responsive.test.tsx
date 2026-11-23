@@ -19,7 +19,8 @@ vi.mock('../../../src/api/transport', async (importOriginal) => {
 
 const sendMock = vi.mocked(send);
 const key = 'facility.MAIN.booking';
-const longEnglish = 'A deliberately long synthetic configuration value that must wrap without clipping or overlap on a narrow phone viewport';
+const longEnglish =
+  'A deliberately long synthetic configuration value that must wrap without clipping or overlap on a narrow phone viewport';
 const longArabic = 'قيمة configuring تجريبية طويلة جداً يجب أن تلتف دون قص أو تداخل على شاشة الهاتف';
 
 type ChangeListener = (event: MediaQueryListEvent) => void;
@@ -132,7 +133,7 @@ function tableRegion(name: string): HTMLElement {
   if (!region) {
     throw new Error(`labelled table region "${name}" was not rendered`);
   }
-  return region as HTMLElement;
+  return region;
 }
 
 /** Assert that no element uses a physical side, an alignment override or a local direction. */
@@ -178,20 +179,30 @@ describe('responsive ConfigPage (WEB-07, UX-01)', () => {
       expect(within(lookupSection as HTMLElement).getByRole('heading', { level: 2 })).toBeTruthy();
 
       // Labels and roles stay intact and DOM order gives a predictable keyboard path.
-      const input = screen.getByLabelText(adminText('en', 'configurationKeyLookup')) as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>(
+        adminText('en', 'configurationKeyLookup'),
+      );
       expect(input.classList.contains('field')).toBe(true);
       expect(input.classList.contains('touch')).toBe(true);
       const buttons = screen.getAllByRole('button');
-      expect(buttons[0]).toBe(screen.getByRole('button', { name: adminText('en', 'configLookup') }));
-      expect(input.compareDocumentPosition(buttons[0] as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(buttons[0]).toBe(
+        screen.getByRole('button', { name: adminText('en', 'configLookup') }),
+      );
+      expect(
+        input.compareDocumentPosition(buttons[0] as Node) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
 
       // Loaded content keeps the full, unhidden clinical table and logical styling.
       lookup();
       await screen.findByText(longEnglish);
       const region = tableRegion(adminText('en', 'configurationVersions'));
       expect(region.getAttribute('tabindex')).toBe('0');
-      const table = within(region).getByRole('table', { name: adminText('en', 'configurationVersions') });
-      const headers = within(table).getAllByRole('columnheader').map((node) => node.textContent);
+      const table = within(region).getByRole('table', {
+        name: adminText('en', 'configurationVersions'),
+      });
+      const headers = within(table)
+        .getAllByRole('columnheader')
+        .map((node) => node.textContent);
       expect(headers).toEqual([
         adminText('en', 'version'),
         adminText('en', 'configuredValue'),
@@ -222,7 +233,9 @@ describe('responsive ConfigPage (WEB-07, UX-01)', () => {
     const form = await screen.findByRole('form', { name: adminText('en', 'defineCatalogEntry') });
     const fields = form.querySelector('[data-part="fields"] > .grid-2');
     expect(fields).not.toBeNull();
-    expect(form.querySelector('[data-part="fields"]')?.getAttribute('data-layout')).toBe('single-column');
+    expect(form.querySelector('[data-part="fields"]')?.getAttribute('data-layout')).toBe(
+      'single-column',
+    );
   });
 
   it.each([320, 768, 1280])('keeps the catalogue table caption and columns at %ipx', (width) => {
@@ -237,14 +250,18 @@ describe('responsive ConfigPage (WEB-07, UX-01)', () => {
       });
       fireEvent.click(screen.getByRole('button', { name: adminText('en', 'catalogFamilyLookup') }));
       const table = await screen.findByRole('table', { name: adminText('en', 'catalogEntries') });
-      expect(within(table).getAllByRole('columnheader').map((node) => node.textContent)).toEqual([
+      expect(
+        within(table)
+          .getAllByRole('columnheader')
+          .map((node) => node.textContent),
+      ).toEqual([
         adminText('en', 'catalogCode'),
         adminText('en', 'catalogValue'),
         adminText('en', 'version'),
       ]);
       expect(table.querySelector('caption')?.textContent).toBe(adminText('en', 'catalogEntries'));
       for (const cell of within(table).getAllByRole('cell')) {
-        expect((cell as HTMLElement).style.display).not.toBe('none');
+        expect(cell.style.display).not.toBe('none');
       }
     });
   });
@@ -264,9 +281,11 @@ describe('responsive ConfigPage (WEB-07, UX-01)', () => {
     lookup('ar');
     await screen.findByText(longArabic);
     const region = tableRegion(adminText('ar', 'configurationVersions'));
-    const table = within(region).getByRole('table', { name: adminText('ar', 'configurationVersions') });
+    const table = within(region).getByRole('table', {
+      name: adminText('ar', 'configurationVersions'),
+    });
     expect(within(table).getAllByRole('columnheader')).toHaveLength(5);
-    const arabicValue = screen.getByText(longArabic) as HTMLElement;
+    const arabicValue = screen.getByText(longArabic);
     expect(arabicValue.style.overflowWrap).toBe('anywhere');
     expect(root.querySelector('[style*="display: none"]')).toBeNull();
     assertLogicalOnly(root);
@@ -282,7 +301,7 @@ describe('responsive ConfigPage (WEB-07, UX-01)', () => {
     await screen.findByText(longEnglish);
 
     fireEvent.click(screen.getByRole('button', { name: adminText('en', 'approve') }));
-    const dialog = screen.getByRole('dialog') as HTMLElement;
+    const dialog = screen.getByRole('dialog');
     expect(dialog.classList.contains('stack')).toBe(true);
     const actions = within(dialog).getAllByRole('button');
     expect(actions.map((node) => node.textContent)).toEqual([

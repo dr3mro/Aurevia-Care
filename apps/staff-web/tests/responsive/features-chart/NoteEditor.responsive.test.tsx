@@ -11,11 +11,15 @@ import type { NoteRevision } from '../../../src/features/chart/domain';
 import { syntheticAlphaChart, syntheticBetaChart } from '../../../src/features/chart/fixtures';
 import { chartText } from '../../../src/features/chart/messages';
 import { NoteEditor } from '../../../src/features/chart/NoteEditor';
+import { must } from '../../must';
 
 /** The three layout bands the responsive hook resolves from `matchMedia`. */
 type Band = 'compact' | 'medium' | 'expanded';
 type ChangeListener = (event: { matches: boolean }) => void;
-type QueryState = { matches: boolean; listeners: Set<ChangeListener> };
+interface QueryState {
+  matches: boolean;
+  listeners: Set<ChangeListener>;
+}
 
 /** Handle used to simulate a viewport change after the first render. */
 interface MediaHarness {
@@ -205,7 +209,7 @@ describe('responsive NoteEditor across breakpoints (WEB-07, UX-01)', () => {
       expect((textarea as HTMLTextAreaElement).readOnly).toBe(false);
     }
 
-    const signature = editor.querySelector('[data-part="signature"]') as HTMLElement;
+    const signature = must(editor.querySelector<HTMLElement>('[data-part="signature"]'));
     expect(signature.className).toContain('touch');
     expect(signature.style.position).toBe('sticky');
     expect(signature.style.insetBlockEnd).toBe('0px');
@@ -223,7 +227,7 @@ describe('responsive NoteEditor across breakpoints (WEB-07, UX-01)', () => {
     expect(editor.querySelector('[data-part="fields"]')?.getAttribute('data-layout')).toBe(
       'single-column',
     );
-    const signature = editor.querySelector('[data-part="signature"]') as HTMLElement;
+    const signature = must(editor.querySelector<HTMLElement>('[data-part="signature"]'));
     expect(signature.style.position).toBe('');
     expect(screen.getAllByRole('textbox')).toHaveLength(4);
     expectLogicalOnly(editor);
@@ -283,9 +287,9 @@ describe('responsive NoteEditor across breakpoints (WEB-07, UX-01)', () => {
       expect(screen.getByText(chartText('ar', field))).toBeTruthy();
       expect(screen.getByRole('textbox', { name: chartText('ar', field) })).toBeTruthy();
     }
-    const subjective = screen.getByRole('textbox', {
+    const subjective = screen.getByRole<HTMLTextAreaElement>('textbox', {
       name: chartText('ar', 'subjective'),
-    }) as HTMLTextAreaElement;
+    });
     expect(subjective.value).toContain('ملاحظة سريرية طويلة');
     expect(subjective.className).toContain('field');
     expect(screen.getByRole('checkbox', { name: chartText('ar', 'attestation') })).toBeTruthy();
@@ -320,9 +324,9 @@ describe('responsive NoteEditor across breakpoints (WEB-07, UX-01)', () => {
     const media = installMatchMedia('compact');
     wrap(<DraftHarness revision={draft()} />);
 
-    const subjective = screen.getByRole('textbox', {
+    const subjective = screen.getByRole<HTMLTextAreaElement>('textbox', {
       name: chartText('en', 'subjective'),
-    }) as HTMLTextAreaElement;
+    });
     const typed =
       'Synthetic long subjective note that must survive a breakpoint change without remounting.';
     fireEvent.change(subjective, { target: { value: typed } });
@@ -338,16 +342,16 @@ describe('responsive NoteEditor across breakpoints (WEB-07, UX-01)', () => {
     const editor = screen.getByRole('region', { name: chartText('en', 'clinicalNote') });
     expect(editor.getAttribute('data-breakpoint')).toBe('expanded');
     expect(editor.getAttribute('data-signature-layout')).toBe('inline');
-    const after = screen.getByRole('textbox', {
+    const after = screen.getByRole<HTMLTextAreaElement>('textbox', {
       name: chartText('en', 'subjective'),
-    }) as HTMLTextAreaElement;
+    });
     expect(after.value).toBe(typed);
     expect(
-      (screen.getByRole('checkbox', { name: chartText('en', 'attestation') }) as HTMLInputElement)
+      screen.getByRole<HTMLInputElement>('checkbox', { name: chartText('en', 'attestation') })
         .checked,
     ).toBe(true);
     expect(
-      (screen.getByRole('button', { name: chartText('en', 'sign') }) as HTMLButtonElement).disabled,
+      screen.getByRole<HTMLButtonElement>('button', { name: chartText('en', 'sign') }).disabled,
     ).toBe(false);
     expect(document.activeElement).toBe(after);
   });

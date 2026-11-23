@@ -38,7 +38,7 @@ function renderButton(prescription: PrescriptionForPrint, locale: Locale = 'en')
 describe('prescription print button eligibility', () => {
   it('is disabled with a worded reason for a draft', () => {
     renderButton({ ...allowed, state: 'draft', attested: false });
-    const button = screen.getByRole('button', { name: 'Print prescription' }) as HTMLButtonElement;
+    const button = screen.getByRole<HTMLButtonElement>('button', { name: 'Print prescription' });
     expect(button.disabled).toBe(true);
     expect(button.getAttribute('aria-describedby')).toBeTruthy();
     expect(screen.getByText('A draft prescription cannot be printed.')).toBeTruthy();
@@ -57,12 +57,12 @@ describe('prescription print button eligibility', () => {
 
   it('is enabled for an attested prescription with an approved channel', () => {
     renderButton(allowed);
-    const button = screen.getByRole('button', { name: 'Print prescription' }) as HTMLButtonElement;
+    const button = screen.getByRole<HTMLButtonElement>('button', { name: 'Print prescription' });
     expect(button.disabled).toBe(false);
     fireEvent.click(button);
     const dialog = screen.getByRole('dialog', { name: 'Print preview' });
     expect(dialog).toBeTruthy();
-    const frame = screen.getByTitle('Patient copy') as HTMLIFrameElement;
+    const frame = screen.getByTitle<HTMLIFrameElement>('Patient copy');
     expect(frame.src).toBe(HANDOUT_URL);
   });
 
@@ -87,7 +87,7 @@ describe('prescription handout copies', () => {
   it('offers a patient and a pharmacy copy for a printable local channel', () => {
     renderButton({ ...allowed, printChannel: 'PRINTABLE_LOCAL' });
     expect(screen.getByRole('group', { name: 'Choose the handout copy' })).toBeTruthy();
-    const pharmacy = screen.getByLabelText('Pharmacy copy') as HTMLInputElement;
+    const pharmacy = screen.getByLabelText<HTMLInputElement>('Pharmacy copy');
     fireEvent.click(pharmacy);
     expect(pharmacy.checked).toBe(true);
     fireEvent.click(screen.getByRole('button', { name: 'Print prescription' }));
@@ -148,10 +148,12 @@ describe('prescription print recording', () => {
 describe('prescription reprint', () => {
   it('marks the button and the recorded print as a reprint', () => {
     const { onRecord } = renderButton({ ...allowed, handoutVersion: 2 });
+    expect(screen.getByRole('button', { name: 'Reprint prescription' }).textContent).toContain(
+      'Reprint prescription',
+    );
     expect(
-      screen.getByRole('button', { name: 'Reprint prescription' }).textContent,
-    ).toContain('Reprint prescription');
-    expect(screen.getByText('This is a reprint — the same handout version will be reused.')).toBeTruthy();
+      screen.getByText('This is a reprint — the same handout version will be reused.'),
+    ).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Reprint prescription' }));
     fireEvent.click(screen.getByLabelText('Patient request'));
     fireEvent.click(screen.getByRole('button', { name: 'Print' }));

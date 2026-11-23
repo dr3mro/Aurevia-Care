@@ -34,15 +34,11 @@ export interface PrescriptionForPrint {
 
 /** Why a prescription cannot be printed, shown to the user in words. */
 export type PrescriptionPrintBlocker =
-  | 'draft'
-  | 'not-printable'
-  | 'not-attested'
-  | 'channel-not-approved';
+  'draft' | 'not-printable' | 'not-attested' | 'channel-not-approved';
 
 /** Result of the client-side eligibility check that gates the button. */
 export type PrintEligibility =
-  | { allowed: true }
-  | { allowed: false; blocker: PrescriptionPrintBlocker };
+  { allowed: true } | { allowed: false; blocker: PrescriptionPrintBlocker };
 
 /** One confirmed print or download; the owning screen records it as the audit. */
 export interface PrescriptionPrintRecord {

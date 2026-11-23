@@ -72,9 +72,7 @@ export function DesignPreview() {
       <Form label={t('noteForm')} submitLabel={t('saveNote')} onSubmit={() => setNote(note)}>
         <FormField id="shift-note" label={t('shiftNote')} value={note} onChange={setNote} />
       </Form>
-      <output aria-label={t('echo')} role="status">
-        {note}
-      </output>
+      <output aria-label={t('echo')}>{note}</output>
 
       <SignInPlaceholder />
       <ProtectedRoute>

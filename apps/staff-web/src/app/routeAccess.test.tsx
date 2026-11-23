@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
+import { defined } from '../components/invariant';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { ThemeProvider } from '../theme/ThemeProvider';
 import { AppShell } from './AppShell';
@@ -80,8 +81,9 @@ describe('navigation entries for the new feature routes', () => {
   ] as const)('registers %s for %s only', (route, roles, labelKey) => {
     const item = navigation.find((candidate) => candidate.route === route);
     expect(item).toBeDefined();
-    expect(item!.roles).toEqual([...roles]);
-    expect(item!.labelKey).toBe(labelKey);
+    const entry = defined(item, 'navigation item');
+    expect(entry.roles).toEqual([...roles]);
+    expect(entry.labelKey).toBe(labelKey);
     for (const role of roles) {
       expect(navigationFor(role).map((entry) => entry.route)).toContain(route);
     }
@@ -90,7 +92,10 @@ describe('navigation entries for the new feature routes', () => {
 
   it('labels the new entries in English and Arabic', () => {
     for (const route of ['/operations/exports', '/operations/imports']) {
-      const item = navigation.find((candidate) => candidate.route === route)!;
+      const item = defined(
+        navigation.find((candidate) => candidate.route === route),
+        'navigation item',
+      );
       expect(navigationLabels.en[item.labelKey]).toBeTruthy();
       expect(navigationLabels.ar[item.labelKey]).toBeTruthy();
     }
@@ -106,10 +111,30 @@ interface ScopedRoute {
 
 /** Representative route per role restriction covered by the navigation table. */
 const SCOPED_ROUTES: readonly ScopedRoute[] = [
-  { pattern: '/admin/facilities', path: '/admin/facilities', allowed: 'tenant_admin', denied: 'reception' },
-  { pattern: '/operations/exports', path: '/operations/exports', allowed: 'tenant_admin', denied: 'reception' },
-  { pattern: '/operations/imports', path: '/operations/imports', allowed: 'tenant_admin', denied: 'reception' },
-  { pattern: '/patients/:id/chart', path: '/patients/patient-1/chart', allowed: 'clinician', denied: 'reception' },
+  {
+    pattern: '/admin/facilities',
+    path: '/admin/facilities',
+    allowed: 'tenant_admin',
+    denied: 'reception',
+  },
+  {
+    pattern: '/operations/exports',
+    path: '/operations/exports',
+    allowed: 'tenant_admin',
+    denied: 'reception',
+  },
+  {
+    pattern: '/operations/imports',
+    path: '/operations/imports',
+    allowed: 'tenant_admin',
+    denied: 'reception',
+  },
+  {
+    pattern: '/patients/:id/chart',
+    path: '/patients/patient-1/chart',
+    allowed: 'clinician',
+    denied: 'reception',
+  },
   { pattern: '/schedule', path: '/schedule', allowed: 'reception', denied: 'tenant_admin' },
   { pattern: '/radiology', path: '/radiology', allowed: 'radiology', denied: 'reception' },
   { pattern: '/pharmacy', path: '/pharmacy', allowed: 'pharmacy', denied: 'reception' },
@@ -129,11 +154,14 @@ describe('role-scoped route rendering', () => {
     expect(showsShellForbidden()).toBe(false);
   });
 
-  it.each(SCOPED_ROUTES)('$pattern shows the forbidden state for $denied', async ({ path, denied }) => {
-    renderAt(path, denied);
-    expect(await screen.findByRole('heading', { name: 'You do not have access' })).toBeTruthy();
-    expect(showsShellForbidden()).toBe(true);
-  });
+  it.each(SCOPED_ROUTES)(
+    '$pattern shows the forbidden state for $denied',
+    async ({ path, denied }) => {
+      renderAt(path, denied);
+      expect(await screen.findByRole('heading', { name: 'You do not have access' })).toBeTruthy();
+      expect(showsShellForbidden()).toBe(true);
+    },
+  );
 
   it('renders the catch-all for an unregistered path without a role denial', async () => {
     // No route matched, so the left side of AppShell's `matched !== undefined &&`

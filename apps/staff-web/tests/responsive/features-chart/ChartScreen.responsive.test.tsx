@@ -9,6 +9,7 @@ import { I18nProvider } from '../../../src/i18n/I18nProvider';
 import { BREAKPOINT_MEDIA_QUERIES, breakpointFor } from '../../../src/theme/breakpoints';
 import type { Breakpoint } from '../../../src/theme/breakpoints';
 import { ThemeProvider } from '../../../src/theme/ThemeProvider';
+import { must } from '../../must';
 
 /**
  * All supported viewport widths from the responsive contract, expressed only
@@ -100,7 +101,7 @@ function renderChart(locale: Locale = 'en', organizationId = alphaOrganizationId
 
 /** Return the labelled outermost page region of the screen. */
 function pageRegion(locale: Locale): HTMLElement {
-  return screen.getByRole('region', { name: chartText(locale, 'chart') }) as HTMLElement;
+  return screen.getByRole('region', { name: chartText(locale, 'chart') });
 }
 
 /** Every inline style below must be direction-neutral; physical sides break RTL. */
@@ -116,10 +117,10 @@ function assertLogicalStyles(region: HTMLElement): void {
 
 /** Assert that a clinical table kept its full, unhidden column set. */
 function assertFullTable(name: string, expectedHeaders: number): void {
-  const table = screen.getByRole('table', { name }) as HTMLElement;
+  const table = screen.getByRole('table', { name });
   expect(within(table).getAllByRole('columnheader')).toHaveLength(expectedHeaders);
   for (const cell of within(table).getAllByRole('cell')) {
-    expect((cell as HTMLElement).style.display).not.toBe('none');
+    expect(cell.style.display).not.toBe('none');
   }
 }
 
@@ -138,8 +139,17 @@ function assertDocumentCards(locale: 'en' | 'ar'): void {
   for (const item of within(list).getAllByRole('listitem')) {
     expect(within(item).getByRole('heading', { level: 4 })).toBeTruthy();
     expect([...item.querySelectorAll('dt')].map((label) => label.textContent)).toEqual(
-      (['documentKind', 'documentVersion', 'documentLanguage', 'documentChecksum', 'documentLinkedTo', 'documentRotation', 'documentStatus'] as const)
-        .map((key) => chartText(locale, key)),
+      (
+        [
+          'documentKind',
+          'documentVersion',
+          'documentLanguage',
+          'documentChecksum',
+          'documentLinkedTo',
+          'documentRotation',
+          'documentStatus',
+        ] as const
+      ).map((key) => chartText(locale, key)),
     );
     expect(within(item).getByRole('button', { name: chartText(locale, 'rotate') })).toBeTruthy();
     expect(within(item).getByRole('button', { name: chartText(locale, 'void') })).toBeTruthy();
@@ -151,56 +161,51 @@ afterEach(() => {
 });
 
 describe('responsive ChartScreen (WEB-07, UX-01)', () => {
-  it.each(VIEWPORT_WIDTHS)(
-    'keeps one labelled page and every clinical value at %i px',
-    (width) => {
-      const band = breakpointFor(width);
-      installMatchMedia(band);
-      renderChart();
+  it.each(VIEWPORT_WIDTHS)('keeps one labelled page and every clinical value at %i px', (width) => {
+    const band = breakpointFor(width);
+    installMatchMedia(band);
+    renderChart();
 
-      const region = pageRegion('en');
-      expect(region.classList.contains('page')).toBe(true);
-      expect(region.getAttribute('data-breakpoint')).toBe(band);
-      expect(region.getAttribute('aria-label')).toBe(chartText('en', 'chart'));
+    const region = pageRegion('en');
+    expect(region.classList.contains('page')).toBe(true);
+    expect(region.getAttribute('data-breakpoint')).toBe(band);
+    expect(region.getAttribute('aria-label')).toBe(chartText('en', 'chart'));
 
-      const content = region.querySelector('[data-part="chart-content"]') as HTMLElement;
-      expect(content).toBeTruthy();
-      expect(content.className).toBe(band === 'compact' ? 'stack' : 'grid-2');
-      expect(content.getAttribute('data-layout')).toBe(
-        band === 'compact' ? 'single-column' : 'two-column',
-      );
+    const content = must(region.querySelector<HTMLElement>('[data-part="chart-content"]'));
+    expect(content).toBeTruthy();
+    expect(content.className).toBe(band === 'compact' ? 'stack' : 'grid-2');
+    expect(content.getAttribute('data-layout')).toBe(
+      band === 'compact' ? 'single-column' : 'two-column',
+    );
 
-      expect(
-        screen.getByRole('heading', { level: 2, name: chartText('en', 'chart') }),
-      ).toBeTruthy();
-      expect(screen.getByRole('status', { name: chartText('en', 'status') })).toBeTruthy();
-      for (const key of ['problems', 'allergies', 'medications'] as const) {
-        assertFullTable(chartText('en', key), 8);
-      }
-      if (band === 'compact') {
-        assertVitalsCards('en');
-        assertDocumentCards('en');
-      } else {
-        assertFullTable(chartText('en', 'vitals'), 3);
-        assertFullTable(chartText('en', 'documentList'), 9);
-      }
+    expect(screen.getByRole('heading', { level: 2, name: chartText('en', 'chart') })).toBeTruthy();
+    expect(screen.getByRole('status', { name: chartText('en', 'status') })).toBeTruthy();
+    for (const key of ['problems', 'allergies', 'medications'] as const) {
+      assertFullTable(chartText('en', key), 8);
+    }
+    if (band === 'compact') {
+      assertVitalsCards('en');
+      assertDocumentCards('en');
+    } else {
+      assertFullTable(chartText('en', 'vitals'), 3);
+      assertFullTable(chartText('en', 'documentList'), 9);
+    }
 
-      assertLogicalStyles(region);
-    },
-  );
+    assertLogicalStyles(region);
+  });
 
   it('stacks the chart and note in labelled scroll regions on a compact phone', () => {
     installMatchMedia('compact');
     renderChart();
 
     const region = pageRegion('en');
-    const content = region.querySelector('[data-part="chart-content"]') as HTMLElement;
+    const content = must(region.querySelector<HTMLElement>('[data-part="chart-content"]'));
     expect(content.className).toBe('stack');
     expect(content.getAttribute('data-layout')).toBe('single-column');
 
-    const longitudinal = content.querySelector('[data-part="longitudinal"]') as HTMLElement;
-    const note = content.querySelector('[data-part="note"]') as HTMLElement;
-    const documents = region.querySelector('[data-part="documents"]') as HTMLElement;
+    const longitudinal = must(content.querySelector<HTMLElement>('[data-part="longitudinal"]'));
+    const note = must(content.querySelector<HTMLElement>('[data-part="note"]'));
+    const documents = must(region.querySelector<HTMLElement>('[data-part="documents"]'));
     for (const scroller of [longitudinal, documents]) {
       expect(scroller.classList.contains('table-region')).toBe(true);
       expect(scroller.getAttribute('role')).toBe('region');
@@ -208,13 +213,15 @@ describe('responsive ChartScreen (WEB-07, UX-01)', () => {
       expect(scroller.style.minInlineSize).toBe('0px');
       expect(scroller.style.overflowWrap).toBe('anywhere');
     }
-    expect(longitudinal.contains(screen.getByRole('list', { name: chartText('en', 'vitals') }))).toBe(
+    expect(
+      longitudinal.contains(screen.getByRole('list', { name: chartText('en', 'vitals') })),
+    ).toBe(true);
+    expect(
+      documents.contains(screen.getByRole('list', { name: chartText('en', 'documentList') })),
+    ).toBe(true);
+    expect(note.contains(screen.getByRole('textbox', { name: chartText('en', 'plan') }))).toBe(
       true,
     );
-    expect(documents.contains(screen.getByRole('list', { name: chartText('en', 'documentList') }))).toBe(
-      true,
-    );
-    expect(note.contains(screen.getByRole('textbox', { name: chartText('en', 'plan') }))).toBe(true);
 
     // Keyboard order follows the DOM: the two labelled scroll regions bracket
     // the note fields and actions, and no control is removed at this width.
@@ -252,14 +259,16 @@ describe('responsive ChartScreen (WEB-07, UX-01)', () => {
       renderChart();
 
       const region = pageRegion('en');
-      const content = region.querySelector('[data-part="chart-content"]') as HTMLElement;
+      const content = must(region.querySelector<HTMLElement>('[data-part="chart-content"]'));
       expect(content.className).toBe('grid-2');
       expect(content.getAttribute('data-layout')).toBe('two-column');
       for (const field of ['subjective', 'objective', 'assessment', 'plan'] as const) {
         expect(screen.getByRole('textbox', { name: chartText('en', field) })).toBeTruthy();
       }
       expect(screen.getByRole('button', { name: chartText('en', 'amend') })).toBeTruthy();
-      expect(screen.getByRole('button', { name: chartText('en', 'markEnteredInError') })).toBeTruthy();
+      expect(
+        screen.getByRole('button', { name: chartText('en', 'markEnteredInError') }),
+      ).toBeTruthy();
       for (const key of ['problems', 'allergies', 'medications', 'vitals'] as const) {
         assertFullTable(chartText('en', key), key === 'vitals' ? 3 : 8);
       }
@@ -276,19 +285,17 @@ describe('responsive ChartScreen (WEB-07, UX-01)', () => {
     const region = pageRegion('ar');
     expect(region.classList.contains('page')).toBe(true);
     expect(region.getAttribute('data-breakpoint')).toBe('compact');
-    expect(
-      screen.getByRole('heading', { level: 2, name: chartText('ar', 'chart') }),
-    ).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: chartText('ar', 'chart') })).toBeTruthy();
 
-    const content = region.querySelector('[data-part="chart-content"]') as HTMLElement;
+    const content = must(region.querySelector<HTMLElement>('[data-part="chart-content"]'));
     expect(content.getAttribute('data-layout')).toBe('single-column');
-    const name = screen.getAllByText('ليلى تجريبية')[0] as HTMLElement;
+    const name = must(screen.getAllByText('ليلى تجريبية')[0]);
     expect(name.getAttribute('dir')).toBe('auto');
     expect(name.getAttribute('lang')).toBe('ar');
     for (const scroller of [
-      content.querySelector('[data-part="longitudinal"]') as HTMLElement,
-      content.querySelector('[data-part="note"]') as HTMLElement,
-      region.querySelector('[data-part="documents"]') as HTMLElement,
+      must(content.querySelector<HTMLElement>('[data-part="longitudinal"]')),
+      must(content.querySelector<HTMLElement>('[data-part="note"]')),
+      must(region.querySelector<HTMLElement>('[data-part="documents"]')),
     ]) {
       expect(scroller.style.minInlineSize).toBe('0px');
       expect(scroller.style.overflowWrap).toBe('anywhere');
@@ -316,7 +323,9 @@ describe('responsive ChartScreen (WEB-07, UX-01)', () => {
   it('reflows across a breakpoint without dropping the note or its fields', () => {
     const setBand = installLiveMatchMedia('compact');
     renderChart();
-    const content = pageRegion('en').querySelector('[data-part="chart-content"]') as HTMLElement;
+    const content = must(
+      pageRegion('en').querySelector<HTMLElement>('[data-part="chart-content"]'),
+    );
     expect(content.getAttribute('data-layout')).toBe('single-column');
 
     act(() => setBand('expanded'));

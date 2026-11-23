@@ -25,8 +25,7 @@ export type ChartPrintSection = (typeof chartPrintSections)[number];
 
 /** The visit, or the inclusive civil-date range, a summary is drawn from. */
 export type ChartPrintScope =
-  | { kind: 'visit'; visitId: string }
-  | { kind: 'range'; from: string; to: string };
+  { kind: 'visit'; visitId: string } | { kind: 'range'; from: string; to: string };
 
 /** A selectable visit presented by the owning chart screen. */
 export interface ChartPrintVisit {

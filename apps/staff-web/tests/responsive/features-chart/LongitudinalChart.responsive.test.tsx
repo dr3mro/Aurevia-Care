@@ -139,7 +139,7 @@ describe('responsive LongitudinalChart (WEB-07, UX-01)', () => {
 
     for (const key of CODED_KEYS) {
       const label = chartText('en', key);
-      const region = screen.getByRole('region', { name: label }) as HTMLElement;
+      const region = screen.getByRole('region', { name: label });
       expect(region.className).toContain('table-region');
       expect(region.getAttribute('tabindex')).toBe('0');
       expect(region.tabIndex).toBe(0);
@@ -153,7 +153,7 @@ describe('responsive LongitudinalChart (WEB-07, UX-01)', () => {
     }
     expect(screen.getByText(LONG_ENGLISH)).toBeTruthy();
 
-    const timeline = screen.getByRole('list', { name: chartText('en', 'vitals') }) as HTMLElement;
+    const timeline = screen.getByRole('list', { name: chartText('en', 'vitals') });
     expect(timeline.className).toContain('card-list');
     expect(timeline.getAttribute('data-layout')).toBe('single-column');
     const cards = within(timeline).getAllByRole('listitem');
@@ -170,7 +170,7 @@ describe('responsive LongitudinalChart (WEB-07, UX-01)', () => {
     installMatchMedia('compact');
     renderChart();
 
-    const stops = Array.from(document.querySelectorAll('[tabindex="0"]')) as HTMLElement[];
+    const stops = Array.from(document.querySelectorAll<HTMLElement>('[tabindex="0"]'));
     expect(stops.map((stop) => stop.getAttribute('aria-label'))).toEqual(
       CODED_KEYS.map((key) => chartText('en', key)),
     );
@@ -189,17 +189,23 @@ describe('responsive LongitudinalChart (WEB-07, UX-01)', () => {
         const label = chartText('en', key);
         expect(screen.queryByRole('region', { name: label })).toBeNull();
         const table = screen.getByRole('table', { name: label });
-        expect(within(table).getAllByRole('columnheader').map((node) => node.textContent)).toEqual(
-          codedHeaders('en'),
-        );
+        expect(
+          within(table)
+            .getAllByRole('columnheader')
+            .map((node) => node.textContent),
+        ).toEqual(codedHeaders('en'));
         for (const cell of within(table).getAllByRole('cell')) {
-          expect((cell as HTMLElement).style.display).not.toBe('none');
+          expect(cell.style.display).not.toBe('none');
         }
       }
 
       expect(screen.queryByRole('list', { name: chartText('en', 'vitals') })).toBeNull();
       const vitals = screen.getByRole('table', { name: chartText('en', 'vitals') });
-      expect(within(vitals).getAllByRole('columnheader').map((node) => node.textContent)).toEqual([
+      expect(
+        within(vitals)
+          .getAllByRole('columnheader')
+          .map((node) => node.textContent),
+      ).toEqual([
         chartText('en', 'kind'),
         chartText('en', 'measurement'),
         chartText('en', 'measuredAt'),
@@ -225,9 +231,11 @@ describe('responsive LongitudinalChart (WEB-07, UX-01)', () => {
 
     expect(document.documentElement.dir).toBe('rtl');
     const table = screen.getByRole('table', { name: chartText('ar', 'problems') });
-    expect(within(table).getAllByRole('columnheader').map((node) => node.textContent)).toEqual(
-      codedHeaders('ar'),
-    );
+    expect(
+      within(table)
+        .getAllByRole('columnheader')
+        .map((node) => node.textContent),
+    ).toEqual(codedHeaders('ar'));
     for (const element of [table, ...Array.from(table.querySelectorAll('*'))] as HTMLElement[]) {
       const style = element.getAttribute('style') ?? '';
       expect(style).not.toMatch(/(?:margin|padding|border)-(?:left|right)\s*:/);
@@ -268,15 +276,13 @@ describe('responsive LongitudinalChart (WEB-07, UX-01)', () => {
 
     expect(document.documentElement.dir).toBe('rtl');
     expect(document.documentElement.lang).toBe('ar');
-    expect(
-      screen.getByRole('region', { name: chartText('ar', 'longitudinalChart') }),
-    ).toBeTruthy();
+    expect(screen.getByRole('region', { name: chartText('ar', 'longitudinalChart') })).toBeTruthy();
     expect(screen.getByText(LONG_ARABIC)).toBeTruthy();
-    const arabicCell = (screen.getByText(LONG_ARABIC) as HTMLElement).closest('td') as HTMLElement;
+    const arabicCell = screen.getByText(LONG_ARABIC).closest('td') as HTMLElement;
     expect(arabicCell.style.overflowWrap).toBe('anywhere');
 
-    const region = screen.getByRole('region', { name: chartText('ar', 'problems') }) as HTMLElement;
-    const timeline = screen.getByRole('list', { name: chartText('ar', 'vitals') }) as HTMLElement;
+    const region = screen.getByRole('region', { name: chartText('ar', 'problems') });
+    const timeline = screen.getByRole('list', { name: chartText('ar', 'vitals') });
     expect(region.className).toContain('table-region');
     expect(timeline.className).toContain('card-list');
     // No component sets a physical side, a physical alignment, a direction

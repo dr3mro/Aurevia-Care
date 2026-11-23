@@ -8,6 +8,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { createElement } from 'react';
+import type { ReactElement } from 'react';
 import { render, screen } from '@testing-library/react';
 import { I18nProvider, useI18n } from '../../../src/i18n/I18nProvider';
 import {
@@ -18,6 +19,7 @@ import {
   mixedScriptRun,
 } from '../../../src/i18n/format';
 import { messages } from '../../../src/i18n/messages';
+import type { Locale } from '../../../src/i18n/messages';
 import { MixedScriptText } from '../../../src/components/MixedScriptText';
 import { mixedScriptLabel, syntheticPerson } from '../../../src/fixtures/synthetic';
 
@@ -42,17 +44,18 @@ function LocaleReaderWithoutProvider() {
   return createElement('span', null, 'unreachable');
 }
 
+/** Mount the localized name under the real provider at an initial locale. */
+function localizedNameIn(initialLocale: Locale): ReactElement {
+  const props = { initialLocale, children: createElement(LocalizedName) };
+  return createElement(I18nProvider, props);
+}
+
 describe('UX-01 clause 1 — bilingual, RTL, local names and mixed-script text', () => {
   it('rendersEnglishAndArabicWithMirroredDirectionLocalNameAndIsolatedMixedScript', () => {
     expect(directionFor('en')).toBe('ltr');
     expect(directionFor('ar')).toBe('rtl');
 
-    const english = render(
-      createElement(I18nProvider, {
-        initialLocale: 'en',
-        children: createElement(LocalizedName),
-      }),
-    );
+    const english = render(localizedNameIn('en'));
     expect(document.documentElement.lang).toBe('en');
     expect(document.documentElement.dir).toBe('ltr');
     expect(screen.getByTestId('local-name').textContent).toBe(syntheticPerson.latinName);
@@ -61,12 +64,7 @@ describe('UX-01 clause 1 — bilingual, RTL, local names and mixed-script text',
     expect(message('en', 'signIn')).toBe(messages.en.signIn);
     english.unmount();
 
-    const arabic = render(
-      createElement(I18nProvider, {
-        initialLocale: 'ar',
-        children: createElement(LocalizedName),
-      }),
-    );
+    const arabic = render(localizedNameIn('ar'));
     expect(document.documentElement.lang).toBe('ar');
     expect(document.documentElement.dir).toBe('rtl');
     expect(screen.getByTestId('local-name').textContent).toBe(syntheticPerson.localName);
@@ -105,12 +103,7 @@ describe('UX-01 clause 1 — bilingual, RTL, local names and mixed-script text',
   });
 
   it('doesNotForceTheInterfaceDirectionOntoAForeignClinicalRun', () => {
-    const view = render(
-      createElement(I18nProvider, {
-        initialLocale: 'ar',
-        children: createElement(LocalizedName),
-      }),
-    );
+    const view = render(localizedNameIn('ar'));
     expect(document.documentElement.dir).toBe('rtl');
 
     const foreign = mixedScriptRun('MAIN · Layla Haddad', 'en');

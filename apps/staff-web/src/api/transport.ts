@@ -117,9 +117,7 @@ async function toTransportError(
   const correlationId = response.headers.get(CORRELATION_HEADER) ?? requestCorrelationId;
   const code = await errorCode(response);
   const retryAfter =
-    response.status === 429
-      ? retryAfterSeconds(response.headers.get('Retry-After'))
-      : undefined;
+    response.status === 429 ? retryAfterSeconds(response.headers.get('Retry-After')) : undefined;
   return new TransportError(kindForStatus(response.status), {
     correlationId,
     code,
@@ -212,10 +210,7 @@ export async function send<T = unknown>(
   } catch (error) {
     // attempt() normalises every failure into a TransportError before it escapes.
     const failure = error as TransportError;
-    if (
-      descriptor.method === 'GET' &&
-      (failure.kind === 'offline' || failure.kind === 'timeout')
-    ) {
+    if (descriptor.method === 'GET' && (failure.kind === 'offline' || failure.kind === 'timeout')) {
       return (await attempt(descriptor, correlationId, timeoutMs)) as T;
     }
     throw error;

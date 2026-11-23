@@ -39,7 +39,8 @@ function descriptor(
 export type ApiEntryType = 'PROBLEM' | 'ALLERGY' | 'MEDICATION' | 'VITAL';
 
 /** Wire source of a chart entry (CLN-03). */
-export type ApiEntrySource = 'PATIENT_REPORTED' | 'CLINICIAN_OBSERVED' | 'EXTERNAL_RECORD' | 'DEVICE';
+export type ApiEntrySource =
+  'PATIENT_REPORTED' | 'CLINICIAN_OBSERVED' | 'EXTERNAL_RECORD' | 'DEVICE';
 
 /** Wire clinical assertion of a chart entry (CLN-03). */
 export type ApiPresenceState = 'PRESENT' | 'ABSENT' | 'UNKNOWN';
@@ -48,7 +49,7 @@ export type ApiPresenceState = 'PRESENT' | 'ABSENT' | 'UNKNOWN';
 export type ApiVerificationState = 'UNVERIFIED' | 'VERIFIED';
 
 /** One immutable chart entry as returned by `GET /api/v1/chart/records/patients/{id}/entries`. */
-export type ChartEntryResponse = {
+export interface ChartEntryResponse {
   id: string;
   patientId: string;
   encounterId: string | null;
@@ -74,33 +75,28 @@ export type ChartEntryResponse = {
   dataEntryActor: string;
   version: number;
   recordedAt: string;
-};
+}
 
 /**
  * The chart projection. The API returns all entries in one response, but the
  * optional `nextCursor` lets a future cursor-paged API be consumed unchanged.
  */
-export type ChartViewResponse = {
+export interface ChartViewResponse {
   entries: readonly ChartEntryResponse[];
   nextCursor?: string | null;
-};
+}
 
 /** The patient summary needed to show identity alongside the opaque id. */
-export type PatientViewResponse = {
+export interface PatientViewResponse {
   patient: { id: string; displayName: string };
   duplicates: readonly unknown[];
-};
+}
 
 /** Wire lifecycle of one note revision (CLN-05). */
-export type ApiNoteState =
-  | 'draft'
-  | 'signed'
-  | 'amendment_draft'
-  | 'addendum'
-  | 'entered_in_error';
+export type ApiNoteState = 'draft' | 'signed' | 'amendment_draft' | 'addendum' | 'entered_in_error';
 
 /** One immutable note revision as returned by the real clinical-note API. */
-export type ClinicalNoteRevisionResponse = {
+export interface ClinicalNoteRevisionResponse {
   id: string;
   version: number;
   state: ApiNoteState;
@@ -123,16 +119,16 @@ export type ClinicalNoteRevisionResponse = {
   enteredErrorActor: string | null;
   affectedRecipients: string | null;
   createdAt: string;
-};
+}
 
 /** The current revision and its append-only history. */
-export type NoteViewResponse = {
+export interface NoteViewResponse {
   current: ClinicalNoteRevisionResponse;
   history: readonly ClinicalNoteRevisionResponse[];
-};
+}
 
 /** Body of `POST /api/v1/clinical-notes`. */
-export type CreateNoteBody = {
+export interface CreateNoteBody {
   patientId: string;
   encounterId: string | null;
   title: string;
@@ -142,16 +138,24 @@ export type CreateNoteBody = {
   templateVersion: number;
   clinicalAuthorSubject: string;
   effectiveAt: string | null;
-};
+}
 
 /** Body of `PUT /api/v1/clinical-notes/{id}`. */
-export type EditNoteBody = { title: string; content: string };
+export interface EditNoteBody {
+  title: string;
+  content: string;
+}
 
 /** Body of the sign and sign-addendum commands. */
-export type SignNoteBody = { attestation: string };
+export interface SignNoteBody {
+  attestation: string;
+}
 
 /** Body of the entered-in-error command. */
-export type EnteredInErrorBody = { reason: string; affectedRecipients: string };
+export interface EnteredInErrorBody {
+  reason: string;
+  affectedRecipients: string;
+}
 
 /** Read the effective patient that owns a chart (IAM-03). */
 export async function getPatient(id: string, organizationId: string): Promise<PatientViewResponse> {
@@ -166,7 +170,7 @@ export async function getPatient(id: string, organizationId: string): Promise<Pa
 export async function listChartEntries(
   patientId: string,
   organizationId: string,
-  cursor?: string | undefined,
+  cursor?: string,
 ): Promise<ChartViewResponse> {
   const base = descriptor(
     'GET',
@@ -198,18 +202,20 @@ export async function createNote(
   organizationId: string,
 ): Promise<ClinicalNoteRevisionResponse> {
   return send<ClinicalNoteRevisionResponse>(
-    descriptor('POST', '/api/v1/clinical-notes', {
-      activeOrganization: organizationId,
-      idempotencyKey: crypto.randomUUID(),
-    }, body),
+    descriptor(
+      'POST',
+      '/api/v1/clinical-notes',
+      {
+        activeOrganization: organizationId,
+        idempotencyKey: crypto.randomUUID(),
+      },
+      { ...body },
+    ),
   );
 }
 
 /** Read the current revision and history of one note (CLN-05). */
-export async function getNote(
-  id: string,
-  organizationId: string,
-): Promise<NoteViewResponse> {
+export async function getNote(id: string, organizationId: string): Promise<NoteViewResponse> {
   return send<NoteViewResponse>(
     descriptor('GET', `/api/v1/clinical-notes/${encodeURIComponent(id)}`, {
       activeOrganization: organizationId,
@@ -225,10 +231,15 @@ export async function updateNote(
   organizationId: string,
 ): Promise<ClinicalNoteRevisionResponse> {
   return send<ClinicalNoteRevisionResponse>(
-    descriptor('PUT', `/api/v1/clinical-notes/${encodeURIComponent(id)}`, {
-      activeOrganization: organizationId,
-      ifMatch: version,
-    }, body),
+    descriptor(
+      'PUT',
+      `/api/v1/clinical-notes/${encodeURIComponent(id)}`,
+      {
+        activeOrganization: organizationId,
+        ifMatch: version,
+      },
+      { ...body },
+    ),
   );
 }
 
@@ -273,11 +284,10 @@ export async function amendNote(
   organizationId: string,
 ): Promise<ClinicalNoteRevisionResponse> {
   return send<ClinicalNoteRevisionResponse>(
-    descriptor(
-      'POST',
-      `/api/v1/clinical-notes/${encodeURIComponent(id)}/amend`,
-      { activeOrganization: organizationId, ifMatch: version },
-    ),
+    descriptor('POST', `/api/v1/clinical-notes/${encodeURIComponent(id)}/amend`, {
+      activeOrganization: organizationId,
+      ifMatch: version,
+    }),
   );
 }
 
@@ -285,10 +295,10 @@ export async function amendNote(
 export async function markEnteredInError(
   id: string,
   version: number,
-  reason: string,
-  affectedRecipients: readonly string[],
+  evidence: { reason: string; affectedRecipients: readonly string[] },
   organizationId: string,
 ): Promise<ClinicalNoteRevisionResponse> {
+  const { reason, affectedRecipients } = evidence;
   return send<ClinicalNoteRevisionResponse>(
     descriptor(
       'POST',
@@ -414,7 +424,10 @@ export function parseRecipients(raw: string | null): string[] {
 }
 
 /** Map one wire revision to the existing immutable note-revision domain type. */
-export function toNoteRevision(rev: ClinicalNoteRevisionResponse, organizationId: string): NoteRevision {
+export function toNoteRevision(
+  rev: ClinicalNoteRevisionResponse,
+  organizationId: string,
+): NoteRevision {
   const amendment = rev.supersedesVersion !== null;
   const enteredInError =
     rev.enteredErrorReason === null

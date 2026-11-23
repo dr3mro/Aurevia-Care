@@ -65,20 +65,17 @@ function installMatchMedia(width: number, coarse: boolean): Map<string, QuerySta
       } else if (query === '(pointer: coarse)') {
         matches = coarse;
       }
-      let state = states.get(query);
-      if (!state) {
-        state = { matches, listeners: new Set<ChangeListener>() };
-        states.set(query, state);
-      }
+      const state = states.get(query) ?? { matches, listeners: new Set<ChangeListener>() };
+      states.set(query, state);
       return {
         get matches() {
-          return state?.matches ?? false;
+          return state.matches;
         },
         addEventListener: (_type: string, listener: ChangeListener) => {
-          state?.listeners.add(listener);
+          state.listeners.add(listener);
         },
         removeEventListener: (_type: string, listener: ChangeListener) => {
-          state?.listeners.delete(listener);
+          state.listeners.delete(listener);
         },
       };
     }),
@@ -152,7 +149,7 @@ describe('responsive FieldErrorSummary (WEB-07, UX-01)', () => {
       ]);
       for (const link of links) {
         expect(link.classList.contains('touch')).toBe(true);
-        expect((link.getAttribute('style') ?? '')).not.toContain('display: none');
+        expect(link.getAttribute('style') ?? '').not.toContain('display: none');
         assertLogicalOnly(link.getAttribute('style') ?? '');
       }
       expect(container.querySelector('[style*="display: none"]')).toBeNull();
@@ -163,7 +160,7 @@ describe('responsive FieldErrorSummary (WEB-07, UX-01)', () => {
     installMatchMedia(320, true);
     renderSummary('Long English summary', LONG_ENGLISH);
 
-    const link = screen.getByRole('link') as HTMLAnchorElement;
+    const link = screen.getByRole<HTMLAnchorElement>('link');
     expect(link.getAttribute('href')).toBe('#long-english');
     expect(link.textContent).toContain(LONG_ENGLISH[0]?.message);
     const style = link.getAttribute('style') ?? '';
@@ -186,7 +183,7 @@ describe('responsive FieldErrorSummary (WEB-07, UX-01)', () => {
     expect(alert.getAttribute('data-breakpoint')).toBe('compact');
     expect(screen.getByRole('heading', { level: 3 }).textContent).toBe('راجع النموذج');
 
-    const link = screen.getByRole('link') as HTMLAnchorElement;
+    const link = screen.getByRole<HTMLAnchorElement>('link');
     expect(link.getAttribute('href')).toBe('#long-arabic');
     expect(link.textContent).toContain(LONG_ARABIC[0]?.message);
     expect(link.style.direction).toBe('');
@@ -199,7 +196,7 @@ describe('responsive FieldErrorSummary (WEB-07, UX-01)', () => {
     installMatchMedia(1280, false);
     const { container } = renderSummary('Focus order', SYNTHETIC_ERRORS);
 
-    const links = screen.getAllByRole('link') as HTMLAnchorElement[];
+    const links = screen.getAllByRole<HTMLAnchorElement>('link');
     expect(links.map((link) => link.getAttribute('href'))).toEqual([
       '#patient-name',
       '#visit-date',

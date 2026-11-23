@@ -12,6 +12,7 @@ import { ThemeProvider } from '../../theme/ThemeProvider';
 import { ImportPage } from './ImportPage';
 import { dataExchangeText } from './labels';
 import type { DryRunReportResponse } from './domain';
+import { must } from '../../../tests/must';
 
 vi.mock('../../api/transport', async (importOriginal) => {
   const actual = await importOriginal<typeof TransportModule>();
@@ -56,7 +57,7 @@ const emptyReport: DryRunReportResponse = {
 
 /** Descriptor sent to the transport at a given call index. */
 function descriptorAt(index: number): RequestDescriptor {
-  return sendMock.mock.calls[index]![0] as RequestDescriptor;
+  return must(sendMock.mock.calls[index])[0];
 }
 
 /** Typed failure for a denied call. */
@@ -69,13 +70,14 @@ function denied(): TransportError {
 }
 
 /** Render the page under the shared providers. */
-function wrap(ui: ReactElement = <ImportPage role="tenant_admin" />, locale: Locale = 'en') {
+function wrap(
+  ui: ReactElement = <ImportPage roleOverride="tenant_admin" />,
+  locale: Locale = 'en',
+) {
   return render(
     <ThemeProvider>
       <I18nProvider initialLocale={locale}>
-        <ActiveOrganizationProvider value={{ organizationId }}>
-          {ui}
-        </ActiveOrganizationProvider>
+        <ActiveOrganizationProvider value={{ organizationId }}>{ui}</ActiveOrganizationProvider>
       </I18nProvider>
     </ThemeProvider>,
   );
@@ -110,7 +112,7 @@ beforeEach(() => {
 
 describe('onboarding import screen', () => {
   it('conceals the screen from a role without import permission', () => {
-    wrap(<ImportPage role="reception" />);
+    wrap(<ImportPage roleOverride="reception" />);
     expect(screen.getByRole('heading', { name: stateViewText('en', 'forbidden') })).toBeTruthy();
     expect(screen.queryByRole('heading', { name: text('importTitle') })).toBeNull();
     expect(sendMock).not.toHaveBeenCalled();
@@ -128,7 +130,9 @@ describe('onboarding import screen', () => {
     const unsupported = screen.getByRole('list', { name: text('unsupportedFields') });
     expect(unsupported.textContent).toContain('legacy_ssn');
     expect(unsupported.textContent).toContain('free_text_notes');
-    expect(screen.getByRole('list', { name: text('duplicateRisk') }).textContent).toContain('record-2');
+    expect(screen.getByRole('list', { name: text('duplicateRisk') }).textContent).toContain(
+      'record-2',
+    );
     expect(screen.getByRole('list', { name: text('missingAttachments') }).textContent).toContain(
       'record-3: scans/attachment-9',
     );
@@ -157,7 +161,9 @@ describe('onboarding import screen', () => {
 
   it('carries edited synthetic dataset fields into the dry-run manifest', async () => {
     wrap();
-    fireEvent.change(screen.getByLabelText(text('source')), { target: { value: 'SYNTHETIC-FHIR' } });
+    fireEvent.change(screen.getByLabelText(text('source')), {
+      target: { value: 'SYNTHETIC-FHIR' },
+    });
     fireEvent.change(screen.getByLabelText(text('sourceVersion')), { target: { value: '2.3' } });
     fireEvent.change(screen.getByLabelText(text('manifestVersion')), { target: { value: '5' } });
     fireEvent.change(screen.getByLabelText(text('unsupportedFieldNames')), {
@@ -178,7 +184,9 @@ describe('onboarding import screen', () => {
     });
     expect(body.records).toHaveLength(1);
   });
+});
 
+describe('onboarding import screen commands', () => {
   it('refuses a zero or non-numeric manifest version without calling the API', async () => {
     wrap();
     fireEvent.change(screen.getByLabelText(text('manifestVersion')), { target: { value: '0' } });
@@ -269,8 +277,12 @@ describe('onboarding import screen', () => {
   });
 
   it('renders the Arabic labels for a permitted role', () => {
-    wrap(<ImportPage role="privacy_auditor" />, 'ar');
-    expect(screen.getByRole('heading', { name: dataExchangeText('ar', 'importTitle') })).toBeTruthy();
-    expect(screen.getByRole('button', { name: dataExchangeText('ar', 'signOffButton') })).toBeTruthy();
+    wrap(<ImportPage roleOverride="privacy_auditor" />, 'ar');
+    expect(
+      screen.getByRole('heading', { name: dataExchangeText('ar', 'importTitle') }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: dataExchangeText('ar', 'signOffButton') }),
+    ).toBeTruthy();
   });
 });

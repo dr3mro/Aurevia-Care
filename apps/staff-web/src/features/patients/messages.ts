@@ -61,7 +61,8 @@ export type PatientsMessageKey = (typeof patientsKeys)[number];
 export const patientMessages: Record<Locale, Record<PatientsMessageKey, string>> = {
   en: {
     patients: 'Patients',
-    syntheticNotice: 'Synthetic data only. Patients are read from and written to the connected API.',
+    syntheticNotice:
+      'Synthetic data only. Patients are read from and written to the connected API.',
     searchLabel: 'Search by name',
     search: 'Search',
     searchTooShort: 'Enter at least two characters.',
@@ -72,7 +73,8 @@ export const patientMessages: Record<Locale, Record<PatientsMessageKey, string>>
     colDob: 'Date of birth',
     register: 'Register',
     registerTitle: 'Register patient',
-    registerIntro: 'Enter the original spelling and issuer-scoped identifiers. The API remains authoritative.',
+    registerIntro:
+      'Enter the original spelling and issuer-scoped identifiers. The API remains authoritative.',
     registerSubmit: 'Save registration',
     cancel: 'Cancel',
     fieldDisplayName: 'Display name',
@@ -83,7 +85,7 @@ export const patientMessages: Record<Locale, Record<PatientsMessageKey, string>>
     fieldLanguage: 'Language code',
     registered: 'Registered {name}',
     errorSummary: 'Fix the following fields',
-    errorDisplayName: 'Enter a name of 2-120 letters, spaces or \' . -.',
+    errorDisplayName: "Enter a name of 2-120 letters, spaces or ' . -.",
     errorMrn: 'Enter an MRN of 2-64 letters, digits or _ . : -.',
     errorIssuer: 'Enter an issuer of 2-32 letters, digits or _ . : -.',
     errorDob: 'Enter an ISO date of birth or a coded unknown reason.',
@@ -103,7 +105,8 @@ export const patientMessages: Record<Locale, Record<PatientsMessageKey, string>>
     dob: 'Date of birth',
     language: 'Language',
     duplicateWarningTitle: 'Likely duplicate records',
-    duplicateWarningDetail: 'These records may belong to the same patient. Review them before linking; nothing is merged here.',
+    duplicateWarningDetail:
+      'These records may belong to the same patient. Review them before linking; nothing is merged here.',
     noDuplicates: 'No likely duplicate records.',
     chartLink: 'Open chart',
   },
@@ -120,7 +123,8 @@ export const patientMessages: Record<Locale, Record<PatientsMessageKey, string>>
     colDob: 'تاريخ الميلاد',
     register: 'تسجيل',
     registerTitle: 'تسجيل مريض',
-    registerIntro: 'أدخل التهجئة الأصلية والمعرّفات المرتبطة بالجهة المُصدرة. الخدمة هي المرجع النهائي.',
+    registerIntro:
+      'أدخل التهجئة الأصلية والمعرّفات المرتبطة بالجهة المُصدرة. الخدمة هي المرجع النهائي.',
     registerSubmit: 'حفظ التسجيل',
     cancel: 'إلغاء',
     fieldDisplayName: 'الاسم المعروض',
@@ -131,7 +135,7 @@ export const patientMessages: Record<Locale, Record<PatientsMessageKey, string>>
     fieldLanguage: 'رمز اللغة',
     registered: 'تم تسجيل {name}',
     errorSummary: 'صحّح الحقول التالية',
-    errorDisplayName: 'أدخل اسمًا من حرفين إلى ١٢٠ حرفًا أو مسافة أو \' . -.',
+    errorDisplayName: "أدخل اسمًا من حرفين إلى ١٢٠ حرفًا أو مسافة أو ' . -.",
     errorMrn: 'أدخل رقم ملف من ٢ إلى ٦٤ حرفًا أو رقمًا أو _ . : -.',
     errorIssuer: 'أدخل جهة إصدار من ٢ إلى ٣٢ حرفًا أو رقمًا أو _ . : -.',
     errorDob: 'أدخل تاريخ ميلاد بصيغة ISO أو رمز سبب عدم المعرفة.',
@@ -151,7 +155,8 @@ export const patientMessages: Record<Locale, Record<PatientsMessageKey, string>>
     dob: 'تاريخ الميلاد',
     language: 'اللغة',
     duplicateWarningTitle: 'سجلات مرجّح تكرارها',
-    duplicateWarningDetail: 'قد تنتمي هذه السجلات إلى المريض نفسه. راجعها قبل الربط؛ لا يتم دمج أي شيء هنا.',
+    duplicateWarningDetail:
+      'قد تنتمي هذه السجلات إلى المريض نفسه. راجعها قبل الربط؛ لا يتم دمج أي شيء هنا.',
     noDuplicates: 'لا توجد سجلات مرجّح تكرارها.',
     chartLink: 'فتح الملف الطبي',
   },

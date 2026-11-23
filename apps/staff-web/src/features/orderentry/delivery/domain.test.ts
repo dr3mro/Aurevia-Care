@@ -16,7 +16,7 @@ import type { DeliveryMessageKey } from './labels';
 
 const modes: readonly DeliveryMode[] = ['electronic', 'print', 'both'];
 
-const retryCases: ReadonlyArray<readonly [SendResult, boolean]> = [
+const retryCases: readonly (readonly [SendResult, boolean])[] = [
   [{ state: 'failed', retrySafe: true }, true],
   [{ state: 'failed', retrySafe: false }, false],
   [{ state: 'idle' }, false],
@@ -25,7 +25,7 @@ const retryCases: ReadonlyArray<readonly [SendResult, boolean]> = [
   [{ state: 'ambiguous', correlationId: 'SYN-CORR-9' }, false],
 ];
 
-const recoveryCases: ReadonlyArray<readonly [SendResult, boolean]> = [
+const recoveryCases: readonly (readonly [SendResult, boolean])[] = [
   [{ state: 'failed', retrySafe: true }, true],
   [{ state: 'failed', retrySafe: false }, true],
   [{ state: 'ambiguous' }, true],
@@ -34,7 +34,7 @@ const recoveryCases: ReadonlyArray<readonly [SendResult, boolean]> = [
   [{ state: 'placed', timeline: ['placed'] }, false],
 ];
 
-const modeMappings: ReadonlyArray<readonly [string, Record<DeliveryMode, DeliveryMessageKey>]> = [
+const modeMappings: readonly (readonly [string, Record<DeliveryMode, DeliveryMessageKey>])[] = [
   ['mode label', modeLabelKey],
   ['patient-receive description', receivesKey],
   ['worded confirm', confirmKey],

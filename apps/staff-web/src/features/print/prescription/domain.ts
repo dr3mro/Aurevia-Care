@@ -9,11 +9,7 @@
 
 import type { PrescriptionState } from '../../pharmacyinbox/types';
 import { PRINT_CHANNELS } from './types';
-import type {
-  PrescriptionCopy,
-  PrescriptionForPrint,
-  PrintEligibility,
-} from './types';
+import type { PrescriptionCopy, PrescriptionForPrint, PrintEligibility } from './types';
 
 /** Prescription states a handout may be printed from, in wire-key form. */
 const PRINTABLE_STATES: ReadonlySet<PrescriptionState> = new Set([
@@ -39,10 +35,7 @@ export function printEligibility(prescription: PrescriptionForPrint): PrintEligi
   if (!prescription.attested) {
     return { allowed: false, blocker: 'not-attested' };
   }
-  if (
-    prescription.printChannel === null ||
-    !APPROVED_CHANNELS.has(prescription.printChannel)
-  ) {
+  if (prescription.printChannel === null || !APPROVED_CHANNELS.has(prescription.printChannel)) {
     return { allowed: false, blocker: 'channel-not-approved' };
   }
   return { allowed: true };
@@ -60,7 +53,5 @@ export function isReprint(prescription: PrescriptionForPrint): boolean {
  * copy (RX-02, docs/operations/printing/README.md).
  */
 export function offeredCopies(prescription: PrescriptionForPrint): readonly PrescriptionCopy[] {
-  return prescription.printChannel === 'PRINTABLE_LOCAL'
-    ? ['patient', 'pharmacy']
-    : ['patient'];
+  return prescription.printChannel === 'PRINTABLE_LOCAL' ? ['patient', 'pharmacy'] : ['patient'];
 }

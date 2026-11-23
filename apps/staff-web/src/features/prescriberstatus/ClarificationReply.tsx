@@ -61,9 +61,7 @@ export function ClarificationReply({
         {thread.entries.map((entry) => (
           <li key={entry.id} data-testid={`clarification-entry-${entry.id}`}>
             <p>{prescriberText(locale, partyMessageKey(entry.authorParty))}</p>
-            {entry.body === '' ? null : (
-              <MixedScriptText text={entry.body} lang="en" />
-            )}
+            {entry.body === '' ? null : <MixedScriptText text={entry.body} lang="en" />}
             {entry.amendedRevisionId === null ? null : (
               <code dir="ltr">{entry.amendedRevisionId}</code>
             )}
@@ -115,9 +113,7 @@ export function ClarificationReply({
           <Button onClick={handleSend}>{prescriberText(locale, 'sendAnswer')}</Button>
         </section>
       )}
-      {error === undefined ? null : (
-        <div>{StateView.forTransportError(error)}</div>
-      )}
+      {error === undefined ? null : <div>{StateView.forTransportError(error)}</div>}
     </section>
   );
 }

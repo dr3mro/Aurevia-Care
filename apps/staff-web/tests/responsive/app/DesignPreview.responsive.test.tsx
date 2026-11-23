@@ -4,6 +4,7 @@ import { DesignPreview } from '../../../src/app/DesignPreview';
 import { I18nProvider } from '../../../src/i18n/I18nProvider';
 import { ThemeProvider } from '../../../src/theme/ThemeProvider';
 import { BREAKPOINT_MEDIA_QUERIES, BREAKPOINT_WIDTHS } from '../../../src/theme/breakpoints';
+import { must } from '../../must';
 
 type ChangeListener = (event: MediaQueryListEvent) => void;
 type Band = 'compact' | 'medium' | 'expanded';
@@ -160,7 +161,7 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
       // DataTable: a labelled keyboard-scrollable region on compact, a plain
       // table from medium upward. No clinical column is ever hidden.
       if (band === 'compact') {
-        const region = screen.getByRole('region', { name: LABELS.en.facilities }) as HTMLElement;
+        const region = screen.getByRole('region', { name: LABELS.en.facilities });
         expect(region.className).toContain('table-region');
         expect(region.tabIndex).toBe(0);
       } else {
@@ -178,7 +179,7 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
       const form = screen.getByRole('form', { name: LABELS.en.noteForm });
       expect(form.getAttribute('data-breakpoint')).toBe(band);
       expect(form.querySelector('[data-part="fields"]')?.className).toBe('stack');
-      const input = screen.getByLabelText(LABELS.en.shiftNote) as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>(LABELS.en.shiftNote);
       expect(input.tagName).toBe('INPUT');
       expect(input.classList.contains('field')).toBe(true);
       expect(input.classList.contains('touch')).toBe(true);
@@ -196,8 +197,8 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
         expect(run.getAttribute('dir')).toBe('auto');
         expect(run.getAttribute('lang')).toBe('en');
         expect(run.getAttribute('data-breakpoint')).toBe(band);
-        expect((run as HTMLElement).style.overflowWrap).toBe('anywhere');
-        expect((run as HTMLElement).style.whiteSpace).toBe('normal');
+        expect(run.style.overflowWrap).toBe('anywhere');
+        expect(run.style.whiteSpace).toBe('normal');
       }
     });
 
@@ -248,7 +249,7 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
       expect(dialog.getAttribute('data-dialog-view')).toBe(
         band === 'compact' ? 'sheet' : 'centered',
       );
-      const header = dialog.querySelector('[data-dialog-region="header"]') as HTMLElement;
+      const header = must(dialog.querySelector<HTMLElement>('[data-dialog-region="header"]'));
       expect(header.style.position).toBe(band === 'compact' ? 'sticky' : '');
 
       fireEvent.click(screen.getByRole('button', { name: LABELS.en.closeDialog }));

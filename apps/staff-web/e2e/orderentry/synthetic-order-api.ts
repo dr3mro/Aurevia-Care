@@ -29,6 +29,30 @@ async function json(route: Route, body: unknown, status = 200): Promise<void> {
 }
 
 /**
+ * Body for the order commands that are accepted with a fixed answer:
+ * reconciliation resolves an ambiguous send without a blind resend, and
+ * placing, cancelling and amending carry an opaque version.
+ */
+function commandResponse(method: string, path: string): Record<string, unknown> | undefined {
+  if (method !== 'POST') {
+    return undefined;
+  }
+  if (path.endsWith('/reconcile')) {
+    return { timeline: ['placed', 'transmitted', 'delivered'] };
+  }
+  if (path.endsWith('/place')) {
+    return { status: 'placed', version: 2 };
+  }
+  if (path.endsWith('/cancel')) {
+    return { status: 'cancelled', version: 3 };
+  }
+  if (path.endsWith('/amend')) {
+    return { version: 3 };
+  }
+  return undefined;
+}
+
+/**
  * Install the synthetic order API on one page and supply the write CSRF cookie
  * the real transport requires. Call before navigating to the harness.
  *
@@ -90,23 +114,9 @@ export async function installSyntheticOrderApi(
       return;
     }
 
-    // Reconciliation resolves an ambiguous send without a blind resend.
-    if (method === 'POST' && /\/reconcile$/.test(path)) {
-      await json(route, { timeline: ['placed', 'transmitted', 'delivered'] });
-      return;
-    }
-
-    // Placing, cancelling and amending are all accepted with an opaque version.
-    if (method === 'POST' && /\/place$/.test(path)) {
-      await json(route, { status: 'placed', version: 2 });
-      return;
-    }
-    if (method === 'POST' && /\/cancel$/.test(path)) {
-      await json(route, { status: 'cancelled', version: 3 });
-      return;
-    }
-    if (method === 'POST' && /\/amend$/.test(path)) {
-      await json(route, { version: 3 });
+    const command = commandResponse(method, path);
+    if (command !== undefined) {
+      await json(route, command);
       return;
     }
 

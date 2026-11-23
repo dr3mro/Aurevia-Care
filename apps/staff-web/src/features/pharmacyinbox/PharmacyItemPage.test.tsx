@@ -32,19 +32,18 @@ vi.mock('../../api/transport', async (importOriginal) => {
 const sendMock = vi.mocked(send);
 
 function descriptorAt(call: number): RequestDescriptor {
-  return sendMock.mock.calls[call]![0] as RequestDescriptor;
+  return required(sendMock.mock.calls[call])[0];
 }
 
-function wrap(
-  ui: ReactElement,
-  organizationId = alphaOrganizationId,
-  locale: Locale = 'en',
-) {
+function wrap(ui: ReactElement, organizationId = alphaOrganizationId, locale: Locale = 'en') {
   return render(
     <ThemeProvider>
       <I18nProvider initialLocale={locale}>
         <ActiveOrganizationProvider value={{ organizationId }}>
-          <RouterProvider patterns={['/pharmacy/:id']} initialPath={`/pharmacy/${syntheticInboxItem.id}`}>
+          <RouterProvider
+            patterns={['/pharmacy/:id']}
+            initialPath={`/pharmacy/${syntheticInboxItem.id}`}
+          >
             {ui}
           </RouterProvider>
         </ActiveOrganizationProvider>
@@ -138,7 +137,9 @@ describe('PharmacyItemPage card and history', () => {
     expect(screen.getByText('10 mg; oral; twice daily')).toBeTruthy();
     expect(screen.getByText('synthetic.prescriber')).toBeTruthy();
     expect(screen.getByTestId('accepted-flag').textContent).toContain(pharmacyText('en', 'flagNo'));
-    expect(screen.getByTestId('dispensed-flag').textContent).toContain(pharmacyText('en', 'flagYes'));
+    expect(screen.getByTestId('dispensed-flag').textContent).toContain(
+      pharmacyText('en', 'flagYes'),
+    );
   });
 
   it('renders the status history with both detailed and detail-free facts', async () => {
@@ -187,7 +188,7 @@ describe('PharmacyItemPage route binding', () => {
     const detailRoute = routes.find((route) => route.pattern === '/pharmacy/:id');
     expect(detailRoute).toBeDefined();
     queueDetail();
-    const Component = detailRoute!.component;
+    const Component = required(detailRoute).component;
     wrap(
       <Suspense fallback={null}>
         <Component />
@@ -208,7 +209,7 @@ describe('PharmacyItemPage commands', () => {
     expect(screen.getByText(pharmacyText('en', 'reasonRequired'))).toBeTruthy();
     expect(sendMock).toHaveBeenCalledTimes(2);
 
-    const reason = screen.getByLabelText(pharmacyText('en', 'reasonLabel')) as HTMLInputElement;
+    const reason = screen.getByLabelText<HTMLInputElement>(pharmacyText('en', 'reasonLabel'));
     fireEvent.change(reason, { target: { value: 'out of stock' } });
     sendMock.mockRejectedValueOnce(transportFailure('conflict', 'corr-stale'));
     fireEvent.click(screen.getByRole('button', { name: pharmacyText('en', 'submitReject') }));
@@ -233,7 +234,9 @@ describe('PharmacyItemPage commands', () => {
     fireEvent.click(screen.getByRole('button', { name: pharmacyText('en', 'submitClarify') }));
 
     await waitFor(() => expect(descriptorAt(2).body).toEqual({ question: 'Which strength?' }));
-    expect(descriptorAt(2).url).toBe(`/api/v1/pharmacy/status/${syntheticInboxItem.id}/clarification`);
+    expect(descriptorAt(2).url).toBe(
+      `/api/v1/pharmacy/status/${syntheticInboxItem.id}/clarification`,
+    );
     expect(await screen.findByText(pharmacyText('en', 'commandDone'))).toBeTruthy();
   });
 
@@ -258,13 +261,17 @@ describe('PharmacyItemPage commands', () => {
 
     fireEvent.click(screen.getByRole('button', { name: pharmacyText('en', 'accept') }));
 
-    await waitFor(() => expect(descriptorAt(2).url).toBe(
-      `/api/v1/pharmacy/status/${syntheticInboxItem.id}/accept`,
-    ));
+    await waitFor(() =>
+      expect(descriptorAt(2).url).toBe(`/api/v1/pharmacy/status/${syntheticInboxItem.id}/accept`),
+    );
     expect(descriptorAt(2).headers['If-Match']).toBe(String(syntheticStatus.version));
     expect(descriptorAt(2).headers['Idempotency-Key']).toMatch(/^[0-9a-f-]{36}$/);
-    expect(screen.getByTestId('accepted-flag').textContent).toContain(pharmacyText('en', 'flagYes'));
-    expect(screen.getByTestId('dispensed-flag').textContent).toContain(pharmacyText('en', 'flagNo'));
+    expect(screen.getByTestId('accepted-flag').textContent).toContain(
+      pharmacyText('en', 'flagYes'),
+    );
+    expect(screen.getByTestId('dispensed-flag').textContent).toContain(
+      pharmacyText('en', 'flagNo'),
+    );
     expect(await screen.findByText(pharmacyText('en', 'commandDone'))).toBeTruthy();
   });
 
@@ -275,7 +282,9 @@ describe('PharmacyItemPage commands', () => {
 
     fireEvent.click(screen.getByRole('button', { name: pharmacyText('en', 'beginDispensing') }));
 
-    expect(screen.getByRole('heading', { name: pharmacyText('en', 'dispensingTitle') })).toBeTruthy();
+    expect(
+      screen.getByRole('heading', { name: pharmacyText('en', 'dispensingTitle') }),
+    ).toBeTruthy();
     expect(screen.queryByRole('button', { name: pharmacyText('en', 'accept') })).toBeNull();
     fireEvent.change(screen.getByLabelText(pharmacyText('en', 'dispensedBy')), {
       target: { value: 'synthetic.pharmacist' },
@@ -290,16 +299,20 @@ describe('PharmacyItemPage commands', () => {
     queueDetail(syntheticDispensedStatus);
     fireEvent.click(screen.getByRole('button', { name: pharmacyText('en', 'recordDispensing') }));
 
-    await waitFor(() => expect(descriptorAt(2).url).toBe(
-      `/api/v1/pharmacy/status/${syntheticInboxItem.id}/dispensing-evidence`,
-    ));
+    await waitFor(() =>
+      expect(descriptorAt(2).url).toBe(
+        `/api/v1/pharmacy/status/${syntheticInboxItem.id}/dispensing-evidence`,
+      ),
+    );
     expect(descriptorAt(2).body).toEqual({
       dispensedBy: 'synthetic.pharmacist',
       dispensedAt: '2026-11-21T10:30:00Z',
       handedOver: '30 tablets',
     });
     expect(screen.getByTestId('accepted-flag').textContent).toContain(pharmacyText('en', 'flagNo'));
-    expect(screen.getByTestId('dispensed-flag').textContent).toContain(pharmacyText('en', 'flagYes'));
+    expect(screen.getByTestId('dispensed-flag').textContent).toContain(
+      pharmacyText('en', 'flagYes'),
+    );
     expect(await screen.findByText(pharmacyText('en', 'commandDone'))).toBeTruthy();
   });
 
@@ -335,8 +348,15 @@ describe('PharmacyItemPage commands', () => {
     fireEvent.click(screen.getByRole('button', { name: pharmacyText('en', 'recordDispensing') }));
 
     expect(await screen.findByText(stateViewText('en', 'error'))).toBeTruthy();
-    expect((screen.getByLabelText(pharmacyText('en', 'handedOver')) as HTMLInputElement).value).toBe(
+    expect(screen.getByLabelText<HTMLInputElement>(pharmacyText('en', 'handedOver')).value).toBe(
       '30 tablets',
     );
   });
 });
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

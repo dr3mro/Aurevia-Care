@@ -12,11 +12,7 @@ import type { Page, Route } from '@playwright/test';
 
 /** The bounded accession states mirrored from the collection feature. */
 export type SyntheticAccessionState =
-  | 'accessioned'
-  | 'collected'
-  | 'received'
-  | 'rejected'
-  | 'recollected';
+  'accessioned' | 'collected' | 'received' | 'rejected' | 'recollected';
 
 /** One synthetic accession in the shape the collection page consumes. */
 export interface SyntheticAccession {
@@ -100,6 +96,67 @@ async function json(route: Route, body: unknown, status = 200): Promise<void> {
 }
 
 /**
+ * Serve one specimen command or label request.
+ *
+ * @returns true when the request matched a specimen route and was answered
+ */
+async function handleSpecimenCommand(
+  route: Route,
+  api: SyntheticLabApi,
+  method: string,
+  path: string,
+): Promise<boolean> {
+  const match = /^\/api\/v1\/lab\/specimens\/([^/]+)\/(collect|reject|recollect|label)$/.exec(path);
+  if (match === null) {
+    return false;
+  }
+  const id = decodeURIComponent(match[1] ?? '');
+  const accession = api.accessions.find((item) => item.id === id);
+  if (accession === undefined) {
+    await json(route, { code: 'NOT_FOUND' }, 404);
+    return true;
+  }
+  switch (`${method} ${match[2] ?? ''}`) {
+    case 'GET label':
+      await json(route, {
+        accessionNo: accession.accessionNo,
+        accessionIssuer: accession.accessionIssuer,
+        patientName: accession.patientId,
+        patientMrn: accession.patientId,
+        patientMrnIssuer: accession.accessionIssuer,
+        specimenType: accession.specimenType ?? 'SERUM',
+        collectedAt: accession.collectedAt ?? '2026-03-09T09:00:00Z',
+      });
+      return true;
+    case 'POST collect':
+      accession.state = 'collected';
+      accession.version += 1;
+      accession.specimenType = 'SERUM';
+      accession.siteCode = 'MAIN';
+      accession.collector = 'synthetic.collector';
+      accession.collectedAt = '2026-03-09T09:00:00Z';
+      accession.quality = 'ACCEPTABLE';
+      await json(route, { id: accession.id, version: accession.version });
+      return true;
+    case 'POST reject':
+      accession.state = 'rejected';
+      accession.version += 1;
+      accession.rejectionReason = 'haemolysed';
+      accession.rejectionNotification = 'clinician:ORDER-200';
+      await json(route, { id: accession.id, version: accession.version });
+      return true;
+    case 'POST recollect':
+      if (!api.accessions.some((item) => item.id === betaRecollection.id)) {
+        api.accessions.push({ ...betaRecollection });
+      }
+      await json(route, { id: betaRecollection.id, replacesAccessionId: id });
+      return true;
+    default:
+      return false;
+  }
+}
+
+/**
  * Install the synthetic lab API on one page and supply the write CSRF cookie
  * that the real transport requires. Call before navigating to a lab route.
  *
@@ -112,10 +169,7 @@ export async function installSyntheticLabApi(
   baseURL: string | undefined,
 ): Promise<SyntheticLabApi> {
   const api: SyntheticLabApi = {
-    accessions: [
-      { ...alphaAccession },
-      { ...betaAccession },
-    ],
+    accessions: [{ ...alphaAccession }, { ...betaAccession }],
     calls: [],
   };
 
@@ -138,55 +192,8 @@ export async function installSyntheticLabApi(
       return;
     }
 
-    const match = /^\/api\/v1\/lab\/specimens\/([^/]+)\/(collect|reject|recollect|label)$/.exec(
-      path,
-    );
-    if (match !== null) {
-      const id = decodeURIComponent(match[1] ?? '');
-      const action = match[2];
-      const accession = api.accessions.find((item) => item.id === id);
-      if (accession === undefined) {
-        await json(route, { code: 'NOT_FOUND' }, 404);
-        return;
-      }
-      if (method === 'GET' && action === 'label') {
-        await json(route, {
-          accessionNo: accession.accessionNo,
-          accessionIssuer: accession.accessionIssuer,
-          patientName: accession.patientId,
-          patientMrn: accession.patientId,
-          patientMrnIssuer: accession.accessionIssuer,
-          specimenType: accession.specimenType ?? 'SERUM',
-          collectedAt: accession.collectedAt ?? '2026-03-09T09:00:00Z',
-        });
-        return;
-      }
-      if (method === 'POST' && action === 'collect') {
-        accession.state = 'collected';
-        accession.version += 1;
-        accession.specimenType = 'SERUM';
-        accession.siteCode = 'MAIN';
-        accession.collector = 'synthetic.collector';
-        accession.collectedAt = '2026-03-09T09:00:00Z';
-        accession.quality = 'ACCEPTABLE';
-        await json(route, { id: accession.id, version: accession.version });
-        return;
-      }
-      if (method === 'POST' && action === 'reject') {
-        accession.state = 'rejected';
-        accession.version += 1;
-        accession.rejectionReason = 'haemolysed';
-        accession.rejectionNotification = 'clinician:ORDER-200';
-        await json(route, { id: accession.id, version: accession.version });
-        return;
-      }
-      if (method === 'POST' && action === 'recollect') {
-        if (!api.accessions.some((item) => item.id === betaRecollection.id)) {
-          api.accessions.push({ ...betaRecollection });
-        }
-        await json(route, { id: betaRecollection.id, replacesAccessionId: id });
-        return;
-      }
+    if (await handleSpecimenCommand(route, api, method, path)) {
+      return;
     }
 
     await json(route, { code: 'NOT_FOUND' }, 404);

@@ -27,6 +27,9 @@ import {
   duplicatesText,
 } from './messages';
 
+/** Keyboard-focusable scroll regions join the natural tab order. */
+const FOCUSABLE_TAB_INDEX = 0;
+
 /**
  * Place a captioned table in the shared labelled scroll region on compact
  * viewports and leave it in the normal flow from medium upward. The table,
@@ -44,7 +47,7 @@ function ResponsiveTableRegion({
 }) {
   if (compact) {
     return (
-      <div className="table-region" role="region" aria-label={label} tabIndex={0}>
+      <div className="table-region" role="region" aria-label={label} tabIndex={FOCUSABLE_TAB_INDEX}>
         {children}
       </div>
     );
@@ -79,24 +82,25 @@ export function WorklistScreen({ pairs, locale, onSelect }: WorklistScreenProps)
   const cell = cellStyle(tokens.border);
   const table = (
     <table data-breakpoint={breakpoint} style={{ borderCollapse: 'collapse', width: '100%' }}>
-      <caption style={{ textAlign: 'start', paddingBlock: tokens.spacing.sm }}>
-        {caption}
-      </caption>
+      <caption style={{ textAlign: 'start', paddingBlock: tokens.spacing.sm }}>{caption}</caption>
       <thead>
         <tr>
-          <th scope="col" style={cell}>{duplicatesText(locale, 'colSurvivor')}</th>
-          <th scope="col" style={cell}>{duplicatesText(locale, 'colDuplicate')}</th>
-          <th scope="col" style={cell}>{duplicatesText(locale, 'colAction')}</th>
+          <th scope="col" style={cell}>
+            {duplicatesText(locale, 'colSurvivor')}
+          </th>
+          <th scope="col" style={cell}>
+            {duplicatesText(locale, 'colDuplicate')}
+          </th>
+          <th scope="col" style={cell}>
+            {duplicatesText(locale, 'colAction')}
+          </th>
         </tr>
       </thead>
       <tbody>
         {pairs.map((pair) => (
           <tr key={`${pair.survivorId}:${pair.duplicateId}`}>
             <td style={cell}>
-              <MixedScriptText
-                text={pair.survivorName}
-                lang={languageForName(pair.survivorName)}
-              />
+              <MixedScriptText text={pair.survivorName} lang={languageForName(pair.survivorName)} />
               <code dir="ltr"> {pair.survivorId}</code>
             </td>
             <td style={cell}>
@@ -169,10 +173,7 @@ function IdentityCard({
     >
       <h3>{title}</h3>
       <p>
-        <MixedScriptText
-          text={patient.displayName}
-          lang={languageForName(patient.displayName)}
-        />
+        <MixedScriptText text={patient.displayName} lang={languageForName(patient.displayName)} />
       </p>
       <dl className="stack" style={{ gap: tokens.spacing.sm, margin: 0 }}>
         <dt>{duplicatesText(locale, 'reviewId')}</dt>
@@ -242,15 +243,23 @@ export function ReviewScreen({ detail, locale }: ReviewScreenProps) {
               <caption style={{ textAlign: 'start' }}>{conflictsTitle}</caption>
               <thead>
                 <tr>
-                  <th scope="col" style={cell}>{duplicatesText(locale, 'colField')}</th>
-                  <th scope="col" style={cell}>{duplicatesText(locale, 'colSurvivorValue')}</th>
-                  <th scope="col" style={cell}>{duplicatesText(locale, 'colDuplicateValue')}</th>
+                  <th scope="col" style={cell}>
+                    {duplicatesText(locale, 'colField')}
+                  </th>
+                  <th scope="col" style={cell}>
+                    {duplicatesText(locale, 'colSurvivorValue')}
+                  </th>
+                  <th scope="col" style={cell}>
+                    {duplicatesText(locale, 'colDuplicateValue')}
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {detail.conflicts.map((conflict) => (
                   <tr key={conflict.field}>
-                    <th scope="row" style={cell}>{conflict.field}</th>
+                    <th scope="row" style={cell}>
+                      {conflict.field}
+                    </th>
                     <td style={cell}>
                       <MixedScriptText
                         text={conflict.survivorValue}
@@ -280,7 +289,10 @@ export function ReviewScreen({ detail, locale }: ReviewScreenProps) {
               <li key={dependency.id}>
                 {duplicatesText(locale, dependencyKindKey(dependency.kind))}:{' '}
                 <code dir="ltr">{dependency.reference}</code> —{' '}
-                {duplicatesText(locale, dependencyStateKey(dependency.resolved, dependency.ambiguous))}
+                {duplicatesText(
+                  locale,
+                  dependencyStateKey(dependency.resolved, dependency.ambiguous),
+                )}
               </li>
             ))}
           </ul>
@@ -353,7 +365,7 @@ export function ApprovalPanel({
       style={{ display: 'grid', gap: tokens.spacing.md }}
     >
       <h3>{duplicatesText(locale, 'approvalTitle')}</h3>
-      {openError !== undefined && StateView.forTransportError(openError)}
+      {openError === undefined ? null : StateView.forTransportError(openError)}
       {review === null ? (
         <div>
           <Button onClick={onOpenReview}>{duplicatesText(locale, 'openReview')}</Button>
@@ -368,13 +380,11 @@ export function ApprovalPanel({
             {duplicatesText(locale, 'openedBy')}:{' '}
             <MixedScriptText text={review.openedBySubject} lang="en" />
           </p>
-          {notice !== undefined && (
-            <p role="alert">{duplicatesText(locale, notice)}</p>
-          )}
-          {approved !== undefined && (
+          {notice === undefined ? null : <p role="alert">{duplicatesText(locale, notice)}</p>}
+          {approved === undefined ? null : (
             <p role="status">{duplicatesText(locale, 'approved')}</p>
           )}
-          {approvalError !== undefined && StateView.forTransportError(approvalError)}
+          {approvalError === undefined ? null : StateView.forTransportError(approvalError)}
           <Form
             label={duplicatesText(locale, 'approvalTitle')}
             submitLabel={duplicatesText(locale, 'approve')}
@@ -385,7 +395,9 @@ export function ApprovalPanel({
               label={duplicatesText(locale, 'reasonLabel')}
               value={reason}
               onChange={onReasonChange}
-              {...(errors.reason === undefined ? {} : { error: duplicatesText(locale, 'reasonLabel') })}
+              {...(errors.reason === undefined
+                ? {}
+                : { error: duplicatesText(locale, 'reasonLabel') })}
             />
             <fieldset style={{ border: `1px solid ${tokens.border}` }}>
               <legend>{duplicatesText(locale, 'confirmTitle')}</legend>

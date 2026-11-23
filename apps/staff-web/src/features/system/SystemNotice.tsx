@@ -31,12 +31,7 @@ export interface SystemNoticeProps {
  * strings inside the inline space without a horizontal scroll (WEB-07, UX-01);
  * direction stays with the document, so the same markup mirrors under RTL.
  */
-export function SystemNotice({
-  titleKey,
-  detailKey,
-  actionKey,
-  onAction,
-}: SystemNoticeProps) {
+export function SystemNotice({ titleKey, detailKey, actionKey, onAction }: SystemNoticeProps) {
   const { locale } = useI18n();
   const breakpoint = useBreakpoint();
   const title = systemText(locale, titleKey);

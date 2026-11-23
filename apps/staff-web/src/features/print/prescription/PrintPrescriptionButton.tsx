@@ -73,9 +73,7 @@ export function PrintPrescriptionButton({
       action,
     };
     onRecord(entry);
-    setStatus(
-      prescriptionText(locale, action === 'print' ? 'recorded' : 'downloaded'),
-    );
+    setStatus(prescriptionText(locale, action === 'print' ? 'recorded' : 'downloaded'));
   };
 
   if (!eligibility.allowed) {

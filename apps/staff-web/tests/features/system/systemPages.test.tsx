@@ -11,11 +11,7 @@ import {
 } from '../../../src/features/system/UnsupportedBrowserPage';
 import { SessionExpiredPage } from '../../../src/features/system/SessionExpiredPage';
 import { routes as systemRoutes } from '../../../src/features/system/routes';
-import {
-  systemKeys,
-  systemMessages,
-  systemText,
-} from '../../../src/features/system/messages';
+import { systemKeys, systemMessages, systemText } from '../../../src/features/system/messages';
 import { I18nProvider } from '../../../src/i18n/I18nProvider';
 import type { Locale } from '../../../src/i18n/messages';
 import { ThemeProvider } from '../../../src/theme/ThemeProvider';

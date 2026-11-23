@@ -11,6 +11,7 @@ import { I18nProvider } from '../../../src/i18n/I18nProvider';
 import type { Locale } from '../../../src/i18n/messages';
 import { BREAKPOINT_MEDIA_QUERIES } from '../../../src/theme/breakpoints';
 import { ThemeProvider } from '../../../src/theme/ThemeProvider';
+import { must } from '../../must';
 
 vi.mock('../../../src/api/transport', async (importOriginal) => {
   const actual = await importOriginal<typeof TransportModule>();
@@ -75,17 +76,17 @@ function renderPage(locale: Locale = 'en') {
 
 /** The page root is the element that carries the shared responsive grid. */
 function pageRoot(): HTMLElement {
-  return document.querySelector('[data-part="staff-page"]') as HTMLElement;
+  return must(document.querySelector<HTMLElement>('[data-part="staff-page"]'));
 }
 
 /** The invite form's field region, whose layout class changes at medium. */
 function inviteFields(): HTMLElement {
-  return document.querySelector('[data-part="invite-fields"]') as HTMLElement;
+  return must(document.querySelector<HTMLElement>('[data-part="invite-fields"]'));
 }
 
 /** The compact-only labelled scroll region; the page region shares the name. */
 function tableRegion(): HTMLElement | null {
-  return document.querySelector('.table-region') as HTMLElement | null;
+  return document.querySelector<HTMLElement>('.table-region');
 }
 
 const ENGLISH_HEADERS = ['Staff subject', 'Display name', 'Status', 'Roles', 'Actions'];
@@ -110,7 +111,7 @@ describe('responsive StaffPage (WEB-07, UX-01)', () => {
     expect(page.classList.contains('page')).toBe(true);
     expect(page.getAttribute('data-breakpoint')).toBe('compact');
 
-    const invite = screen.getByRole('region', { name: 'Invite staff' }) as HTMLElement;
+    const invite = screen.getByRole('region', { name: 'Invite staff' });
     expect(invite.classList.contains('stack')).toBe(true);
     expect(invite.getAttribute('data-part')).toBe('invite');
 
@@ -118,7 +119,7 @@ describe('responsive StaffPage (WEB-07, UX-01)', () => {
     expect(fields.className).toBe('stack');
     expect(fields.getAttribute('data-layout')).toBe('single-column');
 
-    const region = tableRegion() as HTMLElement;
+    const region = must(tableRegion());
     expect(region.getAttribute('role')).toBe('region');
     expect(region.getAttribute('aria-label')).toBe('Staff administration');
     expect(region.classList.contains('table-region')).toBe(true);
@@ -126,10 +127,12 @@ describe('responsive StaffPage (WEB-07, UX-01)', () => {
     expect(region.getAttribute('data-breakpoint')).toBe('compact');
 
     const table = within(region).getByRole('table', { name: 'Staff administration' });
-    expect(within(table).getAllByRole('columnheader').map((node) => node.textContent)).toEqual(
-      ENGLISH_HEADERS,
-    );
-    expect((within(table).getByRole('cell', { name: LONG_ENGLISH }) as HTMLElement).style.overflowWrap).toBe(
+    expect(
+      within(table)
+        .getAllByRole('columnheader')
+        .map((node) => node.textContent),
+    ).toEqual(ENGLISH_HEADERS);
+    expect(within(table).getByRole('cell', { name: LONG_ENGLISH }).style.overflowWrap).toBe(
       'anywhere',
     );
   });
@@ -146,10 +149,12 @@ describe('responsive StaffPage (WEB-07, UX-01)', () => {
 
     expect(tableRegion()).toBeNull();
     const table = screen.getByRole('table', { name: 'Staff administration' });
-    expect((table as HTMLElement).getAttribute('data-breakpoint')).toBe('medium');
-    expect(within(table).getAllByRole('columnheader').map((node) => node.textContent)).toEqual(
-      ENGLISH_HEADERS,
-    );
+    expect(table.getAttribute('data-breakpoint')).toBe('medium');
+    expect(
+      within(table)
+        .getAllByRole('columnheader')
+        .map((node) => node.textContent),
+    ).toEqual(ENGLISH_HEADERS);
     for (const header of within(table).getAllByRole('columnheader')) {
       expect(header.getAttribute('scope')).toBe('col');
     }
@@ -164,10 +169,10 @@ describe('responsive StaffPage (WEB-07, UX-01)', () => {
     expect(inviteFields().className).toBe('grid-2');
     expect(tableRegion()).toBeNull();
     const table = screen.getByRole('table', { name: 'Staff administration' });
-    expect((table as HTMLElement).getAttribute('data-breakpoint')).toBe('expanded');
+    expect(table.getAttribute('data-breakpoint')).toBe('expanded');
     expect(within(table).getAllByRole('columnheader')).toHaveLength(5);
     for (const cell of within(table).getAllByRole('cell')) {
-      expect((cell as HTMLElement).style.display).not.toBe('none');
+      expect(cell.style.display).not.toBe('none');
     }
   });
 
@@ -178,10 +183,12 @@ describe('responsive StaffPage (WEB-07, UX-01)', () => {
       await screen.findByText(LONG_ENGLISH);
 
       const table = screen.getByRole('table', { name: 'Staff administration' });
-      expect(within(table).getAllByRole('columnheader').map((node) => node.textContent)).toEqual(
-        ENGLISH_HEADERS,
-      );
-      const longCell = within(table).getByRole('cell', { name: LONG_ENGLISH }) as HTMLElement;
+      expect(
+        within(table)
+          .getAllByRole('columnheader')
+          .map((node) => node.textContent),
+      ).toEqual(ENGLISH_HEADERS);
+      const longCell = within(table).getByRole('cell', { name: LONG_ENGLISH });
       expect(longCell.style.overflowWrap).toBe('anywhere');
       expect(longCell.style.whiteSpace).toBe('normal');
       expect(longCell.firstElementChild?.getAttribute('dir')).toBe('auto');
@@ -196,7 +203,12 @@ describe('responsive StaffPage (WEB-07, UX-01)', () => {
 
     const form = screen.getByRole('form', { name: 'Invite staff' });
     const focusables = [...form.querySelectorAll('input, button')] as HTMLElement[];
-    expect(focusables.map((element) => element.tagName)).toEqual(['INPUT', 'INPUT', 'INPUT', 'BUTTON']);
+    expect(focusables.map((element) => element.tagName)).toEqual([
+      'INPUT',
+      'INPUT',
+      'INPUT',
+      'BUTTON',
+    ]);
     for (const element of focusables) {
       expect(element.className).toContain('touch');
     }
@@ -205,7 +217,7 @@ describe('responsive StaffPage (WEB-07, UX-01)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Deactivate' }));
     const dialog = screen.getByRole('dialog', { name: `Deactivate ${LONG_ENGLISH}?` });
     expect(dialog.getAttribute('data-breakpoint')).toBe('compact');
-    const actions = dialog.querySelector('[data-part="dialog-actions"]') as HTMLElement;
+    const actions = must(dialog.querySelector<HTMLElement>('[data-part="dialog-actions"]'));
     expect(actions.classList.contains('cluster')).toBe(true);
     const buttons = within(dialog).getAllByRole('button');
     expect(buttons.map((button) => button.textContent)).toEqual(['Cancel', 'Deactivate']);
@@ -220,17 +232,19 @@ describe('responsive StaffPage (WEB-07, UX-01)', () => {
     expect(document.documentElement.dir).toBe('rtl');
     expect(document.documentElement.lang).toBe('ar');
 
-    const region = tableRegion() as HTMLElement;
+    const region = must(tableRegion());
     expect(region.getAttribute('role')).toBe('region');
     expect(region.getAttribute('aria-label')).toBe('إدارة الموظفين');
     expect(region.classList.contains('table-region')).toBe(true);
     const table = within(region).getByRole('table', { name: 'إدارة الموظفين' });
-    expect(within(table).getAllByRole('columnheader').map((node) => node.textContent)).toEqual(
-      ARABIC_HEADERS,
-    );
     expect(
-      (within(table).getByRole('cell', { name: LONG_ARABIC }) as HTMLElement).style.overflowWrap,
-    ).toBe('anywhere');
+      within(table)
+        .getAllByRole('columnheader')
+        .map((node) => node.textContent),
+    ).toEqual(ARABIC_HEADERS);
+    expect(within(table).getByRole('cell', { name: LONG_ARABIC }).style.overflowWrap).toBe(
+      'anywhere',
+    );
 
     // No component sets a physical side, physical text alignment, an inline
     // direction override, or hides a field to achieve the layout. An isolated

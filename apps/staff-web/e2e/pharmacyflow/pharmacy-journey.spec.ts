@@ -1,9 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { Browser, BrowserContext, Page } from '@playwright/test';
-import {
-  createSyntheticPharmacyApi,
-  installSyntheticPharmacyApi,
-} from './synthetic-pharmacy-api';
+import { createSyntheticPharmacyApi, installSyntheticPharmacyApi } from './synthetic-pharmacy-api';
 import type { SyntheticPharmacyApi } from './synthetic-pharmacy-api';
 
 /**
@@ -27,9 +24,7 @@ async function newRole(
   baseURL: string | undefined,
   role: string,
 ): Promise<{ context: BrowserContext; page: Page }> {
-  const context = await browser.newContext(
-    baseURL === undefined ? {} : { baseURL },
-  );
+  const context = await browser.newContext(baseURL === undefined ? {} : { baseURL });
   const page = await context.newPage();
   // Annotate the browser trace with the human role, never with clinical data,
   // so a failed step can be attributed to the right user.
@@ -88,24 +83,20 @@ test('synthetic pharmacy journey: prescribe, clarify, substitute, accept and dis
       // The harness keeps an explicit route control, its confirmation output,
       // and both logical prescription commands behind the single route call.
       await expect(prescriber.page.getByTestId('prescribe-route')).toBeVisible();
-      await expect(prescriber.page.getByTestId('route-status')).toContainText(
-        'Delivery confirmed',
-      );
+      await expect(prescriber.page.getByTestId('route-status')).toContainText('Delivery confirmed');
       expect(api.calls).toContain('POST /api/v1/pharmacy/inbox/route');
       expect(api.calls).toContain('POST /api/v1/prescriptions/rx-synthetic-001/transmit');
-      expect(api.calls).toContain(
-        'POST /api/v1/prescriptions/rx-synthetic-001/confirm-delivery',
-      );
+      expect(api.calls).toContain('POST /api/v1/prescriptions/rx-synthetic-001/confirm-delivery');
 
       const timeline = prescriber.page.getByRole('region', {
         name: 'Pharmacy status timeline',
       });
-      await expect(
-        timeline.getByTestId('timeline-row-event-synthetic-submitted'),
-      ).toContainText('Submitted');
-      await expect(
-        timeline.getByTestId('timeline-row-event-synthetic-delivery'),
-      ).toContainText('Delivery confirmed');
+      await expect(timeline.getByTestId('timeline-row-event-synthetic-submitted')).toContainText(
+        'Submitted',
+      );
+      await expect(timeline.getByTestId('timeline-row-event-synthetic-delivery')).toContainText(
+        'Delivery confirmed',
+      );
 
       const row = pharmacy.page.getByRole('row', { name: /SYN-PATIENT-001/ });
       await expect(row).toBeVisible();
@@ -151,9 +142,7 @@ test('synthetic pharmacy journey: prescribe, clarify, substitute, accept and dis
 
     await test.step('the pharmacy asks a question and the prescriber answers it', async () => {
       // An empty question is refused before any command reaches the API.
-      await pharmacy.page
-        .getByRole('button', { name: 'Send clarification request' })
-        .click();
+      await pharmacy.page.getByRole('button', { name: 'Send clarification request' }).click();
       await expect(
         pharmacy.page.getByText('Enter a question before asking for clarification.'),
       ).toBeVisible();
@@ -196,26 +185,21 @@ test('synthetic pharmacy journey: prescribe, clarify, substitute, accept and dis
       // The pharmacy inbox has no propose control yet, so the command goes
       // through the same intercepted browser endpoint the pharmacy API provides.
       const proposal = await pharmacy.page.evaluate(async () => {
-        const response = await fetch(
-          '/api/v1/pharmacy/substitutions/rx-synthetic-001/proposals',
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Active-Organization': 'org-alpha',
-              'X-XSRF-TOKEN': 'synthetic-csrf-token',
-              'If-Match': '3',
-              'Idempotency-Key': 'synthetic-propose-001',
-            },
-            body: JSON.stringify({ reason: 'stock', note: 'Synthetic stock note' }),
+        const response = await fetch('/api/v1/pharmacy/substitutions/rx-synthetic-001/proposals', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Active-Organization': 'org-alpha',
+            'X-XSRF-TOKEN': 'synthetic-csrf-token',
+            'If-Match': '3',
+            'Idempotency-Key': 'synthetic-propose-001',
           },
-        );
+          body: JSON.stringify({ reason: 'stock', note: 'Synthetic stock note' }),
+        });
         return (await response.json()) as { proposal?: { id?: string } };
       });
       expect(proposal.proposal?.id).toBe('proposal-synthetic-001');
-      expect(api.calls).toContain(
-        'POST /api/v1/pharmacy/substitutions/rx-synthetic-001/proposals',
-      );
+      expect(api.calls).toContain('POST /api/v1/pharmacy/substitutions/rx-synthetic-001/proposals');
       expect(api.store.proposal?.proposal.state).toBe('pending');
     });
 
@@ -238,9 +222,9 @@ test('synthetic pharmacy journey: prescribe, clarify, substitute, accept and dis
         'POST /api/v1/pharmacy/substitutions/proposal-synthetic-001/approve',
       );
 
-      await review.locator('#substitution-attestation').fill(
-        'I approve the synthetic substitute for this synthetic prescription.',
-      );
+      await review
+        .locator('#substitution-attestation')
+        .fill('I approve the synthetic substitute for this synthetic prescription.');
       await review.getByRole('button', { name: 'Approve' }).click();
       await expect(review.getByTestId('proposal-state')).toContainText('Approved');
       await expect(review.getByTestId('revision-link')).toContainText('revision-synthetic-001');
@@ -279,12 +263,12 @@ test('synthetic pharmacy journey: prescribe, clarify, substitute, accept and dis
       const timeline = prescriber.page.getByRole('region', {
         name: 'Pharmacy status timeline',
       });
-      await expect(
-        timeline.getByTestId('timeline-row-event-synthetic-submitted'),
-      ).toContainText('Submitted');
-      await expect(
-        timeline.getByTestId('timeline-row-event-synthetic-delivery'),
-      ).toContainText('Delivery confirmed');
+      await expect(timeline.getByTestId('timeline-row-event-synthetic-submitted')).toContainText(
+        'Submitted',
+      );
+      await expect(timeline.getByTestId('timeline-row-event-synthetic-delivery')).toContainText(
+        'Delivery confirmed',
+      );
       await expect(
         timeline.getByTestId('timeline-row-event-synthetic-clarification'),
       ).toContainText('Clarification requested');
@@ -364,18 +348,15 @@ test('a stale version precondition is refused without appending a fact', async (
     // 2, so a command carrying version 1 must be refused like the real API
     // refuses a stale `If-Match` (WEB-09). This direct POST is not a UI action.
     const stale = await pharmacy.page.evaluate(async () => {
-      const response = await fetch(
-        '/api/v1/pharmacy/status/rx-synthetic-001/accept',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-XSRF-TOKEN': 'synthetic-csrf-token',
-            'If-Match': '1',
-          },
-          body: '{}',
+      const response = await fetch('/api/v1/pharmacy/status/rx-synthetic-001/accept', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-XSRF-TOKEN': 'synthetic-csrf-token',
+          'If-Match': '1',
         },
-      );
+        body: '{}',
+      });
       return { status: response.status, body: (await response.json()) as { code: string } };
     });
     expect(stale.status).toBe(412);

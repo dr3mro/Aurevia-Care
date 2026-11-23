@@ -24,16 +24,18 @@ function renderWithLocale(ui: ReactNode, locale: Locale = 'en') {
   );
 }
 
-function renderScreen(options: {
-  locale?: Locale;
-  state?: ReleaseState;
-  withdrawal?: typeof withdrawalDetail | null;
-  correction?: CorrectionValues;
-  withdrawReason?: string;
-  correctionNotice?: string | null;
-  before?: typeof originalRevision;
-  after?: typeof correctedRevision;
-} = {}) {
+function renderScreen(
+  options: {
+    locale?: Locale;
+    state?: ReleaseState;
+    withdrawal?: typeof withdrawalDetail | null;
+    correction?: CorrectionValues;
+    withdrawReason?: string;
+    correctionNotice?: string | null;
+    before?: typeof originalRevision;
+    after?: typeof correctedRevision;
+  } = {},
+) {
   const onCorrectionChange = vi.fn();
   const onWithdrawReasonChange = vi.fn();
   const onCorrect = vi.fn();
@@ -74,7 +76,9 @@ describe('LAB-02 side-by-side revision comparison', () => {
   it('distinguishes unchanged, removed and added observations in words', () => {
     renderScreen();
     const table = screen.getByRole('table', { name: /LAB-1042/ });
-    expect(within(table).getByTestId('diff-potassium').getAttribute('data-change')).toBe('unchanged');
+    expect(within(table).getByTestId('diff-potassium').getAttribute('data-change')).toBe(
+      'unchanged',
+    );
     expect(within(table).getByTestId('diff-sodium').getAttribute('data-change')).toBe('removed');
     expect(within(table).getByTestId('diff-vitamin-d').getAttribute('data-change')).toBe('added');
     expect(within(table).getAllByText('Not present in this revision')).toHaveLength(2);
@@ -94,12 +98,12 @@ describe('LAB-02 side-by-side revision comparison', () => {
 describe('LAB-02 correction form', () => {
   it('requires a reason and keeps the proposed change visible', () => {
     renderScreen();
-    const button = screen.getByRole('button', { name: 'Record correction' }) as HTMLButtonElement;
+    const button = screen.getByRole<HTMLButtonElement>('button', { name: 'Record correction' });
     expect(button.disabled).toBe(true);
     expect(screen.getByTestId('correction-reason-required').textContent).toContain(
       'State why this correction is needed before recording it.',
     );
-    const summary = screen.getByLabelText('What changed') as HTMLTextAreaElement;
+    const summary = screen.getByLabelText<HTMLTextAreaElement>('What changed');
     expect(summary.value).toBe(proposedChange);
     expect(summary.getAttribute('lang')).toBe('en');
   });
@@ -128,7 +132,7 @@ describe('LAB-02 correction form', () => {
       correctionNotice: 'Corrected by synthetic.lab.supervisor. Reason: Transcription error',
     });
     expect(screen.queryByTestId('correction-reason-required')).toBeNull();
-    const button = screen.getByRole('button', { name: 'Record correction' }) as HTMLButtonElement;
+    const button = screen.getByRole<HTMLButtonElement>('button', { name: 'Record correction' });
     expect(button.disabled).toBe(false);
     fireEvent.click(button);
     expect(onCorrect).toHaveBeenCalledTimes(1);
@@ -146,21 +150,25 @@ describe('LAB-02 correction form', () => {
 describe('LAB-02 withdrawal action', () => {
   it('requires a reason and explains the consequence', () => {
     renderScreen();
-    const button = screen.getByRole('button', { name: 'Withdraw report' }) as HTMLButtonElement;
+    const button = screen.getByRole<HTMLButtonElement>('button', { name: 'Withdraw report' });
     expect(button.disabled).toBe(true);
     expect(screen.getByTestId('withdraw-reason-required').textContent).toContain(
       'State why this report is being withdrawn.',
     );
-    expect(screen.getByText(/Withdrawing removes the report from both clinician and patient view/)).toBeTruthy();
+    expect(
+      screen.getByText(/Withdrawing removes the report from both clinician and patient view/),
+    ).toBeTruthy();
   });
 
   it('sends the typed withdrawal reason', () => {
-    const { onWithdrawReasonChange, onWithdraw } = renderScreen({ withdrawReason: 'Wrong accession' });
+    const { onWithdrawReasonChange, onWithdraw } = renderScreen({
+      withdrawReason: 'Wrong accession',
+    });
     fireEvent.change(screen.getByLabelText('Reason for withdrawal (required)'), {
       target: { value: 'Wrong specimen' },
     });
     expect(onWithdrawReasonChange).toHaveBeenCalledWith('Wrong specimen');
-    const button = screen.getByRole('button', { name: 'Withdraw report' }) as HTMLButtonElement;
+    const button = screen.getByRole<HTMLButtonElement>('button', { name: 'Withdraw report' });
     expect(button.disabled).toBe(false);
     fireEvent.click(button);
     expect(onWithdraw).toHaveBeenCalledTimes(1);
@@ -187,7 +195,9 @@ describe('LAB-02 release status for clinician and patient', () => {
     expect(notice.textContent).toContain('This report was withdrawn and entered in error.');
     expect(notice.textContent).toContain(withdrawalDetail.reason);
     expect(notice.textContent).toContain(withdrawalDetail.actor);
-    expect(notice.querySelector('time')?.getAttribute('datetime')).toBe(withdrawalDetail.recordedAt);
+    expect(notice.querySelector('time')?.getAttribute('datetime')).toBe(
+      withdrawalDetail.recordedAt,
+    );
     expect(screen.queryByRole('button', { name: 'Withdraw report' })).toBeNull();
     expect(screen.getByTestId('release-state').textContent).toContain('Withdrawn');
     expect(screen.getByTestId('release-status-clinician').textContent).toContain('Not visible');

@@ -46,9 +46,7 @@ export function ChartSectionPicker({
             name={`${controlId}-scope`}
             value="visit"
             checked={scope.kind === 'visit'}
-            onChange={() =>
-              onScopeChange({ kind: 'visit', visitId: visits[0]?.id ?? '' })
-            }
+            onChange={() => onScopeChange({ kind: 'visit', visitId: visits[0]?.id ?? '' })}
           />{' '}
           {chartPrintText(locale, 'visit')}
         </label>
@@ -72,9 +70,7 @@ export function ChartSectionPicker({
             <select
               id={`${controlId}-visit`}
               value={scope.visitId}
-              onChange={(event) =>
-                onScopeChange({ kind: 'visit', visitId: event.target.value })
-              }
+              onChange={(event) => onScopeChange({ kind: 'visit', visitId: event.target.value })}
             >
               {visits.map((visit) => (
                 <option key={visit.id} value={visit.id}>
@@ -115,7 +111,10 @@ export function ChartSectionPicker({
               checked={sections.includes(section)}
               onChange={() => onSectionToggle(section)}
             />{' '}
-            <MixedScriptText text={chartPrintText(locale, chartSectionMessageKey[section])} lang={locale} />
+            <MixedScriptText
+              text={chartPrintText(locale, chartSectionMessageKey[section])}
+              lang={locale}
+            />
           </label>
         ))}
       </fieldset>

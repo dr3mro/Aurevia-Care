@@ -11,7 +11,7 @@ import { schedulingText } from './messages';
 import { VisitStateBadge } from './VisitStateBadge';
 
 /** Synthetic assignees available to the reception work queue. */
-const assignableStaff: ReadonlyArray<{ subject: string; name: string }> = [
+const assignableStaff: readonly { subject: string; name: string }[] = [
   { subject: 'synthetic.reception', name: 'Synthetic Reception' },
   { subject: 'synthetic.nurse', name: 'Synthetic Nurse' },
 ];
@@ -25,6 +25,9 @@ export interface AppointmentWorklistProps {
   onCheckIn: (id: string) => void;
   onAssign: (id: string, assignee: string) => void;
 }
+
+// A horizontally scrolling region must be reachable by keyboard (WCAG 2.1.1).
+const SCROLL_REGION_TAB_INDEX = 0;
 
 /**
  * Render the accessible staff worklist with day/week and row controls.
@@ -172,7 +175,7 @@ export function AppointmentWorklist({
         className="table-region"
         role="region"
         aria-label={text('appointments')}
-        tabIndex={0}
+        tabIndex={SCROLL_REGION_TAB_INDEX}
         data-layout="cards"
       >
         {table}

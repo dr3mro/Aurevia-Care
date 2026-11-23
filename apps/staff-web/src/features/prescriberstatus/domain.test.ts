@@ -35,8 +35,8 @@ describe('timelineRows', () => {
 
   it('maps accepted, rejected and clarification facts to distinct labels', () => {
     const rows = timelineRows([
-      syntheticStatus.events[3]!,
-      syntheticStatus.events[2]!,
+      required(syntheticStatus.events[3]),
+      required(syntheticStatus.events[2]),
       { ...syntheticSubmittedEvent, type: 'rejected' },
     ]);
 
@@ -97,16 +97,16 @@ describe('answer and decision guards', () => {
 describe('proposal projection helpers', () => {
   it('returns a revision only after approval', () => {
     expect(revisionLink(syntheticPendingProposalView)).toBeNull();
-    expect(revisionLink({ ...syntheticPendingProposalView, appliedRevision: syntheticSignedRevision })).toBe(
-      syntheticSignedRevision,
-    );
+    expect(
+      revisionLink({ ...syntheticPendingProposalView, appliedRevision: syntheticSignedRevision }),
+    ).toBe(syntheticSignedRevision);
   });
 
   it('keeps the original active until approval supplies a replacement', () => {
     expect(activeEntry(syntheticPendingProposalView)).toBe(syntheticOriginalEntry);
-    expect(activeEntry({ ...syntheticPendingProposalView, appliedRevision: syntheticSignedRevision })).toBe(
-      syntheticSignedRevision.replacement,
-    );
+    expect(
+      activeEntry({ ...syntheticPendingProposalView, appliedRevision: syntheticSignedRevision }),
+    ).toBe(syntheticSignedRevision.replacement);
   });
 
   it('renders the catalog entry as one bounded clinical label', () => {
@@ -115,3 +115,10 @@ describe('proposal projection helpers', () => {
     );
   });
 });
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

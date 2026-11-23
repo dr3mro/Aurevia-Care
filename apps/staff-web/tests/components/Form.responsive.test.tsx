@@ -93,9 +93,7 @@ describe('responsive Form layout (WEB-07, UX-01)', () => {
     // No clinical field is hidden to achieve the two-column layout.
     expect(form.querySelectorAll('input')).toHaveLength(7);
     expect(styleOf(form.querySelector('[data-part="fields"]'))).not.toContain('display: none');
-    expect(styleOf(form.querySelector('[data-part="actions"]'))).not.toContain(
-      'position: sticky',
-    );
+    expect(styleOf(form.querySelector('[data-part="actions"]'))).not.toContain('position: sticky');
 
     unmount();
     render(
@@ -121,9 +119,7 @@ describe('responsive Form layout (WEB-07, UX-01)', () => {
     const form = screen.getByRole('form', { name: 'Desktop form' });
     expect(form.getAttribute('data-breakpoint')).toBe('expanded');
     expect(form.querySelector('[data-part="fields"]')?.className).toBe('grid-2');
-    expect(styleOf(form.querySelector('[data-part="actions"]'))).not.toContain(
-      'position: sticky',
-    );
+    expect(styleOf(form.querySelector('[data-part="actions"]'))).not.toContain('position: sticky');
   });
 
   it('keeps the error summary above the fields and preserves keyboard order', () => {
@@ -178,9 +174,7 @@ describe('responsive Form layout (WEB-07, UX-01)', () => {
       expect(style).not.toContain('direction');
       expect(style).not.toContain('display: none');
     }
-    expect(styleOf(form.querySelector('[data-part="actions"]'))).toContain(
-      'padding-inline',
-    );
+    expect(styleOf(form.querySelector('[data-part="actions"]'))).toContain('padding-inline');
     for (const label of arabicLabels) {
       expect(screen.getByLabelText(label)).toBeTruthy();
     }

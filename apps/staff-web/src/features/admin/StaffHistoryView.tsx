@@ -12,6 +12,9 @@ import { adminText, staffEventMessageKey } from './messages';
 import type { AdminMessageKey } from './messages';
 import { StateBadge } from './StateBadge';
 
+/** Keyboard-focusable scroll regions join the natural tab order. */
+const FOCUSABLE_TAB_INDEX = 0;
+
 /** Shape cues for the three append-only staff event kinds. */
 const eventGlyph: Record<StaffHistoryEvent['kind'], string> = {
   invited: '○',
@@ -158,7 +161,12 @@ export function StaffHistoryView({
   // caption and th scope semantics plus the full column set are preserved, as
   // decision 0004 requires for a card rendering of tabular clinical data.
   const phoneCards = (
-    <div className="card-list" role="region" aria-label={text('staffHistory')} tabIndex={0}>
+    <div
+      className="card-list"
+      role="region"
+      aria-label={text('staffHistory')}
+      tabIndex={FOCUSABLE_TAB_INDEX}
+    >
       {history.length === 0 ? (
         <p>{text('noHistory')}</p>
       ) : (

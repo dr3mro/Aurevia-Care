@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import type { TurnaroundOrder } from './domain';
-import { isOutage, isOverdue, minutesBeyondTarget, ordersByStage, TURNAROUND_STAGES } from './domain';
+import {
+  isOutage,
+  isOverdue,
+  minutesBeyondTarget,
+  ordersByStage,
+  TURNAROUND_STAGES,
+} from './domain';
 import { emptyBoard, syntheticOrders } from './fixtures';
 
 /** A settled card; every test overrides only the axis it exercises. */

@@ -134,9 +134,9 @@ describe.each(BREAKPOINTS)('responsive WelcomePage at %s', (breakpoint) => {
     const status = within(root).getByRole('status');
 
     expect(heading.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(root.querySelectorAll('button, input, select, textarea, a[href], [tabindex]')).toHaveLength(
-      0,
-    );
+    expect(
+      root.querySelectorAll('button, input, select, textarea, a[href], [tabindex]'),
+    ).toHaveLength(0);
   });
 });
 

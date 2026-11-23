@@ -39,7 +39,7 @@ function apiView(
 }
 
 function descriptorAt(call: number): RequestDescriptor {
-  return sendMock.mock.calls[call]![0] as RequestDescriptor;
+  return required(sendMock.mock.calls[call])[0];
 }
 
 describe('appointment API client', () => {
@@ -94,9 +94,9 @@ describe('appointment API client', () => {
     });
     sendMock.mockRejectedValueOnce(failure);
 
-    await expect(
-      listAppointments({ from: 'from', to: 'to' }, alphaOrganizationId),
-    ).rejects.toBe(failure);
+    await expect(listAppointments({ from: 'from', to: 'to' }, alphaOrganizationId)).rejects.toBe(
+      failure,
+    );
   });
 
   it('books with a fresh idempotency key and the full command body', async () => {
@@ -212,3 +212,10 @@ describe('rangeWindow', () => {
     });
   });
 });
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

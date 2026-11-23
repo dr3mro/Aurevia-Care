@@ -120,7 +120,7 @@ function renderPage(options: { locale?: Locale; view?: PatientViewResponse } = {
 /** The labelled ApiPage region is the single content column of the overview. */
 function contentRegion(locale: Locale = 'en'): HTMLElement {
   const name = locale === 'ar' ? 'نظرة عامة على المريض' : 'Patient overview';
-  return screen.getByRole('region', { name }) as HTMLElement;
+  return screen.getByRole('region', { name });
 }
 
 /** The page wrapper is the direct parent of the labelled content region. */
@@ -130,7 +130,7 @@ function pageWrapper(locale: Locale = 'en'): HTMLElement {
   if (!wrapper) {
     throw new Error('responsive patient overview wrapper was not rendered');
   }
-  return wrapper as HTMLElement;
+  return wrapper;
 }
 
 beforeEach(() => {
@@ -244,8 +244,8 @@ describe('responsive PatientOverviewPage right to left', () => {
       portrait: width < BREAKPOINT_WIDTHS.medium,
     });
     const arabicView: PatientViewResponse = {
-      patient: syntheticAlphaPatients[1]!,
-      duplicates: [syntheticAlphaPatients[0]!],
+      patient: required(syntheticAlphaPatients[1]),
+      duplicates: [required(syntheticAlphaPatients[0])],
     };
     renderPage({ locale: 'ar', view: arabicView });
     await screen.findByText('ليلى حداد');
@@ -279,3 +279,10 @@ describe('responsive PatientOverviewPage right to left', () => {
     expect(wrapper.style.overflowWrap).toBe('anywhere');
   });
 });
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

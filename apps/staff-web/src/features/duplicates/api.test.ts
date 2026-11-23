@@ -10,6 +10,7 @@ import {
   openReview,
 } from './api';
 import { alphaOrganizationId, reviewOpen, survivorPatient, duplicatePatient } from './fixtures';
+import { must } from '../../../tests/must';
 
 vi.mock('../../api/transport', async (importOriginal) => {
   const actual = await importOriginal<typeof TransportModule>();
@@ -19,7 +20,7 @@ vi.mock('../../api/transport', async (importOriginal) => {
 const sendMock = vi.mocked(send);
 
 function descriptorAt(call: number): RequestDescriptor {
-  return sendMock.mock.calls[call]![0] as RequestDescriptor;
+  return must(sendMock.mock.calls[call])[0];
 }
 
 beforeEach(() => {

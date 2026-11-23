@@ -18,6 +18,7 @@ import {
   syntheticDetail,
   syntheticPair,
 } from '../../../src/features/duplicates/fixtures';
+import { must } from '../../must';
 
 vi.mock('../../../src/api/transport', async (importOriginal) => {
   const actual = await importOriginal<typeof TransportModule>();
@@ -117,8 +118,7 @@ const physicalStyleKeys = [
   'right',
 ];
 
-const LONG_ARABIC_NOTICE =
-  'بيانات توضيحية طويلة جداً للاختبار والتحقق من التخطيط دون قص أو تداخل';
+const LONG_ARABIC_NOTICE = 'بيانات توضيحية طويلة جداً للاختبار والتحقق من التخطيط دون قص أو تداخل';
 
 beforeEach(() => {
   sendMock.mockReset();
@@ -148,9 +148,11 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
       expect(header?.classList.contains('stack')).toBe(true);
 
       // The ApiPage region owns the `.page` safe-area/reading-width class.
-      const region = screen.getByRole('region', { name: 'Duplicate patient review' }) as HTMLElement;
+      const region = screen.getByRole('region', { name: 'Duplicate patient review' });
       if (breakpoint === 'compact') {
-        expect(within(region).getByRole('region', { name: 'Duplicate review worklist' })).toBeTruthy();
+        expect(
+          within(region).getByRole('region', { name: 'Duplicate review worklist' }),
+        ).toBeTruthy();
       }
       expect(region.classList.contains('page')).toBe(true);
       expect(region.getAttribute('data-breakpoint')).toBe(breakpoint);
@@ -169,14 +171,14 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
       expect(headers).toEqual(['Surviving identity', 'Duplicate identity', 'Action']);
       for (const header of screen.getAllByRole('columnheader')) {
         expect(header.getAttribute('scope')).toBe('col');
-        expect((header as HTMLElement).style.display).not.toBe('none');
+        expect(header.style.display).not.toBe('none');
       }
 
       // The compare action keeps its accessible name and remains keyboard
       // reachable; the raw worklist button itself is owned by the screen task.
-      const action = screen.getByRole('button', {
+      const action = screen.getByRole<HTMLButtonElement>('button', {
         name: 'Review pair patient-survivor and patient-duplicate',
-      }) as HTMLButtonElement;
+      });
       expect(action.tagName).toBe('BUTTON');
       expect(action.tabIndex).toBe(0);
       action.focus();
@@ -190,7 +192,9 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
       await screen.findByRole('table', { name: 'Duplicate review worklist' });
 
       const root = pageRoot();
-      for (const element of Array.from(root.querySelectorAll<HTMLElement>('[style]')).concat(root)) {
+      for (const element of Array.from(root.querySelectorAll<HTMLElement>('[style]')).concat(
+        root,
+      )) {
         expect(element.style.direction).toBe('');
         expect(element.style.display).not.toBe('none');
         expect(element.style.whiteSpace).not.toBe('nowrap');
@@ -253,7 +257,7 @@ describe('responsive DuplicatesPage review detail', () => {
     async (breakpoint) => {
       await reachDetail(breakpoint);
 
-      const back = screen.getByRole('button', { name: 'Back to worklist' }) as HTMLButtonElement;
+      const back = screen.getByRole<HTMLButtonElement>('button', { name: 'Back to worklist' });
       expect(back.classList.contains('touch')).toBe(true);
       expect(back.getAttribute('data-breakpoint')).toBe(breakpoint);
       expect(back.tabIndex).toBe(0);
@@ -289,7 +293,7 @@ describe('responsive DuplicatesPage right-to-left', () => {
     expect(root.getAttribute('data-breakpoint')).toBe('compact');
     expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('مراجعة المرضى المكررين');
 
-    const notice = root.querySelector('header p') as HTMLElement;
+    const notice = must(root.querySelector<HTMLElement>('header p'));
     // The header's `.stack` class gives every child wrapping room through the
     // stylesheet's logical `overflow-wrap: anywhere`; jsdom cannot paint it.
     expect(notice.parentElement?.classList.contains('stack')).toBe(true);
@@ -311,7 +315,7 @@ describe('responsive DuplicatesPage right-to-left', () => {
     wrap(<DuplicatesPage />, 'ar');
     await screen.findByRole('table', { name: 'قائمة مراجعة التكرارات' });
 
-    const notice = pageRoot().querySelector('header p') as HTMLElement;
+    const notice = must(pageRoot().querySelector<HTMLElement>('header p'));
     expect(notice.textContent).not.toBe(LONG_ARABIC_NOTICE);
     expect(notice.style.direction).toBe('');
     expect(notice.style.whiteSpace).not.toBe('nowrap');
@@ -320,5 +324,4 @@ describe('responsive DuplicatesPage right-to-left', () => {
 });
 
 /** Compile-time guard that the page renders as a React element. */
-const pageElement: ReactElement = <DuplicatesPage />;
-void pageElement;
+export const pageElement: ReactElement = <DuplicatesPage />;

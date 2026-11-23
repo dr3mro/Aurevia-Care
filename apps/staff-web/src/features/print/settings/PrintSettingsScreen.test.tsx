@@ -15,6 +15,8 @@ import {
   unapprovedLogoReference,
 } from './fixtures';
 
+const adminRole: PrintSettingsScreenProps['role'] = 'tenant_admin';
+
 /** Render the screen with synthetic fixtures under the providers it needs. */
 function renderSettings(overrides: Partial<PrintSettingsScreenProps> = {}, locale: Locale = 'en') {
   const onPropose = vi.fn<(version: PrintProfileVersion) => void>();
@@ -25,7 +27,7 @@ function renderSettings(overrides: Partial<PrintSettingsScreenProps> = {}, local
         <PrintSettingsScreen
           organizationId={settingsOrganizationId}
           facilityCode={settingsFacilityCode}
-          role="tenant_admin"
+          role={adminRole}
           approvedAssets={approvedLogoAssets}
           versions={syntheticVersions}
           anchorCivilDate={anchorCivilDate}
@@ -41,10 +43,14 @@ function renderSettings(overrides: Partial<PrintSettingsScreenProps> = {}, local
 
 /** Fill the whole form with a valid draft using the first approved logo. */
 function fillValidDraft(): void {
-  fireEvent.change(screen.getByLabelText('Facility name'), { target: { value: 'Synthetic New Clinic' } });
-  fireEvent.change(screen.getByLabelText('Facility address'), { target: { value: '9 Synthetic Way' } });
+  fireEvent.change(screen.getByLabelText('Facility name'), {
+    target: { value: 'Synthetic New Clinic' },
+  });
+  fireEvent.change(screen.getByLabelText('Facility address'), {
+    target: { value: '9 Synthetic Way' },
+  });
   fireEvent.change(screen.getByLabelText('Approved logo reference'), {
-    target: { value: approvedLogoAssets[0]!.reference },
+    target: { value: required(approvedLogoAssets[0]).reference },
   });
   fireEvent.change(screen.getByLabelText('Footer text'), { target: { value: 'Synthetic footer' } });
   fireEvent.change(screen.getByLabelText('Effective from (YYYY-MM-DD)'), {
@@ -73,7 +79,9 @@ describe('print profile settings for an administrator', () => {
     expect(screen.queryByText('Other tenant clinic')).toBeNull();
     populated.unmount();
     renderSettings({ versions: [] });
-    expect(within(screen.getByRole('table', { name: 'Version history' })).getAllByRole('row')).toHaveLength(2);
+    expect(
+      within(screen.getByRole('table', { name: 'Version history' })).getAllByRole('row'),
+    ).toHaveLength(2);
     expect(screen.getByText('No saved versions yet.')).toBeTruthy();
     expect(screen.getByText('No effective profile is in force yet.')).toBeTruthy();
   });
@@ -89,7 +97,9 @@ describe('print profile settings for an administrator', () => {
       'Choose an approved logo asset.',
     );
     expect(onPropose).not.toHaveBeenCalled();
-    expect(within(screen.getByRole('table', { name: 'Version history' })).getAllByRole('row')).toHaveLength(3);
+    expect(
+      within(screen.getByRole('table', { name: 'Version history' })).getAllByRole('row'),
+    ).toHaveLength(3);
   });
 
   it('names every missing field without sending a command', () => {
@@ -122,7 +132,9 @@ describe('print profile settings for an administrator', () => {
         approved: false,
       }),
     );
-    expect(within(screen.getByRole('table', { name: 'Version history' })).getAllByRole('row')).toHaveLength(4);
+    expect(
+      within(screen.getByRole('table', { name: 'Version history' })).getAllByRole('row'),
+    ).toHaveLength(4);
     expect(screen.getByTestId('print-settings-status').textContent).toContain(
       'Proposed print profile version 3.',
     );
@@ -133,7 +145,9 @@ describe('print profile settings for an administrator', () => {
     const { onApprove } = renderSettings();
     fireEvent.click(screen.getByRole('button', { name: 'Approve' }));
     expect(onApprove).toHaveBeenCalledWith(2);
-    expect(screen.getByTestId('print-settings-status').textContent).toContain('Approved version 2.');
+    expect(screen.getByTestId('print-settings-status').textContent).toContain(
+      'Approved version 2.',
+    );
     expect(screen.getByText('Synthetic Main Clinic v2')).toBeTruthy();
     expect(screen.getAllByText('Synthetic administrator').length).toBeGreaterThan(0);
     expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull();
@@ -190,9 +204,11 @@ describe('print profile settings localization', () => {
   it('accepts a valid Arabic draft and announces the proposal in Arabic', () => {
     const { onPropose } = renderSettings({}, 'ar');
     fireEvent.change(screen.getByLabelText('اسم المنشأة'), { target: { value: 'عيادة تركيبية' } });
-    fireEvent.change(screen.getByLabelText('عنوان المنشأة'), { target: { value: 'طريق تركيبي ٩' } });
+    fireEvent.change(screen.getByLabelText('عنوان المنشأة'), {
+      target: { value: 'طريق تركيبي ٩' },
+    });
     fireEvent.change(screen.getByLabelText('مرجع الشعار المعتمد'), {
-      target: { value: approvedLogoAssets[1]!.reference },
+      target: { value: required(approvedLogoAssets[1]).reference },
     });
     fireEvent.change(screen.getByLabelText('نص التذييل'), { target: { value: 'تذييل تركيبي' } });
     fireEvent.change(screen.getByLabelText('سريان من (YYYY-MM-DD)'), {
@@ -203,3 +219,10 @@ describe('print profile settings localization', () => {
     expect(screen.getByTestId('print-settings-status').textContent).toContain('3');
   });
 });
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

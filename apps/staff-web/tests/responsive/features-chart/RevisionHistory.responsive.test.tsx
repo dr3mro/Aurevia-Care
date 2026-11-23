@@ -6,6 +6,7 @@ import { chartText } from '../../../src/features/chart/messages';
 import { RevisionHistory } from '../../../src/features/chart/RevisionHistory';
 import { BREAKPOINT_MEDIA_QUERIES, BREAKPOINT_WIDTHS } from '../../../src/theme/breakpoints';
 import { ThemeProvider } from '../../../src/theme/ThemeProvider';
+import { must } from '../../must';
 
 type ChangeListener = (event: MediaQueryListEvent) => void;
 
@@ -83,9 +84,9 @@ function widthQueries(width: number): Record<string, boolean> {
   };
 }
 
-const signedWithError = syntheticAlphaChart.revisions[0] as NoteRevision;
-const signedClean = syntheticAlphaChart.revisions[1] as NoteRevision;
-const draftRevision = syntheticBetaChart.revisions[1] as NoteRevision;
+const signedWithError = must(syntheticAlphaChart.revisions[0]);
+const signedClean = must(syntheticAlphaChart.revisions[1]);
+const draftRevision = must(syntheticBetaChart.revisions[1]);
 
 const historyRevisions: readonly NoteRevision[] = [signedWithError, signedClean, draftRevision];
 
@@ -150,8 +151,8 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
       );
       for (const item of items) {
         // No clinical revision is removed or hidden at any breakpoint.
-        expect((item as HTMLElement).style.display).not.toBe('none');
-        expect((item as HTMLElement).hidden).toBe(false);
+        expect(item.style.display).not.toBe('none');
+        expect(item.hidden).toBe(false);
       }
     });
 
@@ -182,7 +183,7 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
       const items = screen.getAllByRole('listitem');
       expect(Array.from(root.querySelectorAll('li'))).toEqual(items);
       for (const item of items) {
-        expect((item as HTMLElement).tabIndex).toBe(-1);
+        expect(item.tabIndex).toBe(-1);
       }
       // This read-only history adds no controls, inputs or links, so it
       // introduces no tab stops that could trap keyboard focus on a phone.
@@ -219,8 +220,8 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
 
       const empty = screen.getByText(chartText('en', 'noEntries'));
       expect(empty.tagName).toBe('P');
-      expect((empty as HTMLElement).style.overflowWrap).toBe('anywhere');
-      expect((empty as HTMLElement).style.whiteSpace).toBe('normal');
+      expect(empty.style.overflowWrap).toBe('anywhere');
+      expect(empty.style.whiteSpace).toBe('normal');
       expect(screen.queryByRole('list')).toBeNull();
     });
   },

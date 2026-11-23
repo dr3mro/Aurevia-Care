@@ -2,12 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { RequestDescriptor } from '../../api/client';
 import { TransportError, send } from '../../api/transport';
 import type * as TransportModule from '../../api/transport';
-import {
-  asPatientsTransportError,
-  getPatient,
-  registerPatient,
-  searchPatients,
-} from './api';
+import { asPatientsTransportError, getPatient, registerPatient, searchPatients } from './api';
 import { EMPTY_REGISTRATION } from './domain';
 import { alphaOrganizationId } from './fixtures';
 
@@ -19,7 +14,7 @@ vi.mock('../../api/transport', async (importOriginal) => {
 const sendMock = vi.mocked(send);
 
 function descriptorAt(call: number): RequestDescriptor {
-  return sendMock.mock.calls[call]![0] as RequestDescriptor;
+  return required(sendMock.mock.calls[call])[0];
 }
 
 describe('patient API client', () => {
@@ -118,3 +113,10 @@ describe('asPatientsTransportError', () => {
     expect(error.code).toBeUndefined();
   });
 });
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

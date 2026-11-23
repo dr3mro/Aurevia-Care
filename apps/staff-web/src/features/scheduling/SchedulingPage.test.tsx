@@ -21,7 +21,9 @@ vi.mock('../../api/transport', async (importOriginal) => {
 
 const sendMock = vi.mocked(send);
 
-function apiView(overrides: Partial<AppointmentViewResponse['appointment']> = {}): AppointmentViewResponse {
+function apiView(
+  overrides: Partial<AppointmentViewResponse['appointment']> = {},
+): AppointmentViewResponse {
   return {
     appointment: {
       id: 'apt-001',
@@ -62,7 +64,7 @@ function wrap(ui: ReactElement, organizationId = alphaOrganizationId) {
 }
 
 function descriptorAt(call: number): RequestDescriptor {
-  return sendMock.mock.calls[call]![0] as RequestDescriptor;
+  return required(sendMock.mock.calls[call])[0];
 }
 
 /** Enter the clinical context the real booking command requires. */
@@ -78,7 +80,10 @@ function fillBookingFields() {
   });
 }
 
-function transportFailure(kind: ConstructorParameters<typeof TransportError>[0], correlationId = 'corr-1') {
+function transportFailure(
+  kind: ConstructorParameters<typeof TransportError>[0],
+  correlationId = 'corr-1',
+) {
   return new TransportError(kind, {
     correlationId,
     code: undefined,
@@ -154,7 +159,9 @@ describe('SchedulingPage commands', () => {
 
   it('checks in through the API and reloads the list after success', async () => {
     wrap(page());
-    const row = (await screen.findByRole('rowheader', { name: 'patient-001' })).closest('tr')!;
+    const row = required(
+      (await screen.findByRole('rowheader', { name: 'patient-001' })).closest('tr'),
+    );
 
     fireEvent.click(within(row).getByRole('button', { name: 'Check in' }));
 
@@ -168,7 +175,9 @@ describe('SchedulingPage commands', () => {
 
   it('shows the conflict state and keeps the screen for a 409 or 412 command', async () => {
     wrap(page());
-    const row = (await screen.findByRole('rowheader', { name: 'patient-001' })).closest('tr')!;
+    const row = required(
+      (await screen.findByRole('rowheader', { name: 'patient-001' })).closest('tr'),
+    );
     sendMock.mockRejectedValueOnce(transportFailure('conflict'));
 
     fireEvent.click(within(row).getByRole('button', { name: 'Check in' }));
@@ -220,7 +229,9 @@ describe('SchedulingPage commands', () => {
 
   it('normalises an unexpected command rejection into a typed error state', async () => {
     wrap(page());
-    const row = (await screen.findByRole('rowheader', { name: 'patient-001' })).closest('tr')!;
+    const row = required(
+      (await screen.findByRole('rowheader', { name: 'patient-001' })).closest('tr'),
+    );
     sendMock.mockRejectedValueOnce(new Error('unexpected transport failure'));
 
     fireEvent.click(within(row).getByRole('button', { name: 'Check in' }));
@@ -231,7 +242,9 @@ describe('SchedulingPage commands', () => {
 
   it('assigns locally without a network command because no assign endpoint exists', async () => {
     wrap(page());
-    const row = (await screen.findByRole('rowheader', { name: 'patient-001' })).closest('tr')!;
+    const row = required(
+      (await screen.findByRole('rowheader', { name: 'patient-001' })).closest('tr'),
+    );
     // Let the page's page-accumulation effect settle before the local draft.
     await act(async () => {
       await Promise.resolve();
@@ -256,7 +269,9 @@ describe('SchedulingPage range, paging and tenant switching', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Week' }));
     await waitFor(() =>
-      expect(sendMock.mock.calls.some((call) => (call[0] as RequestDescriptor).url.includes('to=2026-03-16T00%3A00%3A00Z'))).toBe(true),
+      expect(
+        sendMock.mock.calls.some((call) => call[0].url.includes('to=2026-03-16T00%3A00%3A00Z')),
+      ).toBe(true),
     );
   });
 
@@ -328,7 +343,9 @@ describe('scheduling routes', () => {
 
   it('lazily loads the registered scheduling page with live data', async () => {
     sendMock.mockResolvedValue({ items: [apiView()], nextCursor: null });
-    const route = createRoutes(false).find((candidate) => candidate.pattern === '/schedule')!;
+    const route = required(
+      createRoutes(false).find((candidate) => candidate.pattern === '/schedule'),
+    );
     const Page = route.component;
 
     render(
@@ -338,3 +355,10 @@ describe('scheduling routes', () => {
     expect(await screen.findByText('patient-001')).toBeTruthy();
   });
 });
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

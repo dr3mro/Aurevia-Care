@@ -16,7 +16,7 @@ export type ApiVisitState =
   | 'expired';
 
 /** The appointment projection returned by the real API. */
-export type AppointmentResponse = {
+export interface AppointmentResponse {
   id: string;
   version: number;
   patientId: string;
@@ -30,32 +30,32 @@ export type AppointmentResponse = {
   seriesId: string | null;
   expiresAt: string | null;
   overrideReason: string | null;
-};
+}
 
 /** One appointment and its append-only history as returned by the API. */
-export type AppointmentViewResponse = {
+export interface AppointmentViewResponse {
   appointment: AppointmentResponse;
   history: readonly unknown[];
-};
+}
 
 /** One cursor-paginated page of appointment views. */
-export type AppointmentPageResponse = {
+export interface AppointmentPageResponse {
   items: readonly AppointmentViewResponse[];
   nextCursor: string | null;
-};
+}
 
 /** Query supported by `GET /api/v1/appointments` (READY-13). */
-export type AppointmentListQuery = {
+export interface AppointmentListQuery {
   from: string;
   to: string;
   cursor?: string | undefined;
   resource?: string | undefined;
   state?: ApiVisitState | undefined;
   limit?: number | undefined;
-};
+}
 
 /** Body of `POST /api/v1/appointments`; tenant and author are never sent. */
-export type ApiBookingBody = {
+export interface ApiBookingBody {
   facilityCode: string;
   patientId: string;
   visitType: string;
@@ -63,7 +63,7 @@ export type ApiBookingBody = {
   roomCode: string | null;
   startsAt: string;
   overrideReason: string | null;
-};
+}
 
 /** Wire-to-domain state map; holds and expirations map to the nearest UI state. */
 const stateMap: Record<ApiVisitState, VisitState> = {
@@ -159,10 +159,14 @@ export async function book(
   organizationId: string,
 ): Promise<AppointmentViewResponse> {
   return send<AppointmentViewResponse>(
-    commandDescriptor('/api/v1/appointments', {
-      activeOrganization: organizationId,
-      idempotencyKey: crypto.randomUUID(),
-    }, body),
+    commandDescriptor(
+      '/api/v1/appointments',
+      {
+        activeOrganization: organizationId,
+        idempotencyKey: crypto.randomUUID(),
+      },
+      { ...body },
+    ),
   );
 }
 
@@ -201,10 +205,7 @@ export async function cancel(
  * the active organization. The projection has no patient name or facility zone,
  * so the opaque patient id is shown as the name and instants are labelled UTC.
  */
-export function toAppointment(
-  view: AppointmentViewResponse,
-  organizationId: string,
-): Appointment {
+export function toAppointment(view: AppointmentViewResponse, organizationId: string): Appointment {
   const appointment = view.appointment;
   return {
     organizationId,

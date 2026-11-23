@@ -9,11 +9,7 @@ import {
   releaseVisibility,
   type ObservationDifference,
 } from './domain';
-import {
-  correctedRevision,
-  identicalRevision,
-  originalRevision,
-} from './fixtures';
+import { correctedRevision, identicalRevision, originalRevision } from './fixtures';
 
 /** Find one diff row by its stable test key. */
 function diffFor(rows: readonly ObservationDifference[], testId: string): ObservationDifference {
@@ -68,7 +64,7 @@ describe('LAB-02 revision comparison', () => {
   it('treats a unit-only change as a change', () => {
     const alternate = {
       ...originalRevision,
-      observations: [{ ...originalRevision.observations[0]!, unit: 'g/L' }],
+      observations: [{ ...required(originalRevision.observations[0]), unit: 'g/L' }],
     };
     const row = diffFor(diffRevisions(originalRevision, alternate), 'hemoglobin');
     expect(row.kind).toBe('changed');
@@ -119,3 +115,10 @@ describe('LAB-02 release status by audience', () => {
     expect(releaseVisibility('corrected', 'patient')).toBe('released');
   });
 });
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

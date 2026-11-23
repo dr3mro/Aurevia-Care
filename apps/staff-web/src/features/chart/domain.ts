@@ -245,7 +245,9 @@ export function canAmend(revision: NoteRevision): boolean {
  * stand-in for a server-side digest, not a clinical integrity control.
  */
 export function syntheticChecksum(content: SoapContent): string {
-  const payload = [content.subjective, content.objective, content.assessment, content.plan].join('|');
+  const payload = [content.subjective, content.objective, content.assessment, content.plan].join(
+    '|',
+  );
   const folded = payload
     .split('')
     .reduce((accumulator, character) => (accumulator * 31 + character.charCodeAt(0)) >>> 0, 7);
@@ -260,7 +262,8 @@ export function signDraft(revision: NoteRevision, command: SignCommand): NoteRev
   if (command.expectedVersion !== revision.version) {
     throw new StaleDraftVersion(revision.version, command.expectedVersion);
   }
-  if (!Object.values(revision.content).every((value) => value.trim().length > 0)) {
+  const { subjective, objective, assessment, plan } = revision.content;
+  if (![subjective, objective, assessment, plan].every((value) => value.trim().length > 0)) {
     throw new IncompleteDraft(revision.id);
   }
   if (!command.attested) {
@@ -340,7 +343,9 @@ export function currentRevision(revisions: readonly NoteRevision[]): NoteRevisio
   if (revisions.length === 0) {
     return undefined;
   }
-  return revisions.reduce((latest, revision) => (revision.version > latest.version ? revision : latest));
+  return revisions.reduce((latest, revision) =>
+    revision.version > latest.version ? revision : latest,
+  );
 }
 
 /** Replace one revision by tenant key and local id, leaving all others untouched. */
@@ -356,14 +361,15 @@ export function replaceRevision(
 }
 
 /** Only associations without a void record are shown as live documents. */
-export function visibleDocuments(
-  documents: readonly DocumentAssociation[],
-): DocumentAssociation[] {
+export function visibleDocuments(documents: readonly DocumentAssociation[]): DocumentAssociation[] {
   return documents.filter((document) => document.void === undefined);
 }
 
 /** Void an association with an audited reason; the original row is not mutated. */
-export function voidDocument(document: DocumentAssociation, command: VoidCommand): DocumentAssociation {
+export function voidDocument(
+  document: DocumentAssociation,
+  command: VoidCommand,
+): DocumentAssociation {
   return {
     ...document,
     void: { actor: command.actor, reason: command.reason, voidedAt: command.voidedAt },
@@ -371,7 +377,10 @@ export function voidDocument(document: DocumentAssociation, command: VoidCommand
 }
 
 /** Normalize display rotation to 0/90/180/270 without touching the stored checksum. */
-export function rotateDocument(document: DocumentAssociation, deltaDegrees: number): DocumentAssociation {
+export function rotateDocument(
+  document: DocumentAssociation,
+  deltaDegrees: number,
+): DocumentAssociation {
   const normalized = (((document.rotationDegrees + deltaDegrees) % 360) + 360) % 360;
   return { ...document, rotationDegrees: normalized };
 }

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import type { ReactNode, RefObject } from 'react';
 import { useActiveOrganization } from '../../api/activeOrganization';
 import type { TransportError } from '../../api/transport';
 import { ApiPage } from '../../components/ApiPage';
@@ -58,7 +59,7 @@ interface ConfigHistoryProps {
   organizationId: string;
   locale: Locale;
   reloadToken: number;
-  onPropose: (draft: ConfigurationDraft) => void;
+  onPropose: (draft: ConfigurationDraft) => unknown;
   onApprove: (version: number) => void;
 }
 
@@ -254,7 +255,9 @@ function CatalogSection({
       <Form
         label={adminText(locale, 'defineCatalogEntry')}
         submitLabel={adminText(locale, 'defineCatalogEntry')}
-        onSubmit={handleSubmit}
+        onSubmit={() => {
+          void handleSubmit();
+        }}
       >
         <div className="grid-2" style={{ gap: tokens.spacing.md }}>
           <FormField
@@ -292,6 +295,162 @@ function CatalogSection({
         locale={locale}
         reloadToken={reloadToken}
       />
+    </section>
+  );
+}
+
+/** Props for the configuration key lookup section. */
+interface ConfigLookupSectionProps {
+  lookup: string;
+  lookupError: AdminMessageKey | undefined;
+  onChange: (value: string) => void;
+  onSubmit: () => void;
+}
+
+/** Configuration key lookup form with its error summary. */
+function ConfigLookupSection({
+  lookup,
+  lookupError,
+  onChange,
+  onSubmit,
+}: ConfigLookupSectionProps) {
+  const { locale } = useI18n();
+  const { tokens } = useTheme();
+  const lookupLinks: FieldErrorLink[] =
+    lookupError === undefined
+      ? []
+      : [
+          {
+            id: 'config-key',
+            label: adminText(locale, 'configurationKeyLookup'),
+            message: adminText(locale, lookupError),
+          },
+        ];
+  const lookupMessage = lookupError === undefined ? undefined : adminText(locale, lookupError);
+  return (
+    <section
+      aria-label={adminText(locale, 'configLookup')}
+      className="stack"
+      style={{ gap: tokens.spacing.md }}
+    >
+      <h2>{adminText(locale, 'configPageTitle')}</h2>
+      <p>{adminText(locale, 'configLookupIntro')}</p>
+      <FieldErrorSummary title={adminText(locale, 'errorSummary')} errors={lookupLinks} />
+      <Form
+        label={adminText(locale, 'configLookup')}
+        submitLabel={adminText(locale, 'configLookup')}
+        onSubmit={onSubmit}
+      >
+        <div className="stack" style={{ gap: tokens.spacing.md }}>
+          <FormField
+            id="config-key"
+            label={adminText(locale, 'configurationKeyLookup')}
+            value={lookup}
+            onChange={onChange}
+            {...(lookupMessage === undefined ? {} : { error: lookupMessage })}
+          />
+        </div>
+      </Form>
+    </section>
+  );
+}
+
+/** Props for the catalog family lookup section. */
+interface CatalogFamilySectionProps {
+  family: string;
+  familyError: AdminMessageKey | undefined;
+  onChange: (value: string) => void;
+  onSubmit: () => void;
+  children?: ReactNode;
+}
+
+/** Catalog family lookup form; the resolved catalog renders as children. */
+function CatalogFamilySection({
+  family,
+  familyError,
+  onChange,
+  onSubmit,
+  children,
+}: CatalogFamilySectionProps) {
+  const { locale } = useI18n();
+  const { tokens } = useTheme();
+  const familyLinks: FieldErrorLink[] =
+    familyError === undefined
+      ? []
+      : [
+          {
+            id: 'catalog-family',
+            label: adminText(locale, 'catalogFamily'),
+            message: adminText(locale, familyError),
+          },
+        ];
+  const familyMessage = familyError === undefined ? undefined : adminText(locale, familyError);
+  return (
+    <section className="stack" style={{ gap: tokens.spacing.md }}>
+      <h3>{adminText(locale, 'catalogFamily')}</h3>
+      <FieldErrorSummary title={adminText(locale, 'errorSummary')} errors={familyLinks} />
+      <Form
+        label={adminText(locale, 'catalogFamilyLookup')}
+        submitLabel={adminText(locale, 'catalogFamilyLookup')}
+        onSubmit={onSubmit}
+      >
+        <div className="stack" style={{ gap: tokens.spacing.md }}>
+          <FormField
+            id="catalog-family"
+            label={adminText(locale, 'catalogFamily')}
+            value={family}
+            onChange={onChange}
+            {...(familyMessage === undefined ? {} : { error: familyMessage })}
+          />
+        </div>
+      </Form>
+      {children}
+    </section>
+  );
+}
+
+/** Props for the irreversible approval confirmation dialog. */
+interface ApprovalDialogProps {
+  configKey: string;
+  approval: PendingApproval;
+  approveError: TransportError | undefined;
+  cancelRef: RefObject<HTMLButtonElement | null>;
+  onChange: (approval: PendingApproval | undefined) => void;
+  onConfirm: () => void;
+}
+
+/** Approval confirmation with a note field; cancel takes initial focus. */
+function ApprovalDialog({
+  configKey,
+  approval,
+  approveError,
+  cancelRef,
+  onChange,
+  onConfirm,
+}: ApprovalDialogProps) {
+  const { locale } = useI18n();
+  const { tokens } = useTheme();
+  const title = adminMessage(locale, 'approveTitle', {
+    key: configKey,
+    version: String(approval.version),
+  });
+  return (
+    <section role="dialog" aria-label={title} className="stack" style={{ gap: tokens.spacing.md }}>
+      <h3>{title}</h3>
+      <p>{adminText(locale, 'approveDetail')}</p>
+      <FormField
+        id="approval-note"
+        label={adminText(locale, 'approvalNote')}
+        value={approval.note}
+        onChange={(note) => onChange({ version: approval.version, note })}
+      />
+      {approveError !== undefined ? StateView.forTransportError(approveError) : null}
+      <div>
+        <Button variant="secondary" buttonRef={cancelRef} onClick={() => onChange(undefined)}>
+          {adminText(locale, 'cancel')}
+        </Button>{' '}
+        <Button onClick={onConfirm}>{adminText(locale, 'approveConfirm')}</Button>
+      </div>
     </section>
   );
 }
@@ -395,29 +554,6 @@ function ConfigContent({ organizationId }: ConfigContentProps) {
     }
   }
 
-  const lookupLinks: FieldErrorLink[] =
-    lookupError === undefined
-      ? []
-      : [
-          {
-            id: 'config-key',
-            label: adminText(locale, 'configurationKeyLookup'),
-            message: adminText(locale, lookupError),
-          },
-        ];
-  const familyLinks: FieldErrorLink[] =
-    familyError === undefined
-      ? []
-      : [
-          {
-            id: 'catalog-family',
-            label: adminText(locale, 'catalogFamily'),
-            message: adminText(locale, familyError),
-          },
-        ];
-  const lookupMessage = lookupError === undefined ? undefined : adminText(locale, lookupError);
-  const familyMessage = familyError === undefined ? undefined : adminText(locale, familyError);
-
   return (
     <div
       className="page"
@@ -425,29 +561,15 @@ function ConfigContent({ organizationId }: ConfigContentProps) {
       data-coarse-pointer={coarsePointer}
       style={{ gap: tokens.spacing.lg }}
     >
-      <section aria-label={adminText(locale, 'configLookup')} className="stack" style={{ gap: tokens.spacing.md }}>
-        <h2>{adminText(locale, 'configPageTitle')}</h2>
-        <p>{adminText(locale, 'configLookupIntro')}</p>
-        <FieldErrorSummary title={adminText(locale, 'errorSummary')} errors={lookupLinks} />
-        <Form
-          label={adminText(locale, 'configLookup')}
-          submitLabel={adminText(locale, 'configLookup')}
-          onSubmit={handleLookup}
-        >
-          <div className="stack" style={{ gap: tokens.spacing.md }}>
-            <FormField
-              id="config-key"
-              label={adminText(locale, 'configurationKeyLookup')}
-              value={lookup}
-              onChange={(value) => {
-                setLookup(value);
-                setLookupError(undefined);
-              }}
-              {...(lookupMessage === undefined ? {} : { error: lookupMessage })}
-            />
-          </div>
-        </Form>
-      </section>
+      <ConfigLookupSection
+        lookup={lookup}
+        lookupError={lookupError}
+        onChange={(value) => {
+          setLookup(value);
+          setLookupError(undefined);
+        }}
+        onSubmit={handleLookup}
+      />
 
       {configKey === undefined ? null : (
         <>
@@ -463,27 +585,15 @@ function ConfigContent({ organizationId }: ConfigContentProps) {
             onPropose={(draft) => handlePropose(configKey, draft)}
             onApprove={openApproval}
           />
-          <section className="stack" style={{ gap: tokens.spacing.md }}>
-            <h3>{adminText(locale, 'catalogFamily')}</h3>
-            <FieldErrorSummary title={adminText(locale, 'errorSummary')} errors={familyLinks} />
-            <Form
-              label={adminText(locale, 'catalogFamilyLookup')}
-              submitLabel={adminText(locale, 'catalogFamilyLookup')}
-              onSubmit={handleFamilyLookup}
-            >
-              <div className="stack" style={{ gap: tokens.spacing.md }}>
-                <FormField
-                  id="catalog-family"
-                  label={adminText(locale, 'catalogFamily')}
-                  value={family}
-                  onChange={(value) => {
-                    setFamily(value);
-                    setFamilyError(undefined);
-                  }}
-                  {...(familyMessage === undefined ? {} : { error: familyMessage })}
-                />
-              </div>
-            </Form>
+          <CatalogFamilySection
+            family={family}
+            familyError={familyError}
+            onChange={(value) => {
+              setFamily(value);
+              setFamilyError(undefined);
+            }}
+            onSubmit={handleFamilyLookup}
+          >
             {appliedFamily !== undefined ? (
               <CatalogSection
                 key={`${organizationId}:${appliedFamily}`}
@@ -494,43 +604,21 @@ function ConfigContent({ organizationId }: ConfigContentProps) {
                 onReload={() => setCatalogReloadToken((value) => value + 1)}
               />
             ) : null}
-          </section>
+          </CatalogFamilySection>
         </>
       )}
 
       {configKey !== undefined && approval !== undefined ? (
-        <section
-          role="dialog"
-          aria-label={adminMessage(locale, 'approveTitle', {
-            key: configKey,
-            version: String(approval.version),
-          })}
-          className="stack"
-          style={{ gap: tokens.spacing.md }}
-        >
-          <h3>
-            {adminMessage(locale, 'approveTitle', {
-              key: configKey,
-              version: String(approval.version),
-            })}
-          </h3>
-          <p>{adminText(locale, 'approveDetail')}</p>
-          <FormField
-            id="approval-note"
-            label={adminText(locale, 'approvalNote')}
-            value={approval.note}
-            onChange={(note) => setApproval({ version: approval.version, note })}
-          />
-          {approveError !== undefined ? StateView.forTransportError(approveError) : null}
-          <div>
-            <Button variant="secondary" buttonRef={cancelRef} onClick={() => setApproval(undefined)}>
-              {adminText(locale, 'cancel')}
-            </Button>{' '}
-            <Button onClick={() => confirmApproval(configKey, approval.version, approval.note)}>
-              {adminText(locale, 'approveConfirm')}
-            </Button>
-          </div>
-        </section>
+        <ApprovalDialog
+          configKey={configKey}
+          approval={approval}
+          approveError={approveError}
+          cancelRef={cancelRef}
+          onChange={setApproval}
+          onConfirm={() => {
+            void confirmApproval(configKey, approval.version, approval.note);
+          }}
+        />
       ) : null}
     </div>
   );

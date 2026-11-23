@@ -14,6 +14,7 @@ import {
   syntheticConfigurations,
 } from '../../../src/features/admin/fixtures';
 import { adminText } from '../../../src/features/admin/messages';
+import { must } from '../../must';
 
 type ChangeListener = (event: MediaQueryListEvent) => void;
 type Band = 'compact' | 'medium' | 'expanded';
@@ -37,8 +38,7 @@ const WIDTH_CASES: readonly WidthCase[] = [
 
 const longEnglish =
   'A deliberately long synthetic configuration value that must wrap without clipping or overlap on a narrow phone viewport';
-const longArabic =
-  'قيمة configuring تجريبية طويلة جداً يجب أن تلتف دون قص أو تداخل على شاشة الهاتف';
+const longArabic = 'قيمة configuring تجريبية طويلة جداً يجب أن تلتف دون قص أو تداخل على شاشة الهاتف';
 
 /**
  * A deterministic matchMedia stand-in keyed by media query. One state object is
@@ -175,13 +175,15 @@ describe('responsive ConfigEditor (WEB-07, UX-01)', () => {
       });
       // The table fills the inline axis with a logical property, never a
       // physical width that would break the mirrored layout under RTL.
-      expect((table as HTMLElement).style.getPropertyValue('inline-size')).toBe('100%');
-      expect((table as HTMLElement).style.getPropertyValue('width')).toBe('');
-      expect(within(table).getAllByRole('columnheader').map((node) => node.textContent)).toEqual(
-        englishHeaders,
-      );
+      expect(table.style.getPropertyValue('inline-size')).toBe('100%');
+      expect(table.style.getPropertyValue('width')).toBe('');
+      expect(
+        within(table)
+          .getAllByRole('columnheader')
+          .map((node) => node.textContent),
+      ).toEqual(englishHeaders);
       for (const header of within(table).getAllByRole('columnheader')) {
-        expect((header as HTMLElement).style.display).not.toBe('none');
+        expect(header.style.display).not.toBe('none');
       }
       expect(root.querySelector('.hide-compact')).toBeNull();
       expect(root.querySelector('.only-compact')).toBeNull();
@@ -195,7 +197,7 @@ describe('responsive ConfigEditor (WEB-07, UX-01)', () => {
     const { container } = wrap(<ConfigEditor {...baseProps} onPropose={vi.fn()} />);
     const root = rootSection(container);
     const form = within(root).getByRole('form', { name: adminText('en', 'configurationEditor') });
-    const fields = form.querySelector('[data-part="fields"]') as HTMLElement;
+    const fields = must(form.querySelector<HTMLElement>('[data-part="fields"]'));
     expect(fields).not.toBeNull();
     expect(fields.classList.contains('stack')).toBe(true);
     expect(fields.getAttribute('data-layout')).toBe('single-column');
@@ -213,7 +215,7 @@ describe('responsive ConfigEditor (WEB-07, UX-01)', () => {
     const root = rootSection(container);
 
     for (const text of [longEnglish, longArabic]) {
-      const run = screen.getByText(text) as HTMLElement;
+      const run = screen.getByText(text);
       expect(run.tagName).toBe('BDI');
       expect(run.getAttribute('dir')).toBe('auto');
       expect(run.style.minInlineSize).toBe('0');
@@ -233,8 +235,12 @@ describe('responsive ConfigEditor (WEB-07, UX-01)', () => {
     const dateInput = screen.getByLabelText(adminText('en', 'effectiveFrom'));
     const submit = screen.getByRole('button', { name: adminText('en', 'propose') });
 
-    expect(valueInput.compareDocumentPosition(dateInput) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(dateInput.compareDocumentPosition(submit) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(
+      valueInput.compareDocumentPosition(dateInput) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      dateInput.compareDocumentPosition(submit) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     // Both fields carry the 16px `.field` and 44px coarse-pointer `.touch`
     // classes; the submit and approve actions keep their `.touch` target too.
     for (const field of [valueInput, dateInput]) {
@@ -247,7 +253,7 @@ describe('responsive ConfigEditor (WEB-07, UX-01)', () => {
       .getAllByRole('row')
       .find((row) => within(row).queryByText(adminText('en', 'pending')));
     expect(pendingRow).toBeDefined();
-    const approve = within(pendingRow as HTMLElement).getByRole('button', {
+    const approve = within(must(pendingRow)).getByRole('button', {
       name: adminText('en', 'approve'),
     });
     expect(approve.classList.contains('touch')).toBe(true);
@@ -268,18 +274,22 @@ describe('responsive ConfigEditor (WEB-07, UX-01)', () => {
     expect(document.documentElement.lang).toBe('ar');
     const root = rootSection(container);
     expect(root.getAttribute('data-breakpoint')).toBe('compact');
-    expect(within(root).getAllByText(adminText('ar', 'configurationEditor')).length).toBeGreaterThan(0);
+    expect(
+      within(root).getAllByText(adminText('ar', 'configurationEditor')).length,
+    ).toBeGreaterThan(0);
 
     const table = within(root).getByRole('table', {
       name: adminText('ar', 'configurationVersions'),
     });
-    expect(within(table).getAllByRole('columnheader').map((node) => node.textContent)).toEqual(
-      arabicHeaders,
-    );
+    expect(
+      within(table)
+        .getAllByRole('columnheader')
+        .map((node) => node.textContent),
+    ).toEqual(arabicHeaders);
     for (const header of within(table).getAllByRole('columnheader')) {
-      expect((header as HTMLElement).style.display).not.toBe('none');
+      expect(header.style.display).not.toBe('none');
     }
-    expect((screen.getByText(longArabic) as HTMLElement).style.overflowWrap).toBe('anywhere');
+    expect(screen.getByText(longArabic).style.overflowWrap).toBe('anywhere');
     expect(root.querySelector('[style*="display: none"]')).toBeNull();
     assertLogicalOnly(root);
   });

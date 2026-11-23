@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
+import { defined } from './invariant';
 import { useTheme } from '../theme/ThemeProvider';
 import { useBreakpoint } from '../theme/useBreakpoint';
 
@@ -41,7 +42,7 @@ export function Dialog({ open, title, closeLabel, onClose, children }: DialogPro
     const previous = document.activeElement as HTMLElement | null;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    closeRef.current!.focus();
+    defined(closeRef.current, 'dialog close button').focus();
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         onClose();
@@ -49,10 +50,12 @@ export function Dialog({ open, title, closeLabel, onClose, children }: DialogPro
       }
       if (event.key === 'Tab') {
         const focusables = Array.from(
-          panelRef.current!.querySelectorAll<HTMLElement>(focusableSelector),
+          defined(panelRef.current, 'dialog panel').querySelectorAll<HTMLElement>(
+            focusableSelector,
+          ),
         );
-        const first = focusables[0]!;
-        const last = focusables[focusables.length - 1]!;
+        const first = defined(focusables[0], 'first focusable element');
+        const last = defined(focusables[focusables.length - 1], 'last focusable element');
         const active = document.activeElement;
         if (event.shiftKey) {
           if (active === first) {

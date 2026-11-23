@@ -41,6 +41,43 @@ const workstationRef = 'workstation-1';
 /** Command names recorded by the API mock, in the order the browser sent them. */
 type CommandNames = string[];
 
+/** Move the worklist row forward for one accepted command. */
+function advanceRow(row: WorklistRow, action: string, body: Record<string, string>): WorklistRow {
+  const version = row.version + 1;
+  switch (action) {
+    case 'schedule':
+      return {
+        ...row,
+        status: 'SCHEDULED',
+        version,
+        scheduledAt: body.scheduledAt ?? null,
+        modality: body.modality ?? null,
+        accession: body.accession ?? null,
+        accessionIssuer: body.accessionIssuer ?? null,
+      };
+    case 'studies':
+      return {
+        ...row,
+        status: 'PERFORMED',
+        version,
+        studyInstanceUid: body.studyInstanceUid ?? null,
+      };
+    default:
+      return { ...row, status: 'REPORTED', version };
+  }
+}
+
+/** A study link naming another patient or accession is refused by the kernel. */
+function isMismatchedStudyLink(
+  row: WorklistRow,
+  action: string,
+  body: Record<string, string>,
+): boolean {
+  return (
+    action === 'studies' && (body.patientId !== row.patientId || body.accession !== row.accession)
+  );
+}
+
 /**
  * Install a stateful synthetic worklist API. Reads return the current row;
  * commands advance it forward exactly as the real worklist kernel does, and a
@@ -85,9 +122,10 @@ async function mockWorklistApi(page: Page): Promise<CommandNames> {
       return;
     }
 
-    const segments = url.pathname.match(
-      /^\/api\/v1\/radiology\/worklist\/orders\/([^/]+)\/(schedule|studies|report)$/,
-    );
+    const segments =
+      /^\/api\/v1\/radiology\/worklist\/orders\/([^/]+)\/(schedule|studies|report)$/.exec(
+        url.pathname,
+      );
     if (method === 'POST' && segments?.[1] === orderId && segments[2] !== undefined) {
       const action = segments[2];
       const body = JSON.parse(request.postData() ?? '{}') as Record<string, string>;
@@ -96,7 +134,7 @@ async function mockWorklistApi(page: Page): Promise<CommandNames> {
       // The production worklist kernel refuses a mismatched link with 422 and
       // the LABEL_MISMATCH code; mirror that contract here so the mock cannot
       // teach a future test writer the wrong failure shape.
-      if (action === 'studies' && (body['patientId'] !== row.patientId || body['accession'] !== row.accession)) {
+      if (isMismatchedStudyLink(row, action, body)) {
         await route.fulfill({
           status: 422,
           contentType: 'application/json',
@@ -105,25 +143,7 @@ async function mockWorklistApi(page: Page): Promise<CommandNames> {
         return;
       }
 
-      row =
-        action === 'schedule'
-          ? {
-              ...row,
-              status: 'SCHEDULED',
-              version: row.version + 1,
-              scheduledAt: body['scheduledAt'] ?? null,
-              modality: body['modality'] ?? null,
-              accession: body['accession'] ?? null,
-              accessionIssuer: body['accessionIssuer'] ?? null,
-            }
-          : action === 'studies'
-            ? {
-                ...row,
-                status: 'PERFORMED',
-                version: row.version + 1,
-                studyInstanceUid: body['studyInstanceUid'] ?? null,
-              }
-            : { ...row, status: 'REPORTED', version: row.version + 1 };
+      row = advanceRow(row, action, body);
 
       await route.fulfill({
         status: 200,
@@ -205,20 +225,17 @@ test('clinician and radiology journey: schedule, refuse a wrong-patient link, li
   // unchanged. This direct POST checks that contract; it is not a UI action.
   const bypass = await page.evaluate(
     async (draft) => {
-      const response = await fetch(
-        `/api/v1/radiology/worklist/orders/${draft.orderId}/studies`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Active-Organization': draft.organizationId,
-            'X-XSRF-TOKEN': draft.csrf,
-            'If-Match': '2',
-            'Idempotency-Key': 'synthetic-bypass-attempt',
-          },
-          body: JSON.stringify(draft.body),
+      const response = await fetch(`/api/v1/radiology/worklist/orders/${draft.orderId}/studies`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Active-Organization': draft.organizationId,
+          'X-XSRF-TOKEN': draft.csrf,
+          'If-Match': '2',
+          'Idempotency-Key': 'synthetic-bypass-attempt',
         },
-      );
+        body: JSON.stringify(draft.body),
+      });
       return { status: response.status, body: (await response.json()) as { code: string } };
     },
     {

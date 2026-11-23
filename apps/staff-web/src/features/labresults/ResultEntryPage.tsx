@@ -21,7 +21,10 @@ export interface ResultEntryPageProps {
  * value, and a later edit clears a previous success so the status never claims
  * that the currently displayed values were verified (WEB-09).
  */
-export function ResultEntryPage({ currentUser = verifierSubject, report = syntheticReport }: ResultEntryPageProps) {
+export function ResultEntryPage({
+  currentUser = verifierSubject,
+  report = syntheticReport,
+}: ResultEntryPageProps) {
   const { locale } = useI18n();
   const [drafts, setDrafts] = useState<Record<string, string>>(() =>
     Object.fromEntries(report.rows.map((row) => [row.id, String(row.value)])),

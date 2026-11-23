@@ -71,8 +71,12 @@ describe('UX-01 clause 4 — preserve language and units in exports', () => {
       'state',
     ]);
     expect(Object.keys(row).some((key) => /lang|locale|unit/i.test(key))).toBe(false);
-    expectTypeOf<'language' extends keyof ExportResultResponse ? true : false>().toEqualTypeOf<false>();
-    expectTypeOf<'units' extends keyof ExportResultResponse ? true : false>().toEqualTypeOf<false>();
+    expectTypeOf<
+      'language' extends keyof ExportResultResponse ? true : false
+    >().toEqualTypeOf<false>();
+    expectTypeOf<
+      'units' extends keyof ExportResultResponse ? true : false
+    >().toEqualTypeOf<false>();
     expectTypeOf<Parameters<typeof startExport>['length']>().toEqualTypeOf<1>();
   });
 });

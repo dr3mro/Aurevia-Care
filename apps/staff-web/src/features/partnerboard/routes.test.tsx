@@ -9,11 +9,11 @@ import { routes } from './routes';
 describe('partner board feature route', () => {
   it('registers one operations route', () => {
     expect(routes).toHaveLength(1);
-    expect(routes[0]!.pattern).toBe('/operations/partner-board');
+    expect(required(routes[0]).pattern).toBe('/operations/partner-board');
   });
 
   it('lazily loads a component that renders the board', async () => {
-    const Page = routes[0]!.component;
+    const Page = required(routes[0]).component;
     render(
       <ThemeProvider>
         <I18nProvider initialLocale="en">
@@ -26,3 +26,10 @@ describe('partner board feature route', () => {
     expect(await screen.findByText('Partner interface and outage board')).toBeTruthy();
   });
 });
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

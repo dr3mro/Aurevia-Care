@@ -27,7 +27,8 @@ const ARABIC_TEXT_ALLOW_LIST: ReadonlySet<string> = new Set([
 ]);
 
 /** Arabic letters only; Arabic-Indic digits and punctuation do not satisfy UX-01. */
-const ARABIC_LETTER = /[\u0621-\u063A\u0641-\u064A\u066E-\u066F\u0671-\u06D3\u06D5\u06FA-\u06FC\u06FF]/;
+const ARABIC_LETTER =
+  /[\u0621-\u063A\u0641-\u064A\u066E-\u066F\u0671-\u06D3\u06D5\u06FA-\u06FC\u06FF]/;
 
 /** Named placeholders use the same syntax in every bundle's fill helper. */
 const PLACEHOLDER = /\{\w+\}/g;
@@ -271,33 +272,21 @@ describe('UX-01 message parity checker rejects broken sample bundles', () => {
   });
 
   it('reports an Arabic value with no Arabic letters unless allow-listed', () => {
-    const broken = fromRecord(
-      'sample',
-      { codeLabel: 'UTC label' },
-      { codeLabel: 'UTC label' },
-    );
+    const broken = fromRecord('sample', { codeLabel: 'UTC label' }, { codeLabel: 'UTC label' });
     expect(checkBundle(broken)).toEqual([
       'sample.codeLabel: Arabic value "UTC label" has no Arabic letters and is not allow-listed',
     ]);
   });
 
   it('rejects a value made only of Arabic-Indic digits', () => {
-    const broken = fromRecord(
-      'sample',
-      { year: 'Year' },
-      { year: '٢٠٢٦' },
-    );
+    const broken = fromRecord('sample', { year: 'Year' }, { year: '٢٠٢٦' });
     expect(checkBundle(broken)).toEqual([
       'sample.year: Arabic value "٢٠٢٦" has no Arabic letters and is not allow-listed',
     ]);
   });
 
   it('does not report an allow-listed code-only Arabic value', () => {
-    const withAllowedCode = fromRecord(
-      'admin',
-      { utcLabel: 'UTC' },
-      { utcLabel: 'UTC' },
-    );
+    const withAllowedCode = fromRecord('admin', { utcLabel: 'UTC' }, { utcLabel: 'UTC' });
     expect(checkBundle(withAllowedCode)).toEqual([]);
   });
 });

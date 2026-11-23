@@ -4,8 +4,13 @@ import { describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../../i18n/I18nProvider';
 import type { Locale } from '../../i18n/messages';
 import { ThemeProvider } from '../../theme/ThemeProvider';
-import type { ImagingWorklistOrder, StatusFilter } from './domain';
-import { alphaOrganizationId, betaOrganizationId, syntheticOrders, syntheticPerformingSite } from './fixtures';
+import type { ImagingWorklistOrder } from './domain';
+import {
+  alphaOrganizationId,
+  betaOrganizationId,
+  syntheticOrders,
+  syntheticPerformingSite,
+} from './fixtures';
 import { RadWorklistScreen } from './RadWorklistScreen';
 
 /** Render the screen with inert callbacks and the supplied locale. */
@@ -18,7 +23,7 @@ function wrap(
     orders,
     organizationId: alphaOrganizationId,
     site: syntheticPerformingSite,
-    filter: 'all' as StatusFilter,
+    filter: 'all',
     onSiteChange: vi.fn(),
     onFilterChange: vi.fn(),
     onSchedule: vi.fn(),
@@ -38,22 +43,23 @@ function wrap(
 
 /** Select the row whose order id is supplied. */
 function openRow(orderId: string) {
-  const row = screen.getByText(
-    syntheticOrders.find((order) => order.orderId === orderId)!.orderCode,
-  ).closest('tr')!;
-  fireEvent.click(within(row).getAllByRole('button')[0]!);
+  const row = required(
+    screen
+      .getByText(required(syntheticOrders.find((order) => order.orderId === orderId)).orderCode)
+      .closest('tr'),
+  );
+  fireEvent.click(required(within(row).getAllByRole('button')[0]));
 }
 
 describe('RadWorklistScreen worklist', () => {
   it('renders all scoped rows with their worklist status in words', () => {
     wrap(syntheticOrders.slice(0, 4));
     const table = screen.getByRole('table');
-    expect(within(table).getAllByTestId('worklist-status').map((badge) => badge.textContent)).toEqual([
-      'Received',
-      'Scheduled',
-      'Performed',
-      'Reported',
-    ]);
+    expect(
+      within(table)
+        .getAllByTestId('worklist-status')
+        .map((badge) => badge.textContent),
+    ).toEqual(['Received', 'Scheduled', 'Performed', 'Reported']);
     expect(within(table).getAllByText('Not recorded').length).toBeGreaterThan(0);
     expect(within(table).getByText('MRI')).toBeTruthy();
   });
@@ -168,7 +174,7 @@ describe('RadWorklistScreen order actions', () => {
     fireEvent.change(screen.getByLabelText('Diagnostic workstation reference'), {
       target: { value: 'workstation-1' },
     });
-    const link = screen.getByRole('button', { name: 'Link study' }) as HTMLButtonElement;
+    const link = screen.getByRole<HTMLButtonElement>('button', { name: 'Link study' });
     expect(link.disabled).toBe(true);
     fireEvent.click(link);
     expect(props.onLink).not.toHaveBeenCalled();
@@ -188,3 +194,10 @@ describe('RadWorklistScreen localization', () => {
     expect(check.textContent).toContain('أدخل كلا المعرّفين');
   });
 });
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

@@ -156,35 +156,32 @@ afterEach(() => {
 // Assertions on Form/Button/I18nProvider hooks are integration checks, not
 // claims that AuditPage owns those rules.
 describe('responsive AuditPage and its shared children (WEB-07, UX-01)', () => {
-  it.each(BREAKPOINTS)(
-    'keeps one labelled page grid with %s filter fields',
-    async (breakpoint) => {
-      installMatchMedia(breakpointQueries(breakpoint));
-      wrap();
-      await screen.findByText(LONG_ARABIC);
+  it.each(BREAKPOINTS)('keeps one labelled page grid with %s filter fields', async (breakpoint) => {
+    installMatchMedia(breakpointQueries(breakpoint));
+    wrap();
+    await screen.findByText(LONG_ARABIC);
 
-      const root = auditRoot();
-      expect(root.classList.contains('page')).toBe(true);
-      expect(root.getAttribute('data-breakpoint')).toBe(breakpoint);
-      expect(root.getAttribute('style')).toBeNull();
+    const root = auditRoot();
+    expect(root.classList.contains('page')).toBe(true);
+    expect(root.getAttribute('data-breakpoint')).toBe(breakpoint);
+    expect(root.getAttribute('style')).toBeNull();
 
-      const filters = screen.getByRole('region', { name: adminText('en', 'auditFilters') });
-      expect(filters.classList.contains('stack')).toBe(true);
-      expect(filters.getAttribute('data-audit-part')).toBe('filters');
-      expect(root.contains(filters)).toBe(true);
+    const filters = screen.getByRole('region', { name: adminText('en', 'auditFilters') });
+    expect(filters.classList.contains('stack')).toBe(true);
+    expect(filters.getAttribute('data-audit-part')).toBe('filters');
+    expect(root.contains(filters)).toBe(true);
 
-      const fields = screen.getByRole('form', { name: adminText('en', 'auditFilters') });
-      expect(fields.classList.contains('page')).toBe(true);
-      expect(fields.getAttribute('data-breakpoint')).toBe(breakpoint);
+    const fields = screen.getByRole('form', { name: adminText('en', 'auditFilters') });
+    expect(fields.classList.contains('page')).toBe(true);
+    expect(fields.getAttribute('data-breakpoint')).toBe(breakpoint);
 
-      const fieldGrid = fields.querySelector<HTMLElement>('[data-audit-part="filter-fields"]');
-      expect(fieldGrid).not.toBeNull();
-      expect(fieldGrid?.classList.contains('grid-2')).toBe(true);
-      expect(fieldGrid?.getAttribute('data-audit-fields')).toBe(
-        breakpoint === 'compact' ? 'stacked' : 'two-column',
-      );
-    },
-  );
+    const fieldGrid = fields.querySelector<HTMLElement>('[data-audit-part="filter-fields"]');
+    expect(fieldGrid).not.toBeNull();
+    expect(fieldGrid?.classList.contains('grid-2')).toBe(true);
+    expect(fieldGrid?.getAttribute('data-audit-fields')).toBe(
+      breakpoint === 'compact' ? 'stacked' : 'two-column',
+    );
+  });
 
   it.each(BREAKPOINTS)('keeps roles, labels and keyboard order at %s', async (breakpoint) => {
     installMatchMedia(breakpointQueries(breakpoint));
@@ -192,12 +189,8 @@ describe('responsive AuditPage and its shared children (WEB-07, UX-01)', () => {
     await screen.findByText(LONG_ARABIC);
 
     const root = auditRoot();
-    expect(
-      screen.getByRole('heading', { name: adminText('en', 'auditPageTitle') }),
-    ).toBeTruthy();
-    expect(
-      screen.getByRole('button', { name: adminText('en', 'auditApplyFilters') }),
-    ).toBeTruthy();
+    expect(screen.getByRole('heading', { name: adminText('en', 'auditPageTitle') })).toBeTruthy();
+    expect(screen.getByRole('button', { name: adminText('en', 'auditApplyFilters') })).toBeTruthy();
     expect(screen.getByRole('button', { name: adminText('en', 'auditClearFilters') })).toBeTruthy();
     expect(
       screen.getAllByRole('region', { name: adminText('en', 'auditEvents') }).length,
@@ -210,8 +203,16 @@ describe('responsive AuditPage and its shared children (WEB-07, UX-01)', () => {
       'auditFrom',
       'auditTo',
     ] as const;
-    const expectedIds = ['audit-action', 'audit-outcome', 'audit-resource', 'audit-from', 'audit-to'];
-    expect(labels.map((key) => screen.getByLabelText(adminText('en', key)).id)).toEqual(expectedIds);
+    const expectedIds = [
+      'audit-action',
+      'audit-outcome',
+      'audit-resource',
+      'audit-from',
+      'audit-to',
+    ];
+    expect(labels.map((key) => screen.getByLabelText(adminText('en', key)).id)).toEqual(
+      expectedIds,
+    );
 
     // Focus follows DOM order: no positive tabindex reorders the five fields
     // or the two actions, and the event time keeps its native focus position.
@@ -239,39 +240,42 @@ describe('responsive AuditPage and its shared children (WEB-07, UX-01)', () => {
     }
   });
 
-  it.each(BREAKPOINTS)('keeps the full audit content in the tree at %s (layout proxy)', async (breakpoint) => {
-    installMatchMedia(breakpointQueries(breakpoint));
-    wrap();
-    await screen.findByText(LONG_ARABIC);
+  it.each(BREAKPOINTS)(
+    'keeps the full audit content in the tree at %s (layout proxy)',
+    async (breakpoint) => {
+      installMatchMedia(breakpointQueries(breakpoint));
+      wrap();
+      await screen.findByText(LONG_ARABIC);
 
-    expect(screen.getAllByText(LONG_ENGLISH).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(LONG_ARABIC).length).toBeGreaterThan(0);
-    expect(screen.getAllByText('cfg-synthetic').length).toBeGreaterThan(0);
-    const zone = screen.getByText(
-      adminMessage('en', 'auditFacilityZone', { zone: 'America/New_York' }),
-    );
-    // .stack gives its children min-inline-size: 0 and overflow-wrap: anywhere,
-    // so a long zone message or audit value wraps instead of scrolling the page.
-    expect(zone.parentElement?.classList.contains('stack')).toBe(true);
-    expect(zone.style.fontSize).toBe('');
+      expect(screen.getAllByText(LONG_ENGLISH).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(LONG_ARABIC).length).toBeGreaterThan(0);
+      expect(screen.getAllByText('cfg-synthetic').length).toBeGreaterThan(0);
+      const zone = screen.getByText(
+        adminMessage('en', 'auditFacilityZone', { zone: 'America/New_York' }),
+      );
+      // .stack gives its children min-inline-size: 0 and overflow-wrap: anywhere,
+      // so a long zone message or audit value wraps instead of scrolling the page.
+      expect(zone.parentElement?.classList.contains('stack')).toBe(true);
+      expect(zone.style.fontSize).toBe('');
 
-    // No inline hiding style is set on an audit value at any of the three bands,
-    // including the narrowest phone. Real accessibility-tree and painted-width
-    // claims belong to the Playwright/axe projects (section 13), not to jsdom.
-    expect(document.body.querySelectorAll('[style*="display: none"]')).toHaveLength(0);
-    expect(document.body.querySelectorAll('[style*="visibility: hidden"]')).toHaveLength(0);
-    expect(document.body.querySelectorAll('[hidden]')).toHaveLength(0);
+      // No inline hiding style is set on an audit value at any of the three bands,
+      // including the narrowest phone. Real accessibility-tree and painted-width
+      // claims belong to the Playwright/axe projects (section 13), not to jsdom.
+      expect(document.body.querySelectorAll('[style*="display: none"]')).toHaveLength(0);
+      expect(document.body.querySelectorAll('[style*="visibility: hidden"]')).toHaveLength(0);
+      expect(document.body.querySelectorAll('[hidden]')).toHaveLength(0);
 
-    // The wrapping and gutter rules behind that structure are in the shared
-    // stylesheet; assert the text so a rule deletion fails this suite. Painted
-    // no-scroll/zoom behaviour is still Playwright evidence only.
-    expect(responsiveCss).toMatch(
-      /\.stack\s*>\s*\*\s*,[\s\S]*?\{[^}]*min-inline-size:\s*0[^}]*overflow-wrap:\s*anywhere/,
-    );
-    expect(responsiveCss).toMatch(
-      /\.page\s*\{[\s\S]*?padding-inline-start:\s*max\([^;]*var\(--safe-inline-start/,
-    );
-  });
+      // The wrapping and gutter rules behind that structure are in the shared
+      // stylesheet; assert the text so a rule deletion fails this suite. Painted
+      // no-scroll/zoom behaviour is still Playwright evidence only.
+      expect(responsiveCss).toMatch(
+        /\.stack\s*>\s*\*\s*,[\s\S]*?\{[^}]*min-inline-size:\s*0[^}]*overflow-wrap:\s*anywhere/,
+      );
+      expect(responsiveCss).toMatch(
+        /\.page\s*\{[\s\S]*?padding-inline-start:\s*max\([^;]*var\(--safe-inline-start/,
+      );
+    },
+  );
 
   it('reflows the fields when the viewport crosses a breakpoint', async () => {
     const media = installMatchMedia(breakpointQueries('compact'));
@@ -279,12 +283,20 @@ describe('responsive AuditPage and its shared children (WEB-07, UX-01)', () => {
     await screen.findByText(LONG_ARABIC);
 
     expect(auditRoot().getAttribute('data-breakpoint')).toBe('compact');
-    expect(document.querySelector('[data-audit-part="filter-fields"]')?.getAttribute('data-audit-fields')).toBe('stacked');
+    expect(
+      document
+        .querySelector('[data-audit-part="filter-fields"]')
+        ?.getAttribute('data-audit-fields'),
+    ).toBe('stacked');
 
     act(() => media.fire(BREAKPOINT_MEDIA_QUERIES.medium, true));
 
     expect(auditRoot().getAttribute('data-breakpoint')).toBe('medium');
-    expect(document.querySelector('[data-audit-part="filter-fields"]')?.getAttribute('data-audit-fields')).toBe('two-column');
+    expect(
+      document
+        .querySelector('[data-audit-part="filter-fields"]')
+        ?.getAttribute('data-audit-fields'),
+    ).toBe('two-column');
   });
 
   it('asserts the touch-target and 16px-text layout hooks on a phone', async () => {
@@ -300,7 +312,7 @@ describe('responsive AuditPage and its shared children (WEB-07, UX-01)', () => {
       ['audit-to', 'auditTo'],
     ] as const;
     for (const [id, labelKey] of fields) {
-      const input = screen.getByLabelText(adminText('en', labelKey)) as HTMLInputElement;
+      const input = screen.getByLabelText<HTMLInputElement>(adminText('en', labelKey));
       expect(input.id).toBe(id);
       expect(input.classList.contains('field')).toBe(true);
       expect(input.classList.contains('touch')).toBe(true);
@@ -328,10 +340,16 @@ describe('responsive AuditPage and its shared children (WEB-07, UX-01)', () => {
     expect(document.documentElement.lang).toBe('ar');
     expect(screen.getByRole('button', { name: adminText('ar', 'auditApplyFilters') })).toBeTruthy();
     expect(auditRoot().getAttribute('data-breakpoint')).toBe('compact');
-    expect(document.querySelector('[data-audit-part="filter-fields"]')?.getAttribute('data-audit-fields')).toBe('stacked');
+    expect(
+      document
+        .querySelector('[data-audit-part="filter-fields"]')
+        ?.getAttribute('data-audit-fields'),
+    ).toBe('stacked');
 
     const root = auditRoot();
-    const zone = screen.getByText(adminMessage('ar', 'auditFacilityZone', { zone: 'America/New_York' }));
+    const zone = screen.getByText(
+      adminMessage('ar', 'auditFacilityZone', { zone: 'America/New_York' }),
+    );
     expect(root.contains(zone)).toBe(true);
     expect(zone.parentElement?.classList.contains('stack')).toBe(true);
 

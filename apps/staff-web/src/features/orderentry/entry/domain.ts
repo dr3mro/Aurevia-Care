@@ -172,10 +172,7 @@ export function selectCatalogItem(
 }
 
 /** Remove one captured item by id; a missing id leaves the draft untouched. */
-export function removeSelectedItem(
-  content: OrderDraftContent,
-  itemId: string,
-): OrderDraftContent {
+export function removeSelectedItem(content: OrderDraftContent, itemId: string): OrderDraftContent {
   const remaining = content.items.filter((item) => item.itemId !== itemId);
   return remaining.length === content.items.length ? content : { ...content, items: remaining };
 }

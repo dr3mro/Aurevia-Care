@@ -7,7 +7,9 @@ import { ThemeProvider } from '../../theme/ThemeProvider';
 import { emptyReport, entererSubject, nonCriticalReport, verifierSubject } from './fixtures';
 import { ResultEntryPage } from './ResultEntryPage';
 
-function renderPage(options: { locale?: Locale; currentUser?: string; report?: typeof nonCriticalReport } = {}) {
+function renderPage(
+  options: { locale?: Locale; currentUser?: string; report?: typeof nonCriticalReport } = {},
+) {
   return render(
     <ThemeProvider>
       <I18nProvider initialLocale={options.locale ?? 'en'}>
@@ -20,11 +22,13 @@ function renderPage(options: { locale?: Locale; currentUser?: string; report?: t
 describe('LAB-02 result-entry page', () => {
   it('loads the synthetic report, keeps drafts and announces a successful verification', () => {
     renderPage();
-    const input = screen.getByLabelText('Result value for Hemoglobin') as HTMLInputElement;
+    const input = screen.getByLabelText<HTMLInputElement>('Result value for Hemoglobin');
     expect(input.value).toBe('7.4');
 
     fireEvent.change(input, { target: { value: '7.9' } });
-    expect((screen.getByLabelText('Result value for Hemoglobin') as HTMLInputElement).value).toBe('7.9');
+    expect(screen.getByLabelText<HTMLInputElement>('Result value for Hemoglobin').value).toBe(
+      '7.9',
+    );
     expect(screen.queryByTestId('verification-status')).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Verify and prepare release' }));
@@ -38,18 +42,24 @@ describe('LAB-02 result-entry page', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Verify and prepare release' }));
     expect(screen.getByTestId('verification-status')).toBeTruthy();
 
-    fireEvent.change(screen.getByLabelText('Result value for Sodium'), { target: { value: '140' } });
+    fireEvent.change(screen.getByLabelText('Result value for Sodium'), {
+      target: { value: '140' },
+    });
     expect(screen.queryByTestId('verification-status')).toBeNull();
-    expect((screen.getByLabelText('Result value for Sodium') as HTMLInputElement).value).toBe('140');
+    expect(screen.getByLabelText<HTMLInputElement>('Result value for Sodium').value).toBe('140');
   });
 
   it('keeps typed work and blocks verification when the signed-in user is the enterer', () => {
     renderPage({ currentUser: entererSubject });
-    fireEvent.change(screen.getByLabelText('Result value for Potassium'), { target: { value: '6.9' } });
-    const button = screen.getByRole('button', { name: 'Verify and prepare release' }) as HTMLButtonElement;
+    fireEvent.change(screen.getByLabelText('Result value for Potassium'), {
+      target: { value: '6.9' },
+    });
+    const button = screen.getByRole<HTMLButtonElement>('button', {
+      name: 'Verify and prepare release',
+    });
     expect(button.disabled).toBe(true);
     expect(screen.getByTestId('verify-blocked')).toBeTruthy();
-    expect((screen.getByLabelText('Result value for Potassium') as HTMLInputElement).value).toBe('6.9');
+    expect(screen.getByLabelText<HTMLInputElement>('Result value for Potassium').value).toBe('6.9');
     expect(screen.queryByTestId('verification-status')).toBeNull();
   });
 

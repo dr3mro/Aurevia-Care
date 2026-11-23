@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { FormEvent } from 'react';
+import type { SyntheticEvent } from 'react';
 import { Button } from '../../components/Button';
 import { FormField } from '../../components/FormField';
 import { MixedScriptText } from '../../components/MixedScriptText';
@@ -30,7 +30,7 @@ export function FindOrderPanel({ orders, selectedId, onSelect }: FindOrderPanelP
   const [submittedQuery, setSubmittedQuery] = useState('');
   const results = findOrders(orders, mode, query);
 
-  function submit(event: FormEvent) {
+  function submit(event: SyntheticEvent) {
     // Filtering is live; the explicit Find action gives keyboard users a
     // predictable submit affordance and keeps the query in local state.
     event.preventDefault();
@@ -38,7 +38,10 @@ export function FindOrderPanel({ orders, selectedId, onSelect }: FindOrderPanelP
   }
 
   return (
-    <section aria-label={labText(locale, 'findOrder')} style={{ display: 'grid', gap: tokens.spacing.md }}>
+    <section
+      aria-label={labText(locale, 'findOrder')}
+      style={{ display: 'grid', gap: tokens.spacing.md }}
+    >
       <h3>{labText(locale, 'findOrder')}</h3>
       <div>
         <Button

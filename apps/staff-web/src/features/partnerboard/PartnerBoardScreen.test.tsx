@@ -28,7 +28,9 @@ describe('PartnerBoard', () => {
     expect(screen.getByText('Waiting: 3')).toBeTruthy();
     expect(screen.getByText('Stuck: 2')).toBeTruthy();
     expect(
-      screen.getByText(`Last checked: ${formatInstant(labBoard.lastCheckedAt, labBoard.timeZone, 'en')}`),
+      screen.getByText(
+        `Last checked: ${formatInstant(labBoard.lastCheckedAt, labBoard.timeZone, 'en')}`,
+      ),
     ).toBeTruthy();
   });
 
@@ -60,9 +62,7 @@ describe('PartnerBoard', () => {
     renderWithLocale(<PartnerBoard board={labBoard} locale="ar" />, 'ar');
 
     expect(document.documentElement.dir).toBe('rtl');
-    expect(
-      screen.getByRole('region', { name: 'لوحة الشريك: مختبر النور' }),
-    ).toBeTruthy();
+    expect(screen.getByRole('region', { name: 'لوحة الشريك: مختبر النور' })).toBeTruthy();
     expect(screen.getByText('قيد الانتظار: 3')).toBeTruthy();
     expect(screen.getByText('متعثر: 2')).toBeTruthy();
     const partnerName = screen.getByText('مختبر النور');
@@ -100,13 +100,19 @@ describe('PartnerBoardOverview fallback links', () => {
     expect(document.getElementById('fallback-lab')).toBeTruthy();
     expect(document.getElementById('fallback-imaging')).toBeTruthy();
     expect(document.getElementById('fallback-pharmacy')).toBeTruthy();
-    expect(screen.getAllByText('Manual workflows must record delivery and verification evidence.')).toHaveLength(3);
+    expect(
+      screen.getAllByText('Manual workflows must record delivery and verification evidence.'),
+    ).toHaveLength(3);
   });
 
   it('shows the synthetic-data notice on the overview', () => {
-    renderWithLocale(<PartnerBoardOverview boards={[labBoard, imagingBoard, pharmacyBoard]} locale="en" />);
+    renderWithLocale(
+      <PartnerBoardOverview boards={[labBoard, imagingBoard, pharmacyBoard]} locale="en" />,
+    );
     expect(
-      screen.getByText('Synthetic data only. No partner is connected; health and backlog are fixtures.'),
+      screen.getByText(
+        'Synthetic data only. No partner is connected; health and backlog are fixtures.',
+      ),
     ).toBeTruthy();
   });
 });

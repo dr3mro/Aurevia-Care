@@ -69,7 +69,11 @@ export function SideBySideComparison({ before, after, locale }: SideBySideCompar
       <thead>
         <tr>
           {headers.map((header) => (
-            <th key={header} scope="col" style={{ textAlign: 'start', paddingInline: tokens.spacing.sm }}>
+            <th
+              key={header}
+              scope="col"
+              style={{ textAlign: 'start', paddingInline: tokens.spacing.sm }}
+            >
               {header}
             </th>
           ))}
@@ -117,7 +121,12 @@ export function CorrectionForm({ values, locale, onChange, onSubmit }: Correctio
   return (
     <section
       aria-label={releaseText(locale, 'correctionRegion')}
-      style={{ border: `1px solid ${tokens.border}`, padding: tokens.spacing.md, display: 'grid', gap: tokens.spacing.sm }}
+      style={{
+        border: `1px solid ${tokens.border}`,
+        padding: tokens.spacing.md,
+        display: 'grid',
+        gap: tokens.spacing.sm,
+      }}
     >
       <h3>{releaseText(locale, 'correctionRegion')}</h3>
       <label htmlFor="release-change">{releaseText(locale, 'changeLabel')}</label>
@@ -140,11 +149,15 @@ export function CorrectionForm({ values, locale, onChange, onSubmit }: Correctio
         onChange={(event) => onChange({ ...values, reason: event.target.value })}
         style={{ minHeight: '64px' }}
       />
-      {missing && (
-        <p role="alert" id="release-correction-reason-error" data-testid="correction-reason-required">
+      {missing ? (
+        <p
+          role="alert"
+          id="release-correction-reason-error"
+          data-testid="correction-reason-required"
+        >
           {releaseText(locale, 'reasonRequiredError')}
         </p>
-      )}
+      ) : null}
       <button
         type="button"
         onClick={onSubmit}
@@ -172,7 +185,12 @@ export function WithdrawPanel({ reason, locale, onReasonChange, onSubmit }: With
   return (
     <section
       aria-label={releaseText(locale, 'withdrawalRegion')}
-      style={{ border: `1px solid ${tokens.border}`, padding: tokens.spacing.md, display: 'grid', gap: tokens.spacing.sm }}
+      style={{
+        border: `1px solid ${tokens.border}`,
+        padding: tokens.spacing.md,
+        display: 'grid',
+        gap: tokens.spacing.sm,
+      }}
     >
       <h3>{releaseText(locale, 'withdrawalRegion')}</h3>
       <p>{releaseText(locale, 'withdrawalConsequence')}</p>
@@ -187,11 +205,11 @@ export function WithdrawPanel({ reason, locale, onReasonChange, onSubmit }: With
         onChange={(event) => onReasonChange(event.target.value)}
         style={{ minHeight: '64px' }}
       />
-      {missing && (
+      {missing ? (
         <p role="alert" id="release-withdraw-reason-error" data-testid="withdraw-reason-required">
           {releaseText(locale, 'withdrawReasonError')}
         </p>
-      )}
+      ) : null}
       <button
         type="button"
         onClick={onSubmit}
@@ -217,7 +235,12 @@ export function WithdrawnNotice({ detail, locale }: WithdrawnNoticeProps) {
     <div
       role="alert"
       data-testid="withdrawn-notice"
-      style={{ border: `2px solid ${tokens.foreground}`, padding: tokens.spacing.md, display: 'grid', gap: tokens.spacing.sm }}
+      style={{
+        border: `2px solid ${tokens.foreground}`,
+        padding: tokens.spacing.md,
+        display: 'grid',
+        gap: tokens.spacing.sm,
+      }}
     >
       <strong>{releaseText(locale, 'withdrawnHeading')}</strong>
       <p>{releaseText(locale, 'withdrawnDetail')}</p>
@@ -232,7 +255,9 @@ export function WithdrawnNotice({ detail, locale }: WithdrawnNoticeProps) {
         </dd>
         <dt>{releaseText(locale, 'withdrawnAt')}</dt>
         <dd>
-          <time dateTime={detail.recordedAt}>{formatWithdrawalTime(detail.recordedAt, locale)}</time>
+          <time dateTime={detail.recordedAt}>
+            {formatWithdrawalTime(detail.recordedAt, locale)}
+          </time>
         </dd>
       </dl>
     </div>
@@ -251,7 +276,12 @@ export function ReleaseStatusPanel({ state, locale }: ReleaseStatusPanelProps) {
   return (
     <section
       aria-label={releaseText(locale, 'statusRegion')}
-      style={{ border: `1px solid ${tokens.border}`, padding: tokens.spacing.md, display: 'grid', gap: tokens.spacing.sm }}
+      style={{
+        border: `1px solid ${tokens.border}`,
+        padding: tokens.spacing.md,
+        display: 'grid',
+        gap: tokens.spacing.sm,
+      }}
     >
       <h3>{releaseText(locale, 'statusRegion')}</h3>
       <p data-testid="release-state">
@@ -306,23 +336,28 @@ export function ReleaseScreen({
         <h2>{releaseText(locale, 'title')}</h2>
         <p>{releaseText(locale, 'syntheticNotice')}</p>
       </header>
-      {withdrawal !== null && <WithdrawnNotice detail={withdrawal} locale={locale} />}
+      {withdrawal !== null ? <WithdrawnNotice detail={withdrawal} locale={locale} /> : null}
       <SideBySideComparison before={before} after={after} locale={locale} />
-      <CorrectionForm values={correction} locale={locale} onChange={onCorrectionChange} onSubmit={onCorrect} />
-      {!withdrawn && (
+      <CorrectionForm
+        values={correction}
+        locale={locale}
+        onChange={onCorrectionChange}
+        onSubmit={onCorrect}
+      />
+      {!withdrawn ? (
         <WithdrawPanel
           reason={withdrawReason}
           locale={locale}
           onReasonChange={onWithdrawReasonChange}
           onSubmit={onWithdraw}
         />
-      )}
+      ) : null}
       <ReleaseStatusPanel state={state} locale={locale} />
-      {correctionNotice !== null && (
+      {correctionNotice !== null ? (
         <p role="status" data-testid="correction-status">
           {correctionNotice}
         </p>
-      )}
+      ) : null}
     </div>
   );
 }

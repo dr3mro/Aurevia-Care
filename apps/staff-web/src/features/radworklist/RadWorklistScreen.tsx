@@ -1,16 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Button } from '../../components/Button';
 import { FormField } from '../../components/FormField';
 import { MixedScriptText } from '../../components/MixedScriptText';
 import { displayLocalName, formatInstant } from '../../i18n/format';
 import { useI18n } from '../../i18n/I18nProvider';
 import { useTheme } from '../../theme/ThemeProvider';
-import {
-  STATUS_FILTERS,
-  canHandoff,
-  canLinkStudy,
-  canSchedule,
-} from './domain';
+import { STATUS_FILTERS, canHandoff, canLinkStudy, canSchedule } from './domain';
 import type { ImagingWorklistOrder, StatusFilter } from './domain';
 import { modalityMessageKey, radworklistText, statusMessageKey, urgencyMessageKey } from './labels';
 import { ScheduleForm } from './ScheduleForm';
@@ -56,9 +51,11 @@ export function RadWorklistScreen({
 
   // A reload, filter change or tenant switch supplies a fresh projection; a
   // local id from a previous tenant is never carried forward.
-  useEffect(() => {
+  const [source, setSource] = useState({ organizationId, orders });
+  if (source.organizationId !== organizationId || source.orders !== orders) {
+    setSource({ organizationId, orders });
     setSelectedId(orders[0]?.orderId);
-  }, [organizationId, orders]);
+  }
 
   const selected = orders.find((order) => order.orderId === selectedId);
 
@@ -73,7 +70,11 @@ export function RadWorklistScreen({
         onChange={onSiteChange}
         placeholder="site-rad-main"
       />
-      <div role="group" aria-label={text('worklistStatus')} style={{ display: 'flex', gap: tokens.spacing.sm }}>
+      <div
+        role="group"
+        aria-label={text('worklistStatus')}
+        style={{ display: 'flex', gap: tokens.spacing.sm }}
+      >
         {STATUS_FILTERS.map((option) => (
           <Button key={option} pressed={filter === option} onClick={() => onFilterChange(option)}>
             {option === 'all' ? text('allStatuses') : text(statusMessageKey[option])}
@@ -134,7 +135,9 @@ export function RadWorklistScreen({
                   </td>
                   <td>{order.accession ?? text('notRecorded')}</td>
                   <td>
-                    <Button onClick={() => setSelectedId(order.orderId)}>{text('openOrder')}</Button>
+                    <Button onClick={() => setSelectedId(order.orderId)}>
+                      {text('openOrder')}
+                    </Button>
                   </td>
                 </tr>
               );
@@ -148,15 +151,15 @@ export function RadWorklistScreen({
         <div style={{ display: 'grid', gap: tokens.spacing.md }}>
           <h3>{selected.orderCode}</h3>
           <StatusBadge status={selected.status} locale={locale} />
-          {canSchedule(selected) && (
+          {canSchedule(selected) ? (
             <ScheduleForm order={selected} onSubmit={(draft) => onSchedule(selected, draft)} />
-          )}
-          {canLinkStudy(selected) && (
+          ) : null}
+          {canLinkStudy(selected) ? (
             <StudyLinkForm order={selected} onLink={(draft) => onLink(selected, draft)} />
-          )}
-          {canHandoff(selected) && (
+          ) : null}
+          {canHandoff(selected) ? (
             <Button onClick={() => onHandoff(selected)}>{text('handoff')}</Button>
-          )}
+          ) : null}
         </div>
       )}
     </section>

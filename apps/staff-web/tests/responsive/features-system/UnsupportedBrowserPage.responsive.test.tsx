@@ -1,8 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import {
-  UnsupportedBrowserPage,
-} from '../../../src/features/system/UnsupportedBrowserPage';
+import { UnsupportedBrowserPage } from '../../../src/features/system/UnsupportedBrowserPage';
 import { I18nProvider } from '../../../src/i18n/I18nProvider';
 import type { Locale } from '../../../src/i18n/messages';
 import { BREAKPOINT_MEDIA_QUERIES } from '../../../src/theme/breakpoints';
@@ -59,36 +57,36 @@ afterEach(() => {
 });
 
 describe('responsive UnsupportedBrowserPage (WEB-07, UX-01)', () => {
-  it.each(BREAKPOINTS)(
-    'keeps one centred page column and a single action at %s',
-    (breakpoint) => {
-      renderPage('en', breakpoint);
+  it.each(BREAKPOINTS)('keeps one centred page column and a single action at %s', (breakpoint) => {
+    renderPage('en', breakpoint);
 
-      const wrapper = pageWrapper();
-      expect(wrapper.getAttribute('data-breakpoint')).toBe(breakpoint);
-      expect(wrapper.className.split(/\s+/)).toContain('page');
+    const wrapper = pageWrapper();
+    expect(wrapper.getAttribute('data-breakpoint')).toBe(breakpoint);
+    expect(wrapper.className.split(/\s+/)).toContain('page');
 
-      const heading = screen.getByRole('heading', { level: 1, name: 'Unsupported browser or screen size' });
-      const detail = screen.getByText(
-        'This portal needs a supported desktop browser at least 768 pixels wide. No patient information is shown here.',
-      );
-      const action = screen.getByRole('button', { name: 'Go home' });
+    const heading = screen.getByRole('heading', {
+      level: 1,
+      name: 'Unsupported browser or screen size',
+    });
+    const detail = screen.getByText(
+      'This portal needs a supported desktop browser at least 768 pixels wide. No patient information is shown here.',
+    );
+    const action = screen.getByRole('button', { name: 'Go home' });
 
-      // The wrapper owns the whole page; the notice and its action stay inside.
-      expect(wrapper.contains(heading)).toBe(true);
-      expect(wrapper.contains(detail)).toBe(true);
-      expect(wrapper.contains(action)).toBe(true);
-      expect(screen.getAllByRole('button')).toHaveLength(1);
+    // The wrapper owns the whole page; the notice and its action stay inside.
+    expect(wrapper.contains(heading)).toBe(true);
+    expect(wrapper.contains(detail)).toBe(true);
+    expect(wrapper.contains(action)).toBe(true);
+    expect(screen.getAllByRole('button')).toHaveLength(1);
 
-      // No clinical data, navigation or shell chrome on the unsupported page.
-      expect(screen.queryByRole('navigation')).toBeNull();
-      expect(screen.queryByRole('table')).toBeNull();
-      expect(screen.queryByRole('textbox')).toBeNull();
+    // No clinical data, navigation or shell chrome on the unsupported page.
+    expect(screen.queryByRole('navigation')).toBeNull();
+    expect(screen.queryByRole('table')).toBeNull();
+    expect(screen.queryByRole('textbox')).toBeNull();
 
-      // The shared touch class supplies both target floors (24px fine, 44px coarse).
-      expect(action.className.split(/\s+/)).toContain('touch');
-    },
-  );
+    // The shared touch class supplies both target floors (24px fine, 44px coarse).
+    expect(action.className.split(/\s+/)).toContain('touch');
+  });
 
   it.each(BREAKPOINTS)(
     'wraps long English and Arabic text with logical properties at %s',

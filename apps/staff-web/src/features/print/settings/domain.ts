@@ -84,10 +84,13 @@ export function versionsForFacility(
   facilityCode: string,
 ): PrintProfileVersion[] {
   return entries
-    .filter((entry) => entry.organizationId === organizationId && entry.facilityCode === facilityCode)
-    .sort(
-      (left, right) =>
-        right.version - left.version || right.effectiveFrom.localeCompare(left.effectiveFrom),
+    .filter(
+      (entry) => entry.organizationId === organizationId && entry.facilityCode === facilityCode,
+    )
+    .sort((left, right) =>
+      right.version !== left.version
+        ? right.version - left.version
+        : right.effectiveFrom.localeCompare(left.effectiveFrom),
     );
 }
 
@@ -109,10 +112,12 @@ export function nextProfileVersion(
   organizationId: string,
   facilityCode: string,
 ): number {
-  return versionsForFacility(entries, organizationId, facilityCode).reduce(
-    (maximum, entry) => Math.max(maximum, entry.version),
-    0,
-  ) + 1;
+  return (
+    versionsForFacility(entries, organizationId, facilityCode).reduce(
+      (maximum, entry) => Math.max(maximum, entry.version),
+      0,
+    ) + 1
+  );
 }
 
 /**

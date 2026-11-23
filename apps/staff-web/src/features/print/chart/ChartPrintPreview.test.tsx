@@ -6,11 +6,7 @@ import type { Locale } from '../../../i18n/messages';
 import { ThemeProvider } from '../../../theme/ThemeProvider';
 import { ChartPrintPreview } from './ChartPrintPreview';
 import type { ChartPrintPreview as ChartPrintPreviewModel } from './domain';
-import {
-  syntheticChartPatient,
-  syntheticDraftReport,
-  syntheticSignedReport,
-} from './fixtures';
+import { syntheticChartPatient, syntheticDraftReport, syntheticSignedReport } from './fixtures';
 import { chartPrintText } from './labels';
 import { buildChartPrintPreview, buildSignedReportPreview, chartPrintSections } from './domain';
 
@@ -91,7 +87,9 @@ describe('chart summary print preview', () => {
         results: [],
       }),
     );
-    expect(screen.getByRole('list', { name: chartPrintText('en', 'included') }).children).toHaveLength(1);
+    expect(
+      screen.getByRole('list', { name: chartPrintText('en', 'included') }).children,
+    ).toHaveLength(1);
     expect(screen.getByText(`${chartPrintText('en', 'sectionVitals')}: 3`)).toBeTruthy();
     expect(screen.queryByText(chartPrintText('en', 'sectionProblems'))).toBeNull();
   });

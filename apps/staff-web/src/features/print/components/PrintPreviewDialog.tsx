@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { ReactNode, RefObject } from 'react';
 import { Button } from '../../../components/Button';
 import { ErrorState, ForbiddenState, LoadingState } from '../../../components/StateViews';
 import { useI18n } from '../../../i18n/I18nProvider';
@@ -35,11 +35,7 @@ export interface PrintPreviewDialogProps {
 const focusableSelector = 'button:not([disabled]), select:not([disabled]), input:not([disabled])';
 
 /** Ordered reason choices; the order is stable in both directions. */
-const printReasons: readonly PrintReason[] = [
-  'give-to-patient',
-  'referral',
-  'patient-request',
-];
+const printReasons: readonly PrintReason[] = ['give-to-patient', 'referral', 'patient-request'];
 
 /**
  * Shared modal preview for a patient handout. Displays the PDF, a language and
@@ -53,6 +49,45 @@ export function PrintPreviewDialog(props: PrintPreviewDialogProps) {
   // The body mounts only while open, so each opening starts with a fresh
   // language, reason and focus state.
   return <PrintDialogBody {...props} />;
+}
+
+/** Move focus into the modal, contain Tab inside it and restore focus on unmount. */
+function useModalFocus(
+  containerRef: RefObject<HTMLDivElement | null>,
+  closeRef: RefObject<HTMLButtonElement | null>,
+  onClose: () => void,
+): void {
+  useEffect(() => {
+    // The previous focus is always an element in a live document; restore it
+    // when the modal unmounts so the opener keeps its place (WCAG 2.4.3).
+    const previous = document.activeElement as HTMLElement;
+    closeRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+      if (event.key !== 'Tab') {
+        return;
+      }
+      const items = Array.from(
+        containerRef.current?.querySelectorAll<HTMLElement>(focusableSelector) ?? [],
+      );
+      const index = items.indexOf(document.activeElement as HTMLElement);
+      event.preventDefault();
+      if (event.shiftKey) {
+        items[index <= 0 ? items.length - 1 : index - 1]?.focus();
+      } else {
+        items[index < 0 || index === items.length - 1 ? 0 : index + 1]?.focus();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      previous.focus();
+    };
+  }, [onClose, containerRef, closeRef]);
 }
 
 /** Modal body with focus containment and the state-driven content. */
@@ -71,41 +106,11 @@ function PrintDialogBody({
   const closeRef = useRef<HTMLButtonElement>(null);
   const reasonErrorRef = useRef<HTMLParagraphElement>(null);
 
-  useEffect(() => {
-    // The previous focus is always an element in a live document; restore it
-    // when the modal unmounts so the opener keeps its place (WCAG 2.4.3).
-    const previous = document.activeElement as HTMLElement;
-    closeRef.current!.focus();
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        onClose();
-        return;
-      }
-      if (event.key !== 'Tab') {
-        return;
-      }
-      const items = Array.from(
-        containerRef.current!.querySelectorAll<HTMLElement>(focusableSelector),
-      );
-      const index = items.indexOf(document.activeElement as HTMLElement);
-      event.preventDefault();
-      if (event.shiftKey) {
-        items[index <= 0 ? items.length - 1 : index - 1]!.focus();
-      } else {
-        items[index < 0 || index === items.length - 1 ? 0 : index + 1]!.focus();
-      }
-    };
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('keydown', onKeyDown);
-      previous.focus();
-    };
-  }, [onClose]);
+  useModalFocus(containerRef, closeRef, onClose);
 
   useEffect(() => {
     if (showReasonError) {
-      reasonErrorRef.current!.focus();
+      reasonErrorRef.current?.focus();
     }
   }, [showReasonError]);
 

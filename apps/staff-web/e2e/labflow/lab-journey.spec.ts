@@ -15,19 +15,14 @@ import type { SyntheticLabApi } from './synthetic-lab-api';
  * no patient record, partner or credential is contacted.
  */
 
-/** Open a labelled synthetic context at the configured base URL. */
+/** Open a synthetic context at the configured base URL. */
 async function newRole(
   browser: Browser,
   baseURL: string | undefined,
-  role: string,
 ): Promise<{ context: BrowserContext; page: Page }> {
-  const context = await browser.newContext(
-    baseURL === undefined ? {} : { baseURL },
-  );
+  const context = await browser.newContext(baseURL === undefined ? {} : { baseURL });
   const page = await context.newPage();
-  // The role label is recorded in the trace title, never in clinical data.
   context.setDefaultTimeout(10_000);
-  void role;
   return { context, page };
 }
 
@@ -47,9 +42,7 @@ async function verifyIdentity(
   await page.locator('#lab-presented-patient').fill(patientId);
   await page.locator('#lab-presented-accession').fill(accessionNo);
   await page.locator('#lab-presented-issuer').fill(issuer);
-  await page
-    .getByLabel('I matched both patient names on the wristband and requisition')
-    .check();
+  await page.getByLabel('I matched both patient names on the wristband and requisition').check();
   await page.getByLabel('I matched the accession number and issuer on the tube').check();
   await expect(page.getByTestId('match-status')).toContainText(
     'Patient and accession match. You may continue.',
@@ -60,15 +53,17 @@ test('synthetic lab journey: collect, reject, recollect, enter, verify, release 
   browser,
   baseURL,
 }) => {
-  const collector = await newRole(browser, baseURL, 'lab collector and enterer');
-  const verifier = await newRole(browser, baseURL, 'independent lab verifier');
-  const clinician = await newRole(browser, baseURL, 'clinician');
+  const collector = await newRole(browser, baseURL);
+  const verifier = await newRole(browser, baseURL);
+  const clinician = await newRole(browser, baseURL);
   const api: SyntheticLabApi = await installSyntheticLabApi(collector.page, baseURL);
 
   try {
     await test.step('the collector collects a matched specimen and prints its label', async () => {
       await collector.page.goto('/lab/accessions');
-      await expect(collector.page.getByRole('heading', { name: 'Specimen collection desk' })).toBeVisible();
+      await expect(
+        collector.page.getByRole('heading', { name: 'Specimen collection desk' }),
+      ).toBeVisible();
       await openOrder(collector.page, 'ACC-100');
       await verifyIdentity(collector.page, 'patient-100', 'ACC-100', 'SYN-ISSUER');
 
@@ -79,7 +74,9 @@ test('synthetic lab journey: collect, reject, recollect, enter, verify, release 
       await collector.page.locator('#lab-quality').fill('ACCEPTABLE');
       await collector.page.getByRole('button', { name: 'Record collection' }).click();
 
-      await expect(collector.page.getByTestId('collection-status')).toHaveText('Collection recorded.');
+      await expect(collector.page.getByTestId('collection-status')).toHaveText(
+        'Collection recorded.',
+      );
       expect(api.calls).toContain('POST /api/v1/lab/specimens/accession-100/collect');
       expect(api.accessions.find((item) => item.id === 'accession-100')?.state).toBe('collected');
 
@@ -87,7 +84,9 @@ test('synthetic lab journey: collect, reject, recollect, enter, verify, release 
       // the identity before using the label action, as a collector would.
       await verifyIdentity(collector.page, 'patient-100', 'ACC-100', 'SYN-ISSUER');
       await collector.page.getByRole('button', { name: 'Print label sheet' }).click();
-      await expect(collector.page.getByRole('heading', { name: 'Specimen label sheet' })).toBeVisible();
+      await expect(
+        collector.page.getByRole('heading', { name: 'Specimen label sheet' }),
+      ).toBeVisible();
       await expect(collector.page.locator('code', { hasText: 'ACC-100' }).first()).toBeVisible();
     });
 
@@ -98,7 +97,9 @@ test('synthetic lab journey: collect, reject, recollect, enter, verify, release 
       await collector.page.getByLabel('Notify the patient (where policy allows)').check();
       await collector.page.getByRole('button', { name: 'Reject specimen' }).click();
 
-      await expect(collector.page.getByTestId('collection-status')).toHaveText('Specimen rejected.');
+      await expect(collector.page.getByTestId('collection-status')).toHaveText(
+        'Specimen rejected.',
+      );
       expect(api.calls).toContain('POST /api/v1/lab/specimens/accession-200/reject');
       const rejected = api.accessions.find((item) => item.id === 'accession-200');
       expect(rejected?.state).toBe('rejected');
@@ -132,8 +133,9 @@ test('synthetic lab journey: collect, reject, recollect, enter, verify, release 
 
     await test.step('the enterer keys a value and the independent verifier verifies it', async () => {
       await collector.page.goto('/lab/results/entry');
-      const hemoglobin =
-        collector.page.getByRole('textbox', { name: 'Result value for Hemoglobin' });
+      const hemoglobin = collector.page.getByRole('textbox', {
+        name: 'Result value for Hemoglobin',
+      });
       await hemoglobin.fill('7.6');
       await expect(
         collector.page.getByRole('heading', { name: 'Laboratory result entry and verification' }),
@@ -157,8 +159,12 @@ test('synthetic lab journey: collect, reject, recollect, enter, verify, release 
       await expect(
         clinician.page.getByRole('heading', { name: 'Laboratory report release and corrections' }),
       ).toBeVisible();
-      await expect(clinician.page.getByTestId('release-state')).toContainText('Report state: Final');
-      await expect(clinician.page.getByTestId('release-status-clinician')).toContainText('Released');
+      await expect(clinician.page.getByTestId('release-state')).toContainText(
+        'Report state: Final',
+      );
+      await expect(clinician.page.getByTestId('release-status-clinician')).toContainText(
+        'Released',
+      );
       await expect(clinician.page.getByTestId('release-status-patient')).toContainText('Released');
       await expect(clinician.page.getByTestId('diff-hemoglobin')).toHaveAttribute(
         'data-change',
@@ -175,7 +181,9 @@ test('synthetic lab journey: collect, reject, recollect, enter, verify, release 
     });
 
     await test.step('a recorded correction keeps the report visible to both audiences', async () => {
-      await expect(clinician.page.getByRole('button', { name: 'Record correction' })).toBeDisabled();
+      await expect(
+        clinician.page.getByRole('button', { name: 'Record correction' }),
+      ).toBeDisabled();
       await expect(clinician.page.getByTestId('correction-reason-required')).toBeVisible();
       await clinician.page
         .locator('#release-correction-reason')
@@ -188,7 +196,9 @@ test('synthetic lab journey: collect, reject, recollect, enter, verify, release 
       await expect(clinician.page.getByTestId('correction-status')).toContainText(
         'Corrected by synthetic.lab.supervisor',
       );
-      await expect(clinician.page.getByTestId('release-status-clinician')).toContainText('Released');
+      await expect(clinician.page.getByTestId('release-status-clinician')).toContainText(
+        'Released',
+      );
       await expect(clinician.page.getByTestId('release-status-patient')).toContainText('Released');
     });
 
@@ -199,7 +209,9 @@ test('synthetic lab journey: collect, reject, recollect, enter, verify, release 
       ).toBeVisible();
       await expect(clinician.page.getByTestId('turnaround-column')).toHaveCount(5);
       await expect(clinician.page.getByTestId('outage-banner')).toBeVisible();
-      await expect(clinician.page.getByRole('link', { name: 'Open the manual route' })).toBeVisible();
+      await expect(
+        clinician.page.getByRole('link', { name: 'Open the manual route' }),
+      ).toBeVisible();
     });
   } finally {
     await collector.context.close();
@@ -212,8 +224,8 @@ test('safety barriers block an unsafe collection, an empty rejection and an unre
   browser,
   baseURL,
 }) => {
-  const collector = await newRole(browser, baseURL, 'lab collector');
-  const clinician = await newRole(browser, baseURL, 'clinician');
+  const collector = await newRole(browser, baseURL);
+  const clinician = await newRole(browser, baseURL);
   const api: SyntheticLabApi = await installSyntheticLabApi(collector.page, baseURL);
   try {
     await test.step('a mismatched patient identifier blocks collection', async () => {

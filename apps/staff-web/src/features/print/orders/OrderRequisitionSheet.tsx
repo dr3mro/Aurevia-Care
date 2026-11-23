@@ -43,7 +43,10 @@ export function OrderRequisitionSheet({ orders, language }: OrderRequisitionShee
           key={order.id}
           data-order-entry="true"
           data-order-id={order.id}
-          style={{ borderBlockStart: `1px solid ${tokens.border}`, paddingBlockStart: tokens.spacing.sm }}
+          style={{
+            borderBlockStart: `1px solid ${tokens.border}`,
+            paddingBlockStart: tokens.spacing.sm,
+          }}
         >
           <dl>
             <div>

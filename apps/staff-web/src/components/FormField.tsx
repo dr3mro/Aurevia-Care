@@ -35,6 +35,7 @@ export function FormField({
   const { tokens } = useTheme();
   const breakpoint = useBreakpoint();
   const coarsePointer = usePointerCoarse();
+  const hasError = error !== undefined && error !== '';
   return (
     <div
       className="stack"
@@ -49,8 +50,8 @@ export function FormField({
         value={value}
         placeholder={placeholder}
         className="field touch"
-        aria-invalid={error ? true : undefined}
-        aria-describedby={error ? `${id}-error` : undefined}
+        aria-invalid={hasError ? true : undefined}
+        aria-describedby={hasError ? `${id}-error` : undefined}
         onChange={(event) => onChange(event.target.value)}
         style={{
           paddingBlock: tokens.spacing.sm,
@@ -60,7 +61,7 @@ export function FormField({
           color: tokens.foreground,
         }}
       />
-      {error ? (
+      {hasError ? (
         <p id={`${id}-error`} role="alert">
           {error}
         </p>

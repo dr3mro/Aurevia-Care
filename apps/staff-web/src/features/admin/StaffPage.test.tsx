@@ -14,6 +14,7 @@ import { ThemeProvider } from '../../theme/ThemeProvider';
 import type { StaffHistoryResponse, StaffPageResponse } from './api';
 import { alphaOrganizationId, betaOrganizationId } from './fixtures';
 import { StaffPage } from './StaffPage';
+import { must } from '../../../tests/must';
 
 vi.mock('../../api/transport', async (importOriginal) => {
   const actual = await importOriginal<typeof TransportModule>();
@@ -22,11 +23,16 @@ vi.mock('../../api/transport', async (importOriginal) => {
 
 const sendMock = vi.mocked(send);
 
-function staffPage(items: StaffPageResponse['items'] = [], nextCursor: string | null = null): StaffPageResponse {
+function staffPage(
+  items: StaffPageResponse['items'] = [],
+  nextCursor: string | null = null,
+): StaffPageResponse {
   return { items, nextCursor };
 }
 
-function member(overrides: Partial<StaffPageResponse['items'][number]> = {}): StaffPageResponse['items'][number] {
+function member(
+  overrides: Partial<StaffPageResponse['items'][number]> = {},
+): StaffPageResponse['items'][number] {
   return {
     subject: 'synthetic.reception',
     displayName: 'Synthetic Reception',
@@ -60,7 +66,7 @@ function historyView(
 }
 
 function descriptorAt(call: number): RequestDescriptor {
-  return sendMock.mock.calls[call]![0] as RequestDescriptor;
+  return must(sendMock.mock.calls[call])[0];
 }
 
 function element(ui: ReactElement, organizationId: string, locale: Locale = 'en') {
@@ -94,8 +100,12 @@ function deferred<T>() {
 }
 
 function fillInviteForm() {
-  fireEvent.change(screen.getByLabelText('Staff subject'), { target: { value: 'synthetic.auditor' } });
-  fireEvent.change(screen.getByLabelText('Display name'), { target: { value: 'Synthetic Auditor' } });
+  fireEvent.change(screen.getByLabelText('Staff subject'), {
+    target: { value: 'synthetic.auditor' },
+  });
+  fireEvent.change(screen.getByLabelText('Display name'), {
+    target: { value: 'Synthetic Auditor' },
+  });
   fireEvent.change(screen.getByLabelText('Bounded role'), { target: { value: 'privacy_auditor' } });
 }
 
@@ -172,7 +182,14 @@ describe('StaffPage invitation', () => {
     wrap(<StaffPage />);
     await screen.findByText('Synthetic Reception');
     fillInviteForm();
-    sendMock.mockResolvedValueOnce(member({ subject: 'synthetic.auditor', displayName: 'Synthetic Auditor', status: 'active', roles: ['privacy_auditor'] }));
+    sendMock.mockResolvedValueOnce(
+      member({
+        subject: 'synthetic.auditor',
+        displayName: 'Synthetic Auditor',
+        status: 'active',
+        roles: ['privacy_auditor'],
+      }),
+    );
 
     fireEvent.click(screen.getByRole('button', { name: 'Invite staff' }));
 
@@ -188,7 +205,7 @@ describe('StaffPage invitation', () => {
     expect(command.headers['Idempotency-Key']).toMatch(/^[0-9a-f-]{36}$/);
     expect(descriptorAt(2).method).toBe('GET');
     expect(await screen.findByText('Invited Synthetic Auditor')).toBeTruthy();
-    expect((screen.getByLabelText('Staff subject') as HTMLInputElement).value).toBe('');
+    expect(screen.getByLabelText<HTMLInputElement>('Staff subject').value).toBe('');
   });
 
   it('shows a linked error summary and sends no command for an invalid draft', async () => {
@@ -242,7 +259,9 @@ describe('StaffPage invitation', () => {
 
     expect(await screen.findByText(stateViewText('en', 'conflict'))).toBeTruthy();
     expect(screen.getByRole('table')).toBeTruthy();
-    expect((screen.getByLabelText('Staff subject') as HTMLInputElement).value).toBe('synthetic.auditor');
+    expect(screen.getByLabelText<HTMLInputElement>('Staff subject').value).toBe(
+      'synthetic.auditor',
+    );
     expect(sendMock).toHaveBeenCalledTimes(2);
   });
 
@@ -263,9 +282,9 @@ describe('StaffPage invitation', () => {
     await screen.findByText('Synthetic Reception');
     fillInviteForm();
 
-    const submit = screen.getByRole('button', { name: 'Invite staff' }) as HTMLButtonElement;
+    const submit = screen.getByRole<HTMLButtonElement>('button', { name: 'Invite staff' });
     expect(submit.type).toBe('submit');
-    fireEvent.submit(submit.closest('form')!);
+    fireEvent.submit(must(submit.closest<HTMLElement>('form')));
 
     await waitFor(() => expect(sendMock).toHaveBeenCalledTimes(3));
   });
@@ -298,7 +317,9 @@ describe('StaffPage deactivation', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Deactivate' }));
 
     expect(await screen.findByRole('alert', { name: 'Fix the following fields' })).toBeTruthy();
-    expect(screen.getByLabelText('Reason for deactivation').getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByLabelText('Reason for deactivation').getAttribute('aria-invalid')).toBe(
+      'true',
+    );
     expect(screen.getByRole('dialog')).toBeTruthy();
     expect(sendMock).toHaveBeenCalledTimes(1);
   });
@@ -320,7 +341,11 @@ describe('StaffPage deactivation', () => {
     expect(command.body).toBeUndefined();
     expect(command.headers['Idempotency-Key']).toMatch(/^[0-9a-f-]{36}$/);
     expect(descriptorAt(2).method).toBe('GET');
-    expect(await screen.findByText('Deactivated Synthetic Reception. Reason entered: Synthetic offboarding (not stored by the API)')).toBeTruthy();
+    expect(
+      await screen.findByText(
+        'Deactivated Synthetic Reception. Reason entered: Synthetic offboarding (not stored by the API)',
+      ),
+    ).toBeTruthy();
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
@@ -392,8 +417,14 @@ describe('StaffPage history', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'History' }));
 
-    expect(await screen.findByRole('table', { name: 'Staff membership and role-grant history' })).toBeTruthy();
-    expect(within(screen.getByRole('table', { name: 'Staff membership and role-grant history' })).getByText('reception')).toBeTruthy();
+    expect(
+      await screen.findByRole('table', { name: 'Staff membership and role-grant history' }),
+    ).toBeTruthy();
+    expect(
+      within(
+        screen.getByRole('table', { name: 'Staff membership and role-grant history' }),
+      ).getByText('reception'),
+    ).toBeTruthy();
     const command = descriptorAt(1);
     expect(command.method).toBe('GET');
     expect(command.url).toBe('/api/v1/staff/synthetic.reception/history');
@@ -450,17 +481,23 @@ describe('StaffPage history', () => {
     sendMock.mockResolvedValueOnce(historyView());
 
     fireEvent.click(screen.getByRole('button', { name: 'History' }));
-    expect(await screen.findByRole('table', { name: 'Staff membership and role-grant history' })).toBeTruthy();
+    expect(
+      await screen.findByRole('table', { name: 'Staff membership and role-grant history' }),
+    ).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Close history' }));
-    expect(screen.queryByRole('table', { name: 'Staff membership and role-grant history' })).toBeNull();
+    expect(
+      screen.queryByRole('table', { name: 'Staff membership and role-grant history' }),
+    ).toBeNull();
   });
 });
 
 describe('StaffPage paging and tenant switching', () => {
   it('appends the next page while a cursor exists', async () => {
     sendMock.mockResolvedValueOnce(staffPage([member()], 'cursor-2'));
-    sendMock.mockResolvedValueOnce(staffPage([member({ subject: 'synthetic.auditor', displayName: 'Synthetic Auditor' })]));
+    sendMock.mockResolvedValueOnce(
+      staffPage([member({ subject: 'synthetic.auditor', displayName: 'Synthetic Auditor' })]),
+    );
 
     wrap(<StaffPage />);
     expect(await screen.findByText('Synthetic Reception')).toBeTruthy();
@@ -497,7 +534,9 @@ describe('admin staff routes', () => {
 
   it('lazily loads the registered staff page with live data', async () => {
     sendMock.mockResolvedValue(staffPage([member()]));
-    const route = createRoutes(false).find((candidate) => candidate.pattern === '/admin/staff')!;
+    const route = must(
+      createRoutes(false).find((candidate) => candidate.pattern === '/admin/staff'),
+    );
     const Page = route.component;
 
     render(

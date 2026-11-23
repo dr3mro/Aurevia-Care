@@ -22,7 +22,10 @@ export function CollectionForm({ value, onChange, onCollect, disabled }: Collect
   const { tokens } = useTheme();
 
   return (
-    <section aria-label={labText(locale, 'specimenDetails')} style={{ display: 'grid', gap: tokens.spacing.md }}>
+    <section
+      aria-label={labText(locale, 'specimenDetails')}
+      style={{ display: 'grid', gap: tokens.spacing.md }}
+    >
       <h3>{labText(locale, 'specimenDetails')}</h3>
       <FormField
         id="lab-specimen-type"

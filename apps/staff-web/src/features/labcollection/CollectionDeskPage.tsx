@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useActiveOrganization } from '../../api/activeOrganization';
 import { TransportError } from '../../api/transport';
 import { useApi } from '../../api/useApi';
@@ -7,13 +7,14 @@ import { EmptyState, LoadingState, StateView } from '../../components/StateViews
 import { useI18n } from '../../i18n/I18nProvider';
 import { useTheme } from '../../theme/ThemeProvider';
 import { CollectionDeskScreen } from './CollectionDeskScreen';
-import { collectSpecimen, listAccessions, readLabel, rejectSpecimen, toCollectionOrder } from './api';
-import type {
-  AccessionPageResponse,
-  AccessionViewResponse,
-  CollectBody,
-  RejectBody,
+import {
+  collectSpecimen,
+  listAccessions,
+  readLabel,
+  rejectSpecimen,
+  toCollectionOrder,
 } from './api';
+import type { AccessionPageResponse, AccessionViewResponse, CollectBody, RejectBody } from './api';
 import type { CollectionOrder, LabelData } from './domain';
 import { labText } from './messages';
 
@@ -45,6 +46,12 @@ function toTransportError(failure: unknown): TransportError {
  */
 export function CollectionDeskPage() {
   const organizationId = useActiveOrganization();
+  // A tenant switch remounts the desk, which invalidates every accumulated
+  // page and every local draft.
+  return <CollectionDeskContent key={organizationId} organizationId={organizationId} />;
+}
+
+function CollectionDeskContent({ organizationId }: { organizationId: string }) {
   const { locale } = useI18n();
   const { tokens } = useTheme();
   const [cursor, setCursor] = useState<string | undefined>(undefined);
@@ -54,34 +61,22 @@ export function CollectionDeskPage() {
   const [label, setLabel] = useState<LabelData | undefined>(undefined);
   const [commandError, setCommandError] = useState<TransportError | undefined>(undefined);
   const [statusMessage, setStatusMessage] = useState('');
+  const [appliedPage, setAppliedPage] = useState<AccessionPageResponse | undefined>(undefined);
 
   const result = useApi<AccessionPageResponse>(
     () => listAccessions({ cursor }, organizationId),
     [cursor],
   );
 
-  useEffect(() => {
-    if (result.status !== 'ready') {
-      return;
-    }
+  if (result.status === 'ready' && result.data !== appliedPage) {
     const page = result.data;
+    setAppliedPage(page);
     setAccumulated((current) => ({
       organizationId,
       items: [...(current.organizationId === organizationId ? current.items : []), ...page.items],
     }));
     setNextCursor(page.nextCursor ?? undefined);
-  }, [result.status, result.data, organizationId]);
-
-  // A tenant switch invalidates every accumulated page and every local draft.
-  useEffect(() => {
-    setCursor(undefined);
-    setAccumulated(emptyPages);
-    setNextCursor(undefined);
-    setSelectedId(undefined);
-    setLabel(undefined);
-    setCommandError(undefined);
-    setStatusMessage('');
-  }, [organizationId]);
+  }
 
   // Derive the visible rows during render, not in the reset effect: a tenant
   // switch must never paint the previous tenant's rows under the new tenant id.
@@ -150,11 +145,11 @@ export function CollectionDeskPage() {
 
   return (
     <div style={{ display: 'grid', gap: tokens.spacing.lg }}>
-      {visibleCommandError !== undefined && (
+      {visibleCommandError !== undefined ? (
         <div data-testid="collection-command-error">
           {StateView.forTransportError(visibleCommandError)}
         </div>
-      )}
+      ) : null}
       {result.status === 'loading' && loaded.length === 0 ? (
         <LoadingState />
       ) : result.status === 'error' && loaded.length === 0 ? (
@@ -170,15 +165,21 @@ export function CollectionDeskPage() {
             label={label}
             statusMessage={statusMessage}
             organizationId={organizationId}
-            onCollect={handleCollect}
-            onPrint={handlePrint}
-            onReject={handleReject}
+            onCollect={(order, body) => {
+              void handleCollect(order, body);
+            }}
+            onPrint={(order) => {
+              void handlePrint(order);
+            }}
+            onReject={(order, body) => {
+              void handleReject(order, body);
+            }}
           />
-          {nextCursor !== undefined && (
+          {nextCursor !== undefined ? (
             <Button onClick={handleLoadMore} disabled={result.status === 'loading'}>
               {labText(locale, 'loadMore')}
             </Button>
-          )}
+          ) : null}
         </>
       )}
     </div>

@@ -34,20 +34,19 @@ export function PatientOverviewScreen({ overview, locale }: PatientOverviewScree
       <header style={{ display: 'grid', gap: tokens.spacing.sm }}>
         <h2>{patientsText(locale, 'overviewTitle')}</h2>
         <p style={{ marginBlock: 0 }}>
-          <MixedScriptText
-            text={patient.displayName}
-            lang={languageForName(patient.displayName)}
-          />
+          <MixedScriptText text={patient.displayName} lang={languageForName(patient.displayName)} />
           {' · '}
           <MixedScriptText text={patient.id} lang="en" />
         </p>
       </header>
-      <section aria-label={patientsText(locale, 'identity')} style={{ display: 'grid', gap: tokens.spacing.sm }}>
+      <section
+        aria-label={patientsText(locale, 'identity')}
+        style={{ display: 'grid', gap: tokens.spacing.sm }}
+      >
         <h3>{patientsText(locale, 'identity')}</h3>
         <div className="grid-2" data-part="identity-fields">
           <p>
-            <b>{patientsText(locale, 'mrn')}:</b>{' '}
-            <MixedScriptText text={patient.mrn} lang="en" />
+            <b>{patientsText(locale, 'mrn')}:</b> <MixedScriptText text={patient.mrn} lang="en" />
           </p>
           <p>
             <b>{patientsText(locale, 'issuer')}:</b>{' '}

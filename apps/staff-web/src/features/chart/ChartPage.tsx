@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useActiveOrganization } from '../../api/activeOrganization';
 import { useApi } from '../../api/useApi';
 import { useRoute } from '../../app/router';
@@ -14,8 +14,53 @@ import type { ChartEntryResponse, ChartViewResponse, PatientViewResponse } from 
 import { LongitudinalChart } from './LongitudinalChart';
 import { chartText } from './messages';
 
+/** Keyboard-focusable scroll regions join the natural tab order. */
+const FOCUSABLE_TAB_INDEX = 0;
+
 /** One resolved chart page together with the patient that owns it. */
-type ChartPageData = { patient: PatientViewResponse; chart: ChartViewResponse };
+interface ChartPageData {
+  patient: PatientViewResponse;
+  chart: ChartViewResponse;
+}
+
+/** Accumulated chart pages for one organization and patient. */
+function useChartPages(organizationId: string, patientId: string) {
+  const [cursor, setCursor] = useState<string | undefined>(undefined);
+  const [accumulated, setAccumulated] = useState<readonly ChartEntryResponse[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
+  const [patientName, setPatientName] = useState<string | undefined>(undefined);
+
+  const result = useApi<ChartPageData>(
+    () =>
+      Promise.all([
+        getPatient(patientId, organizationId),
+        listChartEntries(patientId, organizationId, cursor),
+      ]).then(([patient, chart]) => ({ patient, chart })),
+    [patientId, organizationId, cursor],
+  );
+
+  // Adjust state while rendering, never in an effect: a switch of organization
+  // or patient invalidates every accumulated page, and each newly resolved
+  // page is appended exactly once (tracked by the identity of its data object,
+  // so an unrelated render never duplicates entries).
+  const scope = `${organizationId}\u0000${patientId}`;
+  const [appliedScope, setAppliedScope] = useState(scope);
+  const [appliedData, setAppliedData] = useState<ChartPageData | undefined>(undefined);
+  if (appliedScope !== scope) {
+    setAppliedScope(scope);
+    setAppliedData(result.data);
+    setCursor(undefined);
+    setAccumulated([]);
+    setNextCursor(undefined);
+    setPatientName(undefined);
+  } else if (result.status === 'ready' && result.data !== appliedData) {
+    setAppliedData(result.data);
+    setAccumulated((current) => [...current, ...result.data.chart.entries]);
+    setNextCursor(result.data.chart.nextCursor ?? undefined);
+    setPatientName(result.data.patient.patient.displayName);
+  }
+  return { result, accumulated, nextCursor, patientName, setCursor };
+}
 
 /**
  * API-backed longitudinal chart for `/patients/:id/chart`.
@@ -38,45 +83,14 @@ export function ChartPage() {
   const breakpoint = useBreakpoint();
   const { params } = useRoute();
   const patientId = params.id ?? '';
-  const [cursor, setCursor] = useState<string | undefined>(undefined);
-  const [accumulated, setAccumulated] = useState<readonly ChartEntryResponse[]>([]);
-  const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
-  const [patientName, setPatientName] = useState<string | undefined>(undefined);
-
-  const result = useApi<ChartPageData>(
-    () =>
-      Promise.all([
-        getPatient(patientId, organizationId),
-        listChartEntries(patientId, organizationId, cursor),
-      ]).then(([patient, chart]) => ({ patient, chart })),
-    [patientId, organizationId, cursor],
-  );
-
-  // Append each resolved page. The dependency is the page object, not the
-  // result wrapper, so an unrelated render never duplicates entries.
-  useEffect(() => {
-    if (result.status !== 'ready') {
-      return;
-    }
-    setAccumulated((current) => [...current, ...result.data.chart.entries]);
-    setNextCursor(result.data.chart.nextCursor ?? undefined);
-    setPatientName(result.data.patient.patient.displayName);
-  }, [result.status, result.data]);
-
-  // Switching organization or patient invalidates every accumulated page.
-  useEffect(() => {
-    setCursor(undefined);
-    setAccumulated([]);
-    setNextCursor(undefined);
-    setPatientName(undefined);
-  }, [patientId, organizationId]);
-
-  const chart = toChart(
-    { entries: accumulated },
+  const { result, accumulated, nextCursor, patientName, setCursor } = useChartPages(
     organizationId,
     patientId,
-    { latinName: patientName ?? patientId },
   );
+
+  const chart = toChart({ entries: accumulated }, organizationId, patientId, {
+    latinName: patientName ?? patientId,
+  });
 
   if (result.status === 'loading' && accumulated.length === 0) {
     return <LoadingState />;
@@ -115,8 +129,7 @@ export function ChartPage() {
           <b>{chartText(locale, 'patient')}:</b>{' '}
           <MixedScriptText text={displayLocalName(chart.patientName, locale)} lang={locale} />
           {' · '}
-          <b>{chartText(locale, 'patientId')}:</b>{' '}
-          <code dir="ltr">{patientId}</code>
+          <b>{chartText(locale, 'patientId')}:</b> <code dir="ltr">{patientId}</code>
         </p>
       </header>
       {accumulated.length === 0 ? (
@@ -128,7 +141,7 @@ export function ChartPage() {
           className="table-region"
           role="region"
           aria-label={chartText(locale, 'chart')}
-          tabIndex={0}
+          tabIndex={FOCUSABLE_TAB_INDEX}
         >
           <LongitudinalChart chart={chart} locale={locale} />
         </div>

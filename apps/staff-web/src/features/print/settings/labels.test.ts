@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { settingsKeys, settingsMessage, settingsMessages, settingsText } from './labels';
 
 /** Arabic letters only; Arabic-Indic digits and punctuation do not satisfy UX-01. */
-const ARABIC_LETTER = /[\u0621-\u063A\u0641-\u064A\u066E-\u066F\u0671-\u06D3\u06D5\u06FA-\u06FC\u06FF]/;
+const ARABIC_LETTER =
+  /[\u0621-\u063A\u0641-\u064A\u066E-\u066F\u0671-\u06D3\u06D5\u06FA-\u06FC\u06FF]/;
 const PLACEHOLDER = /\{\w+\}/g;
 
 /** Sorted placeholder names, so an Arabic reordering never changes the values. */
@@ -40,6 +41,8 @@ describe('print settings labels', () => {
       'Proposed print profile version 3.',
     );
     expect(settingsMessage('ar', 'approvedNotice', { version: '2' })).toContain('2');
-    expect(settingsMessage('en', 'proposalSaved')).toBe('Proposed print profile version {version}.');
+    expect(settingsMessage('en', 'proposalSaved')).toBe(
+      'Proposed print profile version {version}.',
+    );
   });
 });

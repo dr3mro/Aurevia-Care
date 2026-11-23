@@ -8,12 +8,7 @@
 import { buildRequestDescriptor } from '../../api/client';
 import type { ApiPath, RequestDescriptor, RequestMeta } from '../../api/client';
 import { TransportError, send } from '../../api/transport';
-import type {
-  AnswerDraft,
-  DecisionDraft,
-  ProposalViewResponse,
-  ThreadViewResponse,
-} from './types';
+import type { AnswerDraft, DecisionDraft, ProposalViewResponse, ThreadViewResponse } from './types';
 
 /**
  * Pharmacy routes are not published in the generated contract yet, so a real
@@ -58,11 +53,9 @@ export async function getClarificationThread(
 export async function answerClarification(
   threadId: string,
   version: number,
-  answerBody: string,
-  amendedRevisionId: string,
+  draft: AnswerDraft,
   organizationId: string,
 ): Promise<ThreadViewResponse> {
-  const draft: AnswerDraft = { answerBody, amendedRevisionId };
   return send<ThreadViewResponse>(
     prescriberDescriptor(
       'POST',
@@ -89,11 +82,9 @@ export async function getSubstitutionProposal(
 export async function approveSubstitution(
   proposalId: string,
   version: number,
-  attestation: string,
-  note: string,
+  draft: DecisionDraft,
   organizationId: string,
 ): Promise<ProposalViewResponse> {
-  const draft: DecisionDraft = { attestation, note };
   return send<ProposalViewResponse>(
     prescriberDescriptor(
       'POST',

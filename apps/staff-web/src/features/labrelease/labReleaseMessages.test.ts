@@ -15,7 +15,7 @@ import { WITHDRAWN_AT } from './fixtures';
 
 /** Named placeholder tokens in a message, sorted for comparison. */
 function placeholders(value: string): string[] {
-  return [...value.matchAll(/\{(\w+)\}/g)].map((match) => match[1]!).sort();
+  return [...value.matchAll(/\{(\w+)\}/g)].map((match) => required(match[1])).sort();
 }
 
 describe('LAB-02 bilingual release bundle', () => {
@@ -38,7 +38,8 @@ describe('LAB-02 bilingual release bundle', () => {
   });
 
   it('translates every Arabic label into Arabic script', () => {
-    const arabicLetter = /[\u0621-\u063A\u0641-\u064A\u066E-\u066F\u0671-\u06D3\u06D5\u06FA-\u06FC\u06FF]/;
+    const arabicLetter =
+      /[\u0621-\u063A\u0641-\u064A\u066E-\u066F\u0671-\u06D3\u06D5\u06FA-\u06FC\u06FF]/;
     for (const key of releaseKeys) {
       expect(arabicLetter.test(releaseMessages.ar[key])).toBe(true);
     }
@@ -50,9 +51,12 @@ describe('LAB-02 bilingual release bundle', () => {
   });
 
   it('fills placeholders and leaves unknown ones visible', () => {
-    expect(releaseMessage('en', 'correctedStatus', { subject: 'synthetic.lab.supervisor', reason: 'typo' })).toBe(
-      'Corrected by synthetic.lab.supervisor. Reason: typo',
-    );
+    expect(
+      releaseMessage('en', 'correctedStatus', {
+        subject: 'synthetic.lab.supervisor',
+        reason: 'typo',
+      }),
+    ).toBe('Corrected by synthetic.lab.supervisor. Reason: typo');
     expect(releaseMessage('en', 'correctedStatus', {})).toBe(
       'Corrected by {subject}. Reason: {reason}',
     );
@@ -93,3 +97,10 @@ describe('LAB-02 release value formatting', () => {
     expect(formatWithdrawalTime(WITHDRAWN_AT, 'en')).toContain('12:15');
   });
 });
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

@@ -104,25 +104,25 @@ describe('responsive AdminTableRegion (WEB-07, UX-01)', () => {
       installMatchMedia(VIEWPORTS[breakpoint]);
       renderRegion('Synthetic facilities');
 
-      const region = screen.getByRole('region', { name: 'Synthetic facilities' }) as HTMLElement;
+      const region = screen.getByRole('region', { name: 'Synthetic facilities' });
       // The stylesheet's .table-region owns the direction-neutral scroll and
       // focus ring; data-breakpoint exposes the resolved band to jsdom.
       expect(region.classList.contains('table-region')).toBe(true);
       expect(region.getAttribute('data-breakpoint')).toBe(breakpoint);
       expect(region.getAttribute('aria-label')).toBe('Synthetic facilities');
       expect(region.tabIndex).toBe(0);
-      expect((region as HTMLElement).style.overflowX).toBe('auto');
+      expect(region.style.overflowX).toBe('auto');
       expect(region.style.overflow).not.toBe('hidden');
 
       const table = within(region).getByRole('table', { name: 'Synthetic facilities' });
       expect(within(table).getByRole('columnheader', { name: 'Code' }).getAttribute('scope')).toBe(
         'col',
       );
-      expect(within(table).getAllByRole('columnheader').map((node) => node.textContent)).toEqual([
-        'Code',
-        'Name',
-        'Action',
-      ]);
+      expect(
+        within(table)
+          .getAllByRole('columnheader')
+          .map((node) => node.textContent),
+      ).toEqual(['Code', 'Name', 'Action']);
       expect(within(table).getByRole('cell', { name: 'SYN-0001' })).toBeTruthy();
       expect(within(table).getByRole('cell', { name: LONG_ENGLISH })).toBeTruthy();
     });
@@ -131,15 +131,15 @@ describe('responsive AdminTableRegion (WEB-07, UX-01)', () => {
       installMatchMedia(VIEWPORTS[breakpoint]);
       renderRegion('Synthetic facilities');
 
-      const region = screen.getByRole('region', { name: 'Synthetic facilities' }) as HTMLElement;
+      const region = screen.getByRole('region', { name: 'Synthetic facilities' });
       const table = within(region).getByRole('table');
       for (const cell of within(table).getAllByRole('cell')) {
-        expect((cell as HTMLElement).style.display).not.toBe('none');
-        expect((cell as HTMLElement).tabIndex).toBe(-1);
+        expect(cell.style.display).not.toBe('none');
+        expect(cell.tabIndex).toBe(-1);
       }
       for (const header of within(table).getAllByRole('columnheader')) {
-        expect((header as HTMLElement).style.display).not.toBe('none');
-        expect((header as HTMLElement).tabIndex).toBe(-1);
+        expect(header.style.display).not.toBe('none');
+        expect(header.tabIndex).toBe(-1);
       }
 
       // The region is the first tab stop; the coarse-pointer row action keeps
@@ -156,8 +156,11 @@ describe('responsive AdminTableRegion (WEB-07, UX-01)', () => {
       installMatchMedia(VIEWPORTS[breakpoint]);
       renderRegion('Synthetic facilities');
 
-      const region = screen.getByRole('region', { name: 'Synthetic facilities' }) as HTMLElement;
-      for (const element of [region, ...Array.from(region.querySelectorAll('*'))] as HTMLElement[]) {
+      const region = screen.getByRole('region', { name: 'Synthetic facilities' });
+      for (const element of [
+        region,
+        ...Array.from(region.querySelectorAll('*')),
+      ] as HTMLElement[]) {
         const style = element.getAttribute('style') ?? '';
         expect(style).not.toMatch(/(?:margin|padding|border)-(?:left|right)\s*:/);
         expect(style).not.toMatch(/text-align\s*:\s*(?:left|right)/);
@@ -170,7 +173,7 @@ describe('responsive AdminTableRegion (WEB-07, UX-01)', () => {
     const fire = installMatchMedia(VIEWPORTS.compact);
     renderRegion('Synthetic facilities');
 
-    const region = screen.getByRole('region', { name: 'Synthetic facilities' }) as HTMLElement;
+    const region = screen.getByRole('region', { name: 'Synthetic facilities' });
     expect(region.getAttribute('data-breakpoint')).toBe('compact');
 
     act(() => fire(BREAKPOINT_MEDIA_QUERIES.medium, true));
@@ -189,7 +192,7 @@ describe('responsive AdminTableRegion (WEB-07, UX-01)', () => {
     installMatchMedia(VIEWPORTS.compact);
     renderRegion('منشآت تجريبية', LONG_ARABIC, 'فتح SYN-0001');
 
-    const region = screen.getByRole('region', { name: 'منشآت تجريبية' }) as HTMLElement;
+    const region = screen.getByRole('region', { name: 'منشآت تجريبية' });
     expect(document.documentElement.dir).toBe('rtl');
     expect(region.classList.contains('table-region')).toBe(true);
     expect(region.getAttribute('data-breakpoint')).toBe('compact');
@@ -204,7 +207,7 @@ describe('responsive AdminTableRegion (WEB-07, UX-01)', () => {
     const action = within(table).getByRole('button', { name: 'فتح SYN-0001' });
     expect(action).toBeTruthy();
     for (const header of within(table).getAllByRole('columnheader')) {
-      expect((header as HTMLElement).style.display).not.toBe('none');
+      expect(header.style.display).not.toBe('none');
     }
 
     // The labelled region leads the keyboard order in both directions; the

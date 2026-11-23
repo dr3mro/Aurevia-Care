@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { FormEvent } from 'react';
+import type { SyntheticEvent } from 'react';
 import { Button } from '../../components/Button';
 import { FormField } from '../../components/FormField';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -42,12 +42,9 @@ export function StudyLinkForm({ order, onLink }: StudyLinkFormProps) {
   const checked = patient.length > 0 && accessionLabel.length > 0;
   const result = checked ? checkPatientAndAccession(order, patient, accessionLabel) : undefined;
   const matched = result?.ok === true;
-  const canLink =
-    matched &&
-    studyInstanceUid.trim().length > 0 &&
-    workstationRef.trim().length > 0;
+  const canLink = matched && studyInstanceUid.trim().length > 0 && workstationRef.trim().length > 0;
 
-  function handleSubmit(event: FormEvent) {
+  function handleSubmit(event: SyntheticEvent) {
     event.preventDefault();
     onLink({
       patientId: patient,

@@ -18,7 +18,7 @@ import {
 
 /** Named placeholder tokens in a message, sorted for comparison. */
 function placeholders(value: string): string[] {
-  return [...value.matchAll(/\{(\w+)\}/g)].map((match) => match[1]!).sort();
+  return [...value.matchAll(/\{(\w+)\}/g)].map((match) => required(match[1])).sort();
 }
 
 describe('partner board bilingual bundle', () => {
@@ -42,9 +42,11 @@ describe('partner board bilingual bundle', () => {
 
   it('translates Arabic labels into Arabic script', () => {
     for (const key of partnerKeys) {
-      expect(/[\u0621-\u063A\u0641-\u064A\u066E-\u066F\u0671-\u06D3\u06D5\u06FA-\u06FC\u06FF]/.test(
-        partnerMessages.ar[key],
-      )).toBe(true);
+      expect(
+        /[\u0621-\u063A\u0641-\u064A\u066E-\u066F\u0671-\u06D3\u06D5\u06FA-\u06FC\u06FF]/.test(
+          partnerMessages.ar[key],
+        ),
+      ).toBe(true);
     }
   });
 
@@ -109,3 +111,10 @@ describe('partner board message helpers', () => {
     expect(stuckKey(false)).toBe('onTrack');
   });
 });
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

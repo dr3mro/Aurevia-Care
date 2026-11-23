@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useI18n } from '../../i18n/I18nProvider';
 import { useBreakpoint } from '../../theme/useBreakpoint';
 import { AppointmentWorklist } from './AppointmentWorklist';
@@ -51,10 +51,12 @@ export function SchedulingScreen({
 
   // A reload, range change or tenant switch supplies a fresh projection. Local
   // identifiers from a previous tenant are never carried forward.
-  useEffect(() => {
+  const [source, setSource] = useState({ appointments, organizationId });
+  if (source.appointments !== appointments || source.organizationId !== organizationId) {
+    setSource({ appointments, organizationId });
     setItems([...appointmentsForTenant(appointments, organizationId)]);
     setAnnouncement('');
-  }, [appointments, organizationId]);
+  }
 
   // The server already selected the instant window; re-filtering by civil date
   // here would drop late-evening rows displayed in a different facility zone.
@@ -69,13 +71,19 @@ export function SchedulingScreen({
 
   function handleCheckIn(id: string) {
     // Row actions exist only for visible ids, so the target is always present.
-    const target = items.find((appointment) => appointment.id === id)!;
+    const target = items.find((appointment) => appointment.id === id);
+    if (target === undefined) {
+      return;
+    }
     setAnnouncement(`${target.patientName.latinName}: ${schedulingText(locale, 'commandSent')}`);
     onCheckIn(id);
   }
 
   function handleAssign(id: string, assignee: string) {
-    const target = items.find((appointment) => appointment.id === id)!;
+    const target = items.find((appointment) => appointment.id === id);
+    if (target === undefined) {
+      return;
+    }
     setItems((current) =>
       replaceAppointment(current, organizationId, id, (appointment) =>
         applyCommand(appointment, { kind: 'assign', assignee }),
@@ -106,11 +114,7 @@ export function SchedulingScreen({
       >
         {announcement}
       </p>
-      <div
-        className="grid-2"
-        data-part="panels"
-        data-layout={stacked ? 'stacked' : 'side-by-side'}
-      >
+      <div className="grid-2" data-part="panels" data-layout={stacked ? 'stacked' : 'side-by-side'}>
         <AppointmentWorklist
           appointments={visible}
           range={range}

@@ -6,6 +6,7 @@ import { chartText } from '../../../src/features/chart/messages';
 import type { DocumentAssociation } from '../../../src/features/chart/domain';
 import { BREAKPOINT_MEDIA_QUERIES } from '../../../src/theme/breakpoints';
 import { ThemeProvider } from '../../../src/theme/ThemeProvider';
+import { must } from '../../must';
 
 type ChangeListener = (event: MediaQueryListEvent) => void;
 
@@ -126,10 +127,10 @@ describe('responsive DocumentList (WEB-07, UX-01)', () => {
     expect(screen.queryByRole('table')).toBeNull();
     const list = screen.getByRole('list', {
       name: chartText('en', 'documentList'),
-    }) as HTMLElement;
+    });
     expect(list.className).toContain('card-list');
 
-    const cards = within(list).getAllByRole('listitem') as HTMLElement[];
+    const cards = within(list).getAllByRole('listitem');
     expect(cards).toHaveLength(documents.length + 1);
     for (const card of cards) {
       expect(card.className).toContain('stack');
@@ -146,12 +147,12 @@ describe('responsive DocumentList (WEB-07, UX-01)', () => {
       }
       // Each field label and value is its own stacked row, not a hidden column.
       for (const group of within(card).getAllByRole('term')) {
-        expect((group.parentElement as HTMLElement).className).toContain('stack');
+        expect(must(group.parentElement).className).toContain('stack');
       }
     }
 
-    const wrappedName = screen.getByRole('heading', { level: 4, name: LONG_ENGLISH }) as HTMLElement;
-    const run = within(wrappedName).getByText(LONG_ENGLISH) as HTMLElement;
+    const wrappedName = screen.getByRole('heading', { level: 4, name: LONG_ENGLISH });
+    const run = within(wrappedName).getByText(LONG_ENGLISH);
     expect(run.tagName).toBe('BDI');
     expect(run.getAttribute('dir')).toBe('auto');
     expect(run.getAttribute('lang')).toBe('en');
@@ -159,7 +160,7 @@ describe('responsive DocumentList (WEB-07, UX-01)', () => {
     expect(run.style.overflowWrap).toBe('anywhere');
 
     // Synthetic values are readable, not truncated, and both actions survive.
-    const firstCard = cards[0]!;
+    const firstCard = must(cards[0]);
     expect(within(firstCard).getByText('PDF')).toBeTruthy();
     expect(within(firstCard).getByText('3')).toBeTruthy();
     expect(within(firstCard).getByText('English')).toBeTruthy();
@@ -168,11 +169,13 @@ describe('responsive DocumentList (WEB-07, UX-01)', () => {
     expect(within(firstCard).getByText('0°')).toBeTruthy();
     expect(within(firstCard).getByText(chartText('en', 'documentLive'))).toBeTruthy();
     expect(
-      within(firstCard).getAllByRole('button').map((button) => button.textContent),
+      within(firstCard)
+        .getAllByRole('button')
+        .map((button) => button.textContent),
     ).toEqual([chartText('en', 'rotate'), chartText('en', 'void')]);
 
     // A voided document keeps its reason and its disabled void action.
-    const voidedCard = cards.at(-1)!;
+    const voidedCard = must(cards.at(-1));
     expect(
       within(voidedCard).getByText(
         (content, element) =>
@@ -180,7 +183,7 @@ describe('responsive DocumentList (WEB-07, UX-01)', () => {
       ),
     ).toBeTruthy();
     expect(
-      (within(voidedCard).getByRole('button', { name: chartText('en', 'void') }) as HTMLButtonElement)
+      within(voidedCard).getByRole<HTMLButtonElement>('button', { name: chartText('en', 'void') })
         .disabled,
     ).toBe(true);
     expectLogicalAndVisible(firstCard);
@@ -193,7 +196,7 @@ describe('responsive DocumentList (WEB-07, UX-01)', () => {
     render(
       <ThemeProvider>
         <DocumentList
-          documents={[documents[0]!]}
+          documents={[must(documents[0])]}
           locale="en"
           onVoid={onVoid}
           onRotate={onRotate}
@@ -240,8 +243,8 @@ describe('responsive DocumentList (WEB-07, UX-01)', () => {
         chartText('en', 'actions'),
       ]);
       for (const cell of within(table).getAllByRole('cell')) {
-        expect((cell as HTMLElement).style.display).not.toBe('none');
-        expect((cell as HTMLElement).style.whiteSpace).toBe('normal');
+        expect(cell.style.display).not.toBe('none');
+        expect(cell.style.whiteSpace).toBe('normal');
       }
       unmount();
     }
@@ -258,7 +261,9 @@ describe('responsive DocumentList (WEB-07, UX-01)', () => {
     expect(screen.queryByRole('list', { name: chartText('en', 'documentList') })).toBeNull();
     const table = screen.getByRole('table', { name: chartText('en', 'documentList') });
     // Keyboard order stays the DOM order: rotate then void for each document.
-    const buttons = within(table).getAllByRole('button').map((button) => button.textContent);
+    const buttons = within(table)
+      .getAllByRole('button')
+      .map((button) => button.textContent);
     expect(buttons).toEqual([
       chartText('en', 'rotate'),
       chartText('en', 'void'),
@@ -288,24 +293,24 @@ describe('responsive DocumentList (WEB-07, UX-01)', () => {
       linkedTo: 'chart:chart-001',
       rotationDegrees: 0,
     };
-    renderList([arabicTitle, documents[0]!], 'ar');
+    renderList([arabicTitle, must(documents[0])], 'ar');
 
     expect(document.documentElement.dir).toBe('rtl');
     expect(document.documentElement.lang).toBe('ar');
     expect(screen.queryByRole('table')).toBeNull();
     const list = screen.getByRole('list', {
       name: chartText('ar', 'documentList'),
-    }) as HTMLElement;
+    });
 
     const localized = screen.getByRole('heading', { level: 4, name: LONG_ARABIC });
-    const localizedRun = within(localized).getByText(LONG_ARABIC) as HTMLElement;
+    const localizedRun = within(localized).getByText(LONG_ARABIC);
     expect(localizedRun.tagName).toBe('BDI');
     expect(localizedRun.getAttribute('dir')).toBe('auto');
     expect(localizedRun.getAttribute('lang')).toBe('ar');
     // A document without a local title still shows its stored Latin title.
     expect(screen.getByRole('heading', { level: 4, name: 'English PDF' })).toBeTruthy();
 
-    const firstCard = within(list).getAllByRole('listitem')[0]!;
+    const firstCard = must(within(list).getAllByRole('listitem')[0]);
     expect(within(firstCard).getByText(chartText('ar', 'documentKind'))).toBeTruthy();
     expect(
       within(firstCard)

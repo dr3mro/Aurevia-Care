@@ -72,9 +72,7 @@ function DuplicatesContent({
           }}
           isEmpty={(rows) => rows.length === 0}
         >
-          {(rows) => (
-            <WorklistScreen pairs={rows} locale={locale} onSelect={setSelected} />
-          )}
+          {(rows) => <WorklistScreen pairs={rows} locale={locale} onSelect={setSelected} />}
         </ApiPage>
       ) : (
         <div className="stack" style={{ gap: tokens.spacing.md }}>
@@ -236,11 +234,15 @@ function ReviewWorkflow({
         openError={openError}
         approvalError={approvalError}
         approved={approved}
-        onOpenReview={handleOpen}
+        onOpenReview={() => {
+          void handleOpen();
+        }}
         onReasonChange={setReason}
         onToggleReference={handleToggleReference}
         onAlternateChange={setAlternateProcess}
-        onApprove={handleApprove}
+        onApprove={(ticket) => {
+          void handleApprove(ticket);
+        }}
       />
     </div>
   );

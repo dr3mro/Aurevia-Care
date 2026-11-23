@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useActiveOrganization } from '../../api/activeOrganization';
 import { TransportError } from '../../api/transport';
@@ -57,14 +57,56 @@ function failureView(error: TransportError, actions: FailureActions): ReactNode 
   }
   if (error.kind === 'conflict' || error.kind === 'precondition-required') {
     return (
-      <ConflictState
-        onCompare={actions.compare}
-        onReload={actions.reload}
-        onCopy={actions.copy}
-      />
+      <ConflictState onCompare={actions.compare} onReload={actions.reload} onCopy={actions.copy} />
     );
   }
   return <ErrorState correlationId={error.correlationId} onRetry={actions.retry} />;
+}
+
+/** Request body for scheduling one order at its performing site. */
+function scheduleBody(order: ImagingWorklistOrder, draft: ScheduleDraft) {
+  return {
+    expectedVersion: order.version,
+    performingSiteId: order.performingSiteId,
+    scheduledAt: draft.scheduledAt,
+    modality: draft.modality.toUpperCase() as ApiModality,
+    accession: draft.accession,
+    accessionIssuer: draft.accessionIssuer,
+  };
+}
+
+/** Typed draft kept on screen so a failed schedule can be compared or copied. */
+function scheduleDraftText(order: ImagingWorklistOrder, draft: ScheduleDraft): string {
+  return JSON.stringify({
+    orderId: order.orderId,
+    scheduledAt: draft.scheduledAt,
+    modality: draft.modality,
+    accession: draft.accession,
+    accessionIssuer: draft.accessionIssuer,
+  });
+}
+
+/** Request body for linking a study to one order. */
+function linkBody(order: ImagingWorklistOrder, draft: StudyLinkDraft) {
+  return {
+    expectedVersion: order.version,
+    performingSiteId: order.performingSiteId,
+    studyInstanceUid: draft.studyInstanceUid,
+    patientId: draft.patientId,
+    accession: draft.accession,
+    workstationRef: draft.workstationRef,
+  };
+}
+
+/** Typed draft kept on screen so a failed link can be compared or copied. */
+function linkDraftText(order: ImagingWorklistOrder, draft: StudyLinkDraft): string {
+  return JSON.stringify({
+    orderId: order.orderId,
+    patientId: draft.patientId,
+    accession: draft.accession,
+    studyInstanceUid: draft.studyInstanceUid,
+    workstationRef: draft.workstationRef,
+  });
 }
 
 /**
@@ -91,21 +133,20 @@ export function RadWorklistPage() {
   // The API is the primary boundary, but the screen repeats both scopes before
   // painting or acting on a row: identical local ids in another tenant or site
   // must never become an actionable row here.
-  const rows = useMemo<ImagingWorklistOrder[]>(
-    () => {
-      const projected = (result.status === 'ready' ? result.data : []).map((entry) =>
-        toOrder(entry, organizationId),
-      );
-      return filterOrders(ordersForSite(projected, organizationId, site), filter);
-    },
-    [result.status, result.data, organizationId, site, filter],
-  );
+  const rows = useMemo<ImagingWorklistOrder[]>(() => {
+    const projected = (result.status === 'ready' ? result.data : []).map((entry) =>
+      toOrder(entry, organizationId),
+    );
+    return filterOrders(ordersForSite(projected, organizationId, site), filter);
+  }, [result.status, result.data, organizationId, site, filter]);
 
-  useEffect(() => {
+  const [scope, setScope] = useState({ organizationId, site });
+  if (scope.organizationId !== organizationId || scope.site !== site) {
+    setScope({ organizationId, site });
     setCommandError(undefined);
     setAnnouncement('');
     setDraftView('none');
-  }, [organizationId, site]);
+  }
 
   const { reload } = result;
   const actions: FailureActions = {
@@ -130,51 +171,15 @@ export function RadWorklistPage() {
 
   function handleSchedule(order: ImagingWorklistOrder, draft: ScheduleDraft) {
     return runCommand(
-      () =>
-        scheduleOrder(
-          order.orderId,
-          {
-            expectedVersion: order.version,
-            performingSiteId: order.performingSiteId,
-            scheduledAt: draft.scheduledAt,
-            modality: draft.modality.toUpperCase() as ApiModality,
-            accession: draft.accession,
-            accessionIssuer: draft.accessionIssuer,
-          },
-          organizationId,
-        ),
-      JSON.stringify({
-        orderId: order.orderId,
-        scheduledAt: draft.scheduledAt,
-        modality: draft.modality,
-        accession: draft.accession,
-        accessionIssuer: draft.accessionIssuer,
-      }),
+      () => scheduleOrder(order.orderId, scheduleBody(order, draft), organizationId),
+      scheduleDraftText(order, draft),
     );
   }
 
   function handleLink(order: ImagingWorklistOrder, draft: StudyLinkDraft) {
     return runCommand(
-      () =>
-        linkStudy(
-          order.orderId,
-          {
-            expectedVersion: order.version,
-            performingSiteId: order.performingSiteId,
-            studyInstanceUid: draft.studyInstanceUid,
-            patientId: draft.patientId,
-            accession: draft.accession,
-            workstationRef: draft.workstationRef,
-          },
-          organizationId,
-        ),
-      JSON.stringify({
-        orderId: order.orderId,
-        patientId: draft.patientId,
-        accession: draft.accession,
-        studyInstanceUid: draft.studyInstanceUid,
-        workstationRef: draft.workstationRef,
-      }),
+      () => linkStudy(order.orderId, linkBody(order, draft), organizationId),
+      linkDraftText(order, draft),
     );
   }
 
@@ -195,28 +200,33 @@ export function RadWorklistPage() {
       <p role="status" data-testid="radworklist-announcement">
         {announcement}
       </p>
-      {commandError !== undefined && (
+      {commandError !== undefined ? (
         <div data-testid="radworklist-command-error">{failureView(commandError, actions)}</div>
-      )}
-      {draftView !== 'none' && (
+      ) : null}
+      {draftView !== 'none' ? (
         <label style={{ display: 'grid', gap: tokens.spacing.sm }}>
-          {draftView === 'compare' ? radworklistText(locale, 'compareDraft') : radworklistText(locale, 'copyDraft')}
+          {draftView === 'compare'
+            ? radworklistText(locale, 'compareDraft')
+            : radworklistText(locale, 'copyDraft')}
           <textarea
             data-testid="draft-disclosure"
-            aria-label={radworklistText(locale, draftView === 'compare' ? 'compareDraft' : 'copyDraft')}
+            aria-label={radworklistText(
+              locale,
+              draftView === 'compare' ? 'compareDraft' : 'copyDraft',
+            )}
             readOnly
             value={lastDraft}
             rows={3}
           />
         </label>
-      )}
+      ) : null}
       {result.status === 'loading' ? (
         <LoadingState />
       ) : result.status === 'error' ? (
         failureView(result.error, actions)
       ) : (
         <>
-          {rows.length === 0 && <EmptyState />}
+          {rows.length === 0 ? <EmptyState /> : null}
           <RadWorklistScreen
             orders={rows}
             organizationId={organizationId}
@@ -224,9 +234,15 @@ export function RadWorklistPage() {
             filter={filter}
             onSiteChange={setSite}
             onFilterChange={setFilter}
-            onSchedule={handleSchedule}
-            onLink={handleLink}
-            onHandoff={handleHandoff}
+            onSchedule={(order, draft) => {
+              void handleSchedule(order, draft);
+            }}
+            onLink={(order, draft) => {
+              void handleLink(order, draft);
+            }}
+            onHandoff={(order) => {
+              void handleHandoff(order);
+            }}
           />
         </>
       )}

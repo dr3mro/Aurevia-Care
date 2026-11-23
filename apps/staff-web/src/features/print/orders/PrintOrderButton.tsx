@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import type { RefObject } from 'react';
 import { Button } from '../../../components/Button';
 import { useI18n } from '../../../i18n/I18nProvider';
 import type { HandoutLanguage, PrintReason } from '../components/messages';
@@ -33,6 +34,48 @@ export interface PrintOrderButtonProps {
   ) => void;
 }
 
+/** Move focus into the open dialog, contain Tab inside it and restore focus on close. */
+function useDialogFocus(
+  open: boolean,
+  dialogRef: RefObject<HTMLDivElement | null>,
+  closeRef: RefObject<HTMLButtonElement | null>,
+  close: () => void,
+): void {
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    const previous = document.activeElement as HTMLElement;
+    closeRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        close();
+        return;
+      }
+      if (event.key !== 'Tab') {
+        return;
+      }
+      // The dialog declares aria-modal, so Tab must not reach the controls
+      // behind it. Wrap focus among this dialog's own controls.
+      const items = Array.from(
+        dialogRef.current?.querySelectorAll<HTMLElement>(focusableSelector) ?? [],
+      );
+      const index = items.indexOf(document.activeElement as HTMLElement);
+      event.preventDefault();
+      if (event.shiftKey) {
+        items[index <= 0 ? items.length - 1 : index - 1]?.focus();
+      } else {
+        items[index < 0 || index === items.length - 1 ? 0 : index + 1]?.focus();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      previous.focus();
+    };
+  }, [open, close, dialogRef, closeRef]);
+}
+
 /**
  * Exported entry point for printing lab and imaging requisition sheets from an
  * order screen. Drafts cannot print; several placed orders may be combined on
@@ -55,42 +98,12 @@ export function PrintOrderButton({ orders, onPrint }: PrintOrderButtonProps) {
   const hasDrafts = printable.length !== orders.length;
   const close = useCallback(() => setOpen(false), []);
 
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const previous = document.activeElement as HTMLElement;
-    closeRef.current!.focus();
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        close();
-        return;
-      }
-      if (event.key !== 'Tab') {
-        return;
-      }
-      // The dialog declares aria-modal, so Tab must not reach the controls
-      // behind it. Wrap focus among this dialog's own controls.
-      const items = Array.from(dialogRef.current!.querySelectorAll<HTMLElement>(focusableSelector));
-      const index = items.indexOf(document.activeElement as HTMLElement);
-      event.preventDefault();
-      if (event.shiftKey) {
-        items[index <= 0 ? items.length - 1 : index - 1]!.focus();
-      } else {
-        items[index < 0 || index === items.length - 1 ? 0 : index + 1]!.focus();
-      }
-    };
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('keydown', onKeyDown);
-      previous.focus();
-    };
-  }, [open, close]);
+  useDialogFocus(open, dialogRef, closeRef, close);
 
   const print = () => {
     if (reason === null) {
       setReasonMissing(true);
-      reasonRef.current!.focus();
+      reasonRef.current?.focus();
       return;
     }
     setReasonMissing(false);
@@ -130,9 +143,7 @@ export function PrintOrderButton({ orders, onPrint }: PrintOrderButtonProps) {
           data-order-print-preview="true"
         >
           <style data-order-print-styles="true">{printStylesheet}</style>
-          {hasDrafts ? (
-            <p role="status">{orderPrintText(locale, 'draftExcluded')}</p>
-          ) : null}
+          {hasDrafts ? <p role="status">{orderPrintText(locale, 'draftExcluded')}</p> : null}
           {printable.length > 1 ? (
             <fieldset data-print-controls>
               <legend>{orderPrintText(locale, 'layoutLegend')}</legend>
@@ -145,7 +156,10 @@ export function PrintOrderButton({ orders, onPrint }: PrintOrderButtonProps) {
                     checked={layout === option}
                     onChange={() => setLayout(option)}
                   />{' '}
-                  {orderPrintText(locale, option === 'combined' ? 'layoutCombined' : 'layoutSeparate')}
+                  {orderPrintText(
+                    locale,
+                    option === 'combined' ? 'layoutCombined' : 'layoutSeparate',
+                  )}
                 </label>
               ))}
             </fieldset>
@@ -163,7 +177,10 @@ export function PrintOrderButton({ orders, onPrint }: PrintOrderButtonProps) {
             <option value="en">{printText(locale, 'languageEn')}</option>
             <option value="ar">{printText(locale, 'languageAr')}</option>
           </select>
-          <fieldset data-print-controls aria-describedby={reasonMissing ? reasonErrorId : undefined}>
+          <fieldset
+            data-print-controls
+            aria-describedby={reasonMissing ? reasonErrorId : undefined}
+          >
             <legend>{printText(locale, 'reason')}</legend>
             {reasonOptions.map((option, index) => (
               <label key={option}>

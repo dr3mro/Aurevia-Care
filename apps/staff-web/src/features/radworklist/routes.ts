@@ -10,6 +10,4 @@ const RadWorklistPage = lazy(() =>
  * screen register on the existing `/radiology` rail item without editing the
  * shared route registry.
  */
-export const routes: AppRoute[] = [
-  { pattern: '/radiology', component: RadWorklistPage },
-];
+export const routes: AppRoute[] = [{ pattern: '/radiology', component: RadWorklistPage }];

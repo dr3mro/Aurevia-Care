@@ -10,6 +10,7 @@ import { ConflictState, LoadingState, StateView } from '../../components/StateVi
 import { MixedScriptText } from '../../components/MixedScriptText';
 import { displayLocalName } from '../../i18n/format';
 import { useI18n } from '../../i18n/I18nProvider';
+import type { Locale } from '../../i18n/messages';
 import { useTheme } from '../../theme/ThemeProvider';
 import { useBreakpoint } from '../../theme/useBreakpoint';
 import {
@@ -29,7 +30,10 @@ import { NoteEditor } from './NoteEditor';
 import { chartText } from './messages';
 
 /** One resolved note together with the patient that owns it. */
-type NotePageData = { patient: PatientViewResponse; noteView: NoteViewResponse };
+interface NotePageData {
+  patient: PatientViewResponse;
+  noteView: NoteViewResponse;
+}
 
 /** Normalise any command rejection to the typed error the state views present. */
 function toTransportError(failure: unknown): TransportError {
@@ -71,7 +75,7 @@ function ConfirmationDialog({
   const compact = breakpoint === 'compact';
   const closeRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
-    closeRef.current!.focus();
+    closeRef.current?.focus();
   }, []);
 
   // responsive.css has no sticky action-row class, so the safe action stays
@@ -111,6 +115,371 @@ function ConfirmationDialog({
   );
 }
 
+/** A browser-level guard asks before leaving with unsaved draft text. */
+function useUnsavedGuard(dirty: boolean): void {
+  useEffect(() => {
+    if (!dirty) {
+      return undefined;
+    }
+    const warn = (event: BeforeUnloadEvent): void => {
+      event.preventDefault();
+      // Legacy browsers still require the returnValue assignment.
+      Reflect.set(event, 'returnValue', '');
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [dirty]);
+}
+
+/** The authoritative load result the workflow hook reads from. */
+type NoteResult = ReturnType<typeof useApi<NotePageData>>;
+
+/** Everything the asynchronous note commands read and the state they update. */
+interface NoteCommandContext {
+  noteId: string;
+  organizationId: string;
+  locale: Locale;
+  draft: NoteRevision | undefined;
+  source: ClinicalNoteRevisionResponse | undefined;
+  reason: string;
+  result: NoteResult;
+  recordFailure: (failure: unknown) => void;
+  setDirty: (value: boolean) => void;
+  setConflict: (value: boolean) => void;
+  setCommandError: (value: TransportError | undefined) => void;
+  setStatus: (value: string) => void;
+  setConfirm: (value: 'sign' | 'entered-error' | undefined) => void;
+  setReason: (value: string) => void;
+  setSignedAttestation: (value: string | null) => void;
+}
+
+/** The save, sign, amend and entered-in-error commands for the loaded note. */
+function useNoteCommands(ctx: NoteCommandContext) {
+  const { noteId, organizationId, locale, draft, source, reason, result, recordFailure } = ctx;
+  const { setDirty, setConflict, setCommandError, setStatus, setConfirm } = ctx;
+  const { setReason, setSignedAttestation } = ctx;
+
+  async function handleSave(): Promise<void> {
+    if (draft === undefined || source === undefined) {
+      return;
+    }
+    setStatus(chartText(locale, 'saving'));
+    try {
+      await updateNote(
+        noteId,
+        draft.version,
+        { title: source.title, content: soapToContent(draft.content) },
+        organizationId,
+      );
+      setDirty(false);
+      setConflict(false);
+      setCommandError(undefined);
+      setStatus(chartText(locale, 'savedNotice'));
+      result.reload();
+    } catch (failure: unknown) {
+      recordFailure(failure);
+    }
+  }
+
+  async function handleSign(): Promise<void> {
+    if (draft === undefined) {
+      return;
+    }
+    const attestation = chartText(locale, 'attestation');
+    try {
+      const signed =
+        draft.kind === 'amendment'
+          ? await signAddendum(noteId, draft.version, attestation, organizationId)
+          : await signNote(noteId, draft.version, attestation, organizationId);
+      setSignedAttestation(signed.attestation);
+      setConfirm(undefined);
+      setDirty(false);
+      setConflict(false);
+      setCommandError(undefined);
+      setStatus(chartText(locale, 'signedNotice'));
+      result.reload();
+    } catch (failure: unknown) {
+      // Close the confirmation so the conflict/error recovery is the active
+      // surface; leaving an aria-modal dialog open would bury its actions.
+      setConfirm(undefined);
+      recordFailure(failure);
+    }
+  }
+
+  async function handleAmend(): Promise<void> {
+    if (draft === undefined) {
+      return;
+    }
+    try {
+      await amendNote(noteId, draft.version, organizationId);
+      setCommandError(undefined);
+      setStatus(chartText(locale, 'amendNotice'));
+      result.reload();
+    } catch (failure: unknown) {
+      recordFailure(failure);
+    }
+  }
+
+  async function handleEnteredInError(): Promise<void> {
+    if (draft === undefined || source === undefined) {
+      return;
+    }
+    try {
+      await markEnteredInError(
+        noteId,
+        draft.version,
+        { reason, affectedRecipients: [source.dataEntrySubject] },
+        organizationId,
+      );
+      setConfirm(undefined);
+      setReason('');
+      setCommandError(undefined);
+      setStatus(chartText(locale, 'enterErrorNotice'));
+      result.reload();
+    } catch (failure: unknown) {
+      setConfirm(undefined);
+      recordFailure(failure);
+    }
+  }
+
+  return { handleSave, handleSign, handleAmend, handleEnteredInError };
+}
+
+/** Draft text, workflow flags and the commands that act on the loaded note. */
+function useNoteWorkflow(
+  noteId: string,
+  organizationId: string,
+  locale: Locale,
+  result: NoteResult,
+) {
+  const [draft, setDraft] = useState<NoteRevision | undefined>(undefined);
+  const [source, setSource] = useState<ClinicalNoteRevisionResponse | undefined>(undefined);
+  const [history, setHistory] = useState<readonly NoteRevision[]>([]);
+  const [dirty, setDirty] = useState(false);
+  const [conflict, setConflict] = useState(false);
+  const [comparing, setComparing] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [status, setStatus] = useState('');
+  const [commandError, setCommandError] = useState<TransportError | undefined>(undefined);
+  const [confirm, setConfirm] = useState<'sign' | 'entered-error' | undefined>(undefined);
+  const [reason, setReason] = useState('');
+  const [signedAttestation, setSignedAttestation] = useState<string | null>(null);
+  const [appliedData, setAppliedData] = useState<NotePageData | undefined>(undefined);
+
+  // Initialise (or re-initialise after a command reload) from the authoritative
+  // revision while rendering. Typing does not re-run this because the result
+  // object is stable until the next load resolves.
+  if (result.status === 'ready' && result.data !== appliedData) {
+    setAppliedData(result.data);
+    setDraft(toNoteRevision(result.data.noteView.current, organizationId));
+    setHistory(result.data.noteView.history.map((item) => toNoteRevision(item, organizationId)));
+    setSource(result.data.noteView.current);
+    setDirty(false);
+    setConflict(false);
+    setComparing(false);
+  }
+
+  useUnsavedGuard(dirty);
+
+  function recordFailure(failure: unknown): void {
+    const error = toTransportError(failure);
+    setCommandError(error);
+    setConflict(isConflict(error.kind));
+    setStatus('');
+  }
+
+  function handleContentChange(field: keyof SoapContent, value: string): void {
+    if (draft === undefined) {
+      return;
+    }
+    setDraft({ ...draft, content: { ...draft.content, [field]: value } });
+    setDirty(true);
+    setStatus('');
+  }
+
+  const commands = useNoteCommands({
+    noteId,
+    organizationId,
+    locale,
+    draft,
+    source,
+    reason,
+    result,
+    recordFailure,
+    setDirty,
+    setConflict,
+    setCommandError,
+    setStatus,
+    setConfirm,
+    setReason,
+    setSignedAttestation,
+  });
+
+  function handleReload(): void {
+    setConflict(false);
+    setCommandError(undefined);
+    setComparing(false);
+    setCopied(false);
+    setStatus('');
+    result.reload();
+  }
+
+  function handleCopy(): void {
+    if (draft === undefined) {
+      return;
+    }
+    if ('clipboard' in navigator) {
+      void navigator.clipboard.writeText(soapToContent(draft.content));
+    }
+    setCopied(true);
+  }
+
+  return {
+    draft,
+    source,
+    history,
+    dirty,
+    conflict,
+    comparing,
+    copied,
+    status,
+    commandError,
+    confirm,
+    reason,
+    signedAttestation,
+    setComparing,
+    setConfirm,
+    setReason,
+    setStatus,
+    handleContentChange,
+    ...commands,
+    handleReload,
+    handleCopy,
+  };
+}
+
+type NoteWorkflow = ReturnType<typeof useNoteWorkflow>;
+
+/** Status lines, attestation, command error, conflict recovery and compare view. */
+function NoteNotices({
+  workflow,
+  draft,
+  source,
+  locale,
+}: {
+  workflow: NoteWorkflow;
+  draft: NoteRevision;
+  source: ClinicalNoteRevisionResponse | undefined;
+  locale: Locale;
+}) {
+  const { status, dirty, signedAttestation, commandError, conflict, copied, comparing } = workflow;
+  return (
+    <>
+      {status !== '' ? (
+        <p role="status" data-testid="note-status">
+          {status}
+        </p>
+      ) : null}
+      {dirty ? (
+        <p role="status" data-testid="unsaved-changes">
+          {chartText(locale, 'unsavedChanges')}
+        </p>
+      ) : null}
+      {signedAttestation !== null ? (
+        <p data-testid="signer-attestation">
+          <b>{chartText(locale, 'signerAttestation')}:</b> {signedAttestation}
+        </p>
+      ) : null}
+      {commandError !== undefined ? (
+        conflict ? (
+          <ConflictState
+            onCompare={() => workflow.setComparing(true)}
+            onReload={workflow.handleReload}
+            onCopy={workflow.handleCopy}
+          />
+        ) : (
+          StateView.forTransportError(commandError)
+        )
+      ) : null}
+      {copied ? <p>{chartText(locale, 'copiedNotice')}</p> : null}
+      {comparing ? (
+        <section data-testid="note-compare" className="stack">
+          <h3>{chartText(locale, 'compareTitle')}</h3>
+          <b>{chartText(locale, 'serverContent')}</b>
+          <pre style={{ overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>{source?.content}</pre>
+          <b>{chartText(locale, 'yourContent')}</b>
+          <pre style={{ overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>
+            {soapToContent(draft.content)}
+          </pre>
+        </section>
+      ) : null}
+    </>
+  );
+}
+
+/** The sign and entered-in-error confirmation dialogs. */
+function NoteConfirmations({
+  workflow,
+  draft,
+  source,
+  locale,
+}: {
+  workflow: NoteWorkflow;
+  draft: NoteRevision;
+  source: ClinicalNoteRevisionResponse | undefined;
+  locale: Locale;
+}) {
+  const { confirm, reason } = workflow;
+  const title = (
+    <p>
+      <MixedScriptText text={source?.title ?? ''} lang={locale} /> · {chartText(locale, 'revision')}{' '}
+      {draft.version}
+    </p>
+  );
+  if (confirm === 'sign') {
+    return (
+      <ConfirmationDialog
+        title={chartText(locale, 'signConfirmTitle')}
+        closeLabel={chartText(locale, 'cancel')}
+        onClose={() => workflow.setConfirm(undefined)}
+      >
+        {title}
+        <p>{chartText(locale, 'signEffect')}</p>
+        <p>
+          <b>{chartText(locale, 'signerAttestation')}:</b> {chartText(locale, 'attestation')}
+        </p>
+        <Button onClick={() => void workflow.handleSign()}>{chartText(locale, 'sign')}</Button>
+      </ConfirmationDialog>
+    );
+  }
+  if (confirm === 'entered-error') {
+    return (
+      <ConfirmationDialog
+        title={chartText(locale, 'markEnteredInError')}
+        closeLabel={chartText(locale, 'cancel')}
+        onClose={() => workflow.setConfirm(undefined)}
+      >
+        {title}
+        <p>{chartText(locale, 'enterErrorEffect')}</p>
+        <label htmlFor="chart-enter-error-reason">{chartText(locale, 'enterErrorReason')}</label>
+        <input
+          id="chart-enter-error-reason"
+          className="field touch"
+          value={reason}
+          onChange={(event) => workflow.setReason(event.target.value)}
+        />
+        <Button
+          disabled={reason.trim().length === 0}
+          onClick={() => void workflow.handleEnteredInError()}
+        >
+          {chartText(locale, 'markEnteredInError')}
+        </Button>
+      </ConfirmationDialog>
+    );
+  }
+  return null;
+}
+
 /**
  * API-backed note editor for `/patients/:id/notes/:noteId`.
  *
@@ -134,154 +503,15 @@ export function NotePage() {
   const patientId = params.id ?? '';
   const noteId = params.noteId ?? '';
 
-  const [draft, setDraft] = useState<NoteRevision | undefined>(undefined);
-  const [source, setSource] = useState<ClinicalNoteRevisionResponse | undefined>(undefined);
-  const [history, setHistory] = useState<readonly NoteRevision[]>([]);
-  const [dirty, setDirty] = useState(false);
-  const [conflict, setConflict] = useState(false);
-  const [comparing, setComparing] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [status, setStatus] = useState('');
-  const [commandError, setCommandError] = useState<TransportError | undefined>(undefined);
-  const [confirm, setConfirm] = useState<'sign' | 'entered-error' | undefined>(undefined);
-  const [reason, setReason] = useState('');
-  const [signedAttestation, setSignedAttestation] = useState<string | null>(null);
-
   const result = useApi<NotePageData>(
     () =>
-      Promise.all([
-        getPatient(patientId, organizationId),
-        getNote(noteId, organizationId),
-      ]).then(([patient, noteView]) => ({ patient, noteView })),
+      Promise.all([getPatient(patientId, organizationId), getNote(noteId, organizationId)]).then(
+        ([patient, noteView]) => ({ patient, noteView }),
+      ),
     [patientId, noteId, organizationId],
   );
-
-  // Initialise (or re-initialise after a command reload) from the authoritative
-  // revision. Typing does not re-run this effect because the result is stable.
-  useEffect(() => {
-    if (result.status !== 'ready') {
-      return;
-    }
-    setDraft(toNoteRevision(result.data.noteView.current, organizationId));
-    setHistory(result.data.noteView.history.map((item) => toNoteRevision(item, organizationId)));
-    setSource(result.data.noteView.current);
-    setDirty(false);
-    setConflict(false);
-    setComparing(false);
-  }, [result.status, result.data, organizationId]);
-
-  // A browser-level guard asks before leaving with unsaved draft text.
-  useEffect(() => {
-    if (!dirty) {
-      return undefined;
-    }
-    const warn = (event: BeforeUnloadEvent): void => {
-      event.preventDefault();
-      event.returnValue = '';
-    };
-    window.addEventListener('beforeunload', warn);
-    return () => window.removeEventListener('beforeunload', warn);
-  }, [dirty]);
-
-  function recordFailure(failure: unknown): void {
-    const error = toTransportError(failure);
-    setCommandError(error);
-    setConflict(isConflict(error.kind));
-    setStatus('');
-  }
-
-  function handleContentChange(field: keyof SoapContent, value: string): void {
-    const current = draft!;
-    setDraft({ ...current, content: { ...current.content, [field]: value } });
-    setDirty(true);
-    setStatus('');
-  }
-
-  async function handleSave(): Promise<void> {
-    setStatus(chartText(locale, 'saving'));
-    try {
-      await updateNote(
-        noteId!,
-        draft!.version,
-        { title: source!.title, content: soapToContent(draft!.content) },
-        organizationId,
-      );
-      setDirty(false);
-      setConflict(false);
-      setCommandError(undefined);
-      setStatus(chartText(locale, 'savedNotice'));
-      result.reload();
-    } catch (failure: unknown) {
-      recordFailure(failure);
-    }
-  }
-
-  async function handleSign(): Promise<void> {
-    const attestation = chartText(locale, 'attestation');
-    try {
-      const signed =
-        draft!.kind === 'amendment'
-          ? await signAddendum(noteId!, draft!.version, attestation, organizationId)
-          : await signNote(noteId!, draft!.version, attestation, organizationId);
-      setSignedAttestation(signed.attestation);
-      setConfirm(undefined);
-      setDirty(false);
-      setConflict(false);
-      setCommandError(undefined);
-      setStatus(chartText(locale, 'signedNotice'));
-      result.reload();
-    } catch (failure: unknown) {
-      // Close the confirmation so the conflict/error recovery is the active
-      // surface; leaving an aria-modal dialog open would bury its actions.
-      setConfirm(undefined);
-      recordFailure(failure);
-    }
-  }
-
-  async function handleAmend(): Promise<void> {
-    try {
-      await amendNote(noteId!, draft!.version, organizationId);
-      setCommandError(undefined);
-      setStatus(chartText(locale, 'amendNotice'));
-      result.reload();
-    } catch (failure: unknown) {
-      recordFailure(failure);
-    }
-  }
-
-  async function handleEnteredInError(): Promise<void> {
-    try {
-      await markEnteredInError(
-        noteId!,
-        draft!.version,
-        reason,
-        [source!.dataEntrySubject],
-        organizationId,
-      );
-      setConfirm(undefined);
-      setReason('');
-      setCommandError(undefined);
-      setStatus(chartText(locale, 'enterErrorNotice'));
-      result.reload();
-    } catch (failure: unknown) {
-      setConfirm(undefined);
-      recordFailure(failure);
-    }
-  }
-
-  function handleReload(): void {
-    setConflict(false);
-    setCommandError(undefined);
-    setComparing(false);
-    setCopied(false);
-    setStatus('');
-    result.reload();
-  }
-
-  function handleCopy(): void {
-    void navigator.clipboard?.writeText(soapToContent(draft!.content));
-    setCopied(true);
-  }
+  const workflow = useNoteWorkflow(noteId, organizationId, locale, result);
+  const { draft, source, history, dirty } = workflow;
 
   if (draft === undefined) {
     if (result.status === 'error') {
@@ -299,16 +529,17 @@ export function NotePage() {
   // cap. The patient identity is a wrapping cluster and the save action is a
   // sticky bar on phones so it stays reachable above the on-screen keyboard
   // (WEB-09); responsive.css has no sticky-action class, so use logical insets.
-  const stickySave = breakpoint === 'compact'
-    ? {
-        position: 'sticky' as const,
-        insetBlockEnd: '0px',
-        zIndex: 1,
-        background: tokens.background,
-        paddingBlock: tokens.spacing.sm,
-        borderBlockStart: `2px solid ${tokens.border}`,
-      }
-    : undefined;
+  const stickySave =
+    breakpoint === 'compact'
+      ? {
+          position: 'sticky' as const,
+          insetBlockEnd: '0px',
+          zIndex: 1,
+          background: tokens.background,
+          paddingBlock: tokens.spacing.sm,
+          borderBlockStart: `2px solid ${tokens.border}`,
+        }
+      : undefined;
 
   return (
     <div
@@ -326,115 +557,37 @@ export function NotePage() {
           <b>{chartText(locale, 'patient')}:</b>{' '}
           <MixedScriptText text={patientName} lang={locale} />
           {' · '}
-          <b>{chartText(locale, 'patientId')}:</b>{' '}
-          <code dir="ltr">{patientId}</code>
+          <b>{chartText(locale, 'patientId')}:</b> <code dir="ltr">{patientId}</code>
         </p>
       </header>
 
-      {status !== '' ? (
-        <p role="status" data-testid="note-status">
-          {status}
-        </p>
-      ) : null}
-      {dirty ? (
-        <p role="status" data-testid="unsaved-changes">
-          {chartText(locale, 'unsavedChanges')}
-        </p>
-      ) : null}
-      {signedAttestation !== null ? (
-        <p data-testid="signer-attestation">
-          <b>{chartText(locale, 'signerAttestation')}:</b> {signedAttestation}
-        </p>
-      ) : null}
-      {commandError !== undefined ? (
-        conflict ? (
-          <ConflictState
-            onCompare={() => setComparing(true)}
-            onReload={handleReload}
-            onCopy={handleCopy}
-          />
-        ) : (
-          StateView.forTransportError(commandError)
-        )
-      ) : null}
-      {copied ? <p>{chartText(locale, 'copiedNotice')}</p> : null}
-      {comparing ? (
-        <section data-testid="note-compare" className="stack">
-          <h3>{chartText(locale, 'compareTitle')}</h3>
-          <b>{chartText(locale, 'serverContent')}</b>
-          <pre style={{ overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>{source!.content}</pre>
-          <b>{chartText(locale, 'yourContent')}</b>
-          <pre style={{ overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>
-            {soapToContent(draft.content)}
-          </pre>
-        </section>
-      ) : null}
+      <NoteNotices workflow={workflow} draft={draft} source={source} locale={locale} />
 
       <NoteEditor
         key={draft.id}
         revision={draft}
         history={history}
         locale={locale}
-        onContentChange={handleContentChange}
+        onContentChange={workflow.handleContentChange}
         onSign={() => {
           // The sign command carries no edited content: signing while dirty
           // would silently certify the last saved revision, not what is shown.
           if (dirty) {
-            setStatus(chartText(locale, 'saveBeforeSign'));
+            workflow.setStatus(chartText(locale, 'saveBeforeSign'));
             return;
           }
-          setConfirm('sign');
+          workflow.setConfirm('sign');
         }}
-        onAmend={() => void handleAmend()}
-        onMarkEnteredInError={() => setConfirm('entered-error')}
+        onAmend={() => void workflow.handleAmend()}
+        onMarkEnteredInError={() => workflow.setConfirm('entered-error')}
       />
       <div data-note-save-bar={breakpoint} style={stickySave}>
-        <Button onClick={() => void handleSave()} disabled={!dirty}>
+        <Button onClick={() => void workflow.handleSave()} disabled={!dirty}>
           {chartText(locale, 'saveDraft')}
         </Button>
       </div>
 
-      {confirm === 'sign' ? (
-        <ConfirmationDialog
-          title={chartText(locale, 'signConfirmTitle')}
-          closeLabel={chartText(locale, 'cancel')}
-          onClose={() => setConfirm(undefined)}
-        >
-          <p>
-            <MixedScriptText text={source!.title} lang={locale} /> ·{' '}
-            {chartText(locale, 'revision')} {draft.version}
-          </p>
-          <p>{chartText(locale, 'signEffect')}</p>
-          <p>
-            <b>{chartText(locale, 'signerAttestation')}:</b> {chartText(locale, 'attestation')}
-          </p>
-          <Button onClick={() => void handleSign()}>{chartText(locale, 'sign')}</Button>
-        </ConfirmationDialog>
-      ) : null}
-
-      {confirm === 'entered-error' ? (
-        <ConfirmationDialog
-          title={chartText(locale, 'markEnteredInError')}
-          closeLabel={chartText(locale, 'cancel')}
-          onClose={() => setConfirm(undefined)}
-        >
-          <p>
-            <MixedScriptText text={source!.title} lang={locale} /> ·{' '}
-            {chartText(locale, 'revision')} {draft.version}
-          </p>
-          <p>{chartText(locale, 'enterErrorEffect')}</p>
-          <label htmlFor="chart-enter-error-reason">{chartText(locale, 'enterErrorReason')}</label>
-          <input
-            id="chart-enter-error-reason"
-            className="field touch"
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
-          />
-          <Button disabled={reason.trim().length === 0} onClick={() => void handleEnteredInError()}>
-            {chartText(locale, 'markEnteredInError')}
-          </Button>
-        </ConfirmationDialog>
-      ) : null}
+      <NoteConfirmations workflow={workflow} draft={draft} source={source} locale={locale} />
     </div>
   );
 }

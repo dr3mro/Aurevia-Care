@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  API_PREFIX,
-  buildRequestDescriptor,
-  refuseNetworkCall,
-} from '../../src/api/client';
+import { API_PREFIX, buildRequestDescriptor, refuseNetworkCall } from '../../src/api/client';
 import type { ApiPath } from '../../src/api/client';
 
 describe('ARC-03 typed request descriptors (no transport)', () => {

@@ -29,6 +29,7 @@ import type {
   ClinicalNoteRevisionResponse,
   NoteViewResponse,
 } from './api';
+import { must } from '../../../tests/must';
 
 vi.mock('../../api/transport', async (importOriginal) => {
   const actual = await importOriginal<typeof TransportModule>();
@@ -38,7 +39,7 @@ vi.mock('../../api/transport', async (importOriginal) => {
 const sendMock = vi.mocked(send);
 
 function descriptorAt(call: number): RequestDescriptor {
-  return sendMock.mock.calls[call]![0] as RequestDescriptor;
+  return must(sendMock.mock.calls[call])[0];
 }
 
 function chartEntry(overrides: Partial<ChartEntryResponse> = {}): ChartEntryResponse {
@@ -72,7 +73,9 @@ function chartEntry(overrides: Partial<ChartEntryResponse> = {}): ChartEntryResp
   };
 }
 
-function noteRevision(overrides: Partial<ClinicalNoteRevisionResponse> = {}): ClinicalNoteRevisionResponse {
+function noteRevision(
+  overrides: Partial<ClinicalNoteRevisionResponse> = {},
+): ClinicalNoteRevisionResponse {
   return {
     id: 'note-1',
     version: 1,
@@ -106,7 +109,10 @@ beforeEach(() => {
 
 describe('chart API requests', () => {
   it('reads a patient with the active tenant header', async () => {
-    sendMock.mockResolvedValueOnce({ patient: { id: 'patient-1', displayName: 'Layla Haddad' }, duplicates: [] });
+    sendMock.mockResolvedValueOnce({
+      patient: { id: 'patient-1', displayName: 'Layla Haddad' },
+      duplicates: [],
+    });
     const view = await getPatient('patient/1', 'org-a');
     expect(view.patient.displayName).toBe('Layla Haddad');
     const request = descriptorAt(0);
@@ -124,7 +130,9 @@ describe('chart API requests', () => {
   it('appends a cursor when paging is requested', async () => {
     sendMock.mockResolvedValueOnce({ entries: [], nextCursor: null });
     await listChartEntries('patient-1', 'org-a', 'cursor-9');
-    expect(descriptorAt(0).url).toBe('/api/v1/chart/records/patients/patient-1/entries?cursor=cursor-9');
+    expect(descriptorAt(0).url).toBe(
+      '/api/v1/chart/records/patients/patient-1/entries?cursor=cursor-9',
+    );
   });
 
   it('reads one chart entry', async () => {
@@ -202,7 +210,12 @@ describe('chart API requests', () => {
 
   it('records entered-in-error with a reason and JSON recipients', async () => {
     sendMock.mockResolvedValueOnce(noteRevision({ state: 'entered_in_error' }));
-    await markEnteredInError('note-1', 1, 'wrong patient', ['referrer'], 'org-a');
+    await markEnteredInError(
+      'note-1',
+      1,
+      { reason: 'wrong patient', affectedRecipients: ['referrer'] },
+      'org-a',
+    );
     const request = descriptorAt(0);
     expect(request.url).toBe('/api/v1/clinical-notes/note-1/entered-in-error');
     expect(request.headers['If-Match']).toBe('1');
@@ -210,9 +223,13 @@ describe('chart API requests', () => {
   });
 
   it('propagates a typed transport error to the caller', async () => {
-    sendMock.mockRejectedValueOnce(new TransportError('conflict', {
-      correlationId: 'corr-1', code: undefined, retryAfterSeconds: undefined,
-    }));
+    sendMock.mockRejectedValueOnce(
+      new TransportError('conflict', {
+        correlationId: 'corr-1',
+        code: undefined,
+        retryAfterSeconds: undefined,
+      }),
+    );
     await expect(getNote('note-1', 'org-a')).rejects.toBeInstanceOf(TransportError);
   });
 });
@@ -241,29 +258,76 @@ describe('chart domain mapping', () => {
   it('maps presence and verification into explicit verification states', () => {
     expect(toVerification(chartEntry({ presence: 'UNKNOWN' }))).toBe('unknown');
     expect(toVerification(chartEntry({ presence: 'ABSENT' }))).toBe('none');
-    expect(toVerification(chartEntry({ presence: 'PRESENT', verification: 'VERIFIED' }))).toBe('verified');
-    expect(toVerification(chartEntry({ presence: 'PRESENT', verification: 'UNVERIFIED' }))).toBe('unverified');
+    expect(toVerification(chartEntry({ presence: 'PRESENT', verification: 'VERIFIED' }))).toBe(
+      'verified',
+    );
+    expect(toVerification(chartEntry({ presence: 'PRESENT', verification: 'UNVERIFIED' }))).toBe(
+      'unverified',
+    );
   });
 
   it('prefers mapped code and text, falling back to originals and then empty', () => {
     expect(toCodedEntry(chartEntry(), 'org-a')).toMatchObject({
-      code: 'MAPPED-1', display: 'mapped problem', effectiveOn: '2026-03-09T00:00:00Z',
-      clinicalAuthor: 'clinician-1', verification: 'verified',
+      code: 'MAPPED-1',
+      display: 'mapped problem',
+      effectiveOn: '2026-03-09T00:00:00Z',
+      clinicalAuthor: 'clinician-1',
+      verification: 'verified',
     });
-    expect(toCodedEntry(chartEntry({ mappedCode: null, mappedText: null, effectiveFrom: null, clinicalAuthor: null }), 'org-a')).toMatchObject({
-      code: 'RAW-1', display: 'original problem', effectiveOn: '2026-03-09T09:00:00Z', clinicalAuthor: '',
+    expect(
+      toCodedEntry(
+        chartEntry({
+          mappedCode: null,
+          mappedText: null,
+          effectiveFrom: null,
+          clinicalAuthor: null,
+        }),
+        'org-a',
+      ),
+    ).toMatchObject({
+      code: 'RAW-1',
+      display: 'original problem',
+      effectiveOn: '2026-03-09T09:00:00Z',
+      clinicalAuthor: '',
     });
-    expect(toCodedEntry(chartEntry({ mappedCode: null, originalCode: null }), 'org-a').code).toBe('');
+    expect(toCodedEntry(chartEntry({ mappedCode: null, originalCode: null }), 'org-a').code).toBe(
+      '',
+    );
   });
 
   it('maps a vital with fallbacks for missing value, unit and measurement time', () => {
-    expect(toVital(chartEntry({ value: '37.5', unit: '°C', measuredAt: '2026-03-09T08:00:00Z' }), 'org-a')).toMatchObject({
-      value: 37.5, unit: '°C', measuredAt: '2026-03-09T08:00:00Z', timeZone: 'UTC',
+    expect(
+      toVital(
+        chartEntry({ value: '37.5', unit: '°C', measuredAt: '2026-03-09T08:00:00Z' }),
+        'org-a',
+      ),
+    ).toMatchObject({
+      value: 37.5,
+      unit: '°C',
+      measuredAt: '2026-03-09T08:00:00Z',
+      timeZone: 'UTC',
     });
-    expect(toVital(chartEntry({ value: null, unit: null, measuredAt: null, effectiveFrom: '2026-03-08T00:00:00Z' }), 'org-a')).toMatchObject({
-      value: 0, unit: '', measuredAt: '2026-03-08T00:00:00Z',
+    expect(
+      toVital(
+        chartEntry({
+          value: null,
+          unit: null,
+          measuredAt: null,
+          effectiveFrom: '2026-03-08T00:00:00Z',
+        }),
+        'org-a',
+      ),
+    ).toMatchObject({
+      value: 0,
+      unit: '',
+      measuredAt: '2026-03-08T00:00:00Z',
     });
-    expect(toVital(chartEntry({ value: null, unit: null, measuredAt: null, effectiveFrom: null }), 'org-a').measuredAt).toBe('2026-03-09T09:00:00Z');
+    expect(
+      toVital(
+        chartEntry({ value: null, unit: null, measuredAt: null, effectiveFrom: null }),
+        'org-a',
+      ).measuredAt,
+    ).toBe('2026-03-09T09:00:00Z');
   });
 });
 
@@ -279,9 +343,15 @@ describe('note domain mapping', () => {
   it('maps a draft without optional provenance', () => {
     const revision = toNoteRevision(noteRevision({ effectiveAt: null }), 'org-a');
     expect(revision).toMatchObject({
-      organizationId: 'org-a', id: 'note-1', version: 1, kind: 'original', state: 'draft',
+      organizationId: 'org-a',
+      id: 'note-1',
+      version: 1,
+      kind: 'original',
+      state: 'draft',
       content: { subjective: 'Chief concern text', objective: '', assessment: '', plan: '' },
-      templateVersion: '3', patientLocalId: 'patient-1', encounterLocalId: 'encounter-1',
+      templateVersion: '3',
+      patientLocalId: 'patient-1',
+      encounterLocalId: 'encounter-1',
     });
     expect(revision.signer).toBeUndefined();
     expect(revision.signedAt).toBeUndefined();
@@ -292,32 +362,57 @@ describe('note domain mapping', () => {
   });
 
   it('maps a signed amendment with provenance and an amends link', () => {
-    const revision = toNoteRevision(noteRevision({
-      state: 'addendum', version: 2, supersedesVersion: 1, signerSubject: 'clinician-2',
-      signedAt: '2026-03-10T10:00:00Z', effectiveAt: '2026-03-10T00:00:00Z',
-      contentChecksum: 'sha:abc', encounterId: null,
-    }), 'org-a');
+    const revision = toNoteRevision(
+      noteRevision({
+        state: 'addendum',
+        version: 2,
+        supersedesVersion: 1,
+        signerSubject: 'clinician-2',
+        signedAt: '2026-03-10T10:00:00Z',
+        effectiveAt: '2026-03-10T00:00:00Z',
+        contentChecksum: 'sha:abc',
+        encounterId: null,
+      }),
+      'org-a',
+    );
     expect(revision).toMatchObject({
-      kind: 'amendment', state: 'signed', signer: 'clinician-2', signedAt: '2026-03-10T10:00:00Z',
-      effectiveOn: '2026-03-10T00:00:00Z', checksum: 'sha:abc', amends: '1', encounterLocalId: '',
+      kind: 'amendment',
+      state: 'signed',
+      signer: 'clinician-2',
+      signedAt: '2026-03-10T10:00:00Z',
+      effectiveOn: '2026-03-10T00:00:00Z',
+      checksum: 'sha:abc',
+      amends: '1',
+      encounterLocalId: '',
     });
   });
 
   it('maps entered-in-error evidence and parses recipients', () => {
-    const revision = toNoteRevision(noteRevision({
-      state: 'entered_in_error', enteredErrorReason: 'wrong patient',
-      enteredErrorActor: 'auditor-1', affectedRecipients: '["referrer","lab"]',
-    }), 'org-a');
+    const revision = toNoteRevision(
+      noteRevision({
+        state: 'entered_in_error',
+        enteredErrorReason: 'wrong patient',
+        enteredErrorActor: 'auditor-1',
+        affectedRecipients: '["referrer","lab"]',
+      }),
+      'org-a',
+    );
     expect(revision.enteredInError).toEqual({
-      actor: 'auditor-1', reason: 'wrong patient',
-      affectedRecipients: ['referrer', 'lab'], recordedAt: '2026-03-09T09:00:00Z',
+      actor: 'auditor-1',
+      reason: 'wrong patient',
+      affectedRecipients: ['referrer', 'lab'],
+      recordedAt: '2026-03-09T09:00:00Z',
     });
   });
 
   it('uses an empty actor when entered-in-error has no actor', () => {
-    const revision = toNoteRevision(noteRevision({
-      enteredErrorReason: 'typo', enteredErrorActor: null,
-    }), 'org-a');
+    const revision = toNoteRevision(
+      noteRevision({
+        enteredErrorReason: 'typo',
+        enteredErrorActor: null,
+      }),
+      'org-a',
+    );
     expect(revision.enteredInError?.actor).toBe('');
   });
 
@@ -332,7 +427,9 @@ describe('note domain mapping', () => {
     const soap = contentToSoap('first field');
     expect(soap).toEqual({ subjective: 'first field', objective: '', assessment: '', plan: '' });
     expect(soapToContent(soap)).toBe('first field');
-    expect(soapToContent({ subjective: 'a', objective: '  ', assessment: 'c', plan: 'd' })).toBe('a\n\nc\n\nd');
+    expect(soapToContent({ subjective: 'a', objective: '  ', assessment: 'c', plan: 'd' })).toBe(
+      'a\n\nc\n\nd',
+    );
   });
 
   it('maps a whole note view with its history', () => {
@@ -341,6 +438,6 @@ describe('note domain mapping', () => {
       history: [noteRevision({ id: 'note-1', version: 1, state: 'draft' })],
     };
     expect(toNoteRevision(view.current, 'org-a').state).toBe('signed');
-    expect(toNoteRevision(view.history[0]!, 'org-a').state).toBe('draft');
+    expect(toNoteRevision(must(view.history[0]), 'org-a').state).toBe('draft');
   });
 });

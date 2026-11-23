@@ -13,6 +13,7 @@ import { ThemeProvider } from '../../theme/ThemeProvider';
 import { ChartPage } from './ChartPage';
 import type { ChartEntryResponse, ChartViewResponse, PatientViewResponse } from './api';
 import { chartText } from './messages';
+import { must } from '../../../tests/must';
 
 vi.mock('../../api/transport', async (importOriginal) => {
   const actual = await importOriginal<typeof TransportModule>();
@@ -23,13 +24,32 @@ const sendMock = vi.mocked(send);
 
 function entry(overrides: Partial<ChartEntryResponse> = {}): ChartEntryResponse {
   return {
-    id: 'entry-1', patientId: 'patient-1', encounterId: null, type: 'PROBLEM',
-    originalText: 'Hypertension', originalCode: 'HTN', codeSystem: 'local',
-    mappedCode: null, mappedText: null, catalogVersion: null, source: 'CLINICIAN_OBSERVED',
-    presence: 'PRESENT', unknownReason: null, verification: 'VERIFIED', verifiedBy: 'dr-1',
-    verifiedAt: null, effectiveFrom: '2026-03-09', effectiveTo: null, measuredAt: null,
-    value: null, unit: null, clinicalAuthor: 'dr-1', dataEntryActor: 'reception-1',
-    version: 1, recordedAt: '2026-03-09T09:00:00Z', ...overrides,
+    id: 'entry-1',
+    patientId: 'patient-1',
+    encounterId: null,
+    type: 'PROBLEM',
+    originalText: 'Hypertension',
+    originalCode: 'HTN',
+    codeSystem: 'local',
+    mappedCode: null,
+    mappedText: null,
+    catalogVersion: null,
+    source: 'CLINICIAN_OBSERVED',
+    presence: 'PRESENT',
+    unknownReason: null,
+    verification: 'VERIFIED',
+    verifiedBy: 'dr-1',
+    verifiedAt: null,
+    effectiveFrom: '2026-03-09',
+    effectiveTo: null,
+    measuredAt: null,
+    value: null,
+    unit: null,
+    clinicalAuthor: 'dr-1',
+    dataEntryActor: 'reception-1',
+    version: 1,
+    recordedAt: '2026-03-09T09:00:00Z',
+    ...overrides,
   };
 }
 
@@ -44,22 +64,35 @@ function patientView(): PatientViewResponse {
 function deferred<T>() {
   let resolve!: (value: T) => void;
   let reject!: (reason?: unknown) => void;
-  const promise = new Promise<T>((res, rej) => { resolve = res; reject = rej; });
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
   return { promise, resolve, reject };
 }
 
-function transportFailure(kind: ConstructorParameters<typeof TransportError>[0], correlationId = 'corr-1') {
+function transportFailure(
+  kind: ConstructorParameters<typeof TransportError>[0],
+  correlationId = 'corr-1',
+) {
   return new TransportError(kind, { correlationId, code: undefined, retryAfterSeconds: undefined });
 }
 
 const chartPatterns = ['/patients/:id/chart'];
 
-function element(ui: ReactElement, organizationId: string, locale: 'en' | 'ar' = 'en', path = '/patients/patient-1/chart') {
+function element(
+  ui: ReactElement,
+  organizationId: string,
+  locale: 'en' | 'ar' = 'en',
+  path = '/patients/patient-1/chart',
+) {
   return (
     <ThemeProvider>
       <I18nProvider initialLocale={locale}>
         <ActiveOrganizationProvider value={{ organizationId }}>
-          <RouterProvider patterns={chartPatterns} initialPath={path}>{ui}</RouterProvider>
+          <RouterProvider patterns={chartPatterns} initialPath={path}>
+            {ui}
+          </RouterProvider>
         </ActiveOrganizationProvider>
       </I18nProvider>
     </ThemeProvider>
@@ -83,7 +116,9 @@ describe('ChartPage states', () => {
     const pending = deferred<ChartViewResponse>();
     const patient = deferred<PatientViewResponse>();
     sendMock.mockImplementation((request) =>
-      (request as { url: string }).url.startsWith('/api/v1/patients/') ? patient.promise : pending.promise,
+      (request as { url: string }).url.startsWith('/api/v1/patients/')
+        ? patient.promise
+        : pending.promise,
     );
 
     render(element(<ChartPage />, 'org-a'));
@@ -113,7 +148,9 @@ describe('ChartPage states', () => {
   it('shows the forbidden and session-expired states', async () => {
     sendMock.mockRejectedValueOnce(transportFailure('forbidden'));
     render(element(<ChartPage />, 'org-a'));
-    expect(await screen.findByRole('heading', { name: stateViewText('en', 'forbidden') })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { name: stateViewText('en', 'forbidden') }),
+    ).toBeTruthy();
   });
 });
 
@@ -147,7 +184,10 @@ describe('ChartPage content and paging', () => {
       return Promise.resolve(
         chartCall === 1
           ? chartView({ nextCursor: 'cursor-2' })
-          : chartView({ entries: [entry({ id: 'entry-2', originalText: 'Asthma' })], nextCursor: null }),
+          : chartView({
+              entries: [entry({ id: 'entry-2', originalText: 'Asthma' })],
+              nextCursor: null,
+            }),
       );
     });
 
@@ -200,15 +240,26 @@ describe('ChartPage content and paging', () => {
 
   it('tolerates a missing route id by using an empty identifier', async () => {
     render(element(<ChartPage />, 'org-a', 'en', '/patients'));
-    expect(await screen.findByRole('heading', { level: 2, name: chartText('en', 'chart') })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { level: 2, name: chartText('en', 'chart') }),
+    ).toBeTruthy();
   });
 });
 
 describe('ChartPage route registration', () => {
   it('lazily loads the registered chart page', async () => {
-    const route = createRoutes(false).find((candidate) => candidate.pattern === '/patients/:id/chart')!;
+    const route = must(
+      createRoutes(false).find((candidate) => candidate.pattern === '/patients/:id/chart'),
+    );
     resolveByUrl();
-    render(element(<Suspense fallback={<p>Loading</p>}><route.component /></Suspense>, 'org-a'));
+    render(
+      element(
+        <Suspense fallback={<p>Loading</p>}>
+          <route.component />
+        </Suspense>,
+        'org-a',
+      ),
+    );
     expect((await screen.findAllByText('Layla Haddad')).length).toBeGreaterThan(0);
   });
 });

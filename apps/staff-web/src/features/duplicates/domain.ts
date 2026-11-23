@@ -97,10 +97,7 @@ export interface ApprovalRequestBody {
 
 /** Why an approval cannot be attempted, or `undefined` when it can. */
 export type ApprovalBlocker =
-  | 'no-open-review'
-  | 'same-reviewer'
-  | 'unresolved-dependencies'
-  | undefined;
+  'no-open-review' | 'same-reviewer' | 'unresolved-dependencies' | undefined;
 
 /** Field-keyed local validation result for the approval form. */
 export interface ApprovalFormErrors {
@@ -110,11 +107,7 @@ export interface ApprovalFormErrors {
 
 /** Which part of the high-risk identifier confirmation failed. */
 export type ConfirmationIssue =
-  | 'both'
-  | 'alternate-format'
-  | 'identifiers-required'
-  | 'invalid-identifier'
-  | undefined;
+  'both' | 'alternate-format' | 'identifiers-required' | 'invalid-identifier' | undefined;
 
 const REASON_PATTERN = /^[A-Za-z0-9 _.:'-]{3,200}$/;
 const IDENTIFIER_REFERENCE_PATTERN = /^[A-Za-z0-9_.:-]{2,64}@[A-Za-z0-9_.:-]{2,32}$/;
@@ -172,9 +165,7 @@ export function confirmationIssue(
     return 'both';
   }
   if (hasAlternate) {
-    return ALTERNATE_PROCESS_PATTERN.test(alternateProcess.trim())
-      ? undefined
-      : 'alternate-format';
+    return ALTERNATE_PROCESS_PATTERN.test(alternateProcess.trim()) ? undefined : 'alternate-format';
   }
   if (confirmedIdentifiers.length < 2 || new Set(confirmedIdentifiers).size < 2) {
     return 'identifiers-required';

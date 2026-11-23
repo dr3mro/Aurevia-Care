@@ -47,7 +47,10 @@ const wrappingStyle = {
  */
 function documentValues(document: DocumentAssociation, locale: Locale): DocumentValues {
   return {
-    title: locale === 'ar' && document.titleLocal ? document.titleLocal : document.title,
+    title:
+      locale === 'ar' && (document.titleLocal ?? '') !== ''
+        ? (document.titleLocal ?? '')
+        : document.title,
     kind: document.kind.toUpperCase(),
     version: document.version,
     language: chartText(locale, document.language === 'ar' ? 'languageAr' : 'languageEn'),
@@ -118,11 +121,26 @@ export function DocumentList({ documents, locale, onVoid, onRotate }: DocumentLi
                   </h4>
                   <dl style={{ margin: 0 }}>
                     <CardField label={chartText(locale, 'documentKind')} value={values.kind} />
-                    <CardField label={chartText(locale, 'documentVersion')} value={values.version} />
-                    <CardField label={chartText(locale, 'documentLanguage')} value={values.language} />
-                    <CardField label={chartText(locale, 'documentChecksum')} value={values.checksum} />
-                    <CardField label={chartText(locale, 'documentLinkedTo')} value={values.linkedTo} />
-                    <CardField label={chartText(locale, 'documentRotation')} value={values.rotation} />
+                    <CardField
+                      label={chartText(locale, 'documentVersion')}
+                      value={values.version}
+                    />
+                    <CardField
+                      label={chartText(locale, 'documentLanguage')}
+                      value={values.language}
+                    />
+                    <CardField
+                      label={chartText(locale, 'documentChecksum')}
+                      value={values.checksum}
+                    />
+                    <CardField
+                      label={chartText(locale, 'documentLinkedTo')}
+                      value={values.linkedTo}
+                    />
+                    <CardField
+                      label={chartText(locale, 'documentRotation')}
+                      value={values.rotation}
+                    />
                     <CardField label={chartText(locale, 'documentStatus')} value={values.status} />
                   </dl>
                   <div className="cluster">
@@ -156,7 +174,11 @@ export function DocumentList({ documents, locale, onVoid, onRotate }: DocumentLi
         <thead>
           <tr>
             {headers.map((header) => (
-              <th key={header} scope="col" style={{ border: `1px solid ${tokens.border}`, ...wrappingStyle }}>
+              <th
+                key={header}
+                scope="col"
+                style={{ border: `1px solid ${tokens.border}`, ...wrappingStyle }}
+              >
                 {header}
               </th>
             ))}

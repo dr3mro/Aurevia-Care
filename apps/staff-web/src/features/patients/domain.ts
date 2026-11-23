@@ -56,12 +56,7 @@ export interface PatientOverview {
 
 /** Every field collected by the registration form. */
 export type RegistrationField =
-  | 'displayName'
-  | 'mrn'
-  | 'issuer'
-  | 'dob'
-  | 'dobUnknownReason'
-  | 'language';
+  'displayName' | 'mrn' | 'issuer' | 'dob' | 'dobUnknownReason' | 'language';
 
 /** The editable registration draft; date and reason are mutually exclusive. */
 export type RegistrationDraft = Record<RegistrationField, string>;
@@ -137,7 +132,10 @@ export function toPatient(wire: PatientResponse, organizationId: string): Patien
 }
 
 /** Map a wire patient view to the overview projection without merging records. */
-export function toPatientOverview(wire: PatientViewResponse, organizationId: string): PatientOverview {
+export function toPatientOverview(
+  wire: PatientViewResponse,
+  organizationId: string,
+): PatientOverview {
   return {
     patient: toPatient(wire.patient, organizationId),
     duplicates: wire.duplicates.map((candidate) => ({
@@ -164,6 +162,25 @@ export function searchError(name: string): SearchErrorKey | undefined {
   return name.trim().length < MIN_SEARCH_LENGTH ? 'searchTooShort' : undefined;
 }
 
+/** Validate the mutually exclusive date of birth and unknown-date reason. */
+function validateDateOfBirth(draft: RegistrationDraft): RegistrationFieldErrors {
+  const hasDob = draft.dob.trim() !== '';
+  const hasReason = draft.dobUnknownReason.trim() !== '';
+  if (hasDob && hasReason) {
+    return { dob: 'errorDobExclusive' };
+  }
+  if (hasDob && !DOB_PATTERN.test(draft.dob.trim())) {
+    return { dob: 'errorDob' };
+  }
+  if (!hasDob && !hasReason) {
+    return { dob: 'errorDob' };
+  }
+  if (!hasDob && !REASON_PATTERN.test(draft.dobUnknownReason.trim())) {
+    return { dobUnknownReason: 'errorDobReason' };
+  }
+  return {};
+}
+
 /**
  * Validate a registration draft at the trust boundary. The patterns mirror
  * `PatientService` so a bad draft is shown in the summary before any command.
@@ -179,17 +196,7 @@ export function validateRegistration(draft: RegistrationDraft): RegistrationFiel
   if (!ISSUER_PATTERN.test(draft.issuer.trim())) {
     errors.issuer = 'errorIssuer';
   }
-  const hasDob = draft.dob.trim() !== '';
-  const hasReason = draft.dobUnknownReason.trim() !== '';
-  if (hasDob && hasReason) {
-    errors.dob = 'errorDobExclusive';
-  } else if (hasDob && !DOB_PATTERN.test(draft.dob.trim())) {
-    errors.dob = 'errorDob';
-  } else if (!hasDob && !hasReason) {
-    errors.dob = 'errorDob';
-  } else if (!hasDob && !REASON_PATTERN.test(draft.dobUnknownReason.trim())) {
-    errors.dobUnknownReason = 'errorDobReason';
-  }
+  Object.assign(errors, validateDateOfBirth(draft));
   if (!SUPPORTED_LANGUAGES.includes(draft.language.trim())) {
     errors.language = 'errorLanguage';
   }

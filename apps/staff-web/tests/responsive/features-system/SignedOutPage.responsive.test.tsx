@@ -93,12 +93,8 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
 
       expect(document.documentElement.dir).toBe('ltr');
       expect(document.documentElement.lang).toBe('en');
-      expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(
-        'You have signed out',
-      );
-      expect(
-        screen.getByText('Your session has ended. Sign in again to continue.'),
-      ).toBeTruthy();
+      expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('You have signed out');
+      expect(screen.getByText('Your session has ended. Sign in again to continue.')).toBeTruthy();
       const buttons = screen.getAllByRole('button');
       expect(buttons).toHaveLength(1);
       expect(buttons[0]?.textContent).toBe('Sign in');
@@ -117,7 +113,7 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
 
       // Button owns its `touch` class and breakpoint; the stylesheet owns the
       // 44px coarse-pointer floor, so no inline size may be introduced here.
-      const button = screen.getByRole('button', { name: 'Sign in' }) as HTMLButtonElement;
+      const button = screen.getByRole<HTMLButtonElement>('button', { name: 'Sign in' });
       expect(button.tagName).toBe('BUTTON');
       expect(button.classList.contains('touch')).toBe(true);
       expect(button.getAttribute('data-breakpoint')).toBe(layout);

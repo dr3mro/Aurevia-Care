@@ -7,20 +7,30 @@ function Consumer() {
   return (
     <div>
       <span data-testid="mode">{mode}</span>
-      <button type="button" onClick={toggleMode}>toggle theme</button>
+      <button type="button" onClick={toggleMode}>
+        toggle theme
+      </button>
     </div>
   );
 }
 
 describe('theme provider', () => {
   it('starts in light mode with the data-theme attribute set', () => {
-    render(<ThemeProvider><Consumer /></ThemeProvider>);
+    render(
+      <ThemeProvider>
+        <Consumer />
+      </ThemeProvider>,
+    );
     expect(screen.getByTestId('mode').textContent).toBe('light');
     expect(document.documentElement.dataset.theme).toBe('light');
   });
 
   it('toggles to dark and back through an explicit user action', () => {
-    render(<ThemeProvider><Consumer /></ThemeProvider>);
+    render(
+      <ThemeProvider>
+        <Consumer />
+      </ThemeProvider>,
+    );
     fireEvent.click(screen.getByRole('button', { name: 'toggle theme' }));
     expect(screen.getByTestId('mode').textContent).toBe('dark');
     expect(document.documentElement.dataset.theme).toBe('dark');

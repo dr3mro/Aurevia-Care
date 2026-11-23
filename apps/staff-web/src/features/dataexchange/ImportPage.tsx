@@ -10,6 +10,7 @@
  */
 
 import { useState } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
 import { useActiveOrganization } from '../../api/activeOrganization';
 import type { TransportError } from '../../api/transport';
 import type { Role } from '../../app/navigation';
@@ -36,7 +37,7 @@ import type { DataExchangeMessageKey } from './labels';
 /** Props for the onboarding import screen. */
 export interface ImportPageProps {
   /** Role override for tests and embedding; the session role is the default. */
-  role?: Role;
+  roleOverride?: Role;
 }
 
 /** Fields describing the synthetic dataset under review. */
@@ -78,15 +79,125 @@ const REJECTION_MESSAGE: Record<SignOffRejection, DataExchangeMessageKey> = {
   decisionNotApproved: 'reasonDecisionNotApproved',
 };
 
+/** One titled list of findings, or its explicit empty message. */
+function FindingList({
+  title,
+  items,
+  emptyText,
+}: {
+  title: string;
+  items: readonly string[];
+  emptyText: string;
+}) {
+  return (
+    <>
+      <h4>{title}</h4>
+      {items.length === 0 ? (
+        <p>{emptyText}</p>
+      ) : (
+        <ul aria-label={title}>
+          {items.map((entry) => (
+            <li key={entry}>{entry}</li>
+          ))}
+        </ul>
+      )}
+    </>
+  );
+}
+
+/** Every required dry-run finding, in the order the operator reviews them. */
+function DryRunReport({
+  report,
+  text,
+}: {
+  report: DryRunView;
+  text: (key: DataExchangeMessageKey) => string;
+}) {
+  return (
+    <>
+      <p>
+        {text('totalRecords')}: {report.totalRecords}
+      </p>
+      <p>
+        {text('batchCount')}: {report.batchCount}
+      </p>
+      <FindingList
+        title={text('unsupportedFields')}
+        items={report.unsupportedFields}
+        emptyText={text('noUnsupportedFields')}
+      />
+      <FindingList
+        title={text('duplicateRisk')}
+        items={report.duplicateRisk}
+        emptyText={text('noDuplicateRisk')}
+      />
+      <FindingList
+        title={text('missingAttachments')}
+        items={report.missingAttachments}
+        emptyText={text('noMissingAttachments')}
+      />
+      <FindingList title={text('errors')} items={report.errors} emptyText={text('noErrors')} />
+    </>
+  );
+}
+
+/** Synthetic dataset fields and the dry-run submit action. */
+function DryRunForm({
+  dataset,
+  setDataset,
+  text,
+  onSubmit,
+}: {
+  dataset: DatasetDraft;
+  setDataset: Dispatch<SetStateAction<DatasetDraft>>;
+  text: (key: DataExchangeMessageKey) => string;
+  onSubmit: () => void;
+}) {
+  const { tokens } = useTheme();
+  return (
+    <section aria-label={text('dryRunForm')} style={{ display: 'grid', gap: tokens.spacing.sm }}>
+      <h3>{text('dryRunForm')}</h3>
+      <Form label={text('dryRunForm')} submitLabel={text('runDryRun')} onSubmit={onSubmit}>
+        <FormField
+          id="dataexchange-source"
+          label={text('source')}
+          value={dataset.source}
+          onChange={(value) => setDataset((current) => ({ ...current, source: value }))}
+        />
+        <FormField
+          id="dataexchange-source-version"
+          label={text('sourceVersion')}
+          value={dataset.sourceVersion}
+          onChange={(value) => setDataset((current) => ({ ...current, sourceVersion: value }))}
+        />
+        <FormField
+          id="dataexchange-manifest-version"
+          label={text('manifestVersion')}
+          value={dataset.manifestVersion}
+          onChange={(value) => setDataset((current) => ({ ...current, manifestVersion: value }))}
+        />
+        <FormField
+          id="dataexchange-unsupported-fields"
+          label={text('unsupportedFieldNames')}
+          value={dataset.unsupportedFieldNames}
+          onChange={(value) =>
+            setDataset((current) => ({ ...current, unsupportedFieldNames: value }))
+          }
+        />
+      </Form>
+    </section>
+  );
+}
+
 /**
  * Render the dry-run form, its deterministic report and the sign-off step.
  *
  * @param props optional role override (synthetic value in tests)
  */
-export function ImportPage({ role }: ImportPageProps) {
+export function ImportPage({ roleOverride }: ImportPageProps) {
   const organizationId = useActiveOrganization();
   const sessionRole = useRole();
-  const activeRole = role ?? sessionRole;
+  const activeRole = roleOverride ?? sessionRole;
   const { locale } = useI18n();
   const { tokens } = useTheme();
   const [dataset, setDataset] = useState<DatasetDraft>(EMPTY_DATASET);
@@ -139,13 +250,12 @@ export function ImportPage({ role }: ImportPageProps) {
     }
     setBusy(true);
     try {
-      const request = signOffRequest(
-        manifest,
-        signOff.approver,
-        activeRole,
-        signOff.contentSha256,
-        signOff.approvedAt,
-      );
+      const request = signOffRequest(manifest, {
+        approver: signOff.approver,
+        role: activeRole,
+        contentSha256: signOff.contentSha256,
+        approvedAt: signOff.approvedAt,
+      });
       const result = await submitSignOff(request, organizationId);
       setStatus(result.accepted ? 'signOffDone' : 'signOffRefused');
       setError(undefined);
@@ -167,76 +277,16 @@ export function ImportPage({ role }: ImportPageProps) {
         <div data-testid="import-command-error">{StateView.forTransportError(error)}</div>
       )}
 
-      <section aria-label={text('dryRunForm')} style={{ display: 'grid', gap: tokens.spacing.sm }}>
-        <h3>{text('dryRunForm')}</h3>
-        <Form label={text('dryRunForm')} submitLabel={text('runDryRun')} onSubmit={() => void handleDryRun()}>
-          <FormField
-            id="dataexchange-source"
-            label={text('source')}
-            value={dataset.source}
-            onChange={(value) => setDataset((current) => ({ ...current, source: value }))}
-          />
-          <FormField
-            id="dataexchange-source-version"
-            label={text('sourceVersion')}
-            value={dataset.sourceVersion}
-            onChange={(value) => setDataset((current) => ({ ...current, sourceVersion: value }))}
-          />
-          <FormField
-            id="dataexchange-manifest-version"
-            label={text('manifestVersion')}
-            value={dataset.manifestVersion}
-            onChange={(value) => setDataset((current) => ({ ...current, manifestVersion: value }))}
-          />
-          <FormField
-            id="dataexchange-unsupported-fields"
-            label={text('unsupportedFieldNames')}
-            value={dataset.unsupportedFieldNames}
-            onChange={(value) => setDataset((current) => ({ ...current, unsupportedFieldNames: value }))}
-          />
-        </Form>
-      </section>
+      <DryRunForm
+        dataset={dataset}
+        setDataset={setDataset}
+        text={text}
+        onSubmit={() => void handleDryRun()}
+      />
 
       <section aria-label={text('report')} style={{ display: 'grid', gap: tokens.spacing.sm }}>
         <h3>{text('report')}</h3>
-        {report === undefined ? null : (
-          <>
-            <p>{text('totalRecords')}: {report.totalRecords}</p>
-            <p>{text('batchCount')}: {report.batchCount}</p>
-            <h4>{text('unsupportedFields')}</h4>
-            {report.unsupportedFields.length === 0 ? (
-              <p>{text('noUnsupportedFields')}</p>
-            ) : (
-              <ul aria-label={text('unsupportedFields')}>
-                {report.unsupportedFields.map((field) => <li key={field}>{field}</li>)}
-              </ul>
-            )}
-            <h4>{text('duplicateRisk')}</h4>
-            {report.duplicateRisk.length === 0 ? (
-              <p>{text('noDuplicateRisk')}</p>
-            ) : (
-              <ul aria-label={text('duplicateRisk')}>
-                {report.duplicateRisk.map((entry) => <li key={entry}>{entry}</li>)}
-              </ul>
-            )}
-            <h4>{text('missingAttachments')}</h4>
-            {report.missingAttachments.length === 0 ? (
-              <p>{text('noMissingAttachments')}</p>
-            ) : (
-              <ul aria-label={text('missingAttachments')}>
-                {report.missingAttachments.map((entry) => <li key={entry}>{entry}</li>)}
-              </ul>
-            )}
-            <h4>{text('errors')}</h4>
-            {report.errors.length === 0 ? (
-              <p>{text('noErrors')}</p>
-            ) : (
-              <ul aria-label={text('errors')}>
-                {report.errors.map((entry) => <li key={entry}>{entry}</li>)}
-              </ul>
-            )}
-          </>
-        )}
+        {report === undefined ? null : <DryRunReport report={report} text={text} />}
       </section>
 
       <section aria-label={text('signOff')} style={{ display: 'grid', gap: tokens.spacing.sm }}>

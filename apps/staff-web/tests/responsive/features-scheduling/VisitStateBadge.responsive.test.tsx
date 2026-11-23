@@ -140,12 +140,12 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
       const root = badgeRoot();
       expect(root.getAttribute('data-state')).toBe('booked');
       expect(root.getAttribute('data-breakpoint')).toBe(layout);
-      const icon = root.querySelector('[data-badge-icon]') as HTMLElement | null;
+      const icon = root.querySelector<HTMLElement>('[data-badge-icon]');
       expect(icon).not.toBeNull();
       expect(icon?.getAttribute('aria-hidden')).toBe('true');
       expect(icon?.textContent).toBe('○');
 
-      const text = screen.getByText(schedulingText('en', 'stateBooked')) as HTMLElement;
+      const text = screen.getByText(schedulingText('en', 'stateBooked'));
       expect(text.tagName).toBe('BDI');
       expect(text.getAttribute('data-breakpoint')).toBe(layout);
       expect(text.getAttribute('dir')).toBe('auto');
@@ -158,8 +158,8 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
       for (const state of ALL_STATES) {
         const { unmount } = renderBadge(state, 'en');
         const label = schedulingText('en', visitStateMessageKey[state]);
-        const text = screen.getByText(label) as HTMLElement;
-        const root = text.closest('[data-state]') as HTMLElement | null;
+        const text = screen.getByText(label);
+        const root = text.closest<HTMLElement>('[data-state]');
         expect(root?.getAttribute('data-state')).toBe(state);
         const glyph = root?.querySelector('[data-badge-icon]')?.textContent ?? null;
         expect(glyph).toBeTruthy();
@@ -177,8 +177,8 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
       renderBadge('checked-in', 'en');
 
       const root = badgeRoot();
-      const text = screen.getByText(schedulingText('en', 'stateCheckedIn')) as HTMLElement;
-      const icon = root.querySelector('[data-badge-icon]') as HTMLElement;
+      const text = screen.getByText(schedulingText('en', 'stateCheckedIn'));
+      const icon = required(root.querySelector<HTMLElement>('[data-badge-icon]'));
       expect(root.style.display).toBe('inline-flex');
       expect(root.style.flexWrap).toBe('wrap');
       expect(root.style.minInlineSize === '0' || root.style.minInlineSize === '0px').toBe(true);
@@ -227,7 +227,9 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
       expect(root.tabIndex).toBe(-1);
       // A status badge is presentational: it introduces no keyboard stop, so
       // the surrounding worklist keeps its existing keyboard order.
-      expect(container.querySelectorAll('a[href], button, input, select, textarea, [tabindex]')).toHaveLength(0);
+      expect(
+        container.querySelectorAll('a[href], button, input, select, textarea, [tabindex]'),
+      ).toHaveLength(0);
     });
   },
 );
@@ -252,9 +254,7 @@ describe('responsive VisitStateBadge viewport matrix', () => {
             : 'compact';
       expect(badgeRoot().getAttribute('data-breakpoint')).toBe(expected);
       expect(
-        (screen.getByText(schedulingText('en', 'stateBooked')) as HTMLElement).getAttribute(
-          'data-breakpoint',
-        ),
+        screen.getByText(schedulingText('en', 'stateBooked')).getAttribute('data-breakpoint'),
       ).toBe(expected);
     },
   );
@@ -291,7 +291,7 @@ describe('responsive VisitStateBadge band changes and right-to-left', () => {
     expect(root.getAttribute('data-breakpoint')).toBe('compact');
 
     const label = schedulingText('ar', visitStateMessageKey[state]);
-    const text = screen.getByText(label) as HTMLElement;
+    const text = screen.getByText(label);
     expect(text.getAttribute('dir')).toBe('auto');
     expect(text.getAttribute('lang')).toBe('ar');
     expect(text.textContent).toBe(label);
@@ -313,3 +313,10 @@ describe('responsive VisitStateBadge band changes and right-to-left', () => {
     expect(container.querySelectorAll('button, a[href], input, select, textarea')).toHaveLength(0);
   });
 });
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

@@ -193,7 +193,7 @@ describe.each(BREAKPOINTS)('responsive SchedulingPage at %s width', (breakpoint)
         .map((header) => header.textContent),
     ).toEqual(['Patient', 'Time', 'Protected resource', 'Visit state', 'Assign to', 'Actions']);
     for (const cell of within(table).getAllByRole('cell')) {
-      expect((cell as HTMLElement).style.display).not.toBe('none');
+      expect(cell.style.display).not.toBe('none');
     }
     expect(rowHeader).toBeTruthy();
   });
@@ -219,13 +219,13 @@ describe.each(BREAKPOINTS)('responsive SchedulingPage at %s width', (breakpoint)
     ]);
     for (const button of buttons) {
       expect(button.classList.contains('touch')).toBe(true);
-      expect((button as HTMLElement).style.minBlockSize).toBe('');
-      expect((button as HTMLElement).style.minInlineSize).toBe('');
+      expect(button.style.minBlockSize).toBe('');
+      expect(button.style.minInlineSize).toBe('');
       expect(button.getAttribute('tabindex')).toBeNull();
       expect(button.getAttribute('data-breakpoint')).toBe(breakpoint);
     }
 
-    const inputs = screen.getAllByRole('textbox') as HTMLInputElement[];
+    const inputs = screen.getAllByRole<HTMLInputElement>('textbox');
     expect(inputs.map((input) => input.id)).toEqual([
       'booking-facility',
       'booking-patient',
@@ -245,7 +245,7 @@ describe.each(BREAKPOINTS)('responsive SchedulingPage at %s width', (breakpoint)
       expect(input.closest('[data-breakpoint]')?.getAttribute('data-breakpoint')).toBe(breakpoint);
     }
 
-    const assign = screen.getByLabelText('Assign to') as HTMLSelectElement;
+    const assign = screen.getByLabelText<HTMLSelectElement>('Assign to');
     expect(root.contains(assign)).toBe(true);
     expect(assign.tabIndex).toBe(0);
   });
@@ -270,7 +270,9 @@ describe.each(BREAKPOINTS)('responsive SchedulingPage at %s width', (breakpoint)
   it('keeps a rejected command banner in the page without hiding the table', async () => {
     installMatchMedia(breakpoint);
     renderPage();
-    const row = (await screen.findByRole('rowheader', { name: LONG_ENGLISH })).closest('tr')!;
+    const row = required(
+      (await screen.findByRole('rowheader', { name: LONG_ENGLISH })).closest('tr'),
+    );
 
     sendMock.mockRejectedValueOnce(
       new TransportError('conflict', {
@@ -285,7 +287,7 @@ describe.each(BREAKPOINTS)('responsive SchedulingPage at %s width', (breakpoint)
     const banner = screen.getByTestId('scheduling-command-error');
     expect(banner.closest('[data-scheduling-page]')).not.toBeNull();
     expect(screen.getByRole('table', { name: 'Appointments by scheduled time' })).toBeTruthy();
-    expectLogicalOnly(banner as HTMLElement);
+    expectLogicalOnly(banner);
   });
 });
 
@@ -342,3 +344,10 @@ describe.each(['compact', 'expanded'] as const)(
     });
   },
 );
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

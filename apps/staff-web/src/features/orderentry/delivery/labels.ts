@@ -70,8 +70,7 @@ export const deliveryMessages: Record<Locale, Record<DeliveryMessageKey, string>
       'We cannot tell whether the partner received the order. Do not resend; reconcile the delivery first or print a handout instead.',
     reference: 'Reference',
     retry: 'Retry send',
-    retryUnavailable:
-      'An automatic retry is not safe for this failure. Print a handout instead.',
+    retryUnavailable: 'An automatic retry is not safe for this failure. Print a handout instead.',
     reconcile: 'Reconcile delivery',
     printInstead: 'Print instead',
   },
@@ -82,8 +81,7 @@ export const deliveryMessages: Record<Locale, Record<DeliveryMessageKey, string>
     modeElectronic: 'إرسال إلكتروني',
     modePrint: 'طباعة مطبوع',
     modeBoth: 'إرسال إلكتروني وطباعة',
-    receivesElectronic:
-      'تستلم الجهة الطلب إلكترونياً. لا يحصل المريض على مطبوع ورقي من هذه الخطوة.',
+    receivesElectronic: 'تستلم الجهة الطلب إلكترونياً. لا يحصل المريض على مطبوع ورقي من هذه الخطوة.',
     receivesPrint: 'لا يُرسل الطلب إلكترونياً. يحمل المريض مطبوعاً إلى المنفّذ.',
     receivesBoth: 'تستلم الجهة الطلب إلكترونياً ويحمل المريض مطبوعاً أيضاً.',
     confirmElectronic: 'تأكيد: الإرسال إلكترونياً إلى الجهة',
@@ -103,8 +101,7 @@ export const deliveryMessages: Record<Locale, Record<DeliveryMessageKey, string>
       'لا يمكننا التأكد ما إذا كانت الجهة استلمت الطلب. لا تُعد الإرسال؛ تحقق من الإرسال أولاً أو اطبع مطبوعاً بدلاً من ذلك.',
     reference: 'المرجع',
     retry: 'إعادة الإرسال',
-    retryUnavailable:
-      'إعادة الإرسال التلقائي غير آمنة لهذا الفشل. اطبع مطبوعاً بدلاً من ذلك.',
+    retryUnavailable: 'إعادة الإرسال التلقائي غير آمنة لهذا الفشل. اطبع مطبوعاً بدلاً من ذلك.',
     reconcile: 'التحقق من الإرسال',
     printInstead: 'الطباعة بدلاً من ذلك',
   },

@@ -1,5 +1,5 @@
 import { Children, isValidElement } from 'react';
-import type { CSSProperties, FormEvent, ReactNode } from 'react';
+import type { CSSProperties, ReactNode, SubmitEvent } from 'react';
 import { Button } from './Button';
 import { FormField } from './FormField';
 import { useBreakpoint } from '../theme/useBreakpoint';
@@ -80,7 +80,7 @@ export function Form({ label, submitLabel, onSubmit, children }: FormProps) {
       className="page"
       data-breakpoint={breakpoint}
       style={formStyle}
-      onSubmit={(event: FormEvent) => {
+      onSubmit={(event: SubmitEvent<HTMLFormElement>) => {
         event.preventDefault();
         onSubmit();
       }}

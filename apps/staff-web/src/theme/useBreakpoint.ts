@@ -1,9 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useRef, useSyncExternalStore } from 'react';
+import { getMatchMedia } from './matchMedia';
 import { BREAKPOINT_MEDIA_QUERIES } from './breakpoints';
 import type { Breakpoint } from './breakpoints';
-
-type ChangeListener = (event: MediaQueryListEvent) => void;
-type MatchMedia = (query: string) => MediaQueryList;
 
 /**
  * Read one media query and follow its changes. When `matchMedia` is unavailable
@@ -15,25 +13,36 @@ type MatchMedia = (query: string) => MediaQueryList;
  * @returns The current match state.
  */
 function useMediaQuery(query: string, fallback: boolean): boolean {
-  const [matches, setMatches] = useState<boolean>(() => {
-    const media: MatchMedia | undefined = globalThis.matchMedia;
-    const list = media?.(query);
-    return list ? list.matches : fallback;
-  });
+  // The last value reported for `query`. A change event carries the new state,
+  // so the snapshot never re-queries the environment between events.
+  const latest = useRef<{ query: string; matches: boolean } | null>(null);
 
-  useEffect(() => {
-    const media: MatchMedia | undefined = globalThis.matchMedia;
-    const list = media?.(query);
-    if (!list) {
-      return;
+  const subscribe = useCallback(
+    (onChange: () => void) => {
+      const list = getMatchMedia()?.(query);
+      if (!list) {
+        return () => undefined;
+      }
+      const onMediaChange = (event: MediaQueryListEvent): void => {
+        latest.current = { query, matches: event.matches };
+        onChange();
+      };
+      list.addEventListener('change', onMediaChange);
+      if (latest.current?.query !== query || latest.current.matches !== list.matches) {
+        latest.current = { query, matches: list.matches };
+        onChange();
+      }
+      return () => list.removeEventListener('change', onMediaChange);
+    },
+    [query],
+  );
+  const getSnapshot = (): boolean => {
+    if (latest.current?.query !== query) {
+      latest.current = { query, matches: getMatchMedia()?.(query).matches ?? fallback };
     }
-    const onChange: ChangeListener = (event) => setMatches(event.matches);
-    list.addEventListener('change', onChange);
-    setMatches(list.matches);
-    return () => list.removeEventListener('change', onChange);
-  }, [query]);
-
-  return matches;
+    return latest.current.matches;
+  };
+  return useSyncExternalStore(subscribe, getSnapshot, () => fallback);
 }
 
 /**

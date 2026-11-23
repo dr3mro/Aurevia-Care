@@ -40,7 +40,7 @@ function renderDialog(state: PrintPreviewState, locale: Locale = 'en', open = tr
   return { ...view, onPrint, onDownload, onClose };
 }
 
-const refusals: ReadonlyArray<readonly [RefusalReason, string]> = [
+const refusals: readonly (readonly [RefusalReason, string])[] = [
   ['draft-source', 'The source is still a draft.'],
   ['unsigned-source', 'The source is not signed.'],
   ['order-not-placed', 'The order has not been placed.'],

@@ -23,6 +23,7 @@ import {
   syntheticDetail,
   syntheticPair,
 } from './fixtures';
+import { must } from '../../../tests/must';
 
 vi.mock('../../api/transport', async (importOriginal) => {
   const actual = await importOriginal<typeof TransportModule>();
@@ -32,7 +33,7 @@ vi.mock('../../api/transport', async (importOriginal) => {
 const sendMock = vi.mocked(send);
 
 function descriptorAt(call: number): RequestDescriptor {
-  return sendMock.mock.calls[call]![0] as RequestDescriptor;
+  return must(sendMock.mock.calls[call])[0];
 }
 
 function page(currentSubject?: string) {
@@ -43,11 +44,7 @@ function page(currentSubject?: string) {
   );
 }
 
-function wrap(
-  ui: ReactElement,
-  organizationId = alphaOrganizationId,
-  locale: Locale = 'en',
-) {
+function wrap(ui: ReactElement, organizationId = alphaOrganizationId, locale: Locale = 'en') {
   return render(
     <ThemeProvider>
       <I18nProvider initialLocale={locale}>
@@ -82,7 +79,9 @@ async function reachDetail(detail = syntheticDetail, subject?: string) {
   sendMock.mockResolvedValueOnce([syntheticPair]);
   sendMock.mockResolvedValueOnce(detail);
   wrap(page(subject));
-  const open = await screen.findByRole('button', { name: /Review pair patient-survivor and patient-duplicate/ });
+  const open = await screen.findByRole('button', {
+    name: /Review pair patient-survivor and patient-duplicate/,
+  });
   fireEvent.click(open);
   await screen.findByRole('region', { name: 'Surviving record' });
 }
@@ -97,8 +96,8 @@ function fillValidApproval() {
 }
 
 function submitApproval() {
-  const submit = screen.getByRole('button', { name: 'Approve consolidation' }) as HTMLButtonElement;
-  fireEvent.submit(submit.closest('form')!);
+  const submit = screen.getByRole<HTMLButtonElement>('button', { name: 'Approve consolidation' });
+  fireEvent.submit(must(submit.closest<HTMLElement>('form')));
 }
 
 beforeEach(() => {
@@ -107,7 +106,7 @@ beforeEach(() => {
 
 describe('DuplicatesPage worklist states', () => {
   it('shows the loading state until the worklist resolves', async () => {
-    const pending = deferred<typeof syntheticPair[]>();
+    const pending = deferred<(typeof syntheticPair)[]>();
     sendMock.mockReturnValueOnce(pending.promise);
     wrap(page());
 
@@ -192,7 +191,9 @@ describe('DuplicatesPage review and second approval', () => {
     sendMock.mockResolvedValueOnce(reviewOpen);
     wrap(page());
     fireEvent.click(
-      await screen.findByRole('button', { name: /Review pair patient-survivor and patient-duplicate/ }),
+      await screen.findByRole('button', {
+        name: /Review pair patient-survivor and patient-duplicate/,
+      }),
     );
     await screen.findByRole('button', { name: 'Open review' });
 
@@ -210,7 +211,9 @@ describe('DuplicatesPage review and second approval', () => {
     sendMock.mockReturnValueOnce(pending.promise);
     wrap(page());
     fireEvent.click(
-      await screen.findByRole('button', { name: /Review pair patient-survivor and patient-duplicate/ }),
+      await screen.findByRole('button', {
+        name: /Review pair patient-survivor and patient-duplicate/,
+      }),
     );
     const open = await screen.findByRole('button', { name: 'Open review' });
     fireEvent.click(open);
@@ -227,7 +230,9 @@ describe('DuplicatesPage review and second approval', () => {
     sendMock.mockRejectedValueOnce(transportFailure('conflict', 'CONFLICT'));
     wrap(page());
     fireEvent.click(
-      await screen.findByRole('button', { name: /Review pair patient-survivor and patient-duplicate/ }),
+      await screen.findByRole('button', {
+        name: /Review pair patient-survivor and patient-duplicate/,
+      }),
     );
     fireEvent.click(await screen.findByRole('button', { name: 'Open review' }));
 
@@ -241,9 +246,7 @@ describe('DuplicatesPage review and second approval', () => {
     const callsBefore = sendMock.mock.calls.length;
     submitApproval();
 
-    expect(
-      screen.getByText(/The reviewer who opened this request cannot approve it/),
-    ).toBeTruthy();
+    expect(screen.getByText(/The reviewer who opened this request cannot approve it/)).toBeTruthy();
     expect(sendMock).toHaveBeenCalledTimes(callsBefore);
   });
 
@@ -262,11 +265,15 @@ describe('DuplicatesPage review and second approval', () => {
     await reachDetail();
     submitApproval();
 
-    expect(screen.getByLabelText('Reason for consolidation').getAttribute('aria-invalid')).toBe('true');
-    expect((screen.getByLabelText('Reason for consolidation') as HTMLInputElement).value).toBe('');
+    expect(screen.getByLabelText('Reason for consolidation').getAttribute('aria-invalid')).toBe(
+      'true',
+    );
+    expect(screen.getByLabelText<HTMLInputElement>('Reason for consolidation').value).toBe('');
     expect(sendMock).toHaveBeenCalledTimes(2);
   });
+});
 
+describe('DuplicatesPage approval refusals and submission', () => {
   it('maps a 409 SECOND_REVIEWER_REQUIRED to the refusal and conflict state', async () => {
     await reachDetail();
     fillValidApproval();
@@ -275,7 +282,9 @@ describe('DuplicatesPage review and second approval', () => {
     submitApproval();
 
     expect(
-      await screen.findByText('Refused: a different authorized reviewer must approve this request.'),
+      await screen.findByText(
+        'Refused: a different authorized reviewer must approve this request.',
+      ),
     ).toBeTruthy();
     expect(screen.getByText(stateViewText('en', 'conflict'))).toBeTruthy();
   });
@@ -288,7 +297,9 @@ describe('DuplicatesPage review and second approval', () => {
     submitApproval();
 
     expect(
-      await screen.findByText('Refused: unresolved dependencies must be resolved before consolidation.'),
+      await screen.findByText(
+        'Refused: unresolved dependencies must be resolved before consolidation.',
+      ),
     ).toBeTruthy();
   });
 
@@ -300,7 +311,9 @@ describe('DuplicatesPage review and second approval', () => {
     submitApproval();
 
     expect(
-      await screen.findByText('The consolidation could not be completed. Review the state and try again.'),
+      await screen.findByText(
+        'The consolidation could not be completed. Review the state and try again.',
+      ),
     ).toBeTruthy();
   });
 
@@ -322,7 +335,9 @@ describe('DuplicatesPage review and second approval', () => {
 
     submitApproval();
 
-    expect(await screen.findByText('Consolidation approved and chart visibility moved.')).toBeTruthy();
+    expect(
+      await screen.findByText('Consolidation approved and chart visibility moved.'),
+    ).toBeTruthy();
     const descriptor = descriptorAt(2);
     expect(descriptor.method).toBe('POST');
     expect(descriptor.url).toBe(`/api/v1/duplicate-reviews/${reviewOpen.id}/consolidate`);
@@ -348,9 +363,11 @@ describe('DuplicatesPage review and second approval', () => {
 
     submitApproval();
 
-    expect(await screen.findByText('Consolidation approved and chart visibility moved.')).toBeTruthy();
-    expect(descriptorAt(2).body?.['confirmedIdentifiers']).toEqual([]);
-    expect(descriptorAt(2).body?.['alternateProcess']).toBe('documented_process');
+    expect(
+      await screen.findByText('Consolidation approved and chart visibility moved.'),
+    ).toBeTruthy();
+    expect(descriptorAt(2).body?.confirmedIdentifiers).toEqual([]);
+    expect(descriptorAt(2).body?.alternateProcess).toBe('documented_process');
   });
 
   it('sends only one approval for two rapid submits', async () => {
@@ -393,5 +410,4 @@ describe('duplicates route registration', () => {
 });
 
 /** Compile-time guard that the page renders as a React element. */
-const pageElement: ReactElement = <DuplicatesPage />;
-void pageElement;
+export const pageElement: ReactElement = <DuplicatesPage />;

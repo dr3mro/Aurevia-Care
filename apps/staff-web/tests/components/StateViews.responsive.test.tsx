@@ -82,9 +82,7 @@ afterEach(() => {
 
 describe('responsive StateViews (WEB-07, UX-01)', () => {
   it('centres a phone state view and stacks full-width touch action targets', () => {
-    const { unmount } = renderView('en', 'compact', (
-      <ErrorState correlationId="SYN-CORR-RESP" />
-    ));
+    const { unmount } = renderView('en', 'compact', <ErrorState correlationId="SYN-CORR-RESP" />);
 
     const region = stateRegion();
     expect(region.getAttribute('role')).toBe('alert');
@@ -132,11 +130,11 @@ describe('responsive StateViews (WEB-07, UX-01)', () => {
       code: undefined,
       retryAfterSeconds: undefined,
     });
-    const views: ReadonlyArray<readonly [string, ReactNode]> = [
-      ['loading', <LoadingState />],
-      ['empty', <EmptyState />],
-      ['forbidden', <ForbiddenState />],
-      ['timeout', <>{StateView.forTransportError(timeout)}</>],
+    const views: readonly (readonly [string, ReactNode])[] = [
+      ['loading', <LoadingState key="loading" />],
+      ['empty', <EmptyState key="empty" />],
+      ['forbidden', <ForbiddenState key="forbidden" />],
+      ['timeout', StateView.forTransportError(timeout)],
     ];
     for (const layout of ['compact', 'medium', 'expanded'] as const) {
       for (const [label, view] of views) {
@@ -144,7 +142,7 @@ describe('responsive StateViews (WEB-07, UX-01)', () => {
         const region = stateRegion();
         expect(region.getAttribute('data-breakpoint')).toBe(layout);
         expect(region.className).toContain('page');
-        expect((region.getAttribute('style') ?? '')).not.toContain('display: none');
+        expect(region.getAttribute('style') ?? '').not.toContain('display: none');
         expect(region.textContent?.trim().length).toBeGreaterThan(0);
         if (label === 'timeout') {
           expect(region.textContent).toContain('Something went wrong');

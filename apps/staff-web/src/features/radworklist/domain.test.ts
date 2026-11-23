@@ -64,9 +64,7 @@ describe('radworklist status flow', () => {
   });
 
   it('allows a study link only for a scheduled order that has an accession', () => {
-    expect(
-      canLinkStudy(order({ status: 'scheduled', accession: 'ACC-1' })),
-    ).toBe(true);
+    expect(canLinkStudy(order({ status: 'scheduled', accession: 'ACC-1' }))).toBe(true);
     expect(canLinkStudy(order({ status: 'received', accession: 'ACC-1' }))).toBe(false);
     expect(canLinkStudy(order({ status: 'scheduled', accession: null }))).toBe(false);
   });

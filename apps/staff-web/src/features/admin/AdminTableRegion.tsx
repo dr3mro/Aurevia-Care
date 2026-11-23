@@ -1,6 +1,9 @@
 import type { ReactNode } from 'react';
 import { useBreakpoint } from '../../theme/useBreakpoint';
 
+/** Keyboard-focusable scroll regions join the natural tab order. */
+const FOCUSABLE_TAB_INDEX = 0;
+
 /** Props for the labelled scroll wrapper around a wide administration table. */
 export interface AdminTableRegionProps {
   /** Accessible name of the scroll region, matching the table's own caption. */
@@ -30,7 +33,7 @@ export function AdminTableRegion({ label, children }: AdminTableRegionProps) {
       className="table-region"
       role="region"
       aria-label={label}
-      tabIndex={0}
+      tabIndex={FOCUSABLE_TAB_INDEX}
       data-breakpoint={breakpoint}
       style={{ overflowX: 'auto' }}
     >

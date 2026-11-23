@@ -1,10 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import type { Locale } from '../../../i18n/messages';
 import type { TrackedOrderStatus } from './domain';
-import { deliveryModeMessageKey, statusMessageKey, trackingKeys, trackingMessages, trackingText } from './labels';
+import {
+  deliveryModeMessageKey,
+  statusMessageKey,
+  trackingKeys,
+  trackingMessages,
+  trackingText,
+} from './labels';
 import type { TrackingMessageKey } from './labels';
 
-const ARABIC_LETTER = /[\u0621-\u063A\u0641-\u064A\u066E-\u066F\u0671-\u06D3\u06D5\u06FA-\u06FC\u06FF]/;
+const ARABIC_LETTER =
+  /[\u0621-\u063A\u0641-\u064A\u066E-\u066F\u0671-\u06D3\u06D5\u06FA-\u06FC\u06FF]/;
 
 describe('tracking message bundles', () => {
   it('keeps identical English and Arabic keys with real translations', () => {

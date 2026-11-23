@@ -9,6 +9,7 @@ import { I18nProvider } from '../../../src/i18n/I18nProvider';
 import type { Locale } from '../../../src/i18n/messages';
 import { BREAKPOINT_MEDIA_QUERIES } from '../../../src/theme/breakpoints';
 import { ThemeProvider } from '../../../src/theme/ThemeProvider';
+import { must } from '../../must';
 
 type ChangeListener = (event: MediaQueryListEvent) => void;
 
@@ -132,17 +133,17 @@ function wrap(ui: ReactElement, locale: Locale = 'en') {
 }
 
 function list(locale: Locale) {
-  const node = screen.getByRole('list', { name: adminText(locale, 'auditEvents') }) as HTMLElement;
+  const node = screen.getByRole('list', { name: adminText(locale, 'auditEvents') });
   expect(node.className).toContain('card-list');
   return node;
 }
 
 /** The labelled table region is the sole element with an explicit region role. */
 function tableRegion(locale: Locale): HTMLElement {
-  const node = document.querySelector('[role="region"]') as HTMLElement | null;
+  const node = document.querySelector<HTMLElement>('[role="region"]');
   expect(node).toBeTruthy();
   expect(node?.getAttribute('aria-label')).toBe(adminText(locale, 'auditEvents'));
-  return node as HTMLElement;
+  return must(node);
 }
 
 afterEach(() => {
@@ -168,11 +169,11 @@ describe('responsive AuditEventList (WEB-07, UX-01)', () => {
     expect(items).toHaveLength(2);
 
     for (let index = 0; index < items.length; index += 1) {
-      const item = items[index] as HTMLElement;
+      const item = must(items[index]);
       const card = within(item);
       // No clinical field is hidden: each label has a value on the card.
       for (const key of FIELD_LABEL_KEYS) {
-        const label = card.getByText(adminText('en', key)) as HTMLElement;
+        const label = card.getByText(adminText('en', key));
         expect(label.tagName).toBe('DT');
         const definition = label.nextElementSibling as HTMLElement;
         expect(definition.tagName).toBe('DD');
@@ -196,7 +197,7 @@ describe('responsive AuditEventList (WEB-07, UX-01)', () => {
       ).toBeTruthy();
       expect(card.getByText(index === 0 ? LONG_ENGLISH : 'Synthetic actor two')).toBeTruthy();
     }
-    expect(within(items[1] as HTMLElement).getByText(adminText('en', 'unknown'))).toBeTruthy();
+    expect(within(must(items[1])).getByText(adminText('en', 'unknown'))).toBeTruthy();
   });
 
   it('keeps only the time elements as tab stops in keyboard order on compact', () => {
@@ -236,7 +237,7 @@ describe('responsive AuditEventList (WEB-07, UX-01)', () => {
       />,
     );
 
-    const card = within(within(list('en')).getAllByRole('listitem')[0] as HTMLElement);
+    const card = within(must(within(list('en')).getAllByRole('listitem')[0]));
     const time = card.getByRole('time');
     fireEvent.focus(time);
     expect(card.getByText(`UTC: ${time.textContent ?? ''}`)).toBeTruthy();
@@ -264,7 +265,7 @@ describe('responsive AuditEventList (WEB-07, UX-01)', () => {
         .map((node) => node.textContent),
     ).toEqual(FIELD_LABEL_KEYS.map((key) => adminText('en', key)));
     for (const cell of within(table).getAllByRole('cell')) {
-      expect((cell as HTMLElement).style.display).not.toBe('none');
+      expect(cell.style.display).not.toBe('none');
     }
     expect(within(table).getByText(LONG_ENGLISH)).toBeTruthy();
 
@@ -283,7 +284,7 @@ describe('responsive AuditEventList (WEB-07, UX-01)', () => {
       />,
     );
     expect(screen.getByRole('list')).toBeTruthy();
-    const cards = screen.getByRole('list') as HTMLElement;
+    const cards = screen.getByRole('list');
     expect(within(cards).getByText('synthetic-correlation-one')).toBeTruthy();
 
     act(() => media.fire(BREAKPOINT_MEDIA_QUERIES.medium, true));
@@ -315,11 +316,11 @@ describe('responsive AuditEventList (WEB-07, UX-01)', () => {
     const items = within(cards).getAllByRole('listitem');
     expect(items).toHaveLength(2);
 
-    const arabicCard = within(items[0] as HTMLElement);
+    const arabicCard = within(must(items[0]));
     for (const key of FIELD_LABEL_KEYS) {
       expect(arabicCard.getByText(adminText('ar', key))).toBeTruthy();
     }
-    const arabicValue = arabicCard.getByText(LONG_ARABIC) as HTMLElement;
+    const arabicValue = arabicCard.getByText(LONG_ARABIC);
     expect(arabicValue.tagName).toBe('BDI');
     expect(arabicValue.getAttribute('dir')).toBe('auto');
     // Pre-existing deviation (not introduced by the responsive change): the
@@ -328,7 +329,7 @@ describe('responsive AuditEventList (WEB-07, UX-01)', () => {
     // text; the correct-language hint is requested as a follow-up task.
     expect(arabicValue.getAttribute('lang')).toBe('en');
     // Localized badge labels do carry the active Arabic language.
-    const outcomeValue = arabicCard.getByText(adminText('ar', 'outcomeSuccess')) as HTMLElement;
+    const outcomeValue = arabicCard.getByText(adminText('ar', 'outcomeSuccess'));
     expect(outcomeValue.tagName).toBe('BDI');
     expect(outcomeValue.getAttribute('lang')).toBe('ar');
 

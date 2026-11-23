@@ -36,7 +36,9 @@ export function LabelSheet({ label, organizationId, printedBy, printedAt }: Labe
             <dt>{labText(locale, labelFieldMessageKey[row.key])}</dt>
             <dd>
               <MixedScriptText
-                text={row.key === 'collectedAt' ? formatInstant(row.value, 'UTC', locale) : row.value}
+                text={
+                  row.key === 'collectedAt' ? formatInstant(row.value, 'UTC', locale) : row.value
+                }
                 lang="en"
               />
             </dd>

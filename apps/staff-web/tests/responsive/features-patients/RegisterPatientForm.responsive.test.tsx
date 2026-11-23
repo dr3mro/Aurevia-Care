@@ -72,12 +72,8 @@ function installMatchMedia(width: number, coarse: boolean): void {
         },
         media: query,
         onchange: null,
-        addEventListener: (_type: string, listener: ChangeListener) => {
-          void listener;
-        },
-        removeEventListener: (_type: string, listener: ChangeListener) => {
-          void listener;
-        },
+        addEventListener: (_type: string, _listener: ChangeListener) => undefined,
+        removeEventListener: (_type: string, _listener: ChangeListener) => undefined,
         addListener: () => undefined,
         removeListener: () => undefined,
         dispatchEvent: () => false,
@@ -95,12 +91,7 @@ interface RenderOptions {
 
 /** Render the presentational form with synthetic data and no network access. */
 function renderForm(options: RenderOptions = {}) {
-  const {
-    locale = 'en',
-    draft = EMPTY_REGISTRATION,
-    errors = {},
-    rtl = false,
-  } = options;
+  const { locale = 'en', draft = EMPTY_REGISTRATION, errors = {}, rtl = false } = options;
   const onFieldChange = vi.fn();
   const onSubmit = vi.fn();
   const onCancel = vi.fn();
@@ -145,10 +136,10 @@ function hiddenOrDirectionFindings(root: HTMLElement): string[] {
   const findings: string[] = [];
   for (const element of Array.from(root.querySelectorAll<HTMLElement>('[style]'))) {
     const style = element.style as unknown as Record<string, string>;
-    if (style['direction'] !== '') {
+    if (style.direction !== '') {
       findings.push(`direction on ${element.tagName}`);
     }
-    if (style['display'] === 'none') {
+    if (style.display === 'none') {
       findings.push(`display:none on ${element.tagName}`);
     }
   }
@@ -255,10 +246,12 @@ describe('responsive RegisterPatientForm (WEB-07, UX-01)', () => {
       renderForm({ locale, rtl, errors: allErrors });
 
       const dialog = screen.getByRole('dialog', { name: dialogName });
-      const warning = dialog.querySelector('[data-part="warning"]') as HTMLElement;
+      const warning = required(dialog.querySelector<HTMLElement>('[data-part="warning"]'));
       expect(warning).toBeTruthy();
       const submit = screen.getByRole('button', { name: submitName });
-      expect(warning.compareDocumentPosition(submit) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(
+        warning.compareDocumentPosition(submit) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
 
       const summary = within(warning).getByRole('alert', { name: summaryName });
       const links = Array.from(summary.querySelectorAll('a'));
@@ -274,9 +267,11 @@ describe('responsive RegisterPatientForm (WEB-07, UX-01)', () => {
       for (const id of fieldIds) {
         expect(summary.querySelector(`a[href="#${id}"]`)).toBeTruthy();
         expect(
-          screen.getByLabelText(
-            (document.getElementById(id) as HTMLInputElement).labels?.[0]?.textContent ?? '',
-          ).getAttribute('aria-invalid'),
+          screen
+            .getByLabelText(
+              (document.getElementById(id) as HTMLInputElement).labels?.[0]?.textContent ?? '',
+            )
+            .getAttribute('aria-invalid'),
         ).toBe('true');
       }
       // The jump list must follow the rendered field and tab order; grouping
@@ -304,7 +299,7 @@ describe('responsive RegisterPatientForm (WEB-07, UX-01)', () => {
       'Synthetic Extremely Long Display Name For A Narrow Clinical Registration Form Field';
     renderForm({ draft: { ...EMPTY_REGISTRATION, displayName: longName } });
 
-    const input = screen.getByLabelText('Display name') as HTMLInputElement;
+    const input = screen.getByLabelText<HTMLInputElement>('Display name');
     expect(input.value).toBe(longName);
     expect(input.classList.contains('field')).toBe(true);
     expect(input.style.textOverflow).toBe('');
@@ -315,7 +310,7 @@ describe('responsive RegisterPatientForm (WEB-07, UX-01)', () => {
   });
 
   it('mirrors under RTL at phone and desktop widths without a direction override', () => {
-    for (const widthCase of [widthCases[0]!, widthCases[6]!]) {
+    for (const widthCase of [required(widthCases[0]), required(widthCases[6])]) {
       installMatchMedia(widthCase.width, widthCase.coarse);
       const { unmount } = renderForm({ locale: 'ar', rtl: true });
 
@@ -349,7 +344,9 @@ describe('responsive RegisterPatientForm (WEB-07, UX-01)', () => {
     installMatchMedia(320, true);
     const { onFieldChange, onSubmit, onCancel } = renderForm();
 
-    fireEvent.change(screen.getByLabelText('Display name'), { target: { value: 'Synthetic Name' } });
+    fireEvent.change(screen.getByLabelText('Display name'), {
+      target: { value: 'Synthetic Name' },
+    });
     expect(onFieldChange).toHaveBeenCalledWith('displayName', 'Synthetic Name');
 
     fireEvent.submit(screen.getByRole('form', { name: 'Register patient' }));
@@ -359,3 +356,10 @@ describe('responsive RegisterPatientForm (WEB-07, UX-01)', () => {
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
 });
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

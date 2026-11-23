@@ -1,3 +1,4 @@
+import { defined } from '../components/invariant';
 import { syntheticStaff } from '../fixtures/synthetic';
 import type { Role } from './navigation';
 
@@ -6,7 +7,7 @@ import type { Role } from './navigation';
  * this synthetic source with the authenticated session's role. The role is
  * never read from the URL, query string or browser storage.
  */
-const signedInRole = (syntheticStaff.roles! as [Role, ...Role[]])[0];
+const signedInRole: Role = defined(syntheticStaff.roles?.[0], 'synthetic staff role') as Role;
 
 /** Return the role used to scope the navigation rail today. */
 export function useRole(): Role {

@@ -30,11 +30,7 @@ function descriptor(
   };
 }
 
-function response(
-  status: number,
-  body: unknown = {},
-  headers: Record<string, string> = {},
-): Response {
+function responseParts(status: number, body: unknown = {}, headers: Record<string, string> = {}) {
   const lower = new Map(
     Object.entries(headers).map(([name, value]) => [name.toLowerCase(), value]),
   );
@@ -42,8 +38,16 @@ function response(
     ok: status >= 200 && status < 300,
     status,
     headers: { get: (name: string) => lower.get(name.toLowerCase()) ?? null },
-    json: async () => body,
-  } as unknown as Response;
+    json: () => Promise.resolve(body),
+  };
+}
+
+function response(
+  status: number,
+  body: unknown = {},
+  headers: Record<string, string> = {},
+): Response {
+  return responseParts(status, body, headers) as unknown as Response;
 }
 
 function initAt(index: number): RequestInit {
@@ -110,10 +114,7 @@ describe('send — request construction', () => {
     expect([
       headersOf(initAt(0))['X-Correlation-Id'],
       headersOf(initAt(1))['X-Correlation-Id'],
-    ]).toEqual([
-      '00000000-0000-0000-0000-000000000001',
-      '00000000-0000-0000-0000-000000000002',
-    ]);
+    ]).toEqual(['00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002']);
   });
 
   it('adds the CSRF header, JSON body and content type for a POST', async () => {
@@ -226,10 +227,8 @@ describe('send — typed errors', () => {
 
   it('leaves code undefined when the error body is not JSON', async () => {
     const badBody = {
-      ...response(404),
-      json: vi.fn(async () => {
-        throw new Error('invalid json');
-      }),
+      ...responseParts(404),
+      json: vi.fn(() => Promise.reject(new Error('invalid json'))),
     } as unknown as Response;
     fetchMock.mockResolvedValue(badBody);
 
@@ -244,7 +243,9 @@ describe('send — typed errors', () => {
       response(403, { code: 'FORBIDDEN', message: 'SENSITIVE_BODY_TEXT' }),
     );
 
-    const error = (await send(descriptor('GET')).catch((reason: unknown) => reason)) as TransportError;
+    const error = (await send(descriptor('GET')).catch(
+      (reason: unknown) => reason,
+    )) as TransportError;
 
     expect(error.message).not.toContain('SENSITIVE_BODY_TEXT');
   });

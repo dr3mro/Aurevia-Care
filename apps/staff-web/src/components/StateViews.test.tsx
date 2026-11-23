@@ -141,7 +141,7 @@ describe('required screen states (WEB-09)', () => {
 });
 
 describe('StateView.forTransportError', () => {
-  const expected: ReadonlyArray<readonly [TransportErrorKind, string]> = [
+  const expected: readonly (readonly [TransportErrorKind, string])[] = [
     ['csrf-missing', 'Something went wrong'],
     ['session-expired', 'Your session has expired'],
     ['forbidden', 'You do not have access'],

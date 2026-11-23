@@ -59,14 +59,16 @@ function renderButton(
 
 /** Open the preview and choose a reason, so a print can be confirmed. */
 function openWithReason(locale: Locale = 'en') {
-  fireEvent.click(screen.getByRole('button', { name: locale === 'ar' ? 'طباعة للمريض' : 'Print for patient' }));
+  fireEvent.click(
+    screen.getByRole('button', { name: locale === 'ar' ? 'طباعة للمريض' : 'Print for patient' }),
+  );
   fireEvent.click(screen.getByLabelText(locale === 'ar' ? 'تسليم إلى المريض' : 'Give to patient'));
 }
 
 describe('print order button gate', () => {
   it('is disabled with a reason when the only order is a draft', () => {
     const { onPrint } = renderButton([draftOrder]);
-    const button = screen.getByRole('button', { name: 'Print for patient' }) as HTMLButtonElement;
+    const button = screen.getByRole<HTMLButtonElement>('button', { name: 'Print for patient' });
     expect(button.disabled).toBe(true);
     expect(screen.getByText('Draft orders cannot be printed. Place the order first.')).toBeTruthy();
     expect(screen.queryByRole('dialog')).toBeNull();
@@ -113,7 +115,7 @@ describe('print order sheet layout', () => {
     expect(screen.getByText('Sheets: 2')).toBeTruthy();
     openWithReason();
     fireEvent.click(screen.getByRole('button', { name: 'Print' }));
-    const sheets = onPrint.mock.calls[0]?.[0] as readonly (readonly PrintableOrder[])[];
+    const sheets = required(onPrint.mock.calls[0]?.[0]);
     const layout: SheetLayout = sheets.length === 2 ? 'separate' : 'combined';
     expect(layout).toBe('separate');
     expect(sheets[0]?.map((order) => order.id)).toEqual(['1001']);
@@ -191,10 +193,14 @@ describe('print order preview commands', () => {
     renderButton([labOrder], 'ar');
     fireEvent.click(screen.getByRole('button', { name: 'طباعة للمريض' }));
     fireEvent.change(screen.getByLabelText('لغة المطبوع'), { target: { value: 'en' } });
-    expect(document.querySelector('[data-order-requisition="true"]')?.getAttribute('dir')).toBe('ltr');
+    expect(document.querySelector('[data-order-requisition="true"]')?.getAttribute('dir')).toBe(
+      'ltr',
+    );
     fireEvent.click(screen.getByRole('button', { name: 'إغلاق' }));
     fireEvent.click(screen.getByRole('button', { name: 'طباعة للمريض' }));
-    expect(document.querySelector('[data-order-requisition="true"]')?.getAttribute('dir')).toBe('rtl');
+    expect(document.querySelector('[data-order-requisition="true"]')?.getAttribute('dir')).toBe(
+      'rtl',
+    );
   });
 
   it('closes on the explicit action and on Escape, restoring focus to the opener', () => {
@@ -267,3 +273,10 @@ describe('print order button localization', () => {
     expect(document.documentElement.dir).toBe('ltr');
   });
 });
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

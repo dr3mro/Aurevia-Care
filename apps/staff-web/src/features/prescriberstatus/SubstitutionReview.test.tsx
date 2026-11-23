@@ -28,7 +28,7 @@ const sendMock = vi.mocked(send);
 const timeZone = 'UTC';
 
 function descriptorAt(call: number): RequestDescriptor {
-  return sendMock.mock.calls[call]![0] as RequestDescriptor;
+  return required(sendMock.mock.calls[call])[0];
 }
 
 function wrap(
@@ -40,13 +40,17 @@ function wrap(
     void approveSubstitution(
       view.proposal.id,
       view.proposal.version,
-      draft.attestation,
-      draft.note,
+      draft,
       prescriberOrganizationId,
     );
   };
   const onDecline = (draft: DecisionDraft): void => {
-    void declineSubstitution(view.proposal.id, view.proposal.version, draft.note, prescriberOrganizationId);
+    void declineSubstitution(
+      view.proposal.id,
+      view.proposal.version,
+      draft.note,
+      prescriberOrganizationId,
+    );
   };
   return (
     <ThemeProvider>
@@ -73,12 +77,16 @@ describe('SubstitutionReview side-by-side comparison', () => {
     sendMock.mockResolvedValue({});
     render(wrap(syntheticPendingProposalView));
 
-    expect(screen.getByRole('heading', { name: prescriberText('en', 'substitutionTitle') })).toBeTruthy();
+    expect(
+      screen.getByRole('heading', { name: prescriberText('en', 'substitutionTitle') }),
+    ).toBeTruthy();
     expect(screen.getByTestId('original-entry').textContent).toContain('Syntheticmox');
     expect(screen.getByTestId('proposed-entry').textContent).toContain('Syntheticmox Alternative');
     expect(screen.getByText(prescriberText('en', 'reasonStock'))).toBeTruthy();
     expect(screen.getByText(prescriberText('en', 'statePending'))).toBeTruthy();
-    expect(screen.getByTestId('active-entry').textContent).toContain('Syntheticmox (Synthetic Amoxicillin)');
+    expect(screen.getByTestId('active-entry').textContent).toContain(
+      'Syntheticmox (Synthetic Amoxicillin)',
+    );
     expect(screen.getByTestId('proposal-note').textContent).toContain('Synthetic stock note');
     expect(screen.queryByTestId('revision-link')).toBeNull();
   });
@@ -106,15 +114,19 @@ describe('SubstitutionReview approval', () => {
     sendMock.mockResolvedValue(syntheticApprovedProposalView);
     const { rerender } = render(wrap(syntheticPendingProposalView));
 
-    const attestation = screen.getByLabelText(prescriberText('en', 'attestation')) as HTMLInputElement;
-    const note = screen.getByLabelText(prescriberText('en', 'note')) as HTMLInputElement;
+    const attestation = screen.getByLabelText<HTMLInputElement>(
+      prescriberText('en', 'attestation'),
+    );
+    const note = screen.getByLabelText<HTMLInputElement>(prescriberText('en', 'note'));
     fireEvent.change(attestation, {
       target: { value: 'I reviewed the alternative for this patient.' },
     });
     fireEvent.change(note, { target: { value: 'synthetic approval note' } });
     fireEvent.click(screen.getByRole('button', { name: prescriberText('en', 'approve') }));
 
-    expect(descriptorAt(0).url).toBe('/api/v1/pharmacy/substitutions/proposal-synthetic-001/approve');
+    expect(descriptorAt(0).url).toBe(
+      '/api/v1/pharmacy/substitutions/proposal-synthetic-001/approve',
+    );
     expect(descriptorAt(0).body).toEqual({
       attestation: attestation.value,
       note: 'synthetic approval note',
@@ -141,13 +153,17 @@ describe('SubstitutionReview decline', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: prescriberText('en', 'decline') }));
 
-    expect(descriptorAt(0).url).toBe('/api/v1/pharmacy/substitutions/proposal-synthetic-001/decline');
+    expect(descriptorAt(0).url).toBe(
+      '/api/v1/pharmacy/substitutions/proposal-synthetic-001/decline',
+    );
     expect(descriptorAt(0).body).toEqual({ attestation: '', note: 'synthetic decline note' });
 
     rerender(wrap(syntheticDeclinedProposalView));
 
     expect(screen.queryByTestId('revision-link')).toBeNull();
-    expect(screen.getByTestId('active-entry').textContent).toContain('Syntheticmox (Synthetic Amoxicillin)');
+    expect(screen.getByTestId('active-entry').textContent).toContain(
+      'Syntheticmox (Synthetic Amoxicillin)',
+    );
     expect(screen.getByText(prescriberText('en', 'stateDeclined'))).toBeTruthy();
   });
 
@@ -171,7 +187,7 @@ describe('SubstitutionReview decline', () => {
     );
 
     expect(screen.getByText(stateViewText('en', 'conflict'))).toBeTruthy();
-    expect((screen.getByLabelText(prescriberText('en', 'note')) as HTMLInputElement).value).toBe(
+    expect(screen.getByLabelText<HTMLInputElement>(prescriberText('en', 'note')).value).toBe(
       'my unsaved note',
     );
   });
@@ -190,3 +206,10 @@ describe('SubstitutionReview decline', () => {
     expect(screen.getByText(prescriberText('ar', 'proposed'))).toBeTruthy();
   });
 });
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

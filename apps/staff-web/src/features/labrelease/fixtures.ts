@@ -15,8 +15,7 @@ export const withdrawerSubject = 'synthetic.lab.manager';
 export const WITHDRAWN_AT = '2026-11-21T12:15:00Z';
 
 /** The proposed 'what changed' text, isolated as clinical free text when shown. */
-export const proposedChange =
-  'Hemoglobin 13.2 to 7.4 g/dL; Sodium removed; Vitamin D added';
+export const proposedChange = 'Hemoglobin 13.2 to 7.4 g/dL; Sodium removed; Vitamin D added';
 
 /** Original released revision: one changed value, an unchanged one and a removed test. */
 export const originalRevision: ReportRevision = {

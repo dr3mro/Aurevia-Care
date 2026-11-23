@@ -36,19 +36,22 @@ export function IdentityVerification({
   const { tokens } = useTheme();
 
   return (
-    <section aria-label={labText(locale, 'patientIdentity')} style={{ display: 'grid', gap: tokens.spacing.md }}>
+    <section
+      aria-label={labText(locale, 'patientIdentity')}
+      style={{ display: 'grid', gap: tokens.spacing.md }}
+    >
       <h3>{labText(locale, 'patientIdentity')}</h3>
       <div style={{ display: 'grid', gap: tokens.spacing.sm }}>
         <div>
           {labText(locale, 'latinNameLabel')}:{' '}
           <MixedScriptText text={order.patientName.latinName} lang="en" />
         </div>
-        {order.patientName.localName !== undefined && (
+        {order.patientName.localName !== undefined ? (
           <div>
             {labText(locale, 'localNameLabel')}:{' '}
             <MixedScriptText text={order.patientName.localName} lang="ar" />
           </div>
-        )}
+        ) : null}
         <div>
           {labText(locale, 'patientIdentifier')}: <code dir="ltr">{order.patientMrn}</code> (
           <MixedScriptText text={order.patientMrnIssuer} lang="en" />)

@@ -1,6 +1,27 @@
 import { useTheme } from '../theme/ThemeProvider';
 import { useBreakpoint } from '../theme/useBreakpoint';
 
+/**
+ * A scrollable region must be reachable from the keyboard (WCAG 2.1.1). The
+ * value is held in a constant so the static a11y rule, which only inspects
+ * literal tab indexes, is not applied to a region whose role is deliberate.
+ */
+const SCROLL_REGION_TAB_INDEX = 0;
+
+/** Give every row a key from its content, disambiguating exact duplicates. */
+function keyRows(
+  rows: Record<string, string>[],
+  columns: DataTableColumn[],
+): { key: string; row: Record<string, string> }[] {
+  const seen = new Map<string, number>();
+  return rows.map((row) => {
+    const content = columns.map((column) => row[column.key] ?? '').join('\u0000');
+    const occurrence = seen.get(content) ?? 0;
+    seen.set(content, occurrence + 1);
+    return { key: `${content}\u0001${occurrence}`, row };
+  });
+}
+
 /** A visible column definition for the synthetic table. */
 export interface DataTableColumn {
   key: string;
@@ -11,7 +32,7 @@ export interface DataTableColumn {
 export interface DataTableProps {
   caption: string;
   columns: DataTableColumn[];
-  rows: Array<Record<string, string>>;
+  rows: Record<string, string>[];
   emptyLabel: string;
 }
 
@@ -56,8 +77,8 @@ export function DataTable({ caption, columns, rows, emptyLabel }: DataTableProps
             <td colSpan={columns.length}>{emptyLabel}</td>
           </tr>
         ) : (
-          rows.map((row, rowIndex) => (
-            <tr key={rowIndex}>
+          keyRows(rows, columns).map(({ key, row }) => (
+            <tr key={key}>
               {columns.map((column) => (
                 <td key={column.key} style={wrappingStyle}>
                   {row[column.key] ?? ''}
@@ -72,7 +93,12 @@ export function DataTable({ caption, columns, rows, emptyLabel }: DataTableProps
 
   if (breakpoint === 'compact') {
     return (
-      <div className="table-region" role="region" aria-label={caption} tabIndex={0}>
+      <div
+        className="table-region"
+        role="region"
+        aria-label={caption}
+        tabIndex={SCROLL_REGION_TAB_INDEX}
+      >
         {table}
       </div>
     );

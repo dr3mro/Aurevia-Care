@@ -1,10 +1,11 @@
+import { defined } from '../../components/invariant';
 import { syntheticOrganizations } from '../../fixtures/synthetic';
 import type { PersonName } from '../../i18n/format';
 import type { Chart, CodedEntry, DocumentAssociation, NoteRevision, Vital } from './domain';
 
 /** The two synthetic tenants; their local identifiers intentionally collide. */
-export const alphaOrganizationId = syntheticOrganizations[0]!.id;
-export const betaOrganizationId = syntheticOrganizations[1]!.id;
+export const alphaOrganizationId = defined(syntheticOrganizations[0], 'alpha organization').id;
+export const betaOrganizationId = defined(syntheticOrganizations[1], 'beta organization').id;
 
 /** Both tenants deliberately own a chart with this same local identifier. */
 export const syntheticChartLocalId = 'chart-001';

@@ -80,8 +80,7 @@ export function AdminScreen({
     const created = proposeVersion(
       visibleConfigurations,
       organizationId,
-      configKey,
-      facilityCode,
+      { key: configKey, facilityCode },
       draft,
     );
     setProposals((current) => [...current, created]);
@@ -96,7 +95,9 @@ export function AdminScreen({
           visible result text, not a static accessible name (WCAG 4.1.3). */}
       <p role="status" data-testid="admin-status">
         <MixedScriptText
-          text={proposal ? proposalAnnouncement(locale, proposal.facilityCode, proposal.version) : ''}
+          text={
+            proposal ? proposalAnnouncement(locale, proposal.facilityCode, proposal.version) : ''
+          }
           lang={locale}
         />
       </p>

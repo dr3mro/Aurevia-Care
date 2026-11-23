@@ -23,7 +23,7 @@ export interface ConfigurationEditorProps {
    * Propose one version. Return `false` (or a promise resolving to `false`)
    * when the command failed so the typed draft is kept for the conflict state.
    */
-  onPropose: (draft: ConfigurationDraft) => Promise<boolean | void> | boolean | void;
+  onPropose: (draft: ConfigurationDraft) => unknown;
   /** When supplied, pending rows offer an approve trigger; the owner confirms. */
   onApprove?: (version: number) => void;
 }
@@ -76,7 +76,7 @@ export function ConfigEditor({
     const outcome = onPropose({ value: proposedValue, effectiveFrom: proposedDate });
     if (outcome instanceof Promise) {
       // A rejected command resolves to false; the draft stays for comparison.
-      outcome.then((accepted) => {
+      void outcome.then((accepted) => {
         if (accepted !== false) {
           setValue('');
           setEffectiveFrom('');
@@ -136,7 +136,13 @@ export function ConfigEditor({
                     )}
                   </td>
                   <td>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: tokens.spacing.sm }}>
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: tokens.spacing.sm,
+                      }}
+                    >
                       {entry.approved ? (
                         <StateBadge glyph="✓" label={text('approved')} tone="approved" />
                       ) : (
@@ -149,7 +155,7 @@ export function ConfigEditor({
                           )}
                         </>
                       )}
-                      {effective && entry.version === effective.version ? (
+                      {entry.version === effective?.version ? (
                         <StateBadge glyph="*" label={text('effectiveBadge')} tone="effective" />
                       ) : null}
                     </span>
@@ -157,7 +163,7 @@ export function ConfigEditor({
                   <td>
                     <MixedScriptText
                       text={entry.approver ?? text('unknown')}
-                      lang={entry.approver ? 'en' : locale}
+                      lang={(entry.approver ?? '') === '' ? locale : 'en'}
                     />
                   </td>
                 </tr>

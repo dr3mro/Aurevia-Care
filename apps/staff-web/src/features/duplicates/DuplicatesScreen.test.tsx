@@ -7,7 +7,11 @@ import { stateViewText } from '../../components/stateViewMessages';
 import { I18nProvider } from '../../i18n/I18nProvider';
 import type { Locale } from '../../i18n/messages';
 import { ThemeProvider } from '../../theme/ThemeProvider';
-import type { ApprovalPanelProps, ReviewScreenProps, WorklistScreenProps } from './DuplicatesScreen';
+import type {
+  ApprovalPanelProps,
+  ReviewScreenProps,
+  WorklistScreenProps,
+} from './DuplicatesScreen';
 import { ApprovalPanel, ReviewScreen, WorklistScreen } from './DuplicatesScreen';
 import {
   alphaOrganizationId,
@@ -21,6 +25,7 @@ import {
   syntheticPair,
   syntheticPairTwo,
 } from './fixtures';
+import { must } from '../../../tests/must';
 
 function wrap(ui: ReactElement, locale: Locale = 'en') {
   return render(
@@ -47,11 +52,11 @@ describe('WorklistScreen', () => {
     wrap(<WorklistScreen {...props} />);
 
     const table = screen.getByRole('table', { name: 'Duplicate review worklist' });
-    expect(within(table).getAllByRole('columnheader').map((cell) => cell.textContent)).toEqual([
-      'Surviving identity',
-      'Duplicate identity',
-      'Action',
-    ]);
+    expect(
+      within(table)
+        .getAllByRole('columnheader')
+        .map((cell) => cell.textContent),
+    ).toEqual(['Surviving identity', 'Duplicate identity', 'Action']);
     expect(within(table).getByText('patient-survivor')).toBeTruthy();
     expect(within(table).getByText('patient-duplicate')).toBeTruthy();
     expect(
@@ -120,13 +125,18 @@ describe('ReviewScreen', () => {
   });
 
   it('labels resolved and unambiguous dependencies without blocking text', () => {
-    wrap(<ReviewScreen detail={{ ...detailMinimal, dependencies: [...depsResolved, ...depsUnambiguous] }} locale="en" />);
+    wrap(
+      <ReviewScreen
+        detail={{ ...detailMinimal, dependencies: [...depsResolved, ...depsUnambiguous] }}
+        locale="en"
+      />,
+    );
 
     const deps = screen.getAllByRole('listitem');
-    expect(deps[0]!.textContent).toContain('Patient link');
-    expect(deps[0]!.textContent).toContain('Resolved');
-    expect(deps[1]!.textContent).toContain('Grant');
-    expect(deps[1]!.textContent).toContain('Unresolved');
+    expect(must(deps[0]).textContent).toContain('Patient link');
+    expect(must(deps[0]).textContent).toContain('Resolved');
+    expect(must(deps[1]).textContent).toContain('Grant');
+    expect(must(deps[1]).textContent).toContain('Unresolved');
   });
 
   it('renders the review detail in Arabic under RTL', () => {
@@ -216,7 +226,9 @@ describe('ApprovalPanel', () => {
       />,
     );
 
-    expect(screen.getAllByText('Refused: a different authorized reviewer must approve this request.')).toHaveLength(1);
+    expect(
+      screen.getAllByText('Refused: a different authorized reviewer must approve this request.'),
+    ).toHaveLength(1);
     expect(screen.getByText('Consolidation approved and chart visibility moved.')).toBeTruthy();
     expect(screen.getByText(stateViewText('en', 'conflict'))).toBeTruthy();
   });
@@ -232,27 +244,27 @@ describe('ApprovalPanel', () => {
       />,
     );
 
-    expect(screen.getByLabelText('Reason for consolidation').getAttribute('aria-invalid')).toBe('true');
-    expect(screen.getByLabelText('Approved alternate-process code').getAttribute('aria-invalid')).toBe('true');
-    expect((screen.getByLabelText('Reason for consolidation') as HTMLInputElement).value).toBe('x');
+    expect(screen.getByLabelText('Reason for consolidation').getAttribute('aria-invalid')).toBe(
+      'true',
+    );
+    expect(
+      screen.getByLabelText('Approved alternate-process code').getAttribute('aria-invalid'),
+    ).toBe('true');
+    expect(screen.getByLabelText<HTMLInputElement>('Reason for consolidation').value).toBe('x');
   });
 
   it('toggles identifier checkboxes and activates approval with a native submit', () => {
     const onToggleReference = vi.fn();
     const onApprove = vi.fn();
-    wrap(
-      <ApprovalPanel
-        {...panelProps({ onToggleReference, onApprove })}
-      />,
-    );
+    wrap(<ApprovalPanel {...panelProps({ onToggleReference, onApprove })} />);
 
     fireEvent.click(screen.getByLabelText('MRN-1001@SYNTHETIC'));
     expect(onToggleReference).toHaveBeenCalledWith('MRN-1001@SYNTHETIC');
     expect(screen.getByText(/MRN-1002@SYNTHETIC/)).toBeTruthy();
 
-    const submit = screen.getByRole('button', { name: 'Approve consolidation' }) as HTMLButtonElement;
+    const submit = screen.getByRole<HTMLButtonElement>('button', { name: 'Approve consolidation' });
     expect(submit.type).toBe('submit');
-    fireEvent.submit(submit.closest('form')!);
+    fireEvent.submit(must(submit.closest<HTMLElement>('form')));
     expect(onApprove).toHaveBeenCalledWith(reviewOpen);
   });
 

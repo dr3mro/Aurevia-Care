@@ -156,11 +156,13 @@ describe('responsive StaffHistoryView (WEB-07, UX-01)', () => {
       expect(cards).toHaveLength(2);
       for (const card of cards) {
         expect(card.querySelector('caption')?.textContent).toContain(adminText('en', 'sequence'));
-        expect(within(card).getAllByRole('rowheader').map((cell) => cell.textContent)).toEqual(
-          COLUMNS.map((key) => adminText('en', key)),
-        );
+        expect(
+          within(card)
+            .getAllByRole('rowheader')
+            .map((cell) => cell.textContent),
+        ).toEqual(COLUMNS.map((key) => adminText('en', key)));
         for (const cell of within(card).getAllByRole('cell')) {
-          const style = (cell as HTMLElement).style;
+          const style = cell.style;
           expect(style.display).not.toBe('none');
           expect(style.overflowWrap).toBe('anywhere');
           expect(style.whiteSpace).toBe('normal');
@@ -187,15 +189,18 @@ describe('responsive StaffHistoryView (WEB-07, UX-01)', () => {
 
       const region = historyRegion();
       expect(region.className).not.toContain('card-list');
-      expect(within(region).getAllByRole('columnheader').map((cell) => cell.textContent)).toEqual(
-        COLUMNS.map((key) => adminText('en', key)),
-      );
-      expect(within(region).getAllByRole('rowheader').map((cell) => cell.textContent)).toEqual([
-        '1',
-        '2',
-      ]);
+      expect(
+        within(region)
+          .getAllByRole('columnheader')
+          .map((cell) => cell.textContent),
+      ).toEqual(COLUMNS.map((key) => adminText('en', key)));
+      expect(
+        within(region)
+          .getAllByRole('rowheader')
+          .map((cell) => cell.textContent),
+      ).toEqual(['1', '2']);
       for (const cell of within(region).getAllByRole('cell')) {
-        expect((cell as HTMLElement).style.display).not.toBe('none');
+        expect(cell.style.display).not.toBe('none');
       }
       unmount();
     }
@@ -230,7 +235,9 @@ describe('responsive StaffHistoryView (WEB-07, UX-01)', () => {
     for (const width of [320, 768, 1280]) {
       const { unmount } = renderAt(width, betaOrganizationId);
       const region = historyRegion();
-      expect(within(region).getAllByText(adminText('en', 'eventDeactivated')).length).toBeGreaterThan(0);
+      expect(
+        within(region).getAllByText(adminText('en', 'eventDeactivated')).length,
+      ).toBeGreaterThan(0);
       expect(within(region).getByText('Synthetic tenant offboarding')).toBeTruthy();
       expect(within(region).getByText('reception')).toBeTruthy();
       expect(screen.getByRole('status').textContent).toContain(adminText('en', 'eventDeactivated'));
@@ -247,15 +254,21 @@ describe('responsive StaffHistoryView (WEB-07, UX-01)', () => {
     const region = historyRegion();
     expect(region.getAttribute('aria-label')).toBe(adminText('ar', 'staffHistory'));
     const firstCard = region.querySelector('table') as HTMLElement;
-    expect(within(firstCard).getAllByRole('rowheader').map((cell) => cell.textContent)).toEqual(
-      COLUMNS.map((key) => adminText('ar', key)),
-    );
+    expect(
+      within(firstCard)
+        .getAllByRole('rowheader')
+        .map((cell) => cell.textContent),
+    ).toEqual(COLUMNS.map((key) => adminText('ar', key)));
     expect(within(region).getByText(adminText('ar', 'eventDeactivated'))).toBeTruthy();
     expect(within(region).getByText('Synthetic access review closure')).toBeTruthy();
 
     const caption = region.querySelector('caption') as HTMLElement;
     expect(caption.style.textAlign).toBe('start');
-    for (const element of [breakpointRoot(), region, ...Array.from(region.querySelectorAll('*'))] as HTMLElement[]) {
+    for (const element of [
+      breakpointRoot(),
+      region,
+      ...Array.from(region.querySelectorAll('*')),
+    ] as HTMLElement[]) {
       const style = element.getAttribute('style') ?? '';
       expect(style).not.toMatch(/(?:margin|padding|border)-(?:left|right)\s*:/);
       expect(style).not.toMatch(/text-align\s*:\s*(?:left|right)/);
@@ -268,7 +281,7 @@ describe('responsive StaffHistoryView (WEB-07, UX-01)', () => {
 
   it('wraps long English and Arabic clinical values without clipping them', () => {
     renderAt(390);
-    const runs = Array.from(document.querySelectorAll('bdi')) as HTMLElement[];
+    const runs = Array.from(document.querySelectorAll<HTMLElement>('bdi'));
     expect(runs.length).toBeGreaterThan(0);
     for (const run of runs) {
       expect(run.getAttribute('dir')).toBe('auto');

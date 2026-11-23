@@ -90,7 +90,10 @@ describe('dry run view', () => {
 
   it('defaults every missing finding to an empty value at the boundary', () => {
     expect(
-      toDryRunView({ counts: undefined, missing_attachments: undefined } as unknown as DryRunReportResponse),
+      toDryRunView({
+        counts: undefined,
+        missing_attachments: undefined,
+      }),
     ).toEqual({
       totalRecords: 0,
       batchCount: 0,
@@ -108,7 +111,9 @@ describe('sign-off validation', () => {
   });
 
   it('refuses a role that is not authorised to sign off', () => {
-    expect(signOffRejection('Synthetic Reviewer', 'reception', 'approved')).toBe('roleNotPermitted');
+    expect(signOffRejection('Synthetic Reviewer', 'reception', 'approved')).toBe(
+      'roleNotPermitted',
+    );
   });
 
   it('refuses a decision other than approved', () => {

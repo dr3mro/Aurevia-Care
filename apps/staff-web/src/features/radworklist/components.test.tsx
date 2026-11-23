@@ -14,7 +14,7 @@ import type { StudyLinkDraft } from './StudyLinkForm';
 import { alphaOrganizationId, syntheticOrders } from './fixtures';
 
 /** The scheduled synthetic order used by the study-link tests. */
-const scheduledOrder: ImagingWorklistOrder = syntheticOrders[1]!;
+const scheduledOrder: ImagingWorklistOrder = required(syntheticOrders[1]);
 
 /** Mount a component with the theme and locale providers the screen uses. */
 function wrap(ui: ReactElement, locale: Locale = 'en') {
@@ -148,7 +148,7 @@ describe('StudyLinkForm', () => {
     });
 
     expect(screen.getByTestId('label-check').getAttribute('data-verdict')).toBe('patient');
-    const link = screen.getByRole('button', { name: 'Link study' }) as HTMLButtonElement;
+    const link = screen.getByRole<HTMLButtonElement>('button', { name: 'Link study' });
     expect(link.disabled).toBe(true);
     fireEvent.click(link);
     expect(onLink).not.toHaveBeenCalled();
@@ -174,7 +174,7 @@ describe('StudyLinkForm', () => {
       target: { value: 'ACC-002' },
     });
     expect(screen.getByTestId('label-check').getAttribute('data-verdict')).toBe('matched');
-    expect((screen.getByRole('button', { name: 'Link study' }) as HTMLButtonElement).disabled).toBe(
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Link study' }).disabled).toBe(
       true,
     );
   });
@@ -195,7 +195,7 @@ describe('StudyLinkForm', () => {
       target: { value: ' workstation-1 ' },
     });
 
-    const link = screen.getByRole('button', { name: 'Link study' }) as HTMLButtonElement;
+    const link = screen.getByRole<HTMLButtonElement>('button', { name: 'Link study' });
     expect(link.disabled).toBe(false);
     fireEvent.click(link);
     expect(onLink).toHaveBeenCalledWith({
@@ -215,7 +215,7 @@ describe('StudyLinkForm', () => {
       target: { value: 'ACC-002' },
     });
     expect(screen.getByTestId('label-check').getAttribute('data-verdict')).toBe('patient');
-    expect((screen.getByRole('button', { name: 'ربط الدراسة' }) as HTMLButtonElement).disabled).toBe(
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'ربط الدراسة' }).disabled).toBe(
       true,
     );
   });
@@ -227,3 +227,10 @@ describe('radworklist fixture scope', () => {
     expect(scheduledOrder.accession).toBe('ACC-002');
   });
 });
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

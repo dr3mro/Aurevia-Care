@@ -143,7 +143,7 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
       installMatchMedia(VIEWPORTS[breakpoint]);
       renderSwitcher();
 
-      const select = screen.getByLabelText('Organization') as HTMLSelectElement;
+      const select = screen.getByLabelText<HTMLSelectElement>('Organization');
       expect(select.tagName).toBe('SELECT');
       expect(select.id).toBe('active-organization');
       expect(select.classList.contains('field')).toBe(true);
@@ -166,7 +166,7 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
 
       const root = switcherRoot();
       const label = root.querySelector('label');
-      const select = root.querySelector('select') as HTMLSelectElement | null;
+      const select = root.querySelector<HTMLSelectElement>('select');
       const output = root.querySelector('output');
       if (!select) {
         throw new Error('native select was not rendered');
@@ -216,7 +216,9 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
       renderSwitcher();
 
       const select = screen.getByLabelText('Organization');
-      expect(select.textContent).toBe(longEnglish.map((organization) => organization.name).join(''));
+      expect(select.textContent).toBe(
+        longEnglish.map((organization) => organization.name).join(''),
+      );
       expect(select.style.whiteSpace).not.toBe('nowrap');
       expect(select.style.display).not.toBe('none');
       expect(screen.getByRole('status').textContent).toBe(longEnglish[0]?.name);

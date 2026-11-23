@@ -38,11 +38,9 @@ export async function searchPatients(
   organizationId: string,
 ): Promise<readonly PatientResponse[]> {
   return send<readonly PatientResponse[]>(
-    patientDescriptor(
-      'GET',
-      `/api/v1/patients?name=${encodeURIComponent(name)}`,
-      { activeOrganization: organizationId },
-    ),
+    patientDescriptor('GET', `/api/v1/patients?name=${encodeURIComponent(name)}`, {
+      activeOrganization: organizationId,
+    }),
   );
 }
 
@@ -62,16 +60,11 @@ export async function registerPatient(
 }
 
 /** Read one effective patient together with its likely-duplicate warnings. */
-export async function getPatient(
-  id: string,
-  organizationId: string,
-): Promise<PatientViewResponse> {
+export async function getPatient(id: string, organizationId: string): Promise<PatientViewResponse> {
   return send<PatientViewResponse>(
-    patientDescriptor(
-      'GET',
-      `/api/v1/patients/${encodeURIComponent(id)}`,
-      { activeOrganization: organizationId },
-    ),
+    patientDescriptor('GET', `/api/v1/patients/${encodeURIComponent(id)}`, {
+      activeOrganization: organizationId,
+    }),
   );
 }
 

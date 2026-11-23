@@ -1,4 +1,4 @@
-import { Fragment, useRef, useState } from 'react';
+import { Fragment, useLayoutEffect, useRef, useState } from 'react';
 import type { Locale } from '../../../i18n/messages';
 import { Button } from '../../../components/Button';
 import { FormField } from '../../../components/FormField';
@@ -9,16 +9,9 @@ import { useTheme } from '../../../theme/ThemeProvider';
 import type { Role } from '../../../app/navigation';
 import { canOrder } from '../entry/domain';
 import { entryText } from '../entry/messages';
-import type {
-  OrderResultLink,
-  TrackedOrder,
-} from './domain';
+import type { OrderResultLink, TrackedOrder } from './domain';
 import { canAmend, canCancel, cancelOutcome, hasReason, ordersForTenant } from './domain';
-import {
-  deliveryModeMessageKey,
-  statusMessageKey,
-  trackingText,
-} from './labels';
+import { deliveryModeMessageKey, statusMessageKey, trackingText } from './labels';
 import type { TrackingMessageKey } from './labels';
 
 /** The two reason-backed commands available on an active order. */
@@ -58,6 +51,19 @@ function initialState(organizationId: string): TabState {
     pending: false,
     announcement: '',
     error: '',
+  };
+}
+
+/** State after a command settles: the form closes and one outcome is shown. */
+function settledState(current: TabState, announcement: string, error: string): TabState {
+  return {
+    ...current,
+    actionOrder: null,
+    reason: '',
+    reasonError: false,
+    pending: false,
+    error,
+    announcement,
   };
 }
 
@@ -144,6 +150,92 @@ function ResultLink({ result, locale, onOpen }: ResultLinkProps) {
   );
 }
 
+/** Props for one order row. */
+interface OrderRowProps {
+  order: TrackedOrder;
+  locale: Locale;
+  mayAct: boolean;
+  pending: boolean;
+  onStart: (order: TrackedOrder, kind: ActionKind) => void;
+  onOpenResult: (result: OrderResultLink) => void;
+}
+
+/** Render one tenant-scoped order with its status, delivery, result and actions. */
+function OrderRow({ order, locale, mayAct, pending, onStart, onOpenResult }: OrderRowProps) {
+  const text = (key: TrackingMessageKey): string => trackingText(locale, key);
+  return (
+    <tr data-testid={`order-row-${order.id}`}>
+      <th scope="row">
+        <MixedScriptText text={order.display} lang={locale} /> <code dir="ltr">{order.id}</code>
+      </th>
+      <td data-testid={`order-status-${order.id}`}>
+        <MixedScriptText text={text(statusMessageKey(order.status))} lang={locale} />
+        {order.cancelRequested ? <span> {text('cancelRequested')}</span> : null}
+      </td>
+      <td data-testid={`order-delivery-${order.id}`}>
+        {order.delivery === null ? (
+          text('notDelivered')
+        ) : (
+          <>
+            <MixedScriptText
+              text={entryText(locale, deliveryModeMessageKey(order.delivery.mode))}
+              lang={locale}
+            />
+            {' · '}
+            {order.delivery.partnerReference === null ? (
+              text('notDelivered')
+            ) : (
+              <>
+                {text('partnerReference')}: <bdi dir="ltr">{order.delivery.partnerReference}</bdi>
+              </>
+            )}
+            {order.delivery.deliveredAt !== null ? (
+              <>
+                {' · '}
+                {text('delivered')}:{' '}
+                <time dateTime={order.delivery.deliveredAt}>
+                  {formatInstant(order.delivery.deliveredAt, order.delivery.timeZone, locale)}
+                </time>
+              </>
+            ) : null}
+          </>
+        )}
+      </td>
+      <td>
+        {order.result === null ? (
+          text('noResult')
+        ) : (
+          <ResultLink result={order.result} locale={locale} onOpen={onOpenResult} />
+        )}
+      </td>
+      <td>
+        {mayAct && canCancel(order) ? (
+          <button
+            type="button"
+            aria-label={`${text('cancel')}: ${order.id}`}
+            style={controlStyle}
+            disabled={pending}
+            onClick={() => onStart(order, 'cancel')}
+          >
+            {text('cancel')}
+          </button>
+        ) : null}{' '}
+        {mayAct && canAmend(order) ? (
+          <button
+            type="button"
+            aria-label={`${text('amend')}: ${order.id}`}
+            style={controlStyle}
+            disabled={pending}
+            onClick={() => onStart(order, 'amend')}
+          >
+            {text('amend')}
+          </button>
+        ) : null}
+      </td>
+    </tr>
+  );
+}
+
 /**
  * Orders tab for the patient chart (LAB-01, RAD-01, XCH-03, WEB-09).
  *
@@ -162,7 +254,9 @@ export function OrdersTab(props: OrdersTabProps) {
   // The ref mirrors the active tenant synchronously, so a reply arriving after
   // a switch can be discarded before it paints the new tenant's status area.
   const organizationRef = useRef(organizationId);
-  organizationRef.current = organizationId;
+  useLayoutEffect(() => {
+    organizationRef.current = organizationId;
+  }, [organizationId]);
 
   // Reset every field synchronously during render, so a tenant switch can never
   // show the previous tenant's typed reason beside the new tenant's orders.
@@ -226,37 +320,19 @@ export function OrdersTab(props: OrdersTabProps) {
             cancelOutcome(order) === 'cancel-requested'
               ? 'cancelRequestSentNotice'
               : 'cancelledNotice';
-          settle(submittingOrganization, (current) => ({
-            ...current,
-            actionOrder: null,
-            reason: '',
-            reasonError: false,
-            pending: false,
-            error: '',
-            announcement: trackingText(locale, key),
-          }));
+          settle(submittingOrganization, (current) =>
+            settledState(current, trackingText(locale, key), ''),
+          );
         } else {
           await onAmend(order, trimmed);
-          settle(submittingOrganization, (current) => ({
-            ...current,
-            actionOrder: null,
-            reason: '',
-            reasonError: false,
-            pending: false,
-            error: '',
-            announcement: trackingText(locale, 'amendNotice'),
-          }));
+          settle(submittingOrganization, (current) =>
+            settledState(current, trackingText(locale, 'amendNotice'), ''),
+          );
         }
       } catch {
-        settle(submittingOrganization, (current) => ({
-          ...current,
-          actionOrder: null,
-          reason: '',
-          reasonError: false,
-          pending: false,
-          error: trackingText(locale, 'sendError'),
-          announcement: '',
-        }));
+        settle(submittingOrganization, (current) =>
+          settledState(current, '', trackingText(locale, 'sendError')),
+        );
       }
     })();
   }
@@ -294,79 +370,14 @@ export function OrdersTab(props: OrdersTabProps) {
           <tbody>
             {visible.map((order) => (
               <Fragment key={`${organizationId}:${order.id}`}>
-                <tr data-testid={`order-row-${order.id}`}>
-                  <th scope="row">
-                    <MixedScriptText text={order.display} lang={locale} /> <code dir="ltr">{order.id}</code>
-                  </th>
-                  <td data-testid={`order-status-${order.id}`}>
-                    <MixedScriptText text={text(statusMessageKey(order.status))} lang={locale} />
-                    {order.cancelRequested ? <span> {text('cancelRequested')}</span> : null}
-                  </td>
-                  <td data-testid={`order-delivery-${order.id}`}>
-                    {order.delivery === null ? (
-                      text('notDelivered')
-                    ) : (
-                      <>
-                        <MixedScriptText
-                          text={entryText(locale, deliveryModeMessageKey(order.delivery.mode))}
-                          lang={locale}
-                        />
-                        {' · '}
-                        {order.delivery.partnerReference === null ? (
-                          text('notDelivered')
-                        ) : (
-                          <>
-                            {text('partnerReference')}: <bdi dir="ltr">{order.delivery.partnerReference}</bdi>
-                          </>
-                        )}
-                        {order.delivery.deliveredAt !== null ? (
-                          <>
-                            {' · '}
-                            {text('delivered')}:{' '}
-                            <time dateTime={order.delivery.deliveredAt}>
-                              {formatInstant(
-                                order.delivery.deliveredAt,
-                                order.delivery.timeZone,
-                                locale,
-                              )}
-                            </time>
-                          </>
-                        ) : null}
-                      </>
-                    )}
-                  </td>
-                  <td>
-                    {order.result === null ? (
-                      text('noResult')
-                    ) : (
-                      <ResultLink result={order.result} locale={locale} onOpen={onOpenResult} />
-                    )}
-                  </td>
-                  <td>
-                    {mayAct && canCancel(order) ? (
-                      <button
-                        type="button"
-                        aria-label={`${text('cancel')}: ${order.id}`}
-                        style={controlStyle}
-                        disabled={state.pending}
-                        onClick={() => startAction(order, 'cancel')}
-                      >
-                        {text('cancel')}
-                      </button>
-                    ) : null}{' '}
-                    {mayAct && canAmend(order) ? (
-                      <button
-                        type="button"
-                        aria-label={`${text('amend')}: ${order.id}`}
-                        style={controlStyle}
-                        disabled={state.pending}
-                        onClick={() => startAction(order, 'amend')}
-                      >
-                        {text('amend')}
-                      </button>
-                    ) : null}
-                  </td>
-                </tr>
+                <OrderRow
+                  order={order}
+                  locale={locale}
+                  mayAct={mayAct}
+                  pending={state.pending}
+                  onStart={startAction}
+                  onOpenResult={onOpenResult}
+                />
                 {activeOrder !== null && activeOrder.id === order.id ? (
                   <tr data-testid="order-action-row">
                     <td colSpan={5}>

@@ -13,11 +13,7 @@ import { buildRequestDescriptor } from '../../api/client';
 import type { RequestDescriptor } from '../../api/client';
 import { TransportError, send } from '../../api/transport';
 import type { Role } from '../../app/navigation';
-import type {
-  DryRunReportResponse,
-  ExportResultResponse,
-  SignOffResultResponse,
-} from './domain';
+import type { DryRunReportResponse, ExportResultResponse, SignOffResultResponse } from './domain';
 
 /** A declared contract path used only to obtain the shared request headers. */
 const DESCRIPTOR_BASE = '/api/v1/facilities';
@@ -29,24 +25,24 @@ const EXPORT_ROUTE = '/api/v1/tenant/exports';
 const IMPORT_ROUTE = '/api/v1/tenant/imports';
 
 /** Deterministic field mapping declaration sent with a synthetic manifest. */
-type FieldMappingRequest = {
+interface FieldMappingRequest {
   deterministic: boolean;
   strategy: string;
   source_to_target: Record<string, string>;
   identity_fields: string[];
   ignored_fields: string[];
-};
+}
 
 /** Import provenance declaration that must preserve historical signatures. */
-type ImportProvenanceRequest = {
+interface ImportProvenanceRequest {
   source_system: string;
   source_version: string;
   preserve_historical_signatures: boolean;
   creates_new_attestation: boolean;
-};
+}
 
 /** Versioned onboarding manifest sent to the dry-run endpoint. */
-export type ImportManifestRequest = {
+export interface ImportManifestRequest {
   schema_version: string;
   requirement: string;
   manifest_version: number;
@@ -56,10 +52,10 @@ export type ImportManifestRequest = {
   mapping: FieldMappingRequest;
   provenance: ImportProvenanceRequest;
   batches: number[];
-};
+}
 
 /** Named authorization sent to the sign-off endpoint. */
-export type ImportSignOffRequest = {
+export interface ImportSignOffRequest {
   approver: string;
   role: string;
   decision: string;
@@ -67,14 +63,14 @@ export type ImportSignOffRequest = {
   manifest_version: number;
   batches: number[];
   approved_at: string;
-};
+}
 
 /** Body of `POST /api/v1/tenant/imports/sign-off`. */
-export type SignOffRequest = {
+export interface SignOffRequest {
   manifest: ImportManifestRequest;
   progress: unknown;
   sign_off: ImportSignOffRequest;
-};
+}
 
 /** Fields an operator supplies to describe a synthetic onboarding dataset. */
 export interface DryRunDraft {
@@ -131,19 +127,14 @@ export function manifestFromDraft(draft: DryRunDraft): ImportManifestRequest {
  * Build the sign-off request bound to the manifest the operator just reviewed.
  *
  * @param manifest the reviewed manifest version
- * @param approver named approver supplied by the form
- * @param role active session role of the approver
- * @param contentSha256 digest of the reviewed content
- * @param approvedAt UTC instant of approval
+ * @param approval the approver, role, content digest and UTC instant of approval
  * @returns a sign-off body whose decision is always affirmative
  */
 export function signOffRequest(
   manifest: ImportManifestRequest,
-  approver: string,
-  role: Role,
-  contentSha256: string,
-  approvedAt: string,
+  approval: { approver: string; role: Role; contentSha256: string; approvedAt: string },
 ): SignOffRequest {
+  const { approver, role, contentSha256, approvedAt } = approval;
   return {
     manifest,
     progress: null,
@@ -208,9 +199,7 @@ export async function startExport(organizationId: string): Promise<ExportResultR
 
 /** Download the verified manifest bytes of one unexpired export job. */
 export async function downloadManifest(jobId: string, organizationId: string): Promise<unknown> {
-  return send<unknown>(
-    descriptor('GET', `${EXPORT_ROUTE}/${encodeURIComponent(jobId)}`, organizationId),
-  );
+  return send(descriptor('GET', `${EXPORT_ROUTE}/${encodeURIComponent(jobId)}`, organizationId));
 }
 
 /** Evaluate a versioned manifest without writing any chart data. */
@@ -219,7 +208,7 @@ export async function runDryRun(
   organizationId: string,
 ): Promise<DryRunReportResponse> {
   return send<DryRunReportResponse>(
-    descriptor('POST', `${IMPORT_ROUTE}/dry-run`, organizationId, manifest),
+    descriptor('POST', `${IMPORT_ROUTE}/dry-run`, organizationId, { ...manifest }),
   );
 }
 
@@ -229,6 +218,6 @@ export async function submitSignOff(
   organizationId: string,
 ): Promise<SignOffResultResponse> {
   return send<SignOffResultResponse>(
-    descriptor('POST', `${IMPORT_ROUTE}/sign-off`, organizationId, request),
+    descriptor('POST', `${IMPORT_ROUTE}/sign-off`, organizationId, { ...request }),
   );
 }

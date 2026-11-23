@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { ThemeProvider } from '../../src/theme/ThemeProvider';
 import { BREAKPOINT_MEDIA_QUERIES } from '../../src/theme/breakpoints';
 import { Dialog } from '../../src/components/Dialog';
+import { must } from '../must';
 
 type ChangeListener = (event: MediaQueryListEvent) => void;
 
@@ -81,8 +82,8 @@ describe('responsive Dialog across breakpoints', () => {
     expect(dialog.getAttribute('data-breakpoint')).toBe('compact');
     expect(dialog.getAttribute('data-dialog-view')).toBe('sheet');
 
-    const header = dialog.querySelector('[data-dialog-region="header"]') as HTMLElement;
-    const actions = dialog.querySelector('[data-dialog-region="actions"]') as HTMLElement;
+    const header = must(dialog.querySelector<HTMLElement>('[data-dialog-region="header"]'));
+    const actions = must(dialog.querySelector<HTMLElement>('[data-dialog-region="actions"]'));
     expect(header).toBeTruthy();
     expect(actions).toBeTruthy();
     expect(header.style.position).toBe('sticky');
@@ -102,8 +103,8 @@ describe('responsive Dialog across breakpoints', () => {
     expect(dialog.getAttribute('data-breakpoint')).toBe('medium');
     expect(dialog.getAttribute('data-dialog-view')).toBe('centered');
 
-    const header = dialog.querySelector('[data-dialog-region="header"]') as HTMLElement;
-    const actions = dialog.querySelector('[data-dialog-region="actions"]') as HTMLElement;
+    const header = must(dialog.querySelector<HTMLElement>('[data-dialog-region="header"]'));
+    const actions = must(dialog.querySelector<HTMLElement>('[data-dialog-region="actions"]'));
     expect(header.style.position).toBe('');
     expect(actions.style.position).toBe('');
     expect(dialog.style.scrollPaddingBlockStart).toBe('');
@@ -148,7 +149,7 @@ describe('responsive Dialog across breakpoints', () => {
       expect(element.style.display).not.toBe('none');
     }
     expect(dialog.style.overflowWrap).toBe('anywhere');
-    const content = dialog.querySelector('.stack') as HTMLElement;
+    const content = must(dialog.querySelector<HTMLElement>('.stack'));
     expect(content).toBeTruthy();
     expect(content.textContent).toContain('synthetic detail');
   });
@@ -238,8 +239,8 @@ describe('responsive Dialog keyboard order and right-to-left', () => {
 
     const dialog = screen.getByRole('dialog', { name: 'Details' });
     expect(dialog.getAttribute('data-dialog-view')).toBe('sheet');
-    const header = dialog.querySelector('[data-dialog-region="header"]') as HTMLElement;
-    const actions = dialog.querySelector('[data-dialog-region="actions"]') as HTMLElement;
+    const header = must(dialog.querySelector<HTMLElement>('[data-dialog-region="header"]'));
+    const actions = must(dialog.querySelector<HTMLElement>('[data-dialog-region="actions"]'));
     expect(header.style.paddingInline).not.toBe('');
     expect(header.style.borderBlockEnd).not.toBe('');
     expect(actions.style.paddingInline).not.toBe('');

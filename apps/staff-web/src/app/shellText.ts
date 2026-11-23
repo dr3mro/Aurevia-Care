@@ -1,12 +1,7 @@
 import type { Locale } from '../i18n/messages';
 
 /** Strings owned by the application shell and its placeholder routes. */
-export type ShellTextKey =
-  | 'welcome'
-  | 'notFound'
-  | 'signOut'
-  | 'userMenu'
-  | 'notifications';
+export type ShellTextKey = 'welcome' | 'notFound' | 'signOut' | 'userMenu' | 'notifications';
 
 /**
  * English and Arabic shell labels with identical key sets. They live beside

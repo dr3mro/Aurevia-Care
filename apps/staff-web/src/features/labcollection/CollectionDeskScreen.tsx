@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Button } from '../../components/Button';
 import { useI18n } from '../../i18n/I18nProvider';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -42,6 +42,20 @@ const blankSpecimen: SpecimenDetails = {
 };
 const blankRejection: RejectionDraft = { reason: '', detail: '', notifyPatient: false };
 
+/** Identity match for the selected order; nothing matches without a selection. */
+function matchFor(selected: CollectionOrder | undefined, presented: PresentedIdentity) {
+  return selected === undefined ? { matched: false, reasons: [] } : checkMatch(selected, presented);
+}
+
+/** Collection may proceed only for a selected order with every confirmation given. */
+function isReadyToProceed(
+  selected: CollectionOrder | undefined,
+  matched: boolean,
+  confirmations: readonly boolean[],
+): boolean {
+  return selected !== undefined && matched && confirmations.every(Boolean);
+}
+
 /**
  * Compose order search, bedside verification, collection, label printing and
  * rejection. All durable commands are delegated to the page; local drafts are
@@ -67,22 +81,29 @@ export function CollectionDeskScreen({
   const [specimen, setSpecimen] = useState<SpecimenDetails>(blankSpecimen);
   const [rejection, setRejection] = useState<RejectionDraft>(blankRejection);
 
-  useEffect(() => {
+  const [selectedKey, setSelectedKey] = useState(selected?.id);
+  if (selectedKey !== selected?.id) {
+    setSelectedKey(selected?.id);
     setPresented(blankPresented);
     setNamesConfirmed(false);
     setAccessionConfirmed(false);
     setSpecimen(blankSpecimen);
     setRejection(blankRejection);
-  }, [selected?.id]);
+  }
 
-  const match = selected === undefined ? { matched: false, reasons: [] } : checkMatch(selected, presented);
-  const canProceed =
-    selected !== undefined && match.matched && namesConfirmed && accessionConfirmed;
+  const match = matchFor(selected, presented);
+  const canProceed = isReadyToProceed(selected, match.matched, [
+    namesConfirmed,
+    accessionConfirmed,
+  ]);
 
   // The command controls are only rendered with a selected order, so the
-  // non-null assertion here encodes that render invariant without a dead guard.
+  // guards below only narrow the type.
   function handleCollect() {
-    const order = selected!;
+    if (selected === undefined) {
+      return;
+    }
+    const order = selected;
     onCollect(order, {
       patientId: presented.patientId,
       accessionNo: presented.accessionNo,
@@ -97,11 +118,17 @@ export function CollectionDeskScreen({
   }
 
   function handlePrint() {
-    onPrint(selected!);
+    if (selected === undefined) {
+      return;
+    }
+    onPrint(selected);
   }
 
   function handleReject() {
-    const order = selected!;
+    if (selected === undefined) {
+      return;
+    }
+    const order = selected;
     onReject(order, {
       reason: rejection.reason,
       detail: rejection.detail,
@@ -112,7 +139,10 @@ export function CollectionDeskScreen({
   }
 
   return (
-    <section aria-label={labText(locale, 'collectionDesk')} style={{ display: 'grid', gap: tokens.spacing.lg }}>
+    <section
+      aria-label={labText(locale, 'collectionDesk')}
+      style={{ display: 'grid', gap: tokens.spacing.lg }}
+    >
       <h2>{labText(locale, 'collectionDesk')}</h2>
       <p>{labText(locale, 'syntheticNotice')}</p>
       <p role="status" data-testid="collection-status">
@@ -133,7 +163,7 @@ export function CollectionDeskScreen({
             onNamesConfirmed={setNamesConfirmed}
             onAccessionConfirmed={setAccessionConfirmed}
           />
-          {!canProceed && <p role="status">{labText(locale, 'verificationRequired')}</p>}
+          {!canProceed ? <p role="status">{labText(locale, 'verificationRequired')}</p> : null}
           <CollectionForm
             value={specimen}
             onChange={setSpecimen}
@@ -149,14 +179,14 @@ export function CollectionDeskScreen({
             onReject={handleReject}
             disabled={!canProceed}
           />
-          {label !== undefined && (
+          {label !== undefined ? (
             <LabelSheet
               label={label}
               organizationId={organizationId}
               printedBy={specimen.collector}
               printedAt={specimen.collectedAt}
             />
-          )}
+          ) : null}
         </>
       )}
     </section>

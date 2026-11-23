@@ -14,6 +14,7 @@ import { ThemeProvider } from '../../theme/ThemeProvider';
 import { adminText } from './messages';
 import { alphaOrganizationId, betaOrganizationId } from './fixtures';
 import { ConfigPage } from './ConfigPage';
+import { must } from '../../../tests/must';
 
 vi.mock('../../api/transport', async (importOriginal) => {
   const actual = await importOriginal<typeof TransportModule>();
@@ -24,7 +25,7 @@ const sendMock = vi.mocked(send);
 const key = 'facility.MAIN.booking';
 
 function descriptorAt(call: number): RequestDescriptor {
-  return sendMock.mock.calls[call]![0] as RequestDescriptor;
+  return must(sendMock.mock.calls[call])[0];
 }
 
 function entry(overrides: Record<string, unknown> = {}) {
@@ -160,7 +161,10 @@ describe('ConfigPage states', () => {
 
   it('shows approval state and an approve trigger on a pending version', async () => {
     sendMock.mockResolvedValueOnce(
-      history([entry(), entry({ version: 3, status: 'pending', approvedBy: null, value: 'Synthetic pending rule' })]),
+      history([
+        entry(),
+        entry({ version: 3, status: 'pending', approvedBy: null, value: 'Synthetic pending rule' }),
+      ]),
     );
     wrap(<ConfigPage />);
     lookup();
@@ -177,13 +181,17 @@ describe('ConfigPage states', () => {
       target: { value: key },
     });
     fireEvent.click(screen.getByRole('button', { name: adminText('ar', 'configLookup') }));
-    expect(await screen.findByRole('table', { name: adminText('ar', 'configurationVersions') })).toBeTruthy();
+    expect(
+      await screen.findByRole('table', { name: adminText('ar', 'configurationVersions') }),
+    ).toBeTruthy();
   });
 });
 
 describe('ConfigPage commands', () => {
   beforeEach(() => {
-    sendMock.mockResolvedValue(history([entry(), entry({ version: 3, status: 'pending', value: 'Synthetic pending rule' })]));
+    sendMock.mockResolvedValue(
+      history([entry(), entry({ version: 3, status: 'pending', value: 'Synthetic pending rule' })]),
+    );
   });
 
   it('looks up a key with a tenant header and no tenant field in the path body', async () => {
@@ -231,7 +239,7 @@ describe('ConfigPage commands', () => {
     fireEvent.click(screen.getByRole('button', { name: adminText('en', 'propose') }));
 
     expect(await screen.findByText(stateViewText('en', 'conflict'))).toBeTruthy();
-    expect((screen.getByLabelText(adminText('en', 'proposedValue')) as HTMLInputElement).value).toBe(
+    expect(screen.getByLabelText<HTMLInputElement>(adminText('en', 'proposedValue')).value).toBe(
       'Synthetic proposed value',
     );
     expect(sendMock).toHaveBeenCalledTimes(2);
@@ -244,7 +252,11 @@ describe('ConfigPage commands', () => {
     const callsBefore = sendMock.mock.calls.length;
 
     fireEvent.click(screen.getByRole('button', { name: adminText('en', 'approve') }));
-    expect(screen.getByRole('dialog', { name: adminText('en', 'approveTitle').replace('{key}', key).replace('{version}', '3') })).toBeTruthy();
+    expect(
+      screen.getByRole('dialog', {
+        name: adminText('en', 'approveTitle').replace('{key}', key).replace('{version}', '3'),
+      }),
+    ).toBeTruthy();
     expect(sendMock).toHaveBeenCalledTimes(callsBefore);
 
     fireEvent.click(screen.getByRole('button', { name: adminText('en', 'cancel') }));
@@ -266,12 +278,14 @@ describe('ConfigPage commands', () => {
     await waitFor(() => expect(sendMock).toHaveBeenCalledTimes(3));
     const command = descriptorAt(1);
     expect(command.method).toBe('POST');
-    expect(command.url).toBe(
-      '/api/v1/configuration/facility.MAIN.booking/versions/3/approve',
-    );
+    expect(command.url).toBe('/api/v1/configuration/facility.MAIN.booking/versions/3/approve');
     expect(command.body).toEqual({ note: 'Synthetic approval note' });
     expect(command.headers['Idempotency-Key']).toMatch(/^[0-9a-f-]{36}$/);
-    expect(await screen.findByText(adminText('en', 'approvedNotice').replace('{key}', key).replace('{version}', '3'))).toBeTruthy();
+    expect(
+      await screen.findByText(
+        adminText('en', 'approvedNotice').replace('{key}', key).replace('{version}', '3'),
+      ),
+    ).toBeTruthy();
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
@@ -377,7 +391,11 @@ describe('ConfigPage catalog section', () => {
       target: { value: '2026-02-30' },
     });
     fireEvent.click(screen.getByRole('button', { name: adminText('en', 'defineCatalogEntry') }));
-    expect(screen.getByRole('alert', { name: adminText('en', 'errorSummary') }).querySelector('a[href="#catalog-effective"]')).toBeTruthy();
+    expect(
+      screen
+        .getByRole('alert', { name: adminText('en', 'errorSummary') })
+        .querySelector('a[href="#catalog-effective"]'),
+    ).toBeTruthy();
     expect(sendMock).toHaveBeenCalledTimes(2);
   });
 
@@ -449,8 +467,14 @@ describe('ConfigPage catalog section', () => {
       target: { value: 'diagnosis' },
     });
     fireEvent.click(screen.getByRole('button', { name: adminText('en', 'catalogFamilyLookup') }));
-    expect(await screen.findByRole('table', { name: adminText('en', 'catalogEntries') })).toBeTruthy();
-    expect(within(screen.getByRole('table', { name: adminText('en', 'catalogEntries') })).getAllByRole('cell')).toHaveLength(2);
+    expect(
+      await screen.findByRole('table', { name: adminText('en', 'catalogEntries') }),
+    ).toBeTruthy();
+    expect(
+      within(screen.getByRole('table', { name: adminText('en', 'catalogEntries') })).getAllByRole(
+        'cell',
+      ),
+    ).toHaveLength(2);
   });
 });
 
@@ -463,9 +487,13 @@ describe('admin config routes and tenant scoping', () => {
 
   it('lazily loads the registered config page with live data', async () => {
     sendMock.mockResolvedValueOnce(history());
-    const route = createRoutes(false).find((candidate) => candidate.pattern === '/admin/config')!;
+    const route = must(
+      createRoutes(false).find((candidate) => candidate.pattern === '/admin/config'),
+    );
     const Page = route.component;
-    render(<Suspense fallback={<p>Loading route</p>}>{element(<Page />, alphaOrganizationId)}</Suspense>);
+    render(
+      <Suspense fallback={<p>Loading route</p>}>{element(<Page />, alphaOrganizationId)}</Suspense>,
+    );
     fireEvent.change(await screen.findByLabelText(adminText('en', 'configurationKeyLookup')), {
       target: { value: key },
     });

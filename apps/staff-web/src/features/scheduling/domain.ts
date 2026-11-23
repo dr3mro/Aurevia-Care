@@ -5,7 +5,8 @@ import type { PersonName } from '../../i18n/format';
  * booked -> checked-in -> in-progress -> completed; cancelled and no-show are
  * terminal branches. No real patient data reaches this module.
  */
-export type VisitState = 'booked' | 'checked-in' | 'in-progress' | 'completed' | 'cancelled' | 'no-show';
+export type VisitState =
+  'booked' | 'checked-in' | 'in-progress' | 'completed' | 'cancelled' | 'no-show';
 
 /** Day or week scope of the synthetic staff worklist (CLN-02). */
 export type WorklistRange = 'day' | 'week';
@@ -53,7 +54,11 @@ export class IllegalVisitTransition extends Error {
 }
 
 /** States that still occupy a protected slot. */
-const ACTIVE_STATES: ReadonlySet<VisitState> = new Set<VisitState>(['booked', 'checked-in', 'in-progress']);
+const ACTIVE_STATES: ReadonlySet<VisitState> = new Set<VisitState>([
+  'booked',
+  'checked-in',
+  'in-progress',
+]);
 
 /**
  * Return one tenant's appointments in scheduled-time order, with the local id

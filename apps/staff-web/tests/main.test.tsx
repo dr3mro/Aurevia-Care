@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { MockInstance } from 'vitest';
 
 /**
  * Shared render spy, hoisted so the hoisted `vi.mock` factory can reference it.
@@ -59,7 +60,7 @@ function containsComponent(value: unknown, name: string): boolean {
 
 /** Viewport change handlers captured from `window.addEventListener`. */
 const viewportHandlers: Record<string, () => void> = {};
-let addSpy: ReturnType<typeof vi.spyOn>;
+let addSpy: MockInstance<typeof window.addEventListener>;
 
 function setWidth(width: number): void {
   Object.defineProperty(window, 'innerWidth', { configurable: true, writable: true, value: width });
@@ -84,7 +85,7 @@ afterEach(() => {
   mocks.render.mockClear();
   addSpy.mockRestore();
   for (const key of Object.keys(viewportHandlers)) {
-    delete viewportHandlers[key];
+    Reflect.deleteProperty(viewportHandlers, key);
   }
   document.getElementById('root')?.remove();
   Reflect.deleteProperty(navigator, 'userAgent');
@@ -109,7 +110,7 @@ describe('Vite entry point', () => {
     expect(mocks.render).toHaveBeenCalledTimes(1);
     expect(typeName(renderedContent())).toBe('App');
     expect(viewportHandlers.resize).toBeTypeOf('function');
-    expect(viewportHandlers['orientationchange']).toBeTypeOf('function');
+    expect(viewportHandlers.orientationchange).toBeTypeOf('function');
   });
 
   it('keeps the application mounted when resizing across 768 px', async () => {
@@ -130,7 +131,7 @@ describe('Vite entry point', () => {
     await import('../src/main');
     expect(typeName(renderedContent())).toBe('App');
 
-    viewportHandlers['orientationchange']?.();
+    viewportHandlers.orientationchange?.();
 
     expect(mocks.render).toHaveBeenCalledTimes(2);
     expect(typeName(renderedContent())).toBe('App');
@@ -168,7 +169,7 @@ describe('Vite entry point', () => {
     expect(mocks.render).toHaveBeenCalledTimes(1);
 
     viewportHandlers.resize?.();
-    viewportHandlers['orientationchange']?.();
+    viewportHandlers.orientationchange?.();
 
     expect(mocks.render).toHaveBeenCalledTimes(3);
     const content = renderedContent();

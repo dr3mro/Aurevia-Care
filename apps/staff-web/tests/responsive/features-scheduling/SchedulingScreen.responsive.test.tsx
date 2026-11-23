@@ -4,7 +4,10 @@ import { I18nProvider } from '../../../src/i18n/I18nProvider';
 import type { Locale } from '../../../src/i18n/messages';
 import { ThemeProvider } from '../../../src/theme/ThemeProvider';
 import { BREAKPOINT_MEDIA_QUERIES, BREAKPOINT_WIDTHS } from '../../../src/theme/breakpoints';
-import { alphaOrganizationId, syntheticAppointments } from '../../../src/features/scheduling/fixtures';
+import {
+  alphaOrganizationId,
+  syntheticAppointments,
+} from '../../../src/features/scheduling/fixtures';
 import { schedulingText } from '../../../src/features/scheduling/messages';
 import { SchedulingScreen } from '../../../src/features/scheduling/SchedulingScreen';
 
@@ -130,11 +133,15 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
         screen.getByRole('heading', { level: 2, name: schedulingText('en', 'scheduling') }),
       ).toBeTruthy();
       expect(screen.getByRole('status', { name: schedulingText('en', 'status') })).toBeTruthy();
-      expect(screen.getByRole('group', { name: schedulingText('en', 'worklistRange') })).toBeTruthy();
+      expect(
+        screen.getByRole('group', { name: schedulingText('en', 'worklistRange') }),
+      ).toBeTruthy();
 
       const table = screen.getByRole('table', { name: schedulingText('en', 'appointments') });
       for (const key of ['patient', 'time', 'resource', 'state', 'assignee', 'actions'] as const) {
-        expect(within(table).getByRole('columnheader', { name: schedulingText('en', key) })).toBeTruthy();
+        expect(
+          within(table).getByRole('columnheader', { name: schedulingText('en', key) }),
+        ).toBeTruthy();
       }
       expect(screen.getByRole('form', { name: schedulingText('en', 'bookingForm') })).toBeTruthy();
       for (const key of ['facilityCode', 'patientId', 'visitType', 'resource', 'start'] as const) {
@@ -190,11 +197,11 @@ describe.each(['compact', 'medium', 'expanded'] as const)(
       expect(root.querySelector('.only-compact')).toBeNull();
 
       const notice = screen.getByText(schedulingText('en', 'syntheticNotice'));
-      expect((notice as HTMLElement).style.overflowWrap).toBe('anywhere');
+      expect(notice.style.overflowWrap).toBe('anywhere');
       const status = screen.getByRole('status', { name: schedulingText('en', 'status') });
-      expect((status as HTMLElement).style.overflowWrap).toBe('anywhere');
+      expect(status.style.overflowWrap).toBe('anywhere');
 
-      const panels = root.querySelector('[data-part="panels"]') as HTMLElement;
+      const panels = required(root.querySelector<HTMLElement>('[data-part="panels"]'));
       expect(panels.style.whiteSpace).not.toBe('nowrap');
       expect(panels.style.blockSize).toBe('');
     });
@@ -249,8 +256,15 @@ describe('responsive SchedulingScreen right-to-left', () => {
       expect(element.getAttribute('style') ?? '').not.toMatch(physicalStylePattern);
     }
     const notice = screen.getByText(schedulingText('ar', 'syntheticNotice'));
-    expect((notice as HTMLElement).style.overflowWrap).toBe('anywhere');
+    expect(notice.style.overflowWrap).toBe('anywhere');
     const status = screen.getByRole('status', { name: schedulingText('ar', 'status') });
-    expect((status as HTMLElement).style.overflowWrap).toBe('anywhere');
+    expect(status.style.overflowWrap).toBe('anywhere');
   });
 });
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

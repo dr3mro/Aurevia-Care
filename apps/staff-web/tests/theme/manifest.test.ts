@@ -22,8 +22,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const publicRoot = resolve(here, '..', '..', 'public');
 const manifestPath = resolve(publicRoot, 'manifest.webmanifest');
 
-const readText = (): string =>
-  existsSync(manifestPath) ? readFileSync(manifestPath, 'utf8') : '';
+const readText = (): string => (existsSync(manifestPath) ? readFileSync(manifestPath, 'utf8') : '');
 
 const parseManifest = (): WebAppManifest => JSON.parse(readText()) as WebAppManifest;
 

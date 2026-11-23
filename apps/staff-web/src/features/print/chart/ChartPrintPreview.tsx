@@ -15,7 +15,10 @@ export interface ChartPrintPreviewProps {
 function LeftOutList({ items, locale }: { items: readonly LeftOutItem[]; locale: Locale }) {
   const { tokens } = useTheme();
   return (
-    <section aria-label={chartPrintText(locale, 'leftOut')} style={{ display: 'grid', gap: tokens.spacing.sm }}>
+    <section
+      aria-label={chartPrintText(locale, 'leftOut')}
+      style={{ display: 'grid', gap: tokens.spacing.sm }}
+    >
       <h4 style={{ marginBlock: 0 }}>{chartPrintText(locale, 'leftOut')}</h4>
       {items.length === 0 ? (
         <p>{chartPrintText(locale, 'leftOutEmpty')}</p>
@@ -49,9 +52,7 @@ export function ChartPrintPreview({ locale, model }: ChartPrintPreviewProps) {
             <MixedScriptText text={model.provenance} lang={locale} />
           </p>
         ) : null}
-        {model.printable ? null : (
-          <p role="status">{chartPrintText(locale, 'notPrintable')}</p>
-        )}
+        {model.printable ? null : <p role="status">{chartPrintText(locale, 'notPrintable')}</p>}
         <LeftOutList items={model.leftOut} locale={locale} />
       </section>
     );

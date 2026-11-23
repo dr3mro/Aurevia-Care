@@ -30,16 +30,19 @@ const sendMock = vi.mocked(send);
 const timeZone = 'UTC';
 
 function descriptorAt(call: number): RequestDescriptor {
-  return sendMock.mock.calls[call]![0] as RequestDescriptor;
+  return required(sendMock.mock.calls[call])[0];
 }
 
-function wrap(thread: ThreadViewResponse, locale: Locale = 'en', error?: TransportError): ReactElement {
+function wrap(
+  thread: ThreadViewResponse,
+  locale: Locale = 'en',
+  error?: TransportError,
+): ReactElement {
   const onSend = (draft: AnswerDraft): void => {
     void answerClarification(
       thread.thread.id,
       thread.thread.version,
-      draft.answerBody,
-      draft.amendedRevisionId,
+      draft,
       prescriberOrganizationId,
     );
   };
@@ -67,7 +70,9 @@ describe('ClarificationReply open thread', () => {
     sendMock.mockResolvedValue({});
     render(wrap(syntheticOpenThreadView));
 
-    expect(screen.getByRole('heading', { name: prescriberText('en', 'clarificationTitle') })).toBeTruthy();
+    expect(
+      screen.getByRole('heading', { name: prescriberText('en', 'clarificationTitle') }),
+    ).toBeTruthy();
     expect(screen.getByText('Which strength should be dispensed?')).toBeTruthy();
     expect(screen.getByText(prescriberText('en', 'authorPharmacy'))).toBeTruthy();
     expect(screen.queryByTestId('amended-revision-link')).toBeNull();
@@ -145,7 +150,7 @@ describe('ClarificationReply open thread', () => {
     );
 
     expect(screen.getByText(stateViewText('en', 'conflict'))).toBeTruthy();
-    expect((screen.getByLabelText(prescriberText('en', 'answerLabel')) as HTMLInputElement).value).toBe(
+    expect(screen.getByLabelText<HTMLInputElement>(prescriberText('en', 'answerLabel')).value).toBe(
       'my unsaved answer',
     );
   });
@@ -186,10 +191,21 @@ describe('ClarificationReply answered thread', () => {
     render(wrap(syntheticAnsweredThreadView, 'ar'));
 
     expect(document.documentElement.dir).toBe('rtl');
-    expect(screen.getByRole('heading', { name: prescriberText('ar', 'clarificationTitle') })).toBeTruthy();
+    expect(
+      screen.getByRole('heading', { name: prescriberText('ar', 'clarificationTitle') }),
+    ).toBeTruthy();
     const body = screen.getByTestId('answer-body');
     expect(body.tagName).toBe('BDI');
     expect(body.getAttribute('dir')).toBe('auto');
-    expect(screen.getByTestId('amended-revision-link').textContent).toContain('revision-synthetic-002');
+    expect(screen.getByTestId('amended-revision-link').textContent).toContain(
+      'revision-synthetic-002',
+    );
   });
 });
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

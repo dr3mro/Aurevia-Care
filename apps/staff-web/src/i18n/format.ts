@@ -42,7 +42,7 @@ export function directionFor(locale: Locale): ScriptDirection {
 /** Resolve the display form of a name together with the language of its script. */
 function nameRun(name: PersonName, locale: Locale): { text: string; lang: string } {
   const localName = locale === 'ar' ? name.localName : undefined;
-  return localName
+  return localName !== undefined && localName !== ''
     ? { text: localName, lang: 'ar' }
     : { text: name.latinName, lang: 'en' };
 }

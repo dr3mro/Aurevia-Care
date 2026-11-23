@@ -29,12 +29,18 @@ describe('FindOrderPanel', () => {
   it('finds by accession, selects an order and submits with the keyboard action', () => {
     const onSelect = vi.fn();
     wrap(
-      <FindOrderPanel orders={[alphaOrder, betaEchoOrder]} selectedId={alphaOrder.id} onSelect={onSelect} />,
+      <FindOrderPanel
+        orders={[alphaOrder, betaEchoOrder]}
+        selectedId={alphaOrder.id}
+        onSelect={onSelect}
+      />,
     );
 
     expect(screen.getByText(labText('en', 'noOrdersFound'))).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: labText('en', 'searchByAccession') }));
-    fireEvent.change(screen.getByLabelText(labText('en', 'search')), { target: { value: 'ACC-100' } });
+    fireEvent.change(screen.getByLabelText(labText('en', 'search')), {
+      target: { value: 'ACC-100' },
+    });
     fireEvent.click(screen.getByRole('button', { name: labText('en', 'search') }));
 
     const list = screen.getByRole('list', { name: labText('en', 'findOrder') });
@@ -42,30 +48,47 @@ describe('FindOrderPanel', () => {
     expect(resultButtons).toHaveLength(2);
     const selected = within(list).getByRole('button', { pressed: true });
     expect(selected.textContent).toContain('ACC-100');
-    fireEvent.click(resultButtons[0]!);
+    fireEvent.click(required(resultButtons[0]));
     expect(onSelect).toHaveBeenCalledWith(alphaOrder.id);
   });
 
   it('switches to patient search and renders Arabic direction', () => {
-    wrap(<FindOrderPanel orders={[alphaOrder, betaEchoOrder]} selectedId={undefined} onSelect={vi.fn()} />, 'ar');
+    wrap(
+      <FindOrderPanel
+        orders={[alphaOrder, betaEchoOrder]}
+        selectedId={undefined}
+        onSelect={vi.fn()}
+      />,
+      'ar',
+    );
     expect(document.documentElement.dir).toBe('rtl');
 
     fireEvent.click(screen.getByRole('button', { name: labText('ar', 'searchByPatient') }));
-    fireEvent.change(screen.getByLabelText(labText('ar', 'search')), { target: { value: 'Synthetic Layla' } });
+    fireEvent.change(screen.getByLabelText(labText('ar', 'search')), {
+      target: { value: 'Synthetic Layla' },
+    });
     expect(screen.queryByText(labText('ar', 'noOrdersFound'))).toBeNull();
-    expect(within(screen.getByRole('list', { name: labText('ar', 'findOrder') })).getAllByRole('button')).toHaveLength(1);
+    expect(
+      within(screen.getByRole('list', { name: labText('ar', 'findOrder') })).getAllByRole('button'),
+    ).toHaveLength(1);
   });
 });
 
 describe('IdentityVerification', () => {
   const matched: MatchCheck = { matched: true, reasons: [] };
   function renderIdentity(localMatch: MatchCheck, withLocalName = true, locale: Locale = 'en') {
-    const order = withLocalName ? alphaOrder : { ...alphaOrder, patientName: { latinName: 'Synthetic Layla' } };
+    const order = withLocalName
+      ? alphaOrder
+      : { ...alphaOrder, patientName: { latinName: 'Synthetic Layla' } };
     wrap(
       <IdentityVerification
         order={order}
         match={localMatch}
-        presented={{ patientId: 'patient-100', accessionNo: 'ACC-100', accessionIssuer: 'SYN-ISSUER' }}
+        presented={{
+          patientId: 'patient-100',
+          accessionNo: 'ACC-100',
+          accessionIssuer: 'SYN-ISSUER',
+        }}
         onPresentedChange={vi.fn()}
         namesConfirmed={false}
         accessionConfirmed={false}
@@ -96,8 +119,14 @@ describe('IdentityVerification', () => {
       matched: false,
       reasons: ['patient', 'accession-number', 'accession-issuer'],
     });
-    expect(screen.getByTestId('match-status').textContent).toContain(labText('en', 'mismatchTitle'));
-    for (const key of ['mismatchPatient', 'mismatchAccessionNumber', 'mismatchAccessionIssuer'] as const) {
+    expect(screen.getByTestId('match-status').textContent).toContain(
+      labText('en', 'mismatchTitle'),
+    );
+    for (const key of [
+      'mismatchPatient',
+      'mismatchAccessionNumber',
+      'mismatchAccessionIssuer',
+    ] as const) {
       expect(screen.getByTestId('match-status').textContent).toContain(labText('en', key));
     }
   });
@@ -119,9 +148,15 @@ describe('IdentityVerification', () => {
       />,
     );
 
-    fireEvent.change(screen.getByLabelText(labText('en', 'presentedPatientId')), { target: { value: 'p' } });
-    fireEvent.change(screen.getByLabelText(labText('en', 'presentedAccessionNo')), { target: { value: 'a' } });
-    fireEvent.change(screen.getByLabelText(labText('en', 'presentedAccessionIssuer')), { target: { value: 'i' } });
+    fireEvent.change(screen.getByLabelText(labText('en', 'presentedPatientId')), {
+      target: { value: 'p' },
+    });
+    fireEvent.change(screen.getByLabelText(labText('en', 'presentedAccessionNo')), {
+      target: { value: 'a' },
+    });
+    fireEvent.change(screen.getByLabelText(labText('en', 'presentedAccessionIssuer')), {
+      target: { value: 'i' },
+    });
     expect(onPresentedChange).toHaveBeenCalledTimes(3);
 
     fireEvent.click(screen.getByLabelText(labText('en', 'confirmNames')));
@@ -135,13 +170,30 @@ describe('CollectionForm', () => {
   it('edits every specimen field and dispatches only when enabled', () => {
     const onChange = vi.fn();
     const onCollect = vi.fn();
-    wrap(<CollectionForm value={specimenDetailsAlpha} onChange={onChange} onCollect={onCollect} disabled={false} />);
+    wrap(
+      <CollectionForm
+        value={specimenDetailsAlpha}
+        onChange={onChange}
+        onCollect={onCollect}
+        disabled={false}
+      />,
+    );
 
-    fireEvent.change(screen.getByLabelText(labText('en', 'specimenType')), { target: { value: 'PLASMA' } });
-    fireEvent.change(screen.getByLabelText(labText('en', 'siteCode')), { target: { value: 'CLINIC' } });
-    fireEvent.change(screen.getByLabelText(labText('en', 'collector')), { target: { value: 'synthetic.nurse' } });
-    fireEvent.change(screen.getByLabelText(labText('en', 'collectedAt')), { target: { value: '2026-03-09T10:00:00Z' } });
-    fireEvent.change(screen.getByLabelText(labText('en', 'quality')), { target: { value: 'GOOD' } });
+    fireEvent.change(screen.getByLabelText(labText('en', 'specimenType')), {
+      target: { value: 'PLASMA' },
+    });
+    fireEvent.change(screen.getByLabelText(labText('en', 'siteCode')), {
+      target: { value: 'CLINIC' },
+    });
+    fireEvent.change(screen.getByLabelText(labText('en', 'collector')), {
+      target: { value: 'synthetic.nurse' },
+    });
+    fireEvent.change(screen.getByLabelText(labText('en', 'collectedAt')), {
+      target: { value: '2026-03-09T10:00:00Z' },
+    });
+    fireEvent.change(screen.getByLabelText(labText('en', 'quality')), {
+      target: { value: 'GOOD' },
+    });
     expect(onChange).toHaveBeenCalledTimes(5);
     expect(onChange).toHaveBeenLastCalledWith({ ...specimenDetailsAlpha, quality: 'GOOD' });
 
@@ -151,8 +203,17 @@ describe('CollectionForm', () => {
 
   it('disables collection while the identity check is incomplete', () => {
     const onCollect = vi.fn();
-    wrap(<CollectionForm value={specimenDetailsAlpha} onChange={vi.fn()} onCollect={onCollect} disabled />);
-    const button = screen.getByRole('button', { name: labText('en', 'recordCollection') }) as HTMLButtonElement;
+    wrap(
+      <CollectionForm
+        value={specimenDetailsAlpha}
+        onChange={vi.fn()}
+        onCollect={onCollect}
+        disabled
+      />,
+    );
+    const button = screen.getByRole<HTMLButtonElement>('button', {
+      name: labText('en', 'recordCollection'),
+    });
     expect(button.disabled).toBe(true);
     fireEvent.click(button);
     expect(onCollect).not.toHaveBeenCalled();
@@ -171,11 +232,17 @@ describe('RejectionForm', () => {
     expect(screen.queryByText(labText('en', 'reasonRequired'))).toBeNull();
     expect(select.getAttribute('aria-invalid')).toBeNull();
     fireEvent.change(select, { target: { value: 'wrong_tube' } });
-    expect(onChange).toHaveBeenCalledWith({ reason: 'wrong_tube', detail: '', notifyPatient: false });
+    expect(onChange).toHaveBeenCalledWith({
+      reason: 'wrong_tube',
+      detail: '',
+      notifyPatient: false,
+    });
     fireEvent.change(select, { target: { value: '' } });
     expect(select.getAttribute('aria-invalid')).toBe('true');
     expect(screen.getByText(labText('en', 'reasonRequired'))).toBeTruthy();
-    const reject = screen.getByRole('button', { name: labText('en', 'rejectSpecimen') }) as HTMLButtonElement;
+    const reject = screen.getByRole<HTMLButtonElement>('button', {
+      name: labText('en', 'rejectSpecimen'),
+    });
     expect(reject.disabled).toBe(true);
     fireEvent.click(reject);
     expect(onReject).not.toHaveBeenCalled();
@@ -192,7 +259,9 @@ describe('RejectionForm', () => {
         disabled={false}
       />,
     );
-    expect(screen.getByLabelText(labText('en', 'rejectionReason')).getAttribute('aria-invalid')).toBeNull();
+    expect(
+      screen.getByLabelText(labText('en', 'rejectionReason')).getAttribute('aria-invalid'),
+    ).toBeNull();
     expect(screen.queryByText(labText('en', 'reasonRequired'))).toBeNull();
     expect(screen.queryByLabelText(labText('en', 'otherDetail'))).toBeNull();
 
@@ -223,10 +292,18 @@ describe('RejectionForm', () => {
     );
     expect(screen.getByLabelText(labText('en', 'otherDetail'))).toBeTruthy();
     expect(screen.getByText(labText('en', 'detailRequired'))).toBeTruthy();
-    expect(screen.getByLabelText(labText('en', 'rejectionReason')).getAttribute('aria-invalid')).toBeNull();
+    expect(
+      screen.getByLabelText(labText('en', 'rejectionReason')).getAttribute('aria-invalid'),
+    ).toBeNull();
 
-    fireEvent.change(screen.getByLabelText(labText('en', 'otherDetail')), { target: { value: 'haemolysis' } });
-    expect(onChange).toHaveBeenCalledWith({ reason: 'other', detail: 'haemolysis', notifyPatient: false });
+    fireEvent.change(screen.getByLabelText(labText('en', 'otherDetail')), {
+      target: { value: 'haemolysis' },
+    });
+    expect(onChange).toHaveBeenCalledWith({
+      reason: 'other',
+      detail: 'haemolysis',
+      notifyPatient: false,
+    });
 
     rerender(
       <ThemeProvider>
@@ -252,7 +329,9 @@ describe('RejectionForm', () => {
         disabled
       />,
     );
-    const reject = screen.getByRole('button', { name: labText('en', 'rejectSpecimen') }) as HTMLButtonElement;
+    const reject = screen.getByRole<HTMLButtonElement>('button', {
+      name: labText('en', 'rejectSpecimen'),
+    });
     expect(reject.disabled).toBe(true);
   });
 });
@@ -311,6 +390,15 @@ describe('LabelSheet', () => {
       'ar',
     );
     expect(document.documentElement.dir).toBe('rtl');
-    expect(screen.getByTestId('label-sheet').textContent).toContain(labText('ar', 'labelPatientName'));
+    expect(screen.getByTestId('label-sheet').textContent).toContain(
+      labText('ar', 'labelPatientName'),
+    );
   });
 });
+
+function required<T>(value: T | null | undefined): T {
+  if (value === null || value === undefined) {
+    throw new Error('Expected value to be present');
+  }
+  return value;
+}

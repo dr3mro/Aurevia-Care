@@ -6,11 +6,7 @@ import { FormField } from '../../components/FormField';
 import { Button } from '../../components/Button';
 import { useTheme } from '../../theme/ThemeProvider';
 import { useBreakpoint, usePointerCoarse } from '../../theme/useBreakpoint';
-import type {
-  RegistrationDraft,
-  RegistrationField,
-  RegistrationFieldErrors,
-} from './domain';
+import type { RegistrationDraft, RegistrationField, RegistrationFieldErrors } from './domain';
 import { patientsText } from './messages';
 import type { PatientsMessageKey } from './messages';
 
