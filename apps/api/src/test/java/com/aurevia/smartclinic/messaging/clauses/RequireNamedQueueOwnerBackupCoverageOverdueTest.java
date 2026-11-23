@@ -117,6 +117,8 @@ class RequireNamedQueueOwnerBackupCoverageOverdueTest {
         profileStore.addMember(ORG_B, PATIENT_USER, "patient", true);
         profileStore.addUnit(ORG_A, UNIT);
         profileStore.addUnit(ORG_B, UNIT);
+        profileStore.seedApprovedChannels(ORG_A, "msg06.approved_urgent_channels", "urgent-phone");
+        profileStore.seedApprovedChannels(ORG_A, "msg06.approved_downtime_channels", "downtime-phone");
         profileStore.linkPatient(ORG_A, PATIENT_USER, PATIENT);
         profileStore.addConnection(ORG_A, PATIENT, UNIT, true);
         profileStore.addProfile(namedProfile(1, "nurse-lead", List.of("nurse-backup")));
