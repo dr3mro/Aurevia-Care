@@ -197,3 +197,31 @@ class CommandLineTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class WrittenBarTests(unittest.TestCase):
+    def test_written_coverage_bar_cannot_be_lowered(self):
+        diff = ("diff --git a/CONSTRAINTS.md b/CONSTRAINTS.md\n"
+                "--- a/CONSTRAINTS.md\n"
+                "+++ b/CONSTRAINTS.md\n"
+                "@@ -3 +3 @@\n"
+                "+| 1 | Coverage | 90% | gates |")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "CONSTRAINTS.md").write_text("old")
+            with mock.patch.object(guard, "git", return_value=diff):
+                found = guard.written_bar_violations(root, "base")
+        self.assertTrue(any("coverage bar lowered" in f[2] for f in found))
+
+    def test_written_100_percent_bar_is_allowed(self):
+        diff = ("diff --git a/CONSTRAINTS.md b/CONSTRAINTS.md\n"
+                "--- a/CONSTRAINTS.md\n"
+                "+++ b/CONSTRAINTS.md\n"
+                "@@ -3 +3 @@\n"
+                "+| 1 | Coverage | 100% | gates |")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "CONSTRAINTS.md").write_text("old")
+            with mock.patch.object(guard, "git", return_value=diff):
+                found = guard.written_bar_violations(root, "base")
+        self.assertEqual(found, [])
