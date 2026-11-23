@@ -816,6 +816,21 @@ cmd_strategy() {
   emit result "$result"
 }
 
+# Regenerate the OpenAPI client from the contract so a worker that edits
+# contracts/openapi.yaml never publishes a stale generated type file.
+cmd_sync_generated() {
+  if [[ -f apps/staff-web/package.json && -f contracts/openapi.yaml ]]; then
+    (cd apps/staff-web && npm run gen:api) || return 0
+    if ! git diff --quiet -- apps/staff-web/src/api/generated/openapi.d.ts; then
+      git add -- apps/staff-web/src/api/generated/openapi.d.ts
+      git -c user.name="${SWARM_GIT_NAME:-github-actions[bot]}" \
+        -c user.email="${SWARM_GIT_EMAIL:-41898282+github-actions[bot]@users.noreply.github.com}" \
+        commit -qm "Regenerate OpenAPI client from contract"
+      printf 'synced generated OpenAPI client\n'
+    fi
+  fi
+}
+
 cmd_bundle() {
   local commits
   local prerequisite
@@ -909,6 +924,7 @@ case "${1:-}" in
   publish) cmd_publish ;;
   post-reviews) cmd_post_reviews ;;
   bundle) cmd_bundle ;;
+  sync-generated) cmd_sync_generated ;;
   audit) cmd_audit ;;
   strategy) cmd_strategy ;;
   daily-qa) cmd_daily qa ;;

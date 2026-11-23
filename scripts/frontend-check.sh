@@ -122,6 +122,12 @@ if [[ $fail -ne 0 ]]; then
   exit 1
 fi
 
+# Generated client must match the OpenAPI contract. A worker that edits
+# contracts/openapi.yaml but forgets gen:api must fail here, not at the integrator.
+if [[ -f apps/staff-web/package.json ]]; then
+  (cd apps/staff-web && npm ci --no-audit --no-fund && npm run gen:api:check)
+fi
+
 # Toolchain commands must pass; npm ci makes the gate self-contained in CI.
 npm ci --no-audit --no-fund
 npm run typecheck
