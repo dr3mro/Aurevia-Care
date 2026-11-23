@@ -56,7 +56,8 @@ Production classes exercised through that entry point:
   the five family baselines, the field/dictionary shape, the language and date
   rules, the saved snapshot and the caller identity snapshot.
 - `com.aurevia.smartclinic.clinical.templates.TemplateStore`,
-  `InMemoryTemplateStore` (test fixture) and the production
+  `InMemoryTemplateStore` (used here as the synthetic test store; it lives in
+  `src/main` as pre-existing wiring debt) and the production
   `JdbcTemplateStore` — the persistence boundary keyed by organization. The durable
   schema is in `db/migrations/V80__template_store.sql` (five tenant-owned tables,
   each with `ENABLE` and `FORCE ROW LEVEL SECURITY` plus a `WITH CHECK` tenant
